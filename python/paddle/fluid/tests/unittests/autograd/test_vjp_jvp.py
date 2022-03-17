@@ -14,48 +14,15 @@
 
 import unittest
 import paddle
+import numpy as np
 
-from paddle.autograd.functional import vjp, jvp, _tensors
+from paddle.autograd.functional import vjp, jvp, _as_tensors
 from paddle import grad, ones_like, zeros_like
-
-
-def reduce(x):
-    return paddle.sum(x)
-
-
-def reduce_dim(x):
-    return paddle.sum(x, axis=0)
-
-
-def matmul(x, y):
-    return paddle.matmul(x, y)
-
-
-def mul(x, y):
-    return x * y
-
-
-def pow(x, y):
-    return paddle.pow(x, y)
-
-
-def o2(x, y):
-    return paddle.multiply(x, y), paddle.matmul(x, y.t())
-
-
-def unuse(x, y):
-    return paddle.sum(x)
-
-
-def nested(x):
-    def inner(y):
-        return x * y
-
-    return inner
+from funcs import reduce, reduce_dim, mul, pow, o2, unuse, nested, matmul
 
 
 def make_v(f, inputs):
-    outputs = _tensors(f(*inputs), "outputs")
+    outputs = _as_tensors(f(*inputs))
     return [ones_like(x) for x in outputs]
 
 
@@ -98,16 +65,9 @@ class TestAutogradFunctional(unittest.TestCase):
             xs = self.gen_inputs(inputs)
             if v is not None:
                 v = self.gen_inputs(v)
-                outputs, inputs_grad = vjp(func,
-                                           xs,
-                                           v,
-                                           create_graph=create_graph,
-                                           allow_unused=allow_unused)
+                outputs, inputs_grad = vjp(func, xs, v)
             else:
-                outputs, inputs_grad = vjp(func,
-                                           xs,
-                                           create_graph=create_graph,
-                                           allow_unused=allow_unused)
+                outputs, inputs_grad = vjp(func, xs)
             return outputs, inputs_grad
 
         def grad_test():
@@ -165,7 +125,7 @@ class TestAutogradFunctional(unittest.TestCase):
             self.assertTrue(res is None, type_error)
         elif isinstance(ref, paddle.Tensor):
             self.assertTrue(isinstance(res, paddle.Tensor), type_error)
-            self.assertTrue(paddle.allclose(res, ref), value_error)
+            np.testing.assert_allclose(res, ref)
         else:
             self.assertTrue(len(res) == len(ref), type_error)
             for i in range(len(ref)):
@@ -174,30 +134,30 @@ class TestAutogradFunctional(unittest.TestCase):
 
 
 class TestVJP(TestAutogradFunctional):
-    def test_vjp_i1o1_no_create_graph(self):
+    def test_vjp_i1o1(self):
         test_cases = [
-            [reduce, 'A'],  #noqa
-            [reduce_dim, 'A'],  #noqa
-        ]  #noqa
+            [reduce, 'A'],  # noqa
+            [reduce_dim, 'A'],  # noqa
+        ]  # noqa
         for f, inputs in test_cases:
             vjp, grad = self.gen_test_pairs(f, inputs)
             vjp_result, grad_result = vjp(), grad()
             self.check_results(grad_result, vjp_result)
 
-    def test_vjp_i2o1_no_create_graph(self):
+    def test_vjp_i2o1(self):
         test_cases = [
-            [matmul, ['A', 'B']],  #noqa
-            [mul, ['b', 'c']],  #noqa
-        ]  #noqa
+            [matmul, ['A', 'B']],  # noqa
+            [mul, ['b', 'c']],  # noqa
+        ]  # noqa
         for f, inputs in test_cases:
             vjp, grad = self.gen_test_pairs(f, inputs)
             vjp_result, grad_result = vjp(), grad()
             self.check_results(grad_result, vjp_result)
 
-    def test_vjp_i2o2_no_create_graph(self):
+    def test_vjp_i2o2(self):
         test_cases = [
-            [o2, ['A', 'A']],  #noqa
-        ]  #noqa
+            [o2, ['A', 'A']],  # noqa
+        ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             v = make_v(f, inputs)
@@ -205,38 +165,32 @@ class TestVJP(TestAutogradFunctional):
             vjp_result, grad_result = vjp(), grad()
             self.check_results(grad_result, vjp_result)
 
-    def test_vjp_i2o2_omitting_v_no_create_graph(self):
+    def test_vjp_i2o2_omitting_v(self):
         test_cases = [
-            [o2, ['A', 'A']],  #noqa
-        ]  #noqa
+            [o2, ['A', 'A']],  # noqa
+        ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             vjp, grad = self.gen_test_pairs(f, inputs)
             vjp_result, grad_result = vjp(), grad()
             self.check_results(grad_result, vjp_result)
 
-    def test_vjp_nested_no_create_graph(self):
+    def test_vjp_nested(self):
         x = self.gen_input('a')
         test_cases = [
-            [nested(x), 'a'],  #noqa
+            [nested(x), 'a'],  # noqa
         ]
         for f, inputs in test_cases:
             vjp, grad = self.gen_test_pairs(f, inputs)
             vjp_result, grad_result = vjp(), grad()
             self.check_results(grad_result, vjp_result)
 
-    def test_vjp_aliased_input_no_create_graph(self):
+    def test_vjp_aliased_input(self):
         x = self.gen_input('a')
         ref = self.gen_test_pairs(nested(x), 'a')[0]
         aliased = self.gen_test_pairs(nested(x), x)[0]
         ref_result, aliased_result = ref(), aliased()
         self.check_results(ref_result, aliased_result)
-
-    def test_vjp_allowunused_no_create_graph(self):
-        x, y = self.gen_input('A'), self.gen_input('a')
-        vjp, grad = self.gen_test_pairs(unuse, [x, y], allow_unused=True)
-        vjp_result, grad_result = vjp(), grad()
-        self.check_results(grad_result, vjp_result)
 
 
 def jac(grad_fn, f, inputs):
@@ -268,41 +222,41 @@ def jac(grad_fn, f, inputs):
 
 
 class TestJVP(TestAutogradFunctional):
-    def test_jvp_i1o1_no_create_graph(self):
-        test_cases = [
-            [reduce, 'A'],  #noqa
-            [reduce_dim, 'A'],  #noqa
-        ]  #noqa
+    # def test_jvp_i1o1(self):
+    #     test_cases = [
+    #         [reduce, 'A'],  #noqa
+    #         [reduce_dim, 'A'],  #noqa
+    #     ]  #noqa
+    #     for f, inputs in test_cases:
+    #         inputs = self.gen_inputs(inputs)
+    #         forward_jac = jac(jvp, f, inputs)
+    #         reverse_jac = jac(vjp, f, inputs)
+    #         self.check_results(forward_jac, reverse_jac)
+
+    # def test_jvp_i2o1(self):
+    #     test_cases = [  #noqa
+    #         [matmul, ['A', 'B']],  #noqa
+    #     ]  #noqa
+    #     for f, inputs in test_cases:
+    #         inputs = self.gen_inputs(inputs)
+    #         forward_jac = jac(jvp, f, inputs)
+    #         reverse_jac = jac(vjp, f, inputs)
+    #         self.check_results(forward_jac, reverse_jac)
+
+    def test_jvp_i2o2(self):
+        test_cases = [  # noqa
+            [o2, ['A', 'A']],  # noqa
+        ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             forward_jac = jac(jvp, f, inputs)
             reverse_jac = jac(vjp, f, inputs)
             self.check_results(forward_jac, reverse_jac)
 
-    def test_jvp_i2o1_no_create_graph(self):
-        test_cases = [  #noqa
-            [matmul, ['A', 'B']],  #noqa
-        ]  #noqa
-        for f, inputs in test_cases:
-            inputs = self.gen_inputs(inputs)
-            forward_jac = jac(jvp, f, inputs)
-            reverse_jac = jac(vjp, f, inputs)
-            self.check_results(forward_jac, reverse_jac)
-
-    def test_jvp_i2o2_no_create_graph(self):
-        test_cases = [  #noqa
-            [o2, ['A', 'A']],  #noqa
-        ]  #noqa
-        for f, inputs in test_cases:
-            inputs = self.gen_inputs(inputs)
-            forward_jac = jac(jvp, f, inputs)
-            reverse_jac = jac(vjp, f, inputs)
-            self.check_results(forward_jac, reverse_jac)
-
-    def test_jvp_i2o2_omitting_v_no_create_graph(self):
-        test_cases = [  #noqa
-            [o2, ['A', 'A']],  #noqa
-        ]  #noqa
+    def test_jvp_i2o2_omitting_v(self):
+        test_cases = [  # noqa
+            [o2, ['A', 'A']],  # noqa
+        ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             results_omitting_v = jvp(f, inputs)

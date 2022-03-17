@@ -13,108 +13,38 @@
 # limitations under the License.
 
 import contextlib
+import typing
 import paddle
 from paddle.static import gradients
-from ..fluid import framework
-from ..fluid.dygraph import grad
-from ..tensor.creation import assign
-from ..tensor import reshape, zeros_like, to_tensor
-from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
+import functools
+
+from paddle.fluid import framework
+from paddle.fluid.dygraph import grad
+from paddle.tensor import reshape, to_tensor, zeros_like
+from paddle.tensor.creation import assign
 
 
-@contextlib.contextmanager
-def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
-    def grad_fn(ys, xs, v=None, create_graph=create_graph):
-        if v is not None:
-            assert len(ys) == len(v), (
-                f'The argument {v} is expected to be of the same size as the output. '
-                f'Here the output is {ys}, and `v` is {v}.')
-        if allow_unused:
-            ys = [
-                to_tensor(
-                    [0.0], stop_gradient=False) if y is None else y for y in ys
-            ]
-        return grad(
-            ys, xs, v, create_graph=create_graph, allow_unused=allow_unused)
-
-    def return_fn(out):
-        if isinstance(out, paddle.Tensor):
-            if not create_graph:
-                out = out.detach()
-            return out
-        if isinstance(out, list):
-            return list(return_fn(x) for x in out)
-        elif isinstance(out, tuple):
-            return tuple(return_fn(x) for x in out)
-        else:
-            assert out is None
-            return out
-
-    def process(vl):
-        if vl is None:
-            return None
-        out = []
-        # If v is treated as constant in the outer scope, its gradient is guaranteed
-        # not to be taken beyond this scope. Within this scope, however, v's gradient
-        # may be computed. We only need to detach v in this case.
-        # Otherwise, v's gradient is valid, and is subject to update beyond this scope.
-        # In this case we must not confuse the gradient in the outer scope with the
-        # inner one's. Moreover, we need to make sure that the result from the inner
-        # scope can flow back to the outer scope. This can be satisfied by extending
-        # the original variable with a duplication operation v1 = v so that v still
-        # maintains the complete lineage.
-        for v in vl:
-            if v is None:
-                out.append(v)
-                continue
-            if create_graph and not v.stop_gradient:
-                v = assign(v)
-            else:
-                v = v.detach()
-                v.stop_gradient = False
-            out.append(v)
-        return out
-
-    try:
-        var_lists = [process(vl) for vl in var_lists]
-        bundle = var_lists + [grad_fn, return_fn]
-        yield bundle
-    finally:
-        pass
-
-
-@framework.dygraph_only
-def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
+def vjp(func, xs, v=None):
     r"""Computes the Vector-Jacobian product, a functional form of
     reverse mode automatic differentiation.
 
     Args:
-        func(Callable): `func` takes as input a tensor or a list/tuple
-            of tensors and returns a tensor or a list/tuple of tensors.
-        inputs(list[Tensor]|tuple[Tensor]|Tensor): used as positional
-            arguments to evaluate `func`. `inputs` is accepted as one
-            tensor or a list of tensors.
-        v(list[Tensor]|tuple[Tensor]|Tensor|None, optional): the
-            cotangent vector invovled in the VJP computation. `v` matches
-            the size and shape of `func`'s output. Default value is None
-            and in this case is equivalent to all ones the same size
-            of `func`'s output.
-        create_graph(bool, optional): if `True`, gradients can be
-            evaluated on the results. If `False`, taking gradients on
-            the results is invalid. Default value is False.
-        allow_unused(bool, optional): In case that some Tensors of
-            `inputs` do not contribute to the computation of the output.
-            If `allow_unused` is False, an error will be raised,
-            Otherwise, the gradients of the said inputs are returned
-            None. Default value is False.
+        func(Callable): A function that takes ``xs`` as inputs parameter and
+            returns a sequence of Tensors or a Tensor.
+        xs(Tensor|Sequence[Tensor]): Used as positional arguments to evaluate
+            ``func``. ``xs`` is accepted as one tensor or a sequence of tensors.
+        v(Tensor|Sequence[Tensor]|None, optional): The cotangent vector invovled
+            in the VJP computation. `v` matches the size and shape of
+            ``func`` 's output. Defaults to None, which is equivalent to all
+            ones the same size of ``func`` 's output.
 
     Returns:
         output(tuple):
-            func_out(list[Tensor]|tuple[Tensor]|Tensor): the output of
-                `func(inputs)`
-            vjp(list[Tensor]): the pullback results of `v` on `func`
+            func_out(Tensor|List[Tensor]): The output of ``func(xs)`` .
+            vjp(Tensor|List[Tensor]): The pullback results of ``v`` on ``func`` .
 
     Examples:
+
       .. code-block:: python
 
         def func(x):
@@ -145,9 +75,9 @@ def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
           return paddle.matmul(x, x)
 
         output, inputs_grad = vjp(func, [x, y], v)
-        # ValueError: (InvalidArgument) The 1-th input does not appear in the backward graph. 
+        # ValueError: (InvalidArgument) The 1-th input does not appear in the backward graph.
         # Please check the input variable or set allow_unused=True to get None result.
-        # [Hint: Expected allow_unused_ == true, but received allow_unused_:0 != true:1.]     
+        # [Hint: Expected allow_unused_ == true, but received allow_unused_:0 != true:1.]
 
         output, inputs_grad = vjp(func, [x, y], v, allow_unused=True)
         print(inputs_grad)
@@ -155,57 +85,42 @@ def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
         #        [[2., 1.],
         #         [1., 0.]]), None]
     """
-    xs = _tensors(inputs, "inputs")
-    if v is not None:
-        v = _tensors(v, "v")
+    _check_inputs(func, xs, v)
 
-    with gradient_scope(
-            xs, v, create_graph=create_graph,
-            allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
-        outputs = func(*xs)
-        ys = _tensors(outputs, "outputs")
-        grads = grad_fn(ys, xs, v)
-        outputs, grads = return_fn(outputs), return_fn(grads)
+    # _grad_preprocess will detach element of xs from computing graph when
+    # stop_gradient=True. Therefore, must execute this method before
+    # calling func for avoiding breaking the dependencies between xs and ys
+    xs, v = _grad_preprocess(xs), _grad_preprocess(v)
+    ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
+    _check_v_shape(v, ys)
 
-    return outputs, grads
+    return ys, _grad(ys, xs, v)
 
 
-@framework.dygraph_only
-def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
+def jvp(func, xs, v=None):
     r"""
     Computes the Jacobian-Vector product for a function at the given
     inputs and a vector in the tangent space induced by the inputs.
 
-    .. note::
-        **This API is ONLY available in imperative mode.**
-
     Args:
-        func(Callable): `func` takes as input a tensor or a list/tuple
+        func(Callable): The ``func`` takes as input a tensor or a list/tuple
             of tensors and returns a tensor or a list/tuple of tensors.
-        inputs(list[Tensor]|tuple[Tensor]|Tensor): used as positional
-            arguments to evaluate `func`. `inputs` is accepted as one
-            tensor or a list/tuple of tensors.
-        v(list[Tensor]|tuple[Tensor]|Tensor|None, optional): the
-            tangent vector invovled in the JVP computation. `v` matches
-            the size and shape of `inputs`. `v` is Optional if `func`
-            returns a single tensor. Default value is None and in this
-            case is equivalent to all ones the same size of `inputs`.
-        create_graph(bool, optional): if `True`, gradients can
-            be evaluated on the results. If `False`, taking gradients
-            on the results is invalid. Default value is False.
-        allow_unused(bool, optional): In case that some Tensors of
-            `inputs` do not contribute to the computation of the output.
-            If `allow_unused` is False, an error will be raised,
-            Otherwise, the gradients of the said inputs are returned
-            None. Default value is False.
+        inputs(Tensor|Sequence[Tensor]): Used as positional arguments to
+            evaluate ``func``.  The ``inputs`` is accepted as one tensor or a
+            sequence of tensors.
+        v(Tensor|Sequence[Tensor]|None, optional): The tangent vector invovled
+            in the JVP computation. The ``v`` matches the size and shape of
+            ``inputs``. ``v`` is Optional if ``func`` returns a single tensor.
+            Default value is None and in this case is equivalent to all ones
+            the same size of ``inputs``.
 
     Returns:
         output(tuple):
-            func_out(list[Tensor]|tuple[Tensor]|Tensor): the output of
-                `func(inputs)`
-            jvp(list[Tensor]): the pullback results of `v` on `func`
+            func_out(Tensor|Sequence[Tensor]): The output of ``func(xs)`` .
+            jvp(Tuple[Tensor]): The pullback results of ``v`` on ``func`` .
 
     Examples:
+
     .. code-block:: python
 
         def func(x):
@@ -227,585 +142,28 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
         #         [0., 0.]])]
 
     """
-    xs = _tensors(inputs, "inputs")
-    if v is not None:
-        v = _tensors(v, "v")
-
-    with gradient_scope(
-            xs, v, create_graph=create_graph,
-            allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
-        outputs = func(*xs)
-        ys = _tensors(outputs, "outputs")
-        ys_grad = [zeros_like(y) for y in ys]
-        xs_grad = grad_fn(ys, xs, ys_grad, create_graph=True)
-        ys_grad = grad_fn(xs_grad, ys_grad, v)
-        outputs, ys_grad = return_fn(outputs), return_fn(ys_grad)
-
-    return outputs, ys_grad
-
-
-@framework.dygraph_only
-def jacobian(func, inputs, create_graph=False, allow_unused=False):
-    ''' 
-    .. note::
-        **This API is ONLY available in the imperative mode.**
-
-    This function computes the Jacobian matrix of `func` with respect to `inputs`.
-
-    Parameters:
-        func (function): a Python function that takes a Tensor or a Tensor
-            list/tuple as inputs and returns a Tensor or a Tensor tuple.
-        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
-            Tensor list/tuple of the function ``func``.
-        create_graph (bool, optional): whether to create the gradient graphs
-            of the computing process. When it is True, higher order derivatives
-            are supported to compute; when it is False, the gradient graphs of
-            the computing process would be discarded. Defaults to ``False``.
-        allow_unused (bool, optional): whether to raise error or return None if
-            some Tensors of `inputs` are unreachable in the graph. Error would
-            be raised if allow_unused=False, and None would be returned as
-            their gradients if allow_unused=True. Default False.
-    Returns:
-        Jacobian (Tensor or nested tuple of Tensors): if function ``func``
-        takes a Tensor as inputs and returns a Tensor as outputs, Jacobian
-        will be a single Tensor containing the Jacobian matrix for the
-        linearized inputs and outputs. If one of the inputs and outputs is
-        a Tensor, and another is a Tensor list/tuple, then the Jacobian will
-        be a tuple of Tensors. If both of inputs and outputs are Tensor
-        list/tuple, then the Jacobian will be a tuple of tuple of Tensors
-        where ``Jacobian[i][j]`` will contain the Jacobian matrix of the
-        linearized ``i``th output and ``j``th input and will have same
-        dtype and device as the corresponding input. ``Jacobian[i][j]`` will
-        have as size ``m * n``, where ``m`` and ``n`` denote the numbers of
-        elements of ``i``th output and ``j``th input respectively.
-
-
-    Examples 1:
-        .. code-block:: python
-
-            import paddle
-
-            def func(x):
-                return paddle.matmul(x, x)
-
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            x.stop_gradient = False
-            jacobian = paddle.autograd.jacobian(func, x)
-            print(jacobian)
-            # Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 1., 1., 0.],
-            #         [1., 2., 0., 1.],
-            #         [1., 0., 2., 1.],
-            #         [0., 1., 1., 2.]])
-
-    Examples 2:
-        .. code-block:: python
-
-            import paddle
-
-            def func(x, y):
-                return paddle.matmul(x, y)
-
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            y = paddle.ones(shape=[2, 2], dtype='float32') * 2
-            x.stop_gradient = False
-            y.stop_gradient = False
-            jacobian = paddle.autograd.jacobian(func, [x, y], create_graph=True)
-            print(jacobian)
-            # (Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-            #        [[2., 2., 0., 0.],
-            #         [2., 2., 0., 0.],
-            #         [0., 0., 2., 2.],
-            #         [0., 0., 2., 2.]]), 
-            #  Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-            #        [[1., 0., 1., 0.],
-            #         [0., 1., 0., 1.],
-            #         [1., 0., 1., 0.],
-            #         [0., 1., 0., 1.]]))
-
-    Examples 3:
-        .. code-block:: python
-
-            import paddle
-
-            def func(x, y):
-                return paddle.matmul(x, y), x * x
-
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            y = paddle.ones(shape=[2, 2], dtype='float32') * 2
-            x.stop_gradient = False
-            y.stop_gradient = False
-            jacobian = paddle.autograd.jacobian(func, [x, y], allow_unused=True)
-            print(jacobian)
-            # ((Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 2., 0., 0.],
-            #         [2., 2., 0., 0.],
-            #         [0., 0., 2., 2.],
-            #         [0., 0., 2., 2.]]),
-            #   Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[1., 0., 1., 0.],
-            #         [0., 1., 0., 1.],
-            #         [1., 0., 1., 0.],
-            #         [0., 1., 0., 1.]])),
-            #  (Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 0., 0., 0.],
-            #         [0., 2., 0., 0.],
-            #         [0., 0., 2., 0.],
-            #         [0., 0., 0., 2.]]), None))
-
-    '''
-    inputs = _tensors(inputs, "inputs")
-    outputs = _tensors(func(*inputs), "outputs")
-    fin_size = len(inputs)
-    fout_size = len(outputs)
-    flat_outputs = tuple(reshape(output, shape=[-1]) for output in outputs)
-    jacobian = tuple()
-    for i, flat_output in enumerate(flat_outputs):
-        jac_i = list([] for _ in range(fin_size))
-        for k in range(len(flat_output)):
-            row_k = grad(
-                flat_output[k],
-                inputs,
-                create_graph=create_graph,
-                retain_graph=True,
-                allow_unused=allow_unused)
-            for j in range(fin_size):
-                jac_i[j].append(
-                    reshape(
-                        row_k[j], shape=[-1])
-                    if isinstance(row_k[j], paddle.Tensor) else None)
-        jacobian += (tuple(
-            _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
-    if fin_size == 1 and fout_size == 1:
-        return jacobian[0][0]
-    elif fin_size == 1 and fout_size != 1:
-        return tuple(jacobian[i][0] for i in range(fout_size))
-    elif fin_size != 1 and fout_size == 1:
-        return jacobian[0]
-    else:
-        return jacobian
-
-
-@framework.dygraph_only
-def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
-    ''' 
-    .. note::
-        **This API is ONLY available in the imperative mode.**
-
-    This function computes the batch Jacobian matrix of `func` with respect to `inputs`.
-    Noted that the first dimension of inputs is batch size.
-
-    Parameters:
-        func (function): a Python function that takes a Tensor or a Tensor
-            list/tuple as inputs(the first dimension is batch size) and 
-            returns a Tensor or a Tensor tuple.
-        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
-            Tensor list/tuple of the function ``func``, Noted that
-            the first dimension of inputs is batch size.
-        create_graph (bool, optional): whether to create the gradient graphs
-            of the computing process. When it is True, higher order derivatives
-            are supported to compute; when it is False, the gradient graphs of
-            the computing process would be discarded. Defaults to ``False``.
-        allow_unused (bool, optional): whether to raise error or return None if
-            some Tensors of `inputs` are unreachable in the graph. Error would
-            be raised if allow_unused=False, and None would be returned as
-            their gradients if allow_unused=True. Default False.
-    Returns:
-        Jacobian (Tensor or nested tuple of Tensors): if function ``func``
-        takes a Tensor as inputs and returns a Tensor as outputs, Jacobian
-        will be a single Tensor containing the Jacobian matrix for the
-        linearized inputs and outputs. If one of the inputs and outputs is
-        a Tensor, and another is a Tensor list/tuple, then the Jacobian will
-        be a tuple of Tensors. If both of inputs and outputs are Tensor
-        list/tuple, then the Jacobian will be a tuple of tuple of Tensors.
-        Noted that the first dimension of inputs is batch size.
-        
-        For example,
-        the inputs shape and outputs shape of function ``func` is [batch_size, num] 
-        and [batch_size, num] respectively, then the Jacobian will be a Tensor with
-        a shape of [num, batch_size * num], where ``Jacobian[i][j]`` will contain 
-        the Jacobian matrix of the ``i``th column output and the ``j``th input and 
-        will have same dtype and device as the corresponding input.
-        Other situations can be deduced by analogy.
-
-    Examples 1:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.ones(shape=(4, 2), dtype='float64')
-            weight = paddle.ones(shape=(2, 4), dtype='float64')
-            y = paddle.ones(shape=(4, 2), dtype='float64')
-
-            def func(x):
-                return paddle.matmul(paddle.matmul(x, weight), y)
-
-            x.stop_gradient = False
-            batch_jacobian = paddle.autograd.batch_jacobian(func, x)
-            print(batch_jacobian)
-            # Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #      [[4., 4., 4., 4., 4., 4., 4., 4.],
-            #       [4., 4., 4., 4., 4., 4., 4., 4.]])
-
-    Examples 2:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.ones(shape=(4, 2), dtype='float64')
-            weight = paddle.ones(shape=(2, 4), dtype='float64')
-            y = paddle.ones(shape=(4, 2), dtype='float64')
-
-            def func(x):
-                return paddle.matmul(paddle.matmul(x, weight), y), x * x
-
-            x.stop_gradient = False
-            batch_jacobian = paddle.autograd.batch_jacobian(func, x) 
-            print(batch_jacobian)    
-            # (Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #       [[4., 4., 4., 4., 4., 4., 4., 4.],
-            #        [4., 4., 4., 4., 4., 4., 4., 4.]]), Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #       [[2., 0., 2., 0., 2., 0., 2., 0.],
-            #        [0., 2., 0., 2., 0., 2., 0., 2.]]))
-
-    Examples 3:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.ones(shape=(4, 2), dtype='float64')
-            weight = paddle.ones(shape=(2, 4), dtype='float64')
-            y = paddle.ones(shape=(4, 2), dtype='float64')
-
-            def func(x, y):
-                return x * y
-
-            x.stop_gradient = False
-            y.stop_gradient = False
-            batch_jacobian = paddle.autograd.batch_jacobian(func, [x, y])
-            print(batch_jacobian)
-            # (Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #       [[1., 0., 1., 0., 1., 0., 1., 0.],
-            #        [0., 1., 0., 1., 0., 1., 0., 1.]]), Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #       [[1., 0., 1., 0., 1., 0., 1., 0.],
-            #        [0., 1., 0., 1., 0., 1., 0., 1.]]))
-   
-    '''
-    inputs = _tensors(inputs, "inputs")
-    outputs = _tensors(func(*inputs), "outputs")
-    batch_size = inputs[0].shape[0]
-    for input in inputs:
-        assert input.shape[
-            0] == batch_size, "The first dimension of input should equals to the same batch size!"
-    for output in outputs:
-        assert output.shape[
-            0] == batch_size, "The first dimension of output should equals to the same batch size!"
-    fin_size = len(inputs)
-    fout_size = len(outputs)
-    flat_outputs = tuple(
-        reshape(
-            output, shape=[batch_size, -1]) for output in outputs)
-    jacobian = tuple()
-    for i, flat_output in enumerate(flat_outputs):
-        jac_i = list([] for _ in range(fin_size))
-        for k in range(flat_output.shape[1]):
-            row_k = grad(
-                flat_output[:, k],
-                inputs,
-                create_graph=create_graph,
-                retain_graph=True,
-                allow_unused=allow_unused)
-            for j in range(fin_size):
-                jac_i[j].append(
-                    reshape(
-                        row_k[j], shape=[-1])
-                    if isinstance(row_k[j], paddle.Tensor) else None)
-        jacobian += (tuple(
-            _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
-    if fin_size == 1 and fout_size == 1:
-        return jacobian[0][0]
-    elif fin_size == 1 and fout_size != 1:
-        return tuple(jacobian[i][0] for i in range(fout_size))
-    elif fin_size != 1 and fout_size == 1:
-        return jacobian[0]
-    else:
-        return jacobian
-
-
-@framework.dygraph_only
-def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
-    ''' 
-    .. note::
-        **This API is ONLY available in the imperative mode.**
-
-    This function computes the batch Hessian matrix of `func` with respect to `inputs`.
-    Noted that the first dimension of inputs is batch size.
-
-    Parameters:
-        func (function): a Python function that takes a Tensor or a Tensor
-            list/tuple as inputs(the first dimension is batch size) and
-            returns a Tensor with shape [batch_size, 1].
-        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
-            Tensor list/tuple of the function ``func``.
-            Noted that the first dimension of inputs is batch size.
-        create_graph (bool, optional): whether to create the gradient graphs
-            of the computing process. When it is True, higher order derivatives
-            are supported to compute; when it is False, the gradient graphs of
-            the computing process would be discarded. Defaults to ``False``.
-        allow_unused (bool, optional): whether to raise error or return None if
-            some Tensors of `inputs` are unreachable in the graph. Error would
-            be raised if allow_unused=False, and None would be returned as
-            their gradients if allow_unused=True. Default False.
-    Returns:
-        Hessian (Tensor or a tuple of tuple of Tensors): if function ``func``
-        takes a Tensor as ``inputs``, Hessian will be a single Tensor containing
-        the Hessian matrix for the linearized ``inputs`` Tensor. If function
-        ``func`` takes a Tensor list/tuple as ``inputs``, then the Hessian will
-        be a tuple of tuple of Tensors. Noted that the first dimension of inputs 
-        is batch size and the execution step is to obtain the result of the 
-        first order differentiation, and then differentiate the batch input.
-
-        For example,
-        the inputs shape and outputs shape of function ``func` is [batch_size, num] 
-        and [batch_size, 1] respectively, then the batched Hessian will be a Tensor with
-        a shape of [num, batch_size * num].
-        
-        Why the final shape in this case is that?
-        because batch_hessian will create a inner func(the wrapper of paddle.grad() func)
-        to computes the sum of gradients of `outputs` with respect to each `inputs`,
-        this inner func will get the first order differentiation and shape is [batch_size, num], 
-        then call batch_jacobian to compute jacobian between the first order differentiation
-        and the origin inputs. The final result ``Hessian[i][j]`` will contain the Jacobian 
-        matrix of the ``i``th column output(Noted that this output means the first order 
-        differentiation) and the ``j``th input and will have same dtype and device as the 
-        corresponding input. Other situations can be deduced by analogy.
-    
-
-    Examples 1:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.ones(shape=(4, 2), dtype='float64')
-            weight = paddle.ones(shape=(2, 4), dtype='float64')
-            y = paddle.ones(shape=(4, 2), dtype='float64')
-
-            def func(x):
-                return paddle.matmul(x * x, weight)[:, 0:1]
-            
-           
-            x.stop_gradient = False
-            batch_hessian = paddle.autograd.batch_hessian(func, x)
-            print(batch_hessian)
-            # Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #      [[2., 0., 2., 0., 2., 0., 2., 0.],
-            #       [0., 2., 0., 2., 0., 2., 0., 2.]])
-
-    Examples 2:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.ones(shape=(4, 2), dtype='float64')
-            weight = paddle.ones(shape=(2, 4), dtype='float64')
-            y = paddle.ones(shape=(4, 2), dtype='float64')
-
-            def func(x, y):
-                return paddle.matmul(x * x * y * y, weight)[:, 0:1]
-            
-            x.stop_gradient = False
-            y.stop_gradient = False
-            batch_hessian = paddle.autograd.batch_hessian(func, [x, y])
-            print(batch_hessian)
-            # ((Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 0., 2., 0., 2., 0., 2., 0.],
-            #         [0., 2., 0., 2., 0., 2., 0., 2.]]), 
-            #   Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[4., 0., 4., 0., 4., 0., 4., 0.],
-            #         [0., 4., 0., 4., 0., 4., 0., 4.]])), 
-            #  (Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[4., 0., 4., 0., 4., 0., 4., 0.],
-            #         [0., 4., 0., 4., 0., 4., 0., 4.]]), 
-            #   Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 0., 2., 0., 2., 0., 2., 0.],
-            #         [0., 2., 0., 2., 0., 2., 0., 2.]])))
-            
-
-    Examples 3:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.ones(shape=(4, 2), dtype='float64')
-            weight = paddle.ones(shape=(2, 4), dtype='float64')
-            y = paddle.ones(shape=(4, 2), dtype='float64')
-            
-            def func(x, y):
-                return paddle.matmul(x * x, weight)[:, 0:1]
-
-            x.stop_gradient = False
-            y.stop_gradient = False
-            batch_hessian = paddle.autograd.batch_hessian(func, [x, y], allow_unused=True)
-            print(batch_hessian)
-            # ((Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 0., 2., 0., 2., 0., 2., 0.],
-            #         [0., 2., 0., 2., 0., 2., 0., 2.]]), None), (None, None))
-
-    '''
-    inputs = _tensors(inputs, "inputs")
-    outputs = func(*inputs)
-    batch_size = inputs[0].shape[0]
-    for input in inputs:
-        assert input.shape[
-            0] == batch_size, "The first dimension of input should equals to the same batch size!"
-    assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
-        batch_size, 1
-    ], "The function to compute batched Hessian matrix should return a Tensor of shape [batch_size, 1]"
-
-    def jac_func(*ins):
-        grad_inputs = grad(
-            outputs,
-            ins,
-            create_graph=True,
-            retain_graph=True,
-            allow_unused=allow_unused)
-        return tuple(
-            _replace_none_with_zero_tensor(grad_inputs[i], inputs[i])
-            for i in range(len(inputs)))
-
-    return batch_jacobian(
-        jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
-
-
-@framework.dygraph_only
-def hessian(func, inputs, create_graph=False, allow_unused=False):
-    ''' 
-    .. note::
-        **This API is ONLY available in the imperative mode.**
-
-    This function computes the Hessian matrix of `func` with respect to `inputs`.
-
-    Parameters:
-        func (function): a Python function that takes a Tensor or a Tensor
-            list/tuple as inputs and returns a Tensor with a single element.
-        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
-            Tensor list/tuple of the function ``func``.
-        create_graph (bool, optional): whether to create the gradient graphs
-            of the computing process. When it is True, higher order derivatives
-            are supported to compute; when it is False, the gradient graphs of
-            the computing process would be discarded. Defaults to ``False``.
-        allow_unused (bool, optional): whether to raise error or return None if
-            some Tensors of `inputs` are unreachable in the graph. Error would
-            be raised if allow_unused=False, and None would be returned as
-            their gradients if allow_unused=True. Default False.
-    Returns:
-        Hessian (Tensor or a tuple of tuple of Tensors): if function ``func``
-        takes a Tensor as ``inputs``, Hessian will be a single Tensor containing
-        the Hessian matrix for the linearized ``inputs`` Tensor. If function
-        ``func`` takes a Tensor list/tuple as ``inputs``, then the Hessian will
-        be a tuple of tuple of Tensors where ``Hessian[i][j]`` will contain the
-        Hessian matrix of the ``i``th input and ``j``th input with size ``m * n``.
-        Here ``m`` and ``n`` denote the number of elements of the ``i`` th input
-        and the ``j`` th input respectively.
-
-    Examples 1:
-        .. code-block:: python
-
-            import paddle
-
-            def func(x):
-                return paddle.sum(paddle.matmul(x, x))
-            
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            x.stop_gradient = False
-            hessian = paddle.autograd.hessian(func, x)
-            print(hessian)
-            # Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 1., 1., 0.],
-            #         [1., 0., 2., 1.],
-            #         [1., 2., 0., 1.],
-            #         [0., 1., 1., 2.]])
-
-    Examples 2:
-        .. code-block:: python
-
-            import paddle
-
-            def func(x, y):
-                return paddle.sum(paddle.matmul(x, y))
-            
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            y = paddle.ones(shape=[2, 2], dtype='float32')
-            x.stop_gradient = False
-            y.stop_gradient = False
-            hessian = paddle.autograd.hessian(func, [x, y])
-            print(hessian)
-            # ((Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[0., 0., 0., 0.],
-            #         [0., 0., 0., 0.],
-            #         [0., 0., 0., 0.],
-            #         [0., 0., 0., 0.]]),
-            #   Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[1., 1., 0., 0.],
-            #         [0., 0., 1., 1.],
-            #         [1., 1., 0., 0.],
-            #         [0., 0., 1., 1.]])),
-            #  (Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[1., 0., 1., 0.],
-            #         [1., 0., 1., 0.],
-            #         [0., 1., 0., 1.],
-            #         [0., 1., 0., 1.]]),
-            #   Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[0., 0., 0., 0.],
-            #         [0., 0., 0., 0.],
-            #         [0., 0., 0., 0.],
-            #         [0., 0., 0., 0.]])))
-
-    Examples 3:
-        .. code-block:: python
-
-            import paddle
-
-            def func(x, y):
-                return paddle.sum(paddle.matmul(x, x))
-            
-            x = paddle.ones(shape=[2, 2], dtype='float32')
-            y = paddle.ones(shape=[2, 2], dtype='float32')
-            x.stop_gradient = False
-            y.stop_gradient = False
-            hessian = paddle.autograd.hessian(func, [x, y], allow_unused=True)
-            print(hessian)
-            # ((Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2., 1., 1., 0.],
-            #         [1., 0., 2., 1.],
-            #         [1., 2., 0., 1.],
-            #         [0., 1., 1., 2.]]), None), (None, None))
-
-    '''
-    inputs = _tensors(inputs, "inputs")
-    outputs = func(*inputs)
-    assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
-        1
-    ], "The function to compute Hessian matrix should return a Tensor with a single element"
-
-    def jac_func(*ins):
-        grad_inputs = grad(
-            outputs,
-            ins,
-            create_graph=True,
-            retain_graph=True,
-            allow_unused=allow_unused)
-        return tuple(
-            _replace_none_with_zero_tensor(grad_inputs[i], inputs[i])
-            for i in range(len(inputs)))
-
-    return jacobian(
-        jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
+    _check_inputs(func, xs, v)
+    # _grad_preprocess will detach element of xs from computing graph when
+    # stop_gradient=True. Therefore, must execute this method before
+    # calling func for avoiding breaking the dependencies between xs and ys.
+    xs, v = _grad_preprocess(xs), _grad_preprocess(v)
+    ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
+    _check_v_shape(v, xs)
+    return ys, _double_backward_trick(ys, xs, v)
+
+
+def _double_backward_trick(ys, xs, v):
+    # double backward trick from computing jvp
+    # see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
+    tmp = [paddle.zeros_like(y) for y in _as_tensors(ys)] if isinstance(
+        ys, typing.Sequence) else paddle.zeros_like(ys)
+    first_order_grad = _grad(ys, xs, tmp)
+    return _grad(first_order_grad, tmp, v)
 
 
 @framework.dygraph_only
 def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
-    ''' 
+    '''
     .. note::
         **This API is ONLY available in the imperative mode.**
 
@@ -815,7 +173,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
             list/tuple as inputs and returns a Tensor with a single element.
-        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
+        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or
             Tensor list/tuple of the function ``func``.
         v (Tensor|list(Tensor)|tuple(Tensor)|None, optional): the vector used
             to compute vector hessian product. ``v`` should have same shape
@@ -839,7 +197,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             import paddle
             def func(x):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
@@ -856,7 +214,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             import paddle
             def func(x):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             vhp_rslt = paddle.autograd.vhp(func, x)
@@ -872,14 +230,15 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             import paddle
             def func(x, y):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             y = paddle.ones(shape=[2, 2], dtype='float32')
             y.stop_gradient = False
             vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
             vy = paddle.ones(shape=[2, 2], dtype='float32') * 3
-            vhp_rslt = paddle.autograd.vhp(func, [x, y], v=[vx, vy], allow_unused=True)
+            vhp_rslt = paddle.autograd.vhp(
+                func, [x, y], v=[vx, vy], allow_unused=True)
             print(vhp_rslt)
             # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
             #        [8.]),
@@ -887,17 +246,17 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #        [[8., 8.],
             #         [8., 8.]]), None])
     '''
-    xs = _tensors(inputs, "inputs")
+    xs = _as_tensors(inputs, "inputs")
     if v is not None:
-        v = _tensors(v, "v")
+        v = _as_tensors(v, "v")
 
     with gradient_scope(
             xs, v, create_graph=create_graph,
             allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
         outputs = func(*xs)
-        ys = _tensors(outputs, "outputs")
+        ys = _as_tensors(outputs, "outputs")
         assert len(ys) == 1 and isinstance(
-            ys[0], paddle.Tensor
+            ys[0], paddle.fluid.framework.Variable
         ) and ys[0].shape == [
             1
         ], "The function to compute vhp should return a Tensor with a single element"
@@ -911,10 +270,10 @@ class Jacobian(object):
     r"""
     Computes the Jacobian matrix of function `func`, which may take as input
     single or multiple tensor typed arguments and output a single tensor or
-    multiple tensors. 
-    
-    In case `func` is multi-input and multi-output, i.e., 
-    
+    multiple tensors.
+
+    In case `func` is multi-input and multi-output, i.e.,
+
     func: Callable[[Tensor, ...], [Tensor, ...]]
 
     `func` is treated as a vector valued function with all its inputs flattened
@@ -922,29 +281,29 @@ class Jacobian(object):
     first dimension retained as the batching dimension. The same rule applies to
     the function outputs.
 
-    Once the Jacobian J is constructed, there are four ways to retrieve the 
+    Once the Jacobian J is constructed, there are four ways to retrieve the
     partial derivatives.
 
     - J[:], retrieving the full matrix.
-    
-    - J[:, j], retrieving the partial derivatives w.r.t. the j'th input 
+
+    - J[:, j], retrieving the partial derivatives w.r.t. the j'th input
     variable.
 
-    - J[i, :], retrieving the partial derivatives w.r.t. the i'th output 
+    - J[i, :], retrieving the partial derivatives w.r.t. the i'th output
     variable.
 
-    - J[i, j], retrieving the partial derivatives w.r.t. the i'th output 
-    variable and the j'th input variable. 
+    - J[i, j], retrieving the partial derivatives w.r.t. the i'th output
+    variable and the j'th input variable.
 
     Examples:
         .. code-block:: python
-            import paddle        
+            import paddle
             import numpy as np
 
             def func(xs):
                 x, y = xs
                 return paddle.matmul(x, y)
-            
+
             main = fluid.Program()
             startup = fluid.Program()
             with fluid.program_guard(main, startup):
@@ -1051,7 +410,9 @@ class Jacobian(object):
 
 class Hessian(object):
     def __init__(self, func, inputs, batch=False):
-        f_x = lambda xs: Jacobian(func, xs, batch=batch)[0]
+        def f_x(xs):
+            return Jacobian(func, xs, batch=batch)[0]
+
         self.symbolic = Jacobian(f_x, inputs, batch=batch)
         self.xs = inputs
         self.batch = batch
@@ -1061,3 +422,131 @@ class Hessian(object):
 
     def shape(self):
         return self.symbolic.shape()
+
+
+def _as_tensors(xs):
+    return (xs, ) if isinstance(xs, framework.Variable) else xs
+
+
+def _stack_tensor_or_return_none(origin_list):
+    assert len(origin_list) > 0, "Can't not stack an empty list"
+    return paddle.stack(
+        origin_list, axis=0) if isinstance(
+            origin_list[0], paddle.fluid.framework.Variable) else None
+
+
+def _replace_none_with_zero_tensor(xs, refs):
+    if xs is None:
+        return paddle.zeros_like(refs)
+    elif isinstance(xs, typing.Sequence):
+        return tuple(
+            paddle.zeros_like(refs[i]) if x is None else x
+            for i, x in enumerate(xs))
+    else:
+        return xs
+
+
+def _grad(ys, xs, v):
+    """A gradient function that can be used in dynamic graph and static graph.
+
+    The ``grad`` combines ``paddle.grad`` used in dynamic graph and
+    ``paddle.static.gradients`` used in static graph, and do following changes:
+
+    * The ``allow_unused`` flag is removed and set defaults to true internally,
+        outputs with none will be replace by zero.
+    * The ``create_graph`` flag is removed and set defaults to true internally,
+        only makes sense in dynamic graph.
+    * When ``xs`` is a Tensor, ``paddle.grad`` still return a list of Tensor.
+        It's not consistent. So, ``_grad`` unpack the return value to a Tensor
+        when ``xs`` is a Tensor.
+
+    Args:
+        ys (Tensor|Sequence[Tensor]): The output tensor or tensor sequence of
+            the graph to compute gradients.
+        xs (Tensor|Sequence[Tensor]): The input tensor or tensor sequence of the graph to
+            compute gradients. The returned values of this API are the
+            gradients of inputs .
+        v (Tensor|Sequence[Tensor]|None,optional): The initial gradient values
+            of outputs . If grad_outputs is None, the initial gradient values of
+            outputs would be Tensors filled with 1; if grad_outputs is not None,
+            it must have the same length as outputs , and in this case, the
+            initial gradient value of the i-th outputs would be: (1) a Tensor
+            filled with 1 when the i-th element of grad_outputs is None;
+            (2) the i-th element of grad_outputs when the i-th element of
+            grad_outputs is a Tensor. Default None.
+
+    Returns:
+        Tensor|Tuple[Tensor]: A tuple of Tensors, whose length is the same as the
+            Tensor number inside inputs, and the i-th returned Tensor is the sum
+            of gradients of outputs with respect to the i-th inputs.
+    """
+    if paddle.fluid.framework.in_dygraph_mode():
+        xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
+    else:
+        xs_grad = paddle.static.gradients(ys, xs, v)
+
+    if isinstance(xs, paddle.fluid.framework.Variable):
+        xs_grad = xs_grad[0]
+
+    return _replace_none_with_zero_tensor(xs_grad, xs)
+
+
+def _grad_preprocess(xs):
+    # If v is treated as constant in the outer scope, its gradient is guaranteed
+    # not to be taken beyond this scope. Within this scope, however, v's gradient
+    # may be computed. We only need to detach v in this case.
+    # Otherwise, v's gradient is valid, and is subject to update beyond this scope.
+    # In this case we must not confuse the gradient in the outer scope with the
+    # inner one's. Moreover, we need to make sure that the result from the inner
+    # scope can flow back to the outer scope. This can be satisfied by extending
+    # the original variable with a duplication operation v1 = v so that v still
+    # maintains the complete lineage.
+    if isinstance(xs, typing.Sequence):
+        return tuple(_cutoff_dependency(x) for x in xs)
+    else:
+        return _cutoff_dependency(xs)
+
+
+def _cutoff_dependency(x):
+    if x is None:  # x maybe none because grad input's v defaults to none.
+        return x
+    if not x.stop_gradient:
+        return paddle.assign(x)
+    else:
+        x = x.detach()
+        x.stop_gradient = False
+        return x
+    return x
+
+
+def _check_inputs(func, xs, v=None):
+    if not callable(func):
+        raise TypeError(f"Expected 'fun' is Callable, but got {type(func)}.")
+
+    if not isinstance(xs, (framework.Variable, typing.Sequence)):
+        raise TypeError(f"Expected 'xs' is a Tensor|Sequence[Tensor],"
+                        f"but got {type(xs)}.")
+    if isinstance(xs, typing.Sequence) and not all(
+            isinstance(x, framework.Variable) for x in xs):
+        raise TypeError("All elements of 'xs' shoule be Tensor.")
+
+    if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
+        raise TypeError(
+            f"Expected 'v' is Tensor|List[Tensor]|None, but got {type(v)}.")
+
+    if isinstance(v, typing.Sequence) and not all(
+            isinstance(e, framework.Variable) for e in v):
+        raise TypeError("All elements of 'xs' shoule be Tensor.")
+
+
+def _check_v_shape(v, refs):
+    if isinstance(v, typing.Sequence):
+        if len(refs) != len(v):
+            raise RuntimeError(f"The argument v is a tuple of invalid length:"
+                               f"should be {len(refs)} but got {len(v)}.")
+
+        for index, (element_v, element_ref) in enumerate(zip(v, refs)):
+            if element_v.shape != element_ref.shape:
+                raise RuntimeError(
+                    f"The v[{index}] has invalid shape: should "
+                    f"be {element_ref.shape} but got {element_v.shape}.")
