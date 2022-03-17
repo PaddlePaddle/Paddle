@@ -648,6 +648,49 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   mask->set_dtype(paddle::experimental::CppTypeToDataType<int>::Type());
 }
 
+void ModeInferMeta(const MetaTensor& x,
+                   int axis,
+                   bool keepdim,
+                   MetaTensor* out,
+                   MetaTensor* indices) {
+  auto input_dims = x.dims();
+  const int& dim_size = input_dims.size();
+  PADDLE_ENFORCE_EQ(
+      (axis < dim_size) && (axis >= (-1 * dim_size)),
+      true,
+      errors::InvalidArgument(
+          "the axis of ModeOp must be [-%d, %d), but you set axis is %d",
+          dim_size,
+          dim_size,
+          axis));
+  PADDLE_ENFORCE_GE(
+      input_dims.size(),
+      1,
+      errors::InvalidArgument("input of ModeOp must have >= 1d shape"));
+  if (axis < 0) axis += dim_size;
+  std::vector<int64_t> dimvec;
+  for (int64_t i = 0; i < axis; i++) {
+    dimvec.emplace_back(input_dims[i]);
+  }
+  if (keepdim) {
+    dimvec.emplace_back(static_cast<int64_t>(1));
+  }
+  for (int64_t i = axis + 1; i < dim_size; i++) {
+    dimvec.emplace_back(input_dims[i]);
+  }
+  DDim dims = phi::make_ddim(dimvec);
+  PADDLE_ENFORCE_GE(input_dims.size(),
+                    1,
+                    errors::InvalidArgument("input shape should >= 1d"));
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  indices->set_dims(dims);
+  indices->share_lod(x);
+  indices->set_dtype(x.dtype());
+}
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -1016,6 +1059,37 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const std::vector<int64_t>& axis,
+                   MetaTensor* out) {
+  auto shifts_data = shifts.GetData();
+
+  if (axis.size() != 0) {
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        shifts_data.size(),
+        phi::errors::InvalidArgument("When dims.size() != 0, dims.size() "
+                                     "should be equal to "
+                                     "shifts.size(). But received "
+                                     "dims.size() = %d, shifts.size() = %d",
+                                     axis.size(),
+                                     shifts_data.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        shifts_data.size(),
+        1,
+        phi::errors::InvalidArgument("When dims.size() == 0, shifts.size() "
+                                     "should be equal to 1, But received "
+                                     "shifts.size() = %d",
+                                     shifts_data.size()));
+  }
+
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   auto in_dim = input.dims();
   out->set_dims(phi::make_ddim({in_dim.size()}));
@@ -1308,6 +1382,55 @@ void TileInferMeta(const MetaTensor& x,
   if (out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
+}
+
+void TopKInferMeta(const MetaTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   MetaTensor* out,
+                   MetaTensor* indices,
+                   MetaConfig config) {
+  auto input_dims = x.dims();
+  const int& dim_size = input_dims.size();
+  PADDLE_ENFORCE_EQ(
+      (axis < dim_size) && (axis >= (-1 * dim_size)),
+      true,
+      phi::errors::InvalidArgument(
+          "the axis of topk must be [-%d, %d), but you set axis is %d",
+          dim_size,
+          dim_size,
+          axis));
+
+  if (axis < 0) axis += dim_size;
+
+  int k = k_scalar.to<int>();
+  if (k_scalar.FromTensor()) {
+    k = -1;
+  } else {
+    PADDLE_ENFORCE_EQ(k >= 1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "the attribute of k in the topk must >= 1 or be a "
+                          "Tensor, but received %d .",
+                          k));
+  }
+
+  PADDLE_ENFORCE_GE(
+      input_dims.size(),
+      1,
+      phi::errors::InvalidArgument("input of topk must have >= 1d shape"));
+
+  phi::DDim dims = input_dims;
+
+  dims[axis] = k;
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  indices->set_dims(dims);
+  indices->share_lod(x);
+  indices->set_dtype(DataType::INT64);
 }
 
 void TraceInferMeta(

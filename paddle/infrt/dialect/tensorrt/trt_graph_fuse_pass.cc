@@ -17,10 +17,11 @@
 #include <llvm/ADT/SetVector.h>
 #include <mlir/Analysis/SliceAnalysis.h>
 #include <mlir/IR/Builders.h>
-#include <paddle/infrt/dialect/pd_ops.h>
 #include <list>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 namespace infrt {
 namespace trt {

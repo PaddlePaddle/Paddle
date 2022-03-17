@@ -29,6 +29,8 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
@@ -88,6 +90,11 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              int axis,
                              MetaTensor* out);
 
+void ExpandAsInferMeta(const MetaTensor& x,
+                       paddle::optional<const MetaTensor&> y,
+                       const std::vector<int>& target_shape,
+                       MetaTensor* out);
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
@@ -101,6 +108,11 @@ void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
 
+void GridSampleBaseInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,
@@ -112,6 +124,13 @@ void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
                           MetaConfig config = MetaConfig());
+
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output);
+
+void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
@@ -126,6 +145,12 @@ void MatmulInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
+void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
+                           const MetaTensor& value,
+                           bool out_int32,
+                           bool right,
+                           MetaTensor* out);
 
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
