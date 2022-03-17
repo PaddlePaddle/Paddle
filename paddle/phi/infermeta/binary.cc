@@ -728,6 +728,48 @@ void GatherTreeMeta(const MetaTensor& ids,
   out->set_dims(ids_dims);
 }
 
+void GridSampleBaseInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  auto x_dims = x.dims();
+  auto grid_dims = grid.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of GridSampleOp should be 4-D Tensor, but "
+                        "received X dimension size(%d)",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(grid_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(Grid) of GridSampleOp should be 4-D Tensor, "
+                        "but received X dimension size(%d)",
+                        grid_dims.size()));
+  if (config.is_runtime || grid_dims[3] > 0) {
+    PADDLE_ENFORCE_EQ(
+        grid_dims[3],
+        2,
+        phi::errors::InvalidArgument(
+            "Input(Grid) dimension[3] should be 2, but received %d",
+            grid_dims[3]));
+  }
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        grid_dims[0],
+        x_dims[0],
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Grid) dimension[0] should be equal, but "
+            "received X dimension[0](%d) != Grid dimension[0](%d)",
+            x_dims[0],
+            grid_dims[0]));
+  }
+
+  out->set_dims({x_dims[0], x_dims[1], grid_dims[1], grid_dims[2]});
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,
