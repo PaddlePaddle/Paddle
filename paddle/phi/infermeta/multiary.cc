@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
@@ -652,3 +653,5 @@ void WhereInferMeta(const MetaTensor& condition,
 }
 
 }  // namespace phi
+
+PD_REGISTER_INFER_META_FN(conv2d, phi::ConvInferMeta);
