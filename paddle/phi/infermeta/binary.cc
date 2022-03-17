@@ -73,6 +73,51 @@ void AllValueCompareInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::BOOL);
 }
 
+void KLDivInferMeta(const MetaTensor& x,
+                    const MetaTensor& label,
+                    const std::string& reduction,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  auto dim_x = x.dims();
+  auto dim_target = label.dims();
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    dim_target.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) rank and Input(Target) rank should be "
+                        "same, but received X rank(%d) != Target rank(%d)",
+                        dim_x.size(),
+                        dim_target.size()));
+  for (int i = 0; i < dim_x.size(); i++) {
+    if (config.is_runtime || (dim_x[i] > 0 && dim_target[i] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          dim_x[i],
+          dim_target[i],
+          phi::errors::InvalidArgument(
+              "Input(X) and Input(Target) should in same shape. but received "
+              "X dimension[%d](%d) != Target dimension[%d](%d)",
+              i,
+              dim_x[i],
+              i,
+              dim_target[i]));
+    }
+  }
+
+  auto reduction_valid = "mean" == reduction || "sum" == reduction ||
+                         "batchmean" == reduction || "none" == reduction;
+  PADDLE_ENFORCE_EQ(
+      reduction_valid,
+      true,
+      phi::errors::InvalidArgument(
+          "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
+
+  if ("none" == reduction) {
+    out->set_dims(dim_x);
+  } else {
+    out->set_dims({1});
+  }
+  out->set_dtype(x.dtype());
+}
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
 }
@@ -526,6 +571,48 @@ void GatherTreeMeta(const MetaTensor& ids,
   out->set_dims(ids_dims);
 }
 
+void GridSampleBaseInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  auto x_dims = x.dims();
+  auto grid_dims = grid.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of GridSampleOp should be 4-D Tensor, but "
+                        "received X dimension size(%d)",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(grid_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(Grid) of GridSampleOp should be 4-D Tensor, "
+                        "but received X dimension size(%d)",
+                        grid_dims.size()));
+  if (config.is_runtime || grid_dims[3] > 0) {
+    PADDLE_ENFORCE_EQ(
+        grid_dims[3],
+        2,
+        phi::errors::InvalidArgument(
+            "Input(Grid) dimension[3] should be 2, but received %d",
+            grid_dims[3]));
+  }
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        grid_dims[0],
+        x_dims[0],
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Grid) dimension[0] should be equal, but "
+            "received X dimension[0](%d) != Grid dimension[0](%d)",
+            x_dims[0],
+            grid_dims[0]));
+  }
+
+  out->set_dims({x_dims[0], x_dims[1], grid_dims[1], grid_dims[2]});
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void HuberLossInferMeta(const MetaTensor& input,
                         const MetaTensor& label,
                         float delta,
@@ -596,6 +683,49 @@ void IndexSampleInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_dims(index_dims);
   out->share_lod(y);
+}
+
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index_dim = index.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim.size() == 1 || (index_dim.size() == 2 && index_dim[1] == 1),
+      true,
+      phi::errors::InvalidArgument(
+          "The 'shape' of Input(Index) must be 1-D tensor. "
+          "But received: the 'shape' of Input(Index) is [%s], "
+          "the dimension of Input(Index) is [%d].",
+          index_dim,
+          index_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim[0] != 0,
+      true,
+      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
+
+  auto output_dim = phi::vectorize(input_dim);
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim[dim] = index_dim[0];
+  output->set_dims(phi::make_ddim(output_dim));
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
 }
 
 void LogLossInferMeta(const MetaTensor& input,
@@ -860,6 +990,16 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
+}
+
+void ValueCompareInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  detail::BinarySameInputDimsCheck(x, y, config);
+
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
 }
 
 }  // namespace phi

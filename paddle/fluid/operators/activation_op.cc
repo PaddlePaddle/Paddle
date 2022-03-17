@@ -1485,6 +1485,13 @@ REGISTER_ACTIVATION_OP(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);
 REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
 REGISTER_ACTIVATION_OP(thresholded_relu, ThresholdedRelu,
                        ThresholdedReluFunctor, ThresholdedReluGradFunctor);
+REGISTER_ACTIVATION_OP(hard_shrink, HardShrink, HardShrinkFunctor,
+                       HardShrinkGradFunctor);
+REGISTER_ACTIVATION_OP(softshrink, SoftShrink, SoftShrinkFunctor,
+                       SoftShrinkGradFunctor);
+REGISTER_ACTIVATION_OP(tanh_shrink, TanhShrink, TanhShrinkFunctor,
+                       TanhShrinkGradFunctor);
+REGISTER_ACTIVATION_OP(silu, Silu, SiluFunctor, SiluGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */
@@ -1625,22 +1632,6 @@ REGISTER_OPERATOR(
     elu_grad_grad,
     ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(elu,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ELUFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ELUFunctor<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elu_grad, ops::ELUGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ELUGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
-                                            ops::ELUGradGradFunctor<float>>,
-    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
-                             ops::ELUGradGradFunctor<double>>,
-    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
-                             ops::ELUGradGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 

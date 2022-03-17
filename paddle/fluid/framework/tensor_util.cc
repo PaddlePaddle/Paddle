@@ -1224,8 +1224,12 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
   proto::VarType::TensorDesc desc;
   {  // int32_t size
      // proto buffer
-    int32_t size;
+    int32_t size = -1;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    PADDLE_ENFORCE_EQ(is.good(), true, platform::errors::Unavailable(
+                                           "Cannot read tensor desc size"));
+    PADDLE_ENFORCE_GE(size, 0, platform::errors::InvalidArgument(
+                                   "Tensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
