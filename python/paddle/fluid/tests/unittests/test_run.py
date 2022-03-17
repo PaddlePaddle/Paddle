@@ -39,9 +39,7 @@ import os
 env = os.environ.copy()
 assert "PADDLE_PSERVERS_IP_PORT_LIST" in env
 assert "PADDLE_TRAINER_ENDPOINTS" in env
-#assert "PADDLE_PSERVER_ENDPOINTS" in env
-#assert "PADDLE_TRAINER_ENDPOINTS" in env
-#assert "PADDLE_ROLE" in env
+assert "PADDLE_ROLE" in env
 #assert "PADDLE_RANK" in env
 '''
 

@@ -47,16 +47,18 @@ class Context(object):
                 self.unknown_args))
             return True
 
-        if 'PADDLE_ELASTIC_JOB_ID' in self.envs:
-            return True
+        legacy_env_list = [
+            'DISTRIBUTED_TRAINER_ENDPOINTS',
+            'PADDLE_ELASTIC_JOB_ID',
+            'PADDLE_DISTRI_BACKEND',
+            'FLAGS_START_PORT',
+        ]
 
-        if 'PADDLE_DISTRI_BACKEND' in self.envs:
-            self.logger.warning("ENV PADDLE_DISTRI_BACKEND is deprecated")
-            return True
-
-        if 'FLAGS_START_PORT' in self.envs:
-            self.logger.warning("ENV FLAGS_START_PORT is deprecated")
-            return True
+        for env in legacy_env_list:
+            if env in self.envs:
+                self.logger.warning(
+                    "ENV {} is deprecated, legacy launch enable".format(env))
+                return True
 
         if self.args.master:
             return False

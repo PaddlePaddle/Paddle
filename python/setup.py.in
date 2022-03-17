@@ -282,6 +282,7 @@ packages=['paddle',
           'paddle.distribution',
           'paddle.distributed.sharding',
           'paddle.distributed.fleet',
+          'paddle.distributed.launch',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
@@ -727,7 +728,7 @@ with redirect_stdout():
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.distributed.fleet.launch:launch'
+                'fleetrun = paddle.distributed.launch.__main__:launch'
             ]
         },
         classifiers=[
