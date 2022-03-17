@@ -8,7 +8,6 @@ gather_srcs(infrt_src SRCS
     registry.cc
     dense_tensor_kernels.cc
     context_kernels.cc
-    allocator_kernels.cc
 )
 
 set(infrt_register_phi_kernels_gen_source_file ${CMAKE_SOURCE_DIR}/paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc)

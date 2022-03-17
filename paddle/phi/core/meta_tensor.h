@@ -26,11 +26,13 @@ namespace phi {
 // TODO(chenweihang): add other flags if needed
 struct MetaConfig {
   bool is_runtime{true};
-
+  bool is_run_mkldnn_kernel{false};
   MetaConfig() = default;
 
   // supporting implicit construction is easier to use
-  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
+  MetaConfig(bool is_runtime, bool is_run_mkldnn_kernel)
+      : is_runtime(is_runtime),
+        is_run_mkldnn_kernel(is_run_mkldnn_kernel) {}  // NOLINT
 };
 
 class MetaTensor {
@@ -60,12 +62,13 @@ class MetaTensor {
 
   virtual void share_lod(const MetaTensor& meta_tensor);
   virtual void share_meta(const MetaTensor& meta_tensor);
+  virtual void share_dims(const MetaTensor& meta_tensor);
 
  private:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
-
+  TensorBase* tensor() const;
   TensorBase* tensor_;
 };
 

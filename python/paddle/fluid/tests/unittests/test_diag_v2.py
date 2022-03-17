@@ -44,6 +44,10 @@ class TestDiagV2Op(OpTest):
         paddle.enable_static()
         self.check_output(check_eager=True)
 
+    def test_check_grad(self):
+        paddle.enable_static()
+        self.check_grad(['X'], 'Out', check_eager=True)
+
     def init_config(self):
         pass
 
@@ -62,14 +66,14 @@ class TestDiagV2OpCase2(TestDiagV2Op):
 
 class TestDiagV2OpCase3(TestDiagV2Op):
     def init_config(self):
-        self.x = np.random.randint(-10, 10, size=(10, 10))
+        self.x = np.random.randint(-10, 10, size=(10, 10)).astype("float64")
         self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase4(TestDiagV2Op):
     def init_config(self):
         self.x = np.random.rand(100)
-        self.padding_value = 8
+        self.padding_value = 2
         n = self.x.size
         self.out = self.padding_value * np.ones((n, n)) + np.diag(
             self.x, self.offset) - np.diag(self.padding_value * np.ones(n))

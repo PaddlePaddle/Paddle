@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
-#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -130,11 +129,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInferer, "X");
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(gather_nd, GatherNdInferShapeFunctor,
-                            PT_INFER_META(phi::GatherNdInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd, GatherNdInferShapeFunctor,
+                            PD_INFER_META(phi::GatherNdInferMeta));
 
-DELCARE_INFER_SHAPE_FUNCTOR(gather_nd_grad, GatherNdGradInferShapeFunctor,
-                            PT_INFER_META(phi::GatherNdGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(gather_nd_grad, GatherNdGradInferShapeFunctor,
+                            PD_INFER_META(phi::GatherNdGradInferMeta));
 
 REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
                   ops::GatherNdGradOpMaker<paddle::framework::OpDesc>,
