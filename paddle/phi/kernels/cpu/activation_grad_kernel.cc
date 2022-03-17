@@ -90,6 +90,23 @@ namespace phi {
         dev_ctx, nullptr, &out, &dout, dx, functor);         \
   }
 
+#define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(    \
+    name, functor_class, attr1, attr2)                       \
+  template <typename T, typename Context>                    \
+  void name##GradKernel(const Context& dev_ctx,              \
+                        const DenseTensor& out,              \
+                        const DenseTensor& dout,             \
+                        float attr1,                         \
+                        float attr2,                         \
+                        DenseTensor* dx) {                   \
+    funcs::functor_class<T> functor;                         \
+    auto attrs = functor.GetAttrs();                         \
+    *(attrs[0].second) = attr1;                              \
+    *(attrs[1].second) = attr2;                              \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, nullptr, &out, &dout, dx, functor);         \
+  }
+
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, CosGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Tan, TanGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Acos, AcosGradFunctor);
@@ -111,9 +128,11 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, Expm1GradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, ReciprocalGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, RsqrtGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, LogSigmoidGradFunctor);
 
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, SigmoidGradFunctor);
 
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                LeakyReluGradFunctor,
@@ -146,6 +165,10 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
                                                SoftplusGradFunctor,
                                                beta,
                                                threshold);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
+                                                 HardSigmoidGradFunctor,
+                                                 slope,
+                                                 offset);
 
 template <typename T, typename Context>
 void EluGradKernel(const Context& dev_ctx,
@@ -261,3 +284,8 @@ PD_REGISTER_KERNEL(square_grad,
                    double,
                    int,
                    int64_t) {}
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_triple_grad, SigmoidTripleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_sigmoid_grad, HardSigmoidGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(logsigmoid_grad, LogSigmoidGradKernel)

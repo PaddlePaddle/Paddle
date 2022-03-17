@@ -57,6 +57,8 @@ DECLARE_ACTIVATION_KERNEL(Expm1)
 DECLARE_ACTIVATION_KERNEL(Softsign)
 DECLARE_ACTIVATION_KERNEL(TanhShrink)
 DECLARE_ACTIVATION_KERNEL(Silu)
+DECLARE_ACTIVATION_KERNEL(Sigmoid)
+DECLARE_ACTIVATION_KERNEL(LogSigmoid)
 
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu, alpha)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu, threshold)
@@ -66,6 +68,7 @@ DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Elu, alpha)
 
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(BRelu, t_min, t_max)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(STanh, scale_a, scale_b)
+DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid, slope, offset)
 
 template <typename T, typename Context>
 void LogitKernel(const Context& dev_ctx,
@@ -78,5 +81,6 @@ void MishKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 float threshold,
                 DenseTensor* out);
+
 
 }  // namespace phi

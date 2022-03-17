@@ -1367,6 +1367,217 @@ struct SiluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+// sigmoid(x) = 1 / (1 + exp(-x))
+template <typename T>
+struct SigmoidFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
+  }
+};
+
+template <typename T>
+struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * out * (static_cast<T>(1) - out);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+/*
+    Out
+    DOut -> SigmoidGradGrad -> DOutNew
+    DDX                        DDOut
+
+    DDOut = (1-Out)*Out*DDX
+    DOutNew = (1-2*Out)*DOut*DDX
+*/
+template <typename T>
+struct SigmoidGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  const DenseTensor* dOut,
+                  DenseTensor* dOutNew,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SigmoidGradGrad"));
+    auto out = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "SigmoidGradGrad"));
+
+    if (dOutNew) {
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Input", "DOut", "SigmoidGradGrad"));
+      auto dout_new = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOutNew, "Output", "DOutNew", "SigmoidGradGrad"));
+      dout_new.device(*d) =
+          (static_cast<T>(1) - static_cast<T>(2) * out) * dout * ddx;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SigmoidGradGrad"));
+      ddout.device(*d) = (static_cast<T>(1) - out) * out * ddx;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+/*
+    Out
+    DOut                            D_Dout
+    DDx     -> SigmoidTripleGrad -> D_DDx
+    D_DDout                         d_OutNew
+    D_Dout_new
+
+    D_Dout = (1-2*Out)*DDx*D_Dout_new
+    D_DDx = (1-Out)*Out*D_DDout + (1-2*Out)*DOut*D_Dout_new
+    D_OutNew = (DDx-2*Out*DDx)*D_DDout - 2*DOut*DDx*D_Dout_new
+
+    Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    D_OutNew, D_DOut, D_DDx               // output
+*/
+template <typename T>
+struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  const DenseTensor* dOut,
+                  const DenseTensor* d_DDOut,
+                  const DenseTensor* d_dOut_New,
+                  DenseTensor* d_d_Out,
+                  DenseTensor* d_Out_New,
+                  DenseTensor* d_DDx) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SigmoidTripleGrad"));
+    auto out = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "SigmoidTripleGrad"));
+    auto dout = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "DOut", "SigmoidTripleGrad"));
+    auto d_ddOut = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "SigmoidTripleGrad"));
+    auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+        d_dOut_New, "Input", "D_DOut_New", "SigmoidTripleGrad"));
+
+    if (d_Out_New) {
+      auto d_OutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+          d_Out_New, "Output", "D_OutNew", "SigmoidTripleGrad"));
+      d_OutNew.device(*d) = (ddx - static_cast<T>(2) * out * ddx) * d_ddOut -
+                            static_cast<T>(2) * dout * ddx * d_dOutNew;
+    }
+    if (d_d_Out) {
+      auto d_dOut = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "SigmoidTripleGrad"));
+      d_dOut.device(*d) =
+          (static_cast<T>(1) - static_cast<T>(2) * out) * ddx * d_dOutNew;
+    }
+    if (d_DDx) {
+      auto d_ddx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "SigmoidTripleGrad"));
+      d_ddx.device(*d) =
+          (static_cast<T>(1) - out) * out * d_ddOut +
+          (static_cast<T>(1) - static_cast<T>(2) * out) * dout * d_dOutNew;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+// Originally: logsigmoid(x) = -log (1 + exp(-x))
+// For numerical stability, we can use the log-sum-exp trick:
+// https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/
+// We can rewrite the above equation as:
+// out = -log( exp(0) + exp(-x)) [since exp(0) = 1]
+//   = -log( exp(max(-x, 0) - max(-x, 0)) + exp(-x + max(-x, 0) - max(-x, 0)))
+//   = -log( exp(max(-x, 0)) * exp(-max(-x, 0)) - exp(max(-x, 0)) * exp(-x -
+//           max(-x, 0)))
+//   = -log( exp(max(-x, 0)) * (exp(-max(-x, 0)) + exp(-x - max(-x, 0))))
+//   = -log( exp(max(-x, 0)) - log(exp(-max(-x, 0)) + exp(-x - max(-x, 0)))
+//
+// Hence, logsigmoid(x) = - (max(-x, 0) + log(exp(-max(-x, 0))
+// + exp(-x - max(-x, 0))))
+template <typename T>
+struct LogSigmoidFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto temp = (-x).cwiseMax(static_cast<T>(0));  // temp = max(-x, 0)
+    out.device(d) = -temp - (((-temp).exp() + (-x - temp).exp()).log());
+  }
+};
+
+// Originally: f' = exp(-x) / (1 + exp(-x))
+// For numerical stability: f' = exp(-x - max(-x, 0)) / (exp(-max(-x, 0)) +
+// exp(-x - max(-x, 0)))
+template <typename T>
+struct LogSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto temp = (-x).cwiseMax(static_cast<T>(0));  // temp = max(-x, 0)
+    dx.device(d) =
+        dout * ((-x - temp).exp() / ((-temp).exp() + (-x - temp).exp()));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct HardSigmoidFunctor : public BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto temp = x * static_cast<T>(slope) + static_cast<T>(offset);
+    out.device(d) =
+        temp.cwiseMax(static_cast<T>(0)).cwiseMin(static_cast<T>(1));
+  }
+};
+
+template <typename T>
+struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout *
+                   ((out > static_cast<T>(0)) * (out < static_cast<T>(1)))
+                       .template cast<T>() *
+                   static_cast<T>(slope);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
@@ -2302,6 +2513,112 @@ struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSigmoidFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // sigmoid(x) = 1 / (1 + exp(-x))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(one / (one + exp(-x)));
+  }
+};
+
+template <typename T>
+struct CudaSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout * out * (1 - out)
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    return dout * out * (one - out);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaLogSigmoidFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+
+  // logsigmoid(x) = log(1 / (1 + exp(-x)))
+  // For numerical stability,
+  // logsigmoid(x) =
+  //          - (max(-x, 0) + log(exp(-max(-x, 0)) + exp(-x - max(-x, 0))))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType temp = x > zero ? zero : -x;
+    return static_cast<T>(-temp - log(exp(-temp) + exp(-x - temp)));
+  }
+};
+
+template <typename T>
+struct CudaLogSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+
+  // dx = dout * exp(-x) / (1 + exp(-x))
+  // For numerical stability:
+  // dx = dout * exp(-x - max(-x, 0)) / (exp(-max(-x, 0)) + exp(-x - max(-x,
+  // 0)))
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType temp1 = x > zero ? zero : -x;
+    MPType temp2 = exp(-x - temp1);
+    return static_cast<T>(dout * (temp2 / (exp(-temp1) + temp2)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaHardSigmoidFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  T one = static_cast<T>(1.0f);
+  float slope;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  // hard_sigmoid(x) = 0, when x <= -3
+  //                   1, when x >= 3
+  //                   x * slope + offset, otherwise
+  __device__ __forceinline__ T operator()(const T x) const {
+    T temp = x * static_cast<T>(slope) + static_cast<T>(offset);
+    T temp_max = temp > zero ? temp : zero;
+    T temp_min = temp_max < one ? temp_max : one;
+    return temp_min;
+  }
+};
+
+template <typename T>
+struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  T one = static_cast<T>(1.0f);
+  float slope;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  // dx = (out > 0 && out < 1) ? dout * slope : 0
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    return (out > zero && out < one) ? dout * static_cast<T>(slope) : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 #endif

@@ -99,6 +99,8 @@ DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -118,6 +120,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
                                      CudaSoftplusFunctor,
                                      beta,
                                      threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
+                                     CudaHardSigmoidFunctor,
+                                     slope,
+                                     offset)
 
 }  // namespace phi
 
@@ -190,3 +196,6 @@ PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
