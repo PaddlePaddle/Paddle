@@ -263,10 +263,17 @@ def convert_op_proto_into_mlir(op_descs):
             for input_ in op_proto[INPUTS]:
                 if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
                         input_][INTERMEDIATE] != True:
-                    if op_proto[INPUTS][input_][DUPLICABLE] != "true":
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                    if op_proto[INPUTS][input_][DISPENSABLE] != True:
+                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                            ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                        else:
+                            ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
                     else:
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
+                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor>:$" + input_ + ","
+                        else:
+                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor_Array>:$" + input_ + ","
+
             # unsupported:   BLOCK = 8;  BLOCKS = 10;
             attr_mlir_converter = {
                 0: 'SI32Attr',
@@ -335,7 +342,7 @@ def convert_op_proto_into_mlir(op_descs):
             for output_ in op_proto[OUTPUTS]:
                 if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[
                         OUTPUTS][output_][INTERMEDIATE] != True:
-                    if op_proto[OUTPUTS][output_][DUPLICABLE] != "true":
+                    if op_proto[OUTPUTS][output_][DUPLICABLE] != True:
                         outputs = outputs + "PD_Tensor:${},".format(output_)
                     else:
                         outputs = outputs + "PD_Tensor_Array:${},".format(
