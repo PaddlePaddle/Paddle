@@ -3,7 +3,7 @@
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "paddle/infrt/dialect/infrt/ir/infrt_ops.td"
-include "paddle/infrt/dialect/pd_ops.td"
+include "paddle/infrt/dialect/pd/ir/pd_ops.td"
 
 def FuseTensorCastPattern : Pat<
        (Infrt_TensorCastOp (Infrt_TensorCastOp $arg)),
