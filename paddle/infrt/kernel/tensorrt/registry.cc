@@ -12,23 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/infrt/kernel/tensorrt/registry.h"
 
-#include "paddle/infrt/backends/host/phi_allocator.h"
-#include "paddle/infrt/backends/host/phi_context.h"
+#include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
 
 namespace infrt {
 namespace kernel {
-namespace phi {
 
-::phi::CPUContext CreateCPUContext();
+void RegisterTrtKernels(host_context::KernelRegistry* registry) {
+  registry->AddKernel("trt.create_engine",
+                      INFRT_KERNEL(tensorrt::CreateTrtEngine));
+  registry->AddKernel("trt.inspect_engine",
+                      INFRT_KERNEL(tensorrt::PrintTrtLayer));
+  registry->AddKernel("trt.compute", INFRT_KERNEL(tensorrt::TrtEngineCompute));
+}
 
-#ifdef INFRT_WITH_GPU
-::phi::GPUContext CreateGPUContext();
-#endif
-
-}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

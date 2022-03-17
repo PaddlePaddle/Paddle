@@ -14,21 +14,36 @@
 
 #pragma once
 
-#include "paddle/infrt/backends/host/phi_allocator.h"
-#include "paddle/infrt/backends/host/phi_context.h"
-#include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include <string>
+#include <tuple>
+#include <utility>
+
+#include "mlir/IR/Operation.h"
+
+#include "paddle/infrt/backends/tensorrt/trt_engine.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace infrt {
+namespace host_context {
+class SymbolTable;
+}  // namespace host_context
+
 namespace kernel {
-namespace phi {
+namespace tensorrt {
 
-::phi::CPUContext CreateCPUContext();
+struct MlirOperationWithInfrtSymbol {
+  mlir::Operation* operation;
+  ::infrt::host_context::SymbolTable* symbol_table;
+};
 
-#ifdef INFRT_WITH_GPU
-::phi::GPUContext CreateGPUContext();
-#endif
+::infrt::backends::tensorrt::TrtEngine CreateTrtEngine(
+    MlirOperationWithInfrtSymbol engine_op);
 
-}  // namespace phi
+void PrintTrtLayer(backends::tensorrt::TrtEngine* engine);
+
+std::vector<phi::DenseTensor*> TrtEngineCompute(
+    backends::tensorrt::TrtEngine* engine, const phi::GPUContext& context);
+
+}  // namespace tensorrt
 }  // namespace kernel
 }  // namespace infrt
