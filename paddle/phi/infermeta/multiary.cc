@@ -654,4 +654,4 @@ void WhereInferMeta(const MetaTensor& condition,
 
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(conv2d, phi::ConvInferMeta);
+PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
