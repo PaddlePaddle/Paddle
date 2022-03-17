@@ -118,12 +118,21 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
     // Only Copy Meta
     phi::DenseTensor* dense_tensor =
         static_cast<phi::DenseTensor*>(fwd_out.impl().get());
+
+    PADDLE_ENFORCE_NEQ(
+        dense_tensor->meta(), phi::DataType::UNDEFINED,
+        paddle::platform::errors::Fatal(
+            "Attempting to copy DenseTensorMeta with phi::DataType::UNDEFINED,"
+            "which is illegal."));
     meta.SetTensorMeta(dense_tensor->meta());
 
     if (paddle::framework::IsComplexType(
             paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
       need_complex_to_real_ = true;
     }
+  } else {
+    VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+               "non-DenseTensor argument.";
   }
 }
 
@@ -164,11 +173,20 @@ void GradNodeBase::SetGradInMeta(
       // Only Copy Meta
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
+
+      PADDLE_ENFORCE_NEQ(
+          dense_tensor->meta(), phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       if (paddle::framework::IsComplexType(
               paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
         need_complex_to_real_ = true;
       }
+    } else {
+      VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
+                 "with non-DenseTensor argument.";
     }
   }
 }
@@ -200,8 +218,16 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       // Only Copy Meta
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_in.impl().get());
+      PADDLE_ENFORCE_NEQ(
+          dense_tensor->meta(), phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
     }
+  } else {
+    VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+               "non-DenseTensor argument.";
   }
 }
 
@@ -235,8 +261,17 @@ void GradNodeBase::SetGradOutMeta(
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
+
+        PADDLE_ENFORCE_NEQ(dense_tensor->meta(), phi::DataType::UNDEFINED,
+                           paddle::platform::errors::Fatal(
+                               "Attempting to copy DenseTensorMeta with "
+                               "phi::DataType::UNDEFINED,"
+                               "which is illegal."));
         meta.SetTensorMeta(dense_tensor->meta());
       }
+    } else {
+      VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
+                 "with non-DenseTensor argument.";
     }
   }
 }

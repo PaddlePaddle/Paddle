@@ -188,7 +188,11 @@ class GradNodeBase {
   const std::vector<std::vector<Edge>>& GetEdges() const;
 
  private:
-  // TODO(jiabin): Use SmallVector instead after merge PR from develop
+  // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
+  // Edges recorded the backward related node info, which indicate all edges
+  // linked
+  // by this Grad Node.
+  // Why we need vector<vector<Edge>>: Edges is as same rank as bwd output.
   std::vector<std::vector<Edge>> adj_edges_;
 
   // bwd_out_meta_ is used to record Grad output info for backward
