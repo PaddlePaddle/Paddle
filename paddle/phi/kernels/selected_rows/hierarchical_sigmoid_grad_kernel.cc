@@ -15,17 +15,12 @@
 #include "paddle/phi/kernels/selected_rows/hierarchical_sigmoid_grad_kernel.h"
 
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/cpu/hierarchical_sigmoid_grad.h"
 
 namespace phi {
 namespace sr {
-
-namespace math = paddle::operators::math;
 
 static std::vector<int64_t> PathToRows(const DenseTensor& path) {
   std::set<int64_t> rows;
@@ -60,56 +55,6 @@ void HierarchicalSigmoidGradKernel(const Context& ctx,
                                    DenseTensor* x_grad,
                                    SelectedRows* w_grad,
                                    DenseTensor* bias_grad) {
-  funcs::SetConstant<Context, T> zero;
-  DenseTensor pre_out_grad;
-
-  pre_out_grad.Resize(pre_out.dims());
-  ctx.template Alloc<T>(&pre_out_grad);
-  ctx.template Alloc<T>(x_grad);
-  zero(ctx, x_grad, static_cast<T>(0.0));
-
-  bool is_custom = false;
-  if (path.get_ptr()) {
-    is_custom = true;
-  }
-
-  std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
-  if (!is_custom) {
-    bit_code.reset(new math::MatrixBitCodeFunctor<T>(
-        num_classes, label.template data<int64_t>()));
-  } else {
-    bit_code.reset(new math::MatrixBitCodeFunctor<T>(
-        *(path.get_ptr()), *(code.get_ptr()), label.template data<int64_t>()));
-  }
-
-  // softrelu derivative
-
-  auto blas = funcs::GetBlas<Context, T>(ctx);
-
-  auto* pre_out_grad_data = pre_out_grad.data<T>();
-  auto* pre_out_data = pre_out.template data<T>();
-  auto n = pre_out.numel();
-  blas.VEXP(n, pre_out_data, pre_out_grad_data);
-  blas.VINV(n, pre_out_grad_data, pre_out_grad_data);
-  for (int64_t i = 0; i < n; ++i) {
-    pre_out_grad_data[i] = 1.0 - pre_out_grad_data[i];
-  }
-  bit_code->Sub(&pre_out_grad);  // the gradient of clip(w * x + b)
-  auto* out_grad_data = out_grad.template data<T>();
-
-  int64_t dim0 = pre_out_grad.dims()[0];
-  int64_t dim1 = pre_out_grad.dims()[1];
-  for (int64_t i = 0; i < dim0; ++i) {
-    T tmp = out_grad_data[i];
-    blas.SCAL(dim1, tmp, pre_out_grad_data + i * dim1);
-  }
-  // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
-  // be consistent with the clipping in forward.
-  if (bias_grad) {
-    ctx.template Alloc<T>(bias_grad);
-    zero(ctx, bias_grad, static_cast<T>(0.0));
-    bit_code->AddGrad(pre_out_grad, bias_grad);
-  }
   PADDLE_ENFORCE_NOT_NULL(
       path.get_ptr(),
       errors::NotFound("Custom tree must be set for sparse mode!"));
@@ -121,10 +66,26 @@ void HierarchicalSigmoidGradKernel(const Context& ctx,
   phi::DDim temp_dim(w.dims());
   temp_dim[0] = real_rows.size();
   w_grad_value->Resize(temp_dim);
-  ctx.template Alloc<T>(w_grad_value);
-  zero(ctx, w_grad_value, static_cast<T>(0.0));
-  bit_code->MulGradWeight(pre_out_grad, w_grad, x);
-  bit_code->MulGradError(pre_out_grad, w, x_grad);
+  phi::HierarchicalSigmoidGradKernelImpl<T>(ctx,
+                                            x,
+                                            w,
+                                            label,
+                                            pre_out,
+                                            out_grad,
+                                            path,
+                                            code,
+                                            bias,
+                                            num_classes,
+                                            remote_prefetch,
+                                            trainer_id,
+                                            height_sections,
+                                            epmap,
+                                            table_names,
+                                            is_sparse,
+                                            x_grad,
+                                            w_grad_value,
+                                            bias_grad,
+                                            w_grad);
 }
 
 }  // namespace sr
