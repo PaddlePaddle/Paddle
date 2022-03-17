@@ -114,6 +114,14 @@ KernelSignature ElementwiseDivGradOpArgumentMapping(
                          {GradVarName("X"), GradVarName("Y")});
 }
 
+KernelSignature ElementwiseFMinGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_fmin_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
 KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("divide_double_grad",
@@ -125,6 +133,14 @@ KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
 KernelSignature ElementwiseMulGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("multiply_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+KernelSignature ElementwiseFMaxGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_fmax_grad",
                          {"X", "Y", GradVarName("Out")},
                          {"axis"},
                          {GradVarName("X"), GradVarName("Y")});
@@ -192,3 +208,9 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_mul_grad_grad,
                            phi::ElementwiseMulDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_mul_triple_grad,
                            phi::ElementwiseMulTripleGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(elementwise_fmax_grad,
+                           phi::ElementwiseFMaxGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin_grad,
+                           phi::ElementwiseFMinGradOpArgumentMapping);

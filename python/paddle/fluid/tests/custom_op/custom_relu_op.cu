@@ -94,6 +94,7 @@ void relu_cuda_forward_out(const paddle::Tensor& x, paddle::Tensor* out) {
   int numel = x.size();
   int block = 512;
   int grid = (numel + block - 1) / block;
+  out->reshape(x.shape());
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       x.type(), "relu_cuda_forward_kernel", ([&] {
         relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
@@ -108,6 +109,7 @@ void relu_cuda_backward_out(const paddle::Tensor& x,
   int numel = out.size();
   int block = 512;
   int grid = (numel + block - 1) / block;
+  grad_x->reshape(x.shape());
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       out.type(), "relu_cuda_backward_kernel", ([&] {
         relu_cuda_backward_kernel<data_t><<<grid, block, 0, x.stream()>>>(

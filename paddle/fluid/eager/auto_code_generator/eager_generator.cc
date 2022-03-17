@@ -56,23 +56,29 @@ static std::string LegalizeVariableName(const std::string& var_name) {
   return ret;
 }
 
-static bool IgnoreGradAttribute(const std::string& op_type,
-                                const std::string& attr_name) {
-  // Attributes in operators_with_attrs are created manually during code
-  // generation
-  // We should ignore these arbitrary attrs when setting up grad attribute map
-  if (operators_with_attrs.count(op_type)) {
-    if (operators_with_attrs[op_type].count(attr_name)) {
-      return true;
-    }
+static std::string HandleDynamicGradAttributes(const std::string& fwd_op_type,
+                                               const std::string& attrs_name) {
+  std::string additional_grad_attrs_str = "";
+
+  if (fwd_op_type == "sum") {
+    const char* GRAD_ATTRS_TEMPLATE = "  %s[\"%s\"] = %s;\n";
+    additional_grad_attrs_str = paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "scale", "float(1.0)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias", "float(0.0f)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias_after_scale", "bool(true)");
+
+  } else if (fwd_op_type == "scale") {
+    const char* GRAD_ATTRS_TEMPLATE = "  %s[\"%s\"] = %s;\n";
+
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias", "float(0.0f)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias_after_scale", "bool(true)");
   }
 
-  // Only allow SumOp
-  if (op_type != "sum") {
-    return true;
-  }
-
-  return false;
+  return additional_grad_attrs_str;
 }
 
 static void PrepareAttrMapForOps() {
@@ -1553,9 +1559,23 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   core_ops_returns_info[op_type] = return_contents;
 
   // [Generation] ComputeRequireGrad -> GradNodeCreation
+
   if (!bwd_info.GenerateForwardOnly()) {
     std::string grad_node_creation_body_str =
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
+
+    // Add event record
+    std::string event_name = op_type + " node_creation";
+    const char* NODE_CREATION_TEMPLATE =
+        "{\n"
+        "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+        "paddle::platform::TracerEventType::Operator, 1);\n"
+        "   %s\n"
+        "}";
+
+    grad_node_creation_body_str = paddle::string::Sprintf(
+        NODE_CREATION_TEMPLATE, event_name, grad_node_creation_body_str);
+
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
 
@@ -1614,10 +1634,20 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if ((*iter) == ',') dygraph_function_args_str.erase(iter);
   }
 
-  const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}\n\n";
+  const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
+      "paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "paddle::platform::TracerEventType::Operator, 1);";
+  std::string event_name = op_type + " dygraph";
+  std::string fwd_record_event_str = paddle::string::Sprintf(
+      DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
+  const char* FWD_FUNCTION_TEMPLATE =
+      "%s %s(%s) {\n\n"
+      " %s\n"
+      " %s\n"
+      "}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
-      dygraph_function_args_str, generated_function_body);
+      dygraph_function_args_str, fwd_record_event_str, generated_function_body);
 
   // [Generation] Generate forward functions header
   const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
@@ -1842,18 +1872,9 @@ static std::string GenerateSingleOpBase(
   const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
-  for (const auto& iter : grad_attrs) {
-    if (IgnoreGradAttribute(fwd_op_type, iter.first)) continue;
-    std::pair<std::string, std::string> type_val =
-        GetAttrType(iter.second, false /*is_arg*/);
-    const char* GRAD_ATTRS_TEMPLATE =
-        "  %s %s = %s;\n"
-        "  %s[\"%s\"] = %s;\n";
-    std::string var_name = iter.first + std::to_string(*outs_size);
-    grad_attrs_str += paddle::string::Sprintf(
-        GRAD_ATTRS_TEMPLATE, type_val.first, var_name, type_val.second,
-        attrs_name, iter.first, var_name);
-  }
+
+  // Handle dynamic grad attributes
+  grad_attrs_str += HandleDynamicGradAttributes(fwd_op_type, attrs_name);
   generated_grad_function_body += grad_attrs_str;
 
   const char* TRACE_OP_TEMPLATE =
@@ -2053,7 +2074,8 @@ static std::string GenerateGradNodeCCContents(
   const char* GRAD_FUNCTION_TEMPLATE =
       "std::vector<std::vector<paddle::experimental::Tensor>> "
       "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) {\n%s\n}";
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, "
+      "bool create_graph) {\n%s\n}";
   std::string grad_function_str = paddle::string::Sprintf(
       GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
 
@@ -2088,18 +2110,28 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
       "operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) "
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, const "
+      "bool create_graph = false) "
       "override;\n"
       "\n"
+      "  void ClearTensorWrappers() override { \n"
+      "%s\n"
+      "    is_tensor_wrappers_cleared = true;\n"
+      "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
+      "  bool IsTensorWrappersCleared() override { \n"
+      "    return is_tensor_wrappers_cleared;\n"
+      "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
+      "   bool is_tensor_wrappers_cleared = false;\n"
+      "\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2133,6 +2165,7 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string set_tensor_wrappers_str = "";
   std::string tensor_wrapper_members_str = "";
+  std::string clear_tensor_wrappers_str = "";
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -2164,6 +2197,13 @@ static std::string GenerateGradNodeHeaderContents(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
             struct_tensor_wrapper_name);
 
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
+            "for (auto tw: %s)   {\n"
+            "       tw.clear();\n"
+            "     }\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
+
       } else {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
             "const paddle::experimental::Tensor& %s";
@@ -2176,10 +2216,14 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
             tensor_wrapper_name, full_reserved_str);
+
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
@@ -2194,8 +2238,8 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, op_type, set_tensor_wrappers_str, set_attr_map_str,
-      tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
+      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
 
   return grad_node_str;
 }
@@ -2240,8 +2284,9 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"\n"
       "#include "
-      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n"
-      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n";
+      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
