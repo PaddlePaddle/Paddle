@@ -70,10 +70,10 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     AddAttr<int64_t>(
         "out_size",
-        "(int64_t, default -1)"
+        "(int64_t, default 0)"
         "Define the first dimension of Output tensor."
-        "If set default -1, then the shape of Out is the same with X.")
-        .SetDefault(-1);
+        "If set default 0, then the shape of Out is the same with X.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 

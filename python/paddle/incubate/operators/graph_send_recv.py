@@ -63,9 +63,9 @@ def graph_send_recv(x,
                             The available data type is int32, int64. 
         pool_type (str): The pooling type of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
-        out_size (int64): We can set `out_size` to get necessary output shape. If not set, then this 
-                          attribute will not be used. Default value is None, and if set, then it 
-                          should be `max(dst_index) + 1`.
+        out_size (int64|None): We can set `out_size` to get necessary output shape. If not set, then this 
+                          attribute will not be used. If set, then we will use the following rule to set 
+                          output shape: max(out_size, max(dst_index) + 1).
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -82,7 +82,7 @@ def graph_send_recv(x,
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum", out_size=None)
+            out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
@@ -97,7 +97,7 @@ def graph_send_recv(x,
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum", out_size=None)
+            out = paddle.incubate.graph_send_recv(x, src_index, dst_index, pool_type="sum")
             # Outputs: [[0., 2., 3.], [2., 8., 10.], [0., 0., 0.]]
 
     """
@@ -110,10 +110,9 @@ def graph_send_recv(x,
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
     if in_dygraph_mode():
-        if out_size is None:
+        if out_size is None or out_size <= 0:
             out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index,
-                                              'pool_type',
-                                              pool_type.upper(), 'out_size', -1)
+                                              'pool_type', pool_type.upper())
         else:
             out, tmp = _C_ops.graph_send_recv(
                 x, src_index, dst_index, 'pool_type',
@@ -140,6 +139,6 @@ def graph_send_recv(x,
                  "Dst_count": dst_count},
         attrs={
             "pool_type": pool_type.upper(),
-            "out_size": -1 if out_size is None else out_size
+            "out_size": 0 if out_size is None or out_size <= 0 else out_size
         })
     return out
