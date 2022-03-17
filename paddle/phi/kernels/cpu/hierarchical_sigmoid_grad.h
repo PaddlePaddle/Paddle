@@ -46,7 +46,7 @@ void HierarchicalSigmoidGradKernelImpl(
     DenseTensor* x_grad,
     DenseTensor* w_grad,
     DenseTensor* bias_grad,
-    SelectRows* w_grad_sr = nullptr) {
+    SelectedRows* w_grad_sr = nullptr) {
   funcs::SetConstant<Context, T> zero;
   DenseTensor pre_out_grad;
 
