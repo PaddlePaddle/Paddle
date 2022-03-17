@@ -86,7 +86,7 @@ class Engine:
         # TODO: check loss type
         self._loss = loss
         self._metrics = to_list(metrics)
-        for m in ['train', 'eval', 'predict']:
+        for m in ['train', 'predict']:
             self.mode = m
             self._build(m)  # build forward program
             self._plan(m)  # completion & planner
@@ -111,9 +111,6 @@ class Engine:
             outputs = to_list(self.model(*inputs))
             if mode != "predict" and self._loss:
                 losses = to_list(self._loss(*(outputs + labels)))
-            if mode != "predict" and self._metrics:
-                for metric in self._metrics:
-                    metrics.append(to_list(metric.compute(*(outputs + labels))))
 
         self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
 
@@ -195,10 +192,6 @@ class Engine:
             # Apply post optimization passes
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
-        elif mode == "train" and not self._optimizer:
-            raise ValueError(
-                "training model is not ready, pleace call `engine.prepare(optimizer)` first."
-            )
         else:
             # Do logical partition
             partitioner = Partitioner(dist_context, rank)
@@ -209,7 +202,7 @@ class Engine:
             reshard(dist_main_prog, dist_startup_prog, rank, dist_context, [],
                     1)
 
-        # clone program for eval and test
+        # clone program for test
         if mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)
             dist_startup_prog = dist_startup_prog.clone(for_test=True)
@@ -281,18 +274,13 @@ class Engine:
                 [main_program], [startup_program],
                 self._pass_contexts[self.mode])
 
-    def fit(self,
-            train_data,
-            eval_data=None,
-            batch_size=1,
-            epochs=1,
-            steps_per_epoch=None):
+    def fit(self, train_data, batch_size=1, epochs=1, steps_per_epoch=None):
         # TODO: callbacks
         # TODO: evaluate after training
         self.mode = 'train'
         assert isinstance(train_data, Dataset)
         train_dataloader = self._create_dataloader(train_data, batch_size,
-                                                   epochs)
+                                                   epochs, steps_per_epoch)
 
         outputs = []
         for epoch in range(epochs):
@@ -304,20 +292,6 @@ class Engine:
                     for name, val in logs.items()
                 }
                 self._logger.info(train_logs)
-        return outputs
-
-    def evaluate(self, eval_data, batch_size=1):
-        # TODO: support metrics
-        self.mode = 'eval'
-        assert isinstance(eval_data, Dataset)
-        eval_dataloader = self._create_dataloader(eval_data, batch_size)
-
-        outputs = []
-        for step, data in enumerate(eval_dataloader):
-            logs, loss = self._train_step(data)
-            outputs.append(loss)
-            train_logs = {"eval_" + name: val for name, val in logs.items()}
-            self._logger.info(train_logs)
         return outputs
 
     def predict(self,
@@ -345,19 +319,6 @@ class Engine:
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         fetch_var = self._fetch_vars[self.mode]["loss"][0]
-        if fetch_var.name not in dist_main_prog.global_block().vars:
-            loss = self._executor.run(dist_main_prog)
-            logs["loss"] = None
-        else:
-            loss = self._executor.run(dist_main_prog,
-                                      fetch_list=to_list(fetch_var))
-            logs["loss"] = loss
-        return logs, loss
-
-    def _eval_step(self, data):
-        logs = {}
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        fetch_var = self._fetch_vars[self.mode]["loss"]
         if fetch_var.name not in dist_main_prog.global_block().vars:
             loss = self._executor.run(dist_main_prog)
             logs["loss"] = None

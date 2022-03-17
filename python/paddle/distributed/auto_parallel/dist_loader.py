@@ -111,7 +111,9 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                     batch_data[idx].extend(data[idx])
 
                 if (step + 1) % self.batch_size == 0:
-                    if len(data) == 1:
+                    if len(data) == 1 and len(batch_data[0]) == 1:
+                        yield (batch_data[0], )
+                    elif len(data) == 1:
                         yield batch_data[0]
                     elif len(data) == 2:
                         yield batch_data[0], batch_data[1]
