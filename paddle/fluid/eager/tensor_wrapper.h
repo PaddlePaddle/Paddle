@@ -147,6 +147,8 @@ class TensorWrapper {
     }
   }
 
+  void clear() { intermidiate_tensor_.reset(); }
+
  private:
   bool full_reserved_ = false;
   bool no_need_buffer_ = false;

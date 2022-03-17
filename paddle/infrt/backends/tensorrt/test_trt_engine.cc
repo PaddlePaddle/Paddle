@@ -37,9 +37,9 @@ namespace infrt {
 namespace backends {
 namespace tensorrt {
 
-const char* model_input = "model_input";
-const char* model_output = "model_output1";
-const char* model_output2 = "model_output2";
+const char* model_input = "input_0";
+const char* model_output = "output_0";
+const char* model_output2 = "output_1";
 
 TrtUniquePtr<nvinfer1::INetworkDefinition> ConstructNetwork(
     nvinfer1::IBuilder* builder, nvinfer1::Dims dims, bool is_static_shape) {
@@ -122,27 +122,26 @@ TEST(trt, run_static) {
 
   std::unordered_map<std::string, phi::DenseTensor*> inputs;
   inputs.emplace(std::make_pair(model_input, &input));
-  phi::DenseTensor output, output2;
-  std::unordered_map<std::string, phi::DenseTensor*> outputs;
-  outputs.emplace(std::make_pair(model_output, &output));
-  outputs.emplace(std::make_pair(model_output2, &output2));
-
-  static_trt_engine.SetUpInference(inference_options, inputs, &outputs);
+  static_trt_engine.PrepareOutputHandle("output_0");
+  static_trt_engine.PrepareOutputHandle("output_1");
+  static_trt_engine.SetUpInference(inference_options, inputs);
   static_trt_engine.GetEngineInfo();
   static_trt_engine.Run(context);
 
+  phi::DenseTensor* output0 = static_trt_engine.GetOutput("output_0");
+  phi::DenseTensor* output1 = static_trt_engine.GetOutput("output_1");
   std::vector<float> output_data1(inference_options.batch * 1 * 28 * 28, 0);
   std::vector<float> output_data2(inference_options.batch * 2 * 28 * 28, 0);
   paddle::memory::Copy(phi::CPUPlace(),
                        output_data1.data(),
                        place,
-                       output.data<float>(),
+                       output0->data<float>(),
                        sizeof(float) * output_data1.size(),
                        context.stream());
   paddle::memory::Copy(phi::CPUPlace(),
                        output_data2.data(),
                        place,
-                       output2.data<float>(),
+                       output1->data<float>(),
                        sizeof(float) * output_data2.size(),
                        context.stream());
   cudaStreamSynchronize(context.stream());
@@ -208,27 +207,27 @@ TEST(trt, run_dynamic) {
                        context.stream());
 
   std::unordered_map<std::string, phi::DenseTensor*> inputs;
-  std::unordered_map<std::string, phi::DenseTensor*> outputs;
   inputs.emplace(std::make_pair(model_input, &input));
-  outputs.emplace(std::make_pair(model_output, &output));
-  outputs.emplace(std::make_pair(model_output2, &output2));
-
-  engine.SetUpInference(inference_options, inputs, &outputs);
+  engine.PrepareOutputHandle("output_0");
+  engine.PrepareOutputHandle("output_1");
+  engine.SetUpInference(inference_options, inputs);
   engine.GetEngineInfo();
   engine.Run(context);
+  phi::DenseTensor* output0 = engine.GetOutput("output_0");
+  phi::DenseTensor* output1 = engine.GetOutput("output_1");
 
   std::vector<float> output_data1(inference_options.batch * 1 * 16 * 16, 0);
   std::vector<float> output_data2(inference_options.batch * 2 * 16 * 16, 0);
   paddle::memory::Copy(phi::CPUPlace(),
                        output_data1.data(),
                        place,
-                       output.data<float>(),
+                       output0->data<float>(),
                        sizeof(float) * output_data1.size(),
                        context.stream());
   paddle::memory::Copy(phi::CPUPlace(),
                        output_data2.data(),
                        place,
-                       output2.data<float>(),
+                       output1->data<float>(),
                        sizeof(float) * output_data2.size(),
                        context.stream());
   cudaStreamSynchronize(context.stream());

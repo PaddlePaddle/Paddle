@@ -4,7 +4,7 @@ if(WITH_PYTHON)
 endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
-if(WITH_DISTRIBUTE AND WITH_PSCORE AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+if(WITH_DISTRIBUTE AND WITH_PSCORE)
   set(BRPC_DEPS brpc ssl crypto protobuf zlib leveldb snappy gflags glog)
 else()
   set(BRPC_DEPS "")
