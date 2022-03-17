@@ -92,6 +92,12 @@ class ProcessGroup {
         "ProcessGroup%s does not support allreduce", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduceSparse(
+      std::vector<Tensor>& /* tensors */) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support allreduce", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<Tensor>& /* tensors */,
       const BroadcastOptions& = BroadcastOptions()) {
