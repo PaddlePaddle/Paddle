@@ -27,6 +27,8 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
+constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
+
 namespace paddle {
 namespace distributed {
 

@@ -24,6 +24,7 @@
 #endif
 
 #include "paddle/fluid/distributed/store/store.h"
+#include "paddle/fluid/distributed/store/tcp_store.h"
 
 constexpr const char* GLOO_BACKEND_NAME = "GLOO";
 
@@ -66,12 +67,12 @@ class ProcessGroupGloo : public ProcessGroup {
     }
 
     void wait(const std::vector<std::string>& keys) override {
-      _store->wait(keys, kDefaultTimeout);
+      _store->wait(keys);
     }
 
     void wait(const std::vector<std::string>& keys,
               const std::chrono::milliseconds& timeout) override {
-      _store->wait(keys, timeout);
+      _store->wait(keys);
     }
 
    protected:
@@ -85,7 +86,7 @@ class ProcessGroupGloo : public ProcessGroup {
     static std::shared_ptr<GlooOptions> create() {
       return std::make_shared<GlooOptions>();
     }
-    std::vector<std::shared_ptr<::gloo::transport::Device>> devices;
+    std::shared_ptr<::gloo::transport::Device> device;
   };
 
   explicit ProcessGroupGloo(
@@ -135,7 +136,7 @@ class ProcessGroupGloo : public ProcessGroup {
  protected:
   uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> _context;
-  std::shared_ptr<Store> _store;
+  std::shared_ptr<::gloo::rendezvous::Store> _store;
 };
 
 }  // namespace distributed

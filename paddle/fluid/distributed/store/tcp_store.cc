@@ -24,6 +24,36 @@
 namespace paddle {
 namespace distributed {
 
+std::string replyTypeToString(ReplyType type) {
+  switch (type) {
+    case ReplyType::WAITING:
+      return "WAITING";
+    case ReplyType::STOP_WAIT:
+      return "STOP_WAIT";
+    default:
+      PADDLE_THROW(platform::errors::Fatal("Unknown value for ReplyType."));
+  }
+  PADDLE_THROW(platform::errors::Fatal("Unknown value for ReplyType."));
+}
+
+std::string commandToString(Command command) {
+  switch (command) {
+    case Command::ADD:
+      return "ADD";
+    case Command::GET:
+      return "GET";
+    case Command::SET:
+      return "SET";
+    case Command::WAIT:
+      return "WAIT";
+    case Command::STOP:
+      return "STOP";
+    default:
+      PADDLE_THROW(platform::errors::Fatal("Unknown value for Command."));
+  }
+  PADDLE_THROW(platform::errors::Fatal("Unknown value for Command."));
+}
+
 namespace detail {
 
 constexpr int INFTIME = -1;
@@ -102,7 +132,7 @@ void MasterDaemon::_do_wait(SocketType socket) {
   if (iter == _store.end()) {
     reply = ReplyType::WAITING;
   }
-  VLOG(3) << "TCPStore: wait reply (" << static_cast<int>(reply)
+  VLOG(3) << "TCPStore: wait reply (" << replyTypeToString(reply)
           << ") for key (" << key << ").";
   tcputils::send_value<ReplyType>(socket, reply);
 }
@@ -143,7 +173,7 @@ void MasterDaemon::run() {
         }
 
         Command command = tcputils::receive_value<Command>(fds[i].fd);
-        VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command)
+        VLOG(3) << "TCPStore: recv command: " << commandToString(command)
                 << ".";
 
         switch (command) {
@@ -272,21 +302,23 @@ void TCPStore::set(const std::string& key, const std::vector<uint8_t>& value) {
 }
 
 std::vector<uint8_t> TCPStore::get(const std::string& key) {
-  wait(key);
+  wait({key});
   _client->send_command_for_key(Command::GET, _key_prefix + key);
   VLOG(3) << "TCPStore get.";
   return _client->receive_vector<uint8_t>();
 }
 
-void TCPStore::wait(const std::string& key) {
-  ReplyType reply;
+void TCPStore::wait(const std::vector<std::string>& keys) {
   VLOG(3) << "TCPStore wait.";
-  do {
-    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+  for (const std::string& key : keys) {
+    ReplyType reply;
+    do {
+      _client->send_command_for_key(Command::WAIT, _key_prefix + key);
 
-    reply = _client->receive_value<ReplyType>();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (reply != ReplyType::STOP_WAIT);
+      reply = _client->receive_value<ReplyType>();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    } while (reply != ReplyType::STOP_WAIT);
+  }
 }
 
 TCPStore::~TCPStore() {

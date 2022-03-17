@@ -50,8 +50,7 @@ class ProcessGroupNCCL : public ProcessGroup {
   class NCCLTask : public ProcessGroup::Task,
                    public std::enable_shared_from_this<NCCLTask> {
    public:
-    NCCLTask(const std::vector<Place>& places, int rank, CommType CommType,
-             const std::vector<Tensor>& inputs);
+    NCCLTask(const std::vector<Place>& places, int rank, CommType CommType);
 
     bool IsCompleted();
 
@@ -101,7 +100,7 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<Tensor>& in_tensors,
-      std::vector<Tensor>& out_tensors) override;
+      std::vector<std::vector<Tensor>>& out_tensors) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<Tensor>& in, std::vector<Tensor>& out) override;
@@ -109,9 +108,9 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
 
-  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
-                                              std::vector<Tensor>& out_tensors,
-                                              const ScatterOptions&) override;
+  std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<std::vector<Tensor>>& in_tensors,
+      std::vector<Tensor>& out_tensors, const ScatterOptions&) override;
 
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(

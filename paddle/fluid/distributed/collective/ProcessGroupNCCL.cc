@@ -81,6 +81,12 @@ bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors) {
   });
 }
 
+bool CheckTensorsInCudaPlace(const std::vector<std::vector<Tensor>>& tensors) {
+  return std::all_of(
+      tensors.cbegin(), tensors.cend(),
+      [&](const std::vector<Tensor>& t) { return CheckTensorsInCudaPlace(t); });
+}
+
 void SyncDefaultStream(
     const std::vector<Place>& places,
     std::vector<EventManager>& ncclEvents,                       // NOLINT
@@ -101,9 +107,8 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
 }
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const std::vector<Place>& places, int rank,
-                                     CommType CommType,
-                                     const std::vector<Tensor>& inputs)
-    : Task(rank, inputs, CommType), places_(places) {
+                                     CommType CommType)
+    : Task(rank, CommType), places_(places) {
   control_events_.resize(places.size());
   ncclComms_.resize(places.size());
 }
@@ -465,7 +470,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
-    std::vector<Tensor>& in_tensors, std::vector<Tensor>& out_tensors) {
+    std::vector<Tensor>& in_tensors,
+    std::vector<std::vector<Tensor>>& out_tensors) {
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors), true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));

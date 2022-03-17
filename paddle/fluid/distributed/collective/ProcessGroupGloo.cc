@@ -83,8 +83,7 @@ namespace distributed {
 
 typedef void (*reduce_func)(void*, const void*, const void*, size_t);
 
-template <typename T,
-          typename std::enable_if<!std::is_integral<T>::value, int>::type = 0>
+template <typename T>
 reduce_func get_function(const ReduceOp& r) {
   switch (r) {
     case ReduceOp::SUM:
@@ -128,6 +127,12 @@ std::vector<T*> get_data_pointers(const std::vector<Tensor>& tensors) {
 template <typename T, typename P>
 void set_output(P& opts, const Tensor& tensor) {  // NOLINT
   opts.setOutput(get_data_pointer<T>(tensor), tensor.numel());
+}
+
+template <typename T, typename P>
+void set_output(P& opts, const std::vector<Tensor>& tensors) {  // NOLINT
+  opts.setOutput(get_data_pointer<T>(tensors[0]),
+                 tensors[0].numel() * tensors.size());
 }
 
 template <typename T, typename P>
@@ -179,11 +184,14 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
                     const std::vector<Tensor>& inputs, int rank, int root,
                     uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, CommType::BROADCAST),
-        PADDLE_ENFORCE_EQ(
-            CheckTensorsInCPUPlace(inputs), true,
-            platform::errors::Fatal(
-                "Only CPU place is supported for ProcessGroupGloo."));
-  _context(context), _root(root), _inputs(inputs), _tag(tag) {}
+        _context(context),
+        _root(root),
+        _inputs(inputs),
+        _tag(tag) {
+    PADDLE_ENFORCE_EQ(CheckTensorsInCPUPlace(inputs), true,
+                      platform::errors::Fatal(
+                          "Only CPU place is supported for ProcessGroupGloo."));
+  }
 
   void Run() override { _do_broadcast(_inputs[0]); }
 
@@ -206,7 +214,7 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     std::vector<Tensor>& inputs, const BroadcastOptions& opts) {
   auto root = opts.source_root;
-  std::unique_ptr<BroadcastGlooTask> task;
+  std::shared_ptr<BroadcastGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
   task = std::make_shared<BroadcastGlooTask>(context, inputs, rank_, root, tag);
@@ -319,14 +327,15 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
     const auto& dtype = in[0].type();
     gloo::AllgatherOptions opts(_context);
     GENERATE_FUNC(dtype, set_input, opts, in[0]);
-    GENERATE_FUNC(dtype, set_outputs, opts, out[0]);
+    GENERATE_FUNC(dtype, set_output, opts, out[0]);
     opts.setTag(_tag);
     gloo::allgather(opts);
   }
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
-    std::vector<Tensor>& in_tensors, std::vector<Tensor>& out_tensors) {
+    std::vector<Tensor>& in_tensors,
+    std::vector<std::vector<Tensor>>& out_tensors) {
   std::shared_ptr<AllgatherGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
@@ -417,9 +426,10 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
   int _size;
   uint32_t _tag;
 
-  void _do_scatter(std::vector<Tensor>& in, std::vector<Tensor>& out,  // NOLINT
+  void _do_scatter(std::vector<std::vector<Tensor>>& in,  // NOLINT
+                   std::vector<Tensor>& out,              // NOLINT
                    int src) {
-    const auto& dtype = in[0].type();
+    const auto& dtype = in[0][0].type();
     gloo::ScatterOptions opts(_context);
     if (rank_ == src) {
       GENERATE_FUNC(dtype, set_inputs, opts, in[0]);
@@ -432,8 +442,8 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
-    std::vector<Tensor>& in_tensors, std::vector<Tensor>& out_tensors,
-    const ScatterOptions& opts) {
+    std::vector<std::vector<Tensor>>& in_tensors,
+    std::vector<Tensor>& out_tensors, const ScatterOptions& opts) {
   std::shared_ptr<ScatterGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();

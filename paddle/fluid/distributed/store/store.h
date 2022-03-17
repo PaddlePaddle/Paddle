@@ -37,13 +37,13 @@ class Store {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Implement the add method in the subclass."));
   }
-  virtual void wait(const std::string& key) {
+  virtual void wait(const std::vector<std::string>& keys) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Implement the add method in the subclass."));
+        "Implement the wait method in the subclass."));
   }
   virtual void set(const std::string& key, const std::vector<uint8_t>& value) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Implement the add method in the subclass."));
+        "Implement the set method in the subclass."));
   }
 
   virtual const std::chrono::seconds& timeout() const { return _timeout; }

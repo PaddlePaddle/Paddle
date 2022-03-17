@@ -27,8 +27,10 @@ namespace paddle {
 namespace distributed {
 
 enum class ReplyType : uint8_t { WAITING, STOP_WAIT };
+std::string replyTypeToString(ReplyType type);
 
 enum class Command : uint8_t { ADD, GET, SET, WAIT, STOP };
+std::string commandToString(Command command);
 
 namespace detail {
 
@@ -100,7 +102,7 @@ class TCPStore : public Store {
 
   int64_t add(const std::string& key, int64_t value) override;
   std::vector<uint8_t> get(const std::string& key) override;
-  void wait(const std::string& key) override;
+  void wait(const std::vector<std::string>& keys) override;
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
 
  private:
