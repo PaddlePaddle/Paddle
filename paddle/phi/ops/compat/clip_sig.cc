@@ -22,23 +22,64 @@ KernelSignature ClipOpArgumentMapping(const ArgumentMappingContext& ctx) {
   attr_names.emplace_back(ctx.HasInput("Min") ? "Min" : "min");
   attr_names.emplace_back(ctx.HasInput("Max") ? "Max" : "max");
   if (ctx.IsDenseTensorInput("X")) {
-    return KernelSignature("clip", {"X"}, std::move(attr_names), {"Out"});
+    if (ctx.HasInput("Min")) {
+      if (ctx.HasInput("Max")) {
+        return KernelSignature("clip", {"X"}, {"Min", "Max"}, {"Out"});
+      } else {
+        return KernelSignature("clip", {"X"}, {"Min", "max"}, {"Out"});
+      }
+    } else {
+      if (ctx.HasInput("Max")) {
+        return KernelSignature("clip", {"X"}, {"min", "Max"}, {"Out"});
+      } else {
+        return KernelSignature("clip", {"X"}, {"min", "max"}, {"Out"});
+      }
+    }
   } else if (ctx.IsSelectedRowsInput("X")) {
-    return KernelSignature(
-        "clip_dense_param_sparse_grad", {"X"}, std::move(attr_names), {"Out"});
+    if (ctx.HasInput("Min")) {
+      if (ctx.HasInput("Max")) {
+        return KernelSignature("clip_sr", {"X"}, {"Min", "Max"}, {"Out"});
+      } else {
+        return KernelSignature("clip_sr", {"X"}, {"Min", "max"}, {"Out"});
+      }
+    } else {
+      if (ctx.HasInput("Max")) {
+        return KernelSignature("clip_sr", {"X"}, {"min", "Max"}, {"Out"});
+      } else {
+        return KernelSignature("clip_sr", {"X"}, {"min", "max"}, {"Out"});
+      }
+    }
   }
 
   return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature ClipGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  paddle::SmallVector<std::string> attr_names;
-  attr_names.emplace_back(ctx.HasInput("Min") ? "Min" : "min");
-  attr_names.emplace_back(ctx.HasInput("Max") ? "Max" : "max");
-  return KernelSignature("clip_grad",
-                         {"X", GradVarName("Out")},
-                         std::move(attr_names),
-                         {GradVarName("X")});
+  if (ctx.HasInput("Min")) {
+    if (ctx.HasInput("Max")) {
+      return KernelSignature("clip_grad",
+                             {"X", GradVarName("Out")},
+                             {"Min", "Max"},
+                             {GradVarName("X")});
+    } else {
+      return KernelSignature("clip_grad",
+                             {"X", GradVarName("Out")},
+                             {"Min", "max"},
+                             {GradVarName("X")});
+    }
+  } else {
+    if (ctx.HasInput("Max")) {
+      return KernelSignature("clip_grad",
+                             {"X", GradVarName("Out")},
+                             {"min", "Max"},
+                             {GradVarName("X")});
+    } else {
+      return KernelSignature("clip_grad",
+                             {"X", GradVarName("Out")},
+                             {"min", "max"},
+                             {GradVarName("X")});
+    }
+  }
 }
 
 }  // namespace phi

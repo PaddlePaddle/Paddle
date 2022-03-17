@@ -22,10 +22,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ClipDenseKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const Scalar& min,
-                     const Scalar& max,
-                     DenseTensor* out);
+void ClipKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const Scalar& min,
+                const Scalar& max,
+                DenseTensor* out);
 
 }  // namespace phi

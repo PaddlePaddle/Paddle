@@ -21,7 +21,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/transform.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #endif
 
 namespace phi {
@@ -54,8 +54,7 @@ void ClipGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {x_grad};
   auto functor = ClipGradFunctor<T>(min_, max_);
   dev_ctx.template Alloc<T>(x_grad);
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, functor);
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 #else
   int64_t numel = out_grad.numel();
   auto* d_x_data = dev_ctx.template Alloc<T>(x_grad);

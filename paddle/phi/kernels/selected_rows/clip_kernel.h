@@ -29,33 +29,6 @@ void ClipSparseKernel(const Context& dev_ctx,
                       const SelectedRows& x,
                       const Scalar& min,
                       const Scalar& max,
-                      SelectedRows* out) {
-  auto max_ = max.to<T>();
-  auto min_ = min.to<T>();
-
-  PADDLE_ENFORCE_LE(
-      min_,
-      max_,
-      errors::InvalidArgument("max should be greater than or equal to min. "
-                              "But received min = %f, max = %f",
-                              static_cast<float>(min_),
-                              static_cast<float>(max_)));
-
-  PADDLE_ENFORCE_NE(&x,
-                    out,
-                    errors::InvalidArgument("Inplace clip is not allowed "
-                                            "when x is SelectedRows"));
-  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
-  merge_func(dev_ctx, x, out);
-  auto* out_tensor = out->mutable_value();
-  auto* out_data = out_tensor->data<T>();
-  int64_t numel = out_tensor->numel();
-  paddle::platform::Transform<Context> trans;
-  trans(dev_ctx,
-        out_data,
-        out_data + numel,
-        out_data,
-        ClipFunctor<T>(min_, max_));
-}
+                      SelectedRows* out);
 }  // namespace sr
 }  // namespace phi

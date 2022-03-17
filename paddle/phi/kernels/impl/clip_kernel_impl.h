@@ -21,7 +21,7 @@
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/transform.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #endif
 
 namespace phi {
@@ -40,11 +40,11 @@ class ClipFunctor {
 };
 
 template <typename T, typename Context>
-void ClipDenseKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const Scalar& min,
-                     const Scalar& max,
-                     DenseTensor* out) {
+void ClipKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const Scalar& min,
+                const Scalar& max,
+                DenseTensor* out) {
   auto max_ = max.to<T>();
   auto min_ = min.to<T>();
 
@@ -66,8 +66,7 @@ void ClipDenseKernel(const Context& dev_ctx,
     std::vector<const DenseTensor*> ins = {&x};
     std::vector<DenseTensor*> outs = {out};
     auto functor = ClipFunctor<T>(min_, max_);
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-        dev_ctx, ins, &outs, functor);
+    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 #endif
   } else {
     paddle::platform::Transform<Context> trans;
