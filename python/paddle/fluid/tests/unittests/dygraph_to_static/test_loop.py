@@ -330,7 +330,7 @@ class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
         self.dyfunc = while_loop_dyfunc_with_none
 
 
-class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
+class TestForBreakSingleReturn(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_break_single_return
 
