@@ -849,6 +849,38 @@ def ref_softsign(x):
     return out
 
 
+class XPUTestSoftshrinkOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'softshrink'
+        self.use_dynamic_create_class = False
+
+    class XPUTestSoftshrink(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "softshrink"
+            self.dtype = self.in_type
+
+            threshold = 0.5
+            np.random.seed(1023)
+            x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
+            out = ref_softshrink(x, threshold)
+
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+
+support_types = get_xpu_op_support_types('softshrink')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSoftshrinkOP, stype)
+
+
+def ref_softshrink(x, threshold=0.5):
+    out = np.copy(x)
+    out = (out < -threshold) * (out + threshold) + (out > threshold) * (
+        out - threshold)
+    return out
+
+
 class XPUTestSwishOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'swish'
@@ -876,6 +908,37 @@ for stype in support_types:
 def ref_swish(x):
     from scipy.special import expit
     out = x * expit(x)
+    return out
+
+
+class XPUTestThresholdedReluOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'thresholded_relu'
+        self.use_dynamic_create_class = False
+
+    class XPUTestThresholdedRelu(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "thresholded_relu"
+            self.dtype = self.in_type
+
+            threshold = 1.0
+            np.random.seed(1024)
+            x = np.random.uniform(-20, 20, [10, 12]).astype(self.dtype)
+            x[np.abs(x) < 0.005] = 0.02
+            out = ref_thresholded_relu(x, threshold)
+
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+
+support_types = get_xpu_op_support_types('thresholded_relu')
+for stype in support_types:
+    create_test_class(globals(), XPUTestThresholdedReluOP, stype)
+
+
+def ref_thresholded_relu(x, threshold=1.0):
+    out = (x > threshold) * x
     return out
 
 
