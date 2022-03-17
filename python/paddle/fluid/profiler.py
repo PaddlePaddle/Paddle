@@ -176,6 +176,7 @@ def start_profiler(state, tracer_option='Default'):
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
 
@@ -251,6 +252,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
         .. code-block:: python
 
+            # required: gpu
             import paddle.fluid as fluid
             import paddle.fluid.profiler as profiler
 
