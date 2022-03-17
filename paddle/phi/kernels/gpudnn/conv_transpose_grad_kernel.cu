@@ -189,7 +189,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
   miopenConvFwdAlgorithm_t data_algo{};
-  miopenConvBwdfiltereightsAlgorithm_t filter_algo{};
+  miopenConvBwdWeightsAlgorithm_t filter_algo{};
 #else
   cudnnConvolutionFwdAlgo_t data_algo{};
   cudnnConvolutionBwdFilterAlgo_t filter_algo{};
@@ -242,8 +242,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     paddle::platform::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
-    using search2 = paddle::operators::SearchAlgorithm<
-        miopenConvBwdfiltereightsAlgorithm_t>;
+    using search2 =
+        paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     filter_algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
@@ -660,8 +660,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   miopenConvBwdDataAlgorithm_t bwd_algo2 =
       static_cast<miopenConvBwdDataAlgorithm_t>(0);
   miopenConvFwdAlgorithm_t data_algo = static_cast<miopenConvFwdAlgorithm_t>(0);
-  miopenConvBwdfiltereightsAlgorithm_t filter_algo =
-      static_cast<miopenConvBwdfiltereightsAlgorithm_t>(0);
+  miopenConvBwdWeightsAlgorithm_t filter_algo =
+      static_cast<miopenConvBwdWeightsAlgorithm_t>(0);
 #else
   cudnnConvolutionBwdDataAlgo_t bwd_algo1 =
       static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
@@ -748,8 +748,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     paddle::platform::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
-    using search3 = paddle::operators::SearchAlgorithm<
-        miopenConvBwdfiltereightsAlgorithm_t>;
+    using search3 =
+        paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size = std::max(workspace_size, search3::GetWorkspaceSize(args3));
     filter_algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
