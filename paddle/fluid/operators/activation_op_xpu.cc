@@ -377,8 +377,10 @@ struct XPUPowGradFunctor : public BaseActivationFunctor<T> {
     auto x_dims = phi::vectorize<int>(x->dims());
     auto dy_dims = phi::vectorize<int>(dOut->dims());
     auto dx_dims = phi::vectorize<int>(dX->dims());
-    PADDLE_ENFORCE_EQ(x_dims, dy_dims, "");
-    PADDLE_ENFORCE_EQ(x_dims, dx_dims, "");
+    PADDLE_ENFORCE_EQ(x_dims, dy_dims, platform::errors::PreconditionNotMet(
+                                           "x_dims should match dy_dims."));
+    PADDLE_ENFORCE_EQ(x_dims, dx_dims, platform::errors::PreconditionNotMet(
+                                           "x_dims should match dx_dims."));
 
     float pow_factor = ctx.Attr<float>("factor");
     T pow_factor_1 = static_cast<T>(pow_factor - 1.0f);
