@@ -69,6 +69,19 @@ void CompareInferMeta(const MetaTensor& x,
                       int axis,
                       MetaTensor* out);
 
+void ConvTransposeInferMeta(const MetaTensor& x,
+                            const MetaTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::vector<int>& output_padding,
+                            const std::vector<int>& output_size,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
