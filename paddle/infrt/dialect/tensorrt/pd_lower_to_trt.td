@@ -3,7 +3,7 @@
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
-include "paddle/infrt/dialect/pd_ops.td"
+include "paddle/infrt/dialect/pd/ir/pd_ops.td"
 include "paddle/infrt/dialect/tensorrt/trt_ops.td"
 
 def PD2TRT_Matmul_Lower : Pat<
