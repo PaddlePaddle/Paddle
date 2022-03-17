@@ -16,7 +16,7 @@
 
 function make_ubuntu_dockerfile(){
   dockerfile_name="Dockerfile.cuda10_cudnn7_gcc82_ubuntu16"
-  sed "s/<baseimg>/10.1-cudnn7-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
+  sed "s/<baseimg>/11.4.3-cudnn8-devel-ubuntu18.04/g" ./Dockerfile.ubuntu18 >${dockerfile_name}
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
@@ -36,6 +36,7 @@ function make_ubuntu_dockerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8230#g' ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN apt update \&\& apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 pigz --allow-change-held-packages #g" ${dockerfile_name}
