@@ -18,7 +18,7 @@ import functools
 from contextlib import ContextDecorator
 
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
-import paddle.fluid.core.load_profiler_result as _load_profiler_result
+import paddle.fluid.core as core
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -138,7 +138,7 @@ def load_profiler_result(filename: str):
             p.export('test_export_protobuf.pb', format='pb')
             profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
     """
-    _load_profiler_result(filename)
+    core.load_profiler_result(filename)
 
 
 def wrap_optimizers():
