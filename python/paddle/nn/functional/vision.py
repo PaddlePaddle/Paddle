@@ -344,3 +344,60 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         attrs={"upscale_factor": upscale_factor,
                "data_format": data_format})
     return out
+
+def channel_shuffle(x, groups, data_format="NCHW", name=None):
+    """
+    This API implements channel shuffle operation.
+    See more details in :ref:`api_nn_vision_ChannelShuffle` .
+    Parameters:
+        x(Tensor): 4-D tensor, the data type should be float32 or float64.
+        groups(int): Number of groups to divide channels in.
+        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): The default value is None. Normally there is no need for user to set this property.
+    Returns:
+        Out(tensor): Rearranged tensor keeping the original tensor shape.
+    Raises:
+        ValueError: If the number of groups cannot divide the channels of input.
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            x = paddle.arange(0, 0.6, 0.1, 'float32')
+            x = paddle.reshape(x, [1, 6, 1, 1])
+            # [[[[0.        ]],
+            #   [[0.10000000]],
+            #   [[0.20000000]],
+            #   [[0.30000001]],
+            #   [[0.40000001]],
+            #   [[0.50000000]]]]
+            y = F.channel_shuffle(x, 3)
+            # [[[[0.        ]],
+            #   [[0.20000000]],
+            #   [[0.40000001]],
+            #   [[0.10000000]],
+            #   [[0.30000001]],
+            #   [[0.50000000]]]]
+    """
+    if not isinstance(groups, int):
+        raise TypeError("groups must be int type")
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
+                         "But recevie Attr(data_format): {} ".format(
+                             data_format))
+
+    if in_dynamic_mode():
+        return _C_ops.channel_shuffle(x, "groups", groups,
+                                      "data_format", data_format)
+    
+    helper = LayerHelper("channel_shuffle", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="channel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"groups": groups,
+               "data_format": data_format})
+    return out
