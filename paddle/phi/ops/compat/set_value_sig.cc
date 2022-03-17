@@ -19,9 +19,9 @@ namespace phi {
 
 KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("Input")) {
-    if (ctx.HasInput("StartsTensorList")) {
-      if (ctx.HasInput("EndsTensorList")) {
-        if (ctx.HasInput("StepsTensorList")) {
+    if (ctx.InputSize("StartsTensorList") > 0) {
+      if (ctx.InputSize("EndsTensorList") > 0) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -197,7 +197,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
           }
         }
       } else {
-        if (ctx.HasInput("StepsTensorList")) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -374,8 +374,8 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
         }
       }
     } else {
-      if (ctx.HasInput("EndsTensorList")) {
-        if (ctx.HasInput("StepsTensorList")) {
+      if (ctx.InputSize("EndsTensorList") > 0) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -551,7 +551,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
           }
         }
       } else {
-        if (ctx.HasInput("StepsTensorList")) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -734,9 +734,9 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SetValueGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("StartsTensorList")) {
-    if (ctx.HasInput("EndsTensorList")) {
-      if (ctx.HasInput("StepsTensorList")) {
+  if (ctx.InputSize("StartsTensorList") > 0) {
+    if (ctx.InputSize("EndsTensorList") > 0) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
         return KernelSignature(
             "set_value_grad",
             {GradVarName("Out")},
@@ -760,7 +760,7 @@ KernelSignature SetValueGradOpArgumentMapping(
             {GradVarName("Input"), GradVarName("ValueTensor")});
       }
     } else {
-      if (ctx.HasInput("StepsTensorList")) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
         return KernelSignature(
             "set_value_grad",
             {GradVarName("Out")},
@@ -785,8 +785,8 @@ KernelSignature SetValueGradOpArgumentMapping(
       }
     }
   } else {
-    if (ctx.HasInput("EndsTensorList")) {
-      if (ctx.HasInput("StepsTensorList")) {
+    if (ctx.InputSize("EndsTensorList") > 0) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
         return KernelSignature(
             "set_value_grad",
             {GradVarName("Out")},
@@ -810,7 +810,7 @@ KernelSignature SetValueGradOpArgumentMapping(
             {GradVarName("Input"), GradVarName("ValueTensor")});
       }
     } else {
-      if (ctx.HasInput("StepsTensorList")) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
         return KernelSignature(
             "set_value_grad",
             {GradVarName("Out")},
