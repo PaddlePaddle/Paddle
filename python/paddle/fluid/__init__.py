@@ -228,3 +228,5 @@ if core.is_compiled_with_npu():
 atexit.register(core.clear_executor_cache)
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
 atexit.register(core.clear_kernel_factory)
+# NOTE(wangran16): clean up DeviceManger in advance manually.
+atexit.register(core.clear_device_manager)
