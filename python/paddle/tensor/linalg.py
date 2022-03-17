@@ -2990,3 +2990,71 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         singular_values = paddle.static.data(name='singular_values', shape=[0])
 
     return solution, residuals, rank, singular_values
+
+
+def corrcoef(x, rowvar=True, ddof=False, name=None):
+    """
+    Return Pearson product-moment correlation coefficients.
+
+    Please refer to the documentation for `cov` for more detail.  The
+    relationship between the correlation coefficient matrix, `R`, and the
+    covariance matrix, `C`, is
+
+    .. math:: R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }
+
+    The values of `R` are between -1 and 1, inclusive.
+
+    Parameters:
+
+        x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
+        rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True
+        ddof(Bool, optional): Has no effect, do not use.
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+
+        Tensor: The correlation coefficient matrix of the variables.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+
+        xt = paddle.rand((3,4))
+        paddle.linalg.corrcoef(xt)
+
+        '''
+        Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [[ 1.        , -0.73702252,  0.66228950],
+        [-0.73702258,  1.        , -0.77104872],
+        [ 0.66228974, -0.77104825,  1.        ]])
+        '''
+
+    """
+
+    if ddof is not False:
+        warnings.warn('ddof have no effect and are deprecated',
+                      DeprecationWarning)
+    c = cov(x, rowvar)
+    try:
+        d = paddle.diag(c)
+    except ValueError:
+        # scalar covariance
+        # nan if incorrect value (nan, inf, 0), 1 otherwise
+        return c / c
+
+    if paddle.is_complex(d):
+        d = d.real()
+    stddev = paddle.sqrt(d)
+    c /= stddev[:, None]
+    c /= stddev[None, :]
+
+    # Clip to [-1, 1].  This does not guarantee
+    if paddle.is_complex(c):
+        return paddle.complex(
+            paddle.clip(c.real(), -1, 1), paddle.clip(c.imag(), -1, 1))
+    else:
+        c = paddle.clip(c, -1, 1)
+
+    return c
