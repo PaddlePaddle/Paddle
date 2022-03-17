@@ -1006,7 +1006,7 @@ static std::string GenerateGradNodeCreationContent(
     // output autograd_meta should be got after running TraceOP.
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
-          "  std::vector<egr::AutogradMeta*> %s = "
+          "    std::vector<egr::AutogradMeta*> %s = "
           "egr::EagerUtils::autograd_meta(&%s);\n";
       get_output_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
@@ -1018,13 +1018,13 @@ static std::string GenerateGradNodeCreationContent(
         const std::string& inplace_input_autograd_name =
             "p_autograd_" + inplace_input_name;
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
-            "  %s = egr::EagerUtils::autograd_meta(&%s);\n";
+            "    %s = egr::EagerUtils::autograd_meta(&%s);\n";
         get_output_autograd_meta_str += paddle::string::Sprintf(
             GET_SINGLE_AUTOGRAD_META_TEMPLATE, inplace_input_autograd_name,
             inplace_input_name);
       } else {
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
-            "  egr::AutogradMeta* %s = "
+            "    egr::AutogradMeta* %s = "
             "egr::EagerUtils::autograd_meta(&%s);\n";
         get_output_autograd_meta_str +=
             paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE,
@@ -1098,7 +1098,7 @@ static std::string GenerateGradNodeCreationContent(
   size_t bwd_in_slot_num = out_vars.size();
   size_t bwd_out_slot_num = in_vars.size();
   const char* GRAD_OP_NODE_TEMPLATE =
-      "    auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
+      "      auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
   grad_node_creation_str += paddle::string::Sprintf(
       GRAD_OP_NODE_TEMPLATE, op_type, bwd_in_slot_num, bwd_out_slot_num);
@@ -1107,14 +1107,14 @@ static std::string GenerateGradNodeCreationContent(
   VLOG(6) << "Generated GradOpNode construction";
 
   // [GradOpNode] Set Attrs
-  grad_node_creation_str += "    // Set Attributes\n";
-  grad_node_creation_str += "    grad_node->SetAttrMap(std::move(attrs));\n";
+  grad_node_creation_str += "      // Set Attributes\n";
+  grad_node_creation_str += "      grad_node->SetAttrMap(std::move(attrs));\n";
   grad_node_creation_str +=
-      "    grad_node->SetDefaultAttrMap(std::move(default_attrs));\n";
+      "      grad_node->SetDefaultAttrMap(std::move(default_attrs));\n";
   grad_node_creation_str += "\n";
 
   // [GradOpNode] Set TensorWrappers
-  grad_node_creation_str += "    // Set Tensor Wrappers\n";
+  grad_node_creation_str += "      // Set Tensor Wrappers\n";
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -1126,7 +1126,7 @@ static std::string GenerateGradNodeCreationContent(
         full_reserved = "true";
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "    grad_node->SetTensorWrapper%s(%s, %s);\n";
+          "      grad_node->SetTensorWrapper%s(%s, %s);\n";
       // Replace output directly with input in inplace op.
       if (!inplace_map.empty() && inplace_map.count(tensor_wrapper_name)) {
         auto inplace_input_name = inplace_map[tensor_wrapper_name];
@@ -1155,12 +1155,12 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(%s, %d);\n";
+          "      grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
-          "    if(%s) grad_node->AddEdges(%s, %d);\n";
+          "      if(%s) grad_node->AddEdges(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
@@ -1169,11 +1169,11 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(&%s, %d);\n";
+          "      grad_node->SetGradOutMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
-      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
+      const char* ADD_EDGES_TEMPLATE = "      grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
@@ -1195,19 +1195,19 @@ static std::string GenerateGradNodeCreationContent(
       // Intermediate Tensor does not require SetHistory, nor RetainGrad
       pass_stop_gradient_args += ", " + inplace_input_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
-          "    egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
+          "      egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_OUT_RANK_TEMPLATE, inplace_input_autograd_name, output_position);
 
       // Intermediate Tensor does not require SetHistory
       if (!output.intermediate()) {
         const char* SET_HISTORY_TEMPLATE =
-            "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
+            "      egr::EagerUtils::SetHistory(%s, grad_node);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_HISTORY_TEMPLATE, inplace_input_autograd_name);
       }
       const char* SET_GRAD_IN_META_TEMPLATE =
-          "    grad_node->SetGradInMeta(%s, %d);\n";
+          "      grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
                                   inplace_input_autograd_name, output_position);
@@ -1216,7 +1216,7 @@ static std::string GenerateGradNodeCreationContent(
       if (!output.intermediate()) {
         VLOG(6) << "Generated Call RetainGradForTensor";
         const char* RETAIN_GRAD_TEMPLATE =
-            "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
         grad_node_creation_str +=
             paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, inplace_input_name);
       }
@@ -1229,38 +1229,38 @@ static std::string GenerateGradNodeCreationContent(
       if (output.duplicable()) {
         pass_stop_gradient_args += ", &" + output_autograd_name;
         const char* SET_OUT_RANK_TEMPLATE =
-            "    egr::EagerUtils::SetOutRankWithSlot(&%s, %d);\n";
+            "      egr::EagerUtils::SetOutRankWithSlot(&%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
         // Intermediate Tensor does not require SetHistory
         if (!output.intermediate()) {
           const char* SET_HISTORY_TEMPLATE =
-              "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
+              "      egr::EagerUtils::SetHistory(&%s, grad_node);\n";
           grad_node_creation_str += paddle::string::Sprintf(
               SET_HISTORY_TEMPLATE, output_autograd_name);
         }
         const char* SET_GRAD_IN_META_TEMPLATE =
-            "    grad_node->SetGradInMeta(&%s, %d);\n";
+            "      grad_node->SetGradInMeta(&%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
 
       } else {
         pass_stop_gradient_args += ", " + output_autograd_name;
         const char* SET_OUT_RANK_TEMPLATE =
-            "    egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
+            "      egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
         // Intermediate Tensor does not require SetHistory
         if (!output.intermediate()) {
           const char* SET_HISTORY_TEMPLATE =
-              "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
+              "      egr::EagerUtils::SetHistory(%s, grad_node);\n";
           grad_node_creation_str += paddle::string::Sprintf(
               SET_HISTORY_TEMPLATE, output_autograd_name);
         }
         const char* SET_GRAD_IN_META_TEMPLATE =
-            "    grad_node->SetGradInMeta(%s, %d);\n";
+            "      grad_node->SetGradInMeta(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
       }
@@ -1269,7 +1269,7 @@ static std::string GenerateGradNodeCreationContent(
       if (!output.intermediate()) {
         VLOG(6) << "Generated Call RetainGradForTensor";
         const char* RETAIN_GRAD_TEMPLATE =
-            "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
         grad_node_creation_str +=
             paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
       }
@@ -1283,21 +1283,28 @@ static std::string GenerateGradNodeCreationContent(
   // Then execute TraceOp and generate output autograd_meta.
   // Finally, Construct GradNode. (Replace output directly with input in inplace
   // op.)
+  // Add event record
+  std::string event_name = op_type + " node_creation";
   const char* GRAD_NODE_CREATION_TEMPLATE =
-      "  %s"
-      "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n\n"
+      "%s"
+      "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n"
       "%s\n"
       "%s"
+      "  {\n"
+      "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+      "paddle::platform::TracerEventType::Operator, 1);\n"
       "%s"
-      "  if(require_any_grad) {\n"
-      "    VLOG(6) << \" Construct Grad for %s \"; \n"
-      "    egr::EagerUtils::PassStopGradient(%s);\n"
-      "%s\n  }";
+      "    if(require_any_grad) {\n"
+      "      VLOG(6) << \" Construct Grad for %s \"; \n"
+      "      egr::EagerUtils::PassStopGradient(%s);\n"
+      "  %s\n"
+      "    }\n"
+      "  }";
   std::string grad_node_creation_body_str = paddle::string::Sprintf(
       GRAD_NODE_CREATION_TEMPLATE, prepare_autograd_meta_str,
       compute_require_grad_args, check_inplace_str, trace_op_body_str,
-      get_output_autograd_meta_str, op_type, pass_stop_gradient_args,
-      grad_node_creation_str);
+      event_name, get_output_autograd_meta_str, op_type,
+      pass_stop_gradient_args, grad_node_creation_str);
 
   return grad_node_creation_body_str;
 }
@@ -1715,18 +1722,6 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     std::string grad_node_creation_body_str = GenerateGradNodeCreationContent(
         fwd_info, bwd_info, trace_op_body_str, inplace_map);
 
-    // Add event record
-    std::string event_name = op_type + " node_creation";
-    const char* NODE_CREATION_TEMPLATE =
-        "{\n"
-        "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
-        "paddle::platform::TracerEventType::Operator, 1);\n"
-        "   %s\n"
-        "}";
-
-    grad_node_creation_body_str = paddle::string::Sprintf(
-        NODE_CREATION_TEMPLATE, event_name, grad_node_creation_body_str);
-
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
 
@@ -1795,15 +1790,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   }
 
   const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
-      "paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "  paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
       "paddle::platform::TracerEventType::Operator, 1);";
   std::string event_name = op_type + " dygraph";
   std::string fwd_record_event_str = paddle::string::Sprintf(
       DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
   const char* FWD_FUNCTION_TEMPLATE =
       "%s %s(%s) {\n\n"
-      " %s\n"
-      " %s\n"
+      "%s\n"
+      "%s\n"
       "}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
@@ -1814,6 +1809,95 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   std::string dygraph_function_declaration_str = paddle::string::Sprintf(
       FWD_HEADER_TEMPLATE, function_proto_return_type_str, function_name,
       dygraph_function_args_str);
+
+  std::string tmp_op_type = op_type;
+  std::string slice_str = "slice";
+  if (tmp_op_type == slice_str) {
+    fwd_function_str = R"(
+paddle::experimental::Tensor slice_dygraph_function(const paddle::experimental::Tensor& Input,const paddle::experimental::Tensor& StartsTensor,const paddle::experimental::Tensor& EndsTensor, const paddle::framework::AttributeMap& attr_map) {
+
+  VLOG(3) << "yoki: flag";
+  paddle::platform::RecordEvent dygraph_entrance_record_event("slice dygraph", paddle::platform::TracerEventType::Operator, 1);
+  VLOG(3) << "Running Eager Forward Op: slice";
+  // Dygraph Forward Pass
+
+  std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins = { { "Input", egr::EagerUtils::TrySyncToVars(Input) } };
+
+  if(StartsTensor.initialized()) ins["StartsTensor"] = egr::EagerUtils::TrySyncToVars(StartsTensor);
+  if(EndsTensor.initialized()) ins["EndsTensor"] = egr::EagerUtils::TrySyncToVars(EndsTensor);
+  std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs = { { "Out", {std::make_shared<egr::EagerVariable>(egr::Controller::Instance().GenerateUniqueName())}} };
+
+
+  // Prepare Autograd Meta 
+  egr::AutogradMeta* p_autograd_Input = egr::EagerUtils::nullable_autograd_meta(Input);
+  egr::AutogradMeta* p_autograd_StartsTensor = egr::EagerUtils::nullable_autograd_meta(StartsTensor);
+  egr::AutogradMeta* p_autograd_EndsTensor = egr::EagerUtils::nullable_autograd_meta(EndsTensor);
+
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+
+  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(trace_backward, p_autograd_Input, p_autograd_StartsTensor, p_autograd_EndsTensor);
+
+
+  paddle::framework::AttributeMap attrs = attr_map;
+  paddle::framework::AttributeMap default_attrs;
+  egr::Controller::Instance().GetCurrentTracer()->TraceOp("slice", ins, outs, attrs, 
+     egr::Controller::Instance().GetExpectedPlace(),
+     &default_attrs, true, {});
+
+  paddle::experimental::Tensor Out;
+  egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
+
+  VLOG(3) << "yoki: flag2";
+
+  {
+    VLOG(3) << "yoki: flag3";
+    paddle::platform::RecordEvent node_creation_record_event("slice node_creation", paddle::platform::TracerEventType::Operator, 1);
+    egr::AutogradMeta* p_autograd_Out = egr::EagerUtils::autograd_meta(&Out);
+    if(require_any_grad) {
+      VLOG(6) << " Construct Grad for slice "; 
+      egr::EagerUtils::PassStopGradient(false, p_autograd_Out);
+      VLOG(3) << "yoki: flag3.1";
+      // Create GradOpNode
+      auto grad_node = std::make_shared<GradNodeslice>(1, 3);
+      VLOG(3) << "yoki: flag3.2";
+
+      // Set Attributes
+      grad_node->SetAttrMap(std::move(attrs));
+      VLOG(3) << "yoki: flag3.3";
+      grad_node->SetDefaultAttrMap(std::move(default_attrs));
+      VLOG(3) << "yoki: flag3.4";
+
+      // Set Tensor Wrappers
+      grad_node->SetTensorWrapperEndsTensor(EndsTensor, true);
+      VLOG(3) << "yoki: flag3.5";
+      grad_node->SetTensorWrapperInput(Input, true);
+      VLOG(3) << "yoki: flag3.6";
+      grad_node->SetTensorWrapperStartsTensor(StartsTensor, true);
+      VLOG(3) << "yoki: flag4";
+
+      grad_node->SetGradOutMeta(p_autograd_Input, 0);
+      if(p_autograd_Input) grad_node->AddEdges(p_autograd_Input, 0);
+      grad_node->SetGradOutMeta(p_autograd_StartsTensor, 1);
+      if(p_autograd_StartsTensor) grad_node->AddEdges(p_autograd_StartsTensor, 1);
+      grad_node->SetGradOutMeta(p_autograd_EndsTensor, 2);
+      if(p_autograd_EndsTensor) grad_node->AddEdges(p_autograd_EndsTensor, 2);
+      egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 0);
+      egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
+      grad_node->SetGradInMeta(p_autograd_Out, 0);
+      egr::EagerUtils::CheckAndRetainGrad(Out);
+      VLOG(3) << "yoki: flag5";
+
+    }
+    VLOG(3) << "yoki: flag6";
+  }
+  VLOG(3) << "yoki: flag7";
+
+  return Out;
+
+}
+
+)";
+  }
 
   return {fwd_function_str, dygraph_function_declaration_str};
 }

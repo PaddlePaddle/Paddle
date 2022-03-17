@@ -14,7 +14,7 @@
 
 import os
 import argparse
-from eager_gen import namespace, yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import namespace, yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap, GetInplacedFunctionName
 
 skipped_fwd_api_names = set(["scale"])
 
@@ -326,6 +326,19 @@ if __name__ == "__main__":
             python_c_function_list.append(python_c_function_str)
             python_c_function_reg_list.append(python_c_function_reg_str)
             print("Generated Python-C Function: ", python_c_function_str)
+
+            # Inplace Version Python-C Function
+            if 'inplace' in fwd_api.keys():
+                fwd_api_name_inplaced = GetInplacedFunctionName(fwd_api_name)
+
+                python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
+                    fwd_api_name_inplaced, forward_inputs_position_map,
+                    forward_attrs_list, forward_outputs_position_map,
+                    optional_inputs, is_forward_only)
+                python_c_function_list.append(python_c_function_str)
+                python_c_function_reg_list.append(python_c_function_reg_str)
+                print("Generated Inplaced Python-C Function: ",
+                      python_c_function_str)
 
         # Append Namespace
         python_c_functions_reg_str += ",\n".join(

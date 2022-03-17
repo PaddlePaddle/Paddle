@@ -38,15 +38,11 @@ class TensorWrapper {
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
-    if (phi::DenseTensor::classof(tensor.impl().get())) {
+    if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(tensor.impl().get());
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
       inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
-
-    } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Unrecognized tensor type for snapshoting inplace version."));
     }
 
     /**
@@ -120,7 +116,8 @@ class TensorWrapper {
                  "no_need_buffer_ is true.";
       return;
     }
-    if (phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
+    if (intermidiate_tensor_.impl() &&
+        phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
@@ -144,9 +141,6 @@ class TensorWrapper {
       VLOG(6) << " The current_inplace_version of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "
               << current_inplace_version << " ]";
-    } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Unrecognized tensor type for checking inplace version."));
     }
   }
 
