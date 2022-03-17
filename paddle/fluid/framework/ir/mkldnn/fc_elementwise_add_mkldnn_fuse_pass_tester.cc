@@ -173,6 +173,66 @@ TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_NotResidualConnection) {
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 2}, {"elementwise_add", 1}}));
 }
 
+TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_VITOCR) {
+  auto prog =
+      test::BuildProgramDesc({"a", "b", "c", "d", "e", "f", "g", "h", "i"}, {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2"});
+
+  Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "b"}}, {{"Out", "c"}});
+
+  test::CreateOp(&prog, "layer_norm", {{"X","c"}, {"Bias","ln_bias"}, {"Scale","ln_scale"}}, {{"Y","d"}});
+  test::CreateOp(&prog, "fc",
+                 {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
+                 {{"Out", "e"}});
+  test::CreateOp(&prog, "gelu", {{"X", "e"}}, {{"Out", "f"}});
+  test::CreateOp(&prog, "fc",
+                 {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
+                 {{"Out", "g"}});
+  Create_Op_elementwise_add(&prog, {{"X", "g"}, {"Y", "c"}}, {{"Out", "h"}});
+  test::CreateOp(&prog, "relu", {{"X", "h"}}, {{"Out", "i"}});
+
+  Graph graph(prog);
+
+  EXPECT_TRUE(test::RunPassAndAssert(&graph,
+                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
+                                     "i", nodes_removed, nodes_added));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 2}, {"elementwise_add", 1}}));
+}
+
+TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_Sequence) {
+  auto prog =
+      test::BuildProgramDesc({"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"},
+      {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2", "ln_bias2", "ln_scale2", "bias3", "weights3", "bias4", "weights4"});
+
+  Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "b"}}, {{"Out", "c"}});
+
+  test::CreateOp(&prog, "layer_norm", {{"X","c"}, {"Bias","ln_bias"}, {"Scale","ln_scale"}}, {{"Y","d"}});
+  test::CreateOp(&prog, "fc",
+                 {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
+                 {{"Out", "e"}});
+  test::CreateOp(&prog, "gelu", {{"X", "e"}}, {{"Out", "f"}});
+  test::CreateOp(&prog, "fc",
+                 {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
+                 {{"Out", "g"}});
+  Create_Op_elementwise_add(&prog, {{"X", "g"}, {"Y", "c"}}, {{"Out", "h"}});
+  
+  test::CreateOp(&prog, "layer_norm", {{"X","h"}, {"Bias","ln_bias2"}, {"Scale","ln_scale2"}}, {{"Y","i"}});
+  test::CreateOp(&prog, "fc",
+                 {{"Input", "i"}, {"Bias", "bias3"}, {"W", "weights3"}},
+                 {{"Out", "j"}});
+  test::CreateOp(&prog, "gelu", {{"X", "j"}}, {{"Out", "k"}});
+  test::CreateOp(&prog, "fc",
+                 {{"Input", "k"}, {"Bias", "bias4"}, {"W", "weights4"}},
+                 {{"Out", "l"}});
+  Create_Op_elementwise_add(&prog, {{"X", "h"}, {"Y", "l"}}, {{"Out", "m"}});
+
+  Graph graph(prog);
+
+  EXPECT_TRUE(test::RunPassAndAssert(&graph,
+                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
+                                     "m", nodes_removed*2, nodes_added*2));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 4}, {"elementwise_add", 1}}));
+}
+
 TEST(FCElementwiseAddMKLDNNFusePass, pass_op_version_check) {
   ASSERT_TRUE(
       paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
