@@ -25,6 +25,7 @@
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/platform/timer.h"
 
@@ -77,10 +78,10 @@ enum TrainingPhase {
   Save = 2
 };
 
-enum ValueType {
-  Sparse = 0,
-  Dense = 1
-};
+// enum ValueType {
+//   Sparse = 0,
+//   Dense = 1
+// };
 
 struct PushContext {
   const uint64_t* keys;

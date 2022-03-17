@@ -543,7 +543,7 @@ std::future<int32_t> BrpcPsClient::Pull(RequestContext& pull_context) {
 }
 
 std::future<int32_t> BrpcPsClient::Push(RequestContext& push_context) {
-  if (push_context.value_type == Dense) { // pull dense
+  if (push_context.value_type == Dense) { // push dense
     const Region* dense_region = push_context.push_context.push_dense_values;
     push_dense(dense_region, push_context.num, push_context.table);
   } else { // push sparse

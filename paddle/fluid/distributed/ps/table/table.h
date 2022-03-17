@@ -45,7 +45,7 @@ struct PullContext {
   char** ptr_values;
 };
 
-struct PushContext {
+struct TablePushContext {
   const uint64_t* keys;
   const float* values;
   const float** ptr_values;
@@ -54,7 +54,7 @@ struct PushContext {
 struct TableContext {
   ValueType value_type;
   PullContext pull_context;
-  PushContext push_context;
+  TablePushContext push_context;
   size_t num;
   bool use_ptr;
 };

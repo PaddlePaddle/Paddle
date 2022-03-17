@@ -405,15 +405,9 @@ int32_t MemorySparseTable::Pull(TableContext& context) {
 
 int32_t MemorySparseTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
-  if (context.pull_context.values != nullptr) {
-    const float* values = context.push_context.values;
-    const uint64_t* keys = context.push_context.keys;
-    return push_sparse(keys, values, context.num);
-  } else {
-    const float** values = context.push_context.ptr_values;
-    const uint64_t* keys = context.push_context.keys;
-    return push_sparse(keys, values, context.num);
-  }
+  
+  const uint64_t* keys = context.push_context.keys;
+  return push_sparse(keys, context.push_context.ptr_values, context.num);
 }
 
 int32_t MemorySparseTable::pull_sparse(float* pull_values,
