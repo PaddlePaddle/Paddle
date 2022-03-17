@@ -44,6 +44,8 @@ function update_pd_ops() {
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
    python3 generate_phi_kernel_dialect.py
+   # generate test model
+   python3 paddle/infrt/tests/model/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
 }
 
 function init() {
