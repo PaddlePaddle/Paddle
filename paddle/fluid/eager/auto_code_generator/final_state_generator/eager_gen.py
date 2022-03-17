@@ -636,14 +636,15 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     FUNCTION_TEMPLATE = """
 std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
     // Call grad_api function
+    VLOG(3) << \"Finally State Running: \" << \"{}\"; 
     auto grad_api_returns = {}::{}({});
     {}
 }}
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, grad_api_namespace, bwd_api_name, grad_api_args_str,
-        returns_str)
+        grad_node_name, grad_node_name, grad_api_namespace, bwd_api_name,
+        grad_api_args_str, returns_str)
 
     return node_definition_str
 

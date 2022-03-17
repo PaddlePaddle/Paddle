@@ -2074,9 +2074,12 @@ static std::string GenerateGradNodeCCContents(
   const char* GRAD_FUNCTION_TEMPLATE =
       "std::vector<std::vector<paddle::experimental::Tensor>> "
       "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) {\n%s\n}";
-  std::string grad_function_str = paddle::string::Sprintf(
-      GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) {\n"
+      "VLOG(3) << \"Intermediate State Running:\" << \"%s\" << \"_GRAD\" ;\n"
+      "%s\n}";
+  std::string grad_function_str =
+      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type, fwd_op_type,
+                              generated_grad_function_body);
 
   VLOG(6) << "Generated returns";
 
