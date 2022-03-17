@@ -114,6 +114,7 @@ __global__ void GetBlockCountKernel(const InT *in,
 * 1. Each thread load 2 data : threadIdx.x and threadIdx.x + blockDimx.x
 * 2. Cumsum limitation is blockDim.x must be less than 512
 */
+
 template <typename InT,
           typename OutT,
           typename Functor,
