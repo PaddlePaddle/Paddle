@@ -7,7 +7,6 @@ gather_srcs(infrt_src SRCS
     dense_tensor.cc
     mlir_loader.cc
     diagnostic_utils.cc
-    pd_ops.cc
     )
 
 mlir_tablegen_on(tensor_shape DIALECT ts)
@@ -28,6 +27,7 @@ add_dependencies(print-ir pd_ops_inc)
 cc_test_tiny(test_infrt_mlir_loader SRCS mlir_loader_test.cc DEPS infrt ${MLIR_IR_LIBS})
 
 add_subdirectory(infrt)
+add_subdirectory(pd)
 add_subdirectory(tensorrt)
 
 if (INFRT_WITH_PHI)

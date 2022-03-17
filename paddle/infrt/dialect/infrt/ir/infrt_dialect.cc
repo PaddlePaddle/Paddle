@@ -141,6 +141,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
   if (keyword == "tensor_list") {
     return infrt::DenseTensorListType::get(parser.getContext());
   }
+
   // Todo: parse other type
   return mlir::Type();
 }

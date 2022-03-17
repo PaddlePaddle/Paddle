@@ -81,22 +81,43 @@ namespace tensorrt {
     CHECK_NOTNULL(v);
     auto* t = &v->get<phi::DenseTensor>();
     value_to_tensor_map[operand] = t;
+
     // TODO(wilber): get input info from mlir.
+
     // TODO(wilber): input dims, now only support static_shape, and just remove
-    // the first dimension.
+    // the first dimension. If the first dim is not -1, maybe we can pass the
+    // origin dims.
+
     // TODO(wilber): now only suppot float input.
-    // TODO(wilber): A trick: the weights are CPU tensor and inputs are GPU
-    // tensor, so we treat all GPU tensors as inputs to trt
-    if (t->place().GetType() == phi::AllocationType::GPU) {
-      trt_bind_inputs[input_name] = t;
-      nvinfer1::Dims dims;
-      dims.nbDims = t->dims().size() - 1;
-      for (int i = 0; i < dims.nbDims; ++i) {
-        dims.d[i] = t->dims()[i + 1];
+
+    if (operand.isa<mlir::BlockArgument>()) {
+      // TODO(wilber): A trick: the weights are CPU tensor and inputs are GPU
+      // tensor, so we treat all GPU tensors as inputs to trt.
+      if (t->place().GetType() == phi::AllocationType::GPU) {
+        trt_bind_inputs[input_name] = t;
+        nvinfer1::Dims dims;
+        dims.nbDims = t->dims().size() - 1;
+        for (int i = 0; i < dims.nbDims; ++i) {
+          dims.d[i] = t->dims()[i + 1];
+        }
+        auto* in = network->addInput(
+            input_name.c_str(), nvinfer1::DataType::kFLOAT, dims);
+        value_to_trt_tensor_map[operand] = in;
       }
-      auto* in = network->addInput(
-          input_name.c_str(), nvinfer1::DataType::kFLOAT, dims);
-      value_to_trt_tensor_map[operand] = in;
+    } else {
+      // TODO(wilber): Replace with the op name that generates the weights.
+      if (operand.getDefiningOp()->getName().getStringRef() !=
+          "phi_dt.create_dense_tensor.cpu") {
+        trt_bind_inputs[input_name] = t;
+        nvinfer1::Dims dims;
+        dims.nbDims = t->dims().size() - 1;
+        for (int i = 0; i < dims.nbDims; ++i) {
+          dims.d[i] = t->dims()[i + 1];
+        }
+        auto* in = network->addInput(
+            input_name.c_str(), nvinfer1::DataType::kFLOAT, dims);
+        value_to_trt_tensor_map[operand] = in;
+      }
     }
   }
 
