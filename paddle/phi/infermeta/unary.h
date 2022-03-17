@@ -34,11 +34,6 @@ class MetaConfig;
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
-void UnsqueezeInferMeta(const MetaTensor& x,
-                        const ScalarArray& axes,
-                        MetaTensor* xshape,
-                        MetaTensor* out);
-
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,
@@ -196,6 +191,11 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
 
+void SqueezeInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axes,
+                      MetaTensor* xshape,
+                      MetaTensor* out);
+
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
                   DataType dtype,
@@ -243,6 +243,11 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void UnsqueezeInferMeta(const MetaTensor& x,
+                        const ScalarArray& axes,
+                        MetaTensor* xshape,
+                        MetaTensor* out);
 
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,

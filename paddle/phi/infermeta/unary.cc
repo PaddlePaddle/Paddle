@@ -1237,6 +1237,40 @@ void SplitInferMeta(const MetaTensor& x,
   }
 }
 
+void SqueezeInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axes,
+                      MetaTensor* xshape,
+                      MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  // Check input tensor dims (<6) Eigen limit.
+  PADDLE_ENFORCE_LE(x_dims.size(),
+                    6,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) "
+                        "should be in the range of [1, 6] (Eigen limit)."
+                        "But received X's dimensions = %d, X's shape = [%s].",
+                        x_dims.size(),
+                        x_dims));
+
+  auto out_dims = funcs::GetOutputSqueezeShape(axes, x_dims, false);
+  out->set_dims(out_dims);
+  if (x_dims[0] == out_dims[0]) {
+    // Only pass LoD when the first dimension of output and Input(X)
+    // are the same.
+    out->share_lod(x);
+  }
+
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  xshape->set_dtype(x.dtype());
+  out->set_dtype(x.dtype());
+}
+
 /*  Why not use SumRawInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
