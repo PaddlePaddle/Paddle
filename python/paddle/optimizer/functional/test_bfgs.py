@@ -21,136 +21,44 @@ import numpy as np
 import paddle.nn.functional as F
 import paddle.fluid as fluid
 
+np.random.seed(123)
+
 
 class TestBfgs(unittest.TestCase):
-    def test_static_quadratic_1d(self):
-        minimun = 1.0
+    def test_static_graph(self, func, x0, H0=None, line_search_fn='strong_wolfe'):
+            dimension = x0.shape[0]
+            paddle.enable_static()
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.program_guard(main, startup):
+                X = paddle.static.data(name='x', shape=[dimension], dtype='float32')
+                Y = miminize_bfgs(func, X, initial_inverse_hessian_estimate=H0, line_search_fn=line_search_fn)
 
+            exe = fluid.Executor()
+            exe.run(startup)
+            return exe.run(main, feed={'x': x0}, fetch_list=[Y])
+            
+
+    def test_dynamic_graph(self, func, x0, H0=None, line_search_fn='strong_wolfe'):
+        paddle.disable_static()
+        return  miminize_bfgs(func, x0, initial_inverse_hessian_estimate=H0, line_search_fn=line_search_fn)
+
+    def test_quadratic_nd(self):
         def func(x):
-            # df = 2 * (x - minimun)
-            return (x - minimun)**2
+            return paddle.dot(x + 1.99, x + 3.01)
+  
+        for dimension in [1, 2, 1000]:
+            x0  = np.random.random(size=[dimension]).astype('float32')
+            results = self.test_static_graph(func, x0)
+            print(results[1])
+            self.assertTrue(np.allclose(np.zeros(dimension), results[1]))
 
-        position = np.array([789.9], dtype='float32')
-        paddle.enable_static()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            X = paddle.static.data(name='x', shape=[1], dtype='float32')
-            Y = miminize_bfgs(func, position)
+            results = self.test_dynamic_graph(func, x0)
+            self.assertTrue(np.allclose(np.zeros(dimension), results[1].numpy())) 
 
-        exe = fluid.Executor()
-        exe.run(startup)
-        results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
-                                                    results[3]))
-        self.assertTrue(np.allclose(minimun, results[0], rtol=1e-08))
-
-    def test_static_quadratic_2d(self):
-        def func(x):
-            minimun = paddle.assign(np.array([1.0, 2.0], dtype='float32'))
-            scale = paddle.assign(np.array([3.0, 4.0], dtype='float32'))
-            return paddle.sum(
-                paddle.multiply(scale, F.square_error_cost(x, minimun)))
-
-        position = np.array([1234.567, -345.9876], dtype='float32')
-        paddle.enable_static()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            X = paddle.static.data(name='x', shape=[2], dtype='float32')
-            Y = miminize_bfgs(func, position)
-
-        exe = fluid.Executor()
-        exe.run(startup)
-        results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('num_func_calls: {} \n position: {}\n value: {} \n g: {}\n H: {} \n'.format(results[0], results[1], results[2], results[3],
-                                                    results[3]))
-
-        self.assertTrue(np.allclose([1.0, 2.0], results[1], rtol=1e-08))
-
-    def test_static_inf_minima(self):
-        extream_point = paddle.to_tensor([-1, 2])
-
-        def func(x):
-            # df = 3(x - 1.01)(x - 0.99) = 3x^2 - 3*2x + 3*1.01*0.99
-            # f = x^3 - 3x^2 + 3*1.01*0.99x
-            return x * x * x / 3.0 - (
-                extream_point[0] + extream_point[1]
-            ) * x * x / 2 + extream_point[0] * extream_point[1] * x
-
-        position = paddle.to_tensor(3.15)
-        results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
-                                                    results[3]))
-
-        self.assertAlmostEqual(float("-inf"), position.numpy())
-
-    def test_static_multi_minima_with_tf(self):
-        def func(x):
-            # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
-            # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
-            return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
-
-        position = np.array([3.6], dtype='float32')
-        paddle.enable_static()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            X = paddle.static.data(name='x', shape=[1], dtype='float32')
-            Y = miminize_bfgs(func, position)
-
-        exe = fluid.Executor()
-        exe.run(startup)
-        results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
-                                                    results[3]))
-
-        self.assertTrue(np.allclose(-1.1, results[0], rtol=1e-08))
-
-        import tensorflow as tf
-        import tensorflow_probability as tfp
-        fdf = lambda x: ValueAndGradient(x=x, f=3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x, df=12 * x**3 + 1.2 * x**2 - 11.28 * x + 2.112)
-        #for position in positions:
-
-    #results = tfp.optimizer.linesearch.hager_zhang(fdf)
-
-    #self.assertTrue(np.allclose(minimun.numpy(), results_paddle.numpy(), rtol=1e-08))
-
-    def test_quadratic_1d(self):
-        minimun = paddle.to_tensor([1.0])
-        scale = paddle.to_tensor([1.0])
-
-        def func(x):
-            return paddle.sum(scale.multiply(F.square_error_cost(x, minimun)))
-
-        position = paddle.to_tensor([789.9])
-        results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
-                                                    results[3]))
-
-        self.assertTrue(
-            np.allclose(
-                minimun.numpy(), results[0].numpy(), rtol=1e-06))
-
-    def test_quadratic_2d(self):
-        minimun = paddle.to_tensor([1.0, 2.0])
-        scale = paddle.to_tensor([3.0, 4.0])
-
-        def func(x):
-            return paddle.sum(scale.multiply(F.square_error_cost(x, minimun)))
-
-        position = paddle.to_tensor([1234.567, -345.9876])
-        results = miminize_bfgs(func, position)
-        print('num_func_calls: {} \n position: {}\n value: {} \n g: {}\n H: {} \n'.format(results[0], results[1], results[2], results[3],
-                                                    results[3]))
-
-        self.assertTrue(
-            np.allclose(
-                minimun.numpy(), results[1].numpy(), rtol=1e-08))
 
     def test_inf_minima(self):
         extream_point = paddle.to_tensor([-1, 2])
-
         def func(x):
             # df = 3(x - 1.01)(x - 0.99) = 3x^2 - 3*2x + 3*1.01*0.99
             # f = x^3 - 3x^2 + 3*1.01*0.99x
@@ -158,37 +66,59 @@ class TestBfgs(unittest.TestCase):
                 extream_point[0] + extream_point[1]
             ) * x * x / 2 + extream_point[0] * extream_point[1] * x
 
-        position = paddle.to_tensor(3.15)
-        results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
-                                                    results[3]))
+        x0  = np.random.random(size=[2]).astype('float32')
 
+        self.test_static_graph(func, x0)
         self.assertAlmostEqual(float("-inf"), position.numpy())
 
-    def test_multi_minima_with_tf(self):
-        minimun = paddle.to_tensor([1.0, 2.0])
+        self.test_static_graph(func, x0)
+        self.assertAlmostEqual(float("-inf"), position.numpy())
 
+        
+    def test_multi_minima(self):
         def func(x):
             # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
             # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
+            # minimum = -1.1 or 0.8
             return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
 
-        position = paddle.to_tensor(0.9)
-        results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
-                                                    results[3]))
+        x0 = np.array([0.84], dtype='float32')
+        x1 = np.array([-1.3], dtype='float32')
 
-        self.assertTrue(np.allclose(-1.1, results[0].numpy(), rtol=1e-07))
+        results = self.test_static_graph(func, x0)
+        self.assertTrue(np.allclose(0.8, results[1]))
 
-        import tensorflow as tf
-        import tensorflow_probability as tfp
-        fdf = lambda x: ValueAndGradient(x=x, f=3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x, df=12 * x**3 + 1.2 * x**2 - 11.28 * x + 2.112)
-        #for position in positions:
+        results = self.test_static_graph(func, x1)
+        self.assertTrue(np.allclose(-1.1, results[1]))
 
-    #results = tfp.optimizer.linesearch.hager_zhang(fdf)
+    def test_initial_inverse_hessian_estimate(self):
+        def func(x):
+            return paddle.dot(x, x)
 
-    #self.assertTrue(np.allclose(minimun.numpy(), results_paddle.numpy(), rtol=1e-08))
+        x0  = np.random.random(size=[2]).astype('float32')
+        H0 = [[1.0, 2.0], [3.0, 1.0]]
+        H1 = [[1.0, 2.0], [2.0, 1.0]]
+        
+        results = self.test_static_graph(func, x0, H0=H0)
+        self.assertTrue(np.allclose(0.8, results[1]))
+        results = self.test_static_graph(func, x0, H0=H0)
+        self.assertTrue(np.allclose(0.8, results[1]))
+
+        
+    def test_static_line_search_fn(self):
+        def func(x):
+            return paddle.dot(x, x)
+
+        x0  = np.random.random(size=[2]).astype('float32')
+
+        self.test_static_graph(func, x0, line_search_fn='other')
+        self.assertTrue(np.allclose(0.8, results[1]))
+        self.test_static_graph(func, x0, line_search_fn='other')
+        self.assertTrue(np.allclose(0.8, results[1]))
 
 
 test = TestBfgs()
-test.test_quadratic_2d()
+test.test_quadratic_nd()
+
+#if __name__ == '__main__':
+    #unittest.main()

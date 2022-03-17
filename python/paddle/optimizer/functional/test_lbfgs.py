@@ -76,6 +76,27 @@ class TestLbfgs(unittest.TestCase):
         results = exe.run(main, feed={'x': position}, fetch_list=[Y])
         print('position: {}\n g: {}\n'.format(results[0], results[2]))
         self.assertTrue(np.allclose(minimun, results[0], rtol=1e-08))
+    
+    def test_static_line_search_fn(self):
+        minimun = 1.2
+
+        def func(x):
+            # df = 2 * (x - minimun)
+            return (x - minimun)**2
+
+        position = np.array([100.789], dtype='float32')
+        paddle.enable_static()
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            X = paddle.static.data(name='x', shape=[1], dtype='float32')
+            Y = miminize_lbfgs(func, position, line_search_fn='other')
+
+        exe = fluid.Executor()
+        exe.run(startup)
+        results = exe.run(main, feed={'x': position}, fetch_list=[Y])
+        print('position: {}\n g: {}\n'.format(results[0], results[2]))
+        self.assertTrue(np.allclose(minimun, results[0], rtol=1e-08))
 
     def test_static_quadratic_2d(self):
         def func(x):
@@ -276,4 +297,4 @@ class TestLbfgs(unittest.TestCase):
 
 
 test = TestLbfgs()
-test.test_static_quadratic_2d()
+test.test_static_line_search_fn()

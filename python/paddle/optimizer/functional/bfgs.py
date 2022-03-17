@@ -48,13 +48,15 @@ def miminize_bfgs(objective_func,
     Args:
         objective_func: the objective function to minimize. ``func`` accepts
             a multivariate input and returns a scalar.
-        initial_position (Tensor): the starting point of the iterates.
+        initial_position (Tensor): the starting point of the iterates. For methods like Newton and quasi-Newton 
+        the initial trial step length should always be 1.0 .
         max_iters (Scalar): the maximum number of minimization iterations.
         tolerance_grad (Scalar): terminates if the gradient norm is smaller than
             this. Currently gradient norm uses inf norm.
         tolerance_change (Scalar): terminates if the change of function value/position/parameter between 
             two iterations is smaller than this value.
-        initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation.
+        initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation at initial_position.
+        It must be symmetric and positive definite.
         line_search_fn (str): indicate which line search method to use, 'strong wolfe' or 'hager zhang'. 
             only support 'strong wolfe' right now.
         max_line_search_iters (Scalar): the maximum number of line search iterations.
@@ -73,8 +75,18 @@ def miminize_bfgs(objective_func,
     """
     I = paddle.eye(initial_position.shape[0], dtype=dtype)
     if initial_inverse_hessian_estimate is None:
-        initial_inverse_hessian_estimate = I
-    Hk = paddle.assign(initial_inverse_hessian_estimate)
+        H0 = I
+    else:
+        H0 = paddle.assign(initial_inverse_hessian_estimate)
+        is_symmetric = paddle.all(paddle.equal(H0, H0.t()))
+        assert is_symmetric, "initial_inverse_hessian_estimate should be symmetric."
+        try: 
+            paddle.linalg.cholesky(H0)
+        except RuntimeError as error:
+            print(error)
+            print("initial_inverse_hessian_estimate should be positive definite.")
+        
+    Hk = paddle.assign(H0)
     xk = paddle.assign(initial_position)
 
     value, g1 = _value_and_gradient(objective_func, xk)
@@ -91,7 +103,10 @@ def miminize_bfgs(objective_func,
 
             pk = -paddle.matmul(Hk, g1)
             
-            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+            if line_search_fn == 'strong_wolfe':
+                alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
+            else:
+                assert line_search_fn == 'strong_wolfe', "currently only support line_search_fn = 'strong_wolfe'."
             num_func_calls += ls_func_calls
             sk = alpha * pk
             yk = g2 - g1
@@ -126,7 +141,10 @@ def miminize_bfgs(objective_func,
         def body(k, done, num_func_calls, xk, value, g1, Hk):
             pk = -paddle.matmul(Hk, g1)
             
-            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+            if line_search_fn == 'strong_wolfe':
+                alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
+            else:
+                assert line_search_fn == 'strong_wolfe', "currently only support line_search_fn = 'strong_wolfe'."
             num_func_calls += ls_func_calls
 
             sk = alpha * pk

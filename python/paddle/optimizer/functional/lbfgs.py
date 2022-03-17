@@ -41,7 +41,8 @@ def miminize_lbfgs(objective_func,
     Args:
         objective_func: the objective function to minimize. ``func`` accepts
             a multivariate input and returns a scalar.
-        initial_position (Tensor): the starting point of the iterates.
+        initial_position (Tensor): the starting point of the iterates. For methods like Newton and quasi-Newton 
+        the initial trial step length should always be 1.0 .
         history_size (Scalar): the number of stored vector pairs {si,yi}.
         max_iters (Scalar): the maximum number of minimization iterations.
         tolerance_grad (Scalar): terminates if the gradient norm is smaller than
@@ -102,7 +103,10 @@ def miminize_lbfgs(objective_func,
             if paddle.linalg.norm(pk, p=np.inf) < tolerance_change:
                 break
 
-            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+            if line_search_fn == 'strong_wolfe':
+                alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
+            else:
+                assert line_search_fn == 'strong_wolfe', "currently only support line_search_fn = 'strong_wolfe'."
             num_func_calls += ls_func_calls
              
             sk = alpha * pk
@@ -175,8 +179,11 @@ def miminize_lbfgs(objective_func,
             pk = -r
             done = paddle.linalg.norm(pk, p=np.inf) < tolerance_change
 
-            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
-
+            if line_search_fn == 'strong_wolfe':
+                alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
+            else:
+                assert line_search_fn == 'strong_wolfe', "currently only support line_search_fn = 'strong_wolfe'."
+            
             sk = alpha * pk
             yk = g2 - g1
 
