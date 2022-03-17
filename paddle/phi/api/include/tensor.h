@@ -397,7 +397,9 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return void
    */
-  void copy_(const Tensor& src, const bool blocking);
+  void copy_(const Tensor& src,
+             const phi::Place& target_place,
+             const bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
