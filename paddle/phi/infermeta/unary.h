@@ -426,4 +426,9 @@ void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
+void ChannelShuffleInferMeta(const MetaTensor& x,
+                             int groups,
+                             const std::string& data_format,
+                             MetaTensor* out);
+
 }  // namespace phi
