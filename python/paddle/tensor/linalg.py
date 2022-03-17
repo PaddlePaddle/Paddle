@@ -3051,10 +3051,11 @@ def corrcoef(x, rowvar=True, ddof=False, name=None):
     c /= stddev[:, None]
     c /= stddev[None, :]
 
-    # Clip to [-1, 1].
+    # Clip to [-1, 1].  This does not guarantee
     if paddle.is_complex(c):
-        return paddle.complex(
-            paddle.clip(c.real(), -1, 1), paddle.clip(c.imag(), -1, 1))
+        c_real = paddle.clip(c.real(), -1, 1)
+        c_imag = paddle.clip(c.imag(), -1, 1)
+        return paddle.complex(c_real, c_imag)
     else:
         c = paddle.clip(c, -1, 1)
 
