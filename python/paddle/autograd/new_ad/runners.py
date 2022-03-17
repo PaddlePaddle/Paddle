@@ -28,7 +28,7 @@ class ADRunnerState(threading.local):
             'primitive': MakePrimitive(),
             'linearize': Linearize(),
             'transpose': Transpose(),
-            'edit': EditProgram(),
+            'emit': EmitProgram(),
         }
         self.runner = None
 
@@ -61,7 +61,7 @@ class MakePrimitive(Runner):
     def run_op(self, op, *args, **kwargs):
         primitivemaker = primitivemakers[op]
         primitive_fn = primitivemaker(*args, **kwargs)
-        switch_runner('edit')
+        switch_runner('emit')
         nins = len(inspect.getargspec(primitive_fn).args)
         ins = [args[i].name for i in range(nins)]
         primitive_fn(*ins)
@@ -73,7 +73,7 @@ class Linearize(Runner):
     def run_op(self, op, *args, **kwargs):
         linearizemaker = linearizemakers[op]
         linearize_fn = linearizemaker(*args, **kwargs)
-        switch_runner('edit')
+        switch_runner('emit')
         nins = len(inspect.getargspec(primitive_fn).args)
         ins = [var.name for var in map(var2dot, args[0:nins])]
         out_dot = list(linearize_fn(ins))
@@ -85,14 +85,14 @@ class Transpose(Runner):
     def run_op(self, op, *args, **kwargs):
         transposemaker = transposemakers[op]
         transpose_fn = transposemaker(*args, **kwargs)
-        switch_runner('edit')
+        switch_runner('emit')
         out_bar = make_var(is_tangent=True)
         in_bars = transpose_fn(out_bar)
         switch_runner('transpose')
         return out_bar, in_bars
 
 
-class Edit(Runner):
+class EmitProgram(Runner):
     def run_op(self, op, *args, **kwargs):
         nins = op.nins if op.nins is not None else len(args - op.nouts)
         op_desc = _create_op_desc(op.optype,

@@ -18,7 +18,7 @@ from paddle.framwork import default_main_program
 
 
 # functional apis
-def jvp(func, xs, v=None, create_graph=True, batch=False):
+def jvp(func, xs, v=None):
     if v is None:
         v = [paddle.ones_like(y) for x in xs]
     ys = func(xs)
@@ -28,7 +28,7 @@ def jvp(func, xs, v=None, create_graph=True, batch=False):
     return y_dots
 
 
-def vjp(func, xs, v=None, create_graph=True, batch=False):
+def vjp(func, xs, v=None):
     if v is None:
         v = [paddle.ones_like(y) for y in ys]
     ys = func(xs)
@@ -39,21 +39,21 @@ def vjp(func, xs, v=None, create_graph=True, batch=False):
     return x_bars
 
 
-def hvp(func, xs, v=None, create_graph=True, batch=False):
+def hvp(func, xs, v=None):
     pass
 
 
-def vhp(func, xs, v=None, create_graph=True, batch=False):
+def vhp(func, xs, v=None):
     pass
 
 
 class Jacobian(object):
-    def __init__(self, func, xs, create_graph=True, batch=False):
+    def __init__(self, func, xs, batch=False):
         pass
 
 
 class Hessian(object):
-    def __init__(self, func, xs, create_graph=True, batch=False):
+    def __init__(self, func, xs, batch=False):
         pass
 
 
