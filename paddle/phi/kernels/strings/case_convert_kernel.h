@@ -13,9 +13,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/strings/unary.h"
 #include "paddle/phi/kernels/strings/case_utils.h"
-#include "paddle/phi/kernels/strings/strings_empty_kernel.h"
 
 using pstring = ::phi::dtype::pstring;
 
@@ -36,8 +35,8 @@ void StringUpperKernel(const ContextT& dev_ctx,
 
 template <typename ContextT>
 StringTensor StringLower(const ContextT& dev_ctx,
-                         bool use_utf8_encoding,
-                         const StringTensor& x) {
+                         const StringTensor& x,
+                         bool use_utf8_encoding) {
   StringTensor string_out;
   MetaTensor meta_out(&string_out);
   UnchangedInferMeta(x.meta(), &meta_out);
@@ -47,8 +46,8 @@ StringTensor StringLower(const ContextT& dev_ctx,
 
 template <typename ContextT>
 StringTensor StringUpper(const ContextT& dev_ctx,
-                         bool use_utf8_encoding,
-                         const StringTensor& x) {
+                         const StringTensor& x,
+                         bool use_utf8_encoding) {
   StringTensor string_out;
   MetaTensor meta_out(&string_out);
   UnchangedInferMeta(x.meta(), &meta_out);

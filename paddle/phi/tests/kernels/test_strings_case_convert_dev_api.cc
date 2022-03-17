@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/case_convert_kernel.h"
+#include "paddle/phi/kernels/strings/strings_empty_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
 namespace phi {
@@ -67,9 +68,9 @@ TEST(DEV_API, strings_cast_convert) {
 
   // 3. test API, ascii encoding
   auto dense_lower_out = phi::strings::StringLower(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), false, dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), dense_x, false);
   auto dense_upper_out = phi::strings::StringUpper(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), false, dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), dense_x, false);
 
   // 4. check results
   ASSERT_EQ(dense_lower_out.numel(), 2);
@@ -109,9 +110,9 @@ TEST(DEV_API, strings_cast_convert_utf8) {
 
   // 3. test API, ascii encoding
   auto dense_lower_out = phi::strings::StringLower(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), true, dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), dense_x, true);
   auto dense_upper_out = phi::strings::StringUpper(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), true, dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), dense_x, true);
 
   // 4. check results
   ASSERT_EQ(dense_lower_out.numel(), 1);

@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/case_convert_kernel.h"
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
+#include "paddle/phi/kernels/strings/strings_empty_kernel.h"
 namespace phi {
 namespace tests {
 
@@ -87,9 +88,9 @@ TEST(DEV_API, strings_cast_convert) {
 
   // 3. test API, ascii encoding
   auto gpu_strings_lower_out =
-      phi::strings::StringLower(*dev_ctx, false, gpu_strings_x);
+      phi::strings::StringLower(*dev_ctx, gpu_strings_x, false);
   auto gpu_strings_upper_out =
-      phi::strings::StringUpper(*dev_ctx, false, gpu_strings_x);
+      phi::strings::StringUpper(*dev_ctx, gpu_strings_x, false);
 
   phi::strings::Copy(
       *dev_ctx, gpu_strings_lower_out, false, &cpu_strings_lower_out);
@@ -138,9 +139,9 @@ TEST(DEV_API, strings_cast_convert_utf8) {
 
   // 3. test API, ascii encoding
   auto gpu_strings_lower_out =
-      phi::strings::StringLower(*dev_ctx, true, gpu_strings_x);
+      phi::strings::StringLower(*dev_ctx, gpu_strings_x, true);
   auto gpu_strings_upper_out =
-      phi::strings::StringUpper(*dev_ctx, true, gpu_strings_x);
+      phi::strings::StringUpper(*dev_ctx, gpu_strings_x, true);
   phi::strings::Copy(
       *dev_ctx, gpu_strings_lower_out, false, &cpu_strings_lower_out);
   phi::strings::Copy(
