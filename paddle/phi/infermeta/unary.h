@@ -177,6 +177,8 @@ void RollInferMeta(const MetaTensor& x,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
 
+void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,
