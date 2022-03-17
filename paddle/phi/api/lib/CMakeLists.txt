@@ -135,7 +135,7 @@ add_custom_command(
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS phi_tensor_raw)
 cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS phi)
-cc_library(context_pool SRCS context_pool.cc DEPS cpu_context gpu_context phi_enforce place)
+cc_library(context_pool SRCS context_pool.cc DEPS phi_context phi_enforce place)
 
 cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS phi_tensor_raw phi_context kernel_factory context_pool)
 cc_library(api_gen_utils SRCS api_gen_utils.cc DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor)
