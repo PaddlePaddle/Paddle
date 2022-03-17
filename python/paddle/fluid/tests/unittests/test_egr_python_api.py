@@ -52,7 +52,7 @@ class EagerScaleTestCase(unittest.TestCase):
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
             self.assertIsNone(data_eager.grad)
             out_eager.backward(grad_eager, False)
-            self.assertTrue(data_eager.grad._is_initialized())
+            self.assertIsNotNone(data_eager.grad)
             self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
 
     def test_retain_grad_and_run_backward_raises(self):
