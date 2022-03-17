@@ -142,7 +142,11 @@ PlaceType Tensor::place() const {
 }
 
 paddle::platform::Place Tensor::inner_place() const {
-  return ConvertExtPlaceToInnerPlace(place());
+  if (!impl_->initialized()) {
+    return ConvertExtPlaceToInnerPlace(place_);
+  } else {
+    return impl_->place();
+  }
 }
 
 bool Tensor::is_cpu() const {

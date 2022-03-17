@@ -24,8 +24,6 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (p == PlaceType::kGPU) {
     return platform::Place(platform::CUDAPlace(platform::GetCurrentDeviceId()));
-  } else if (p == PlaceType::kGPUPINNED) {
-    return platform::Place(platform::CUDAPinnedPlace());
 #endif
   } else {
     PADDLE_THROW(
@@ -42,8 +40,6 @@ PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (platform::is_gpu_place(p)) {
     return PlaceType::kGPU;
-  } else if (platform::is_cuda_pinned_place(p)) {
-    return PlaceType::kGPUPINNED;
 #endif
   } else {
     PADDLE_THROW(
@@ -60,7 +56,6 @@ Backend ConvertExtPlaceToBackend(PlaceType p) {
       return Backend::CPU;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case PlaceType::kGPU:
-    case PlaceType::kGPUPINNED:
       return Backend::GPU;
 #endif
     default:
