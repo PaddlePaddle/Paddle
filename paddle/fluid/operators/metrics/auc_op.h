@@ -29,6 +29,7 @@ class AucKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
+    auto *ins_tag_weight = ctx.Input<Tensor>("InsTagWeight");
 
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int slide_steps = ctx.Attr<int>("slide_steps");
@@ -42,6 +43,8 @@ class AucKernel : public framework::OpKernel<T> {
     auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
     auto *auc_value = auc_tensor->mutable_data<double>(ctx.GetPlace());
+    auto *ins_tag_weight_value =
+        ins_tag_weight->mutable_data<float>(ctx.GetPlace());
 
     // Just for pass UT, since UT's input & output connot be set same var
     auto *stat_pos_in_tensor = ctx.Input<Tensor>("StatPos");
@@ -61,7 +64,7 @@ class AucKernel : public framework::OpKernel<T> {
                  sizeof(int64_t));
     }
     statAuc(label, predict, num_thresholds, slide_steps, origin_stat_pos,
-            origin_stat_neg);
+            origin_stat_neg, ins_tag_weight_value);
 
     int sum_offset = slide_steps * (num_thresholds + 1);
     calcAuc(origin_stat_pos + sum_offset, origin_stat_neg + sum_offset,
@@ -81,8 +84,8 @@ class AucKernel : public framework::OpKernel<T> {
   inline static void statAuc(const framework::Tensor *label,
                              const framework::Tensor *predict,
                              const int num_thresholds, const int slide_steps,
-                             int64_t *origin_stat_pos,
-                             int64_t *origin_stat_neg) {
+                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
+                             float *ins_tag_weight_value) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
@@ -102,9 +105,9 @@ class AucKernel : public framework::OpKernel<T> {
                               "The predict data must gather or equal 0."));
 
         uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-        if (label_data[i] > 0) {
+        if (label_data[i] > 0 && ins_tag_weight_value[i] > 0.0) {
           origin_stat_pos[binIdx] += 1;
-        } else if (label_data[i] == 0) {
+        } else if (label_data[i] == 0 && ins_tag_weight_value[i] > 0.0) {
           origin_stat_neg[binIdx] += 1;
         }
       }
@@ -142,9 +145,9 @@ class AucKernel : public framework::OpKernel<T> {
                             "The predict data must gather or equal 0."));
 
       uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-      if (label_data[i] > 0) {
+      if (label_data[i] > 0 ins_tag_weight_value[i] > 0.0) {
         origin_stat_pos[cur_step_begin + binIdx] += 1;
-      } else if (label_data[i] == 0) {
+      } else if (label_data[i] == 0 && ins_tag_weight_value[i] > 0.0) {
         origin_stat_neg[cur_step_begin + binIdx] += 1;
       }
     }

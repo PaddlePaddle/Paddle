@@ -56,7 +56,8 @@ __global__ void AddDataKernel(const int64_t *label_data, const T *pred_data,
                               const int inference_width,
                               const int num_thresholds, int64_t *pos,
                               int64_t *neg, const int numel,
-                              const int slide_steps) {
+                              const int slide_steps,
+                              float *ins_tag_weight_value) {
   int cur_step_begin = 0;
   if (slide_steps > 0) {
     int cur_step_index =
@@ -70,10 +71,12 @@ __global__ void AddDataKernel(const int64_t *label_data, const T *pred_data,
     PADDLE_ENFORCE(predict_data >= 0,
                    "The predict data must gather or equal 0.");
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-    if (label_data[i]) {
-      paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
-    } else {
-      paddle::platform::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+    if (ins_tag_weight_value[i]) {
+      if (label_data[i]) {
+        paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
+      } else {
+        paddle::platform::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+      }
     }
   }
 }
@@ -112,6 +115,7 @@ class AucCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
+    auto *ins_tag_weight = ctx.Input<Tensor>("InsTagWeight");
 
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int slide_steps = ctx.Attr<int>("slide_steps");
@@ -125,6 +129,8 @@ class AucCUDAKernel : public framework::OpKernel<T> {
     auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
     auto *auc_value = auc_tensor->mutable_data<double>(ctx.GetPlace());
+    auto *ins_tag_weight_value =
+        ins_tag_weight->mutable_data<float>(ctx.GetPlace());
 
     auto *stat_pos_in_tensor = ctx.Input<Tensor>("StatPos");
     auto *pos_in_data = stat_pos_in_tensor->data<int64_t>();
@@ -146,7 +152,7 @@ class AucCUDAKernel : public framework::OpKernel<T> {
     }
 
     statAuc(ctx, label, predict, num_thresholds, slide_steps, origin_stat_pos,
-            origin_stat_neg);
+            origin_stat_neg, ins_tag_weight_value);
     int sum_offset = slide_steps * (num_thresholds + 1);
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
@@ -165,8 +171,8 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                              const framework::Tensor *label,
                              const framework::Tensor *predict,
                              const int num_thresholds, const int slide_steps,
-                             int64_t *origin_stat_pos,
-                             int64_t *origin_stat_neg) {
+                             int64_t *origin_stat_pos, int64_t *origin_stat_neg,
+                             float *ins_tag_weight_value) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
@@ -179,7 +185,8 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                           PADDLE_CUDA_NUM_THREADS,
                       PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           label_data, inference_data, inference_width, num_thresholds,
-          origin_stat_pos, origin_stat_neg, batch_size, slide_steps);
+          origin_stat_pos, origin_stat_neg, batch_size, slide_steps,
+          ins_tag_weight_value);
       return;
     }
     // the last number of origin_stat_pos store the index should be used in
@@ -199,7 +206,8 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                         PADDLE_CUDA_NUM_THREADS,
                     PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         label_data, inference_data, inference_width, num_thresholds,
-        origin_stat_pos, origin_stat_neg, batch_size, slide_steps);
+        origin_stat_pos, origin_stat_neg, batch_size, slide_steps,
+        ins_tag_weight_value);
     UpdateSumDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /
                               PADDLE_CUDA_NUM_THREADS,
                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(

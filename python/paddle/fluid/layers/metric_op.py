@@ -110,6 +110,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
 def auc(input,
         label,
+        ins_tag_weight=None,
         curve='ROC',
         num_thresholds=2**12 - 1,
         topk=1,
@@ -174,9 +175,19 @@ def auc(input,
             print(output)
             #[array([0.5])]
     """
+
     helper = LayerHelper("auc", **locals())
+
+    if ins_tag_weight is None:
+        ins_tag_weight = label
+        helper.set_variable_initializer(
+            ins_tag_weight, Constant(
+                value=1.0, force_cpu=False))
+
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
+    check_variable_and_dtype(label, 'ins_tag_weight', ['float32', 'float64'],
+                             'auc')
     auc_out = helper.create_variable_for_type_inference(dtype="float64")
     batch_auc_out = helper.create_variable_for_type_inference(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
@@ -215,7 +226,8 @@ def auc(input,
             "Predict": [input],
             "Label": [label],
             "StatPos": [batch_stat_pos],
-            "StatNeg": [batch_stat_neg]
+            "StatNeg": [batch_stat_neg],
+            "InsTagWeight": [ins_tag_weight]
         },
         attrs={
             "curve": curve,
@@ -234,7 +246,8 @@ def auc(input,
             "Predict": [input],
             "Label": [label],
             "StatPos": [stat_pos],
-            "StatNeg": [stat_neg]
+            "StatNeg": [stat_neg],
+            "InsTagWeight": [ins_tag_weight]
         },
         attrs={
             "curve": curve,
