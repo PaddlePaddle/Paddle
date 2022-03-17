@@ -17,7 +17,7 @@
 #include <mlir/IR/Builders.h>
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
-#include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 namespace infrt {
 namespace trt {
