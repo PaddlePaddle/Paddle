@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/kthvalue_op.h"
 #include <memory>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -159,16 +158,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(kthvalue, ops::KthvalueOp, ops::KthvalueOpMaker,
                   ops::KthvalueGradOpMaker<paddle::framework::OpDesc>,
                   ops::KthvalueGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    kthvalue, ops::KthvalueCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::KthvalueCPUKernel<paddle::platform::CPUPlace, double>,
-    ops::KthvalueCPUKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::KthvalueCPUKernel<paddle::platform::CPUPlace, int64_t>);
 
 REGISTER_OPERATOR(kthvalue_grad, ops::KthvalueOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    kthvalue_grad,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, double>,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, int64_t>);
