@@ -39,7 +39,8 @@ void Copy(const Context& dev_ctx,
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   int64_t numel = src.numel();
-  if (paddle::platform::is_cpu_place(src_place)) {
+
+  if (src_place.GetType() == phi::AllocationType::CPU) {
     for (int64_t i = 0; i < numel; ++i) {
       dst_ptr[i] = src_ptr[i];
     }

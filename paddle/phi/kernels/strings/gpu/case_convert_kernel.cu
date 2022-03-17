@@ -55,8 +55,8 @@ struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
-    auto unicode_flag_map = strings::get_gpu_uniflag_map();
-    auto cases_map = strings::get_gpu_charcases_map();
+    auto unicode_flag_map = GetGPUUniflagMap();
+    auto cases_map = GetGPUCharcasesMap();
     thrust::device_vector<uint32_t> unicode_offsets(num + 1, 0);
     uint32_t* unicode_offsets_ptr =
         thrust::raw_pointer_cast(unicode_offsets.data());
@@ -66,8 +66,7 @@ struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
                        num,
                        [unicode_offsets_ptr, in] __device__(uint32_t idx) {
                          unicode_offsets_ptr[idx + 1] =
-                             phi::strings::get_unicode_str_len(in[idx].data(),
-                                                               in[idx].size());
+                             GetUnicodeStrLen(in[idx].data(), in[idx].size());
                        });
     uint32_t total_lengths = thrust::reduce(
         thrust::device, unicode_offsets_ptr, unicode_offsets_ptr + num + 1, 0);
@@ -91,10 +90,9 @@ struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
          converter] __device__(uint32_t idx) {
           uint32_t unicode_len =
               unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
-          phi::strings::get_unicode_str(
-              in[idx].data(),
-              unicode_output_ptr + unicode_offsets_ptr[idx],
-              unicode_len);
+          GetUnicodeStr(in[idx].data(),
+                        unicode_output_ptr + unicode_offsets_ptr[idx],
+                        unicode_len);
           uint32_t* curr_unicode_output_ptr =
               unicode_output_ptr + unicode_offsets_ptr[idx];
           for (uint32_t i = 0; i < unicode_len; ++i) {
@@ -118,7 +116,7 @@ struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
             uint32_t idx) {
           uint32_t unicode_len =
               unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
-          utf8_offsets_ptr[idx + 1] = phi::strings::get_utf8_str_len(
+          utf8_offsets_ptr[idx + 1] = GetUTF8StrLen(
               unicode_output_ptr + unicode_offsets_ptr[idx], unicode_len);
         });
     uint32_t total_utf8_lengths = thrust::reduce(
@@ -126,23 +124,23 @@ struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
 
     thrust::device_vector<char> utf8_output(total_utf8_lengths, 0);
     char* utf8_output_ptr = thrust::raw_pointer_cast(utf8_output.data());
-    thrust::for_each_n(
-        thrust::device,
-        thrust::make_counting_iterator<unsigned int>(0),
-        num,
-        [utf8_output_ptr,
-         utf8_offsets_ptr,
-         unicode_output_ptr,
-         unicode_offsets_ptr,
-         out] __device__(uint32_t idx) {
-          uint32_t unicode_len =
-              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
-          const uint32_t* input_ptr =
-              unicode_output_ptr + unicode_offsets_ptr[idx];
-          char* result_ptr = utf8_output_ptr + utf8_offsets_ptr[idx];
-          phi::strings::get_utf8_str(input_ptr, result_ptr, unicode_len);
-          out[idx] = result_ptr;
-        });
+    thrust::for_each_n(thrust::device,
+                       thrust::make_counting_iterator<unsigned int>(0),
+                       num,
+                       [utf8_output_ptr,
+                        utf8_offsets_ptr,
+                        unicode_output_ptr,
+                        unicode_offsets_ptr,
+                        out] __device__(uint32_t idx) {
+                         uint32_t unicode_len = unicode_offsets_ptr[idx + 1] -
+                                                unicode_offsets_ptr[idx];
+                         const uint32_t* input_ptr =
+                             unicode_output_ptr + unicode_offsets_ptr[idx];
+                         char* result_ptr =
+                             utf8_output_ptr + utf8_offsets_ptr[idx];
+                         GetUTF8Str(input_ptr, result_ptr, unicode_len);
+                         out[idx] = result_ptr;
+                       });
   }
 };
 

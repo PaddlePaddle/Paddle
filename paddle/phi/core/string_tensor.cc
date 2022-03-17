@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
 
@@ -63,7 +62,7 @@ bool StringTensor::IsSharedWith(const StringTensor& b) const {
 const Place& StringTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Tensor not initialized yet when DenseTensor::place() is called."));
   return holder_->place();
 }
@@ -71,7 +70,7 @@ const Place& StringTensor::place() const {
 const dtype::pstring* StringTensor::data() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
   return reinterpret_cast<const dtype::pstring*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
@@ -80,7 +79,7 @@ const dtype::pstring* StringTensor::data() const {
 dtype::pstring* StringTensor::data() {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
   return reinterpret_cast<dtype::pstring*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
@@ -89,7 +88,7 @@ dtype::pstring* StringTensor::data() {
 void StringTensor::set_meta(const StringTensorMeta& meta) {
   PADDLE_ENFORCE(
       meta.valid(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
   meta_.is_scalar = meta.is_scalar;
@@ -105,9 +104,9 @@ void StringTensor::init_holder() {
   void* ptr = holder_->ptr();
   auto& place = holder_->place();
   auto bytes_size = holder_->size();
-  if (paddle::platform::is_cpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::CPU) {
     std::memset(ptr, 0, bytes_size);
-  } else if (paddle::platform::is_gpu_place(place)) {
+  } else if (place.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_HIP
     hipMemset(ptr, 0, bytes_size);

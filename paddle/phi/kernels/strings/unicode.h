@@ -22,23 +22,23 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-HOSTDEVICE inline bool isspace(uint32_t chr) { return (chr & 16) > 0; }
+HOSTDEVICE inline bool IsSpace(uint32_t chr) { return (chr & 16) > 0; }
 
-HOSTDEVICE inline bool isalpha(uint32_t chr) { return (chr & 8) > 0; }
+HOSTDEVICE inline bool IsAlpha(uint32_t chr) { return (chr & 8) > 0; }
 
-HOSTDEVICE inline bool isdigit(uint32_t chr) { return (chr & 4) > 0; }
+HOSTDEVICE inline bool IsDigit(uint32_t chr) { return (chr & 4) > 0; }
 
-HOSTDEVICE inline bool isnumeric(uint32_t chr) { return (chr & 2) > 0; }
+HOSTDEVICE inline bool IsNumeric(uint32_t chr) { return (chr & 2) > 0; }
 
-HOSTDEVICE inline bool isdecimal(uint32_t chr) { return (chr & 1) > 0; }
+HOSTDEVICE inline bool IsDecimal(uint32_t chr) { return (chr & 1) > 0; }
 
-HOSTDEVICE inline bool isalphanum(uint32_t chr) { return (chr & 15) > 0; }
+HOSTDEVICE inline bool IsAlphaNum(uint32_t chr) { return (chr & 15) > 0; }
 
-HOSTDEVICE inline bool isupper(uint32_t chr) { return (chr & 32) > 0; }
+HOSTDEVICE inline bool IsUpper(uint32_t chr) { return (chr & 32) > 0; }
 
-HOSTDEVICE inline bool islower(uint32_t chr) { return (chr & 64) > 0; }
+HOSTDEVICE inline bool IsLower(uint32_t chr) { return (chr & 64) > 0; }
 
-HOSTDEVICE inline uint32_t bytes_in_utf8_char(uint8_t byte) {
+HOSTDEVICE inline uint32_t BytesInUtf8Char(uint8_t byte) {
   unsigned int count = 1;
   // no if-statements means no divergence
   count += static_cast<int>((byte & 0xF0) == 0xF0);
@@ -48,8 +48,8 @@ HOSTDEVICE inline uint32_t bytes_in_utf8_char(uint8_t byte) {
   return count;
 }
 
-HOSTDEVICE inline uint32_t utf8_to_uint32(const char* pSrc, uint32_t* chr) {
-  uint32_t chwidth = bytes_in_utf8_char(static_cast<uint8_t>(*pSrc));
+HOSTDEVICE inline uint32_t UTF8ToUInt32(const char* pSrc, uint32_t* chr) {
+  uint32_t chwidth = BytesInUtf8Char(static_cast<uint8_t>(*pSrc));
   *chr = static_cast<uint32_t>(*pSrc++) & 0xFF;
   if (chwidth > 1) {
     *chr = (*chr) << 8;
@@ -66,7 +66,7 @@ HOSTDEVICE inline uint32_t utf8_to_uint32(const char* pSrc, uint32_t* chr) {
   return chwidth;
 }
 
-HOSTDEVICE inline uint32_t utf8_to_unicode(uint32_t utf8) {
+HOSTDEVICE inline uint32_t UTF8ToUnicode(uint32_t utf8) {
   uint32_t unchr = 0;
   if (utf8 < 0x00000080) {
     unchr = utf8;
@@ -86,7 +86,7 @@ HOSTDEVICE inline uint32_t utf8_to_unicode(uint32_t utf8) {
   return unchr;
 }
 
-HOSTDEVICE inline uint32_t unicode_to_utf8(uint32_t unchr) {
+HOSTDEVICE inline uint32_t UnicodeToUTF8(uint32_t unchr) {
   uint32_t utf8 = 0;
   if (unchr < 0x00000080) {
     utf8 = unchr;
@@ -109,7 +109,7 @@ HOSTDEVICE inline uint32_t unicode_to_utf8(uint32_t unchr) {
   return utf8;
 }
 
-HOSTDEVICE inline uint32_t bytes_in_unicode_char(uint32_t chr) {
+HOSTDEVICE inline uint32_t BytesInUnicodeChar(uint32_t chr) {
   uint32_t count = 1;
   // no if-statements means no divergence
   count += static_cast<int>((chr & static_cast<uint32_t>(0x0000FF00)) > 0);
@@ -118,8 +118,8 @@ HOSTDEVICE inline uint32_t bytes_in_unicode_char(uint32_t chr) {
   return count;
 }
 
-HOSTDEVICE inline uint32_t unicode_to_utf8_char(uint32_t chr, char* dst) {
-  uint32_t chwidth = bytes_in_unicode_char(chr);
+HOSTDEVICE inline uint32_t UnicodeToUTF8Char(uint32_t chr, char* dst) {
+  uint32_t chwidth = BytesInUnicodeChar(chr);
   for (uint32_t idx = 0; idx < chwidth; ++idx) {
     dst[chwidth - idx - 1] = static_cast<char>(chr & 0xFF);
     chr = chr >> 8;
@@ -127,26 +127,27 @@ HOSTDEVICE inline uint32_t unicode_to_utf8_char(uint32_t chr, char* dst) {
   return chwidth;
 }
 
-HOSTDEVICE inline void get_unicode_str(const char* pSrc,
-                                       uint32_t* unicode_str,
-                                       size_t unicode_len) {
+HOSTDEVICE inline void GetUnicodeStr(const char* pSrc,
+                                     uint32_t* unicode_str,
+                                     size_t unicode_len) {
   uint32_t curr_unicode_char;
-  uint32_t count = utf8_to_uint32(pSrc, &curr_unicode_char);
-  curr_unicode_char = utf8_to_unicode(curr_unicode_char);
+  uint32_t count = UTF8ToUInt32(pSrc, &curr_unicode_char);
+  curr_unicode_char = UTF8ToUnicode(curr_unicode_char);
   for (size_t i = 0; i < unicode_len; ++i) {
     unicode_str[i] = curr_unicode_char;
     pSrc += count;
-    count = utf8_to_uint32(pSrc, &curr_unicode_char);
-    curr_unicode_char = utf8_to_unicode(curr_unicode_char);
+    count = UTF8ToUInt32(pSrc, &curr_unicode_char);
+    curr_unicode_char = UTF8ToUnicode(curr_unicode_char);
   }
 }
-HOSTDEVICE inline uint32_t get_unicode_str_len(const char* pSrc, size_t size) {
+
+HOSTDEVICE inline uint32_t GetUnicodeStrLen(const char* pSrc, size_t size) {
   uint32_t curr_unicode_char;
   uint32_t count = 0;
   uint32_t offset = 0;
   uint32_t curr_count = 0;
   while (offset < size) {
-    curr_count = utf8_to_uint32(pSrc, &curr_unicode_char);
+    curr_count = UTF8ToUInt32(pSrc, &curr_unicode_char);
     offset += curr_count;
     pSrc += curr_count;
     if (curr_count == 0) {
@@ -157,24 +158,25 @@ HOSTDEVICE inline uint32_t get_unicode_str_len(const char* pSrc, size_t size) {
   return count;
 }
 
-HOSTDEVICE inline uint32_t get_utf8_str_len(const uint32_t* unicode_str,
-                                            size_t unicode_len) {
+HOSTDEVICE inline uint32_t GetUTF8StrLen(const uint32_t* unicode_str,
+                                         size_t unicode_len) {
   uint32_t utf8_str_count = 0;
   for (size_t i = 0; i < unicode_len; ++i) {
-    uint32_t utf8_uint32 = unicode_to_utf8(unicode_str[i]);
-    utf8_str_count += bytes_in_unicode_char(utf8_uint32);
+    uint32_t utf8_uint32 = UnicodeToUTF8(unicode_str[i]);
+    utf8_str_count += BytesInUnicodeChar(utf8_uint32);
   }
   // +1 means '\0'
   return utf8_str_count + 1;
 }
 // Need to gurantee utf8_str has enough memory
-HOSTDEVICE inline void get_utf8_str(const uint32_t* unicode_str,
-                                    char* utf8_str,
-                                    size_t unicode_len) {
+
+HOSTDEVICE inline void GetUTF8Str(const uint32_t* unicode_str,
+                                  char* utf8_str,
+                                  size_t unicode_len) {
   char dst_char[5] = {0};
   for (size_t i = 0; i < unicode_len; ++i) {
-    uint32_t utf8_uint32 = unicode_to_utf8(unicode_str[i]);
-    uint32_t utf8_char_count = unicode_to_utf8_char(utf8_uint32, dst_char);
+    uint32_t utf8_uint32 = UnicodeToUTF8(unicode_str[i]);
+    uint32_t utf8_char_count = UnicodeToUTF8Char(utf8_uint32, dst_char);
     dst_char[utf8_char_count] = '\0';
     memcpy(utf8_str, dst_char, utf8_char_count);
     utf8_str += utf8_char_count;
@@ -182,12 +184,13 @@ HOSTDEVICE inline void get_utf8_str(const uint32_t* unicode_str,
   *utf8_str = '\0';
 }
 
-const uint8_t* get_uniflag_map();
-const uint16_t* get_charcases_map();
+const uint8_t* GetUniFlagMap();
+const uint16_t* GetCharcasesMap();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-const uint8_t* get_gpu_uniflag_map();
-const uint16_t* get_gpu_charcases_map();
+
+const uint8_t* GetGPUUniflagMap();
+const uint16_t* GetGPUCharcasesMap();
 #endif
 
 }  // namespace strings

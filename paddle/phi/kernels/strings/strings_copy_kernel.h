@@ -16,9 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
-
 namespace phi {
 namespace strings {
 

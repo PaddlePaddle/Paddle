@@ -20,9 +20,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/transform.h"
-
 namespace phi {
 namespace strings {
 
@@ -47,7 +44,7 @@ struct UTF8ToLower {
 
   HOSTDEVICE uint32_t operator()(uint32_t in) const {
     uint32_t flg = (in <= 0x00FFFF ? unicode_flag_map_[in] : 0);
-    return (strings::isupper(flg) ? cases_map_[in] : in);
+    return (strings::IsUpper(flg) ? cases_map_[in] : in);
   }
 
   const uint8_t* unicode_flag_map_;
@@ -62,7 +59,7 @@ struct UTF8ToUpper {
 
   HOSTDEVICE uint32_t operator()(uint32_t in) const {
     uint32_t flg = (in <= 0x00FFFF ? unicode_flag_map_[in] : 0);
-    return (strings::islower(flg) ? cases_map_[in] : in);
+    return (strings::IsLower(flg) ? cases_map_[in] : in);
   }
 
   const uint8_t* unicode_flag_map_;

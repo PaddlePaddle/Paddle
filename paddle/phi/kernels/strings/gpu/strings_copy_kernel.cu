@@ -45,8 +45,9 @@ void Copy(const Context& dev_ctx,
   const auto& src_place = src.place();
   auto dst_place = dst->place();
 
-  if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+  if (src_place == dst_place &&
+      src_place.GetType() == phi::AllocationType::CPU) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The src and dst tensor are all CPU tensor, you should call copy "
         "function in CPU mode."));
   }
@@ -63,8 +64,9 @@ void Copy(const Context& dev_ctx,
   }
 
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
-      paddle::platform::is_cpu_place(dst_place)) {
+
+  if (src_place.GetType() == phi::AllocationType::GPU &&  // NOLINT
+      dst_place.GetType() == phi::AllocationType::CPU) {
     // Situation 1: gpu_place->cpu_place
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     CPUContext* dst_ctx = reinterpret_cast<CPUContext*>(pool.Get(dst_place));
@@ -77,8 +79,9 @@ void Copy(const Context& dev_ctx,
     phi::Copy(dev_ctx, gpu_serialized, dst_place, false, &cpu_serialized);
 
     phi::strings::Deserialize(*dst_ctx, cpu_serialized, dst);
-  } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
-             paddle::platform::is_gpu_place(dst_place)) {
+
+  } else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
+             dst_place.GetType() == phi::AllocationType::GPU) {
     // Situation 2: cpu_place->gpu_place
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     CPUContext* src_ctx = reinterpret_cast<CPUContext*>(pool.Get(src_place));
@@ -92,52 +95,26 @@ void Copy(const Context& dev_ctx,
         dev_ctx, cpu_serialized, dev_ctx.GetPlace(), false, &gpu_serialized);
 
     phi::strings::Deserialize(dev_ctx, gpu_serialized, dst);
-  } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
-             paddle::platform::is_gpu_place(dst_place)) {
+  } else if (src_place.GetType() == phi::AllocationType::GPU &&  // NOLINT
+             dst_place.GetType() == phi::AllocationType::GPU) {
     // Situation 3: gpu_place->gpu_place
     auto src_gpu_place = src_place;
     auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_gpu_place(ctx_place),
-        true,
-        paddle::platform::errors::PreconditionNotMet(
+        ctx_place.GetType(),
+        phi::AllocationType::GPU,
+        phi::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     int64_t numel = src.numel();
     dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
     dim3 grid_size =
         dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-    if (paddle::platform::is_same_place(src_place, dst_place)) {
-      // Copy
-      CopyFromStringTensor<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-          dst_ptr, src_ptr, numel);
-    } else {
-      if (paddle::platform::is_same_place(ctx_place, src_place)) {
-        // Copy
-        CopyFromStringTensor<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dst_ptr, src_ptr, numel);
-        paddle::platform::DeviceContextPool::Instance()
-            .Get(src.place())
-            ->Wait();
-      } else if (paddle::platform::is_same_place(ctx_place, dst_place)) {
-        paddle::platform::DeviceContextPool::Instance()
-            .Get(src.place())
-            ->Wait();
-        CopyFromStringTensor<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dst_ptr, src_ptr, numel);
-      } else {
-        PADDLE_THROW(paddle::platform::errors::Unavailable(
-            "Context place dose not match the source and destination place."));
-      }
-    }
+    // Copy
+    CopyFromStringTensor<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+        dst_ptr, src_ptr, numel);
   }
-  // TODO(zhoushunjie): Add pinned memory copy
-  // Situation 4: cuda_pinned_place->cuda_pinned_place
-  // Situation 5: cuda_pinned_place->cpu_place
-  // Situation 6: cpu_place->cuda_pinned_place
-  // Situation 7: gpu_place->cuda_pinned_place
-  // Situation 8: cuda_pinned_place->gpu_place
 }
 
 }  // namespace strings

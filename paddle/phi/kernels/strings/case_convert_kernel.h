@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <vector>
+
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -80,10 +86,9 @@ struct AsciiCaseConverter {
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
-    paddle::platform::Transform<DeviceContext> trans;
     for (size_t i = 0; i < num; ++i) {
-      trans(
-          dev_ctx, in[i].begin(), in[i].end(), out[i].mdata(), CharConverter());
+      std::transform(
+          in[i].begin(), in[i].end(), out[i].mdata(), CharConverter());
     }
   }
 };
@@ -95,21 +100,19 @@ struct UTF8CaseConverter {
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
-    paddle::platform::Transform<DeviceContext> trans;
-    auto unicode_flag_map = strings::get_uniflag_map();
-    auto cases_map = strings::get_charcases_map();
+    auto unicode_flag_map = GetUniFlagMap();
+    auto cases_map = GetCharcasesMap();
     for (size_t i = 0; i < num; ++i) {
-      uint32_t unicode_len = get_unicode_str_len(in[i].data(), in[i].size());
+      uint32_t unicode_len = GetUnicodeStrLen(in[i].data(), in[i].size());
       std::vector<uint32_t> unicode_in(unicode_len, 0);
-      get_unicode_str(in[i].data(), unicode_in.data(), unicode_len);
-      trans(dev_ctx,
-            unicode_in.begin(),
-            unicode_in.end(),
-            unicode_in.begin(),
-            CharConverter<DeviceContext>(unicode_flag_map, cases_map));
-      uint32_t utf8_len = get_utf8_str_len(unicode_in.data(), unicode_len);
+      GetUnicodeStr(in[i].data(), unicode_in.data(), unicode_len);
+      std::transform(unicode_in.begin(),
+                     unicode_in.end(),
+                     unicode_in.begin(),
+                     CharConverter<DeviceContext>(unicode_flag_map, cases_map));
+      uint32_t utf8_len = GetUTF8StrLen(unicode_in.data(), unicode_len);
       std::vector<char> result(utf8_len, 0);
-      get_utf8_str(unicode_in.data(), result.data(), unicode_len);
+      GetUTF8Str(unicode_in.data(), result.data(), unicode_len);
       out[i] = result.data();
     }
   }

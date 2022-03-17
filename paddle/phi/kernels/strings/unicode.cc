@@ -23,14 +23,14 @@ namespace strings {
 static const void* utils_map[4] = {nullptr};
 static uint16_t CHARCASES_MAP[65536] = {0};
 
-const uint8_t* get_uniflag_map() {
+const uint8_t* GetUniFlagMap() {
   if (utils_map[1] == nullptr) {
     utils_map[1] = UNIFLAG_MAP;
   }
   return reinterpret_cast<const uint8_t*>(utils_map[1]);
 }
 
-const uint16_t* get_charcases_map() {
+const uint16_t* GetCharcasesMap() {
   if (utils_map[0] == nullptr) {
     for (uint32_t i = 0; i < 65536; ++i) {
       if (utf8proc_islower(i)) {
@@ -46,9 +46,9 @@ const uint16_t* get_charcases_map() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-const uint8_t* get_gpu_uniflag_map() {
+const uint8_t* GetGPUUniflagMap() {
   if (utils_map[3] == nullptr) {
-    const uint8_t* cpu_uniflag = get_uniflag_map();
+    const uint8_t* cpu_uniflag = GetUniFlagMap();
     auto size = sizeof(UNIFLAG_MAP);
     uint8_t* gpu_uniflag;
 #ifdef PADDLE_WITH_HIP
@@ -65,9 +65,9 @@ const uint8_t* get_gpu_uniflag_map() {
   return reinterpret_cast<const uint8_t*>(utils_map[3]);
 }
 
-const uint16_t* get_gpu_charcases_map() {
+const uint16_t* GetGPUCharcasesMap() {
   if (utils_map[2] == nullptr) {
-    const uint16_t* cpu_charcases = get_charcases_map();
+    const uint16_t* cpu_charcases = GetCharcasesMap();
     auto size = sizeof(CHARCASES_MAP);
     uint16_t* gpu_charcases;
 #ifdef PADDLE_WITH_HIP
