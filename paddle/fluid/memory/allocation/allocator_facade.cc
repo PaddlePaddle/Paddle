@@ -22,6 +22,7 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
+#include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -30,7 +31,6 @@
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
-#include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"

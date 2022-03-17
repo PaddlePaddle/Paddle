@@ -110,7 +110,7 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
         paddle::memory::ThreadLocalStatDevice##id##item>::GetInstance(); \
     break
 
-#define MEMORY_STAT_FUNC(item, id, func, args...)                     \
+#define MEMORY_STAT_FUNC(item, id, func, ...)                         \
   do {                                                                \
     paddle::memory::StatBase* stat = nullptr;                         \
     switch (id) {                                                     \
@@ -137,7 +137,7 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
             id));                                                     \
         break;                                                        \
     }                                                                 \
-    stat->func(args);                                                 \
+    stat->func(__VA_ARGS__);                                          \
   } while (0)
 
 #define MEMORY_STAT_CURRENT_VALUE(item, id) \
