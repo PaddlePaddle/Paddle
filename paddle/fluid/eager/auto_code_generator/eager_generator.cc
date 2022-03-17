@@ -1881,19 +1881,6 @@ static std::string GenerateSingleOpBase(
     grad_attrs_str += paddle::string::Sprintf(CAST_GRAD, attrs_name, attrs_name,
                                               attrs_name, attrs_name);
   }
-  for (const auto& iter : grad_attrs) {
-    if (IgnoreGradAttribute(fwd_op_type, iter.first)) continue;
-    std::pair<std::string, std::string> type_val =
-        GetAttrType(iter.second, false /*is_arg*/);
-    const char* GRAD_ATTRS_TEMPLATE =
-        "  %s %s = %s;\n"
-        "  %s[\"%s\"] = %s;\n";
-    std::string var_name = iter.first + std::to_string(*outs_size);
-    grad_attrs_str += paddle::string::Sprintf(
-        GRAD_ATTRS_TEMPLATE, type_val.first, var_name, type_val.second,
-        attrs_name, iter.first, var_name);
-  }
-
   // Handle dynamic grad attributes
   grad_attrs_str += HandleDynamicGradAttributes(fwd_op_type, attrs_name);
   generated_grad_function_body += grad_attrs_str;
