@@ -52,6 +52,12 @@ final_state_name_mapping = {
         "axis1": "axis1",
         "axis2": "axis2",
         "out": "Out",
+    },
+    "one_hot": {
+        "final_op_name": "final_state_one_hot",
+        "x": "X",
+        "num_class": "depth",
+        "out": "Out",
     }
 }
 
@@ -140,7 +146,12 @@ class Tracer(core.Tracer):
                             outputs[retname][j].reconstruct_from_(returns[i][j],
                                                                   False)
                     else:
-                        outputs[retname][0].reconstruct_from_(returns[i], False)
+                        if isinstance(outputs[retname], list):
+                            outputs[retname][0].reconstruct_from_(returns[i],
+                                                                  False)
+                        else:
+                            outputs[retname].reconstruct_from_(returns[i],
+                                                               False)
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]

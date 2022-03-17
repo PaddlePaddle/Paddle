@@ -114,12 +114,53 @@ KernelSignature ElementwiseDivGradOpArgumentMapping(
                          {GradVarName("X"), GradVarName("Y")});
 }
 
+KernelSignature ElementwiseFMinGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_fmin_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
 KernelSignature ElementwiseDivDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("divide_double_grad",
                          {"Y", "Out", "DX", "DDX", "DDY"},
                          {"axis"},
                          {GradVarName("Y"), "DOut", "DDOut"});
+}
+
+KernelSignature ElementwiseMulGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("multiply_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+KernelSignature ElementwiseFMaxGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_fmax_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("multiply_double_grad",
+                         {"X", "Y", "DOut", "DDX", "DDY"},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y"), "DDOut"});
+}
+
+KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "multiply_triple_grad",
+      {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
+      {"axis"},
+      {"D_X", "D_Y", "D_DOut", "D_DDX", "D_DDY"});
 }
 
 }  // namespace phi
@@ -135,6 +176,9 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad_grad, subtract_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_div_grad, divide_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_div_grad_grad, divide_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul_grad, multiply_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul_grad_grad, multiply_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul_triple_grad, multiply_triple_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            phi::ElementwiseAddOpArgumentMapping);
@@ -158,3 +202,15 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_div_grad,
                            phi::ElementwiseDivGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_div_grad_grad,
                            phi::ElementwiseDivDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_mul_grad,
+                           phi::ElementwiseMulGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_mul_grad_grad,
+                           phi::ElementwiseMulDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_mul_triple_grad,
+                           phi::ElementwiseMulTripleGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(elementwise_fmax_grad,
+                           phi::ElementwiseFMaxGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin_grad,
+                           phi::ElementwiseFMinGradOpArgumentMapping);

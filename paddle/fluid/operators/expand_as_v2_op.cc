@@ -121,34 +121,6 @@ REGISTER_OPERATOR(expand_as_v2, ops::ExpandAsV2Op, ops::ExpandAsV2OpMaker,
                   ops::ExpandAsV2GradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(expand_as_v2_grad, ops::ExpandAsV2GradOp,
                   ops::ExpandAsV2GradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_v2,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_v2_grad,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, double>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_v2,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_v2_grad,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, double>);
-#endif
 
 REGISTER_OP_VERSION(expand_as_v2)
     .AddCheckpoint(

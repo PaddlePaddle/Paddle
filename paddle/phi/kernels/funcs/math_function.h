@@ -125,5 +125,43 @@ struct TensorSetConstantXPU {
 };
 #endif
 
+template <typename Context, typename T>
+inline void TransCompute(const int dim,
+                         const Context& dev_ctx,
+                         const DenseTensor& in,
+                         DenseTensor* out,
+                         const std::vector<int>& axis) {
+  switch (dim) {
+    case 1:
+      Transpose<Context, T, 1> trans1;
+      trans1(dev_ctx, in, out, axis);
+      break;
+    case 2:
+      Transpose<Context, T, 2> trans2;
+      trans2(dev_ctx, in, out, axis);
+      break;
+    case 3:
+      Transpose<Context, T, 3> trans3;
+      trans3(dev_ctx, in, out, axis);
+      break;
+    case 4:
+      Transpose<Context, T, 4> trans4;
+      trans4(dev_ctx, in, out, axis);
+      break;
+    case 5:
+      Transpose<Context, T, 5> trans5;
+      trans5(dev_ctx, in, out, axis);
+      break;
+    case 6:
+      Transpose<Context, T, 6> trans6;
+      trans6(dev_ctx, in, out, axis);
+      break;
+    default:
+      // for dim >= 7 situation
+      TransposeNormal<Context, T> trans_normal;
+      trans_normal(dev_ctx, in, out, axis);
+  }
+}
+
 }  // namespace funcs
 }  // namespace phi
