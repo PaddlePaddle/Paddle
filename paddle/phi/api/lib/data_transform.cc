@@ -167,10 +167,7 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
 
   if (NeedTransformPlace(
           out.place(), target_args_def.backend, transform_flag)) {
-    phi::DenseTensor result(
-        phi::make_intrusive<paddle::experimental::SharedStorage>(
-            phi::TransToPhiPlace(target_args_def.backend)),
-        {out.dtype(), out.dims(), out.layout()});
+    phi::DenseTensor result;
     framework::TransDataDevice(
         out, phi::TransToPhiPlace(target_args_def.backend), &result);
     out = result;
@@ -191,14 +188,14 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
            tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
        !NeedTransformLayout(
            tensor_in->layout(), target_args_def.layout, transform_flag))) {
-    return std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in);
+    return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
   }
 
   phi::DenseTensor out =
       TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
                     target_args_def,
                     transform_flag);
-  return std::make_shared<phi::DenseTensor>(out);
+  return std::make_shared<phi::DenseTensor>(std::move(out));
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
