@@ -29,7 +29,7 @@
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 
 #include "paddle/infrt/dialect/init_dialects.h"
-#include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 #include "paddle/infrt/paddle/model_parser.h"
 

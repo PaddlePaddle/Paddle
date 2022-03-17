@@ -715,10 +715,11 @@ class OpTest(unittest.TestCase):
                 assert related_idx >= 0, "%d-th arguments don't have default value" % idx
                 return defaults[related_idx]
 
-            def remove_name(x):
-                if isinstance(x, list): return [i for i in x if i != 'name']
+            def filter_by_name(x):
+                names = set(['name', 'out', 'output'])
+                if isinstance(x, list): return [i for i in x if i not in names]
                 if isinstance(x, dict):
-                    return {k: v for k, v in x.items() if k != 'name'}
+                    return {k: v for k, v in x.items() if k not in names}
                 assert False, "Only support list or dict."
 
             def to_defaults_list(params, defaults):
@@ -728,7 +729,7 @@ class OpTest(unittest.TestCase):
             # Because we don't know the python api name of each arguments.
             # using parse_arg_and_kwargs, we can get the all api information we need.
             api_params, api_defaults = [
-                remove_name(item) for item in parse_arg_and_kwargs(api)
+                filter_by_name(item) for item in parse_arg_and_kwargs(api)
             ]
             api_defaults = to_defaults_list(api_params, api_defaults)
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
@@ -784,10 +785,10 @@ class OpTest(unittest.TestCase):
             block = fluid.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
-            inputs = self.append_input_output_for_dygraph(op_proto, self.inputs,
-                                                          True, False, block)
+            eager_tensor_inputs = self.append_input_output_for_dygraph(
+                op_proto, self.inputs, True, False, block)
             # prepare output variable
-            outputs = self.append_input_output_for_dygraph(
+            eager_tensor_outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
             # prepare attrbutes
@@ -798,13 +799,14 @@ class OpTest(unittest.TestCase):
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
             kernel_sig = _dygraph_tracer()._get_kernel_signature(
-                self.op_type, inputs, outputs, attrs_outputs)
+                self.op_type, eager_tensor_inputs, eager_tensor_outputs,
+                attrs_outputs)
 
             assert hasattr(
                 self, "python_api"
             ), "Please set the `self.python_api` if you want to compare python api output."
-            args = prepare_python_api_arguments(self.python_api, inputs,
-                                                attrs_outputs, kernel_sig)
+            args = prepare_python_api_arguments(
+                self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig)
             """ we directly return the cal_python_api value because the value is already tensor. 
             """
             return cal_python_api(self.python_api, args, kernel_sig)
@@ -1286,11 +1288,11 @@ class OpTest(unittest.TestCase):
             with _test_eager_guard():
                 eager_dygraph_outs = self._calc_dygraph_output(
                     place, no_check_set=no_check_set)
-            # we only check end2end api when check_eager=True
-            if hasattr(self, "python_api"):
-                api_outs = self._calc_python_api_output(place)
-                self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
-                                                     place)
+                # we only check end2end api when check_eager=True
+                if hasattr(self, "python_api"):
+                    api_outs = self._calc_python_api_output(place)
+                    self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
+                                                         place)
 
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
