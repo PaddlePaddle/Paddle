@@ -2074,12 +2074,10 @@ static std::string GenerateGradNodeCCContents(
   const char* GRAD_FUNCTION_TEMPLATE =
       "std::vector<std::vector<paddle::experimental::Tensor>> "
       "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) {\n"
-      "VLOG(3) << \"Intermediate State Running:\" << \"%s\" << \"_GRAD\" ;\n"
-      "%s\n}";
-  std::string grad_function_str =
-      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type, fwd_op_type,
-                              generated_grad_function_body);
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, "
+      "bool create_graph) {\n%s\n}";
+  std::string grad_function_str = paddle::string::Sprintf(
+      GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
 
   VLOG(6) << "Generated returns";
 
@@ -2112,18 +2110,28 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
       "operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) "
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, const "
+      "bool create_graph = false) "
       "override;\n"
       "\n"
+      "  void ClearTensorWrappers() override { \n"
+      "%s\n"
+      "    is_tensor_wrappers_cleared = true;\n"
+      "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
+      "  bool IsTensorWrappersCleared() override { \n"
+      "    return is_tensor_wrappers_cleared;\n"
+      "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
+      "   bool is_tensor_wrappers_cleared = false;\n"
+      "\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2157,6 +2165,7 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string set_tensor_wrappers_str = "";
   std::string tensor_wrapper_members_str = "";
+  std::string clear_tensor_wrappers_str = "";
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -2188,6 +2197,13 @@ static std::string GenerateGradNodeHeaderContents(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
             struct_tensor_wrapper_name);
 
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
+            "for (auto tw: %s)   {\n"
+            "       tw.clear();\n"
+            "     }\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
+
       } else {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
             "const paddle::experimental::Tensor& %s";
@@ -2200,10 +2216,14 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
             tensor_wrapper_name, full_reserved_str);
+
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
@@ -2218,8 +2238,8 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, op_type, set_tensor_wrappers_str, set_attr_map_str,
-      tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
+      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
 
   return grad_node_str;
 }
