@@ -143,6 +143,51 @@ class DataLoaderBase(object):
         return arr
 
 
+def AutoTune(Loader):
+    import time
+    from .dataloader import Subset
+
+    def wrapper(*args, **kw):
+        auto_tune_start = time.time()
+        print("========= DataLoader Auto Tune =========")
+        print("User config for DataLoader: ", kw)
+        best_num_workers = 0
+        min_cost = float("inf")
+
+        # evaluate cost with subset of origin dataset
+        dataset = args[0]
+        batch_size = kw['batch_size'] if 'batch_size' in kw.keys() else 1
+        args_tune = (Subset(dataset, indices=list(range(batch_size * 10))), )
+        kw_tune = kw.copy()
+        kw_tune['shuffle'] = False
+        kw_tune['batch_sampler'] = None
+        print("Tuning Range for num_workers: ", 0, "~",
+              multiprocessing.cpu_count())
+        for num_workers in range(0, multiprocessing.cpu_count(), 2):
+            kw_tune['num_workers'] = num_workers
+            reader = Loader(*args_tune, **kw_tune)
+            costs = []
+            start = time.time()
+            for i, data in enumerate(reader):
+                costs.append(time.time() - start)
+                start = time.time()
+
+            avg_cost = sum(costs[1:]) / len(costs)
+            if min_cost > avg_cost:
+                min_cost = avg_cost
+                best_num_workers = num_workers
+            print("num_workers: ", num_workers, " avg_cost: ", avg_cost)
+        print("best_num_workers: ", best_num_workers)
+        kw['num_workers'] = best_num_workers
+        reader = Loader(*args, **kw)
+        print("AutoTuning Cost for DataLoader: ",
+              time.time() - auto_tune_start, 'seconds')
+        return reader
+
+    return wrapper
+
+
+@AutoTune
 class DataLoader(object):
     """
     DataLoader prodives an iterator which iterates given dataset
@@ -420,6 +465,7 @@ class DataLoader(object):
                 return len(self.dataset)
 
     def __iter__(self):
+        #print("use num_workers: ", self.num_workers)
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
