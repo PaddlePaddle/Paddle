@@ -3,8 +3,8 @@
 
 include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "paddle/infrt/dialect/pd_ops.td"
-include "paddle/infrt/dialect/pd_extra_ops.td"
+include "paddle/infrt/dialect/pd/ir/pd_ops.td"
+include "paddle/infrt/dialect/pd/ir/pd_extra_ops.td"
 
 //===----------------------------------------------------------------------===//
 // This is to fuse the composition: 'Matmul o ElementwiseAdd' into 'PD_FusedFC'.
