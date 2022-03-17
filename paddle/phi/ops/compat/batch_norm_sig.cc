@@ -17,21 +17,30 @@
 namespace phi {
 
 KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("batch_norm",
-                         {"X", "Scale", "Bias", "Mean", "Variance"},
-                         {"momentum",
-                          "epsilon",
-                          "data_layout",
-                          "is_test",
-                          "use_global_stats",
-                          "trainable_statistics",
-                          "fuse_with_relu"},
-                         {"Y",
-                          "MeanOut",
-                          "VarianceOut",
-                          "SavedMean",
-                          "SavedVariance",
-                          "ReserveSpace"});
+  bool is_test = paddle::any_cast<int>(ctx.Attr("axis"));
+  // Why here not need `MomentumTensor`?
+  if (is_test) {
+    return KernelSignature("batch_norm_infer",
+                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"momentum", "epsilon", "data_layout"},
+                           {"Y", "MeanOut", "VarianceOut"});
+  } else {
+    return KernelSignature("batch_norm",
+                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"momentum",
+                            "epsilon",
+                            "data_layout",
+                            "is_test",
+                            "use_global_stats",
+                            "trainable_statistics",
+                            "fuse_with_relu"},
+                           {"Y",
+                            "MeanOut",
+                            "VarianceOut",
+                            "SavedMean",
+                            "SavedVariance",
+                            "ReserveSpace"});
+  }
 }
 
 KernelSignature BatchNormGradOpArgumentMapping(

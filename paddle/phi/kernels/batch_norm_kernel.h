@@ -15,6 +15,8 @@
 #pragma once
 
 #include <string>
+
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -26,7 +28,7 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& bias,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     float momentum,
+                     const Scalar& momentum,
                      float epsilon,
                      const std::string& data_layout,
                      bool is_test,
@@ -39,5 +41,19 @@ void BatchNormKernel(const Context& dev_ctx,
                      DenseTensor* saved_mean,
                      DenseTensor* saved_variance,
                      DenseTensor* reserve_space);
+
+template <typename T, typename Context>
+void BatchNormInferKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
+                          const DenseTensor& mean,
+                          const DenseTensor& variance,
+                          const Scalar& momentum,
+                          float epsilon,
+                          const std::string& data_layout,
+                          DenseTensor* y,
+                          DenseTensor* mean_out,
+                          DenseTensor* variance_out);
 
 }  // namespace phi
