@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/ternary.h"
-#include "paddle/phi/kernels/roi_pool_kernel.h"
 
 namespace paddle {
 namespace operators {
