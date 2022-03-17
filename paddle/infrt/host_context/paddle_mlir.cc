@@ -97,7 +97,7 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
           mlir::Type type_ = infrt::DenseTensorType::get(context_,
                                       infrt::TargetType::CPU,
                                       infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::NCHW);
+                                      infrt::LayoutType::ANY);
 
           operandTypes.push_back(type_);
         }
@@ -126,7 +126,7 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
           mlir::Type type_ = infrt::DenseTensorType::get(context_,
                                       infrt::TargetType::CPU,
                                       infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::NCHW);
+                                      infrt::LayoutType::ANY);
           resultTypes.push_back(type_);
         }
       }
@@ -181,7 +181,7 @@ void MLIRModelGenImpl::UpdateModelParams(
           infrt::DenseTensorType::get(context_,
                                       infrt::TargetType::CPU,
                                       infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::NCHW);
+                                      infrt::LayoutType::ANY);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -273,7 +273,7 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
         mlir::Type type_ = infrt::DenseTensorType::get(context_,
                                     infrt::TargetType::CPU,
                                     infrt::PrecisionType::FLOAT32,
-                                    infrt::LayoutType::NCHW);
+                                    infrt::LayoutType::ANY);
         resultTypes.push_back(type_);
       }
     }
