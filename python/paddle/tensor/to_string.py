@@ -264,6 +264,8 @@ def to_string(var, prefix='Tensor'):
 
 
 def _format_dense_tensor(tensor, indent):
+    np_tensor = tensor.numpy()
+
     if len(tensor.shape) == 0:
         size = 0
     else:
@@ -275,14 +277,10 @@ def _format_dense_tensor(tensor, indent):
     if size > DEFAULT_PRINT_OPTIONS.threshold:
         sumary = True
 
-    max_width, signed = _get_max_width(_to_summary(tensor))
+    max_width, signed = _get_max_width(_to_summary(np_tensor))
 
     data = _format_tensor(
-        tensor.numpy(),
-        sumary,
-        indent=indent,
-        max_width=max_width,
-        signed=signed)
+        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
     return data
 
 
