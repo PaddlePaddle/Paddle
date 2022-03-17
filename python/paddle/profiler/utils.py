@@ -138,7 +138,7 @@ def load_profiler_result(filename: str):
             p.export('test_export_protobuf.pb', format='pb')
             profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
     """
-    core.load_profiler_result(filename)
+    return core.load_profiler_result(filename)
 
 
 def wrap_optimizers():
