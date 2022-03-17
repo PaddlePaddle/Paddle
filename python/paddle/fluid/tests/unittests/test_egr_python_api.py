@@ -654,7 +654,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                 tensor3 = tensor2._copy_to(core.CPUPlace(), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertEqual(tensor3.persistable, True)
-                self.assertEqual(tensor3.stop_gradient, False)
+                self.assertEqual(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_cpu_place())
 
                 tensor4 = tensor2.cpu()
