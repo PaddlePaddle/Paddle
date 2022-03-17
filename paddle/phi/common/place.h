@@ -83,7 +83,7 @@ class Place {
   uint32_t HashValue() const { return Hash()(*this); }
 
   inline bool operator==(const Place& rhs) const {
-    return HashValue() <= rhs.HashValue();
+    return HashValue() == rhs.HashValue();
   }
   inline bool operator!=(const Place& rhs) const {
     return HashValue() != rhs.HashValue();
