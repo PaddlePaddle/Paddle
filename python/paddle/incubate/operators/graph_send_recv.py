@@ -64,8 +64,8 @@ def graph_send_recv(x,
         pool_type (str): The pooling type of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
         out_size (int64|None): We can set `out_size` to get necessary output shape. If not set, then this 
-                          attribute will not be used. If set, then we will use the following rule to set 
-                          output shape: max(out_size, max(dst_index) + 1).
+                              attribute will not be used. If set, it should be equal with or larger than
+                              max(dst_index) + 1.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
