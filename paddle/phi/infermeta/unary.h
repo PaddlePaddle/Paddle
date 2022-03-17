@@ -215,6 +215,15 @@ void TileInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void TopKInferMeta(const MetaTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   MetaTensor* out,
+                   MetaTensor* indices,
+                   MetaConfig config = MetaConfig());
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
