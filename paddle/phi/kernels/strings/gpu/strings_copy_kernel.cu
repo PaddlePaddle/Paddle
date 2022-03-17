@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/strings/strings_deserialize_kernel.h"
+#include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/strings/strings_copy_kernel.h"
+#include "paddle/phi/kernels/strings/strings_deserialize_kernel.h"
 #include "paddle/phi/kernels/strings/strings_serialize_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
@@ -65,29 +65,28 @@ void Copy(const Context& dev_ctx,
 
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
-  if (src_place.GetType() == phi::AllocationType::GPU &&  // NOLINT
+  if (src_place.GetType() == phi::AllocationType::GPU &&
       dst_place.GetType() == phi::AllocationType::CPU) {
     // Situation 1: gpu_place->cpu_place
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    CPUContext* dst_ctx = reinterpret_cast<CPUContext*>(pool.Get(dst_place));
-
     DenseTensor gpu_serialized = phi::Empty<uint8_t, GPUContext>(dev_ctx, {1});
     phi::strings::Serialize(dev_ctx, src, &gpu_serialized);
 
-    DenseTensor cpu_serialized =
-        phi::EmptyLike<uint8_t>(*dst_ctx, gpu_serialized);
+    DenseTensor cpu_serialized;
+    cpu_serialized.Resize(gpu_serialized.dims());
+    dev_ctx.template HostAlloc<uint8_t>(&cpu_serialized);
+
     phi::Copy(dev_ctx, gpu_serialized, dst_place, false, &cpu_serialized);
 
-    phi::strings::Deserialize(*dst_ctx, cpu_serialized, dst);
+    phi::strings::Deserialize(dev_ctx, cpu_serialized, dst);
 
-  } else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
+  } else if (src_place.GetType() == phi::AllocationType::CPU &&
              dst_place.GetType() == phi::AllocationType::GPU) {
     // Situation 2: cpu_place->gpu_place
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    CPUContext* src_ctx = reinterpret_cast<CPUContext*>(pool.Get(src_place));
+    DenseTensor cpu_serialized;
+    cpu_serialized.Resize({1});
+    dev_ctx.template HostAlloc<uint8_t>(&cpu_serialized);
 
-    DenseTensor cpu_serialized = phi::Empty<uint8_t, CPUContext>(*src_ctx, {1});
-    phi::strings::Serialize(*src_ctx, src, &cpu_serialized);
+    phi::strings::Serialize(dev_ctx, src, &cpu_serialized);
 
     DenseTensor gpu_serialized =
         phi::EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
@@ -95,7 +94,7 @@ void Copy(const Context& dev_ctx,
         dev_ctx, cpu_serialized, dev_ctx.GetPlace(), false, &gpu_serialized);
 
     phi::strings::Deserialize(dev_ctx, gpu_serialized, dst);
-  } else if (src_place.GetType() == phi::AllocationType::GPU &&  // NOLINT
+  } else if (src_place.GetType() == phi::AllocationType::GPU &&
              dst_place.GetType() == phi::AllocationType::GPU) {
     // Situation 3: gpu_place->gpu_place
     auto src_gpu_place = src_place;

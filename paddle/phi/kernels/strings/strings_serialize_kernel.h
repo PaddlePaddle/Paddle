@@ -24,5 +24,33 @@ void Serialize(const Context& dev_ctx,
                const StringTensor& src,
                DenseTensor* dst);
 
+template <typename Context>
+void SerializeCPUKernel(const Context& dev_ctx,
+                        const StringTensor& src,
+                        DenseTensor* dst) {
+  int64_t numel = src.numel();
+  int64_t num = sizeof(int) * (numel + 1);
+  auto* src_str = src.data();
+  for (int64_t i = 0; i < numel; ++i) {
+    num += src_str[i].length() + 1;
+  }
+  dst->Resize(phi::make_ddim({num}));
+  uint8_t* strings_data = dev_ctx.template HostAlloc<uint8_t>(dst);
+  auto* strings_offset = reinterpret_cast<int*>(strings_data);
+  int start_offset = sizeof(int) * (numel + 1);
+  for (int64_t i = 0; i <= numel; ++i) {
+    if (i == 0) {
+      strings_offset[i] = start_offset;
+    } else {
+      strings_offset[i] = strings_offset[i - 1] + src_str[i - 1].length() + 1;
+    }
+  }
+  for (int64_t i = 0; i < numel; ++i) {
+    memcpy(strings_data + strings_offset[i],
+           src_str[i].data(),
+           src_str[i].length() + 1);
+  }
+}
+
 }  // namespace strings
 }  // namespace phi

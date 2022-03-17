@@ -97,24 +97,28 @@ template <typename Context>
 void Serialize(const Context& dev_ctx,
                const StringTensor& src,
                DenseTensor* dst) {
-  int64_t numel = src.numel();
-  auto* src_str = src.data();
-  // 1.get the number of bytes of all strings in string tensor
-  auto strings_size = GetAllStringsSize(dev_ctx, src_str, numel);
-  strings_size += sizeof(int32_t) * (numel + 1);
+  if (src.place().GetType() == phi::AllocationType::CPU) {
+    SerializeCPUKernel(dev_ctx, src, dst);
+  } else {
+    int64_t numel = src.numel();
+    auto* src_str = src.data();
+    // 1.get the number of bytes of all strings in string tensor
+    auto strings_size = GetAllStringsSize(dev_ctx, src_str, numel);
+    strings_size += sizeof(int32_t) * (numel + 1);
 
-  dst->Resize(phi::make_ddim({strings_size}));
-  uint8_t* strings_data = dev_ctx.template Alloc<uint8_t>(dst);
-  auto* strings_offset = reinterpret_cast<int*>(strings_data);
+    dst->Resize(phi::make_ddim({strings_size}));
+    uint8_t* strings_data = dev_ctx.template Alloc<uint8_t>(dst);
+    auto* strings_offset = reinterpret_cast<int*>(strings_data);
 
-  int32_t start_offset = sizeof(int32_t) * (numel + 1);
-  // 2. serialize strings data to dense tensor
-  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
-  dim3 grid_size =
-      dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+    int32_t start_offset = sizeof(int32_t) * (numel + 1);
+    // 2. serialize strings data to dense tensor
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+    dim3 grid_size =
+        dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
 
-  SerializeStringsData<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      src_str, strings_data, strings_offset, numel, start_offset);
+    SerializeStringsData<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+        src_str, strings_data, strings_offset, numel, start_offset);
+  }
 }
 
 }  // namespace strings

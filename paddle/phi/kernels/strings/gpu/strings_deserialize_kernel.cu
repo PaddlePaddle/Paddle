@@ -39,25 +39,29 @@ template <typename Context>
 void Deserialize(const Context& dev_ctx,
                  const DenseTensor& src,
                  StringTensor* dst) {
-  auto* strings_data = reinterpret_cast<const char*>(src.data<uint8_t>());
-  auto* strings_offset = reinterpret_cast<const int*>(strings_data);
-  int numel = 0;
+  if (src.place().GetType() == phi::AllocationType::CPU) {
+    DeserializeCPUKernel(dev_ctx, src, dst);
+  } else {
+    auto* strings_data = reinterpret_cast<const char*>(src.data<uint8_t>());
+    auto* strings_offset = reinterpret_cast<const int*>(strings_data);
+    int numel = 0;
 #ifdef PADDLE_WITH_HIP
-  phi::backends::gpu::GpuMemcpySync(
-      &numel, strings_data, sizeof(numel), hipMemcpyDeviceToHost);
+    phi::backends::gpu::GpuMemcpySync(
+        &numel, strings_data, sizeof(numel), hipMemcpyDeviceToHost);
 #else
-  phi::backends::gpu::GpuMemcpySync(
-      &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
+    phi::backends::gpu::GpuMemcpySync(
+        &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
 #endif
-  numel = numel / sizeof(int) - 1;
-  dst->Resize(phi::make_ddim({numel}));
-  dtype::pstring* dst_str = dev_ctx.template Alloc<dtype::pstring>(dst);
+    numel = numel / sizeof(int) - 1;
+    dst->Resize(phi::make_ddim({numel}));
+    dtype::pstring* dst_str = dev_ctx.template Alloc<dtype::pstring>(dst);
 
-  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
-  dim3 grid_size =
-      dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-  DeserializeCUDAKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      strings_data, strings_offset, dst_str, numel);
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+    dim3 grid_size =
+        dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+    DeserializeCUDAKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+        strings_data, strings_offset, dst_str, numel);
+  }
 }
 
 }  // namespace strings
