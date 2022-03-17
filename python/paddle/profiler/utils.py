@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.core import (_RecordEvent, TracerEventType,
-                               load_profiler_result)
 from typing import Any
 from warnings import warn
 import functools
 from contextlib import ContextDecorator
+
+from paddle.fluid.core import (_RecordEvent, TracerEventType)
+import paddle.fluid.core.load_profiler_result as _load_profiler_result
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -32,7 +33,7 @@ class RecordEvent(ContextDecorator):
     Interface for recording a time range.
 
     Parameters:
-    name(str): Name of the record event
+        name(str): Name of the record event
 
     Examples:
     .. code-block:: python
@@ -53,7 +54,7 @@ class RecordEvent(ContextDecorator):
         record_event.end()
 
     Note:
-    RecordEvent will take effect only when profiler is on and at the state of RECORD.
+        RecordEvent will take effect only when profiler is on and at the state of RECORD.
     """
 
     def __init__(self,
@@ -111,6 +112,33 @@ class RecordEvent(ContextDecorator):
         '''
         if self.event:
             self.event.end()
+
+
+def load_profiler_result(filename: str):
+    r"""
+    Load dumped profiler data back to memory.
+
+    Parameters:
+        filename(str): Name of the exported protobuf file of profiler data.
+
+    Returns:
+        ProfilerResult object.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            with profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 10)) as p:
+                for iter in range(10):
+                    #train()
+                    p.step()
+            p.export('test_export_protobuf.pb', format='pb')
+            profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
+    """
+    _load_profiler_result(filename)
 
 
 def wrap_optimizers():
