@@ -760,7 +760,8 @@ class Layer(object):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not type(tensor) == core.VarBase:
+        elif tensor is not None and not (type(tensor) == core.VarBase or
+                                         type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
                 format(type(tensor).__name__))

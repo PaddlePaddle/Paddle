@@ -88,8 +88,8 @@ void SyncDefaultStream(
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
-    ncclEvents[i].Record(*dev_ctx[i]);
-    ncclEvents[i].Block(*default_ctx);
+    ncclEvents[i].Record(*default_ctx);
+    ncclEvents[i].Block(*dev_ctx[i]);
   }
 }
 

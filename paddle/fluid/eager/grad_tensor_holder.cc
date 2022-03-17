@@ -21,6 +21,11 @@
 
 namespace egr {
 
+void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
+  buffer_[slot_id][rank] =
+      paddle::experimental::zeros_like(buffer_[slot_id][rank]);
+}
+
 void GradTensorHolder::add(size_t slot_id, size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool fill_one) {

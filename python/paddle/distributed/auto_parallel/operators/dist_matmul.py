@@ -1432,7 +1432,6 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         if is_valid_list_index(y_dims_mapping,
                                -2) and is_dim_shard(y_dims_mapping[-2]):
             return False
-
         return True
 
     def is_output_compatible(self, dist_op):
