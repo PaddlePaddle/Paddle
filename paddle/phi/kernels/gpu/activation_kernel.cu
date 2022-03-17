@@ -39,12 +39,13 @@ void ActivationGPUImpl(const Context& dev_ctx,
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
-#define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)                   \
-  template <typename T, typename Context>                                   \
-  void name##Kernel(                                                        \
-      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {     \
-    functor_class functor;                                                  \
-    ActivationGPUImpl<T, Context, functor_class>(dev_ctx, x, out, functor); \
+#define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \
+  template <typename T, typename Context>                               \
+  void name##Kernel(                                                    \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
+    funcs::functor_class<T> functor;                                    \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>(             \
+        dev_ctx, x, out, functor);                                      \
   }
 
 #define DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(name, functor_class, attr) \
@@ -76,6 +77,7 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                          \
   }
 
+<<<<<<< HEAD
 DEFINE_GPU_ACTIVATION_KERNEL(Cos, funcs::CudaCosFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Tan, funcs::CudaTanFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Acos, funcs::CudaAcosFunctor<T>)
@@ -96,11 +98,33 @@ DEFINE_GPU_ACTIVATION_KERNEL(Square, funcs::CudaSquareFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, funcs::CudaSqrtFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, funcs::CudaRsqrtFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, funcs::CudaSoftsignFunctor<T>)
+=======
+DEFINE_GPU_ACTIVATION_KERNEL(Cos, CudaCosFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Tan, CudaTanFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Acos, CudaAcosFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sin, CudaSinFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Asin, CudaAsinFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Atan, CudaAtanFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sinh, CudaSinhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Cosh, CudaCoshFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Asinh, CudaAsinhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Acosh, CudaAcoshFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Atanh, CudaAtanhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
+>>>>>>> 6849d33b62cacccb27797375a212e37a47ca9484
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
+                                     CudaHardShrinkFunctor,
+                                     threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 
@@ -157,6 +181,7 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
+<<<<<<< HEAD
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
@@ -177,3 +202,10 @@ PD_REGISTER_KERNEL(expm1,
 PD_REGISTER_KERNEL(logit, GPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, GPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
+=======
+PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+>>>>>>> 6849d33b62cacccb27797375a212e37a47ca9484

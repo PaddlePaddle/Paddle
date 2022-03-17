@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature ROIAlignOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature RoiAlignOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("roi_align",
                          {"X", "ROIs", "RoisNum"},
                          {"pooled_height",
@@ -27,6 +27,19 @@ KernelSignature ROIAlignOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Out"});
 }
 
+KernelSignature RoiAlignGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("roi_align_grad",
+                         {"X", "ROIs", "RoisNum", GradVarName("Out")},
+                         {"pooled_height",
+                          "pooled_width",
+                          "spatial_scale",
+                          "sampling_ratio",
+                          "aligned"},
+                         {GradVarName("X")});
+}
+
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(roi_align, phi::ROIAlignOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(roi_align, phi::RoiAlignOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(roi_align_grad, phi::RoiAlignGradOpArgumentMapping);
