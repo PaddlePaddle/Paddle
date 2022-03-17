@@ -442,7 +442,7 @@ void BatchNormKernel(const Context &ctx,
       paddle::framework::TensorCopy(x, ctx.GetPlace(), y);
     } else {
       auto momentum_v = momentum.to<float>();
-      double this_factor = 1. - momentum;
+      double this_factor = 1. - momentum_v;
 
       bool called = false;
 #if CUDNN_VERSION_MIN(7, 4, 1)
@@ -490,9 +490,9 @@ void BatchNormKernel(const Context &ctx,
                   /*sizeInBytes=*/&reserve_space_size));
 
       reserve_space_ptr =
-          ctx.Alloc(reserve_space, transformed_x.type(), reserve_space_size);
+          ctx.Alloc(reserve_space, transformed_x.dtype(), reserve_space_size);
       workspace_ptr =
-          ctx.Alloc(workspace_tensor, transformed_x.type(), workspace_size);
+          ctx.Alloc(&workspace_tensor, transformed_x.dtype(), workspace_size);
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
