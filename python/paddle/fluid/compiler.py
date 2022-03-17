@@ -809,48 +809,6 @@ class IpuStrategy(object):
         """
         self._ipu_strategy.disable_pattern(pattern)
 
-    def check(self):
-        """
-        This function is going to check if the ipu_strategy is valid.
-        """
-        if self.get_option("enable_distribution"):
-            if 'POPDIST_NUM_TOTAL_REPLICAS' not in os.environ:
-                raise RuntimeError(
-                    "Please use poprun to run the program with POD128 and POD256"
-                )
-            required_local_replicas = int(
-                os.environ.get('POPDIST_NUM_LOCAL_REPLICAS', default='1'))
-            required_total_replicas = int(
-                os.environ.get('POPDIST_NUM_TOTAL_REPLICAS', default='1'))
-            required_ipus_per_replica = int(
-                os.environ.get('POPDIST_NUM_IPUS_PER_REPLICA', default='1'))
-
-            local_replicas = self.get_option("replicated_graph_count")
-            total_replicas = self.get_option("global_replication_factor")
-            local_num_ipus = self.get_option("num_ipus")
-
-            if required_local_replicas != local_replicas:
-                raise RuntimeError(
-                    "Please set valid replicated_graph_count for distribution. Expect %d, but received %d."
-                    % (required_local_replicas, local_replicas))
-            if required_total_replicas != total_replicas:
-                raise RuntimeError(
-                    "Please set valid global_replication_factor for distribution. Expect %d, but received %d."
-                    % (required_total_replicas, total_replicas))
-            if required_ipus_per_replica * local_replicas != local_num_ipus:
-                raise RuntimeError(
-                    "Please set valid num_ipus for distribution. Expect %d, but received %d."
-                    % (required_ipus_per_replica * local_replicas,
-                       local_num_ipus))
-
-            if local_replicas != total_replicas:
-                replica_index = int(
-                    os.environ.get('POPDIST_REPLICA_INDEX_OFFSET', default='0'))
-                self.set_options({
-                    "enable_distributed_replicated_graphs": True,
-                    "global_replica_offset": replica_index
-                })
-
     @property
     def num_ipus(self):
         """
@@ -951,9 +909,6 @@ class IpuCompiledProgram(object):
             self._ipu_strategy = ipu_strategy
         else:
             self._ipu_strategy = IpuStrategy()
-
-        # check if the ipu_strategy is valid
-        self._ipu_strategy.check()
 
         if ipu_strategy.has_custom_ops:
             self._custom_op_names = set(ipu_strategy.custom_op_names)
