@@ -1641,9 +1641,7 @@ REGISTER_OPERATOR(logit, ops::LogitOp, ops::LogitOpMaker,
                   ops::LogitGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(logit_grad, ops::LogitGradOp);
-REGISTER_OP_CPU_KERNEL(
-    logit_grad, ops::LogitGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogitGradKernel<paddle::platform::CPUDeviceContext, double>);
+
 /* ========================================================================== */
 
 /* ========================    celu  register     ============================
@@ -1692,7 +1690,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
 REGISTER_OP_CPU_KERNEL(
     sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                                               ops::SqrtGradGradFunctor<float>>,
@@ -1720,7 +1717,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::RsqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);
 REGISTER_OP_CPU_KERNEL(
     rsqrt_grad_grad,
     ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
@@ -1748,25 +1744,6 @@ REGISTER_OPERATOR(
     square_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(square,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<double>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<int>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           ops::SquareGradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::SquareGradFunctor<double>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::SquareGradFunctor<int>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::SquareGradFunctor<int64_t>>);
 
 REGISTER_OP_CPU_KERNEL(
     square_grad_grad,
@@ -1829,16 +1806,7 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     std::conditional<ops::CanInplaceAct<ops::Expm1GradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
-REGISTER_OPERATOR(expm1_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    expm1_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                          ops::Expm1GradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::Expm1GradFunctor<double>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::Expm1GradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================  Log register ==================================*/

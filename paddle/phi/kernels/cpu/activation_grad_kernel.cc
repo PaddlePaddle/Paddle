@@ -103,8 +103,14 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Acosh, AcoshGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, AtanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, TanhShrinkGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, SiluGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, SquareGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, SoftsignGradFunctor);
+
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, Expm1GradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, ReciprocalGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, RsqrtGradFunctor);
 
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhGradFunctor);
@@ -122,10 +128,24 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink,
                                                HardShrinkGradFunctor,
                                                threshold);
 
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
+                                               MishGradFunctor,
+                                               threshold);
+
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu,
                                                BReluGradFunctor,
                                                t_min,
                                                t_max);
+
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
+                                               STanhGradFunctor,
+                                               scale_a,
+                                               scale_b);
+
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
+                                               SoftplusGradFunctor,
+                                               beta,
+                                               threshold);
 
 template <typename T, typename Context>
 void EluGradKernel(const Context& dev_ctx,
@@ -190,6 +210,13 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_shrink_grad, TanhShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(silu_grad, SiluGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(stanh_grad, STanhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(rsqrt_grad, RsqrtGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(relu_double_grad,
                                           ReluDoubleGradKernel)
@@ -223,3 +250,14 @@ PD_REGISTER_KERNEL(expm1_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(
+    logit_grad, CPU, ALL_LAYOUT, phi::LogitGradKernel, float, double) {}
+PD_REGISTER_KERNEL(square_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SquareGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
