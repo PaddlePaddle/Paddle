@@ -77,28 +77,6 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                          \
   }
 
-<<<<<<< HEAD
-DEFINE_GPU_ACTIVATION_KERNEL(Cos, funcs::CudaCosFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Tan, funcs::CudaTanFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Acos, funcs::CudaAcosFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Sin, funcs::CudaSinFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Asin, funcs::CudaAsinFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Atan, funcs::CudaAtanFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Sinh, funcs::CudaSinhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Cosh, funcs::CudaCoshFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Asinh, funcs::CudaAsinhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Acosh, funcs::CudaAcoshFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Atanh, funcs::CudaAtanhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Relu, funcs::CudaReluFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Tanh, funcs::CudaTanhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Exp, funcs::CudaExpFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Expm1, funcs::CudaExpm1Functor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, funcs::CudaReciprocalFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Square, funcs::CudaSquareFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, funcs::CudaSqrtFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, funcs::CudaRsqrtFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Softsign, funcs::CudaSoftsignFunctor<T>)
-=======
 DEFINE_GPU_ACTIVATION_KERNEL(Cos, CudaCosFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tan, CudaTanFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Acos, CudaAcosFunctor)
@@ -114,7 +92,13 @@ DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
->>>>>>> 6849d33b62cacccb27797375a212e37a47ca9484
+DEFINE_GPU_ACTIVATION_KERNEL(Exp, CudaExpFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Expm1, CudaExpm1Functor)
+DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -181,7 +165,6 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
-<<<<<<< HEAD
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
@@ -202,10 +185,8 @@ PD_REGISTER_KERNEL(expm1,
 PD_REGISTER_KERNEL(logit, GPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, GPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
-=======
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
->>>>>>> 6849d33b62cacccb27797375a212e37a47ca9484

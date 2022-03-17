@@ -73,35 +73,26 @@ DEFINE_CPU_ACTIVATION_KERNEL(Relu, ReluCPUFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Tanh, TanhFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(TanhShrink, TanhShrinkFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Silu, SiluFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Exp, funcs::ExpFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Expm1, funcs::Expm1Functor)
-DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, funcs::ReciprocalFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Square, funcs::SquareFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, funcs::SqrtFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, funcs::RsqrtFunctor)
-
-DEFINE_CPU_ACTIVATION_KERNEL(Softsign, funcs::SoftsignFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Exp, ExpFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Expm1, Expm1Functor)
+DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, ReciprocalFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Square, SquareFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, SqrtFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold)
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, funcs::MishFunctor, threshold)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, funcs::BReluFunctor, t_min, t_max)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh,
-                                     funcs::STanhFunctor,
-                                     scale_a,
-                                     scale_b)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                     funcs::SoftplusFunctor,
-                                     beta,
-                                     threshold)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, ELUFunctor, alpha)
-
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
 
 }  // namespace phi
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
@@ -130,12 +121,12 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
 // PD_REGISTER_ACTIVATION_KERNEL(mish, Mish)
-PD_REGISTER_ACTIVATION_KERNEL(stanh, STanh)
-PD_REGISTER_ACTIVATION_KERNEL(reciprocal, Reciprocal)
-PD_REGISTER_ACTIVATION_KERNEL(sqrt, Sqrt)
-PD_REGISTER_ACTIVATION_KERNEL(rsqrt, Rsqrt)
+PD_REGISTER_ACTIVATION_KERNEL(stanh, STanhKernel)
+PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
+PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
 // PD_REGISTER_ACTIVATION_KERNEL(softplus, Softplus)
-PD_REGISTER_ACTIVATION_KERNEL(softsign, Softsign)
+PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 
 PD_REGISTER_KERNEL(
     exp, CPU, ALL_LAYOUT, phi::ExpKernel, float, double, int, int64_t) {}

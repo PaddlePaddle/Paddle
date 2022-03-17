@@ -65,6 +65,7 @@ DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(HardShrink, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Elu, alpha)
 
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(BRelu, t_min, t_max)
+DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(STanh, scale_a, scale_b)
 
 template <typename T, typename Context>
 void LogitKernel(const Context& dev_ctx,
