@@ -122,7 +122,7 @@ class ChannelShuffle(Layer):
             #   [[0.40000001]],
             #   [[0.50000000]]]]
             channel_shuffle = nn.ChannelShuffle(3)
-            y = channel_shuffle(x, 3)
+            y = channel_shuffle(x)
             # [[[[0.        ]],
             #   [[0.20000000]],
             #   [[0.40000001]],
