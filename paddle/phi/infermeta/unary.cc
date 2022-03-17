@@ -1090,6 +1090,16 @@ void RollInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          in_dims.size()));
+}
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   auto in_dim = input.dims();
   out->set_dims(phi::make_ddim({in_dim.size()}));

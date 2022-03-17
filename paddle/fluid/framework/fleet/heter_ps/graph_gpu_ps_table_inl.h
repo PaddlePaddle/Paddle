@@ -14,6 +14,7 @@
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 namespace paddle {
 namespace framework {
 /*
@@ -45,6 +46,33 @@ __global__ void neighbor_sample_example(GpuPsCommGraph graph, int* index,
   }
 }
 
+int GpuPsGraphTable::init_cpu_table(
+    const paddle::distributed::GraphParameter& graph) {
+  cpu_graph_table.reset(new paddle::distributed::GraphTable);
+  cpu_table_status = cpu_graph_table->initialize(graph);
+  if (cpu_table_status != 0) return cpu_table_status;
+  std::function<void(std::vector<GpuPsCommGraph>&)> callback =
+      [this](std::vector<GpuPsCommGraph>& res) {
+        pthread_rwlock_wrlock(this->rw_lock.get());
+        this->clear_graph_info();
+        this->build_graph_from_cpu(res);
+        pthread_rwlock_unlock(this->rw_lock.get());
+        cv_.notify_one();
+      };
+  cpu_graph_table->set_graph_sample_callback(callback);
+  return cpu_table_status;
+}
+
+int GpuPsGraphTable::load(const std::string& path, const std::string& param) {
+  int status = cpu_graph_table->load(path, param);
+  if (status != 0) {
+    return status;
+  }
+  std::unique_lock<std::mutex> lock(mutex_);
+  cpu_graph_table->start_graph_sampling();
+  cv_.wait(lock);
+  return 0;
+}
 /*
  comment 1
 
@@ -68,6 +96,7 @@ __global__ void neighbor_sample_example(GpuPsCommGraph graph, int* index,
  that's what fill_dvals does.
 
 */
+
 void GpuPsGraphTable::move_neighbor_sample_result_to_source_gpu(
     int gpu_id, int gpu_num, int sample_size, int* h_left, int* h_right,
     int64_t* src_sample_res, int* actual_sample_size) {
@@ -258,7 +287,7 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
 
   auto d_shard_keys = memory::Alloc(place, len * sizeof(int64_t));
   int64_t* d_shard_keys_ptr = reinterpret_cast<int64_t*>(d_shard_keys->ptr());
-  auto d_shard_vals = memory::Alloc(place, len * sizeof(int64_t));
+  auto d_shard_vals = memory::Alloc(place, sample_size * len * sizeof(int64_t));
   int64_t* d_shard_vals_ptr = reinterpret_cast<int64_t*>(d_shard_vals->ptr());
   auto d_shard_actual_sample_size = memory::Alloc(place, len * sizeof(int));
   int* d_shard_actual_sample_size_ptr =
