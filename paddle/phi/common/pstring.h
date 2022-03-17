@@ -19,7 +19,7 @@ limitations under the License. */
 #include <ostream>
 #include <string>
 
-#include "paddle/phi/common/cpstring_internal.h"
+#include "paddle/phi/common/cpstring_impl.h"
 
 namespace phi {
 namespace dtype {
