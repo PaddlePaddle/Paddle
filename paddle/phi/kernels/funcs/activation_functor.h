@@ -157,9 +157,10 @@ struct LogitFunctor {
   }
 };
 
-// mish(x) = x * tanh(softplus(x))
-// softplus(x) = x, if x > threshold
-//             = ln(1 + exp(x)), otherwise
+// // mish(x) = x * tanh(softplus(x))
+// // softplus(x) = x, if x > threshold
+// //             = ln(1 + exp(x)), otherwise
+
 template <typename T>
 struct MishFunctor : public BaseActivationFunctor<T> {
   float threshold;
@@ -168,7 +169,7 @@ struct MishFunctor : public BaseActivationFunctor<T> {
   }
 
   template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) {
+  void operator()(Device d, X x, Out out) const {
     auto sp = (x > static_cast<T>(threshold))
                   .select(x, (static_cast<T>(1) + x.exp()).log());
     out.device(d) = x * sp.tanh();
@@ -244,20 +245,41 @@ struct RsqrtFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// For numerical stability, using the following formula instead of softplus(x) =
-// log(1 + exp(x))
-// softplus(x) = log(1 + exp(beta * x)) / beta when beta * x <= threshold(beta =
-// 1, threshold = 20 by default), otherwise x
+// // For numerical stability, using the following formula instead of
+// softplus(x) =
+// // log(1 + exp(x))
+// // softplus(x) = log(1 + exp(beta * x)) / beta when beta * x <=
+// threshold(beta =
+// // 1, threshold = 20 by default), otherwise x
+// template <typename T>
+// struct SoftplusFunctor : public BaseActivationFunctor<T> {
+//   float beta;
+//   float threshold;
+//   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+//     return {{"beta", &beta}, {"threshold", &threshold}};
+//   }
+
+//   template <typename Device, typename X, typename Out>
+//   void operator()(Device d, X x, Out out) {
+//     auto x_beta = static_cast<T>(beta) * x;
+//     out.device(d) = (x_beta > static_cast<T>(threshold))
+//                         .select(x,
+//                                 (static_cast<T>(1) + x_beta.exp()).log() /
+//                                     static_cast<T>(beta));
+//   }
+// };
+
 template <typename T>
 struct SoftplusFunctor : public BaseActivationFunctor<T> {
   float beta;
   float threshold;
+
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
 
   template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) {
+  void operator()(Device d, X x, Out out) const {
     auto x_beta = static_cast<T>(beta) * x;
     out.device(d) = (x_beta > static_cast<T>(threshold))
                         .select(x,
@@ -602,6 +624,22 @@ struct Expm1Functor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct Expm1GradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * out + dout;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // relu(x) = max(x, 0)
 template <typename T>
 struct ReluCPUFunctor : public BaseActivationFunctor<T> {
@@ -822,11 +860,10 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// softsign(x) = x / (1 + |x|)
 template <typename T>
 struct SoftsignFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) {
+  void operator()(Device d, X x, Out out) const {
     out.device(d) = x / (static_cast<T>(1) + x.abs());
   }
 };
@@ -1261,6 +1298,18 @@ struct CudaExpm1Functor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(expm1(x));
+  }
+};
+
+template <typename T>
+struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
+  // dx = dout * out
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    return dout * out + dout;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
   }
 };
 

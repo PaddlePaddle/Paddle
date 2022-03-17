@@ -141,18 +141,6 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
-  // dx = dout * out
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out + dout;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
 struct CudaLogFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
 
