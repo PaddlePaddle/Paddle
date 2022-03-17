@@ -46,6 +46,7 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
@@ -142,7 +143,12 @@ PlaceType Tensor::place() const {
 }
 
 paddle::platform::Place Tensor::inner_place() const {
-  return ConvertExtPlaceToInnerPlace(place());
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::PermissionDenied(
+          "Null pointer error, the impl_ of Tensor should not be "
+          "Null when calling Tensor::inner_place()."));
+  return impl_->place();
 }
 
 bool Tensor::is_cpu() const {
@@ -286,10 +292,14 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
-std::shared_ptr<phi::TensorBase> Tensor::impl() const { return impl_; }
+const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
+}
+
+void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
+  impl_ = std::move(impl);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

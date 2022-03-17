@@ -13,15 +13,17 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
-#include "paddle/infrt/dialect/pd_ops_info.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
-  context_->allowUnregisteredDialects();
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
   context_->getOrLoadDialect<mlir::pd::PaddleDialect>();
+  context_->getOrLoadDialect<::infrt::InfrtDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
 
@@ -55,7 +57,6 @@ mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(
   UpdateModelParams(program, &mainFunc);
   UpdateModelOps(program);
   UpdateModelOutputs(program);
-
   return module_;
 }
 
@@ -171,7 +172,11 @@ void MLIRModelGenImpl::UpdateModelParams(
       ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
                       builder_,
                       &precision_);
-      mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+      mlir::Type type_ =
+          infrt::DenseTensorType::get(context_,
+                                      infrt::TargetType::CPU,
+                                      infrt::PrecisionType::FLOAT32,
+                                      infrt::LayoutType::NCHW);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -197,8 +202,9 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
         llvm::SmallVector<mlir::Type, 4> resultTypes;
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
+
         mlir::OperationState state(loc,
-                                   mlir::ReturnOp::getOperationName(),
+                                   ::infrt::ReturnOp::getOperationName(),
                                    operands,
                                    resultTypes,
                                    attrs);
@@ -321,7 +327,7 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
     switch (type) {
       ATTR_IMPL_CASE(FLOAT, f, getF32FloatAttr);
       ATTR_IMPL_CASE(BOOLEAN, b, getBoolAttr);
-      ATTR_IMPL_CASE(INT, i, getI32IntegerAttr);
+      ATTR_IMPL_CASE(INT, i, getSI32IntegerAttr);
       ATTR_IMPL_CASE(LONG, l, getI64IntegerAttr);
       ATTR_IMPL_CASE(STRING, s, getStringAttr);
 

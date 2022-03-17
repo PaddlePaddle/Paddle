@@ -106,9 +106,10 @@ class AmpScaler(object):
 
         if enable and not (tracer._expected_place.is_gpu_place() or
                            tracer._expected_place.is_xpu_place() or
+                           tracer._expected_place.is_mlu_place() or
                            tracer._expected_place.is_npu_place()):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace, XPUPlace and NPUPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace and NPUPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place)
             enable = False
 
