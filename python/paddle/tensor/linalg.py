@@ -21,6 +21,7 @@ from ..static import Variable
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
+import warnings
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
