@@ -95,12 +95,8 @@ paddle::optional<phi::MetaTensor> MakeMetaTensor(
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
-  if (!out->initialized()) {
-    auto dense_tensor = std::make_shared<phi::DenseTensor>(
-        phi::make_intrusive<SharedStorage>(phi::TransToPhiPlace(backend)),
-        phi::DenseTensorMeta());
-    out->set_impl(dense_tensor);
-    return dense_tensor.get();
+  if (out->impl() == nullptr) {
+    out->set_impl(std::make_shared<phi::DenseTensor>());
   }
   return static_cast<phi::DenseTensor*>(out->impl().get());
 }
@@ -111,9 +107,7 @@ std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
   out->reserve(out_size);
   std::vector<phi::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
-    auto tensor_ptr = std::make_shared<phi::DenseTensor>(
-        phi::make_intrusive<SharedStorage>(phi::TransToPhiPlace(backend)),
-        phi::DenseTensorMeta());
+    auto tensor_ptr = std::make_shared<phi::DenseTensor>();
     results[i] = tensor_ptr.get();
     out->emplace_back();
     out->back().set_impl(tensor_ptr);
