@@ -751,12 +751,12 @@ def GenerateNodeCreationCodes(
     grad_node_name = GetGradNodeName(
         RecoverBaseNameOfInplaceFunction(
             fwd_api_name)) if inplace_map else GetGradNodeName(fwd_api_name)
-    node_construction_str = f"        auto grad_node = std::make_shared<{grad_node_name}>({num_bwd_inputs}, {num_bwd_outputs});"
+    node_construction_str = f"            auto grad_node = std::make_shared<{grad_node_name}>({num_bwd_inputs}, {num_bwd_outputs});"
 
     # SetAttributes
     set_attributes_list = []
     for name, _, _, _ in backward_attrs_list:
-        set_attributes = f"        grad_node->SetAttribute{name}({name});"
+        set_attributes = f"            grad_node->SetAttribute{name}({name});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
 
@@ -767,9 +767,9 @@ def GenerateNodeCreationCodes(
 
         if is_fwd_input:
             if is_optional:
-                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+                set_tensor_wrappers = f"            if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
             else:
-                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+                set_tensor_wrappers = f"            grad_node->SetTensorWrapper{name}({name}, true);"
         else:
             if IsVectorTensorType(atype):
                 tw_name = f"api_result[{pos}]"
@@ -777,9 +777,9 @@ def GenerateNodeCreationCodes(
                 tw_name = f"api_result"
 
             if is_optional:
-                set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
+                set_tensor_wrappers = f"            if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
             else:
-                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({tw_name}, false);"
+                set_tensor_wrappers = f"            grad_node->SetTensorWrapper{name}({tw_name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -788,8 +788,8 @@ def GenerateNodeCreationCodes(
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"        grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
-        set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        set_grad_out_meta = f"            grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
+        set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
     set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -803,23 +803,29 @@ def GenerateNodeCreationCodes(
     num_outputs = len(forward_outputs_position_map.keys())
     for name, (_, pos) in forward_outputs_position_map.items():
         output_autograd_meta_name = GetAutoGradMetaName(name)
-        set_out_rank = f"        egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
-        set_history = f"        egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
-        set_grad_in_meta = f"        grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
+        set_out_rank = f"            egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
+        set_history = f"            egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
+        set_grad_in_meta = f"            grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
 
         set_out_rank_list.append(set_out_rank)
         set_history_list.append(set_history)
         set_grad_in_meta_list.append(set_grad_in_meta)
 
         if num_outputs == 1:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
+            set_retain_grad = f"            egr::EagerUtils::CheckAndRetainGrad(api_result);"
         else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
+            set_retain_grad = f"            egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
         set_retain_grad_list.append(set_retain_grad)
     set_out_rank_str = "\n".join(set_out_rank_list)
     set_history_str = "\n".join(set_history_list)
     set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
     set_retain_grad_str = "\n".join(set_retain_grad_list)
+
+    node_event_name = fwd_api_name + " node_creation"
+    NODE_CREATION_TEMPLATE = """
+        paddle::platform::RecordEvent node_creation_record_event(\"{}\", paddle::platform::TracerEventType::Operator, 1);\n
+        """
+    node_creation_event_str = NODE_CREATION_TEMPLATE.format(node_event_name)
 
     NODE_CREATION_TEMPLATE = """
 
@@ -832,39 +838,43 @@ def GenerateNodeCreationCodes(
     // Forward API Call
     {}
 {}
+    {{
 {}
-    if(require_any_grad) {{
-        egr::EagerUtils::PassStopGradient({});
-        
-        // Node Construction
 {}
-
-        // SetAttributes
-{}
-
-        // SetTensorWrappers
+        if(require_any_grad) {{
+            egr::EagerUtils::PassStopGradient({});
+            
+            // Node Construction
 {}
 
-        // SetGradOutMeta & SetEdges
-{}
+            // SetAttributes
 {}
 
-        // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+            // SetTensorWrappers
 {}
-{}
+
+            // SetGradOutMeta & SetEdges
 {}
 {}
 
+            // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
+{}
+{}
+{}
+{}
+
+        }}
     }}
 
 """
     node_creation_str = NODE_CREATION_TEMPLATE.format(
         inputs_autograd_meta_str, compute_require_grad_args_str,
-        check_inplace_str, forward_call_str, outputs_autograd_meta_str,
-        bump_inplace_version_str, pass_stop_gradient_args_str,
-        node_construction_str, set_attributes_str, set_tensor_wrappers_str,
-        set_grad_out_meta_str, set_edges_str, set_out_rank_str, set_history_str,
-        set_grad_in_meta_str, set_retain_grad_str)
+        check_inplace_str, forward_call_str, bump_inplace_version_str,
+        outputs_autograd_meta_str, node_creation_event_str,
+        pass_stop_gradient_args_str, node_construction_str, set_attributes_str,
+        set_tensor_wrappers_str, set_grad_out_meta_str, set_edges_str,
+        set_out_rank_str, set_history_str, set_grad_in_meta_str,
+        set_retain_grad_str)
 
     return node_creation_str
 
@@ -966,14 +976,6 @@ def GenerateForwardDefinition(
         backward_fwd_input_map, backward_grad_input_map,
         backward_grad_output_map, backward_attrs_list, optional_inputs,
         inplace_map)
-
-    node_event_name = fwd_api_name + " node_creation"
-    NODE_CREATION_TEMPLATE = """{{\n
-           paddle::platform::RecordEvent node_creation_record_event(\"{}\", paddle::platform::TracerEventType::Operator, 1);\n
-           {}\n
-        }}"""
-    node_creation_str = NODE_CREATION_TEMPLATE.format(node_event_name,
-                                                      node_creation_str)
 
     dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{fwd_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
 
