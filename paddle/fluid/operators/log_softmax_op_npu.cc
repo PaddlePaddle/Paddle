@@ -14,18 +14,13 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
 
 using NPUDeviceContext = platform::NPUDeviceContext;
 
-static inline int CanonicalAxis(const int axis, const int rank) {
-  if (axis < 0) {
-    return axis + rank;
-  }
-  return axis;
-}
 template <typename T>
 class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
@@ -33,7 +28,7 @@ class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
     auto* X = ctx.Input<framework::Tensor>("X");
     auto* Out = ctx.Output<framework::Tensor>("Out");
     const int rank = X->dims().size();
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
     Out->mutable_data<T>(ctx.GetPlace());
 
     if (X->numel() != 0) {
