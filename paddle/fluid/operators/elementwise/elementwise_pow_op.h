@@ -19,6 +19,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
+#ifdef __xpu__
+#include <memory>
+#include <string>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -45,6 +54,22 @@ template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(__NVCC__) || defined(__xpu__)
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+#ifdef(__NVCC__)
+    const auto& dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+#else
+    const auto& dev_ctx =
+        ctx.template device_context<platform::XPUDeviceContext>();
+#endif
+
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(dev_ctx, ins, &outs, axis,
+                                                      PowFunctor<T>());
+#else
     using Tensor = framework::LoDTensor;
     auto* x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE_EQ(x != nullptr, true,
@@ -57,6 +82,7 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<PowFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           PowFunctor<T>(), z);
+#endif
   }
 };
 

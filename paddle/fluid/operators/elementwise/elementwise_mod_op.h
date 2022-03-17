@@ -16,6 +16,15 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
+#ifdef __xpu__
+#include <memory>
+#include <string>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -83,6 +92,22 @@ template <typename DeviceContext, typename T>
 class ElementwiseModKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if defined(__NVCC__) || defined(__xpu__)
+    std::vector<const framework::Tensor *> ins;
+    std::vector<framework::Tensor *> outs;
+#ifdef(__NVCC__)
+    const auto &dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+#else
+    const auto &dev_ctx =
+        ctx.template device_context<platform::XPUDeviceContext>();
+#endif
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(dev_ctx, ins, &outs, axis,
+                                                      ModFunctor<T>());
+
+#else
     auto *x = ctx.Input<framework::LoDTensor>("X");
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
@@ -91,6 +116,7 @@ class ElementwiseModKernel : public framework::OpKernel<T> {
 
     // dtype of x and y is int64 or int32
     elementwise_mod<DeviceContext, T>(ctx, x, y, z);
+#endif
   }
 };
 

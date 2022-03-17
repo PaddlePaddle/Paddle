@@ -17,8 +17,18 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
-
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/math_kernel.h"
+
+#ifdef __xpu__
+#include <memory>
+#include <string>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -85,6 +95,52 @@ template <typename DeviceContext, typename T>
 class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(__NVCC__) || defined(__xpu__)
+    auto x_var = ctx.InputVar("X");
+    PADDLE_ENFORCE_EQ(x_var != nullptr, true,
+                      platform::errors::InvalidArgument(
+                          "Cannot get input Variable X, Variable name = %s.",
+                          ctx.InputName("X")));
+#ifdef(__NVCC__)
+    const auto& dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+#else
+    const auto& dev_ctx =
+        ctx.template device_context<platform::XPUDeviceContext>();
+#endif
+    if (x_var->IsType<phi::SelectedRows>()) {
+      framework::Tensor x_for_selectedrows;
+      std::vector<const framework::Tensor*> ins;
+      std::vector<framework::Tensor*> outs;
+      int axis =
+          PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
+          dev_ctx, ins, &outs, axis, MulFunctor<T>());
+    } else if (x_var->IsType<framework::LoDTensor>()) {
+      auto* x_lod = ctx.Input<framework::LoDTensor>("X");
+      auto* y_lod = ctx.Input<framework::LoDTensor>("Y");
+      auto* z_lod = ctx.Output<framework::LoDTensor>("Out");
+      z_lod->mutable_data<T>(ctx.GetPlace());
+
+      int axis = ctx.Attr<int>("axis");
+      auto pt_x = paddle::experimental::MakePhiDenseTensor(*x_lod);
+      auto pt_y = paddle::experimental::MakePhiDenseTensor(*y_lod);
+      auto pt_z = paddle::experimental::MakePhiDenseTensor(*z_lod);
+#ifdef(__NVCC__)
+      phi::MultiplyRawKernel<T>(static_cast<const phi::GPUContext&>(dev_ctx),
+                                *pt_x.get(), *pt_y.get(), axis, pt_z.get());
+#else
+      phi::MultiplyRawKernel<T>(static_cast<const phi::XPUContext&>(dev_ctx),
+                                *pt_x.get(), *pt_y.get(), axis, pt_z.get());
+#endif
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "X's type[%s] is not supported by elementwise_op. X's type should be "
+          "LoDTensor or SelectedRows.",
+          framework::ToTypeName(x_var->Type())));
+    }
+#else
     auto x_var = ctx.InputVar("X");
     PADDLE_ENFORCE_EQ(x_var != nullptr, true,
                       platform::errors::InvalidArgument(
@@ -135,6 +191,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
           "LoDTensor or SelectedRows.",
           framework::ToTypeName(x_var->Type())));
     }
+#endif
   }
 };
 

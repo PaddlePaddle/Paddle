@@ -30,6 +30,19 @@ XPUOpMap& get_kp_ops() {
   static XPUOpMap s_xpu_kp_kernels{
       {"elementwise_add",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"elementwise_floordiv",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"elementwise_max",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"elementwise_min",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"elementwise_mod",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"elementwise_mul",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"elementwise_pow",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
       // activation op
       {"exp", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"hard_swish", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},

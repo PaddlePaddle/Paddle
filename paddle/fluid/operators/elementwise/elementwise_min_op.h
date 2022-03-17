@@ -24,6 +24,21 @@ template <typename DeviceContext, typename T>
 class ElementwiseMinKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(__NVCC__) || defined(__xpu__)
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+#ifdef(__NVCC__)
+    const auto& dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+#else
+    const auto& dev_ctx =
+        ctx.template device_context<platform::XPUDeviceContext>();
+#endif
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(dev_ctx, ins, &outs, axis,
+                                                      MinFunctor<T>());
+#else
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
@@ -32,6 +47,7 @@ class ElementwiseMinKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     ElementwiseComputeEx<MinFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           MinFunctor<T>(), z);
+#endif
   }
 };
 
