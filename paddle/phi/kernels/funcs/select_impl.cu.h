@@ -446,7 +446,7 @@ void SelectKernel(const KPDevice &dev_ctx,
 
   if (SelectData == 1) {
     out->Resize(phi::make_ddim(out_dim));
-  } else {  // == 0 where_index
+  } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(rank);
     out->Resize(phi::make_ddim(out_dim));
   }
