@@ -427,6 +427,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int kCumVesize = 2;
   const int block_c = 256;
   const int main_offset_c = Floor(size_count_block, (kCumVesize * block_c));
+
   using Add = kps::AddFunctor<CT>;
   CumsumOneBlock<CT, CT, Add, kCumVesize><<<1, block_c, 0, stream>>>(
       count_data, cumsum_data, size_count_block, main_offset_c, Add());
