@@ -872,6 +872,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
   }
 
+  if (config_.gpu_fp16_enabled()) {
+    argument_.SetUseGPUFp16(true);
+    argument_.SetGpuFp16DisabledOpTypes(config_.gpu_fp16_disabled_op_types_);
+  }
+
   if (config_.lite_engine_enabled()) {
     argument_.SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());

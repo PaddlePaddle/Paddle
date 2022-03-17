@@ -333,7 +333,8 @@ class TestVariable(unittest.TestCase):
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]
         with self.assertRaises(ValueError):
-            res = x[[False, False]]
+            with paddle.static.program_guard(prog):
+                res = x[[False, False]]
 
     def test_slice(self):
         places = [fluid.CPUPlace()]

@@ -1,4 +1,4 @@
-// RUN: infrtopt --canonicalize %s | FileCheck %s
+// RUN: infrtopt --pd-op-fuse %s | FileCheck %s
 // CHECK-LABEL: @main
 func @main() -> tensor<?xf32> {
   %a = "pd.feed"() {name="input0"} : () -> tensor<?xf32>
