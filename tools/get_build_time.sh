@@ -14,6 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echo 'test'
+echo 'test label'
 CUR_ROOT=$(dirname "$0")/..
 /usr/bin/time -f '%C, %E elapsed, %U user, %S sys' "$@" >> $CUR_ROOT/build/build-time 2>&1
