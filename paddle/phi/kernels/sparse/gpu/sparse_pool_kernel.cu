@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 #include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
@@ -28,16 +29,14 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
                                   const int rulebook_len,
                                   const int channels,
                                   T* out_features_ptr) {
+  phi::funcs::MaxPool<T> max_pool_functor;
   CUDA_KERNEL_LOOP_TYPE(i, n * channels, int64_t) {
     int real_i = i / channels;
     int channel_i = i - real_i * channels;
     int in_i = rulebook_ptr[real_i];
     int out_i = rulebook_ptr[real_i + rulebook_len];
-    if (out_features_ptr[out_i * channels + channel_i] <
-        in_features_ptr[in_i * channels + channel_i]) {
-      out_features_ptr[out_i * channels + channel_i] =
-          in_features_ptr[in_i * channels + channel_i];
-    }
+    max_pool_functor.compute(in_features_ptr[in_i * channels + channel_i],
+                             &out_features_ptr[out_i * channels + channel_i]);
   }
 }
 
@@ -97,28 +96,7 @@ void MaxPoolKernel(const Context& dev_ctx,
 
   T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
   const T* in_features_ptr = x.non_zero_elements().data<T>();
-  // 2. max pool
-  // 2.1 get the min elements of in_features
-  const T* result =
-#ifdef PADDLE_WITH_HIP
-      thrust::min_element(thrust::hip::par.on(dev_ctx.stream()),
-#else
-      thrust::min_element(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                          in_features_ptr,
-                          in_features_ptr + x.non_zero_elements().numel());
-  // 2.2 init the out_features with min elements
-  T h_result;
-  phi::backends::gpu::GpuMemcpyAsync(&h_result,
-                                     result,
-                                     sizeof(T),
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToHost,
-#else
-                                     cudaMemcpyDeviceToHost,
-#endif
-                                     dev_ctx.stream());
-  dev_ctx.Wait();
+// 2. max pool
 #ifdef PADDLE_WITH_HIP
   thrust::fill(thrust::hip::par.on(dev_ctx.stream()),
 #else
@@ -126,8 +104,8 @@ void MaxPoolKernel(const Context& dev_ctx,
 #endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
-               h_result);
-  // 2.3 pool
+               static_cast<T>(-FLT_MAX));
+  // TODO(zhangkaihuo) Replacing multiple calls with one kernel may be faster
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {
       continue;

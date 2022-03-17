@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/sparse/convolution.h"
 
 #include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
 
@@ -32,16 +34,17 @@ __global__ void MaxPoolGradCudaKernel(const T* in_features_ptr,
                                       const int rulebook_len,
                                       const int channels,
                                       T* x_grad_ptr) {
+  phi::funcs::MaxPoolGrad<T> grad_functor;
   CUDA_KERNEL_LOOP_TYPE(i, n * channels, int64_t) {
     int real_i = i / channels;
-    int channel_i = i - real_i * channels;
+    int c = i - real_i * channels;
     int in_i = rulebook_ptr[real_i];
     int out_i = rulebook_ptr[real_i + rulebook_len];
-    if (out_features_ptr[out_i * channels + channel_i] ==
-        in_features_ptr[in_i * channels + channel_i]) {
-      x_grad_ptr[in_i * channels + channel_i] +=
-          out_grad_ptr[out_i * channels + channel_i];
-    }
+    grad_functor.compute(in_features_ptr[in_i * channels + c],
+                         out_features_ptr[out_i * channels + c],
+                         out_grad_ptr[out_i * channels + c],
+                         1,
+                         &x_grad_ptr[in_i * channels + c]);
   }
 }
 
@@ -73,12 +76,7 @@ void MaxPoolGradKernel(const Context& dev_ctx,
   for (int i = 0; i < rulebook_len; i++) {
     counter[h_counter[i]] += 1;
   }
-  int offset = 0;
-  for (int i = 0; i < kernel_size; i++) {
-    offsets[i] = offset;
-    offset += counter[i];
-  }
-  offsets[kernel_size] = offset;
+  phi::funcs::sparse::PrefixSum(&counter[0], &offsets[0], kernel_size);
 
   const T* in_features_ptr = x.non_zero_elements().data<T>();
   const T* out_features_ptr = out.non_zero_elements().data<T>();

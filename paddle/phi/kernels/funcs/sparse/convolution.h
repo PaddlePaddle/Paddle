@@ -176,6 +176,15 @@ inline const std::vector<int> PoolResetKernel(
   return res;
 }
 
+inline void PrefixSum(const int* counter, int* offsets, const int n) {
+  int offset = 0;
+  for (int i = 0; i < n; i++) {
+    offsets[i] = offset;
+    offset += counter[i];
+  }
+  offsets[n] = offset;
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

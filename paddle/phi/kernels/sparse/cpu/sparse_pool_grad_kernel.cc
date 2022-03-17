@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/sparse/convolution.h"
 
 namespace phi {
 namespace sparse {
@@ -27,19 +29,14 @@ void MaxPoolGradKernel(const Context& dev_ctx,
                        const std::vector<int>& kernel_sizes,
                        DenseTensor* x_grad) {
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const int in_channels = x.dims()[4];
+  const int channels = x.dims()[4];
   int rulebook_len = rulebook.dims()[1];
   const int* rulebook_ptr = rulebook.data<int>();
   std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0);
   for (int i = 0; i < rulebook_len; i++) {
     counter[rulebook_ptr[i]] += 1;
   }
-  int offset = 0;
-  for (int i = 0; i < kernel_size; i++) {
-    offsets[i] = offset;
-    offset += counter[i];
-  }
-  offsets[kernel_size] = offset;
+  phi::funcs::sparse::PrefixSum(&counter[0], &offsets[0], kernel_size);
 
   const T* in_features_ptr = x.non_zero_elements().data<T>();
   const T* out_features_ptr = out.non_zero_elements().data<T>();
@@ -47,20 +44,17 @@ void MaxPoolGradKernel(const Context& dev_ctx,
   T* x_grad_ptr = x_grad->data<T>();
   memset(x_grad_ptr, 0, sizeof(T) * x_grad->numel());
 
+  phi::funcs::MaxPoolGrad<T> grad_functor;
   for (int i = 0; i < kernel_size; i++) {
-    if (counter[i] <= 0) {
-      continue;
-    }
-
     for (int j = 0; j < counter[i]; j++) {
       int in_i = rulebook_ptr[rulebook_len + offsets[i] + j];
       int out_i = rulebook_ptr[rulebook_len * 2 + offsets[i] + j];
-      for (int c = 0; c < in_channels; c++) {
-        if (out_features_ptr[out_i * in_channels + c] ==
-            in_features_ptr[in_i * in_channels + c]) {
-          x_grad_ptr[in_i * in_channels + c] +=
-              out_grad_ptr[out_i * in_channels + c];
-        }
+      for (int c = 0; c < channels; c++) {
+        grad_functor.compute(in_features_ptr[in_i * channels + c],
+                             out_features_ptr[out_i * channels + c],
+                             out_grad_ptr[out_i * channels + c],
+                             1,
+                             &x_grad_ptr[in_i * channels + c]);
       }
     }
   }

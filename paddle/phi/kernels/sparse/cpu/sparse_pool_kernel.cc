@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
@@ -69,21 +70,13 @@ void MaxPoolKernel(const Context& dev_ctx,
   const int* counter_ptr = counter_per_kernel.data<int>();
 
   std::vector<int> offsets(kernel_size + 1);
-  int offset = 0;
-  for (int i = 0; i < kernel_size; i++) {
-    offsets[i] = offset;
-    offset += counter_ptr[i];
-  }
-  offsets[kernel_size] = offset;
+  phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
   std::vector<bool> out_flags(out->nnz(), false);
 
   // 2. max pool
   T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
+  phi::funcs::MaxPool<T> max_pool_functor;
   for (int i = 0; i < kernel_size; i++) {
-    if (counter_ptr[i] <= 0) {
-      continue;
-    }
-
     for (int j = 0; j < counter_ptr[i]; j++) {
       int in_i = rulebook_ptr[rulebook_len + offsets[i] + j];
       int out_i = rulebook_ptr[rulebook_len * 2 + offsets[i] + j];
@@ -94,11 +87,8 @@ void MaxPoolKernel(const Context& dev_ctx,
                in_channels * sizeof(T));
       } else {
         for (int c = 0; c < in_channels; c++) {
-          if (out_features_ptr[out_i * in_channels + c] <
-              in_features_ptr[in_i * in_channels + c]) {
-            out_features_ptr[out_i * in_channels + c] =
-                in_features_ptr[in_i * in_channels + c];
-          }
+          max_pool_functor.compute(in_features_ptr[in_i * in_channels + c],
+                                   &out_features_ptr[out_i * in_channels + c]);
         }
       }
     }
