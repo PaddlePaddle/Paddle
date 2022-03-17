@@ -42,7 +42,6 @@ class TestElementwiseAddOp(OpTest):
 
     def check_eager(self):
         return (self.use_mkldnn == False and self.axis == -1)
-        #return False
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

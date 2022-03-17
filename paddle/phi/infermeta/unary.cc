@@ -1499,6 +1499,17 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void TransposeGradInferMeta(const MetaTensor& x,
+                            const std::vector<int>& axis,
+                            MetaTensor* out) {
+  std::vector<int> reversed_axis(axis);
+  for (size_t i = 0; i < axis.size(); i++) {
+    reversed_axis[axis[i]] = i;
+  }
+
+  TransposeInferMeta(x, reversed_axis, out);
+}
+
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor>* outs) {
@@ -1702,17 +1713,6 @@ void UnfoldInferMeta(const MetaTensor& x,
   int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
-}
-
-void TransposeGradInferMeta(const MetaTensor& x,
-                            const std::vector<int>& axis,
-                            MetaTensor* out) {
-  std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < axis.size(); i++) {
-    reversed_axis[axis[i]] = i;
-  }
-
-  TransposeInferMeta(x, reversed_axis, out);
 }
 
 void OneHotRawInferMeta(const MetaTensor& x,
