@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <mlir/IR/Operation.h>
 #include <unordered_map>
-#include "paddle/infrt/dialect/pd_ops_info.h"
+#include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace infrt {
