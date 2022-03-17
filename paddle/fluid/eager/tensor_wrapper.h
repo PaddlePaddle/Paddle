@@ -98,6 +98,8 @@ class TensorWrapper {
     }
   }
 
+  void clear() { intermidiate_tensor_.reset(); }
+
  private:
   bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
