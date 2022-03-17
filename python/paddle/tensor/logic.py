@@ -580,7 +580,7 @@ def bitwise_not(x, out=None, name=None):
             print(res) # [4, 0, -2]
     """
     if _in_eager_mode() and out == None:
-        return _C_op.final_state_bitwise_not(x)
+        return _C_ops.final_state_bitwise_not(x)
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
 

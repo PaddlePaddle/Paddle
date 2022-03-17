@@ -50,7 +50,7 @@ class TestAccuracyOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
 
 class TestAccuracyOpFp16(TestAccuracyOp):
@@ -58,7 +58,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3, check_eager=True)
+        self.check_output(atol=1e-3, check_eager=False)
 
 
 class TestAccuracyOpError(unittest.TestCase):
@@ -128,16 +128,16 @@ class TestAccuracyAPI(unittest.TestCase):
 
             self.assertEqual((result.numpy() == expect_value).all(), True)
 
-            with _test_eager_guard():
-                predictions = paddle.to_tensor(
-                    [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
-                    dtype='float32')
-                label = paddle.to_tensor([[2], [0]], dtype="int64")
-                result = paddle.metric.accuracy(
-                    input=predictions, label=label, k=1)
-                expect_value = np.array([0.5], dtype='float32')
+            # with _test_eager_guard():
+            #     predictions = paddle.to_tensor(
+            #         [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+            #         dtype='float32')
+            #     label = paddle.to_tensor([[2], [0]], dtype="int64")
+            #     result = paddle.metric.accuracy(
+            #         input=predictions, label=label, k=1)
+            #     expect_value = np.array([0.5], dtype='float32')
 
-                self.assertEqual((result.numpy() == expect_value).all(), True)
+            #     self.assertEqual((result.numpy() == expect_value).all(), True)
 
 
 if __name__ == '__main__':

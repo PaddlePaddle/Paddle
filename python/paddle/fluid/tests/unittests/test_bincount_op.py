@@ -63,13 +63,13 @@ class TestBincountOpAPI(unittest.TestCase):
                 (actual.numpy() == expected).all(),
                 msg='bincount output is wrong, out =' + str(actual.numpy()))
 
-            with _test_eager_guard():
-                inputs = fluid.dygraph.to_variable(inputs_np)
-                actual = paddle.bincount(inputs)
-                expected = np.bincount(inputs)
-                self.assertTrue(
-                    (actual.numpy() == expected).all(),
-                    msg='bincount output is wrong, out =' + str(actual.numpy()))
+            # with _test_eager_guard():
+            #     inputs = fluid.dygraph.to_variable(inputs_np)
+            #     actual = paddle.bincount(inputs)
+            #     expected = np.bincount(inputs)
+            #     self.assertTrue(
+            #         (actual.numpy() == expected).all(),
+            #         msg='bincount output is wrong, out =' + str(actual.numpy()))
 
 
 class TestBincountOpError(unittest.TestCase):
