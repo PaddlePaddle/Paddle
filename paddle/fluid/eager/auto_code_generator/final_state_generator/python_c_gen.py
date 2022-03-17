@@ -113,7 +113,7 @@ FUNCTION_NAME_TEMPLATE = \
 
 
 PYTHON_C_FUNCTION_REG_TEMPLATE = \
-"{{\"final_state_{}\", (PyCFunction)(void(*)(void)) {}eager_final_state_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}\n"
+"{{\"final_state_{}\", (PyCFunction)(void(*)(void)) {}eager_final_state_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}"
 
 
 PYTHON_C_WRAPPER_TEMPLATE = \
@@ -221,7 +221,7 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 #######################
 ## Generator Classes ##
 #######################
-class PythonCFunctionGenerator:
+class PythonCSingleFunctionGenerator:
     def __init__(self, fwd_api_contents, namespace):
         self.fwd_api_contents = fwd_api_contents
         self.namespace = namespace
@@ -357,7 +357,7 @@ class PythonCFunctionGenerator:
 
         # Initialized forward_api_name, forward_args_str, forward_returns_str
         self.CollectRawContents()
-        if SkipAPIGeneration(self.forward_api_name): return
+        if SkipAPIGeneration(self.forward_api_name): return False
 
         # Initialized optional_inputs
         self.CollectOptionalInputs()
@@ -389,6 +389,8 @@ class PythonCFunctionGenerator:
             f"Generated Python-C Function Declaration: {self.python_c_function_reg_str}"
         )
 
+        return True
+
 
 class PythonCYamlGenerator:
     def __init__(self, path):
@@ -410,12 +412,13 @@ class PythonCYamlGenerator:
         forward_api_list = self.forward_api_list
 
         for forward_api_content in forward_api_list:
-            f_generator = PythonCFunctionGenerator(forward_api_content,
-                                                   namespace)
-            f_generator.run()
+            f_generator = PythonCSingleFunctionGenerator(forward_api_content,
+                                                         namespace)
+            status = f_generator.run()
 
-            self.python_c_functions_reg_str += f_generator.python_c_function_reg_str + ",\n"
-            self.python_c_functions_str += f_generator.python_c_function_str + "\n"
+            if status == True:
+                self.python_c_functions_reg_str += f_generator.python_c_function_reg_str + ",\n"
+                self.python_c_functions_str += f_generator.python_c_function_str + "\n"
 
     def InferNameSpace(self):
         yaml_path = self.yaml_path
@@ -427,6 +430,8 @@ class PythonCYamlGenerator:
         python_c_functions_str = self.python_c_functions_str
 
         if namespace != "":
+            if namespace.endswith("::"):
+                namespace = namespace[:-2]
             self.python_c_functions_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, python_c_functions_str)
 
