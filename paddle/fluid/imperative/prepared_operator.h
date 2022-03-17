@@ -341,7 +341,6 @@ void BuildDygraphPhiKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    VLOG(1) << "############## attr_name: " << i << " : " << attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
