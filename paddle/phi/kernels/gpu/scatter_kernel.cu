@@ -59,6 +59,4 @@ PD_REGISTER_KERNEL(scatter,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
-  kernel->InputAt(1).SetDataType(phi::DataType::ALL_DTYPE);
-}
+                   phi::dtype::float16) {}
