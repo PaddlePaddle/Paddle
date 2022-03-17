@@ -45,6 +45,7 @@ void LogCannotQuantizeOp(Node* op, const char* details = nullptr) {
          << " (type: " << op->Op()->Type() << ", id: " << op->id() << ").";
   if (details) msg_ss << " " << details;
   PrettyLogDetail(msg_ss.str().c_str());
+  op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
 }
 
 void LogScaleIsMissingForVarName(const std::string& name) {
