@@ -324,7 +324,7 @@ class PADDLE_API Tensor final {
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
-  std::shared_ptr<phi::TensorBase> impl() const;
+  const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
    * @brief Set the implemention of current Tensor.
@@ -332,6 +332,13 @@ class PADDLE_API Tensor final {
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
+
+  /**
+   * @brief Set the implemention of current Tensor.
+   *
+   * @param impl
+   */
+  void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
