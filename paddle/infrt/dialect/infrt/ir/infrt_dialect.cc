@@ -138,6 +138,10 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
         parser.getContext(), *targetType, *precisionType, *layoutType);
   }
 
+  if (keyword == "tensor_list") {
+    return infrt::DenseTensorListType::get(parser.getContext());
+  }
+
   if (keyword == "dense_tensor_map") {
     return DenseTensorMapType::get(parser.getContext());
   }
@@ -175,6 +179,9 @@ void InfrtDialect::printType(::mlir::Type type,
     return;
   }
 
+  if (type.isa<infrt::DenseTensorListType>()) {
+    os << "tensor_list";
+  }
   // print DenseTensorType, for example: !infrt.dense_tensor<CPU, FP32, NCHW>
   if (type.isa<DenseTensorMapType>()) {
     os << "dense_tensor_map";
