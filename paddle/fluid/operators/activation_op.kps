@@ -21,69 +21,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct CudaSigmoidFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
-
-  // sigmoid(x) = 1 / (1 + exp(-x))
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(one / (one + exp(-x)));
-  }
-};
-
-template <typename T>
-struct CudaSigmoidGradFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // dx = dout * out * (1 - out)
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out * (one - out);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct CudaLogSigmoidFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType zero = static_cast<MPType>(0.0f);
-
-  // logsigmoid(x) = log(1 / (1 + exp(-x)))
-  // For numerical stability,
-  // logsigmoid(x) =
-  //          - (max(-x, 0) + log(exp(-max(-x, 0)) + exp(-x - max(-x, 0))))
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType temp = x > zero ? zero : -x;
-    return static_cast<T>(-temp - log(exp(-temp) + exp(-x - temp)));
-  }
-};
-
-template <typename T>
-struct CudaLogSigmoidGradFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType zero = static_cast<MPType>(0.0f);
-
-  // dx = dout * exp(-x) / (1 + exp(-x))
-  // For numerical stability:
-  // dx = dout * exp(-x - max(-x, 0)) / (exp(-max(-x, 0)) + exp(-x - max(-x,
-  // 0)))
-  __device__ __forceinline__ T operator()(const T arg_dout,
-                                          const T arg_x) const {
-    MPType dout = static_cast<MPType>(arg_dout);
-    MPType x = static_cast<MPType>(arg_x);
-    MPType temp1 = x > zero ? zero : -x;
-    MPType temp2 = exp(-x - temp1);
-    return static_cast<T>(dout * (temp2 / (exp(-temp1) + temp2)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct CudaCeilFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
 
@@ -552,49 +489,6 @@ struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaHardSigmoidFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
-  T one = static_cast<T>(1.0f);
-  float slope;
-  float offset;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"slope", &slope}, {"offset", &offset}};
-  }
-
-  // hard_sigmoid(x) = 0, when x <= -3
-  //                   1, when x >= 3
-  //                   x * slope + offset, otherwise
-  __device__ __forceinline__ T operator()(const T x) const {
-    T temp = x * static_cast<T>(slope) + static_cast<T>(offset);
-    T temp_max = temp > zero ? temp : zero;
-    T temp_min = temp_max < one ? temp_max : one;
-    return temp_min;
-  }
-};
-
-template <typename T>
-struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
-  T one = static_cast<T>(1.0f);
-  float slope;
-  float offset;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"slope", &slope}, {"offset", &offset}};
-  }
-
-  // dx = (out > 0 && out < 1) ? dout * slope : 0
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return (out > zero && out < one) ? dout * static_cast<T>(slope) : zero;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
 struct CudaSwishFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -876,6 +770,9 @@ USE_PHI_FUNCTOR(CudaSoftShrink)
 USE_PHI_FUNCTOR(CudaTanhShrink)
 USE_PHI_FUNCTOR(CudaSilu)
 USE_PHI_FUNCTOR(CudaELU)
+USE_PHI_FUNCTOR(CudaSigmoid)
+USE_PHI_FUNCTOR(CudaLogSigmoid)
+USE_PHI_FUNCTOR(CudaHardSigmoid)
 
 template <typename T>
 using CudaELUGradNegativeAlphaFunctor =
@@ -952,35 +849,6 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::CELUGradGradFunctor<double>>,
     ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
                               ops::CELUGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ===========================    sigmoid register  ============================
- */
-REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
-                                CudaSigmoidGradFunctor);
-
-REGISTER_OP_CUDA_KERNEL(
-    sigmoid_grad_grad,
-    ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                 ops::SigmoidGradGradFunctor<float>>,
-    ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                 ops::SigmoidGradGradFunctor<double>>,
-    ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
-                                 ops::SigmoidGradGradFunctor<plat::float16>>,
-    ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
-                                 ops::SigmoidGradGradFunctor<plat::bfloat16>>);
-
-REGISTER_OP_CUDA_KERNEL(
-    sigmoid_triple_grad,
-    ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
-                                 ops::SigmoidTripleGradFunctor<float>>,
-    ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
-                                 ops::SigmoidTripleGradFunctor<double>>,
-    ops::SigmoidTripleGradKernel<plat::CUDADeviceContext,
-                                 ops::SigmoidTripleGradFunctor<plat::float16>>,
-    ops::SigmoidTripleGradKernel<
-        plat::CUDADeviceContext,
-        ops::SigmoidTripleGradFunctor<plat::bfloat16>>);
 /* ========================================================================== */
 
 /* ===========================   sqrt register  ============================= */
@@ -1120,8 +988,6 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
-  __macro(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,                      \
-          CudaLogSigmoidGradFunctor);                                         \
   __macro(softshrink, SoftShrink, CudaSoftShrinkFunctor,                      \
           CudaSoftShrinkGradFunctor);                                         \
   __macro(ceil, Ceil, CudaCeilFunctor, CudaZeroGradFunctor);                  \
@@ -1141,8 +1007,6 @@ REGISTER_OP_CUDA_KERNEL(
           CudaTanhShrinkGradFunctor);                                         \
   __macro(hard_shrink, HardShrink, CudaHardShrinkFunctor,                     \
           CudaHardShrinkGradFunctor);                                         \
-  __macro(hard_sigmoid, HardSigmoid, CudaHardSigmoidFunctor,                  \
-          CudaHardSigmoidGradFunctor);                                        \
   __macro(swish, Swish, CudaSwishFunctor, CudaSwishGradFunctor);              \
   __macro(mish, Mish, CudaMishFunctor, CudaMishGradFunctor);                  \
   __macro(hard_swish, HardSwish, CudaHardSwishFunctor,                        \
