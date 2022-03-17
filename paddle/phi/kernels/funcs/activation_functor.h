@@ -29,11 +29,17 @@
 #include <type_traits>
 
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
+
+#ifdef PADDLE_WITH_XPU_KP
+#define __forceinline__ __inline__
+#endif
 
 namespace phi {
 namespace funcs {
@@ -513,7 +519,500 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+// tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
+template <typename T>
+struct TanhFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.tanh();
+  }
+};
+
+template <typename T>
+struct TanhGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<T>(1) - out * out);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct TanhGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  const DenseTensor* dOut,
+                  DenseTensor* dOutNew,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "TanhGradGrad"));
+    auto out = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "TanhGradGrad"));
+    // tanh grad grad : ddout = (1 - out^2) * ddx, dout = - (dout_old * 2 * out
+    // * ddx)
+    if (dOutNew) {
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhGradGrad"));
+      auto dout_new = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOutNew, "Output", "DOutNew", "TanhGradGrad"));
+      dout_new.device(*d) =
+          static_cast<T>(-1) * dout * static_cast<T>(2) * out * ddx;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "TanhGradGrad"));
+      ddout.device(*d) = (static_cast<T>(1) - out * out) * ddx;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+/*
+    Out
+    DOut                            D_Dout
+    DDx     -> TanhTripleGrad ->    D_DDx
+    D_DDout                         d_OutNew
+    D_Dout_new
+
+    D_Dout = (-2) * Out * DDx * D_Dout_new
+    D_DDx = (1-Out^2)*D_DDout + (-2) * Out * DOut * D_Dout_new
+    D_OutNew = (-2) * Out * DDx * D_DDout + (-2) * DOut * DDx * D_Dout_new
+
+    Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    D_OutNew, D_DOut, D_DDx               // output
+*/
+template <typename T>
+struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  const DenseTensor* dOut,
+                  const DenseTensor* d_DDOut,
+                  const DenseTensor* d_dOut_New,
+                  DenseTensor* d_d_Out,
+                  DenseTensor* d_Out_New,
+                  DenseTensor* d_DDx) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "TanhTripleGrad"));
+    auto out = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "TanhTripleGrad"));
+    auto dout = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhTripleGrad"));
+    auto d_ddOut = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+    auto d_dOutNew = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+
+    if (d_Out_New) {
+      auto d_OutNew = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_Out_New, "Output", "D_OutNew", "TanhTripleGrad"));
+      d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
+                            (static_cast<T>(2) * dout * ddx * d_dOutNew);
+    }
+    if (d_d_Out) {
+      auto d_dOut = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "TanhTripleGrad"));
+      d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+    }
+    if (d_DDx) {
+      auto d_ddx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "TanhTripleGrad"));
+      d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
+                         static_cast<T>(2) * out * dout * d_dOutNew;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct BReluFunctor : public BaseActivationFunctor<T> {
+  float t_min;
+  float t_max;
+
+  // NOTE: Explicit hides the `BaseActivationFunctor<T>::GetAttrs`
+  // not polymorphism for speed.
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"t_min", &t_min}, {"t_max", &t_max}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        x.cwiseMax(static_cast<T>(t_min)).cwiseMin(static_cast<T>(t_max));
+  }
+};
+
+template <typename T>
+struct BReluGradFunctor : public BaseActivationFunctor<T> {
+  float t_min;
+  float t_max;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"t_min", &t_min}, {"t_max", &t_max}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout *
+                   ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
+                       .template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct LeakyReluFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    if (alpha < 1.f) {
+      out.device(d) = x.cwiseMax(static_cast<T>(alpha) * x);
+    } else {
+      out.device(d) = x.cwiseMin(static_cast<T>(alpha) * x);
+    }
+  }
+};
+
+template <typename T>
+struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto temp1 =
+        static_cast<T>(alpha) * (x < static_cast<T>(0)).template cast<T>();
+    auto temp2 = (x >= static_cast<T>(0)).template cast<T>();
+    dx.device(d) = dout * (temp1 + temp2).template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  DenseTensor* dOut,
+                  DenseTensor* dX) const {
+    if (ddOut) {
+      auto* d = dev.eigen_device();
+      auto ddx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddX, "Input", "DDX", "LeakyReluGradGrad"));
+      auto x = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
+      ddout.device(*d) =
+          ddx *
+          ((x > static_cast<T>(0)).template cast<T>() +
+           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
+              .template cast<T>();
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto th = static_cast<T>(threshold);
+    out.device(d) = (x > th).template cast<T>() * x;
+  }
+};
+
+template <typename T>
+struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto th = static_cast<T>(threshold);
+    dx.device(d) = dout * (x > th).template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// tanhshrink(x) = x - tanh(x)
+// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
+template <typename T>
+struct TanhShrinkFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x - x.tanh();
+  }
+};
+
+template <typename T>
+struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (x.tanh() * x.tanh());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// tanhshrink(x) = x - tanh(x)
+// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
+template <typename T>
+struct HardShrinkFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto temp1 = x < static_cast<T>(threshold * -1.f);
+    auto temp2 = x > static_cast<T>(threshold);
+    out.device(d) = x * (temp1 || temp2).template cast<T>();
+  }
+};
+
+template <typename T>
+struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto temp1 = x < static_cast<T>(threshold * -1.f);
+    auto temp2 = x > static_cast<T>(threshold);
+    dx.device(d) = dout * (temp1 || temp2).template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < -lambda; 0
+// otherwise
+template <typename T>
+struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
+  float lambda;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lambda", &lambda}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto lambdaT = static_cast<T>(lambda);
+    auto temp1 = (x > lambdaT).template cast<T>();
+    auto temp2 = (x < -lambdaT).template cast<T>();
+    out.device(d) = temp1 * (x - lambdaT) + temp2 * (x + lambdaT);
+  }
+};
+
+template <typename T>
+struct SoftShrinkGradFunctor : public BaseActivationFunctor<T> {
+  float lambda;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lambda", &lambda}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto lambdaT = static_cast<T>(lambda);
+    auto temp1 = (x > lambdaT).template cast<T>();
+    auto temp2 = (x < -lambdaT).template cast<T>();
+    dx.device(d) = dout * (temp1 + temp2).template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct ELUFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        (x < static_cast<T>(0))
+            .select(static_cast<T>(alpha) * (x.exp() - static_cast<T>(1)), x);
+  }
+};
+
+template <typename T>
+struct ELUGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    // case 1: alpha >= 0
+    // dx = dout, if out > 0
+    // dx = dout * (out + alpha), if out <= 0
+    dx.device(d) = (out > static_cast<T>(0))
+                       .select(dout, dout * (out + static_cast<T>(alpha)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct ELUGradNegativeAlphaFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    // case 2: alpha < 0
+    // dx = dout, if x > 0
+    // dx = dout * (out + alpha), if x <=0
+    dx.device(d) = (x > static_cast<T>(0))
+                       .select(dout, dout * static_cast<T>(alpha) * x.exp());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  const DenseTensor* dOut,
+                  DenseTensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "ELUGradGrad"));
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "ELUGradGrad"));
+
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "ELUGradGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "ELUGradGrad"));
+      dx.device(*d) = ddx * dout * static_cast<T>(alpha) * x.exp() *
+                      (x <= static_cast<T>(0)).template cast<T>();
+    }
+
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
+      ddout.device(*d) = ddx *
+                         ((x > static_cast<T>(0)).template cast<T>() +
+                          static_cast<T>(alpha) * x.exp() *
+                              (x <= static_cast<T>(0)).template cast<T>())
+                             .template cast<T>();
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// silu(x) = x / (1 + exp(-x))
+template <typename T>
+struct SiluFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto temp = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
+    out.device(d) = x * temp;
+  }
+};
+
+// silu'(x) = (1 / (1 + e^{-x}))  * (1 + out * e^{-x}))
+template <typename T>
+struct SiluGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto temp1 = static_cast<T>(1) + (-x).exp();  // 1+e^(-x)
+    auto temp2 = x * (-x).exp();                  // x*e^(-x)
+    dx.device(d) = dout * ((static_cast<T>(1) / temp1) *
+                           (static_cast<T>(1) + (temp2 / temp1)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
@@ -819,6 +1318,336 @@ struct CudaAtanGradFunctor : public BaseActivationFunctor<T> {
   // dx = dout / (1 + x^2)
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / (one + x * x);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaTanhFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // tanh(x) = tanh(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(tanh(x));
+  }
+};
+
+template <typename T>
+struct CudaTanhGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout * (1 - out^2)
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    return dout * (one - out * out);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaBReluFunctor : public BaseActivationFunctor<T> {
+  float t_min;
+  float t_max;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"t_min", &t_min}, {"t_max", &t_max}};
+  }
+
+  // brelu(x) = min(max(x, t_min), t_max)
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t_min_cast = static_cast<T>(t_min);
+    T t_max_cast = static_cast<T>(t_max);
+    T temp_max = x > t_min_cast ? x : t_min_cast;
+    T temp_min = temp_max < t_max_cast ? temp_max : t_max_cast;
+    return temp_min;
+  }
+};
+
+template <typename T>
+struct CudaBReluGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float t_min;
+  float t_max;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"t_min", &t_min}, {"t_max", &t_max}};
+  }
+
+  // dx = (x > t_min && x < t_max) ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    T t_min_cast = static_cast<T>(t_min);
+    T t_max_cast = static_cast<T>(t_max);
+    return (x > t_min_cast && x < t_max_cast) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaThresholdedReluFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // thresholded_relu(x) = x > threshold ? x : 0
+  __device__ __forceinline__ T operator()(const T x) const {
+    return x > static_cast<T>(threshold) ? x : zero;
+  }
+};
+
+template <typename T>
+struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = x > threshold ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return x > static_cast<T>(threshold) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLeakyReluFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // leakyrelu(x) = x > 0 ? x : alpha * x
+  __device__ __forceinline__ T operator()(const T x) const {
+    return x > zero ? x : static_cast<T>(alpha) * x;
+  }
+};
+
+template <typename T>
+struct CudaLeakyReluGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // dx = dout * (x > 0 ? 1 : alpha)
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return x > zero ? dout : static_cast<T>(alpha) * dout;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSoftShrinkFunctor : public BaseActivationFunctor<T> {
+  float lambda;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lambda", &lambda}};
+  }
+
+  // softshrink(x) = x - lambda, if x > lambda;
+  //                 x + lambda, if x < -lambda;
+  //                 0, otherwise.
+  __device__ __forceinline__ T operator()(const T x) const {
+    T l = static_cast<T>(lambda);
+    T temp1 = static_cast<T>(x > l);
+    T temp2 = static_cast<T>(x < -l);
+    return temp1 * (x - l) + temp2 * (x + l);
+  }
+};
+
+template <typename T>
+struct CudaSoftShrinkGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float lambda;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lambda", &lambda}};
+  }
+
+  // dx = dout, if x > lambda or x < -lambda else 0
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    T l = static_cast<T>(lambda);
+    return (x >= -l && x <= l) ? zero : dout;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaTanhShrinkFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // tanhshrink(x) = x - tanh(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(x - tanh(x));
+  }
+};
+
+template <typename T>
+struct CudaTanhShrinkGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // dx = dout * tanh(x)^2
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(dout * tanh(x) * tanh(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaHardShrinkFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // hadrshrink(x) = (x > -threshold && x < threshold) ? 0 : x
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    return (x > -t && x < t) ? zero : x;
+  }
+};
+
+template <typename T>
+struct CudaHardShrinkGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (x > -threshold && x < threshold) ? 0 : dout
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    T t = static_cast<T>(threshold);
+    return (x > -t && x < t) ? zero : dout;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaELUFunctor : public BaseActivationFunctor<T> {
+  using CT = typename phi::dtype::MPTypeTrait<T>::Type;
+  CT zero = static_cast<CT>(0.0f);
+  CT one = static_cast<CT>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // elu(x) = x, if x > 0
+  // elu(x) = alpha * (e^x - 1), if x <= 0
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    CT x = static_cast<CT>(arg_x);
+    CT temp = static_cast<CT>(alpha) * (exp(x) - one);
+    CT res = x > zero ? x : temp;
+    return static_cast<T>(res);
+  }
+};
+
+template <typename T>
+struct CudaELUGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // case 1: alpha >= 0
+  // dx = dout, if out > 0
+  // dx = dout * (out + alpha), if out <= 0
+  __device__ __forceinline__ T operator()(T arg_dout, T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    MPType a = static_cast<MPType>(alpha);
+    MPType out_pos = static_cast<MPType>(out > zero);
+    MPType out_neg = static_cast<MPType>(out <= zero);
+    return static_cast<T>(dout * (out_pos + out_neg * (out + a)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaELUGradNegativeAlphaFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // case 2: alpha < 0
+  // dx = dout, if x > 0
+  // dx = dout * (out + alpha), if x <=0
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType a = static_cast<MPType>(alpha);
+    MPType x_pos = static_cast<MPType>(x > zero);
+    MPType x_neg = static_cast<MPType>(x <= zero);
+    return static_cast<T>(dout * (x_pos + x_neg * (out + a)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSiluFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // silu(x) = x / (1 + exp(-x))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(x / (one + exp(-x)));
+  }
+};
+
+template <typename T>
+struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // dx = dout * (1 + exp(-x) + x * exp(-x) / (1 + exp(-x))^2)
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType temp = one / (one + exp(-x));
+    return static_cast<T>(dout * (temp * (one + x * (one - temp))));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

@@ -141,6 +141,14 @@
   output : Tensor
   invoke : full_like(x, 1, dtype, place)
 
+- api : pool2d
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel:
+    func : pool2d
+
 - api : reshape
   args : (Tensor x, ScalarArray shape)
   output : Tensor(out)
@@ -148,6 +156,15 @@
     func : ReshapeInferMeta
   kernel :
     func : reshape
+  inplace : (x -> out)
+
+- api : relu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu
   inplace : (x -> out)
 
 - api : scale
@@ -167,6 +184,14 @@
     func : UnchangedInferMeta
   kernel :
     func : sign
+
+- api : softmax
+  args : (Tensor x, int axis)
+  output : Tensor
+  infer_meta :
+    func : SoftmaxInferMeta
+  kernel :
+    func : sotfmax
 
 - api : split
   args : (Tensor x, ScalarArray num_or_sections, Scalar axis)
@@ -195,6 +220,15 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
+
+- api : one_hot
+  args : (Tensor x, Scalar num_classes)
+  output : Tensor
+  infer_meta :
+    func : OneHotInferMeta
+  kernel :
+    func : one_hot
+    
 - api : digamma
   args : (Tensor x)
   output : Tensor
