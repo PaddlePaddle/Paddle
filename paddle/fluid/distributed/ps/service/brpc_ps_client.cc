@@ -1320,8 +1320,6 @@ void BrpcPsClient::push_sparse_task_consume() {
   ::ThreadPool async_push_sparse_shard_threads(
       FLAGS_pserver_sparse_merge_thread);
   while (_running) {
-    // platform::Timer timeline;
-    // timeline.Start();
     auto async_start_time_ms = butil::gettimeofday_ms();
     // 所有sparseTable的pushTask 进行处理
     for (auto &push_sparse_task_itr : _push_sparse_task_queue_map) {
@@ -1437,7 +1435,6 @@ void BrpcPsClient::push_sparse_task_consume() {
         std::vector<std::future<int>>().swap(merge_status);
       }
     }
-    // timeline.Pause();
     auto wait_ms = FLAGS_pserver_async_push_sparse_interval_ms -
                    (butil::gettimeofday_ms() - async_start_time_ms);
     if (wait_ms > 0) {
@@ -1642,8 +1639,6 @@ void BrpcPsClient::push_dense_task_consume() {
   static bool scale_gradient = FLAGS_pserver_scale_gradient_by_merge;
   ::ThreadPool async_merge_dense_threads(10);
   while (_running) {
-    // platform::Timer timeline;
-    // timeline.Start();
     auto async_start_time_ms = butil::gettimeofday_ms();
     for (auto &task_queue_itr : _push_dense_task_queue_map) {
       auto &task_queue = task_queue_itr.second;
@@ -1733,10 +1728,8 @@ void BrpcPsClient::push_dense_task_consume() {
       push_dense_raw_gradient(task_ptr, total_send_data, total_send_data_size,
                               closure);
     }
-    // timeline.Pause();
     auto wait_ms = FLAGS_pserver_async_push_dense_interval_ms -
                    (butil::gettimeofday_ms() - async_start_time_ms);
-    // timeline.ElapsedMS());
     if (wait_ms > 0) {
       usleep(wait_ms * 1000);
     }

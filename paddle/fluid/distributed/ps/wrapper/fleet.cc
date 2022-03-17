@@ -83,30 +83,6 @@ void FleetWrapper::InitServer(
   }
 }
 
-// void FleetWrapper::InitWorker(
-//     const std::string& dist_desc, const std::vector<uint64_t>&
-//     host_sign_list, Scope* scope, const RpcCtxMap& send_ctx, const
-//     std::unordered_map<uint64_t, std::vector<std::string>>&
-//         dense_varnames,
-//     const std::map<std::string, std::string>& envs, int node_num, int index)
-//     {
-//   if (!is_initialized_) {
-//     VLOG(3) << "Going to init worker";
-
-//     Communicator::InitInstance<AsyncCommunicator>(
-//         send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
-
-//     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
-//         new paddle::distributed::PSCore());
-//     pserver_ptr_->init_worker(dist_desc, _regions,
-//                               const_cast<uint64_t*>(host_sign_list.data()),
-//                               node_num, index);
-//     is_initialized_ = true;
-//   } else {
-//     VLOG(3) << "Worker can be initialized only once";
-//   }
-// }
-
 void FleetWrapper::InitGFlag(const std::string& gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
@@ -150,29 +126,6 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
     VLOG(3) << "Client can be initialized only once";
   }
 }
-
-// void FleetWrapper::InitWorker(
-//    const std::string& dist_desc,
-//    const std::vector<std::string>& host_sign_list, Scope* scope,
-//    const RpcCtxMap& send_ctx,
-//    const std::unordered_map<uint64_t, std::vector<std::string>>&
-//        dense_varnames,
-//    const std::map<std::string, std::string>& envs, int node_num, int index) {
-//  if (!is_initialized_) {
-//    VLOG(3) << "Going to init worker";
-//
-//    Communicator::InitInstance<AsyncCommunicator>(
-//        send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
-//
-//    pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
-//        new paddle::distributed::PSCore());
-//    pserver_ptr_->init_worker(dist_desc, _regions, &host_sign_list, node_num,
-//                              index);
-//    is_initialized_ = true;
-//  } else {
-//    VLOG(3) << "Worker can be initialized only once";
-//  }
-//}
 
 void FleetWrapper::StopServer() {
   VLOG(3) << "Going to stop server";
@@ -358,7 +311,6 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
-  // auto* communicator = Communicator::GetInstance();
   auto status =
       worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
                                fea_keys.data(), fea_keys.size(), is_training);
@@ -469,12 +421,8 @@ void FleetWrapper::PushDenseVarsAsync(
             << g[tensor->numel() - 1];
   }
 
-  //  auto* communicator =
-  //      dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
   auto push_status =
       worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
-
-  //  communicator->PushDensePostProcessing();
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -646,11 +594,6 @@ void FleetWrapper::PushSparseFromTensorAsync(
     push_g_vec[i] = push_values.at(i).data();
   }
 
-  //  auto* communicator = Communicator::GetInstance();
-  //  PADDLE_ENFORCE_EQ(
-  //      communicator->Check(table_id), true,
-  //      platform::errors::InvalidArgument(
-  //          "can not find table: %s, please check your config", table_id));
   auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
                                          (const float**)push_g_vec.data(),
                                          push_keys.size());
@@ -667,8 +610,6 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
   auto ret = worker_ptr_->load(table_id, path, std::to_string(mode));
-  // auto ret =
-  //    pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id

@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-// #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -53,8 +52,6 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
-    // auto *communicator = (distributed::AsyncCommunicator *)
-    //     distributed::Communicator::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
       fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,

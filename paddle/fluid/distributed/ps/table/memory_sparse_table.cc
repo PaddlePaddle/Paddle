@@ -492,7 +492,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             uint64_t push_data_idx = keys[i].second;
             const float* update_data =
                 values + push_data_idx * update_value_col;
-
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
               if (FLAGS_pserver_enable_create_feasign_randomly &&

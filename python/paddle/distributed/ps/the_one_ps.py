@@ -15,7 +15,6 @@
 import warnings
 
 import os
-#from paddle.distributed.fleet.proto import ps_pb2
 import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
@@ -289,16 +288,16 @@ class CommonAccessor(Accessor):
         attr_str = ""
 
         origin_var_name = value_name
-        print("get_initializer_attr param name:", value_name)
+        # print("get_initializer_attr param name:", value_name)
         for op in o_startup_program.global_block().ops:
             if op.type in self.opt_init_map.keys(
             ) and origin_var_name == op.output("Out")[0]:
                 init_attr = [op.type]
-                print("get_initializer_attr op type:", op.type)
+                # print("get_initializer_attr op type:", op.type)
                 for attr in self.opt_init_map[op.type]:
-                    print("get_initializer_attr opt_init_map attr:", attr)
+                    # print("get_initializer_attr opt_init_map attr:", attr)
                     init_attr.append(str(op.attr(attr)))
-                    print("get_initializer_attr op attr:", str(op.attr(attr)))
+                    # print("get_initializer_attr op attr:", str(op.attr(attr)))
                 attr_str = l_in.join(init_attr)
                 break
         return attr_str
@@ -309,16 +308,16 @@ class CommonAccessor(Accessor):
         size = ctx.sections()[0]
         single_dim = ctx.sections()[1] if ctx.is_sparse() else 1
         adam_d2sum = context["user_defined_strategy"].adam_d2sum
-        print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
-            ctx.table_id(), ctx.is_datanorm_table()))
+        # print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
+        #     ctx.table_id(), ctx.is_datanorm_table()))
 
         main_program, startup_program, idx = get_program_by_id(context,
                                                                ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
-        print("the one ps optimizer_ops:", optimizer_ops)
-        print("the one ps parse_by_optimizer grad_name:", grad_name)
+        # print("the one ps optimizer_ops:", optimizer_ops)
+        # print("the one ps parse_by_optimizer grad_name:", grad_name)
         oop = None
 
         for op in optimizer_ops:
@@ -761,7 +760,6 @@ class PsDescBuilder(object):
     def _get_tables(self):
         tables = []
         for idx, (name, ctx) in enumerate(self.send_ctx.items()):
-            print('####### {}\n'.format(ctx.is_sparse()))
             if ctx.is_sparse():
                 if self.ps_mode == DistributedMode.GEO:
                     tables.append(globals()['GeoSparseTable'](self.context,
@@ -865,7 +863,7 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            print("init params:", idx, table_id, var_names)
+            # print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
 
     def _pull_all_dense(self, scopes, send_ctx, recv_map):
@@ -876,7 +874,7 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            print("pull all dense:", idx, table_id, var_names)
+            # print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
 
     def _pull_dense(self, program, scope, send_ctx, recv_map):
@@ -887,7 +885,7 @@ class TheOnePSRuntime(RuntimeBase):
                 continue
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            print("pull dense:", table_id, var_names)
+            # print("pull dense:", table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
 
     def _init_worker(self, scopes=None):

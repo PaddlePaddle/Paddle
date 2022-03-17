@@ -94,15 +94,15 @@ class PsProgramBuilder(object):
             logger.info("start building trainer program")
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
-            print("ps_program_build before =", id(self.loss.block.program))
+            # print("ps_program_build before =", id(self.loss.block.program))
             self._build_trainer_desc()
             self.loss.block.program = self.cloned_main
-            print("ps_program_build after =", id(self.loss.block.program))
-            print("ps_program_build clone after =", id(self.cloned_main))
-            print("ps_program_build after trainer_desc",
-                  id(self.loss.block.program))
-            print("ps_program build trainer desc",
-                  self.loss.block.program._fleet_opt)
+            # print("ps_program_build after =", id(self.loss.block.program))
+            # print("ps_program_build clone after =", id(self.cloned_main))
+            # print("ps_program_build after trainer_desc",
+            #       id(self.loss.block.program))
+            # print("ps_program build trainer desc",
+            #       self.loss.block.program._fleet_opt)
 
         elif self.attrs['is_server']:
             logger.info("start building pserver program")
@@ -149,13 +149,13 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
                              format(self.ps_mode, "PsProgramBuilder"))
 
     def _build_trainer_programs(self):
-        print("build trainer program entry")
-        print("before ps program builder program:", self.cloned_main)
+        # print("build trainer program entry")
+        # print("before ps program builder program:", self.cloned_main)
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.attrs)
         add_lr_decay_table_pass.apply([], [], self.pass_ctx)
 
-        print("before distributed op pass")
+        # print("before distributed op pass")
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
         distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
@@ -175,7 +175,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
-        print("after ps program builder program:", self.cloned_main)
+        # print("after ps program builder program:", self.cloned_main)
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)

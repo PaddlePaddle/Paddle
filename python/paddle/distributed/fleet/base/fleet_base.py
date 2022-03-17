@@ -1529,8 +1529,8 @@ class Fleet(object):
             copy_user_defined_strategy, can_not_apply_optimizer_list)
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
-        print("valid_strategy:", context["valid_strategy"])
-        print("user_defined_strategy:", context["user_defined_strategy"])
+        # print("valid_strategy:", context["valid_strategy"])
+        # print("user_defined_strategy:", context["user_defined_strategy"])
 
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
@@ -1558,17 +1558,17 @@ class Fleet(object):
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         if meta_optimizer:
-            #            print("before minimize program id:", id(loss.block.program))
+            # print("before minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-            #            print("after minimize program id:", id(loss.block.program))
+            # print("after minimize program id:", id(loss.block.program))
 
             default_program = paddle.static.default_main_program()
-            #            print("default program id:", id(default_program))
+            # print("default program id:", id(default_program))
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)
-            print("default program id after switch:", id(default_program))
+            # print("default program id after switch:", id(default_program))
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
@@ -1578,7 +1578,7 @@ class Fleet(object):
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
-            print("before graph minimize program id:", id(loss.block.program))
+            # print("before graph minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
@@ -1675,7 +1675,7 @@ class Fleet(object):
             ):
                 opt_info[k] = v
             program._fleet_opt = opt_info
-            print("fleet base opt info:", id(program), program._fleet_opt)
+            # print("fleet base opt info:", id(program), program._fleet_opt)
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)

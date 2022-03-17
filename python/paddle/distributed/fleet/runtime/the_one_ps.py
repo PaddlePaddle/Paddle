@@ -927,7 +927,6 @@ class TheOnePSRuntime(RuntimeBase):
 
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
-                print(" wxm python test send_ctx.items-->", idx, (name, ctx))
                 if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 

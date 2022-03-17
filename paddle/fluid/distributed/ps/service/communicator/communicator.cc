@@ -65,36 +65,6 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void Communicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  // not used, just for psclient's init
-  /*
-  std::map<uint64_t, std::vector<paddle::distributed::Region>>
-      _dense_pull_regions;
-  for (auto &iter : recv_varname_to_ctx_) {
-    auto tid = iter.first;
-    auto var_names = iter.second;
-
-    auto &regions = _dense_pull_regions[tid];
-    regions.reserve(var_names.size());
-    for (auto &t : var_names) {
-      Variable *var = recv_scope_->FindVar(t);
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      float *w = tensor->data<float>();
-      paddle::distributed::Region reg(w, tensor->numel());
-      regions.emplace_back(std::move(reg));
-    }
-  }
-
-  if (_worker_ptr.get() == nullptr) {
-    google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
-    init_gflag(_ps_param.init_gflags());
-    servers_ = host_sign_list.size();
-    _ps_env = paddle::distributed::PaddlePSEnvironment();
-    _ps_env.set_ps_servers(&host_sign_list, servers_);
-    _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
-        paddle::distributed::PSClientFactory::create(_ps_param));
-    _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
-                           trainer_id_);
-  }*/
   auto fleet = paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
     _worker_ptr = fleet->worker_ptr_;
@@ -843,7 +813,7 @@ void AsyncCommunicator::Stop() {
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
-    //    _worker_ptr->finalize_worker();
+    // _worker_ptr->finalize_worker();
     VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
