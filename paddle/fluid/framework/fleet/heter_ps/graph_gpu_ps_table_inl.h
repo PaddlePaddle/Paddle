@@ -24,6 +24,7 @@
 #include <curand_kernel.h>
 
 #ifdef PADDLE_WITH_HETERPS
+//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 namespace paddle {
 namespace framework {
 
@@ -117,6 +118,33 @@ __global__ void neighbor_sample(const uint64_t rand_seed, GpuPsCommGraph graph,
   }
 }
 
+int GpuPsGraphTable::init_cpu_table(
+    const paddle::distributed::GraphParameter& graph) {
+  cpu_graph_table.reset(new paddle::distributed::GraphTable);
+  cpu_table_status = cpu_graph_table->initialize(graph);
+  if (cpu_table_status != 0) return cpu_table_status;
+  std::function<void(std::vector<GpuPsCommGraph>&)> callback =
+      [this](std::vector<GpuPsCommGraph>& res) {
+        pthread_rwlock_wrlock(this->rw_lock.get());
+        this->clear_graph_info();
+        this->build_graph_from_cpu(res);
+        pthread_rwlock_unlock(this->rw_lock.get());
+        cv_.notify_one();
+      };
+  cpu_graph_table->set_graph_sample_callback(callback);
+  return cpu_table_status;
+}
+
+int GpuPsGraphTable::load(const std::string& path, const std::string& param) {
+  int status = cpu_graph_table->load(path, param);
+  if (status != 0) {
+    return status;
+  }
+  std::unique_lock<std::mutex> lock(mutex_);
+  cpu_graph_table->start_graph_sampling();
+  cv_.wait(lock);
+  return 0;
+}
 /*
  comment 1
 

@@ -38,7 +38,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& rulebook,
                       const DenseTensor& kernel,
-                      const SparseCooTensor& out_grad,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
@@ -140,12 +140,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
   GatherKernel<T, int><<<config.block_per_grid.x,
                          config.thread_per_block.x,
                          0,
-                         dev_ctx.stream()>>>(
-      out_grad.non_zero_elements().data<T>(),
-      rulebook_ptr + rulebook_len * 2,
-      out_grad_features_ptr,
-      rulebook_len,
-      out_channels);
+                         dev_ctx.stream()>>>(out_grad.data<T>(),
+                                             rulebook_ptr + rulebook_len * 2,
+                                             out_grad_features_ptr,
+                                             rulebook_len,
+                                             out_channels);
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
