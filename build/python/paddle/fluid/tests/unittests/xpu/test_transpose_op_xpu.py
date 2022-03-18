@@ -67,7 +67,7 @@ class XPUTestTransposeOp(XPUOpTestWrapper):
                 self.check_output_with_place(
                     place=place, no_check_set=['XShape'])
 
-        # get the grad from transpose,so there is no need to write testTransposeOp_grad op   
+        # get the grad from transpose
         def test_check_grad(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
