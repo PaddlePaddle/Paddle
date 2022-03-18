@@ -31,7 +31,7 @@ namespace egr {
 
 /*
 * PartialGrad is Helpper class to implement custom grad operation between
-* outputs and outputs.
+* outputs and inputs.
 *
 * **/
 class PartialGrad {
@@ -203,9 +203,7 @@ class PartialGrad {
     UpdateGraphInfo();
   }
 
-  void ModifyReadyQueue(
-      std::queue<GradNodeBase*>* queue,
-      const std::unordered_set<GradNodeBase*>& potential_startup_nodes) {
+  void ModifyReadyQueue(std::queue<GradNodeBase*>* queue) {
     std::queue<GradNodeBase*> tmp_queue;
     for (auto nodes : potential_startup_nodes) {
       tmp_queue.emplace(nodes);
@@ -281,6 +279,31 @@ class PartialGrad {
       }
     }
     return results;
+  }
+
+  void PreparedForPartialGrad(
+      const std::vector<paddle::experimental::Tensor>& inputs,
+      const std::vector<paddle::experimental::Tensor>& no_grad_vars,
+      std::queue<GradNodeBase*>* queue,
+      const std::unordered_map<GradNodeBase*,
+                               std::unique_ptr<GradTensorHolder>>&
+          node_input_buffers_dict) {
+    // Get no_grad_vars's GradNodes and InputMeta Info
+    GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
+    // Get inputs's GradNodes and InputMeta Info
+    GetTargetNodesInfo(inputs, false /* is_no_grad_vars */);
+    // Purify potential_startup_ops, remove those nodes that are the same as
+    // input_target_nodes
+    PurifyPotentialStartUpNodes();
+    // Get Graph Info Betweent input target gradnode and outputs
+    // Record the depending_nodes and
+    // potential_stop_nodes、potential_startup_nodes
+    GetGraphInfoBetweenTargets(*queue);
+    // Reset queue. Queue is empty only when
+    // 1.input equals to output. 2.input can not reach to output.
+    ModifyReadyQueue(queue);
+    // Set result for input target grad_var when queue is empty
+    if (queue->empty()) SetResultForInputTargetVar(node_input_buffers_dict);
   }
 
   bool IsPotentialStopNodes(GradNodeBase* node) {
@@ -504,24 +527,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       getInDegreeMap(queue);
 
   if (is_partial_grad) {
-    // Get no_grad_vars's GradNodes and InputMeta Info
-    partial_grad->GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
-    // Get inputs's GradNodes and InputMeta Info
-    partial_grad->GetTargetNodesInfo(inputs, false /* is_no_grad_vars */);
-    // Purify potential_startup_ops, remove those nodes that are the same as
-    // input_target_nodes
-    partial_grad->PurifyPotentialStartUpNodes();
-    // Get Graph Info Betweent input target gradnode and outputs
-    // Record the depending_nodes and
-    // potential_stop_nodes、potential_startup_nodes
-    partial_grad->GetGraphInfoBetweenTargets(queue);
-    // Reset queue. Queue is empty only when
-    // 1.input equals to output. 2.input can not reach to output.
-    partial_grad->ModifyReadyQueue(&queue,
-                                   *partial_grad->GetPotentialStartupNodes());
-    // Set result for input target grad_var when queue is empty
-    if (queue.empty())
-      partial_grad->SetResultForInputTargetVar(node_input_buffers_dict);
+    // Prepare several vital preprocess for PartialGrad
+    partial_grad->PreparedForPartialGrad(inputs, no_grad_vars, &queue,
+                                         node_input_buffers_dict);
   }
 
   VLOG(6) << " startup_ops' size is :" << queue.size();
@@ -576,7 +584,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     VLOG(6) << "Running GradNode:" << node->name();
 
-    // check input
+    // Check input
     EnforceGradNodeHasInput(node);
 
     VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
@@ -682,7 +690,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 }
 
 void Backward(
-    const std::vector<paddle::experimental::Tensor>& tensors,  // output
+    const std::vector<paddle::experimental::Tensor>& tensors,  // outputs
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
     bool retain_graph) {
   VLOG(6) << "Run in Backward";
@@ -692,7 +700,7 @@ void Backward(
 }
 
 std::vector<paddle::experimental::Tensor> Grad(
-    const std::vector<paddle::experimental::Tensor>& tensors,  // output
+    const std::vector<paddle::experimental::Tensor>& tensors,  // outputs
     const std::vector<paddle::experimental::Tensor>& inputs,
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
     bool retain_graph, bool create_graph, bool only_inputs, bool allow_unused,
