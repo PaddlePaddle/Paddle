@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/infrt/tensor/phi/tensor_map.h"
+#include "llvm/Support/ErrorHandling.h"
 
 namespace infrt {
 namespace phi {
@@ -22,7 +23,7 @@ void DenseTensorMap::SetDenseTensor(
   std::lock_guard<std::mutex> lock(mu_);
   auto it = map_.emplace(std::make_pair(name, std::move(tensor)));
   if (!it.second) {
-    LOG(FATAL) << "dense tensor map insert failed.";
+    llvm_unreachable("dense tensor map insert failed.");
   }
 }
 
