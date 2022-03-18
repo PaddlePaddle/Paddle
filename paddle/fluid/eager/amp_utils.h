@@ -16,6 +16,7 @@
 #include <map>
 #include <string>
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
@@ -23,13 +24,13 @@ namespace egr {
 
 static inline paddle::experimental::DataType GetPromoteType(
     const std::string& api_name,
-    const std::map<std::string, std::vector<paddle::experimental::Tensor>>&
-        name_tensors_map,
-    const paddle::experimental::DataType amp_dtype) {
+    const std::vector<std::vector<paddle::experimental::Tensor>>&
+        amp_tensors_vector,
+    const paddle::experimental::DataType& amp_dtype) {
   VLOG(6) << "AMP: GetPromoteType for op " << api_name;
   auto dst_type = amp_dtype;
-  for (const auto& pair : name_tensors_map) {
-    for (const auto& tensor : pair.second) {
+  for (const auto& tensors : amp_tensors_vector) {
+    for (const auto& tensor : tensors) {
       if (tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
         dst_type = tensor.dtype();
         break;
@@ -39,24 +40,22 @@ static inline paddle::experimental::DataType GetPromoteType(
   // NOTE(juncai): moving_average_abs_max_scale only consider the
   // dtype of input(X)
   if (api_name == "moving_average_abs_max_scale") {
-    for (const auto& pair : name_tensors_map) {
-      if (pair.first == "X" &&
-          pair.second.front().dtype() ==
-              paddle::experimental::DataType::FLOAT16) {
-        dst_type = paddle::experimental::DataType::FLOAT16;
-      }
+    if (amp_tensors_vector[0][0].dtype() ==
+        paddle::experimental::DataType::FLOAT16) {
+      dst_type = paddle::experimental::DataType::FLOAT16;
     }
   }
   VLOG(6) << "PromoteType is: " << paddle::framework::DataType2String(dst_type);
   return dst_type;
 }
 
-// 获取amp数据类型
 paddle::experimental::DataType GetAmpDestDtype(
-    const std::string& amp_dtype, const paddle::imperative::AmpLevel& amp_level,
     const std::string& api_name,
-    const std::map<std::string, std::vector<paddle::experimental::Tensor>>&
-        name_tensors_map) {
+    const std::vector<std::vector<paddle::experimental::Tensor>>&
+        amp_tensors_vector) {
+  auto amp_dtype =
+      egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype();
+  auto amp_level = egr::Controller::Instance().GetAMPLevel();
   VLOG(6) << "AMP GetAmpDestDtype:"
           << " op(" << api_name << ") amp_dtype(" << amp_dtype << ") amp_level("
           << static_cast<int>(amp_level) << ").";
@@ -71,7 +70,7 @@ paddle::experimental::DataType GetAmpDestDtype(
                      ->count(api_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {
-        auto dst_type = GetPromoteType(api_name, name_tensors_map,
+        auto dst_type = GetPromoteType(api_name, amp_tensors_vector,
                                        paddle::experimental::DataType::FLOAT16);
         if (dst_type == paddle::experimental::DataType::FLOAT16 &&
             paddle::imperative::AmpOperators::Instance()
@@ -105,7 +104,7 @@ paddle::experimental::DataType GetAmpDestDtype(
         return paddle::experimental::DataType::FLOAT32;
       } else {
         auto dst_type =
-            GetPromoteType(api_name, name_tensors_map,
+            GetPromoteType(api_name, amp_tensors_vector,
                            paddle::experimental::DataType::BFLOAT16);
         if (dst_type == paddle::experimental::DataType::BFLOAT16 &&
             paddle::imperative::AmpOperators::Instance()
@@ -135,6 +134,8 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
                             const paddle::experimental::DataType& dst_dtype) {
   auto place = tensor.inner_place();
   auto data_type = tensor.dtype();
+  VLOG(6) << "AMP NeedCast: tensor place:" << place
+          << ", tensor dtype: " << data_type;
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
@@ -159,13 +160,16 @@ std::vector<paddle::experimental::Tensor> AmpAutoCasts(
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
-  std::vector<paddle::experimental::Tensor> inputs_casted = inputs;
-  for (auto& input : inputs_casted) {
+  std::vector<paddle::experimental::Tensor> inputs_casted;
+  for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
       paddle::framework::AttributeMap cast_attrs = {
           {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
           {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-      input = cast_dygraph_function(input, cast_attrs);
+      inputs_casted.push_back(
+          std::move(cast_dygraph_function(input, cast_attrs)));
+    } else {
+      inputs_casted.push_back(input);
     }
   }
   return inputs_casted;
@@ -177,22 +181,20 @@ paddle::experimental::Tensor AmpAutoCast(
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
-  paddle::experimental::Tensor input_casted = input;
-
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (api_name == "run_program") {
-      return input_casted;
+      return input;
     }
     if ((api_name == "batch_norm" || api_name == "layer_norm" ||
          api_name == "sync_batch_norm") &&
         input_name != "X") {
-      return input_casted;
+      return input;
     }
     if ((api_name == "fused_attention" || api_name == "fused_feedforward")) {
       if (input_name == "LnScale" || input_name == "LnBias" ||
           input_name == "Ln2Scale" || input_name == "Ln2Bias" ||
           input_name == "Ln1Scale" || input_name == "Ln1Bias") {
-        return input_casted;
+        return input;
       }
     }
   }
@@ -201,9 +203,9 @@ paddle::experimental::Tensor AmpAutoCast(
     paddle::framework::AttributeMap cast_attrs = {
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
         {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-    input_casted = cast_dygraph_function(input, cast_attrs);
+    return cast_dygraph_function(input, cast_attrs);
   }
-  return input_casted;
+  return input;
 }
 
 }  // namespace egr

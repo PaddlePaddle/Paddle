@@ -1291,7 +1291,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   std::string ins_contents_str = "";
   std::vector<std::string> input_args_str_list(in_vars.size());
   std::vector<std::string> amp_function_call_args_str_list(in_vars.size());
-  std::string amp_name_tensors_map_str = "";
+  std::string amp_tensors_vector_str = "";
   std::string amp_auto_cast_str = "";
   for (const proto::OpProto::Var& input : in_vars) {
     const std::string& input_name = input.name();
@@ -1323,10 +1323,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
                                                 input_name, input_name);
     if (input.duplicable()) {
-      // amp_name_tensors_map_str
-      const char* AMP_NAME_TENSORS_MAP_TEMPLATE = "{ \"%s\", %s },";
-      amp_name_tensors_map_str += paddle::string::Sprintf(
-          AMP_NAME_TENSORS_MAP_TEMPLATE, input_name, input_name);
+      // amp_tensors_vector_str
+      const char* AMP_TENSORS_VECTOR_TEMPLATE = "%s,";
+      amp_tensors_vector_str +=
+          paddle::string::Sprintf(AMP_TENSORS_VECTOR_TEMPLATE, input_name);
       // amp_auto_cast_str
       const char* AMP_AUTO_CAST_TEMPLATE =
           "    auto NEW_%s = egr::AmpAutoCasts(\"%s\", %s, amp_dst_dtype, "
@@ -1334,10 +1334,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       amp_auto_cast_str += paddle::string::Sprintf(
           AMP_AUTO_CAST_TEMPLATE, input_name, input_name, input_name, op_type);
     } else {
-      // amp_name_tensors_map_str
-      const char* AMP_NAME_TENSORS_MAP_TEMPLATE = "{ \"%s\", {%s} },";
-      amp_name_tensors_map_str += paddle::string::Sprintf(
-          AMP_NAME_TENSORS_MAP_TEMPLATE, input_name, input_name);
+      // amp_tensors_vector_str
+      const char* AMP_TENSORS_VECTOR_TEMPLATE = "{%s},";
+      amp_tensors_vector_str +=
+          paddle::string::Sprintf(AMP_TENSORS_VECTOR_TEMPLATE, input_name);
       // amp_auto_cast_str
       const char* AMP_AUTO_CAST_TEMPLATE =
           "    auto NEW_%s = egr::AmpAutoCast(\"%s\", %s, amp_dst_dtype, "
@@ -1349,7 +1349,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   if (ins_contents_str.size() > 0)
     ins_contents_str.pop_back();  // // Remove trailing ","
 
-  if (amp_name_tensors_map_str.size() > 0) amp_name_tensors_map_str.pop_back();
+  if (amp_tensors_vector_str.size() > 0) amp_tensors_vector_str.pop_back();
 
   for (const std::string& arg : input_args_str_list) {
     dygraph_function_args_str += arg;
@@ -1367,7 +1367,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   // Handle Dispensable Inputs
   std::string dispensable_ins_contents_str = "";
-  std::string dispensable_amp_name_tensors_map_str = "";
+  std::string dispensable_amp_tensors_vector_str = "";
   std::string dispensable_amp_auto_cast_str = "";
   std::set<std::string> input_names;
   for (const proto::OpProto::Var& input : in_vars) {
@@ -1380,13 +1380,12 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
         dispensable_ins_contents_str += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
-        // dispensable_amp_name_tensors_map_str
-        const char* FWD_AMP_NAME_TENSORS_MAP_TEMPLATE =
+        // dispensable_amp_tensors_vector_str
+        const char* FWD_AMP_TENSORS_VECTOR_TEMPLATE =
             "    if(%s.size() > 0) "
-            "amp_name_tensors_map[\"%s\"] = %s;\n";
-        dispensable_amp_name_tensors_map_str +=
-            paddle::string::Sprintf(FWD_AMP_NAME_TENSORS_MAP_TEMPLATE,
-                                    input_name, input_name, input_name);
+            "amp_tensors_vector.push_back(%s);\n";
+        dispensable_amp_tensors_vector_str += paddle::string::Sprintf(
+            FWD_AMP_TENSORS_VECTOR_TEMPLATE, input_name, input_name);
         // dispensable_amp_auto_cast_str
         const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
             "    auto NEW_%s = ((%s.size() > 0) ? egr::AmpAutoCasts(\"%s\", "
@@ -1401,13 +1400,12 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
         dispensable_ins_contents_str += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
-        // dispensable_amp_name_tensors_map_str
-        const char* FWD_AMP_NAME_TENSORS_MAP_TEMPLATE =
+        // dispensable_amp_tensors_vector_str
+        const char* FWD_AMP_TENSORS_VECTOR_TEMPLATE =
             "    if(%s.initialized()) "
-            "amp_name_tensors_map[\"%s\"] = { %s };\n";
-        dispensable_amp_name_tensors_map_str +=
-            paddle::string::Sprintf(FWD_AMP_NAME_TENSORS_MAP_TEMPLATE,
-                                    input_name, input_name, input_name);
+            "amp_tensors_vector.push_back({ %s });\n";
+        dispensable_amp_tensors_vector_str += paddle::string::Sprintf(
+            FWD_AMP_TENSORS_VECTOR_TEMPLATE, input_name, input_name);
         // dispensable_amp_auto_cast_str
         const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
             "    auto NEW_%s = ((%s.initialized()) ? egr::AmpAutoCast(\"%s\", "
@@ -1507,23 +1505,21 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         "  }\n";
     std::string amp_logic_str = "";
     if (in_vars.size() != 0) {
-      // amp_name_tensors_map
-      const char* AMP_NAME_TENSORS_MAP_TEMPLATE =
-          "    std::map<std::string, "
-          "std::vector<paddle::experimental::Tensor>> amp_name_tensors_map = { "
+      // amp_tensors_vector
+      const char* AMP_TENSORS_VECTOR_TEMPLATE =
+          "    std::vector<std::vector<paddle::experimental::Tensor>> "
+          "amp_tensors_vector = { "
           "%s };\n";
-      std::string amp_name_tensors_map = paddle::string::Sprintf(
-          AMP_NAME_TENSORS_MAP_TEMPLATE, amp_name_tensors_map_str);
-      amp_name_tensors_map += dispensable_amp_name_tensors_map_str;
-      amp_logic_str += amp_name_tensors_map;
+      std::string amp_tensors_vector = paddle::string::Sprintf(
+          AMP_TENSORS_VECTOR_TEMPLATE, amp_tensors_vector_str);
+      amp_tensors_vector += dispensable_amp_tensors_vector_str;
+      amp_logic_str += amp_tensors_vector;
       amp_logic_str += "\n";
       // GetAmpDestDtype
       const char* GET_AMP_GET_DST_DTYPE_CONTEXT =
           "    auto amp_dst_dtype = "
-          "egr::GetAmpDestDtype(egr::Controller::Instance().GetCurrentTracer()-"
-          ">GetAmpDtype(), "
-          "egr::Controller::Instance().GetAMPLevel(), \"%s\", "
-          "amp_name_tensors_map);\n";
+          "egr::GetAmpDestDtype(\"%s\", "
+          "amp_tensors_vector);\n";
       amp_logic_str +=
           paddle::string::Sprintf(GET_AMP_GET_DST_DTYPE_CONTEXT, op_type);
       amp_logic_str += "\n";
