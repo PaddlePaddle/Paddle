@@ -453,10 +453,19 @@ template class SegmentPoolFunctor<GPU, float, int>;
 template class SegmentPoolFunctor<GPU, float, int64_t>;
 template class SegmentPoolFunctor<GPU, double, int>;
 template class SegmentPoolFunctor<GPU, double, int64_t>;
+template class SegmentPoolFunctor<GPU, int, int>;
+template class SegmentPoolFunctor<GPU, int, int64_t>;
+template class SegmentPoolFunctor<GPU, int64_t, int>;
+template class SegmentPoolFunctor<GPU, int64_t, int64_t>;
+
 template class SegmentPoolGradFunctor<GPU, float, int>;
 template class SegmentPoolGradFunctor<GPU, float, int64_t>;
 template class SegmentPoolGradFunctor<GPU, double, int>;
 template class SegmentPoolGradFunctor<GPU, double, int64_t>;
+template class SegmentPoolGradFunctor<GPU, int, int>;
+template class SegmentPoolGradFunctor<GPU, int, int64_t>;
+template class SegmentPoolGradFunctor<GPU, int64_t, int>;
+template class SegmentPoolGradFunctor<GPU, int64_t, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi

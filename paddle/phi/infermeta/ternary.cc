@@ -18,6 +18,58 @@ limitations under the License. */
 
 namespace phi {
 
+void AccuracyInferMeta(const MetaTensor& out,
+                       const MetaTensor& indice,
+                       const MetaTensor& label,
+                       MetaTensor* accuracy,
+                       MetaTensor* correct,
+                       MetaTensor* total,
+                       MetaConfig config) {
+  auto inference_dim = out.dims();
+  auto label_dim = label.dims();
+  // Assume indices has same shape as inference, because
+  // it's the output of topk.
+  PADDLE_ENFORCE_EQ(
+      label_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: label's dimensions of AccuracyOp must be 2. "
+          "But received label's dimensions = %d, label's shape = [%s]",
+          label_dim.size(),
+          label_dim));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(label_dim[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: label's second dimension of "
+                          "AccuracyOp must be 1. But received label's "
+                          "second dimension is = %d, label's shape = [%s]",
+                          label_dim[1],
+                          label_dim));
+    PADDLE_ENFORCE_EQ(
+        inference_dim[0],
+        label_dim[0],
+        phi::errors::InvalidArgument(
+            "ShapeError: the output's num_rows of AccuracyOp must be"
+            " the same as label's num_rows. But received output's "
+            "shape = [%s], label's shape = [%s], output's num_rows = %d, "
+            "label's "
+            "num_rows = %d",
+            inference_dim,
+            label_dim,
+            inference_dim[0],
+            label_dim[0]));
+  }
+
+  accuracy->set_dims({1});
+  accuracy->set_dtype(out.dtype());
+  correct->set_dims({1});
+  correct->set_dtype(out.dtype());
+  total->set_dims({1});
+  total->set_dtype(out.dtype());
+  accuracy->share_lod(out);
+}
+
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
@@ -87,6 +139,339 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dims(make_ddim(output_dims));
   out->share_lod(input);
   out->set_dtype(input.dtype());
+}
+
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count) {
+  auto src_index_dims = src_index.dims();
+  if (src_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(src_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Src_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          src_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The Src_index should be 1D, when it is not 2D, but we get %d",
+            src_index_dims.size()));
+  }
+
+  auto dst_index_dims = dst_index.dims();
+  if (dst_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(dst_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Dst_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          dst_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dst_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The Dst_index should be 1D, "
+                                     "when it is not 2D, but we get %d",
+                                     dst_index_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(src_index_dims[0],
+                    dst_index_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Src_index and Dst_index should have the same shape."));
+
+  auto dims = x.dims();
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+
+  if (pool_type == "MEAN") {
+    dst_count->set_dims({dims[0]});
+    dst_count->set_dtype(DataType::INT32);
+  }
+}
+
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto w_dims = weight.dims();
+  DDim out_dims;
+  out_dims = funcs::GetOutputDims(x_dims, y_dims);
+  if (w_dims.size() > 1 || w_dims[0] != 1) {
+    out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  }
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto step_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (step_dims.size() == 1) && (step_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   step_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
+void NllLossRawInferMeta(const MetaTensor& input,
+                         const MetaTensor& label,
+                         paddle::optional<const MetaTensor&> weight,
+                         int64_t ignore_index,
+                         const std::string& reduction,
+                         MetaTensor* out,
+                         MetaTensor* total_weight,
+                         MetaConfig config) {
+  auto x_dims = input.dims();
+  auto label_dims = label.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size() == 2 || x_dims.size() == 4,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The tensor rank of Input(X) must be 2 or 4."));
+  bool contain_unknown_dim =
+      phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(label_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0],
+        label_dims[0],
+        phi::errors::InvalidArgument(
+            "ShapeError: Expected input batch_size to match label batch_size,"
+            "But received: the Input(x) batch_size is [%s], the Input(label) "
+            " batch_size is [%s].",
+            x_dims[0],
+            label_dims[0]));
+    if (weight.get_ptr() != nullptr) {
+      auto w_dims = weight->dims();
+      PADDLE_ENFORCE_EQ(
+          w_dims.size(),
+          1,
+          phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
+      PADDLE_ENFORCE_EQ(
+          x_dims[1],
+          w_dims[0],
+          phi::errors::InvalidArgument(
+              "Expected input tensor Weight's size should equal "
+              "to the first dimension of the input tensor X. But received "
+              "Weight's "
+              "size is %d, the first dimension of input X is %d",
+              w_dims[0],
+              x_dims[1]));
+    }
+  }
+  if (x_dims.size() == 2) {
+    if (reduction == "none") {
+      out->set_dims({x_dims[0]});
+    } else {
+      out->set_dims({1});
+    }
+  } else if (x_dims.size() == 4) {
+    PADDLE_ENFORCE_EQ(label_dims.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "Expected Input(Lable) dimensions=3, received %d.",
+                          label_dims.size()));
+    auto input0 = x_dims[0];
+    auto input2 = x_dims[2];
+    auto input3 = x_dims[3];
+    auto label0 = label_dims[0];
+    auto label1 = label_dims[1];
+    auto label2 = label_dims[2];
+    PADDLE_ENFORCE_EQ(
+        input0 == label0 && input2 == label1 && input3 == label2,
+        true,
+        phi::errors::InvalidArgument("Input(X) tensor shape should "
+                                     "match to Input(Label) tensor "
+                                     "shape."));
+    if (reduction == "none") {
+      out->set_dims({x_dims[0], x_dims[2], x_dims[3]});
+    } else {
+      out->set_dims({1});
+    }
+  }
+  total_weight->set_dims({1});
+  out->set_dtype(input.dtype());
+  total_weight->set_dtype(input.dtype());
+}
+
+void RoiAlignInferMeta(const MetaTensor& x,
+                       const MetaTensor& boxes,
+                       paddle::optional<const MetaTensor&> boxes_num,
+                       int pooled_height,
+                       int pooled_width,
+                       float spatial_scale,
+                       int sampling_ratio,
+                       bool aligned,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto input_dims = x.dims();
+  auto boxes_dims = boxes.dims();
+
+  if (boxes_num) {
+    auto boxes_num_dims = boxes_num->dims();
+    PADDLE_ENFORCE_EQ(
+        boxes_num_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The size of boxes_num should be 1"
+                                     ", but received size = %d",
+                                     boxes_num_dims.size()));
+  }
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The format of Input(x) in"
+                        "RoiAlignOp is NCHW. And the rank of input must be 4. "
+                        "But received rank = %d",
+                        input_dims.size()));
+  PADDLE_ENFORCE_EQ(boxes_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument("The rank of Input(boxes) "
+                                                 "in RoiAlignOp should be 2. "
+                                                 "But the rank of boxes is %d",
+                                                 boxes_dims.size()));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(boxes_dims[1],
+                      4,
+                      phi::errors::InvalidArgument(
+                          "The second dimension "
+                          "of Input(boxes) should be 4. But received the "
+                          "dimension = %d",
+                          boxes_dims[1]));
+  }
+
+  PADDLE_ENFORCE_GT(pooled_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The 'pooled_height' attribute in RoiAlignOp is "
+                        "invalid. The height must be greater than 0. But "
+                        "received 'pooled_height' = %d",
+                        pooled_height));
+  PADDLE_ENFORCE_GT(pooled_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The 'pooled_width' attribute in RoiAlignOp is "
+                        "invalid. The width must be greater than 0. But "
+                        "received 'pooled_width' = %d",
+                        pooled_width));
+  PADDLE_ENFORCE_GT(spatial_scale,
+                    0.0f,
+                    phi::errors::InvalidArgument(
+                        "The 'spatial_scale' attribute in RoiAlignOp is "
+                        "invalid. The scale must be greater than 0. But "
+                        "received 'spatial_scale' = %f",
+                        spatial_scale));
+
+  auto out_dims = input_dims;
+  out_dims[0] = boxes_dims[0];
+  out_dims[1] = input_dims[1];
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
+void RoiPoolInferMeta(const MetaTensor& x,
+                      const MetaTensor& boxes,
+                      paddle::optional<const MetaTensor&> boxes_num,
+                      int pooled_height,
+                      int pooled_width,
+                      float spatial_scale,
+                      MetaTensor* out,
+                      MetaTensor* arg_max) {
+  auto input_dims = x.dims();
+  auto boxes_dims = boxes.dims();
+
+  if (boxes_num) {
+    auto boxes_num_dims = boxes_num->dims();
+    PADDLE_ENFORCE_EQ(
+        boxes_num_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The second dimension of boxes_num should "
+                                     "be 1, but received dimension is %d",
+                                     boxes_num_dims.size()));
+  }
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The input data should be a four-dimensional "
+                        "tensor with [N,C,H,W], but received input data with "
+                        " %d dimension",
+                        input_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      boxes_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "boxes should be a 2-D LoDTensor with shape (num_boxes, 4)"
+          "given as [[x1, y1, x2, y2], ...], but received boxes is "
+          "%d-dimensional LoDTensor",
+          boxes_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      boxes_dims[1],
+      4,
+      phi::errors::InvalidArgument(
+          "boxes should be a 2-D LoDTensor with shape (num_boxes, 4)"
+          "given as [[x1, y1, x2, y2], ...]. But the second dimension of  "
+          "the received data is %d",
+          boxes_dims[1]));
+
+  PADDLE_ENFORCE_GT(
+      pooled_height,
+      0,
+      phi::errors::OutOfRange("The pooled output height must be greater than 0"
+                              "but received height is %d",
+                              pooled_height));
+  PADDLE_ENFORCE_GT(
+      pooled_width,
+      0,
+      phi::errors::OutOfRange("The pooled output width must be greater than 0"
+                              "but received width is %d",
+                              pooled_width));
+  PADDLE_ENFORCE_GT(
+      spatial_scale,
+      0.0f,
+      phi::errors::OutOfRange("The spatial scale must be greater than 0, "
+                              "but received spatial scale is %f",
+                              spatial_scale));
+
+  auto out_dims = input_dims;
+  out_dims[0] = boxes_dims[0];
+  out_dims[1] = input_dims[1];
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  arg_max->set_dims(out_dims);
+  arg_max->set_dtype(DataType::INT64);
 }
 
 void ScatterInferMeta(const MetaTensor& x,
@@ -239,104 +624,4 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   scores->set_dtype(length.dtype());
 }
 
-void LerpInferMeta(const MetaTensor& x,
-                   const MetaTensor& y,
-                   const MetaTensor& weight,
-                   MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  auto w_dims = weight.dims();
-  DDim out_dims;
-  out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  if (w_dims.size() > 1 || w_dims[0] != 1) {
-    out_dims = funcs::GetOutputDims(out_dims, w_dims);
-  }
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
-}
-
-void LinspaceInferMeta(const MetaTensor& start,
-                       const MetaTensor& stop,
-                       const MetaTensor& number,
-                       MetaTensor* out) {
-  auto s_dims = start.dims();
-  PADDLE_ENFORCE_EQ(
-      (s_dims.size() == 1) && (s_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
-                                   "but received input shape is [%s].",
-                                   s_dims));
-  auto e_dims = stop.dims();
-  PADDLE_ENFORCE_EQ(
-      (e_dims.size() == 1) && (e_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
-                                   "but received input shape is [%s].",
-                                   e_dims));
-  auto step_dims = number.dims();
-  PADDLE_ENFORCE_EQ(
-      (step_dims.size() == 1) && (step_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
-                                   "but received input shape is [%s].",
-                                   step_dims));
-  out->set_dims(phi::make_ddim({-1}));
-  out->set_dtype(start.dtype());
-}
-
-void GraphSendRecvInferMeta(const MetaTensor& x,
-                            const MetaTensor& src_index,
-                            const MetaTensor& dst_index,
-                            const std::string& pool_type,
-                            MetaTensor* out,
-                            MetaTensor* dst_count) {
-  auto src_index_dims = src_index.dims();
-  if (src_index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(src_index_dims[1],
-                      1,
-                      phi::errors::InvalidArgument(
-                          "The last dim of Src_index should be 1 when it "
-                          "is 2D, but we get %d",
-                          src_index_dims[1]));
-  } else {
-    PADDLE_ENFORCE_EQ(
-        src_index_dims.size(),
-        1,
-        phi::errors::InvalidArgument(
-            "The Src_index should be 1D, when it is not 2D, but we get %d",
-            src_index_dims.size()));
-  }
-
-  auto dst_index_dims = dst_index.dims();
-  if (dst_index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(dst_index_dims[1],
-                      1,
-                      phi::errors::InvalidArgument(
-                          "The last dim of Dst_index should be 1 when it "
-                          "is 2D, but we get %d",
-                          dst_index_dims[1]));
-  } else {
-    PADDLE_ENFORCE_EQ(
-        dst_index_dims.size(),
-        1,
-        phi::errors::InvalidArgument("The Dst_index should be 1D, "
-                                     "when it is not 2D, but we get %d",
-                                     dst_index_dims.size()));
-  }
-
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    phi::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
-
-  auto dims = x.dims();
-  out->set_dims(dims);
-  out->set_dtype(x.dtype());
-
-  if (pool_type == "MEAN") {
-    dst_count->set_dims({dims[0]});
-    dst_count->set_dtype(DataType::INT32);
-  }
-}
 }  // namespace phi

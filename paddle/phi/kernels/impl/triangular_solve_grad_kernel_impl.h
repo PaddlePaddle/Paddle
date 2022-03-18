@@ -21,11 +21,10 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/tril_triu_op.h"
 
 namespace phi {
 
@@ -119,7 +118,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     const auto H = dims[dims.size() - 2];
     const auto W = dims[dims.size() - 1];
     phi::funcs::ForRange<Context> x_for_range(dev_ctx, dx_bst.numel());
-    paddle::operators::TrilTriuCompute<T> tril_triu_functor(
+    phi::funcs::TrilTriuCompute<T> tril_triu_functor(
         dx_bst.data<T>(), unitriangular, !upper, H, W, dx_bst_upper.data<T>());
     x_for_range(tril_triu_functor);
 

@@ -236,6 +236,12 @@ class AllocatorFacadePrivate {
 
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+        for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
+        }
+        InitNaiveBestFitNPUPinnedAllocator();
+#endif
 #ifdef PADDLE_WITH_XPU
         for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
