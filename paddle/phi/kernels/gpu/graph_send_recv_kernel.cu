@@ -40,7 +40,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   T* p_output = out->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
-  if (out_size <= -1) {
+  if (out_size <= 0) {
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
@@ -108,7 +108,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                     IndexT>><<<grid, block, 0, ctx.stream()>>>(
         p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
-    if (out_size > -1) {
+    if (out_size > 0) {
       input_size = out_size;
     }
     int64_t grid_max_tmp = (input_size * slice_size + block - 1) / block;
@@ -125,7 +125,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                     IndexT>><<<grid, block, 0, ctx.stream()>>>(
         p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
-    if (out_size > -1) {
+    if (out_size > 0) {
       input_size = out_size;
     }
     int64_t grid_min_tmp = (input_size * slice_size + block - 1) / block;
@@ -144,7 +144,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
     ctx.template Alloc<int32_t>(dst_count);
     int32_t* p_dst_count = dst_count->data<int32_t>();
-    if (out_size > -1) {
+    if (out_size > 0) {
       input_size = out_size;
     }
 

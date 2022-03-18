@@ -92,7 +92,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
   T* p_output = out->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
-  if (out_size <= -1) {
+  if (out_size <= 0) {
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
