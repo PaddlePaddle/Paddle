@@ -16,13 +16,19 @@
 
 namespace phi {
 
-KernelSignature CumprodGradGradOpArgumentMapping(
+KernelSignature DeformableConvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("cumprod_grad",
-                         {"X", "Out", GradVarName("Out")},
-                         {"dim"},
-                         {GradVarName("X")});
+  return KernelSignature("deformable_conv",
+                         {"Input", "Offset", "Filter", "Mask"},
+                         {"strides",
+                          "paddings",
+                          "dilations",
+                          "deformable_groups",
+                          "groups",
+                          "im2col_step"},
+                         {"Output"});
 }
 
 }  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(cumprod_grad, phi::CumprodGradGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(deformable_conv,
+                           phi::DeformableConvOpArgumentMapping);
