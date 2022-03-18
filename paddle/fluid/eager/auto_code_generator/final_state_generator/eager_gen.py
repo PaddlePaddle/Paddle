@@ -829,8 +829,8 @@ def GenerateNodeCreationCodes(
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"        grad_node->SetGradOutMeta({name}, {pos});"
-        set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
+        set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
     set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)

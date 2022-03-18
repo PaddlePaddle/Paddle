@@ -256,9 +256,6 @@ class PythonCSingleFunctionGenerator:
         self.python_c_function_str = ""
         self.python_c_function_reg_str = ""
 
-        # Inplace Op
-        self.inplace_map = {}
-
     def CollectRawContents(self):
         fwd_api_contents = self.fwd_api_contents
 
