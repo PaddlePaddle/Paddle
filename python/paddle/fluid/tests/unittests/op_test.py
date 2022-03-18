@@ -756,10 +756,15 @@ class OpTest(unittest.TestCase):
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
             if not isinstance(ret_tuple, (tuple, list)):
                 ret_tuple = [ret_tuple]
-            assert len(output_sig) == len(
-                ret_tuple), "expect %d outputs, but get %d outputs" % (
-                    len(output_sig), len(ret_tuple))
-            return {a: b for a, b in zip(output_sig, ret_tuple)}
+            if len(output_sig) == len(ret_tuple):
+                # [assumption]: we assume {"Out": [Tensor]}
+                return {a: [b] for a, b in zip(output_sig, ret_tuple)}
+            else:
+                # [assumption]: return multi-Tensor in a single output. such as paddle.split()
+                assert len(
+                    output_sig
+                ) == 1, "Don't support multi-output with multi-tensor output."
+                return {output_sig[0]: ret_tuple}
 
         def assumption_assert_and_transform(args, inp_num):
             """
