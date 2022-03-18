@@ -542,7 +542,7 @@ class TestComplexMatMulOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -560,7 +560,7 @@ class TestComplexMatMulOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True)
+            check_eager=False)
 
 
 class TestComplexMatMulOpBroadcast(OpTest):
