@@ -97,8 +97,8 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
           mlir::Type type_ =
               infrt::DenseTensorType::get(context_,
                                           infrt::TargetType::CPU,
-                                          infrt::PrecisionType::FLOAT32,
-                                          infrt::LayoutType::NCHW);
+                                          precision_,
+                                          infrt::LayoutType::ANY);
 
           operandTypes.push_back(type_);
         }
@@ -127,8 +127,8 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
           mlir::Type type_ =
               infrt::DenseTensorType::get(context_,
                                           infrt::TargetType::CPU,
-                                          infrt::PrecisionType::FLOAT32,
-                                          infrt::LayoutType::NCHW);
+                                          precision_,
+                                          infrt::LayoutType::ANY);
           resultTypes.push_back(type_);
         }
       }
@@ -179,11 +179,8 @@ void MLIRModelGenImpl::UpdateModelParams(
       ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
                       builder_,
                       &precision_);
-      mlir::Type type_ =
-          infrt::DenseTensorType::get(context_,
-                                      infrt::TargetType::CPU,
-                                      infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::ANY);
+      mlir::Type type_ = infrt::DenseTensorType::get(
+          context_, infrt::TargetType::CPU, precision_, infrt::LayoutType::ANY);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -272,11 +269,10 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
         infrt::PrecisionType precision_;
         ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
                              &precision_);
-        mlir::Type type_ =
-            infrt::DenseTensorType::get(context_,
-                                        infrt::TargetType::CPU,
-                                        infrt::PrecisionType::FLOAT32,
-                                        infrt::LayoutType::NCHW);
+        mlir::Type type_ = infrt::DenseTensorType::get(context_,
+                                                       infrt::TargetType::CPU,
+                                                       precision_,
+                                                       infrt::LayoutType::ANY);
         resultTypes.push_back(type_);
       }
     }
