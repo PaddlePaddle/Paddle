@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # example 1: save layer
 import numpy as np
 import paddle
@@ -10,6 +24,7 @@ EPOCH_NUM = 4
 
 IMAGE_SIZE = 784
 CLASS_NUM = 10
+
 
 # define a random dataset
 class RandomDataset(paddle.io.Dataset):
@@ -24,6 +39,7 @@ class RandomDataset(paddle.io.Dataset):
     def __len__(self):
         return self.num_samples
 
+
 class LinearNet(nn.Layer):
     def __init__(self):
         super(LinearNet, self).__init__()
@@ -32,6 +48,7 @@ class LinearNet(nn.Layer):
     @paddle.jit.to_static
     def forward(self, x):
         return self._linear(x)
+
 
 def train(layer, loader, loss_fn, opt):
     for epoch_id in range(EPOCH_NUM):
@@ -42,6 +59,7 @@ def train(layer, loader, loss_fn, opt):
             opt.step()
             opt.clear_grad()
 
+
 # 1. train & save model.
 
 # create network
@@ -51,11 +69,8 @@ adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
 # create data loader
 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-loader = paddle.io.DataLoader(dataset,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    drop_last=True,
-    num_workers=2)
+loader = paddle.io.DataLoader(
+    dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
 
 # train
 train(layer, loader, loss_fn, adam)
