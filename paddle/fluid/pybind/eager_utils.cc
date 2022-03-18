@@ -419,6 +419,8 @@ PyObject* ToPyObject(bool value) {
 
 PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
 
+PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
+
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }
@@ -441,6 +443,20 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
   }
+  return obj;
+}
+
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+  // For inplace op, directly return the input PyObject of the inplace tensor.
+  // [Parameter]
+  // value: Useless parameter.
+  // value_idx: Useless parameter.
+  // args: Input PyObject.
+  // arg_idx: Index of inplace PyObject in input args. Used to find the input
+  // inplace PyObject.
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  Py_INCREF(obj);
   return obj;
 }
 

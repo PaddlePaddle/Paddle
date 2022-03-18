@@ -42,6 +42,6 @@ def PD_ConstantOp : PD_Op<"constant", [NoSideEffect, ConstantLike, DeclareOpInte
   let hasFolder = 1;
 
   let builders = [
-    OpBuilder<(ins "Attribute":$value)>,
+    OpBuilder<(ins "mlir::Attribute":$value)>,
   ];
 }
