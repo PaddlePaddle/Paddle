@@ -50,11 +50,15 @@ struct exponential_transform {
 
   HOSTDEVICE inline T operator()(T val) const {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (std::is_same<T, double>::value) {
-      return static_cast<T>(-1.0) / lambda_ * log(val);
-    } else {
-      return static_cast<T>(-1.0) / lambda_ * __logf(val);
+    T log = -std::numeric_limits<T>::epsilon() / 2;
+    if (val < static_cast<T>(1.) - std::numeric_limits<T>::epsilon() / 2) {
+      if (std::is_same<T, double>::value) {
+        log = logf(val);
+      } else {
+        log = __logf(val);
+      }
     }
+    return static_cast<T>(-1.0) / lambda_ * log;
 #else
     return static_cast<T>(-1.0) / lambda_ * std::log(static_cast<T>(1.0) - val);
 #endif
