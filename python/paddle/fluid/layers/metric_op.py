@@ -175,11 +175,11 @@ def auc(input,
             print(output)
             #[array([0.5])]
     """
-
     helper = LayerHelper("auc", **locals())
 
     if ins_tag_weight is None:
-        ins_tag_weight = label
+        ins_tag_weight = helper.create_global_variable(
+            dtype='float', shape=label.shape)
         helper.set_variable_initializer(
             ins_tag_weight, Constant(
                 value=1.0, force_cpu=False))
