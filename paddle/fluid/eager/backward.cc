@@ -30,23 +30,13 @@
 namespace egr {
 
 /*
-* PartialGrad is Helpper class to implement custom grad operation between
+* GeneralGrad is Helpper class to implement custom grad operation between
 * outputs and inputs.
 *
 * **/
-class PartialGrad {
+class GeneralGrad {
  public:
-  explicit PartialGrad(
-      const std::vector<paddle::experimental::Tensor>& inputs) {
-    if (!inputs.empty()) {
-      VLOG(6) << "Running in PartialGrad's construction, inputs are not empty";
-      is_initialized = true;
-    }
-  }
-
-  ~PartialGrad();
-
-  bool IsInitialized() { return is_initialized; }
+  static GeneralGrad& Instance() { return *general_grad_; }
 
   // Get inputs's / no_grad_vars's GradNodes and InputMeta Info
   void GetTargetNodesInfo(
@@ -278,10 +268,11 @@ class PartialGrad {
         results.emplace_back();
       }
     }
+    Clear();
     return results;
   }
 
-  void PreparedForPartialGrad(
+  void PreparedForGeneralGrad(
       const std::vector<paddle::experimental::Tensor>& inputs,
       const std::vector<paddle::experimental::Tensor>& no_grad_vars,
       std::queue<GradNodeBase*>* queue,
@@ -328,8 +319,18 @@ class PartialGrad {
     return &potential_startup_nodes;
   }
 
+  void Clear() {
+    no_grad_var_nodes_inputmeta_map.clear();
+    input_target_nodes_inputmeta_map.clear();
+    potential_startup_nodes.clear();
+    potential_stop_nodes.clear();
+    depending_nodes.clear();
+    results_map.clear();
+  }
+
  private:
-  bool is_initialized = false;
+  GeneralGrad() = default;
+  static GeneralGrad* general_grad_;
   // no_grad_vars's GradNode and GradNode's InputMeta.
   std::unordered_map<GradNodeBase*, AutogradMeta* /* InputMeta */>
       no_grad_var_nodes_inputmeta_map;
@@ -344,6 +345,7 @@ class PartialGrad {
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
       depending_nodes;
   std::unordered_map<GradNodeBase*, paddle::experimental::Tensor> results_map;
+  DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
 
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
@@ -356,20 +358,11 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   // Copy nodes
   std::queue<GradNodeBase*> queue = init_queue;
   std::unordered_set<GradNodeBase*> visited;
-  size_t potential_startup_ops_cnt = queue.size();
-  size_t cnt = 0;
 
   // Visit each node exactly once in any order
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop();
-
-    if (cnt < potential_startup_ops_cnt) {
-      if (!node_in_degree_map.count(node)) {
-        node_in_degree_map[node] = 0;
-      }
-      cnt += 1;
-    }
 
     if (visited.count(node)) {
       continue;
@@ -430,6 +423,8 @@ void DuplicateCheck(const std::vector<paddle::experimental::Tensor>& inputs,
   }
 }
 
+GeneralGrad* GeneralGrad::general_grad_ = new GeneralGrad();
+
 std::vector<paddle::experimental::Tensor> RunBackward(
     const std::vector<paddle::experimental::Tensor>& tensors,  // output
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
@@ -442,9 +437,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
 
-  // Construct PartialGrad
-  auto partial_grad = new PartialGrad(inputs);
-  bool is_partial_grad = partial_grad->IsInitialized();
+  // GeneralGrad
+  bool is_general_grad = !inputs.empty();
 
   /* --- Initialization --- */
   // 1. Init queue with starting nodes
@@ -516,8 +510,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     // Prepare queue, potential startup_nodes
     queue.push(grad_node);
-    if (is_partial_grad) {
-      partial_grad->GetPotentialStartupNodes()->emplace(grad_node);
+    if (is_general_grad) {
+      GeneralGrad::Instance().GetPotentialStartupNodes()->emplace(grad_node);
     }
   }
 
@@ -526,10 +520,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
-  if (is_partial_grad) {
-    // Prepare several vital preprocess for PartialGrad
-    partial_grad->PreparedForPartialGrad(inputs, no_grad_vars, &queue,
-                                         node_input_buffers_dict);
+  if (is_general_grad) {
+    // Prepare several vital preprocess for GeneralGrad
+    GeneralGrad::Instance().PreparedForGeneralGrad(inputs, no_grad_vars, &queue,
+                                                   node_input_buffers_dict);
   }
 
   VLOG(6) << " startup_ops' size is :" << queue.size();
@@ -567,14 +561,17 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         std::move(node_input_buffers_dict[node]);
 
     // Set input target grad_var from node_input_buffer by inputmeta
-    if (!inputs.empty() && is_partial_grad) {
-      partial_grad->SetResultForInputTargetVar(*node_input_buffer, node);
+    if (!inputs.empty() && is_general_grad) {
+      GeneralGrad::Instance().SetResultForInputTargetVar(*node_input_buffer,
+                                                         node);
     }
 
     // no_grad_vars
-    if (!no_grad_vars.empty() && is_partial_grad) {
-      auto iter = partial_grad->GetNoGradVarNodesInputMetaMap()->find(node);
-      if (iter != partial_grad->GetNoGradVarNodesInputMetaMap()->end()) {
+    if (!no_grad_vars.empty() && is_general_grad) {
+      auto iter =
+          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->find(node);
+      if (iter !=
+          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->end()) {
         VLOG(6) << "Change the input buffer[slot][rank] by Zeros";
         auto rank_info = (iter->second)->OutRankInfo();
         node_input_buffer->SetBufferSlotRankZeros(rank_info.first,
@@ -671,9 +668,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
-        if (is_partial_grad) {
+        if (is_general_grad) {
           bool is_potential_stop_node =
-              partial_grad->GetPotentialStopNodes()->count(next_node);
+              GeneralGrad::Instance().GetPotentialStopNodes()->count(next_node);
           if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
             queue.emplace(std::move(next_node));
           }
@@ -685,8 +682,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       }
     }
   }
-  if (!is_partial_grad) return {};
-  return partial_grad->GetResults(inputs, allow_unused, create_graph);
+  if (!is_general_grad) return {};
+  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
 
 void Backward(
