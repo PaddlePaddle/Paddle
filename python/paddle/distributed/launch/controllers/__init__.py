@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["init"]
+__all__ = []
 
 from .collective import CollectiveController
 from .collective import CollectiveElasticController

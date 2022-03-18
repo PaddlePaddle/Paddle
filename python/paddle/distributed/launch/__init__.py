@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .job.container import Container
-from .job.pod import Pod
-from .job.job import Job
-from . import plugins
-
-#__all__ = [Container, Pod, Job]
+__all__ = []
 '''
 Paddle distributed training entry ``python -m paddle.distributed.launch``.
 

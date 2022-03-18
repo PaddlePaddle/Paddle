@@ -16,9 +16,9 @@ import sys
 import os
 import signal
 
-from paddle.distributed.launch.job import Job
-from paddle.distributed.launch.job import Pod
-from paddle.distributed.launch.job import Container
+from paddle.distributed.launch.job.job import Job
+from paddle.distributed.launch.job.pod import Pod
+from paddle.distributed.launch.job.container import Container
 
 from .master import Master
 
