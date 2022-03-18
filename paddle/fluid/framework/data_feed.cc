@@ -1691,8 +1691,6 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
 // }
 
 void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
-  // fill_timer_.Resume();
-
   int slot_size = use_slots_.size();
   int offset_cols_size = (ins_num + 1);
   size_t slot_total_num = (slot_size * offset_cols_size);
@@ -1707,10 +1705,8 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
       value.d_uint64_offset.data(), uint64_use_slot_size_,
       value.d_float_offset.data(), float_use_slot_size_, used_slot_gpu_types);
 
-  // fill_timer_.Pause();
   size_t* d_slot_offsets = reinterpret_cast<size_t*>(pack_->gpu_slot_offsets());
 
-  // offset_timer_.Resume();
   HostBuffer<size_t>& offsets = pack_->offsets();
   offsets.resize(slot_total_num);
   HostBuffer<void*>& h_tensor_ptrs = pack_->h_tensor_ptrs();
@@ -1723,14 +1719,11 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 
   int64_t float_offset = 0;
   int64_t uint64_offset = 0;
-  // offset_timer_.Pause();
 
-  // copy_timer_.Resume();
   // copy index
   CUDA_CHECK(cudaMemcpy(offsets.data(), d_slot_offsets,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
-  // copy_timer_.Pause();
 
   std::stringstream ss;
   for (size_t k = 0; k < offsets.size(); k++) {
@@ -1800,7 +1793,6 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   VLOG(0) << "SHARE float_offset:" << float_offset
           << " uint64_offset:" << uint64_offset;
 
-  // trans_timer_.Resume();
   void** dest_gpu_p = reinterpret_cast<void**>(pack_->slot_buf_ptr());
   CUDA_CHECK(cudaMemcpy(dest_gpu_p, h_tensor_ptrs.data(),
                         slot_size * sizeof(void*), cudaMemcpyHostToDevice));
@@ -1815,8 +1807,6 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
                 (const int*)value.d_float_lens.data(), float_use_slot_size_,
                 used_slot_gpu_types);
   VLOG(0) << "done CopyForTensor:";
-
-  // trans_timer_.Pause();
 }
 
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
@@ -3077,8 +3067,6 @@ int SlotRecordInMemoryDataFeed::Next() {
 }
 
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
-  // fill_timer_.Resume();
-
   int offset_cols_size = (ins_num + 1);
   size_t slot_total_num = (use_slot_size_ * offset_cols_size);
   pack_->resize_gpu_slot_offsets(slot_total_num * sizeof(size_t));
@@ -3093,10 +3081,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
                       value.d_uint64_offset.data(), uint64_use_slot_size_,
                       value.d_float_offset.data(), float_use_slot_size_,
                       used_slot_gpu_types);
-  // fill_timer_.Pause();
   size_t* d_slot_offsets = reinterpret_cast<size_t*>(pack_->gpu_slot_offsets());
 
-  // offset_timer_.Resume();
   HostBuffer<size_t>& offsets = pack_->offsets();
   offsets.resize(slot_total_num);
   HostBuffer<void*>& h_tensor_ptrs = pack_->h_tensor_ptrs();
@@ -3109,9 +3095,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 
   int64_t float_offset = 0;
   int64_t uint64_offset = 0;
-  // offset_timer_.Pause();
 
-  // copy_timer_.Resume();
   // copy index
   CUDA_CHECK(cudaMemcpy(offsets.data(), d_slot_offsets,
                         slot_total_num * sizeof(size_t),
@@ -3121,9 +3105,6 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
     ss << offsets[k] << ",";
   }
   VLOG(0) << "offsets INFO:" << ss.str();
-  // copy_timer_.Pause();
-
-  // data_timer_.Resume();
 
   for (int j = 0; j < use_slot_size_; ++j) {
     auto& feed = feed_vec_[j];
@@ -3183,9 +3164,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   }
   VLOG(0) << "SHARE float_offset:" << float_offset
           << " uint64_offset:" << uint64_offset;
-  // data_timer_.Pause();
 
-  // trans_timer_.Resume();
   void** dest_gpu_p = reinterpret_cast<void**>(pack_->slot_buf_ptr());
   CUDA_CHECK(cudaMemcpy(dest_gpu_p, h_tensor_ptrs.data(),
                         use_slot_size_ * sizeof(void*),
@@ -3200,7 +3179,6 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
                 (const int*)value.d_float_offset.data(),
                 (const int*)value.d_float_lens.data(), float_use_slot_size_,
                 used_slot_gpu_types);
-  // trans_timer_.Pause();
 }
 
 #if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
@@ -3282,9 +3260,6 @@ void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
                 ->stream();
   ins_num_ = 0;
   pv_num_ = 0;
-
-  pack_timer_.Reset();
-  trans_timer_.Reset();
 }
 
 void MiniBatchGpuPack::pack_all_data(const SlotRecord* ins_vec, int num) {
@@ -3434,7 +3409,6 @@ void MiniBatchGpuPack::pack_float_data(const SlotRecord* ins_vec, int num) {
 }
 
 void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
-  // pack_timer_.Resume();
   ins_num_ = num;
   batch_ins_ = ins_vec;
   CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
@@ -3446,7 +3420,6 @@ void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
   } else {  // only float
     pack_float_data(ins_vec, num);
   }
-  // pack_timer_.Pause();
   // to gpu
   transfer_to_gpu();
 }
@@ -3599,7 +3572,6 @@ void MiniBatchGpuPack::pack_all_data(const std::vector<Record>& ins_vec) {
 }
 
 void MiniBatchGpuPack::pack_instance(const std::vector<Record>& ins_vec) {
-  // pack_timer_.Resume();
   auto num = ins_vec.size();
   ins_num_ = num;
   CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
@@ -3611,13 +3583,11 @@ void MiniBatchGpuPack::pack_instance(const std::vector<Record>& ins_vec) {
   } else {  // only float
     pack_float_data(ins_vec);
   }
-  // pack_timer_.Pause();
   // to gpu
   transfer_to_gpu();
 }
 
 void MiniBatchGpuPack::transfer_to_gpu(void) {
-  // trans_timer_.Resume();
   copy_host2device(&value_.d_uint64_lens, buf_.h_uint64_lens);
   copy_host2device(&value_.d_uint64_keys, buf_.h_uint64_keys);
   copy_host2device(&value_.d_uint64_offset, buf_.h_uint64_offset);
@@ -3626,7 +3596,6 @@ void MiniBatchGpuPack::transfer_to_gpu(void) {
   copy_host2device(&value_.d_float_keys, buf_.h_float_keys);
   copy_host2device(&value_.d_float_offset, buf_.h_float_offset);
   CUDA_CHECK(cudaStreamSynchronize(stream_));
-  // trans_timer_.Pause();
 }
 #endif
 

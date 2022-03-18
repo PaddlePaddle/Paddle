@@ -542,8 +542,6 @@ class MiniBatchGpuPack {
     return reinterpret_cast<UsedSlotGpuType*>(gpu_slots_.data());
   }
   SlotRecord* get_records(void) { return &ins_vec_[0]; }
-  double pack_time_span(void) { return pack_timer_.ElapsedSec(); }
-  double trans_time_span(void) { return trans_timer_.ElapsedSec(); }
 
   // tensor gpu memory reused
   void resize_tensor(void) {
@@ -640,9 +638,6 @@ class MiniBatchGpuPack {
   const SlotRecord* batch_ins_ = nullptr;
   // std::vector<int> float_slot_offsets_;
   // std::vector<int> uint64_slot_offsets_;
-
-  platform::Timer pack_timer_;
-  platform::Timer trans_timer_;
 
   // uint64 tensor
   LoDTensor uint64_tensor_;
@@ -1581,13 +1576,6 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
 #endif
   int offset_index_ = 0;
   std::string parser_so_path_;
-
-  platform::Timer batch_timer_;
-  platform::Timer fill_timer_;
-  platform::Timer offset_timer_;
-  platform::Timer data_timer_;
-  platform::Timer trans_timer_;
-  platform::Timer copy_timer_;
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
