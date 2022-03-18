@@ -19,17 +19,20 @@ hyper_parameters:
     class: Adam
     learning_rate: 0.0001
     adam_lazy_mode: True
-  sparse_inputs_slots: 3
+  sparse_inputs_slots: 27
   sparse_feature_number: 1000001
   sparse_feature_dim: 10
-  dense_input_dim: 2
+  dense_input_dim: 13
   fc_sizes: []
 
 runner:
   sync_mode: "async"  # sync / async / geo / heter
   is_fl_ps_mode: 1
-  thread_num: 16
+  reader_thread_num: 16
   use_gpu: 0
+  batch_size: 2
+  train_files_path: './train_data'
+  epoch_num: 4
   
   model_path: "../ps_dnn_model.py"
 

@@ -309,7 +309,6 @@ class TestFleetBase(unittest.TestCase):
                 (tr1_proc, tr1_out, tr1_err, tr1_out_log, tr1_err_log))
 
     def _run_cluster(self, model, envs):
-        envs['WITH_DISTRIBUTE'] = 'ON'
         env = {'GRAD_CLIP': str(self._grad_clip_mode)}
         python_path = self._python_interp
         gloo_path = tempfile.mkdtemp()
@@ -428,7 +427,6 @@ class TestFleetBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            'WITH_DISTRIBUTE': 'ON'
         }
 
         required_envs.update(need_envs)
