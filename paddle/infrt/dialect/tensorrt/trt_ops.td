@@ -85,4 +85,12 @@ def TRT_MatrixMultiplyOp : TRT_Op<"MatrixMultiply", [NoSideEffect]> {
   let results = (outs DenseTensor:$output);
 }
 
+def TRT_CvtTensorOp : TRT_Op<"cvt_tensor", [NoSideEffect]> {
+  let summary = "convert tensor type op";
+  let description = [{convert tensor type op!}];
+  let arguments = (ins AnyType:$input);
+  let results = (outs AnyType:$output);
+}
+
+
 #endif  // TRT_OPS
