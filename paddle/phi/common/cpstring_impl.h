@@ -178,6 +178,25 @@ HOSTDEVICE static inline size_t PD_PString_ToInternalSizeT(
  */
 HOSTDEVICE static inline void PD_Free(void *ptr, size_t size) { free(ptr); }
 
+HOSTDEVICE static inline void *PD_Memset(void *src, int ch, size_t size) {
+  char *dst = (char *)src;  // NOLINT
+  for (size_t i = 0; i < size; ++i) {
+    dst[i] = ch;
+  }
+  return dst;
+}
+
+HOSTDEVICE static inline void *PD_Memcpy(void *dst,
+                                         const void *src,
+                                         size_t size) {
+  char *dest = (char *)dst;          // NOLINT
+  const char *source = (char *)src;  // NOLINT
+  for (size_t i = 0; i < size; ++i) {
+    dest[i] = source[i];
+  }
+  return dest;
+}
+
 HOSTDEVICE static inline void *PD_Malloc(size_t size) { return malloc(size); }
 
 HOSTDEVICE static inline void *PD_Realloc(void *ptr,
@@ -188,20 +207,12 @@ HOSTDEVICE static inline void *PD_Realloc(void *ptr,
     return ptr;
   }
   void *new_ptr = malloc(new_size);
-  memcpy(new_ptr, ptr, old_size);
+  PD_Memcpy(new_ptr, ptr, old_size);
   free(ptr);
   return new_ptr;
 #else
   return realloc(ptr, new_size);
 #endif
-}
-HOSTDEVICE static inline void *PD_Memset(void *src, int ch, size_t size) {
-  return memset(src, ch, size);
-}
-HOSTDEVICE static inline void *PD_Memcpy(void *__restrict dest,
-                                         const void *__restrict src,
-                                         size_t size) {
-  return memcpy(dest, src, size);
 }
 
 HOSTDEVICE static inline int PD_Memcmp(const void *s1,
