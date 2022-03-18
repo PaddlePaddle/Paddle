@@ -98,7 +98,7 @@ class TestBase(IPUOpTest):
         self.check(output_dict)
 
 
-class TestAssgnFp32Value(TestBase):
+class TestAssignFp32Value(TestBase):
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 3, 1])
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
@@ -154,7 +154,7 @@ class TestAssgnFp32Value(TestBase):
             return result[0]
 
 
-class TestAssgnBoolValue(TestBase):
+class TestAssignBoolValue(TestBase):
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 3, 1])
         self.feed_fp32 = {'in_0': data.astype(np.float32)}

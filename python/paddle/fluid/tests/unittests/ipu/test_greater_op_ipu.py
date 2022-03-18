@@ -160,7 +160,7 @@ class TestLessThan(TestGreaterThan):
         self.op = paddle.fluid.layers.less_than
 
 
-class TestLessThan(TestGreaterThan):
+class TestEqual(TestGreaterThan):
     def set_test_op(self):
         self.op = paddle.fluid.layers.equal
 
