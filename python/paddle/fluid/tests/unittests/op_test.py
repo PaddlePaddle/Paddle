@@ -1264,7 +1264,6 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            atol = 1e-2
             if self.is_mkldnn_op():
                 check_dygraph = False
                 check_eager = False
