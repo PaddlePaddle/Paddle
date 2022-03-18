@@ -144,7 +144,7 @@ def strong_wolfe(f,
             done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
             def cond(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi):
                 pred = paddle.abs(alpha_hi - alpha_lo) < tolerance_change
-                paddle.assign(done | pred, done)
+                paddle.assign(done_zoom | pred, done_zoom)
                 return (j < max_zoom_iters) & ~done_zoom
 
             def body(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi):
