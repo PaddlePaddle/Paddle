@@ -39,7 +39,7 @@ class PartialGrad {
   explicit PartialGrad(
       const std::vector<paddle::experimental::Tensor>& inputs) {
     if (!inputs.empty()) {
-      VLOG(1) << "Running in PartialGrad's construction, inputs are not empty";
+      VLOG(6) << "Running in PartialGrad's construction, inputs are not empty";
       is_initialized = true;
     }
   }
@@ -64,7 +64,7 @@ class PartialGrad {
         PADDLE_ENFORCE_NOT_NULL(target_node,
                                 paddle::platform::errors::Fatal(
                                     "There is no grad op for %s:[%d] or it's"
-                                    "stop_gradient=True",
+                                    "stop_gradient=True.",
                                     msg, i));
         if (is_no_grad_vars) {
           (no_grad_var_nodes_inputmeta_map)[target_node] = auto_grad_meta;
@@ -213,6 +213,7 @@ class PartialGrad {
     tmp_queue.swap(*queue);
   }
 
+  // Set result for input target grad_var when potential_startup_nodes is empty
   void SetResultForInputTargetVar(
       const std::unordered_map<GradNodeBase*,
                                std::unique_ptr<GradTensorHolder>>&
@@ -232,6 +233,7 @@ class PartialGrad {
     }
   }
 
+  // Set input target grad_var from node_input_buffer by inputmeta
   void SetResultForInputTargetVar(GradTensorHolder input_buffers,
                                   GradNodeBase* node) {
     auto iter = GetInPutTargetNodesInputMetaMap()->find(node);
@@ -390,6 +392,21 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
           node->name()));
 }
 
+void DuplicateCheck(const std::vector<paddle::experimental::Tensor>& inputs,
+                    bool is_input) {
+  std::unordered_set<AutogradMeta*> visisted_ins;
+  std::string msg = is_input ? "inputs" : "outputs";
+  for (auto in : inputs) {
+    AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(in);
+    PADDLE_ENFORCE_EQ(
+        visisted_ins.count(auto_grad_meta), 0,
+        paddle::platform::errors::AlreadyExists(
+            "%s contain duplicate tensor %s, please check %s carefully.", msg,
+            in.name(), msg));
+    visisted_ins.insert(auto_grad_meta);
+  }
+}
+
 std::vector<paddle::experimental::Tensor> RunBackward(
     const std::vector<paddle::experimental::Tensor>& tensors,  // output
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
@@ -402,13 +419,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
 
-  // Construct PartialGrad and check it's valiadation
+  // Construct PartialGrad
   auto partial_grad = new PartialGrad(inputs);
   bool is_partial_grad = partial_grad->IsInitialized();
-
-  if (is_partial_grad) {
-    partial_grad->GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
-  }
 
   /* --- Initialization --- */
   // 1. Init queue with starting nodes
@@ -452,7 +465,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           paddle::platform::errors::Fatal(
               "Detected size mismatch between tensors and grad_tensors"
               "grad_tensors should either have "
-              "size = 0 or same size as tensors"));
+              "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
       VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
 
@@ -491,6 +504,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       getInDegreeMap(queue);
 
   if (is_partial_grad) {
+    // Get no_grad_vars's GradNodes and InputMeta Info
+    partial_grad->GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
     // Get inputs's GradNodes and InputMeta Info
     partial_grad->GetTargetNodesInfo(inputs, false /* is_no_grad_vars */);
     // Purify potential_startup_ops, remove those nodes that are the same as
@@ -509,7 +524,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       partial_grad->SetResultForInputTargetVar(node_input_buffers_dict);
   }
 
-  VLOG(1) << " startup_ops' size is :" << queue.size();
+  VLOG(6) << " startup_ops' size is :" << queue.size();
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -538,12 +553,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         node_input_buffers_dict.count(node),
         paddle::platform::errors::Fatal(
             "Unable to find next node in the GradTensorHolder \n"
-            "Trying to run Node without configuring its GradTensorHolder"));
+            "Trying to run Node without configuring its GradTensorHolder."));
 
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
 
-    // get input target grad_var from node_input_buffer by inputmeta
+    // Set input target grad_var from node_input_buffer by inputmeta
     if (!inputs.empty() && is_partial_grad) {
       partial_grad->SetResultForInputTargetVar(*node_input_buffer, node);
     }
@@ -564,7 +579,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     // check input
     EnforceGradNodeHasInput(node);
 
-    VLOG(6) << "Run Backward Kernel with GradTensorHolder";
+    VLOG(6) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers(), create_graph);
@@ -645,7 +660,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
             node_in_degree_map[next_node] >= 0,
             paddle::platform::errors::Fatal(
                 "Detected in-degree value smaller than zero. For Node: %s"
-                "Node's in-degree cannot be negative",
+                "Node's in-degree cannot be negative.",
                 next_node->name()));
 
         if (is_partial_grad) {
@@ -683,6 +698,10 @@ std::vector<paddle::experimental::Tensor> Grad(
     bool retain_graph, bool create_graph, bool only_inputs, bool allow_unused,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars) {
   VLOG(6) << "Run in Grad";
+
+  DuplicateCheck(inputs, true /* is_input */);
+  DuplicateCheck(tensors, false /* is_input */);
+
   return RunBackward(tensors, grad_tensors, retain_graph, create_graph, inputs,
                      allow_unused, no_grad_vars);
 }
