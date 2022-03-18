@@ -61,63 +61,7 @@ class MeshgridKernel : public framework::OpKernel<T> {
 
  protected:
   template <int Rank>
-  void MeshgridForward(const framework::ExecutionContext& context) const {
-    auto ins = context.MultiInput<framework::Tensor>("X");
-    auto outs = context.MultiOutput<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(
-        ins.size() > 1, true,
-        platform::errors::InvalidArgument(
-            "Expected at least 2 input tensors, but only received d%.",
-            ins.size()));
-
-    int64_t size = ins.size();
-    std::vector<int64_t> shape(size);
-
-    for (int64_t i = 0; i < size; i++) {
-      switch (ins[i]->dims().size()) {
-        case 0:
-          shape[i] = 1;
-          break;
-        case 1:
-          shape[i] = ins[i]->dims()[0];
-          break;
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Expected scalar or 1D tensor in the tensor list but got tensor "
-              "%d: ",
-              i));
-      }
-    }
-
-    for (int64_t i = 0; i < size; i++) {
-      std::vector<int64_t> view_shape(size, 1);
-      view_shape[i] = shape[i];
-
-      framework::Tensor reshape_ins_tensor;
-      paddle::framework::TensorCopy(*ins[i], context.GetPlace(),
-                                    context.device_context(),
-                                    &reshape_ins_tensor);
-      framework::DDim out_dims_reshape = phi::make_ddim(view_shape);
-      reshape_ins_tensor.Resize(out_dims_reshape);
-      framework::DDim out_dims = phi::make_ddim(shape);
-
-      Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
-      for (int64_t j = 0; j < size; j++) {
-        bcast_dims[j] = shape[j];
-      }
-      bcast_dims[i] = 1;
-
-      outs[i]->Resize(out_dims);
-      auto x = framework::EigenTensor<T, Rank>::From(
-          static_cast<const framework::Tensor>(reshape_ins_tensor));
-      outs[i]->mutable_data<T>(context.GetPlace());
-      auto y = framework::EigenTensor<T, Rank>::From(*outs[i]);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
-                                                                   bcast_dims);
-    }
-  }
+  void MeshgridForward(const framework::ExecutionContext& context) const {}
 };
 
 template <typename DeviceContext, typename T>

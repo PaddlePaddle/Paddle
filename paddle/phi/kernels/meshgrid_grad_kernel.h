@@ -20,8 +20,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void MeshgridGradKernel(const Context& ctx,
-                        const std::vector<DenseTensor>& inputs,
-                        const std::vector<DenseTensor>& outputs_grad,
-                        std::vector<DenseTensor*>* inputs_grad);
+                        const std::vector<const DenseTensor*>& inputs,
+                        const std::vector<const DenseTensor*>& outputs_grad,
+                        std::vector<DenseTensor*> inputs_grad);
 
 }  // namespace phi

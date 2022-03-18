@@ -84,7 +84,6 @@ class TestMeshgridOp3(unittest.TestCase):
                                feed={'x': input_1,
                                      'y': input_2},
                                fetch_list=[grid_x, grid_y])
-
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
 
@@ -180,4 +179,5 @@ class TestMeshgridOp8(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

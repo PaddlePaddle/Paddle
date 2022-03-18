@@ -14,16 +14,20 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/meshgrid_kernel.h"
+
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
-template <typename Context, int Rank>
+template <typename T, typename Context, int Rank>
 void MeshgridForward(const Context& ctx,
-                     const std::vector<DenseTensor>& ins,
-                     std::vector<DenseTensor*>* outs) {
+                     const std::vector<const DenseTensor*>& ins,
+                     std::vector<DenseTensor*> outs) {
   PADDLE_ENFORCE_EQ(
       ins.size() > 1,
       true,
@@ -56,10 +60,10 @@ void MeshgridForward(const Context& ctx,
 
     DenseTensor reshape_ins_tensor;
     paddle::framework::TensorCopy(
-        ins[i], context.GetPlace(), ctx, &reshape_ins_tensor);
-    framework::DDim out_dims_reshape = framework::make_ddim(view_shape);
+        *ins[i], ctx.GetPlace(), ctx, &reshape_ins_tensor);
+    DDim out_dims_reshape = phi::make_ddim(view_shape);
     reshape_ins_tensor.Resize(out_dims_reshape);
-    framework::DDim out_dims = framework::make_ddim(shape);
+    DDim out_dims = phi::make_ddim(shape);
 
     Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (int64_t j = 0; j < size; j++) {
@@ -68,39 +72,39 @@ void MeshgridForward(const Context& ctx,
     bcast_dims[i] = 1;
 
     outs[i]->Resize(out_dims);
-    auto x = framework::EigenTensor<T, Rank>::From(
-        static_cast<const framework::Tensor>(reshape_ins_tensor));
+    auto x = EigenTensor<T, Rank>::From(
+        static_cast<const DenseTensor>(reshape_ins_tensor));
     outs[i]->mutable_data<T>(ctx.GetPlace());
-    auto y = framework::EigenTensor<T, Rank>::From(*outs[i]);
+    auto y = EigenTensor<T, Rank>::From(*outs[i]);
     auto& place = *ctx.eigen_device();
-    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, y, x, bcast_dims);
   }
 }
 
 template <typename T, typename Context>
 void MeshgridKernel(const Context& ctx,
-                    const std::vector<DenseTensor*>& inputs,
+                    const std::vector<const DenseTensor*>& inputs,
                     std::vector<DenseTensor*> outputs) {
   int rank = inputs.size();
   switch (rank) {
     case 1:
-      MeshgridForward<Context, 1>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 1>(ctx, inputs, outputs);
       break;
     case 2:
-      MeshgridForward<Context, 2>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 2>(ctx, inputs, outputs);
       break;
     case 3:
-      MeshgridForward<Context, 3>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 3>(ctx, inputs, outputs);
       break;
     case 4:
-      MeshgridForward<Context, 4>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 4>(ctx, inputs, outputs);
       break;
     case 5:
-      MeshgridForward<Context, 5>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 5>(ctx, inputs, outputs);
       break;
     case 6:
-      MeshgridForward<Context, 6>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 6>(ctx, inputs, outputs);
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(

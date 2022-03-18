@@ -12,11 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/meshgrid_kernel_impl.h"
-#include "paddle/phi/kernels/meshgrid_kernel.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(
-    meshgrid, gpu, ALL_LAYOUT, phi::MeshgridKernel, float, double) {}
+KernelSignature MeshgridOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("meshgrid", {"X"}, {}, {"Out"});
+}
+
+KernelSignature MeshgridGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "meshgrid_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(meshgrid, phi::MeshgridOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(meshgrid_grad, phi::MeshgridGradOpArgumentMapping);

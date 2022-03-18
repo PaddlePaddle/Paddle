@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/meshgrid_grad_kernel.h"
-#include "paddle/phi/kernels/impl/meshgrid_grad_kernel_impl.h"
+#include "paddle/phi/kernels/meshgrid_kernel.h"
+#include "paddle/phi/kernels/impl/meshgrid_kernel_impl.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(meshgrid_grad,
-                   CPU,
+PD_REGISTER_KERNEL(meshgrid,
+                   GPU,
                    ALL_LAYOUT,
-                   phi::MeshgridGradKernel,
+                   phi::MeshgridKernel,
                    float,
                    double,
                    int,
