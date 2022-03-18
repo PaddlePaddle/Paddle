@@ -252,4 +252,4 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi
