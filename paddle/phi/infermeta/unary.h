@@ -129,6 +129,14 @@ void PadInferMeta(const MetaTensor& input,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
+void Pad3dInferMeta(const MetaTensor& x,
+                    const ScalarArray& paddings,
+                    const std::string& mode,
+                    float value,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config = MetaConfig());
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,

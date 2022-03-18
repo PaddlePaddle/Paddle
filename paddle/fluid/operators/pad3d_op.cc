@@ -16,7 +16,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -267,9 +269,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad3dOpGradNoNeedBufferVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(pad3d, Pad3dInferShapeFunctor,
+                            PD_INFER_META(phi::Pad3dInferMeta))
+
 REGISTER_OPERATOR(pad3d, ops::Pad3dOp, ops::Pad3dOpMaker,
                   ops::Pad3dOpGradMaker<paddle::framework::OpDesc>,
-                  ops::Pad3dOpGradMaker<paddle::imperative::OpBase>);
+                  ops::Pad3dOpGradMaker<paddle::imperative::OpBase>,
+                  Pad3dInferShapeFunctor);
 REGISTER_OPERATOR(pad3d_grad, ops::Pad3dOpGrad,
                   ops::Pad3dOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpDoubleGradMaker<paddle::imperative::OpBase>,
