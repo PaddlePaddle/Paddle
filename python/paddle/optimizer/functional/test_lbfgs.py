@@ -280,21 +280,6 @@ class TestLbfgs(unittest.TestCase):
 
         self.assertTrue(np.allclose([3, 2], results[0].numpy(), rtol=1e-06))
 
-    def test_high_dimension(self):
-        dim = 1000
-        paddle.seed(14159)
-        minimum = paddle.rand([dim])
-        scale = paddle.exp(paddle.rand([dim]))
-
-        def func(x):
-            return paddle.sum(scale.multiply(F.square_error_cost(x, minimum)))
-
-        position = paddle.ones_like(minimum)
-        results = miminize_lbfgs(func, position)
-        print('position: {}\n g: {}\n'.format(results[0], results[2]))
-        print("minimum: ", minimum)
-        self.assertTrue(np.allclose(minimum, results[0].numpy(), rtol=1e-05))
-
 
 test = TestLbfgs()
 test.test_static_line_search_fn()

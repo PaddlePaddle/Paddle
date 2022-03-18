@@ -17,20 +17,22 @@ import paddle
 from utils import _value_and_gradient
 import numpy as np
 from paddle.fluid.framework import in_dygraph_mode
+import warnings
 
 
 def miminize_bfgs(objective_func,
                   initial_position,
                   max_iters=50,
                   tolerance_grad=1e-8,
-                  tolerance_change=1e-8,
+                  tolerance_change=1e-9,
                   initial_inverse_hessian_estimate=None,
                   line_search_fn='strong_wolfe',
                   max_line_search_iters=50,
                   initial_step_length=1.0,
                   dtype='float32',
                   name=None):
-    r"""Minimizes a differentiable function `func` using the BFGS method.
+    """
+    Minimizes a differentiable function `func` using the BFGS method.
     The BFGS is a quasi-Newton method for solving an unconstrained
     optimization problem over a differentiable function.
     Closely related is the Newton method for minimization. Consider the iterate 
@@ -38,21 +40,22 @@ def miminize_bfgs(objective_func,
     .. math::
         x_{k+1} = x_{k} + H^{-1} \nabla{f},
     If $H$ is the Hessian of $f$ at $x_{k}$, then it's the Newton method.
-    If $H$ is positive definite, used as an approximation of the Hessian, then 
+    If $H$ is symmetric and positive definite, used as an approximation of the Hessian, then 
     it's a quasi-Newton. In practice, the approximated Hessians are obtained
     by only using the gradients, over either whole or part of the search 
     history.
+
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
         Second Edition, 2006.
+
     Args:
         objective_func: the objective function to minimize. ``func`` accepts
             a multivariate input and returns a scalar.
         initial_position (Tensor): the starting point of the iterates. For methods like Newton and quasi-Newton 
-        the initial trial step length should always be 1.0 .
-        max_iters (Scalar): the maximum number of minimization iterations.
-        tolerance_grad (Scalar): terminates if the gradient norm is smaller than
-            this. Currently gradient norm uses inf norm.
+        the initial trial step length should always be 1.0.
+        max_iters (int): the maximum number of minimization iterations.
+        tolerance_grad (float): terminates if the gradient norm is smaller than this. Currently gradient norm uses inf norm.
         tolerance_change (Scalar): terminates if the change of function value/position/parameter between 
             two iterations is smaller than this value.
         initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation at initial_position.
@@ -79,35 +82,42 @@ def miminize_bfgs(objective_func,
     else:
         H0 = paddle.assign(initial_inverse_hessian_estimate)
         is_symmetric = paddle.all(paddle.equal(H0, H0.t()))
-        assert is_symmetric, "initial_inverse_hessian_estimate should be symmetric."
+        if not is_symmetric:
+            raise ValueError("The initial_inverse_hessian_estimate should be symmetric, but the specified is not.\n{}".
+                                format(H0))
         try: 
             paddle.linalg.cholesky(H0)
         except RuntimeError as error:
-            print(error)
-            print("initial_inverse_hessian_estimate should be positive definite.")
+            raise ValueError("The initial_inverse_hessian_estimate should be positive definite, but the specified is not.\n{}".
+                                format(H0))
         
     Hk = paddle.assign(H0)
     xk = paddle.assign(initial_position)
 
-    value, g1 = _value_and_gradient(objective_func, xk)
+    value1, g1 = _value_and_gradient(objective_func, xk)
     num_func_calls = paddle.assign(1)
     if in_dygraph_mode():
-
         k = 0
+        # when the dim of x is 1000, it needs more than 30 iters to get all element converge to minimum.
         while k < max_iters:
-            gnorm = paddle.linalg.norm(g1, p=np.inf)
-            if gnorm < tolerance_grad:
-                break
-            if paddle.any(paddle.isinf(xk)):
+            g_norm = paddle.linalg.norm(g1, p=np.inf)
+            if g_norm < tolerance_grad:
                 break
 
             pk = -paddle.matmul(Hk, g1)
+            pk_norm = paddle.linalg.norm(pk, p=np.inf)
+            if pk_norm < tolerance_change:
+                break
             
             if line_search_fn == 'strong_wolfe':
-                alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
+                alpha, value2, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
             else:
-                assert line_search_fn == 'strong_wolfe', "currently only support line_search_fn = 'strong_wolfe'."
-            num_func_calls += ls_func_calls
+                raise NotImplementedError("Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
+                                format(line_search_fn))
+            num_func_calls += ls_func_calls 
+            if alpha == 0. and g_norm > 1e-5:
+                raise UserWarning("Line search failed, the BFGS not converged.")
+
             sk = alpha * pk
             yk = g2 - g1
 
@@ -128,43 +138,43 @@ def miminize_bfgs(objective_func,
                                Vk) + rhok * sk * sk.t()
             k += 1
 
-        return num_func_calls, xk, value, g1, Hk
+        return num_func_calls, xk, value1, g1, Hk
     else:
         k = paddle.full(shape=[1], fill_value=0, dtype='int64')
         done = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-        def cond(k, done, num_func_calls, xk, value, g1, Hk):
-            gnorm = paddle.linalg.norm(g1, p=np.inf)
-            done = done | (gnorm < tolerance_grad) | paddle.any(paddle.isinf(xk))
+        def cond(k, done, num_func_calls, xk, value1, g1, Hk):
+
             return (k < max_iters) & ~done
 
-        def body(k, done, num_func_calls, xk, value, g1, Hk):
+        def body(k, done, num_func_calls, xk, value1, g1, Hk):
             pk = -paddle.matmul(Hk, g1)
             
             if line_search_fn == 'strong_wolfe':
-                alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
+                alpha, value2, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk, initial_step_length=initial_step_length)
             else:
-                assert line_search_fn == 'strong_wolfe', "currently only support line_search_fn = 'strong_wolfe'."
+                raise NotImplementedError("Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
+                                format(line_search_fn))
             num_func_calls += ls_func_calls
 
             sk = alpha * pk
-            paddle.assign(paddle.linalg.norm(sk, p=np.inf) < tolerance_change, done)
-            
             yk = g2 - g1
+            value_change = paddle.abs(value2 - value1)
 
             xk = xk + sk
             g1 = g2
+            value1 = value2
 
-            yk = paddle.unsqueeze(yk, 0)
             sk = paddle.unsqueeze(sk, 0)
+            yk = paddle.unsqueeze(yk, 0)
 
             rhok = 1. / paddle.dot(yk, sk)
 
-            def true_fn(rhok):
+            def true_fn2(rhok):
                 paddle.assign(1000.0, rhok)
 
             paddle.static.nn.cond(
-                paddle.any(paddle.isinf(rhok)), lambda: true_fn(rhok), None)
+                paddle.any(paddle.isinf(rhok)), lambda: true_fn2(rhok), None)
 
             Vk_transpose = I - rhok * sk * yk.t()
             Vk = I - rhok * yk * sk.t()
@@ -172,8 +182,20 @@ def miminize_bfgs(objective_func,
                                Vk) + rhok * sk * sk.t()
             
             k += 1
-            return [k, done, num_func_calls, xk, value, g1, Hk]
+
+            gnorm = paddle.linalg.norm(g1, p=np.inf)
+            pk_norm = paddle.linalg.norm(pk, p=np.inf)
+            paddle.assign(done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change), done)
+            #static_print = paddle.static.Print(value_change, message="value_change")
+            
+            def true_fn1():
+                warnings.warn("Line search failed, the BFGS not converged.")
+            
+            pred = ~done & (alpha == 0.) & (gnorm > 1e-5)
+            paddle.static.nn.cond(pred, true_fn1, None)
+            return [k, done, num_func_calls, xk, value1, g1, Hk]
 
         paddle.static.nn.while_loop(
-            cond=cond, body=body, loop_vars=[k, done, num_func_calls, xk, value, g1, Hk])
-        return num_func_calls, xk, value, g1, Hk
+            cond=cond, body=body, loop_vars=[k, done, num_func_calls, xk, value1, g1, Hk])
+
+        return num_func_calls, xk, value1, g1, Hk
