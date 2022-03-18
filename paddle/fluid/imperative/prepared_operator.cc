@@ -186,11 +186,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
-        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_kernel, cpu_ctx);
+      if (expected_kernel_key.place_ != place) {
+        dev_ctx = pool.Get(expected_kernel_key.place_);
       }
+
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
@@ -235,7 +234,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-#ifdef PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {
     VLOG(3) << "missing XPU kernel: " << op.Type()
@@ -244,28 +243,36 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
-
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  bool use_xpu_kp_kernel_rt =
-      FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
-  bool use_xpu_kp_kernel_debug =
-      paddle::platform::is_in_xpu_kpwhite_list(op.Type());
-  if (use_xpu_kp_kernel_rt) {
-    VLOG(3) << "xpu_kp using rt mode ";
-  }
-  if (use_xpu_kp_kernel_debug) {
-    VLOG(3) << "xpu_kp using debug mode ";
-  }
-  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
-    expected_kernel_key.place_ = platform::XPUPlace();
-    expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
-    kernel_iter = kernels.find(expected_kernel_key);
-    VLOG(3) << "using XPU KP kernel: " << op.Type()
-            << ", using_kernel_key:" << expected_kernel_key;
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
+    bool use_xpu_kp_kernel_rt =
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_in_xpu_kpwhite_list(op.Type());
+    if (use_xpu_kp_kernel_rt) {
+      VLOG(3) << "xpu_kp using rt mode ";
+    }
+    if (use_xpu_kp_kernel_debug) {
+      VLOG(3) << "xpu_kp using debug mode ";
+    }
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+    if (is_xpu_kp_support) {
+      expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
+      kernel_iter = kernels.find(expected_kernel_key);
+      VLOG(3) << "using XPU KP kernel: " << op.Type()
+              << ", using_kernel_key:" << expected_kernel_key;
+    }
+    if (!is_xpu_kp_support &&
+        (kernel_iter == kernels.end() || is_xpu_unsupport)) {
+      VLOG(3) << "missing XPU kernel: " << op.Type()
+              << ", expected_kernel_key:" << expected_kernel_key
+              << ", fallbacking to CPU one!";
+      expected_kernel_key.place_ = platform::CPUPlace();
+      kernel_iter = kernels.find(expected_kernel_key);
+    }
   }
 #endif
 

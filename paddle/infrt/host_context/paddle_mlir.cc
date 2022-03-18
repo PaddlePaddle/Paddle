@@ -17,6 +17,7 @@
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
+
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();

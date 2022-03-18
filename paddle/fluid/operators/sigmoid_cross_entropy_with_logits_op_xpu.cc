@@ -17,12 +17,14 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsXPUKernel : public framework::OpKernel<T> {

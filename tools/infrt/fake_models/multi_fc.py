@@ -19,7 +19,6 @@ import sys, os
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.backward import append_backward
 
 size = 2
 num_layers = 4

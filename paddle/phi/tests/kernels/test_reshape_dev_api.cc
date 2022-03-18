@@ -50,6 +50,10 @@ TEST(DEV_API, reshape) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
+  dev_ctx.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx.Init();
   auto out = phi::Reshape<float>(dev_ctx, dense_x, shape);
   // 3. check result

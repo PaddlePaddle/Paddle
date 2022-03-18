@@ -76,6 +76,54 @@ struct LiteNNAdapterConfig {
   LiteNNAdapterConfig& Disable();
 };
 
+struct DistConfig {
+  bool use_dist_model() const { return use_dist_model_; }
+  void EnableDistModel(bool use_dist_model) {
+    use_dist_model_ = use_dist_model;
+  }
+
+  std::vector<std::string> trainer_endpoints() const {
+    return trainer_endpoints_;
+  }
+
+  std::string current_endpoint() const { return current_endpoint_; }
+
+  void SetEndpoints(const std::vector<std::string>& trainer_endpoints,
+                    const std::string& current_endpoint) {
+    trainer_endpoints_ = trainer_endpoints;
+    current_endpoint_ = current_endpoint;
+  }
+
+  int64_t nranks() const { return nranks_; }
+
+  int64_t rank() const { return rank_; }
+
+  void SetRanks(int64_t nranks, int64_t rank) {
+    nranks_ = nranks;
+    rank_ = rank;
+  }
+
+  std::string comm_init_config() const { return comm_init_config_; }
+
+  void SetCommInitConfig(const std::string& comm_init_config) {
+    comm_init_config_ = comm_init_config;
+  }
+
+  void SetCarrierId(const std::string& carrier_id) { carrier_id_ = carrier_id; }
+
+  std::string carrier_id() const { return carrier_id_; }
+
+ protected:
+  // DistModel Inference related
+  bool use_dist_model_{false};  // whether use DistModel or not
+  std::vector<std::string> trainer_endpoints_{};  // all trainers' endpoints
+  std::string current_endpoint_{};                // current trainer's endpoint
+  int64_t nranks_{1};               // total ranks (number of trainers)
+  int64_t rank_{0};                 // rank
+  std::string comm_init_config_{};  // converter config path
+  std::string carrier_id_{"inference"};
+};
+
 ///
 /// \brief configuration manager for AnalysisPredictor.
 /// \since 1.7.0
@@ -205,6 +253,19 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
+  ///
+  /// \brief Enable GPU fp16 precision computation, in experimental state.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void Exp_EnableUseGpuFp16(std::unordered_set<std::string> op_list = {});
+  ///
+  /// \brief A boolean state telling whether the GPU fp16 precision is turned
+  /// on.
+  ///
+  /// \return bool Whether the GPU fp16 precision is turned on.
+  ///
+  bool gpu_fp16_enabled() const { return use_gpu_fp16_; }
 
   ///
   /// \brief Turn on XPU.
@@ -271,6 +332,18 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
+  /// \brief Turn on ONNXRuntime.
+  ///
+  void EnableONNXRuntime();
+  ///
+  /// \brief Turn off ONNXRuntime.
+  ///
+  void DisableONNXRuntime();
+  ///
+  /// \brief Turn on ONNXRuntime Optimization.
+  ///
+  void EnableORTOptimization();
+  ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
   /// \return bool Whether the GPU is turned on.
@@ -293,6 +366,19 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the IPU is turned on.
   ///
   bool use_ipu() const { return use_ipu_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime is turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime is turned on.
+  ///
+  bool use_onnxruntime() const { return use_onnxruntime_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime Optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime Optimization is turned on.
+  ///
+  bool ort_optimization_enabled() const { return enable_ort_optimization_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -763,6 +849,12 @@ struct PD_INFER_DECL AnalysisConfig {
 
   LiteNNAdapterConfig& NNAdapter() { return nnadapter_config_; }
 
+  void SetDistConfig(const DistConfig& dist_config) {
+    dist_config_ = dist_config;
+  }
+
+  const DistConfig& dist_config() const { return dist_config_; }
+
  protected:
   // Update the config.
   void Update();
@@ -780,12 +872,19 @@ struct PD_INFER_DECL AnalysisConfig {
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool thread_local_stream_{false};
+  bool use_gpu_fp16_{false};
+  std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
+      "conv2d_fusion", "conv2d", "roll", "strided_slice"};
 
   bool use_cudnn_{false};
 
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // ONNXRuntime related
+  bool use_onnxruntime_{false};
+  bool enable_ort_optimization_{false};
 
   // Padding related
   bool use_fc_padding_{true};
@@ -902,6 +1001,9 @@ struct PD_INFER_DECL AnalysisConfig {
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
+
+  // fleet exe related
+  DistConfig dist_config_{};
 };
 
 }  // namespace paddle

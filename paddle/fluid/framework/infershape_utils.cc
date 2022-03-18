@@ -78,6 +78,11 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
 
+  bool IsDenseTensorVectorInput(const std::string& name) const override {
+    auto var_types = ctx_.GetInputsVarType(name);
+    return var_types[0] == proto::VarType::LOD_TENSOR_ARRAY;
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
     return var_types[0] == proto::VarType::LOD_TENSOR;
@@ -87,6 +92,10 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     auto var_types = ctx_.GetOutputsVarType(name);
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
+
+  bool IsForInferShape() const override { return true; }
+
+  bool IsRuntime() const override { return ctx_.IsRuntime(); }
 
  private:
   const InferShapeContext& ctx_;
@@ -121,13 +130,20 @@ class CompatMetaTensor : public phi::MetaTensor {
         return var->Get<phi::DenseTensor>().dims();
       } else if (var->IsType<phi::SelectedRows>()) {
         return var->Get<phi::SelectedRows>().dims();
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // use tensor array size as dims
+        auto& tensor_array = var->Get<framework::LoDTensorArray>();
+        return phi::make_ddim({static_cast<int64_t>(tensor_array.size())});
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Currently, only can get dims from DenseTensor or SelectedRows."));
+            "Currently, only can get dims from DenseTensor or SelectedRows or "
+            "DenseTensorArray."));
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return phi::make_ddim(var->GetShape());
+
+      return var->GetShape().empty() ? phi::make_ddim({0UL})
+                                     : phi::make_ddim(var->GetShape());
     }
   }
 
@@ -138,6 +154,10 @@ class CompatMetaTensor : public phi::MetaTensor {
         return var->Get<phi::DenseTensor>().dtype();
       } else if (var->IsType<phi::SelectedRows>()) {
         return var->Get<phi::SelectedRows>().dtype();
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported get dtype from LoDTensorArray now
+        return phi::DataType::UNDEFINED;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can get dtype from DenseTensor or SelectedRows."));
@@ -151,7 +171,19 @@ class CompatMetaTensor : public phi::MetaTensor {
   DataLayout layout() const override {
     if (is_runtime_) {
       auto* var = BOOST_GET_CONST(Variable*, var_);
-      return var->Get<LoDTensor>().layout();
+      if (var->IsType<phi::DenseTensor>()) {
+        return var->Get<phi::DenseTensor>().layout();
+      } else if (var->IsType<phi::SelectedRows>()) {
+        return var->Get<phi::SelectedRows>().layout();
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported get layout from LoDTensorArray now
+        return phi::DataLayout::UNDEFINED;
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Currently, only can get layout from DenseTensor or "
+            "SelectedRows."));
+      }
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported get layout for VarDesc now
@@ -168,6 +200,16 @@ class CompatMetaTensor : public phi::MetaTensor {
       } else if (var->IsType<phi::SelectedRows>()) {
         auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
         phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
+        // Note: Here I want enforce `tensor_array->size() == 0UL`, because
+        // inplace using on LoDTensorArray is dangerous, but the unittest
+        // `test_list` contains this behavior
+        PADDLE_ENFORCE_EQ(dims.size(), 1UL,
+                          platform::errors::InvalidArgument(
+                              "LoDTensorArray can only have one dimension."));
+        // only set the array size for LoDTensorArray input
+        tensor_array->resize(dims[0]);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can set dims from DenseTensor or SelectedRows."));
@@ -187,6 +229,9 @@ class CompatMetaTensor : public phi::MetaTensor {
       } else if (var->IsType<phi::SelectedRows>()) {
         auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
         phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported set dtype for LoDTensorArray now
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can set dtype from DenseTensor or SelectedRows."));
@@ -200,10 +245,20 @@ class CompatMetaTensor : public phi::MetaTensor {
   void set_layout(DataLayout layout) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(tensor))
-          ->layout = layout;
+      if (var->IsType<phi::DenseTensor>()) {
+        auto* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported set dtype for LoDTensorArray now
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Currently, only can set layout from DenseTensor or "
+            "SelectedRows."));
+      }
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported set layout for VarDesc now
@@ -228,16 +283,8 @@ class CompatMetaTensor : public phi::MetaTensor {
     }
   }
 
-  void share_meta(const MetaTensor& meta_tensor) override {
+  void share_dims(const MetaTensor& meta_tensor) override {
     set_dims(meta_tensor.dims());
-    set_dtype(meta_tensor.dtype());
-    // VarDesc doesn't contains layout, so we cannot share layout
-    // set_layout(meta_tensor.layout());
-
-    // special case 1: share lod of LoDTensor
-    share_lod(meta_tensor);
-
-    // special case 2: share height and rows of SelectedRows in runtime
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       if (var->IsType<phi::SelectedRows>()) {
@@ -248,6 +295,14 @@ class CompatMetaTensor : public phi::MetaTensor {
         selected_rows->set_height(input_selected_rows.height());
       }
     }
+  }
+
+  void share_meta(const MetaTensor& meta_tensor) override {
+    share_dims(meta_tensor);
+    set_dtype(meta_tensor.dtype());
+    set_layout(meta_tensor.layout());
+    // special case: share lod of LoDTensor
+    share_lod(meta_tensor);
   }
 
  private:
@@ -289,7 +344,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  phi::InferMetaContext infer_meta_context(ctx->IsRuntime());
+  phi::InferMetaContext infer_meta_context(
+      {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
@@ -378,6 +434,10 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int64_t>))) {
+          infer_meta_context.EmplaceBackAttr(std::move(
+              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int))) {
           infer_meta_context.EmplaceBackAttr(
               phi::ScalarArray({BOOST_GET_CONST(int, attr)}));
@@ -428,6 +488,51 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               "expected 1, but actually is %d .",
               attr_name, infershape_input.size()));
         }
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(std::vector<phi::Scalar>))) {
+      auto& attr = attr_reader.GetAttr(attr_name);
+      if (std::type_index(attr.type()) ==
+          std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` to vector<Scalar> when "
+            "construct InferMetaContext.",
+            attr_names[i]));
       }
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
@@ -487,8 +592,22 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             "Unsupported attribute type is received when call "
             "InferShapeFunctor."));
       }
-    } else {
-      // do nothing
+    } else if (ctx->HasInput(attr_name)) {
+      // convert from data
+      if (attr_defs[i].type_index == std::type_index(typeid(int32_t))) {
+        if (ctx->IsRuntime()) {
+          const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+          auto var_temp = BOOST_GET_CONST(Variable*, infershape_inputs[i]);
+          auto val = experimental::MakePhiScalarFromVar(*var_temp);
+          int32_t val_int = val.template to<int32_t>();
+          infer_meta_context.EmplaceBackAttr(val_int);
+        } else {
+          infer_meta_context.EmplaceBackAttr(-1);
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Get value from variable only support int yet"));
+      }
     }
   }
 
