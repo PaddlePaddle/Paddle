@@ -54,7 +54,7 @@ class CreateContextOp<string target>
 def PDT_LoadParamsOp : PDT_Op<"load_params", [NoSideEffect]> {
   // input path of model params.
   let arguments = (ins StrAttr:$path);
-  let results = (outs DenseTensorMap:$out);
+  let results = (outs PD_DenseTensorMap:$out);
 
   let assemblyFormat = "`(``)`attr-dict";
 }
@@ -62,13 +62,13 @@ def PDT_LoadParamsOp : PDT_Op<"load_params", [NoSideEffect]> {
 def PDT_LoadCombinedParamsOp : PDT_Op<"load_combined_params", [NoSideEffect]> {
   // input path of model params.
   let arguments = (ins StrAttr:$model_path, StrAttr:$params_path);
-  let results = (outs DenseTensorMap:$out);
+  let results = (outs PD_DenseTensorMap:$out);
 
   let assemblyFormat = "`(``)`attr-dict";
 }
 
 def PDT_TensorMapGetSizeOp : PDT_Op<"tensor_map_get_size", [NoSideEffect]> {
-  let arguments = (ins DenseTensorMap:$map);
+  let arguments = (ins PD_DenseTensorMap:$map);
   let results = (outs I32:$size);
   let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
 }
@@ -76,7 +76,7 @@ def PDT_TensorMapGetSizeOp : PDT_Op<"tensor_map_get_size", [NoSideEffect]> {
 class TensorMapGetTensorOp:
       PDT_Op<"tensor_map_get_tensor"> {
   let arguments = (ins
-          DenseTensorMap:$map,
+          PD_DenseTensorMap:$map,
           StrAttr:$name
           );
   let results = (outs DenseTensor:$output);
