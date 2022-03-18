@@ -22,34 +22,57 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.fluid.param_attr import ParamAttr
-from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
+from paddle.nn import AdaptiveAvgPool2D, BatchNorm, Conv2D, Linear, MaxPool2D
 from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
-
-from ..ops import ConvNormActivation
 
 __all__ = []
 
 model_urls = {
     'resnext50_32x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/1f199442185d4268859cbd72e9ea529ef346ac21a3ae40f5932b1749c10c6227',
-     'f848db2216597e5122b43b8e7c7f4832'),
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt50_32x4d_pretrained.pdparams',
+     'bf04add2f7fd22efcbe91511bcd1eebe'),
     "resnext50_64x4d":
-    ('https://bj.bcebos.com/v1/ai-studio-online/04236a150d9f4eeb9b1e39f0a06bbd87905ca78299ac463b806570a3788d83e9',
-     '8c077ffdab55d9fd7df6f2d314f60573'),
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt50_64x4d_pretrained.pdparams',
+     '46307df0e2d6d41d3b1c1d22b00abc69'),
     'resnext101_32x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/265c31d967814419aaac0a66850c617c9f0f25f92ed94a3fbd29d2b938104289',
-     '4f9167fca54dd502810975a0b5555711'),
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt101_32x4d_pretrained.pdparams',
+     '078ca145b3bea964ba0544303a43c36d'),
     'resnext101_64x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/3d60d063ce4447c8a172d81605796f6f3551017dd90e4fc5bcc27364b1cfbf1b',
-     'e24397a901f3ecbd3c5b7603c178a7e3'),
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt101_64x4d_pretrained.pdparams',
+     '4edc0eb32d3cc5d80eff7cab32cd5c64'),
     'resnext152_32x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/29dcfbfcf4df46259f19de8e025879cc1c6a9af97ac840d48585136f84a4e4c0',
-     '6efb2388d62cfb9b2dca4bb58d299612'),
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt152_32x4d_pretrained.pdparams',
+     '7971cc994d459af167c502366f866378'),
     'resnext152_64x4d':
-    ('https://bj.bcebos.com/v1/ai-studio-online/8eb2937765154e78afbe9779a27ed9b37211dcb29ce94a5da12ef4ae1f3bae9b',
-     '7d2125a165c5678c9cb92f85ef6c287e'),
+    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ResNeXt152_64x4d_pretrained.pdparams',
+     '836943f03709efec364d486c57d132de'),
 }
+
+
+class ConvBNLayer(nn.Layer):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1,
+                 act=None):
+        super(ConvBNLayer, self).__init__()
+        self._conv = Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
+            stride=stride,
+            padding=(filter_size - 1) // 2,
+            groups=groups,
+            bias_attr=False)
+        self._batch_norm = BatchNorm(num_filters, act=act)
+
+    def forward(self, inputs):
+        x = self._conv(inputs)
+        x = self._batch_norm(x)
+        return x
 
 
 class BottleneckBlock(nn.Layer):
@@ -60,32 +83,31 @@ class BottleneckBlock(nn.Layer):
                  cardinality,
                  shortcut=True):
         super(BottleneckBlock, self).__init__()
-        self.conv0 = ConvNormActivation(
-            in_channels=num_channels,
-            out_channels=num_filters,
-            kernel_size=1,
-            activation_layer=nn.ReLU)
-        self.conv1 = ConvNormActivation(
-            in_channels=num_filters,
-            out_channels=num_filters,
-            kernel_size=3,
+        self.conv0 = ConvBNLayer(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=1,
+            act='relu')
+        self.conv1 = ConvBNLayer(
+            num_channels=num_filters,
+            num_filters=num_filters,
+            filter_size=3,
             groups=cardinality,
             stride=stride,
-            activation_layer=nn.ReLU)
-        self.conv2 = ConvNormActivation(
-            in_channels=num_filters,
-            out_channels=num_filters * 2 if cardinality == 32 else num_filters,
-            kernel_size=1,
-            activation_layer=None)
+            act='relu')
+        self.conv2 = ConvBNLayer(
+            num_channels=num_filters,
+            num_filters=num_filters * 2 if cardinality == 32 else num_filters,
+            filter_size=1,
+            act=None)
 
         if not shortcut:
-            self.short = ConvNormActivation(
-                in_channels=num_channels,
-                out_channels=num_filters * 2
+            self.short = ConvBNLayer(
+                num_channels=num_channels,
+                num_filters=num_filters * 2
                 if cardinality == 32 else num_filters,
-                kernel_size=1,
-                stride=stride,
-                activation_layer=None)
+                filter_size=1,
+                stride=stride)
 
         self.shortcut = shortcut
 
@@ -151,12 +173,8 @@ class ResNeXt(nn.Layer):
         num_filters = [128, 256, 512,
                        1024] if cardinality == 32 else [256, 512, 1024, 2048]
 
-        self.conv = ConvNormActivation(
-            in_channels=3,
-            out_channels=64,
-            kernel_size=7,
-            stride=2,
-            activation_layer=nn.ReLU)
+        self.conv = ConvBNLayer(
+            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
         self.pool2d_max = MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         self.block_list = []
