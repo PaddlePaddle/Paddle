@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/ps/table/graph/graph_edge.h"
-#include <cstring>
-namespace paddle {
-namespace distributed {
+#pragma once
 
-void GraphEdgeBlob::add_edge(int64_t id, float weight = 1) {
-  id_arr.push_back(id);
-}
+#include "paddle/phi/core/selected_rows.h"
 
-void WeightedGraphEdgeBlob::add_edge(int64_t id, float weight = 1) {
-  id_arr.push_back(id);
-  weight_arr.push_back(weight);
-}
-}
-}
+namespace phi {
+namespace sr {
+
+template <typename Context>
+void AssignKernel(const Context& dev_ctx,
+                  const SelectedRows& x,
+                  SelectedRows* out);
+
+}  // namespace sr
+}  // namespace phi
