@@ -27,7 +27,7 @@ void FlattenKernel(const Context& dev_ctx,
                    int start_axis,
                    int stop_axis,
                    DenseTensor* out) {
-  dev_ctx.Alloc(out);
+  dev_ctx.Alloc(out, x.dtype());
   auto out_dims = out->dims();
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);
