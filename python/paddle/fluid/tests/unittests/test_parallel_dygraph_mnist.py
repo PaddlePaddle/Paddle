@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 from test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_mnist import TestMnist
+from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -29,6 +30,24 @@ flag_name = os.path.splitext(__file__)[0]
 class TestParallelDygraphMnist(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._find_unused_parameters = True
+
+    def test_mnist(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestParallelDygraphMnistInEagerMode(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._dist_port = get_dist_port_from_flags()
+        self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
         self._find_unused_parameters = True
@@ -73,6 +92,25 @@ class TestParallelDygraphMnistAccGrad(TestDistBase):
         self._nccl2_mode = True
         self._dygraph = True
         self._use_fleet_api = True
+        self._accumulate_gradient = True
+        self._find_unused_parameters = False
+
+    def test_mnist(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestParallelDygraphMnistAccGradInEagerMode(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._dist_port = get_dist_port_from_flags()
+        self._eager_mode = True
+        self._nccl2_mode = True
+        self._dygraph = True
         self._accumulate_gradient = True
         self._find_unused_parameters = False
 

@@ -21,6 +21,7 @@ import paddle
 
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
+from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args
@@ -28,6 +29,8 @@ class SpawnAssistTestArgs(object):
     update_method = "local"
     trainer_id = 0
     find_unused_parameters = False
+    eager_mode = False
+    dist_port = get_dist_port_from_flags()
 
 
 class TestDistSpawnRunner(unittest.TestCase):
@@ -80,3 +83,23 @@ class TestDistSpawnRunner(unittest.TestCase):
                 msg="The results of single-card execution and multi-card execution are inconsistent."
                 "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".
                 format(loss, dist_loss))
+
+
+class TestDistSpawnRunnerInEagerMode(TestDistSpawnRunner):
+    def _run(self, model, args):
+        args.update_method = "local"
+        args.eager_mode = True
+        return model.run_trainer_with_spawn(args)
+
+    def _run_parallel(self, model, args):
+        args.update_method = "nccl2"
+        args.eager_mode = True
+        context = paddle.distributed.spawn(
+            func=model.run_trainer_with_spawn,
+            args=(args, ),
+            nprocs=self.nprocs,
+            join=True)
+        result_list = []
+        for res_queue in context.return_queues:
+            result_list.append(res_queue.get())
+        return result_list

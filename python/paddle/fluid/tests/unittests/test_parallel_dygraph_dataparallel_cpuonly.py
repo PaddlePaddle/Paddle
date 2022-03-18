@@ -16,12 +16,14 @@ from __future__ import print_function
 
 import unittest
 import time
+import paddle
 import paddle.fluid as fluid
 import copy
 import os
 import subprocess
 
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 
 def get_cluster_from_args(selected_gpus):
@@ -65,6 +67,7 @@ def start_local_trainers(cluster,
     procs = []
     for t in pod.trainers:
         proc_env = {
+            "PADDLE_DIST_UT_PORT": "%d" % get_dist_port_from_flags(),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
@@ -128,6 +131,11 @@ class TestMultipleGpus(unittest.TestCase):
 class TestDataParallelGradientCheck(TestMultipleGpus):
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
+
+
+class TestDataParallelGradientCheckInEagerMode(TestMultipleGpus):
+    def test_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
 
 
 if __name__ == "__main__":
