@@ -481,7 +481,21 @@ class PADDLE_API Tensor final {
    */
   void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
 
-  /* Part 9: Auto generated Tensor methods */
+  /* Part 9: Inplace methods */
+
+  /**
+   * @brief Increase inplace version
+   */
+  void bump_inplace_version();
+
+  /**
+   * @brief Get current inplace version
+   *
+   * @return uint32_t
+   */
+  uint32_t current_inplace_version();
+
+  /* Part 10: Auto generated Tensor methods */
 
  private:
   /**

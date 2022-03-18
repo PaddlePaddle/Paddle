@@ -718,6 +718,15 @@ static PyObject* set_grad_type(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t inplace_version = self->tensor.current_inplace_version();
+
+  return ToPyObject(inplace_version);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -765,6 +774,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_grad_type", (PyCFunction)(void (*)(void))set_grad_type,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
