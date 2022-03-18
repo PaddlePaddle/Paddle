@@ -262,8 +262,8 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                 &aux_data, sizeof(aux_data)));
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
-                dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD, &N,
-                sizeof(N)));
+                dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD, &K,
+                sizeof(K)));
       }
 
       cublasLtMatrixLayout_t y_desc = NULL, dx_desc = NULL;
