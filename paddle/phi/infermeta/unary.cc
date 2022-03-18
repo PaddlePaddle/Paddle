@@ -813,6 +813,68 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   out->set_dims(output_dims);
 }
 
+
+void PixelUnshuffleInferMeta(const MetaTensor& x,
+                           int downscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(input_dims[2] % downscale_factor,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of downscale_factor[%u] should divide the "
+                          "height[%u]",
+                          downscale_factor,
+                          input_dims[2]));
+    PADDLE_ENFORCE_EQ(input_dims[3] % downscale_factor,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of downscale_factor[%u] should divide the "
+                          "height[%u]",
+                          downscale_factor,
+                          input_dims[3]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[1] % downscale_factor,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of downscale_factor[%u] should divide the "
+                          "width[%u]",
+                          downscale_factor,
+                          input_dims[1]));
+    PADDLE_ENFORCE_EQ(input_dims[2] % downscale_factor,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of downscale_factor[%u] should divide the "
+                          "width[%u]",
+                          downscale_factor,
+                          input_dims[2]));
+  }
+
+  auto output_dims = input_dims;
+  output_dims[0] = input_dims[0];
+  if (!channel_last) {
+    output_dims[1] = input_dims[1] * (downscale_factor * downscale_factor);
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] / downscale_factor;
+  } else {
+    output_dims[1] = input_dims[1] / downscale_factor;
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] * (downscale_factor * downscale_factor);
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
                    const std::vector<int>& strides,

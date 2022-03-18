@@ -344,3 +344,72 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         attrs={"upscale_factor": upscale_factor,
                "data_format": data_format})
     return out
+
+def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
+    """
+    PixelUnshuffle Layer
+
+    Reverses the :class:`~torch.nn.PixelShuffle` operation by rearranging elements
+    in a tensor of shape :math:`(*, C, H \times r, W \times r)` to a tensor of shape
+    :math:`(*, C \times r^2, H, W)`, where r is a downscale factor.
+
+    See the paper:
+    `Real-Time Single Image and Video Super-Resolution Using an Efficient Sub-Pixel Convolutional Neural Network`_
+    by Shi et. al (2016) for more details.
+
+    Args:
+        downscale_factor (int): factor to decrease spatial resolution by
+
+    Shape:
+        - Input: :math:`(*, C_{in}, H_{in}, W_{in})`, where * is zero or more batch dimensions
+        - Output: :math:`(*, C_{out}, H_{out}, W_{out})`, where
+
+    .. math::
+        C_{out} = C_{in} \times \text{downscale\_factor}^2
+
+    .. math::
+        H_{out} = H_{in} \div \text{downscale\_factor}
+
+    .. math::
+        W_{out} = W_{in} \div \text{downscale\_factor}
+
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import numpy as np
+
+            x = np.random.randn(2, 1, 12, 12).astype(np.float32)
+            x_var = paddle.to_tensor(x)
+            pixel_unshuffle = nn.PixelUnshuffle(3)
+            out_var = pixel_unshuffle(x_var)
+            out = out_var.numpy()
+            print(out.shape)
+            # (2, 9, 4, 4)
+
+    """
+    if not isinstance(downscale_factor, int):
+        raise TypeError("downscale factor must be int type")
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
+                         "But recevie Attr(data_format): {} ".format(
+                             data_format))
+
+    if in_dynamic_mode():
+        return _C_ops.pixel_unshuffle(x, "downscale_factor", downscale_factor,
+                                    "data_format", data_format)
+
+    helper = LayerHelper("pixel_unshuffle", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_unshuffle')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="pixel_unshuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"downscale_factor": downscale_factor,
+               "data_format": data_format})
+    return out
