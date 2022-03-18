@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "heter_comm.h"
 #include <thrust/host_vector.h>
+#include "heter_comm.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -41,10 +41,9 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
                                               int sample_size, int len);
   NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
-  void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
-                                                 int *h_left, int *h_right,
-                                                 int64_t *src_sample_res,
-                                                 thrust::host_vector<int>& total_sample_size);
+  void move_neighbor_sample_result_to_source_gpu(
+      int gpu_id, int gpu_num, int *h_left, int *h_right,
+      int64_t *src_sample_res, thrust::host_vector<int> &total_sample_size);
   void move_neighbor_sample_size_to_source_gpu(int gpu_id, int gpu_num,
                                                int *h_left, int *h_right,
                                                int *actual_sample_size,
