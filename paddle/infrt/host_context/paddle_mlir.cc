@@ -92,12 +92,13 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
           infrt::PrecisionType precision_;
-          ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
-                               &precision_);
-          mlir::Type type_ = infrt::DenseTensorType::get(context_,
-                                      infrt::TargetType::CPU,
-                                      infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::ANY);
+          ConvertDataTypeToPhi(
+              var_desc.type().lod_tensor().tensor().data_type(), &precision_);
+          mlir::Type type_ =
+              infrt::DenseTensorType::get(context_,
+                                          infrt::TargetType::CPU,
+                                          infrt::PrecisionType::FLOAT32,
+                                          infrt::LayoutType::NCHW);
 
           operandTypes.push_back(type_);
         }
@@ -121,12 +122,13 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
           infrt::PrecisionType precision_;
-          ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
-                               &precision_);
-          mlir::Type type_ = infrt::DenseTensorType::get(context_,
-                                      infrt::TargetType::CPU,
-                                      infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::ANY);
+          ConvertDataTypeToPhi(
+              var_desc.type().lod_tensor().tensor().data_type(), &precision_);
+          mlir::Type type_ =
+              infrt::DenseTensorType::get(context_,
+                                          infrt::TargetType::CPU,
+                                          infrt::PrecisionType::FLOAT32,
+                                          infrt::LayoutType::NCHW);
           resultTypes.push_back(type_);
         }
       }
@@ -270,10 +272,11 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
         infrt::PrecisionType precision_;
         ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
                              &precision_);
-        mlir::Type type_ = infrt::DenseTensorType::get(context_,
-                                    infrt::TargetType::CPU,
-                                    infrt::PrecisionType::FLOAT32,
-                                    infrt::LayoutType::ANY);
+        mlir::Type type_ =
+            infrt::DenseTensorType::get(context_,
+                                        infrt::TargetType::CPU,
+                                        infrt::PrecisionType::FLOAT32,
+                                        infrt::LayoutType::NCHW);
         resultTypes.push_back(type_);
       }
     }
@@ -412,7 +415,7 @@ bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
 }
 
 bool ConvertDataTypeToPhi(infrt::paddle::framework_proto::VarType::Type dtype,
-                     infrt::PrecisionType *type) {
+                          infrt::PrecisionType *type) {
   switch (dtype) {
     case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP16:
       *type = infrt::PrecisionType::FLOAT16;
