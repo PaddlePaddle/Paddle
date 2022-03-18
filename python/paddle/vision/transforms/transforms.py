@@ -395,7 +395,7 @@ class Resize(BaseTransform):
             transform = Resize(size=224)
             fake_img = transform(fake_img)
             print(fake_img.size)
-            # (262, 224)
+            # (268, 224)
 
             transform = Resize(size=(200,150))
             fake_img = transform(fake_img)
