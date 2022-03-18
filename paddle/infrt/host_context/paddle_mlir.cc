@@ -91,11 +91,15 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
         if (var_desc.name() == input_var_name) {
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
-          mlir::Type precision_;
-          ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                          builder_,
-                          &precision_);
-          mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+          infrt::PrecisionType precision_;
+          ConvertDataTypeToPhi(
+              var_desc.type().lod_tensor().tensor().data_type(), &precision_);
+          mlir::Type type_ =
+              infrt::DenseTensorType::get(context_,
+                                          infrt::TargetType::CPU,
+                                          precision_,
+                                          infrt::LayoutType::ANY);
+
           operandTypes.push_back(type_);
         }
       }
@@ -117,11 +121,14 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
         if (var_desc.name() == input_var_name) {
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
-          mlir::Type precision_;
-          ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                          builder_,
-                          &precision_);
-          mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+          infrt::PrecisionType precision_;
+          ConvertDataTypeToPhi(
+              var_desc.type().lod_tensor().tensor().data_type(), &precision_);
+          mlir::Type type_ =
+              infrt::DenseTensorType::get(context_,
+                                          infrt::TargetType::CPU,
+                                          precision_,
+                                          infrt::LayoutType::ANY);
           resultTypes.push_back(type_);
         }
       }
@@ -168,15 +175,11 @@ void MLIRModelGenImpl::UpdateModelParams(
       auto name = builder_.getStringAttr(var_desc.name());
       std::vector<int64_t> dims = RepeatedToVector<int64_t>(
           var_desc.type().lod_tensor().tensor().dims());
-      mlir::Type precision_;
-      ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                      builder_,
-                      &precision_);
-      mlir::Type type_ =
-          infrt::DenseTensorType::get(context_,
-                                      infrt::TargetType::CPU,
-                                      infrt::PrecisionType::FLOAT32,
-                                      infrt::LayoutType::NCHW);
+      infrt::PrecisionType precision_;
+      ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
+                           &precision_);
+      mlir::Type type_ = infrt::DenseTensorType::get(
+          context_, infrt::TargetType::CPU, precision_, infrt::LayoutType::ANY);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -262,11 +265,13 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
       if (var_desc.name() == var_name) {
         std::vector<int64_t> dims = RepeatedToVector<int64_t>(
             var_desc.type().lod_tensor().tensor().dims());
-        mlir::Type precision_;
-        ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                        builder_,
-                        &precision_);
-        mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+        infrt::PrecisionType precision_;
+        ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
+                             &precision_);
+        mlir::Type type_ = infrt::DenseTensorType::get(context_,
+                                                       infrt::TargetType::CPU,
+                                                       precision_,
+                                                       infrt::LayoutType::ANY);
         resultTypes.push_back(type_);
       }
     }
@@ -398,6 +403,41 @@ bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
       return true;
     case infrt::paddle::framework_proto::VarType::Type::VarType_Type_UINT8:
       *type = builder.getIntegerType(8, /*isSigned=*/false);
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool ConvertDataTypeToPhi(infrt::paddle::framework_proto::VarType::Type dtype,
+                          infrt::PrecisionType *type) {
+  switch (dtype) {
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP16:
+      *type = infrt::PrecisionType::FLOAT16;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP32:
+      *type = infrt::PrecisionType::FLOAT32;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP64:
+      *type = infrt::PrecisionType::FLOAT64;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_BOOL:
+      *type = infrt::PrecisionType::BOOL;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT8:
+      *type = infrt::PrecisionType::INT8;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT16:
+      *type = infrt::PrecisionType::INT16;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT32:
+      *type = infrt::PrecisionType::INT32;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT64:
+      *type = infrt::PrecisionType::INT64;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_UINT8:
+      *type = infrt::PrecisionType::UINT8;
       return true;
     default:
       return false;
