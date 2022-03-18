@@ -44,32 +44,35 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
+void AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  if (atomic_deps_.size() != dependecy_count.size()) {
-    atomic_deps_.clear();
-    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    atomic_deps_[i]->store(dependecy_count[i]);
-  }
-  return atomic_deps_;
+  queue_group_->AddTask(2, [this, &dependecy_count] {
+    auto* op_deps =
+        new std::vector<std::atomic<size_t>>(dependecy_count.size());
+    for (size_t i = 0; i < dependecy_count.size(); ++i) {
+      (*op_deps)[i] = dependecy_count[i];
+    }
+    VLOG(4) << op_deps << " " << (*op_deps).size();
+    // NOTE(zhiqiu): std::async with std::launch::async itself is not low weight
+    atomic_deps_ = std::async(std::launch::async, [op_deps]() {
+      return std::unique_ptr<std::vector<std::atomic<size_t>>>(op_deps);
+    });
+  });
 }
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
+void AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
-  if (atomic_var_ref_.size() != vec_meta_info.size()) {
-    atomic_var_ref_.clear();
-    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
-  }
-  return atomic_var_ref_;
+  queue_group_->AddTask(2, [this, &vec_meta_info] {
+    auto* var_ref = new std::vector<std::atomic<size_t>>(vec_meta_info.size());
+    for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+      (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+    }
+    VLOG(4) << var_ref << " " << (*var_ref).size();
+    // NOTE(zhiqiu): std::async with std::launch::async itself is not low weight
+    atomic_var_ref_ = std::async(std::launch::async, [var_ref]() {
+      return std::unique_ptr<std::vector<std::atomic<size_t>>>(var_ref);
+    });
+  });
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
