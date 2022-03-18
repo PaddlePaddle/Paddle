@@ -38,6 +38,7 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_init_process_group(self):
         paddle.distributed.collective._init_parallel_env()
+        paddle.distributed.collective._new_group()
         with self.assertRaises(ValueError):
             paddle.distributed.collective._new_group(
                 backend="gloo", group_name="_default_pg")
