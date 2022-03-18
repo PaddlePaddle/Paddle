@@ -270,7 +270,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad3dOpGradNoNeedBufferVarsInferer, "X");
 namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(pad3d, Pad3dInferShapeFunctor,
-                            PD_INFER_META(phi::Pad3dInferMeta))
+                            PD_INFER_META(phi::Pad3dInferMeta));
 
 REGISTER_OPERATOR(pad3d, ops::Pad3dOp, ops::Pad3dOpMaker,
                   ops::Pad3dOpGradMaker<paddle::framework::OpDesc>,
