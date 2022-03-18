@@ -961,5 +961,39 @@ TEST(DEV_API, sparse_csr_to_dense_batch_and_fp16) {
                                 non_zero_num);
 }
 
+TEST(DEV_API, create_sparse_coo_tensor) {
+  std::vector<int> indices_data = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 3, 2, 3};
+  std::vector<float> elements_data = {1, 2, 3, 4};
+  phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  dev_ctx_cpu.Init();
+  DenseTensor indices = phi::Empty(
+      dev_ctx_cpu, DenseTensorMeta(DataType::INT32, {4, 4}, DataLayout::NCHW));
+  memcpy(indices.data<int>(),
+         indices_data.data(),
+         indices_data.size() * sizeof(int));
+
+  DenseTensor elements = phi::Empty(
+      dev_ctx_cpu, DenseTensorMeta(DataType::FLOAT32, {4}, DataLayout::NCHW));
+  memcpy(elements.data<float>(),
+         elements_data.data(),
+         elements_data.size() * sizeof(float));
+  std::vector<int64_t> dense_shape = {1, 1, 4, 4, 1};
+  SparseCooTensor coo = sparse::CreateSparseCooTensor<float>(
+      dev_ctx_cpu, indices, elements, dense_shape);
+  int cmp_indices = memcmp(indices_data.data(),
+                           coo.non_zero_indices().data<int>(),
+                           indices_data.size() * sizeof(int));
+  ASSERT_EQ(cmp_indices, 0);
+  int cmp_elements = memcmp(elements_data.data(),
+                            coo.non_zero_elements().data<float>(),
+                            elements_data.size() * sizeof(float));
+  ASSERT_EQ(cmp_elements, 0);
+}
+
 }  // namespace tests
 }  // namespace phi

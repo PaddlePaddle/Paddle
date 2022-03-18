@@ -4,6 +4,7 @@
   kernel :
     func : sparse_conv3d
     layout : x
+  backward: conv3d_grad
 
 - api : to_dense
   args : (Tensor x)
@@ -19,3 +20,8 @@
   args : (Tensor x)
   output : Tensor(out@SparseCsrTensor)
   invoke : to_sparse_csr_impl(x)
+
+- api : sparse_coo_tensor 
+  args : (Tensor non_zero_indices, Tensor non_zero_elements, int64[] dense_shape={})
+  output : Tensor(out@SparseCooTensor)
+  invoke : sparse_coo_tensor_impl(non_zero_indices, non_zero_elements, dense_shape)

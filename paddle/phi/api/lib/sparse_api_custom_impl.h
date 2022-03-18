@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/scalar_array.h"
 
 namespace paddle {
 namespace experimental {
@@ -26,6 +27,10 @@ Tensor to_dense_impl(const Tensor& x);
 Tensor to_sparse_coo_impl(const Tensor& x, const int64_t sparse_dim);
 
 Tensor to_sparse_csr_impl(const Tensor& x);
+
+Tensor sparse_coo_tensor_impl(const Tensor& non_zero_indices,
+                              const Tensor& non_zero_elements,
+                              const std::vector<int64_t>& dense_shape);
 
 }  // namespace sparse
 }  // namespace experimental

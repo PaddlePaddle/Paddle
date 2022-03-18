@@ -349,7 +349,10 @@ int ProductRuleBook(const Context& dev_ctx,
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const int rulebook_rows = 3;
   const int rulebook_cols = kernel_size * non_zero_num;
-  rulebook->ResizeAndAllocate({rulebook_rows, rulebook_cols});
+  DenseTensorMeta rulebook_meta(
+      DataType::INT32, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
+  rulebook->set_meta(rulebook_meta);
+  dev_ctx.Alloc(rulebook, rulebook->dtype(), rulebook->numel() * sizeof(int));
   int* rulebook_ptr = rulebook->data<int>();
 
   const auto x_dims = x.dims();

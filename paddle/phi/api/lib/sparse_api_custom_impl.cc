@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include "glog/logging.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -205,6 +206,54 @@ Tensor to_dense_impl(const Tensor& x) {
   kernel(&kernel_context);
 
   return out;
+}
+
+Tensor sparse_coo_tensor_impl(const Tensor& non_zero_indices,
+                              const Tensor& non_zero_elements,
+                              const std::vector<int64_t>& dense_shape) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(non_zero_elements);
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "sparse_coo_tensor", kernel_key);
+
+  VLOG(6) << "add API kernel key: " << kernel_key;
+  VLOG(6) << "to API kernel: " << kernel;
+
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  // auto kernel_context = phi::KernelContext(dev_ctx);
+
+  // 3. Auto data transform
+  auto dense_indices = TensorToDenseTensor(non_zero_indices);
+  // std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
+  // kernel_context.EmplaceBackInput(dense_indices.get());
+  auto dense_elements = TensorToDenseTensor(non_zero_elements);
+  // std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+  // kernel_context.EmplaceBackInput(dense_elements.get());
+
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    const std::vector<int64_t>&,
+                                    phi::SparseCooTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+  // 5. Prepare outputs
+  // create empty SparseCooTensor
+  auto coo = std::make_shared<phi::SparseCooTensor>();
+
+  // kernel_context.EmplaceBackOutput(coo.get());
+  {
+    (*kernel_fn)(
+        *dev_ctx, *dense_indices, *dense_elements, dense_shape, coo.get());
+
+    Tensor out;
+    out.set_impl(coo);
+    return out;
+  }
+
+  // 6. Call kernel
+  // kernel(&kernel_context);
 }
 
 }  // namespace sparse

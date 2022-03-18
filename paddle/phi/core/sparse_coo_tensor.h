@@ -30,6 +30,7 @@ namespace phi {
 class SparseCooTensor : public TensorBase,
                         public TypeInfoTraits<TensorBase, SparseCooTensor> {
  public:
+  SparseCooTensor();
   /// \brief Create the sparse coo tensor
   /// \param non_zero_indices The indices of non zero elements in original dense
   /// tensor.
