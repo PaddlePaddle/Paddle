@@ -24,13 +24,17 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(pool2d);
+USE_OP_ITSELF(pool2d);
 USE_OP_DEVICE_KERNEL(pool2d, MKLDNN);
 USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 USE_OP_ITSELF(transpose);
 USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
+
+PD_DECLARE_KERNEL(pool2d, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {
@@ -94,7 +98,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
 
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 512, 3, 7});  // NHWC expected shape
+  framework::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
   platform::CPUPlace p;
   framework::Scope scope;
 

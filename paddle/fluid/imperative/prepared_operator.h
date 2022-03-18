@@ -264,14 +264,23 @@ void BuildDygraphPhiKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
 
-    if ((it == ins.end()) &&
-        (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
-      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
-      auto end_idx = start_idx + 1;
-      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-      continue;
+    if (it == ins.end()) {
+      if (LIKELY(input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
+      } else {
+        PADDLE_THROW(phi::errors::NotFound(
+            "Can not find input variable '%s' for %s OP, please check whether "
+            "the name setting in OpArgumentMapping is consistent with that in "
+            "OpMaker.",
+            input_names[i], pt_kernel_signature.name));
+      }
     }
+
     auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
@@ -280,14 +289,23 @@ void BuildDygraphPhiKernelContext(
       auto& var = ins_vector[offset]->Var();
       if (var.template IsType<phi::DenseTensor>()) {
         tensor_in = &(var.template Get<phi::DenseTensor>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<phi::SelectedRows>()) {
         tensor_in = &(var.template Get<phi::SelectedRows>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var.template IsType<framework::LoDTensorArray>()) {
+        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        auto& tensor_array = var.template Get<framework::LoDTensorArray>();
+        for (auto& t : tensor_array) {
+          tensor_vector.emplace_back(&t);
+        }
+        kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
+        end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var.Type())));
       }
-      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -317,22 +335,32 @@ void BuildDygraphPhiKernelContext(
       if (var) {
         if (var->template IsType<phi::DenseTensor>()) {
           tensor_out = var->template GetMutable<phi::DenseTensor>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<framework::LoDTensorArray>()) {
+          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          auto* tensor_array =
+              var->template GetMutable<framework::LoDTensorArray>();
+          for (auto& t : *tensor_array) {
+            tensor_vector.emplace_back(&t);
+          }
+          kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
+          end_idx += tensor_array->size() - 1;
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
-
-      kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    VLOG(1) << "############## attr_name: " << i << " : " << attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
@@ -410,6 +438,17 @@ void BuildDygraphPhiKernelContext(
             experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
       }
 
+    } else if (ins.find(attr_names[i]) != ins.end()) {
+      // deal tensor attr here
+      auto& ins_vector = ins.at(attr_names[i]);
+      auto tensor_attr =
+          experimental::MakePhiScalarFromVar(ins_vector[0]->Var());
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        int val = tensor_attr.template to<int>();
+        kernel_ctx->EmplaceBackAttr(val);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented("only support int here"));
+      }
     } else if (attr_defs[i].type_index ==
                std::type_index(typeid(std::vector<phi::Scalar>))) {
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
@@ -466,6 +505,7 @@ void BuildDygraphPhiKernelContext(
       }
     } else {
       // TODO(chenweihang): support other attrs later
+
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
@@ -501,6 +541,10 @@ void BuildDygraphPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<std::string>))) {
+        kernel_ctx->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<std::string>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

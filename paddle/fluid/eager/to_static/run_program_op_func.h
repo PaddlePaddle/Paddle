@@ -57,6 +57,7 @@ inline void run_program_dygraph_function(
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
     grad_node->SetFwdOutNames(out_names);
+    grad_node->SetOut(out);
     // Set Attributes
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers
@@ -65,10 +66,10 @@ inline void run_program_dygraph_function(
     grad_node->SetStepScope(step_scope);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    grad_node->SetGradOutMeta(&p_autograd_x, /*slot id*/ 0);
-    grad_node->SetGradOutMeta(&p_autograd_params, /*slot id*/ 1);
+    grad_node->SetGradOutMeta(x, /*slot id*/ 0);
+    grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
-    grad_node->SetGradInMeta(&p_autograd_outs, 0);
+    grad_node->SetGradInMeta(deref_out, 0);
     // Set Next Edges
     grad_node->AddEdges(&p_autograd_x, /*slot id*/ 0);
     grad_node->AddEdges(&p_autograd_params, /*slot id*/ 1);

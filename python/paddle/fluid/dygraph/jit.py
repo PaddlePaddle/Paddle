@@ -821,7 +821,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, Variable)):
+            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var))
             else:
