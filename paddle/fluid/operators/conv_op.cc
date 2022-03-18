@@ -861,8 +861,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d, DepthwiseConv2dInferShapeFunctor,
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
-                  ops::Conv2DGradMaker<paddle::imperative::OpBase>,
-                  DepthwiseConv2dInferShapeFunctor);
+                  ops::Conv2DGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
                   ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
@@ -873,8 +872,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(conv3d, Conv3dInferShapeFunctor,
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv3DGradMaker<paddle::framework::OpDesc>,
-                  ops::Conv3DGradMaker<paddle::imperative::OpBase>,
-                  Conv3dInferShapeFunctor);
+                  ops::Conv3DGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad,
                   ops::Conv3DDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Conv3DDoubleGradMaker<paddle::imperative::OpBase>);
