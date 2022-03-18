@@ -33,6 +33,10 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#endif
+
 namespace py = pybind11;
 
 namespace pybind11 {
@@ -547,6 +551,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("params_file", &AnalysisConfig::params_file)
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
+      .def("exp_enable_use_gpu_fp16", &AnalysisConfig::Exp_EnableUseGpuFp16,
+           py::arg("gpu_fp16_disabled_op_types") =
+               std::unordered_set<std::string>({}))
       .def("enable_xpu", &AnalysisConfig::EnableXpu,
            py::arg("l3_workspace_size") = 16 * 1024 * 1024,
            py::arg("locked") = false, py::arg("autotune") = true,
@@ -556,6 +563,10 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
+      .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
+      .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
+      .def("onnxruntime_enabled", &AnalysisConfig::use_onnxruntime)
+      .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
       .def("use_npu", &AnalysisConfig::use_npu)

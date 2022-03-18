@@ -214,10 +214,23 @@ static PyObject* tensor_method__is_initialized(TensorObject* self,
 static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
-  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
-  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor =
       self->tensor.copy_to(phi::TransToPhiBackend(place), blocking);
+  egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
+  egr::EagerUtils::autograd_meta(&cp_tensor)
+      ->SetPersistable(
+          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
+  return ToPyObject(cp_tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_cpu(TensorObject* self, PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  auto cp_tensor =
+      self->tensor.copy_to(phi::TransToPhiBackend(phi::CPUPlace()), true);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -264,7 +277,7 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
   }
 
-  self->tensor.copy_(src_tensor, blocking);
+  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -688,6 +701,21 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* set_grad_type(TensorObject* self, PyObject* args,
+                               PyObject* kwargs) {
+  EAGER_TRY
+  auto var_type = pybind::CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
+  auto grad_tensor =
+      egr::EagerUtils::unsafe_autograd_meta(self->tensor)->Grad();
+  if (var_type == framework::proto::VarType::LOD_TENSOR) {
+    grad_tensor.set_impl(std::make_shared<phi::DenseTensor>());
+  } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
+    grad_tensor.set_impl(std::make_shared<phi::SelectedRows>());
+  }
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -733,6 +761,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_register_backward_hook",
      (PyCFunction)(void (*)(void))tensor_register_reduce_hook,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_set_grad_type", (PyCFunction)(void (*)(void))set_grad_type,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

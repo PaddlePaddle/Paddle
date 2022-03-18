@@ -14,12 +14,14 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/metrics/accuracy_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = paddle::framework::Tensor;
 template <typename DeviceContext, typename T>
 class AccuracyXPUKernel : public framework::OpKernel<T> {
  public:
