@@ -51,8 +51,6 @@ class TestPnormOp(OpTest):
             self.check_output_with_place(paddle.NPUPlace(0))
 
     def test_check_grad(self):
-        if self.dtype == "float16":
-            return
         self.check_grad_with_place(
             paddle.NPUPlace(0), ['X'], 'Out', user_defined_grads=self.gradient)
 

@@ -144,6 +144,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
     def setUp(self):
         self.set_npu()
+        self.init_dtype()
         self.use_mkldnn = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
@@ -152,6 +153,9 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.epsilon = 0.00001
         self.init_kernel_type()
         self.init_test_case()
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def init_test_case(self):
         self.use_global_stats = False
@@ -210,11 +214,16 @@ class TestBatchNormOpTraining(unittest.TestCase):
             scale_shape = [c]
 
             np.random.seed(123)
-            x = np.random.random_sample(shape).astype(np.float32)
+            x = np.random.random_sample(shape).astype(self.dtype)
             scale = np.random.random_sample(scale_shape).astype(np.float32)
             bias = np.random.random_sample(scale_shape).astype(np.float32)
             mean, variance = self.set_mean_variance(scale_shape, x, data_layout)
-            y_grad = np.random.random_sample(shape).astype(np.float32)
+
+            if self.dtype == np.float16:
+                mean = mean.astype(np.float32)
+                variance = variance.astype(np.float32)
+
+            y_grad = np.random.random_sample(shape).astype(self.dtype)
             momentum_var = np.array([momentum]).astype(np.float32)
 
             y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad = self.ref_forward_backward(
@@ -275,7 +284,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     inputs=inputs,
                     outputs=outputs,
                     attrs=attrs)
-                block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
+                block.create_var(name='y@GRAD', dtype=self.dtype, shape=y.shape)
 
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
@@ -318,6 +327,11 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
     def init_kernel_type(self):
         pass
+
+
+class TestFP16BatchNormOpTraining(TestBatchNormOpTraining):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
