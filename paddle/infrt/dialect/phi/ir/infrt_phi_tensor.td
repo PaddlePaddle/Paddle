@@ -51,12 +51,46 @@ class CreateContextOp<string target>
   let results = (outs Context:$output);
 }
 
+def PDT_LoadParamsOp : PDT_Op<"load_params", [NoSideEffect]> {
+  // input path of model params.
+  let arguments = (ins StrAttr:$path);
+  let results = (outs DenseTensorMap:$out);
+
+  let assemblyFormat = "`(``)`attr-dict";
+}
+
+def PDT_LoadCombinedParamsOp : PDT_Op<"load_combined_params", [NoSideEffect]> {
+  // input path of model params.
+  let arguments = (ins StrAttr:$model_path, StrAttr:$params_path);
+  let results = (outs DenseTensorMap:$out);
+
+  let assemblyFormat = "`(``)`attr-dict";
+}
+
+def PDT_TensorMapGetSizeOp : PDT_Op<"tensor_map_get_size", [NoSideEffect]> {
+  let arguments = (ins DenseTensorMap:$map);
+  let results = (outs I32:$size);
+  let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
+}
+
+class TensorMapGetTensorOp:
+      PDT_Op<"tensor_map_get_tensor"> {
+  let arguments = (ins
+          DenseTensorMap:$map,
+          StrAttr:$name
+          );
+  let results = (outs DenseTensor:$output);
+  let assemblyFormat = "`(` operands `)` attr-dict `->` type($output)";
+  let verifier = ?;
+}
+
 def PDT_CreateCPUDenseTensorOp : CreateDenseTensorOp<"cpu">;
 def PDT_CreateGPUDenseTensorOp : CreateDenseTensorOp<"gpu">;
 def PDT_FillDenseTensorOp_f32 : FillDenseTensorOp<F32ArrayAttr, "f32">;
 def PDT_CreateCPUContextOp : CreateContextOp<"cpu">;
 def PDT_CreateGPUContextOp : CreateContextOp<"gpu">;
 def PDT_PrintDenseTensor : PrintDenseTensorOp;
+def PDT_TensorMapGetTensorOp: TensorMapGetTensorOp;
 
 def FakeKernelOp : PDT_Op<"fake_phi_kernel"> {
   let arguments = (ins Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
