@@ -69,10 +69,8 @@ class DeviceContextPool {
         Get(place));
   }
 
-  void Insert(const Place& place, const phi::DeviceContext* dev_ctx);
-
  private:
-  DeviceContextPool() = default;
+  DeviceContextPool();
   paddle::flat_hash_map<Place, const phi::DeviceContext*, Place::Hash>
       context_map_;
 

@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -39,14 +38,27 @@ phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
   return const_cast<phi::DeviceContext*>(Get(place));
 }
 
-void DeviceContextPool::Insert(const Place& place,
-                               const phi::DeviceContext* dev_ctx) {
-  auto it = context_map_.find(place);
-  PADDLE_ENFORCE_EQ(it,
-                    context_map_.end(),
-                    phi::errors::AlreadyExists(
-                        "The DeviceContext of %s already exists.", place));
-  context_map_[place] = dev_ctx;
+DeviceContextPool::DeviceContextPool() {
+  // We need to make sure that the correct value exists
+  // whenever we get the DeviceContext from DeviceContextPool
+  const auto& device_contexts =
+      paddle::platform::DeviceContextPool::Instance().device_contexts();
+  for (const auto& pair : device_contexts) {
+    // only get CPU and GPU DeviceContext now, add other DeviceContext type
+    // later if needed
+    if (platform::is_cpu_place(pair.first)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        ||
+        platform::is_gpu_place(pair.first)) {
+#else
+            ) {
+#endif
+      const phi::DeviceContext* dev_ctx = pair.second.get().get();
+      VLOG(3) << "Init phi DeviceContextPool: insert {" << pair.first << ", "
+              << dev_ctx << "}";
+      context_map_[pair.first] = dev_ctx;
+    }
+  }
 }
 
 }  // namespace experimental
