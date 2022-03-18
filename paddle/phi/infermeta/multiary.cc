@@ -28,6 +28,98 @@ std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
   return dims;
 }
 
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out) {
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      errors::InvalidArgument(
+          "Param and grad input of AdadeltaOp should have same dimension."));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_grad.dims(),
+      errors::InvalidArgument("Param and AvgSquaredGrad input of AdadeltaOp "
+                              "should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_update.dims(),
+      errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
+                              "should have same dimension"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  avg_squared_grad_out->set_dims(param_dims);
+  avg_squared_grad_out->set_dtype(avg_squared_grad.dtype());
+
+  avg_squared_update_out->set_dims(param_dims);
+  avg_squared_update_out->set_dtype(avg_squared_update.dtype());
+}
+
+void AdamaxInferMeta(const MetaTensor& param,
+                     const MetaTensor& grad,
+                     const MetaTensor& learning_rate,
+                     const MetaTensor& moment,
+                     const MetaTensor& inf_norm,
+                     const MetaTensor& beta1_pow,
+                     float beta1,
+                     float beta2,
+                     float epsilon,
+                     MetaTensor* param_out,
+                     MetaTensor* moment_out,
+                     MetaTensor* inf_norm_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(
+      product(lr_dims),
+      0,
+      errors::InvalidArgument("Maybe the Input variable LearningRate has not "
+                              "been initialized. You may need to confirm "
+                              "if you put exe.run(startup_program) "
+                              "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(
+      product(lr_dims),
+      1,
+      errors::InvalidArgument("Learning rate should have 1 dimension"));
+  auto beta1_pow_dims = beta1_pow.dims();
+  PADDLE_ENFORCE_EQ(product(beta1_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "Beta1 power accumulator should have 1 dimension"));
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      errors::InvalidArgument(
+          "Param and Grad input of AdamaxOp should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment.dims(),
+      errors::InvalidArgument(
+          "Param and Moment input of AdamaxOp should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      inf_norm.dims(),
+      errors::InvalidArgument(
+          "Param and InfNorm input of AdamaxOp should have same dimension"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  moment_out->set_dims(param_dims);
+  moment_out->set_dtype(moment.dtype());
+
+  inf_norm_out->set_dims(param_dims);
+  inf_norm_out->set_dtype(inf_norm.dtype());
+}
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -106,98 +198,6 @@ void AucInferMeta(const MetaTensor& input,
     stat_neg_out->set_dims({1, num_pred_buckets});
     stat_neg_out->set_dtype(DataType::INT64);
   }
-}
-
-void AdamaxInferMeta(const MetaTensor& param,
-                     const MetaTensor& grad,
-                     const MetaTensor& learning_rate,
-                     const MetaTensor& moment,
-                     const MetaTensor& inf_norm,
-                     const MetaTensor& beta1_pow,
-                     float beta1,
-                     float beta2,
-                     float epsilon,
-                     MetaTensor* param_out,
-                     MetaTensor* moment_out,
-                     MetaTensor* inf_norm_out) {
-  auto lr_dims = learning_rate.dims();
-  PADDLE_ENFORCE_NE(
-      product(lr_dims),
-      0,
-      errors::InvalidArgument("Maybe the Input variable LearningRate has not "
-                              "been initialized. You may need to confirm "
-                              "if you put exe.run(startup_program) "
-                              "after optimizer.minimize function."));
-  PADDLE_ENFORCE_EQ(
-      product(lr_dims),
-      1,
-      errors::InvalidArgument("Learning rate should have 1 dimension"));
-  auto beta1_pow_dims = beta1_pow.dims();
-  PADDLE_ENFORCE_EQ(product(beta1_pow_dims),
-                    1,
-                    errors::InvalidArgument(
-                        "Beta1 power accumulator should have 1 dimension"));
-  auto param_dims = param.dims();
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      grad.dims(),
-      errors::InvalidArgument(
-          "Param and Grad input of AdamaxOp should have same dimension"));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      moment.dims(),
-      errors::InvalidArgument(
-          "Param and Moment input of AdamaxOp should have same dimension"));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      inf_norm.dims(),
-      errors::InvalidArgument(
-          "Param and InfNorm input of AdamaxOp should have same dimension"));
-
-  param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
-
-  moment_out->set_dims(param_dims);
-  moment_out->set_dtype(moment.dtype());
-
-  inf_norm_out->set_dims(param_dims);
-  inf_norm_out->set_dtype(inf_norm.dtype());
-}
-
-void AdadeltaInferMeta(const MetaTensor& param,
-                       const MetaTensor& grad,
-                       const MetaTensor& avg_squared_grad,
-                       const MetaTensor& avg_squared_update,
-                       float rho,
-                       float epsilon,
-                       MetaTensor* param_out,
-                       MetaTensor* avg_squared_grad_out,
-                       MetaTensor* avg_squared_update_out) {
-  auto param_dims = param.dims();
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      grad.dims(),
-      errors::InvalidArgument(
-          "Param and grad input of AdadeltaOp should have same dimension."));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      avg_squared_grad.dims(),
-      errors::InvalidArgument("Param and AvgSquaredGrad input of AdadeltaOp "
-                              "should have same dimension"));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      avg_squared_update.dims(),
-      errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
-                              "should have same dimension"));
-
-  param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
-
-  avg_squared_grad_out->set_dims(param_dims);
-  avg_squared_grad_out->set_dtype(avg_squared_grad.dtype());
-
-  avg_squared_update_out->set_dims(param_dims);
-  avg_squared_update_out->set_dtype(avg_squared_update.dtype());
 }
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,
@@ -367,6 +367,188 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->set_dtype(x.at(0)->dtype());
   out->set_layout(x.at(0)->layout());
   out->share_lod(*x.at(0));
+}
+
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out) {
+  const int64_t input_dims = x.dims()[0];
+  const int64_t label_dims = label.dims()[0];
+  PADDLE_ENFORCE_EQ(input_dims,
+                    label_dims,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of "
+                        "input and label is expected to be the same. "
+                        "But received input's first dimension is %d; "
+                        "label's first dimension is %d.",
+                        input_dims,
+                        label_dims));
+
+  std::vector<int64_t> output_shape({input_dims, 1});
+  out->set_dims(phi::make_ddim(output_shape));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+  auto inputs_dims = GetMetaTensorsDim(x);
+
+  const size_t inputs_num = inputs_dims.size();
+  PADDLE_ENFORCE_GT(
+      inputs_num,
+      static_cast<size_t>(1),
+      phi::errors::InvalidArgument(
+          "The number of input tensors in multi_dot op should > 1."));
+
+  const size_t n = inputs_dims.size();
+  auto first_dim = inputs_dims[0];
+
+  bool is_vector = false;
+  phi::DDim out_dim;
+
+  PADDLE_ENFORCE_LT(
+      first_dim.size(),
+      static_cast<size_t>(3),
+      phi::errors::InvalidArgument(
+          "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_dim.size())));
+
+  // If the first tensor is 1D of size n view it as a row vector (1, n)
+  if (first_dim.size() == 1) {
+    first_dim = phi::make_ddim({1, static_cast<int>(first_dim[0])});
+    is_vector = true;
+  }
+
+  auto last_dim = inputs_dims[n - 1];
+  PADDLE_ENFORCE_LT(
+      last_dim.size(),
+      static_cast<size_t>(3),
+      phi::errors::InvalidArgument(
+          "the last input tensor of multi_dot must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_dim.size())));
+
+  // If the last tensor is 1D of size n view it as a column vector (n, 1)
+  if (last_dim.size() == 1) {
+    last_dim = phi::make_ddim({static_cast<int>(last_dim[0]), 1});
+    out_dim = is_vector ? phi::make_ddim({1}) : phi::make_ddim({first_dim[0]});
+  } else {
+    out_dim = is_vector ? phi::make_ddim({last_dim[1]})
+                        : phi::make_ddim({first_dim[0], last_dim[1]});
+  }
+
+  auto width = first_dim[1];
+  for (size_t i = 1; i < n - 1; i++) {
+    PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
+                      static_cast<size_t>(2),
+                      phi::errors::InvalidArgument(
+                          "the input tensor of multi_dot op must be 2D."));
+
+    const auto& tmp_dim = inputs_dims[i];
+    PADDLE_ENFORCE_EQ(
+        tmp_dim[0],
+        width,
+        phi::errors::InvalidArgument(
+            "the input matrix does not meet the multiplication requirements."));
+    width = tmp_dim[1];
+  }
+
+  PADDLE_ENFORCE_EQ(
+      last_dim[0],
+      width,
+      phi::errors::InvalidArgument(
+          "the input matrix does not meet the multiplication requirements."));
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.at(0)->dtype());
+  out->share_lod(*x.at(0));
+}
+
+void PsroiPoolInferMeta(const MetaTensor& x,
+                        const MetaTensor& rois,
+                        paddle::optional<const MetaTensor&> rois_num,
+                        int pooled_height,
+                        int pooled_width,
+                        int output_channels,
+                        float spatial_scale,
+                        MetaTensor* out) {
+  auto input_dims = x.dims();
+  auto rois_dims = rois.dims();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      errors::InvalidArgument("The format of input tensor is NCHW"));
+  PADDLE_ENFORCE_EQ(rois_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  PADDLE_ENFORCE_EQ(rois_dims[1],
+                    4,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  if (rois_num.get_ptr()) {
+    auto rois_num_dims = rois_num->dims();
+    PADDLE_ENFORCE_EQ(
+        rois_num_dims.size(),
+        1,
+        errors::InvalidArgument("The second dimension of RoisNum should "
+                                "be 1, but received dimension is %d",
+                                rois_num_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      input_dims[1],
+      output_channels * pooled_height * pooled_width,
+      errors::InvalidArgument(
+          "the channel of X(%d) "
+          "should be equal to the product of "
+          "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
+          input_dims[1],
+          output_channels,
+          pooled_height,
+          pooled_width));
+
+  PADDLE_ENFORCE_GT(pooled_height,
+                    0,
+                    errors::InvalidArgument(
+                        "The pooled output height must be greater than 0"));
+  PADDLE_ENFORCE_GT(pooled_width,
+                    0,
+                    errors::InvalidArgument(
+                        "The pooled output width must be greater than 0"));
+  PADDLE_ENFORCE_GT(output_channels,
+                    1,
+                    errors::InvalidArgument(
+                        "The pooled output channels must greater than 1"));
+  PADDLE_ENFORCE_GT(
+      spatial_scale,
+      0.0f,
+      errors::InvalidArgument("The spatial scale must greater than 0."));
+
+  auto out_dims = input_dims;
+  out_dims[0] = rois_dims[0];
+  out_dims[1] =
+      output_channels;  // input_dims[1] / (pooled_height * pooled_width);
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
 }
 
 void WhereInferMeta(const MetaTensor& condition,

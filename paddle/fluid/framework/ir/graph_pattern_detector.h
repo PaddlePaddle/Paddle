@@ -487,6 +487,28 @@ struct ConvActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+// Elementwise with Activation
+// op: elementwise + activation
+// named nodes:
+// elementwise_a, elementwise_b,
+// elementwise_out, elementwise,
+// activation_out, activation
+struct ElementwiseActivation : public PatternBase {
+  ElementwiseActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_add_activation") {}
+
+  PDNode* operator()(PDNode* elementwise_a, const std::string& elementwise_type,
+                     const std::string& activation_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(elementwise);
+  PATTERN_DECL_NODE(activation);
+  // declare variable node's name
+  PATTERN_DECL_NODE(elementwise_b);
+  PATTERN_DECL_NODE(elementwise_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -994,20 +1016,20 @@ struct Pool : public PatternBase {
   PATTERN_DECL_NODE(pool_output);
 };
 
-// ElementwiseAdd used in residual connections.
-// y_var is used and convolution output.
-// The operator is removed, when residual
-// connection fusion is on.
-struct ElementwiseAdd : public PatternBase {
-  ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_add") {}
+// Elementwise ops
+// Forward pass for element-wise operators (add, mul)
+// elementwise_mul_out is the result of the operator
+struct Elementwise : public PatternBase {
+  Elementwise(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise") {}
 
-  PDNode* operator()(PDNode* x_var, PDNode* y_var);
+  PDNode* operator()(PDNode* x_var, PDNode* y_var,
+                     const std::string elementwise_type);
 
-  PATTERN_DECL_NODE(elementwise_add_op);
-  PATTERN_DECL_NODE(elementwise_add_x);
-  PATTERN_DECL_NODE(elementwise_add_y);
-  PATTERN_DECL_NODE(elementwise_add_out);
+  PATTERN_DECL_NODE(elementwise_op);
+  PATTERN_DECL_NODE(elementwise_x);
+  PATTERN_DECL_NODE(elementwise_y);
+  PATTERN_DECL_NODE(elementwise_out);
 };
 
 // Transpose op
