@@ -101,7 +101,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "Cannot get input Variable X, Variable name = %s.",
                           ctx.InputName("X")));
-#ifdef(__NVCC__)
+#ifdef __NVCC__
     const auto& dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 #else

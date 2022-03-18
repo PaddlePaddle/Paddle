@@ -57,7 +57,7 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
 #if defined(__NVCC__) || defined(__xpu__)
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
-#ifdef(__NVCC__)
+#ifdef __NVCC__
     const auto& dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 #else
