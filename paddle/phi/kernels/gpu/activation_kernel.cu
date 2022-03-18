@@ -179,8 +179,15 @@ PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 
-PD_REGISTER_KERNEL(
-    exp, GPU, ALL_LAYOUT, phi::ExpKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(exp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ExpKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(expm1,
                    GPU,
                    ALL_LAYOUT,
@@ -188,9 +195,23 @@ PD_REGISTER_KERNEL(expm1,
                    float,
                    double,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(logit, GPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
-PD_REGISTER_KERNEL(
-    square, GPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(logit,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogitKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(square,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SquareKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)

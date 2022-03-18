@@ -1496,6 +1496,15 @@ REGISTER_ACTIVATION_OP(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,
                        HardSigmoidGradFunctor);
 REGISTER_ACTIVATION_OP(logsigmoid, LogSigmoid, LogSigmoidFunctor,
                        LogSigmoidGradFunctor);
+REGISTER_ACTIVATION_OP(expm1, Expm1, Expm1Functor, Expm1GradFunctor);
+REGISTER_ACTIVATION_OP(softplus, Softplus, SoftplusFunctor,
+                       SoftplusGradFunctor);
+REGISTER_ACTIVATION_OP(softsign, Softsign, SoftsignFunctor,
+                       SoftsignGradFunctor);
+REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
+REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
+REGISTER_ACTIVATION_OP(reciprocal, Reciprocal, ReciprocalFunctor,
+                       ReciprocalGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */
@@ -1778,14 +1787,15 @@ REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
 /* ========================================================================== */
 
 /* ==========================   expm1 register  ============================ */
-REGISTER_OPERATOR(
-    expm1, ops::ActivationOp, ops::Expm1OpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::Expm1GradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::Expm1GradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::Expm1GradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer, void>::type);
+// REGISTER_OPERATOR(
+//     expm1, ops::ActivationOp, ops::Expm1OpMaker,
+//     ops::ActivationOpInferVarType,
+//     ops::ActivationGradOpMaker<ops::Expm1GradFunctor<float>::FwdDeps(),
+//                                paddle::framework::OpDesc>,
+//     ops::ActivationGradOpMaker<ops::Expm1GradFunctor<float>::FwdDeps(),
+//                                paddle::imperative::OpBase>,
+//     std::conditional<ops::CanInplaceAct<ops::Expm1GradFunctor<float>>(),
+//                      ops::ActFwdInplaceInferer, void>::type);
 
 /* ========================================================================== */
 

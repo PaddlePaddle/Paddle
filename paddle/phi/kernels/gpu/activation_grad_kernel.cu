@@ -176,7 +176,6 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Acosh, CudaAcoshGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, CudaAtanhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, CudaTanhShrinkGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, CudaSiluGradFunctor);
-<<<<<<< HEAD
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, CudaSoftsignGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, CudaSquareGradFunctor);
 
@@ -185,9 +184,7 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, CudaExpm1GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, CudaReciprocalGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, CudaSqrtGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, CudaRsqrtGradFunctor);
-=======
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, CudaLogSigmoidGradFunctor);
->>>>>>> 1904572ac8edb57dfb528e711588758002a168dd
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                CudaLeakyReluGradFunctor,
@@ -211,7 +208,6 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu,
                                                t_min,
                                                t_max);
 
-<<<<<<< HEAD
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                CudaSTanhGradFunctor,
                                                scale_a,
@@ -221,12 +217,10 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
                                                CudaSoftplusGradFunctor,
                                                beta,
                                                threshold);
-=======
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  CudaHardSigmoidGradFunctor,
                                                  slope,
                                                  offset);
->>>>>>> 1904572ac8edb57dfb528e711588758002a168dd
 
 template <typename T, typename Context>
 void EluGradKernel(const Context& dev_ctx,
@@ -321,6 +315,8 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(stanh_grad, STanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(rsqrt_grad, RsqrtGradKernel)
 
 PD_REGISTER_KERNEL(exp_grad,
                    GPU,
@@ -329,7 +325,8 @@ PD_REGISTER_KERNEL(exp_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(soft_shrink_grad, SoftShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
@@ -346,8 +343,14 @@ PD_REGISTER_KERNEL(expm1_grad,
                    double,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(
-    logit_grad, GPU, ALL_LAYOUT, phi::LogitGradKernel, float, double) {}
+PD_REGISTER_KERNEL(logit_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogitGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
 PD_REGISTER_KERNEL(square_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -355,7 +358,10 @@ PD_REGISTER_KERNEL(square_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_triple_grad, SigmoidTripleGradKernel)

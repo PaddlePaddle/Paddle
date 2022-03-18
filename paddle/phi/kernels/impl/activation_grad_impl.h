@@ -240,6 +240,7 @@ void LogitGradKernel(const Context& dev_ctx,
   functor(place, eigen_x, eigen_dout, eigen_dx, eigen_p, eps);
 }
 
+template <typename T, typename Context>
 void SigmoidDoubleGradKernel(const Context& dev_ctx,
                              const DenseTensor& out,
                              const DenseTensor& ddx,
