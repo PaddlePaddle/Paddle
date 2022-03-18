@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +15,16 @@
 
 #pragma once
 
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+
 namespace phi {
-
 template <typename T, typename Context>
-void ReduceSumGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& out_grad,
-                         const std::vector<int64_t>& dims,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
-                         DenseTensor* x_grad);
-
+void KthvalueGradKernel(const Context& dev_ctx,
+                        const DenseTensor& d_out,
+                        const DenseTensor& x,
+                        const DenseTensor& indices,
+                        int k,
+                        int axis,
+                        bool keepdim,
+                        DenseTensor* d_x);
 }  // namespace phi
