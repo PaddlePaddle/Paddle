@@ -42,6 +42,9 @@ class FeedVariableVisitor : public boost::static_visitor<void> {
       out_tensor->ShareDataWith(in_tensor);
 #ifdef PADDLE_WITH_IPU
     } else if (platform::is_ipu_place(place_)) {
+      // For ipu, both in_tensor and out_tensor are allocated on cpu,
+      // PopART will copy tensor from host automatically,
+      // no TensorCopy() is required here.
       out_tensor->ShareDataWith(in_tensor);
 #endif
     } else {
