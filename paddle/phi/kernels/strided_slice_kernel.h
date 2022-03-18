@@ -22,7 +22,8 @@ namespace phi {
 template <typename T, typename Context>
 void StridedSliceKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const std::vector<int>& axes const ScalarArray& starts,
+                        const std::vector<int>& axes,
+                        const ScalarArray& starts,
                         const ScalarArray& ends,
                         const ScalarArray& strides,
                         const std::vector<int>& infer_flags,
@@ -30,13 +31,13 @@ void StridedSliceKernel(const Context& dev_ctx,
                         DenseTensor* out);
 
 template <typename T, typename Context>
-void StridedSliceArrayKernel(
-    const Context& dev_ctx,
-    const vector<DenseTensor*>& x,
-    const std::vector<int>& axes const ScalarArray& starts,
-    const ScalarArray& ends,
-    const ScalarArray& strides,
-    const std::vector<int>& infer_flags,
-    const std::vector<int>& decrease_axis,
-    vector<DenseTensor*> out);
+void StridedSliceArrayKernel(const Context& dev_ctx,
+                             const vector<DenseTensor*>& x,
+                             const std::vector<int>& axes,
+                             const ScalarArray& starts,
+                             const ScalarArray& ends,
+                             const ScalarArray& strides,
+                             const std::vector<int>& infer_flags,
+                             const std::vector<int>& decrease_axis,
+                             vector<DenseTensor*> out);
 }  // namespace phi
