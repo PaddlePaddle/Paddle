@@ -14,7 +14,7 @@
 
 import os
 import argparse
-from eager_gen import namespace, yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import namespace, yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap, GetInplacedFunctionName, ParseInplaceInfo
 
 skipped_fwd_api_names = set(["scale"])
 
@@ -59,7 +59,7 @@ def FindParsingFunctionFromAttributeType(atype):
 
 def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
                             forward_attrs_list, forward_outputs_position_map,
-                            optional_inputs, is_forward_only):
+                            optional_inputs, is_forward_only, inplace_map):
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
     # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
@@ -94,6 +94,21 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
+    if inplace_map:
+        assert len(
+            inplace_map
+        ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{fwd_api_name}\" op got {len(inplace_map)}"
+        for inplace_input, inplace_output in inplace_map.items():
+            return_str = f"""
+    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_args_info, \"final_state_{fwd_api_name}\", \"{inplace_input}\");
+    ssize_t return_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_returns_info, \"final_state_{fwd_api_name}\", \"{inplace_output}\");
+    return ToPyObject(out, return_id, args, arg_id);
+"""
+
+            break
+    else:
+        return_str = "    return ToPyObject(out);"
+
     pythonc_event_str = f"paddle::platform::RecordEvent pythonc_record_event(\"{fwd_api_name} pybind_imperative_func\", paddle::platform::TracerEventType::Operator, 1);"
 
     PYTHON_C_FUNCTION_TEMPLATE = """
@@ -118,7 +133,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
     
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-    return ToPyObject(out);
+{}
   }}
   catch(...) {{
     if (tstate) {{
@@ -141,7 +156,8 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, pythonc_event_str, fwd_api_name, get_eager_tensor_str,
-        parse_attributes_str, fwd_function_name, dygraph_function_call_str)
+        parse_attributes_str, fwd_function_name, dygraph_function_call_str,
+        return_str)
 
     python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void)) {namespace_str}eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
@@ -300,6 +316,10 @@ if __name__ == "__main__":
             if fwd_api_name in skipped_fwd_api_names:
                 continue
 
+            inplace_map = {}
+            if 'inplace' in fwd_api.keys():
+                inplace_map = ParseInplaceInfo(fwd_api['inplace'])
+
             # Parse Dispensable Inputs
             optional_inputs = []
             if 'optional' in fwd_api.keys():
@@ -322,10 +342,24 @@ if __name__ == "__main__":
 
             python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
                 fwd_api_name, forward_inputs_position_map, forward_attrs_list,
-                forward_outputs_position_map, optional_inputs, is_forward_only)
+                forward_outputs_position_map, optional_inputs, is_forward_only,
+                {})
             python_c_function_list.append(python_c_function_str)
             python_c_function_reg_list.append(python_c_function_reg_str)
             print("Generated Python-C Function: ", python_c_function_str)
+
+            # Inplace Version Python-C Function
+            if 'inplace' in fwd_api.keys():
+                fwd_api_name_inplaced = GetInplacedFunctionName(fwd_api_name)
+
+                python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
+                    fwd_api_name_inplaced, forward_inputs_position_map,
+                    forward_attrs_list, forward_outputs_position_map,
+                    optional_inputs, is_forward_only, inplace_map)
+                python_c_function_list.append(python_c_function_str)
+                python_c_function_reg_list.append(python_c_function_reg_str)
+                print("Generated Inplaced Python-C Function: ",
+                      python_c_function_str)
 
         # Append Namespace
         python_c_functions_reg_str += ",\n".join(

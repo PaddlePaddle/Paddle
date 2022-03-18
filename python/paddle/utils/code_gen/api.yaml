@@ -166,6 +166,7 @@
   kernel :
     func : relu
   inplace : (x -> out)
+  backward: relu_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
