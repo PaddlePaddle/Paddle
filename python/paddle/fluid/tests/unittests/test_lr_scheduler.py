@@ -51,7 +51,8 @@ def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,
             var_list[2] = cooldown
             var_list[3] = 0
             new_lr = var_list[1] * decay_rate
-            var_list[1] = new_lr if var_list[1] - new_lr > 1e-8 else var_list[1]
+            var_list[1] = new_lr if var_list[1] - \
+                new_lr > 1e-8 else var_list[1]
 
     return var_list[1]
 
@@ -321,6 +322,47 @@ def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
     return learning_rate * math.pow(gamma, epoch_num // step_size)
 
 
+def cyclic_lr(epoch_num,
+              base_learning_rate,
+              max_learning_rate,
+              step_size_up,
+              step_size_down,
+              mode,
+              gamma=0.1,
+              scale_fn=None,
+              scale_mode='cycle',
+              verbose=False):
+    total_steps = step_size_up + step_size_down
+    step_ratio = step_size_up / total_steps
+    if scale_fn is None:
+        if mode == 'triangular':
+            def scale_fn(x): return 1.
+            scale_mode = 'cycle'
+        elif mode == 'triangular2':
+            def scale_fn(x): return 1 / (2. ** (x - 1))
+            scale_mode = 'cycle'
+        elif mode == 'exp_range':
+            def scale_fn(x): return gamma**(x)
+            scale_mode = 'interations'
+
+    cycle = math.floor(1 + epoch_num / total_steps)
+    x = 1. + epoch_num / total_steps - cycle
+
+    if x <= step_ratio:
+        scale_factor = x / step_ratio
+    else:
+        scale_factor = (x - 1) / (step_ratio - 1)
+
+    base_height = (max_learning_rate - base_learning_rate) * scale_factor
+
+    if scale_mode == 'cycle':
+        lr = base_learning_rate + base_height * scale_fn(cycle)
+    else:
+        lr = base_learning_rate + base_height * scale_fn(epoch_num)
+
+    return lr
+
+
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
         scheduler = paddle_api(**kwarg)
@@ -526,6 +568,56 @@ class TestLRScheduler(unittest.TestCase):
         }), (cosine_annealing_lr, paddle.optimizer.lr.CosineAnnealingDecay, {
             "learning_rate": 0.5,
             "T_max": 10,
+            "verbose": False
+        }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+            "base_learning_rate": 0.5,
+            "max_learning_rate": 1.0,
+            "step_size_up": 15,
+            "step_size_down": 5,
+            "mode": 'triangular',
+            "gamma": 1.,
+            "scale_mode": None,
+            "scale_mode": 'cycle',
+            "verbose": False
+        }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+            "base_learning_rate": 0.5,
+            "max_learning_rate": 1.0,
+            "step_size_up": 15,
+            "step_size_down": 5,
+            "mode": 'triangular2',
+            "gamma": 1.,
+            "scale_mode": None,
+            "scale_mode": 'cycle',
+            "verbose": False
+        }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+            "base_learning_rate": 0.5,
+            "max_learning_rate": 1.0,
+            "step_size_up": 15,
+            "step_size_down": 5,
+            "mode": 'exp_range',
+            "gamma": 0.8,
+            "scale_mode": None,
+            "scale_mode": 'cycle',
+            "verbose": False
+        }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+            "base_learning_rate": 0.5,
+            "max_learning_rate": 1.0,
+            "step_size_up": 15,
+            "step_size_down": 5,
+            "mode": 'exp_range',
+            "gamma": 1.,
+            "scale_mode": lambda x: 0.95**x,
+            "scale_mode": 'cycle',
+            "verbose": False
+        }), (cyclic_lr, paddle.optimizer.lr.CyclicLR, {
+            "base_learning_rate": 0.5,
+            "max_learning_rate": 1.0,
+            "step_size_up": 15,
+            "step_size_down": 5,
+            "mode": 'exp_range',
+            "gamma": 1.,
+            "scale_mode": lambda x: 0.95,
+            "scale_mode": 'iterations',
             "verbose": False
         })]
 
