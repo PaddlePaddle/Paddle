@@ -426,7 +426,7 @@ class TestFleetBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": "",
+            "http_proxy": ""
         }
 
         required_envs.update(need_envs)
