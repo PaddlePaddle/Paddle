@@ -22,7 +22,7 @@ MLIRModelGenImpl::MLIRModelGenImpl()
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
-  context_->getOrLoadDialect<mlir::pd::PaddleDialect>();
+  context_->getOrLoadDialect<infrt::pd::PaddleDialect>();
   context_->getOrLoadDialect<::infrt::InfrtDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
