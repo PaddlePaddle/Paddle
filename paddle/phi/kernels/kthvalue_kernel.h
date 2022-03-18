@@ -1,4 +1,5 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// .part used to speed up nvcc compile
-#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
+#pragma once
 
-template <typename T>
-using CUDAReduceMeanGradKernel =
-    ops::ReduceCudaGradKernel<T, kps::DivideFunctor>;
+#include "paddle/phi/core/dense_tensor.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_mean_grad, CUDAReduceMeanGradKernel<bool>,
-                        CUDAReduceMeanGradKernel<paddle::platform::float16>,
-                        CUDAReduceMeanGradKernel<float>,
-                        CUDAReduceMeanGradKernel<double>);
+namespace phi {
+
+template <typename T, typename Context>
+void KthvalueKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    int k,
+                    int axis,
+                    bool keepdim,
+                    DenseTensor* out,
+                    DenseTensor* indices);
+}  // namespace phi

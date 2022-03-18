@@ -517,11 +517,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
 
     // TODO(jiabin): Should we erase it or find a more efficient way.
+
     node_input_buffers_dict.erase(node);
 
     // Prepare GradTensorHolder for next node
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
@@ -548,6 +548,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
             grad_output_tensors[i].empty()) {
           continue;
         }
+
         PADDLE_ENFORCE_LT(
             j, grad_output_tensors[i].size(),
             paddle::platform::errors::Fatal(
