@@ -14,7 +14,6 @@
 
 import numpy as np
 import os
-from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
@@ -70,11 +69,10 @@ class ReduceOp:
             out = data.numpy()
             # [[5, 7, 9], [5, 7, 9]]
     """
-    SUM = core.ReduceOp.SUM
-    AVG = core.ReduceOp.AVG
-    MAX = core.ReduceOp.MAX
-    MIN = core.ReduceOp.MIN
-    PROD = core.ReduceOp.PRODUCT
+    SUM = 0
+    MAX = 1
+    MIN = 2
+    PROD = 3
 
 
 class Task(object):
@@ -90,7 +88,6 @@ class Task(object):
 
     def wait(self):
         assert not in_dygraph_mode(), "Python Task only works in static mode."
-        # temp = fill_constant([1], dtype="int32", value="1")
         wait(self.tensor, self.group, self.use_calc_stream)
 
 
@@ -518,7 +515,7 @@ def _sync_comm_stream(tensor, ring_id=0):
         attrs={'ring_id': ring_id}, )
 
 
-def broadcast(tensor, src, group=None, async_op=False):
+def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
     Broadcast a tensor from the source to all others.
@@ -574,11 +571,7 @@ def broadcast(tensor, src, group=None, async_op=False):
 
     if in_dygraph_mode():
         task = group.process_group.broadcast(tensor, gsrc)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
+        return task
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -595,14 +588,11 @@ def broadcast(tensor, src, group=None, async_op=False):
             'use_calc_stream': False if async_op else True,
             'ring_id': ring_id,
         })
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
+    task = Task(tensor, group, use_calc_stream=use_calc_stream)
     return task
 
 
-def all_reduce(tensor, op=ReduceOp.SUM, group=None, async_op=False):
+def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
@@ -654,13 +644,17 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, async_op=False):
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
     group = _get_default_group() if group is None else group
     ring_id = group.id
+    if op == ReduceOp.SUM:
+        op_type = core.ReduceOp.SUM
+    elif op == ReduceOp.MAX:
+        op_type = core.ReduceOp.MAX
+    elif op == ReduceOp.MIN:
+        op_type = core.ReduceOp.MIN
+    elif op == ReduceOp.PROD:
+        op_type = core.ReduceOp.PRODUCT
     if in_dygraph_mode():
         task = group.allreduce(tensor, reduce_type)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
+        return task
 
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -684,10 +678,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, async_op=False):
             'ring_id': ring_id,
             'use_calc_stream': False if async_op else True
         })
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
+    task = Task(tensor, group, use_calc_stream=use_calc_stream)
     return task
 
 
@@ -750,13 +741,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
     if in_dygraph_mode():
         task = group.reduce(tensor, gdst, reduce_type)
-        if async_op:
-            return task
-            task.wait()
-            return None
-        else:
-            task.wait()
-            return None
+        return task
 
     op_type = 'c_reduce'
     check_variable_and_dtype(
@@ -783,10 +768,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             'root_id': gdst,
         })
 
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
+    task = Task(tensor, group, use_calc_stream=use_calc_stream)
     return task
 
 
@@ -847,14 +829,10 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     nranks = group.nranks
 
     if in_dygraph_mode():
-        group = _default_group if group is None else group
         out = paddle.concat(tensor_list)
+        wait(out, group, use_calc_stream=True)
         task = group.all_gather(tensor, out)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
+        task.wait()
     else:
         op_type = 'c_allgather'
         helper = LayerHelper(op_type, **locals())
@@ -879,12 +857,10 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
                 'use_calc_stream': False if async_op else True,
                 'nranks': nranks
             })
+        task = Task(temp, group, use_calc_stream=use_calc_stream)
+        task.wait()
 
     tensor_list.extend(paddle.split(out, nranks, 0))
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
     return task
 
 
@@ -955,14 +931,10 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         for _ in range(nranks):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
+    wait(temp, group, use_calc_stream=True)
     if in_dygraph_mode():
-        group = _default_group if group is None else group
         task = group.scatter(temp, tensor, gsrc)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
+        return task
     op_type = 'c_scatter'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -975,13 +947,10 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         attrs={
             'ring_id': ring_id,
             'root': gsrc,
-            'use_calc_stream': False if async_op else True,
+            'use_calc_stream': use_calc_stream,
             'nranks': nranks,
         })
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
+    task = Task(temp, group, use_calc_stream=False)
     return task
 
 
@@ -1691,7 +1660,7 @@ def split(x,
         return linear_out
 
 
-def alltoall(in_tensor_list, out_tensor_list, group=None, async_op=False):
+def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators averagely and gather the result tensors in out_tensor_list.
     As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
@@ -1743,15 +1712,10 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, async_op=False):
     ring_id = group.id
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
+    wait(temp, group, use_calc_stream=True)
     if in_dygraph_mode():
-        group = _default_group if group is None else group
-        out = paddle.concat(out_tensor_list)
+        out = paddle.empty_like(temp, temp.dtype)
         task = group.alltoall(temp, out)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
@@ -1778,17 +1742,15 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, async_op=False):
             outputs={'Out': [out]},
             attrs={
                 'ring_id': ring_id,
-                'use_calc_stream': False if async_op else True,
+                'use_calc_stream': use_calc_stream,
             })
+        task = Task(temp, group, use_calc_stream=use_calc_stream)
+    task.wait()
     out_tensor_list.extend(paddle.split(out, nranks, 0))
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
     return task
 
 
-def send(tensor, dst=0, group=None, async_op=False):
+def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     Send a tensor to the receiver.
 
@@ -1825,11 +1787,7 @@ def send(tensor, dst=0, group=None, async_op=False):
 
     if in_dygraph_mode():
         task = group.send(tensor, dst)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
+        return task
 
     op_type = 'send_v2'
     check_variable_and_dtype(
@@ -1845,10 +1803,7 @@ def send(tensor, dst=0, group=None, async_op=False):
             'peer': dst,
             'use_calc_stream': use_calc_stream,
         })
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
+    task = Task(tensor, group, use_calc_stream=use_calc_stream)
     return task
 
 
@@ -1889,11 +1844,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         task = group.recv(tensor, src)
-        if async_op:
-            return task
-        else:
-            task.wait()
-            return None
+        return task
     op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1909,8 +1860,5 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             'dtype': tensor.dtype,
             'use_calc_stream': use_calc_stream,
         })
-    if async_op:
-        task = Task(temp, group, use_calc_stream=False)
-    else:
-        task = None
+    task = Task(tensor, group, use_calc_stream=use_calc_stream)
     return task
