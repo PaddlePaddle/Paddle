@@ -1,0 +1,149 @@
+{% from "utils.jinja" import 
+  get_return_type, 
+  prepare_inputs_for_meta, 
+  prepare_outputs_for_meta, 
+  infer_meta
+%}
+
+{# process for an arg
+1. paddle::experimental::Tensor -> phi::DenseTensor
+2. paddle::ScalarArray -> phi::ScalarArray
+3. paddle::Scalar -> phi::Scalar
+4. process trans_flag for inputs #}
+{% macro process_an_input(i, input, kernel_args) %}
+  {% set name = input["name"] %}
+  {% if name in kernel_args %}
+    {% set trans_flag = "{" + input["trans_flag"] | join(", ") | lower + "}" %}
+    {% if input["optional"] %}{# optional DenseTensor #}}
+{{input["typename"] | to_phi_input_type(optional=input["optional"])}} input_{{name}}(paddle::none);
+auto input_{{name}}_ptr = PrepareData({{name}}, kernel.InputAt({{i}}), {{trans_flag}});
+if (input_{{name}}_ptr){
+  input_{{name}} = paddle::make_optional<const phi::DenseTensor&>(*input_{{name}}_ptr);
+}
+    {% elif input["typename"] == "Tensor" %}
+auto input_{{name}} = PrepareData({{name}}, kernel.InputAt({{i}}), {{trans_flag}});
+    {% elif input["typename"] == "Tensor[]" %}
+auto input_{{name}}_vec = PrepareData({{name}}, kernel.InputAt({{i}}), {{trans_flag}});
+std::vector<const phi::DenseTensor*> input_{{name}}(input_{{name}}_vec->size());
+for (size_t i = 0; i < input_{{name}}.size(); ++i) {
+  input_{{name}}[i] = &input_{{name}}_vec->at(i);
+}
+    {% endif %}
+  {% else %}{# this arg is not an input of kernel function #}
+    {% if input["optional"] %}{# optional DenseTensor #}
+{{input["typename"] | to_phi_input_type(optional=input["optional"])}} input_{{name}}(paddle::none);
+auto input_{{name}}_ptr = TensorToDenseTensor({{name}});
+if (input_{{name}}_ptr) {
+  input_{{name}} = paddle::make_optional<const phi::DenseTensor&>(*input_{{name}}_ptr);
+}
+    {% else %}{# Tensor #}
+auto input_{{name}} = TensorToDenseTensor({{name}});
+    {% endif %}
+  {% endif %}{# this arg is an input of kernel function #}
+{% endmacro process_an_input %}
+
+{# prepare inputs: some kind of inputs need special processing #}
+{% macro prepare_inputs(api) %}
+  {% set kernel_arg_names = api["kernel"]["param"] %}
+  {% set inputs = api["inputs"] %}
+  {% for input in inputs %}
+{{process_an_input(loop.index0, input, kernel_arg_names)}}
+  {% endfor %}
+{% endmacro %}
+
+
+{# kernel output names, used to call kernel function, inline #}
+{% macro get_output_names(api) %}
+  {% set output_names = [] %}
+  {% set num_outputs = api["outputs"] | length %}
+  {% if num_outputs == 1 %}
+    {% do output_names.append("kernel_out") %}
+  {% elif num_outputs > 1 %}
+    {% for i in range(num_outputs) %}
+      {% do output_names.append("kernel_out_{}".format(i)) %}
+    {% endfor %}
+  {% endif %}
+{{output_names | join(", ")}}
+{%- endmacro get_output_names %}
+
+{# kernel input args, used to call kernel function, inline #}
+{% macro get_kernel_arg_names(api) %}
+  {% set input_map = api["inputs"] | to_named_dict %}
+  {% set attr_map = api["attrs"] | to_named_dict %}
+  {% set kernel_arg_names = [] %}
+  {% do kernel_arg_names.append("*dev_ctx") %}
+  {% for name in api["kernel"]["param"] %}
+    {% if name in input_map %}
+      {% if input_map[name]["optional"] %}
+        {% do kernel_arg_names.append("input_{}".format(name)) %}
+      {% elif input_map[name]["typename"] == "Tensor" %}
+        {% do kernel_arg_names.append("*input_{}".format(name)) %}
+      {% elif input_map[name]["typename"] == "Tensor[]" %}
+        {% do kernel_arg_names.append("input_{}".format(name)) %}
+      {% endif %}
+    {% elif name in attr_map %}
+      {% if "ScalarArray" in attr_map[name]["typename"] %}
+        {% do kernel_arg_names.append("phi::ScalarArray({})".format(name)) %}
+      {% elif "Scalar" in attr_map[name]["typename"] %}
+        {% do kernel_arg_names.append("phi::Scalar({})".format(name)) %}
+      {% else %}
+        {% do kernel_arg_names.append(name) %}
+      {% endif %}
+    {% else %}
+      {% do kernel_arg_names.append(name) %}
+    {% endif %}
+  {% endfor %}
+{{kernel_arg_names | join(", ")}}
+{%- endmacro get_kernel_arg_names %}
+
+{# kernel argument types, used to declare the type of kernel function #}
+{% macro get_kernel_arg_types(api) %}
+  {% set input_map = api["inputs"] | to_named_dict %}
+  {% set attr_map = api["attrs"] | to_named_dict %}
+  {% set kernel_arg_types = [] %}
+  {% do kernel_arg_types.append("const platform::DeviceContext&") %}
+  {% for name in api["kernel"]["param"] %}
+    {% if name in input_map %}
+      {% do kernel_arg_types.append(input_map[name]["typename"] |  to_phi_input_type(optional=input_map[name]["optional"]))%}
+    {% elif name in attr_map %}
+      {% do kernel_arg_types.append(attr_map[name]["typename"] | to_phi_attr_type(optional=attr_map[name]["optional"])) %}
+    {% else %}{# nothing#}
+    {% endif %}
+  {% endfor %}
+  {% for output in api["outputs"] %}
+    {% do kernel_arg_types.append(output["typename"] |  to_phi_output_type) %}
+  {% endfor %}
+{{kernel_arg_types | join(", ")}}
+{%- endmacro get_kernel_arg_types %}
+
+{% macro call_kernel(api) %}
+using kernel_signature = void(*)({{get_kernel_arg_types(api)}});
+auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+(*kernel_fn)({{get_kernel_arg_names(api)}}, {{get_output_names(api)}});
+{% endmacro call_kernel %}
+
+
+{% macro dense_kernel(api, with_inplace) %}
+{# get kernel instance #}
+auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  "{{api["kernel"]["func"][0]}}", {kernel_backend, kernel_layout, kernel_data_type});
+VLOG(6) << "{{api["name"]}} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+VLOG(6) << "{{api["name"]}} API kernel: " << kernel;
+
+auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+
+{# get inputs for kernel #}
+{{prepare_inputs(api)}}
+{# get outputs for kernel #}
+{{prepare_outputs(api, with_inplace)}}
+{# prepare inputs for meta #}
+{{prepare_inputs_for_meta(api)}}
+{# prepare outputs for meta #}
+{{prepare_outputs_for_meta(api)}}
+{# call infer meta function #}
+{{call_infer_meta(api)}}
+{# call kernel function #}
+{{call_kernel(api)}}
+{# return #}
+{{return_values(api)}}
+{% endmacro %}

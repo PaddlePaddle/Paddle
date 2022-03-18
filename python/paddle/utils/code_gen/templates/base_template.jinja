@@ -1,0 +1,29 @@
+{# ---------pragma for compiler--------- #}
+{% block pragma %}
+{% endblock %}
+{# ---------inclusion of headers--------- #}
+{% block includes %}
+{% endblock %}
+
+namespace paddle {
+namespace experimental {
+
+
+{% for api in apis %}
+  {% block api_entry scoped %}
+  {% endblock %}
+
+  {% set inplace = "inplace_map" in api and api["inplace_map"] is not none %}
+  {% if inplace %}
+    {% block inplace_api_entry scoped %}
+    {% endblock %}
+
+  {% endif %}{# inplace #}
+{% endfor %}{# api #}
+
+}  // namespace experimental
+}  // namespace paddle
+
+{# ---------other content(if necessary) --------- #}
+{% block post %}
+{% endblock %}

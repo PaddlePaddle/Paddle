@@ -1,0 +1,215 @@
+{# used to generate interface #}
+{# return type: std::tuple of multiple return types or a single return type #}
+{% macro get_return_type(outputs) %}
+  {% if outputs | length > 1 %}
+std::tuple<{{outputs | map(attribute="typename") | map(to_paddle_output_type) | join(", ")}}>
+  {%- else %}
+{{outputs[0]["typename"] | to_paddle_output_type}}
+  {%- endif %}
+{%- endmacro %}
+
+
+{# arg list for declaration, with default values if present #}
+{% macro get_arglist_for_declaration(inputs, attrs) -%}
+  {% set args = [] %}
+  {# inputs #}
+  {% for input in inputs %}
+    {% set arg_str %}
+{{input["typename"] | to_paddle_input_type(optional=input["optional"])}} {{input["name"]}}
+    {%- endset %}
+    {% do args.append(arg_str) %}
+  {% endfor %}{# input in inputs#}
+  {% for attr in attrs %}
+    {% set arg_str %}
+{{attr["typename"] | to_paddle_attr_type(optional=attr["optional"])}} {{attr["name"]}}{{"=" + attr["default_value"] if attr["default_value"] is not none else ""}}
+    {%- endset %}
+    {% do args.append(arg_str) %}
+  {% endfor %}{# attr in attrs#}
+{{args | join(", ")}}
+{%- endmacro %}
+
+{% macro kernel_selection(api) %}
+{# --------------- init for kernel selection -------------------------- #}
+Backend kernel_backend = Backend::UNDEFINED;
+DataLayout kernel_layout = DataLayout::UNDEFINED;
+DataType kernel_data_type = DataType::UNDEFINED;
+
+  {# ----------------------------backend--------------------------------- #}
+  {% if api["kernel"]["backend"] %}
+    {% if api["kernel"]["backend"]["ordered"] %}
+kernel_backend = ParseBackendWithInputOrder({{api["kernel"]["backend"]["candidates"][0]}}, {{api["kernel"]["backend"]["candidates"][1]}});
+    {% else %}
+kernel_backend = ParseBackend({{api["kernel"]["backend"]["candidates"] | join(", ")}});
+    {% endif %}
+  {% endif %}
+  {# ----------------------------layout--------------------------------- #}
+  {% if api["kernel"]["layout"] %}
+    {% if api["kernel"]["layout"]["ordered"] %}
+kernel_layout = ParseLayoutWithInputOrder({{api["kernel"]["layout"]["candidates"][0]}}, {{api["kernel"]["data_layout"]["candidates"][1]}});
+    {% else %}
+kernel_layout = ParseLayout({{api["kernel"]["layout"]["candidates"] | join(", ")}});
+    {% endif %}
+  {% endif %}
+  {# ----------------------------dtype--------------------------------- #}
+  {% if api["kernel"]["data_type"] %}
+    {% if api["kernel"]["data_type"]["ordered"] %}
+kernel_data_type = ParseDataTypeWithInputOrder({{api["kernel"]["data_type"]["candidates"][0]}}, {{api["kernel"]["data_type"]["candidates"][1]}});
+    {% else %}
+kernel_data_type = ParseDataType({{api["kernel"]["data_type"]["candidates"] | join(", ")}});
+    {% endif %}
+  {% endif %}
+  {# ----------------------------kernel selection------------------------------ #}
+  {% if api["inputs"] | length > 0 %}
+  {# ----------------------------selected rows--------------------------------- #}
+    {% if api["kernel"]["func"] | length == 2 %}
+KernelType kernel_type = ParseKernelTypeByInputArgs({{api["inputs"] | join(", ", attribute="name")}});
+    {% endif %}
+{# ------------------------------------------------------------- #}
+if (kernel_backend == Backend::UNDEFINED
+    || kernel_layout == DataLayout::UNDEFINED
+    || kernel_data_type == DataType::UNDEFINED ) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs({{api["inputs"] | join(", ", attribute="name")}});
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+  if (kernel_backend == Backend::UNDEFINED) {
+    kernel_backend = kernel_key.backend();
+  }
+  if (kernel_layout == DataLayout::UNDEFINED) {
+    kernel_layout = kernel_key.layout();
+  }
+  if (kernel_data_type == DataType::UNDEFINED) {
+    kernel_data_type = kernel_key.dtype();
+  }
+}
+  {% endif %}
+{% endmacro %}
+
+{# arg list for declaration, without default values here #}
+{% macro get_arglist_for_definition(inputs, attrs) %}
+  {% set args = [] %}
+  {% for input in inputs %}
+    {% set arg_str %}
+{{input["typename"] | to_paddle_input_type(optional=input["optional"])}} {{input["name"]}}
+    {%- endset %}
+    {% do args.append(arg_str)%}
+  {% endfor %}
+  {% for attr in attrs %}
+    {% set arg_str %}
+{{attr["typename"] | to_paddle_attr_type(optional=attr["optional"])}} {{attr["name"]}}
+    {%- endset %}
+    {% do args.append(arg_str) %}
+  {% endfor %}
+{{args | join(", ")}}
+{%- endmacro %}
+
+{% macro prepare_inputs_for_meta(api) %}
+  {% for input in api["inputs"] %}
+    {% set name = input["name"] %}
+    {% if name in api["infer_meta"]["param"] %}
+      {% if input["typename"] == "Tensor[]" %}
+auto {{name}}_meta_vec = MakeMetaTensor(input_{{name}});
+std::vector<phi::MetaTensor*> {{name}}_metas({{name}}_meta_vec.size());
+for (size_t i = 0; i < {{name}}_meta_vec.size(); ++i) {
+  {{name}}_metas[i] = &{{name}}_meta_vec[i];
+}
+      {% elif input["optional"] %}
+paddle::optional<const phi::MetaTensor&> input_meta_ref_{{name}}(paddle::none);
+auto input_meta_{{name}} = MakeMetaTensor(input_{{name}});
+if (input_meta_{{name}}) {
+  input_meta_ref_{{name}} = paddle::make_optional<const phi::MetaTensor&>(*input_meta_{{name}});
+}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+
+{% macro prepare_outputs_for_meta(api) %}
+  {% set num_outputs = api["outputs"] | length %}
+  {% if num_outputs == 1 %}
+phi::MetaTensor meta_out(kernel_out);
+  {% elif num_outputs > 1 %}
+    {% for i in range(num_outputs) %}
+phi::MetaTensor meta_out_{{i}}(kernel_out_{{i}});
+    {% endfor %}
+  {% endif %}
+{% endmacro %}
+
+{% macro call_infer_meta(api) %}
+  {% set input_map = api["inputs"] | to_named_dict %}
+  {% set attr_map = api["attrs"] | to_named_dict %}
+  {% set infer_meta_args = [] %}
+  {# inputs for infer_meta from inputs or attrs, ...#}
+  {% for name in api["infer_meta"]["param"] %}
+    {% if name in input_map %}
+      {% set arg = input_map[name] %}
+      {% if arg["typename"] == "Tensor" %}
+        {% do infer_meta_args.append("MakeMetaTensor(*input_{})".format(name)) %}
+      {% elif arg["typename"] == "Tensor[]" %}
+        {% do infer_meta_args.append("{}_metas".format(name)) %}
+      {% elif args["optional"] %}
+        {% do infer_meta_args.append("input_meta_ref_{}".format(name)) %}
+      {% endif %}
+    {% elif name in attr_map %}
+      {% do infer_meta_args.append(name) %}
+    {% else %}{# other arg for infer_meta, not in api inputs, attrs, kernel_outputs #}
+      {% do infer_meta_args.append(name) %}
+    {% endif %}
+  {% endfor %}
+  {# inputs for infer_meta from outputs #}
+  {% set num_outputs = api["outputs"] | length %}
+  {% if num_outputs == 1 %}
+    {% do infer_meta_args.append("&meta_out") %}
+  {% elif num_outputs > 1 %}
+    {% for i in range(num_outputs) %}
+      {% do infer_meta_args.append("&meta_out_{}".format(i)) %}
+    {% endfor %}
+  {% endif %}
+phi::{{api["infer_meta"]["func"]}}({{infer_meta_args | join(", ")}});
+{% endmacro %}
+
+
+{% macro return_values(api) %}
+  {% set num_intermediate_outputs = api["outputs"] | selectattr("intermediate") | list | length %}
+  {% if num_intermediate_outputs == 0 %}
+return api_output;
+  {% else %}
+    {% set return_indices = [] %}
+    {% for output in api["outputs"] %}
+      {% if output["optional"] is false %}
+        {% do return_indices.append(i)%}
+      {% endif %}
+    {% endfor %}
+    {% if return_indices | length == 1%}
+return std::get<{{return_indices[0]}}>(api_output);
+    {% else %}
+      {% set selected = []%}
+      {% for i in return_indices %}
+        {% do selected.append("std::get<{}>(api_output)".format(i)) %}
+      {% endfor %}
+return {{'{'}}{{selected | join(", ")}}{{'}'}};
+    {% endif %}
+  {% endif %}
+{% endmacro return_values %}
+
+{# prepare outputs, inplace mapping is done here 
+with_inplace: whether to generate inplce mapping
+set_kernel_out_fn: function name to set arg for a kernel #}
+{% macro prepare_outputs(api, with_inplace, set_kernel_out_fn) %}
+  {% set outputs = api["outputs"] %}
+  {% if outputs | length == 1 %}
+    {% set name = outputs[0]["name"] %}
+    {% set is_inplaced = with_inplace and api["inplace_map"] is not none and name in api["inplace_map"]%}
+{{get_return_type(outputs)}} api_output{{" = " + api["inplace_map"][name] if is_inplaced else ""}};
+auto kernel_out = {{set_kernel_out_fn}}(kernel_backend, &api_output);
+  {% elif outputs | length > 1 %}
+{{get_return_type(outputs)}} api_output;
+    {% for output in ouputs %}
+      {% set name = output["name"] %}
+      {% set is_inplaced = with_inplace and api["inplace_map"] is not none and name in api["inplace_map"]%}
+      {% if is_inplaced %}
+std::get<{{loop.index0}}>(api_output) = api["inplace_map"][name];
+      {% endif %}
+auto kernel_out_{{loop.index0}} = {{set_kernel_out_fn}}(kernel_backend, &std::get<{{loop.index0}}>(api_output));
+    {% endfor %}
+  {% endif %}
+{% endmacro prepare_inputs %}

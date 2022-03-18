@@ -1,0 +1,118 @@
+{% from "dense_kernel.jinja" import 
+  prepare_inputs_for_meta, 
+  prepare_outputs_for_meta, 
+  call_infer_meta, 
+  call_kernel, 
+  return_values
+%}
+{# prepare inputs: from paddle::experimental::Tensor to selected kernel types #}
+{% macro prepare_inputs(inputs) %}
+{% for input in inputs %}
+{{prpcess_an_input(input)}}
+{% endfor %}
+{% endmacro %}
+
+{# prepare an input: Only selected rows and optional selected rows 
+are supported now. Vector of selected rows are not supported yet. #}
+{% macro process_an_input(input) %}
+  {% set name = input["name"] %}
+  {% set typename = input["typename"] %}
+  {% if input["optional"] %}
+{{typename | to_sr_type }} input_{{name}}(paddle::none);
+auto input_{{name}}_ptr = TensorToSelectedRows({{name}});
+if (input_{{name}}_ptr) {
+  input_{{name}} = paddle::make_optional<const phi::SelectedRows&>(*input_{{name}}_ptr);
+}
+  {% else %}
+auto input_{{name}} = TensorToSelectedRows({{name}});
+  {% endif %}
+{% endmacro %}
+
+{% macro get_kernel_arg_names(api) %}
+  {% set input_map = api["inputs"] | to_named_dict %}
+  {% set attr_map = api["attrs"] | to_named_dict %}
+  {% set kernel_arg_names = [] %}
+  {% do kernel_arg_names.append("*dev_ctx") %}
+  {% for name in api["kernel"]["param"] %}
+    {% if name in input_map %}
+      {% if input_map[name]["optional"] %}
+        {% do kernel_arg_names.append("*input_{}".format(name)) %}
+      {% else %}
+        {% do kernel_arg_names.append("input_{}".format(name)) %}
+      {% endif %}
+    {% elif name in attr_map %}
+      {% if "ScalarArray" in attr_map[name]["typename"] %}
+        {% do kernel_arg_names.append("phi::ScalarArray({})".format(name)) %}
+      {% elif "Scalar" in attr_map[name]["typename"] %}
+        {% do kernel_arg_names.append("phi::Scalar({})".format(name)) %}
+      {% else %}
+        {% do kernel_arg_names.append(name) %}
+      {% endif %}
+    {% else %}{# to support literals here?#}
+      {% do kernel_arg_names.append(name) %}
+    {% endif %}
+  {% endfor %}
+{{kernel_arg_names | join(", ")}}
+{%- endmacro %}
+
+
+{% macro get_kernel_arg_types(api) %}
+  {% set input_map = api["inputs"] | to_named_dict %}
+  {% set attr_map = api["attrs"] | to_named_dict %}
+  {% set kernel_arg_types = [] %}
+  {% do kernel_arg_types.append("const platform::DeviceContext&") %}
+  {% for name in api["kernel"]["param"] %}
+    {% if name in input_map %}
+      {% do kernel_arg_types.append(input_map[name]["typename"] |  to_st_type(optional=input_map[name]["optional"]))%}
+    {% elif name in attr_map %}
+      {% do kernel_arg_types.append(attr_map[name]["typename"] | to_phi_attr_type(optional=attr_map[name]["optional"])) %}
+    {% else %}{# nothing#}
+    {% endif %}
+  {% endfor %}
+  {% for output in api["outputs"] %}
+    {% do kernel_arg_types.append(output["typename"] |  to_sr_type) %}
+  {% endfor %}
+{{kernel_arg_types | join(", ")}}
+{%- endmacro %}
+
+{# prepare outputs #}
+{% macro prepare_outputs(api, with_inplace) %}
+  {% set outputs = api["outputs"] %}
+  {% if outputs | length == 1 %}
+    {% set name = outputs[0]["name"] %}
+    {% set is_inplaced = with_inplace and api["inplace_map"] is not none and name in api["inplace_map"]%}
+{{get_return_type(outputs)}} api_output{{" = " + api["inplace_map"][name] if is_inplaced else ""}};
+auto kernel_out = SetSelectedRowsKernelOutput(kernel_backend, &api_output);
+  {% elif outputs | length > 1%}
+{{get_return_type(outputs)}} api_output;
+    {% for output in ouputs %}
+      {% set name = output["name"] %}
+      {% set is_inplaced = with_inplace and api["inplace_map"] is not none and name in api["inplace_map"]%}
+      {% if is_inplaced %}
+std::get<{{loop.index0}}>(api_output) = api["inplace_map"][name];
+      {% endif %}
+auto kernel_out_{{loop.index0}} = SetSelectedRowsKernelOutput(kernel_backend, &std::get<{{loop.index0}}>(api_output));
+    {% endfor %}
+  {% endif %}
+{% endmacro %}
+
+
+
+{% macro selected_rows_kernel(api, with_inplace) %}
+auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+    "{{api["kernel"]["func"][1]}}", {{kernel_backend, kernel_layout, kernel_data_type}});
+VLOG(6) << "{{api["name"]}} API SelectedRows kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+VLOG(6) << "{{api["name"]}} API SelectedRows kernel: " << kernel;
+auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{{prepare_inputs(api)}}
+{{prepare_outputs(api, with_inplace)}}
+{{prepare_inputs_for_meta(api)}}
+{# prepare outputs for meta #}
+{{prepare_outputs_for_meta(api)}}
+{# call infer meta function #}
+{{call_infer_meta(api)}}
+{# call kernel function #}
+{{call_kernel(api)}}
+{# return #}
+{{return_values(api)}}
+{% endmacro %}

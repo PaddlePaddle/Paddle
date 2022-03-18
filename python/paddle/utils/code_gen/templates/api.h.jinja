@@ -1,0 +1,23 @@
+{% extends "base_template.jinja" %}
+{%- from "utils.jinja" import get_return_type, get_arglist_for_declaration -%}
+
+{% block pragma %}
+#pragma once
+{% endblock pragma %}
+
+{% block includes%}
+#include <tuple>
+
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/utils/optional.h"
+{% endblock includes %}
+
+{% block api_entry %}
+PADDLE_API {{get_return_type(api["outputs"])}} {{api["name"]}}({{get_arglist_for_declaration(api["inputs"], api["attrs"])}});
+{% endblock api_entry %}
+
+{% block inplace_api_entry %}
+PADDLE_API {{get_return_type(api["outputs"])}} {{api["name"]}}_({{get_arglist_for_declaration(api["inputs"], api["attrs"])}});
+{% endblock inplace_api_entry %}

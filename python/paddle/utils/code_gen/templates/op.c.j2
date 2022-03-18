@@ -1,0 +1,18 @@
+{% from "operator_utils.c.j2" import op_maker, register_op_with_components %}
+{% if api is base_api%}
+// filename: {{api["name"]}}_op.cc
+#include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
+namespace paddle {
+namespace operators {
+
+{{op_maker(api)}}
+}  // namespace operators
+}  // namespace paddle
+
+{{register_op_with_components(api)}}
+{% endif %}

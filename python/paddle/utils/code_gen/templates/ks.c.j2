@@ -1,0 +1,12 @@
+{% from "operator_utils.c.j2" import name_map, register_name_map %}
+{% if api is base_api%}
+// filename: {{api["name"]}}_sig.cc
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/utils/small_vector.h"
+
+namespace phi {
+{{name_map(api)}}
+}  // namespace phi
+
+{{register_name_map(api)}}
+{% endif %}

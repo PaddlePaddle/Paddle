@@ -1,0 +1,173 @@
+{# --------------------------------------- op maker ---------------------------------------------- #}
+{% macro op_maker(api) %}
+  {% set api_name = api["name"] %}
+class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+  {% filter indent(4, True) %}
+    {% for input in api["inputs"] %}
+{{add_input(loop.index0, input, api_name)}};
+    {% endfor %}
+    {% for output in api["outputs"] %}
+{{add_output(loop.index0, output, api_name)}};
+    {% endfor %}
+    {% for attr in api["attrs"] %}
+{{add_attr(loop.index0, attr, api_name)}};
+    {% endfor %}
+  {% endfilter %}
+    AddComment(R"DOC(
+TODO: Documentation of {{api_name}} op.
+)DOC");
+  }
+};
+{% endmacro %}
+
+
+{% macro add_input(i, input, op_name) %}{# inline #}
+  {% set name = input["name"] %}
+  {% set typename = input["typename"] %}
+  {% set is_vec = typename.endswith("[]") %}
+AddInput("{{name| to_opmaker_name}}", "({{typename}}), input {{i}} of {{op_name}} op.")
+  {%- if is_vec +%}
+    .AsDuplicable()
+  {%- endif %}
+  {%- if input["optional"] +%}
+    .AsDispensable()
+  {%- endif %}
+{%- endmacro %}
+
+{% macro add_output(i, output, op_name) %}{# inline #}
+  {% set name = output["name"] %}
+  {% set typename = output["typename"] %}
+  {% set is_vec = typename.endswith("[]") %}
+AddOutput("{{name | to_opmaker_name}}", "({{typename}}), output {{i}} of {{op_name}} op.")
+  {%- if is_vec +%}
+    .AsDuplicable()
+  {%- endif %}
+{%- endmacro %}
+
+{% macro add_attr(i, attr, op_name) %}{# inline #}
+  {% set name = attr["name"] %}
+  {% set typename = attr["typename"] %}
+  {% if typename == "Scalar "%}
+AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
+    .AsDispensable();
+  {% elif typename == "ScalarArray" %}
+AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 1D Tensor.")
+    .AsDispensable();
+AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}} op from list fo 0D Tensors.")
+    .AsDuplicable()
+    .AsDispensable();
+  {% endif %}
+AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "attribute {{i}} for {{op_name}} op.")
+  {%- if "default_value" in attr +%}
+    .SetDefault({{process_default_value(attr)}})
+  {%- endif %}
+{%- endmacro %}
+
+{% macro process_default_value(attr) %}{# inline #}
+  {% set default_value = attr["default_value"] %}
+  {% set typename = attr["typename"] %}
+  {% set enum_types = ["DataType", "DataLayout", "Backend"] %}
+  {% if typename in enum_types %}
+experimental::{{default_value}}
+  {%- else %}
+default_value
+  {%- endif %}
+{%- endmacro %}
+
+{# --------------------------------------- name mapping ---------------------------------------------- #}
+{% macro name_map(api) %}
+KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  // build inputs, attrs, outputs
+  {% set kernel_args = api["kernel"]["param"] %}
+  {{get_input_list(api["inputs"], kernel_args)}};
+  paddle::SmallVector<std::string> attrs;
+  {% for attr in api["attrs"]%}
+  {% filter indent(2)%}
+  {{get_an_attr(attr)}};
+  {% endfilter %}
+  {% endfor %}
+  {{get_output_list(api["outputs"], kernel_args)}};
+  return KernelSignature("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+}
+{% endmacro %}
+
+
+{% macro register_name_map(api) %}
+PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}}OpArgumentMapping);
+{% endmacro %}
+
+{% macro get_input_list(inputs, kernel_args) %}{# inline #}
+paddle::SmallVector<std::string> inputs {
+{%- for input in inputs %}
+{%- if input["name"] in kernel_args %}
+"{{input["name"] | to_opmaker_name}}"{{", " if not loop.last}}
+{%- endif %}
+{%- endfor %}
+}
+{%- endmacro %}
+
+{% macro get_an_attr(attr) %}{# inline #}
+{% set typename = attr["typename"] %}
+{% set name = attr["name"] %}
+{% if typename == "Scalar" %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+attrs.emplace_back(
+  ctx.HasInput("{{name | to_pascal_case}}")
+  ? "{{name | to_pascal_case}}"
+  : "{{name}}"
+)
+{%- elif typename == "ScalarArray" %}
+attrs.emplace_back(
+  ctx.HasInput("{{name | to_pascal_case}}Tensor")
+  ? "{{name | to_pascal_case}}Tensor"
+  : ctx.InputSize("{{name | to_pascal_case}}TensorList") > 0
+    ? "{{name | to_pascal_case}}TensorList"
+    : "{{name}}"
+)
+{%- else %}
+attrs.emplace_back("{{name}}")
+{%- endif %}
+{%- endmacro %}
+
+{% macro get_output_list(outputs, kernel_args) %}{# inline #}
+paddle::SmallVector<std::string> outputs {
+{%- for output in outputs %}
+"{{output["name"] | to_opmaker_name}}"{{", " if not loop.last}}
+{%- endfor %}
+}
+{%- endmacro %}
+
+{# --------------------------------------- operator  ---------------------------------------------- #}
+{% macro operator(api) %}
+class {{api["name"] | to_pascal_case}}Op : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+{# infershape functor #}
+DECLARE_INFER_SHAPE_FUNCTOR(api["name"], {{api["name"] | to_pascal_case}}InferShapeFunctor,
+                            PD_INFER_META(phi::{{api["infer_meta"]["func"]}}));
+{# inplace inferer #}
+{% if api["inplace"] is not none %}
+{% for source, target in api["inplace"].items() %}
+DECLARE_INPLACE_OP_INFERER({{api["name"] | to_pascal_case}}InplaceInferer,
+                           {"{{source | to_opmaker_name}}", "{{target | to_opmaker_name}}"});
+{% endfor %}
+{% endif %}
+{% endmacro%}
+
+{% macro register_op_with_components(api) %}
+namespace ops = paddle::operators;
+{% set name = api["name"] %}
+{% if api["backward"] is not none %}
+{% set backward_name = api["backward"] %}
+REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_pascal_case}}OpMaker,
+                  ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
+                  ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
+                  ops::{{name | to_pascal_case}}InferShapeFunctor);
+{% else %}
+REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_pascal_case}}OpMaker,
+                  ops::{{name | to_pascal_case}}InferShapeFunctor);
+{% endif %}
+{% endmacro %}
