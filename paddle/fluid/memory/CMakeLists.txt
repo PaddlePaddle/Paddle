@@ -23,14 +23,6 @@ if (WITH_GPU)
     nv_test(cuda_managed_memory_test
             SRCS cuda_managed_memory_test.cu
             DEPS malloc gpu_info place)
-    nv_test(alloc_performance_test
-            SRCS alloc_performance_test.cu
-            DEPS malloc gpu_info place)
-
-    if(WITH_TESTING AND TEST alloc_performance_test)
-        set_tests_properties(alloc_performance_test PROPERTIES 
-                             ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_allocator_strategy=auto_growth")
-    endif()
     
     if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
         set_tests_properties(stream_safe_cuda_alloc_test PROPERTIES 
