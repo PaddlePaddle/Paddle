@@ -1034,9 +1034,17 @@ void MultiSlotInMemoryDataFeed::Init(
     slot_conf_[i].name = slot.name();
     slot_conf_[i].type = slot.type();
     slot_conf_[i].use_slots_index = use_slots_index_[i];
-
+    slot_conf_[i].slot_value_idx = -1;
     total_dims_without_inductive_[i] = 1;
     inductive_shape_index_[i] = -1;
+    if (slot_conf_[i].type[0] == 'u') {
+      slot_conf_[i].slot_value_idx = uint64_use_slot_size_;
+      ++uint64_use_slot_size_;
+    } else if (slot_conf_[i].type[0] == 'f') {
+      slot_conf_[i].slot_value_idx = float_use_slot_size_;
+      ++float_use_slot_size_;
+    }
+
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
@@ -1077,6 +1085,28 @@ void MultiSlotInMemoryDataFeed::Init(
   so_parser_name_ = data_feed_desc.so_parser_name();
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
+}
+
+bool MultiSlotInMemoryDataFeed::Start() {
+#ifdef _LINUX
+  this->CheckSetFileList();
+  if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
+    std::vector<Record> data;
+    input_channel_->Read(data);
+    output_channel_->Write(std::move(data));
+  }
+#endif
+  if (batch_offsets_.size() > 0) {
+    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
+    enable_heterps_ = true;
+    this->offset_index_ = 0;
+  }
+  this->finish_start_ = true;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  CHECK(paddle::platform::is_gpu_place(this->place_));
+  pack_ = BatchGpuPackMgr().get(this->GetPlace(), slot_conf_);
+#endif
+  return true;
 }
 
 void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
@@ -1156,6 +1186,10 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->rank = rank;
       pos += len + 1;
     }
+    instance->float_offset_.clear();
+    instance->uint64_offset_.clear();
+    instance->float_offset_.reserve(float_use_slot_size_ + 1);
+    instance->uint64_offset_.reserve(uint64_use_slot_size_ + 1);
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
@@ -1187,6 +1221,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #endif
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
+          instance->float_offset_.push_back(instance->float_feasigns_.size());
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
             // if float feasign is equal to zero, ignore it
@@ -1199,13 +1234,19 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
+          instance->uint64_offset_.push_back(instance->uint64_feasigns_.size());
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
             // if uint64 feasign is equal to zero, ignore it
             // except when slot is dense
+            VLOG(0) << "before into ParseOneInstanceFromPipe feasign="
+                    << feasign;
+#if !defined(PADDLE_WITH_CUDA) || !defined(PADDLE_WITH_HETERPS)
+            VLOG(0) << "into ParseOneInstanceFromPipe feasign=" << feasign;
             if (feasign == 0 && !use_slots_is_dense_[i]) {
               continue;
             }
+#endif
             FeatureFeasign f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
@@ -1221,6 +1262,18 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         }
       }
     }
+    instance->uint64_offset_.push_back(instance->uint64_feasigns_.size());
+    instance->float_offset_.push_back(instance->float_feasigns_.size());
+    std::stringstream ss;
+    for (size_t i = 0; i < instance->uint64_offset_.size(); i++) {
+      ss << instance->uint64_offset_[i] << ",";
+    }
+    VLOG(0) << "uint64_offset_:" << ss.str();
+    std::stringstream ss1;
+    for (size_t i = 0; i < instance->float_offset_.size(); i++) {
+      ss1 << instance->float_offset_[i] << ",";
+    }
+    VLOG(0) << "float_offset_:" << ss1.str();
     instance->float_feasigns_.shrink_to_fit();
     instance->uint64_feasigns_.shrink_to_fit();
     fea_num_ += instance->uint64_feasigns_.size();
@@ -1393,207 +1446,21 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
 #endif
 }
 
-void MultiSlotInMemoryDataFeed::PutToFeedVec(
-    const std::vector<Record>& ins_vec) {
-#ifdef _LINUX
-  for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
-    batch_float_feasigns_[i].clear();
-    batch_uint64_feasigns_[i].clear();
-    offset_[i].clear();
-    offset_[i].push_back(0);
-  }
-  ins_content_vec_.clear();
-  ins_content_vec_.reserve(ins_vec.size());
-  ins_id_vec_.clear();
-  ins_id_vec_.reserve(ins_vec.size());
-
-  int uint64_total_num = 0;
-  int float_total_num = 0;
-
-  for (size_t i = 0; i < ins_vec.size(); ++i) {
-    auto& r = ins_vec[i];
-    ins_id_vec_.push_back(r.ins_id_);
-    ins_content_vec_.push_back(r.content_);
-    for (auto& item : r.float_feasigns_) {
-      batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
-      visit_[item.slot()] = true;
-      float_total_num += 1;
-    }
-    for (auto& item : r.uint64_feasigns_) {
-      batch_uint64_feasigns_[item.slot()].push_back(
-          item.sign().uint64_feasign_);
-      visit_[item.slot()] = true;
-      uint64_total_num += 1;
-    }
-    for (size_t j = 0; j < use_slots_.size(); ++j) {
-      const auto& type = all_slots_type_[j];
-      if (visit_[j]) {
-        visit_[j] = false;
-      } else {
-        // fill slot value with default value 0
-        if (type[0] == 'f') {  // float
-          batch_float_feasigns_[j].push_back(0.0);
-          float_total_num += 1;
-        } else if (type[0] == 'u') {  // uint64
-          batch_uint64_feasigns_[j].push_back(0);
-          uint64_total_num += 1;
-        }
-      }
-      // get offset of this ins in this slot
-      if (type[0] == 'f') {  // float
-        offset_[j].push_back(batch_float_feasigns_[j].size());
-      } else if (type[0] == 'u') {  // uint64
-        offset_[j].push_back(batch_uint64_feasigns_[j].size());
-      }
-    }
-  }
-
-  // 1. create 大fused_tensor
-  // uint64 tensor
-  LoDTensor fused_uint64_tensor;
-  // float tensor
-  LoDTensor fused_float_tensor;
-  fused_uint64_tensor.mutable_data<int64_t>({uint64_total_num, 1},
-                                            platform::CPUPlace());
-  fused_float_tensor.mutable_data<float>({float_total_num, 1},
-                                         platform::CPUPlace());
-
-  uint64_total_num = 0;
-  float_total_num = 0;
-
-  for (size_t i = 0; i < use_slots_.size(); ++i) {
-    if (feed_vec_[i] == nullptr) {
-      continue;
-    }
-    int total_instance = offset_[i].back();
-    const auto& type = all_slots_type_[i];
-    // 2.   【cpu】slice 出来，feasign拷贝 进去
-    if (type[0] == 'f') {  // float
-      auto sub_tensor = fused_float_tensor.Slice(
-          static_cast<int64_t>(float_total_num),
-          static_cast<int64_t>(float_total_num + total_instance));
-      float* sub_tensor_ptr =
-          sub_tensor.mutable_data<float>(fused_float_tensor.place());
-      memcpy(sub_tensor_ptr, batch_float_feasigns_[i].data(),
-             total_instance * sizeof(float));
-      float_total_num += total_instance;
-    } else if (type[0] == 'u') {  // uint64
-      auto sub_tensor = fused_uint64_tensor.Slice(
-          static_cast<int64_t>(uint64_total_num),
-          static_cast<int64_t>(uint64_total_num + total_instance));
-      int64_t* sub_tensor_ptr =
-          sub_tensor.mutable_data<int64_t>(fused_uint64_tensor.place());
-      memcpy(sub_tensor_ptr, batch_uint64_feasigns_[i].data(),
-             total_instance * sizeof(int64_t));
-      uint64_total_num += total_instance;
-    }
-  }
-
-  // PADDLE_ENFORCE_EQ(
-  //     uint64_total_num, uint64_total_num2,
-  //     platform::errors::InvalidArgument("In batch reader, the
-  //     uint64_total_num "
-  //                                       "must be %d, but received %d.",
-  //                                       uint64_total_num,
-  //                                       uint64_total_num2));
-  // PADDLE_ENFORCE_EQ(
-  //     float_total_num, float_total_num2,
-  //     platform::errors::InvalidArgument("In batch reader, the
-  //     uint64_total_num "
-  //                                       "must be %d, but received %d.",
-  //                                       float_total_num, float_total_num2));
-
-  // 3.  [gpu] fused_tensor 拷贝到 gpu_tensor中
-  // memcopy
-
-  // // uint64 tensor
-  // LoDTensor gpu_fused_uint64_tensor_;
-  // // float tensor
-  // LoDTensor gpu_fused_float_tensor_;
-  gpu_fused_uint64_tensor_.mutable_data<int64_t>({uint64_total_num, 1},
-                                                 this->place_);
-  gpu_fused_float_tensor_.mutable_data<float>({float_total_num, 1},
-                                              this->place_);
-
-  framework::TensorCopy(
-      fused_uint64_tensor, this->place_,
-      *platform::DeviceContextPool::Instance().Get(this->place_),
-      &gpu_fused_uint64_tensor_);
-  framework::TensorCopy(
-      fused_float_tensor, this->place_,
-      *platform::DeviceContextPool::Instance().Get(this->place_),
-      &gpu_fused_float_tensor_);
-  // auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-  //                   platform::DeviceContextPool::Instance().Get(this->place_))
-  //                   ->stream();
-  // cudaStreamSynchronize(stream);
-
-  // 4.   sharedatawith 到 feed_vec_[i]的tensor
-  float_total_num = 0;
-  uint64_total_num = 0;
-
-  for (size_t i = 0; i < use_slots_.size(); ++i) {
-    if (feed_vec_[i] == nullptr) {
-      continue;
-    }
-    int total_instance = offset_[i].back();
-    const auto& type = all_slots_type_[i];
-
-    if (type[0] == 'f') {  // float
-      // feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
-      feed_vec_[i]->ShareDataWith(gpu_fused_float_tensor_.Slice(
-          static_cast<int64_t>(float_total_num),
-          static_cast<int64_t>(float_total_num + total_instance)));
-      float_total_num += total_instance;
-    } else if (type[0] == 'u') {  // uint64
-      // feed_vec_[i]->mutable_data<int64_t>({total_instance, 1}, this->place_);
-      feed_vec_[i]->ShareDataWith(gpu_fused_uint64_tensor_.Slice(
-          static_cast<int64_t>(uint64_total_num),
-          static_cast<int64_t>(uint64_total_num + total_instance)));
-
-      uint64_total_num += total_instance;
-    }
-    auto& slot_offset = offset_[i];
-    if (this->input_type_ == 0) {
-      if (!use_slots_is_dense_[i]) {
-        LoD data_lod{slot_offset};
-        feed_vec_[i]->set_lod(data_lod);
-      }
-    } else if (this->input_type_ == 1) {
-      if (!use_slots_is_dense_[i]) {
-        std::vector<size_t> tmp_offset;
-        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
-                          platform::errors::InvalidArgument(
-                              "In batch reader, the sparse tensor lod size "
-                              "must be 2, but received %d.",
-                              slot_offset.size()));
-        const auto& max_size = slot_offset[1];
-        tmp_offset.reserve(max_size + 1);
-        for (unsigned int k = 0; k <= max_size; k++) {
-          tmp_offset.emplace_back(k);
-        }
-        slot_offset = tmp_offset;
-        LoD data_lod{slot_offset};
-        feed_vec_[i]->set_lod(data_lod);
-      }
-    }
-    if (use_slots_is_dense_[i]) {
-      if (inductive_shape_index_[i] != -1) {
-        use_slots_shape_[i][inductive_shape_index_[i]] =
-            total_instance / total_dims_without_inductive_[i];
-      }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
-    }
-  }
-#endif
-}
-
 // void MultiSlotInMemoryDataFeed::PutToFeedVec(
 //     const std::vector<Record>& ins_vec) {
 // #ifdef _LINUX
+//   platform::Timer timeline;
+//   platform::Timer timeline_1;
+//   platform::Timer timeline_cpucopy;
+//   platform::Timer timeline_gpucopy;
+//   platform::Timer timeline_share;
+//   timeline.Start();
+
 //   for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
 //     batch_float_feasigns_[i].clear();
 //     batch_uint64_feasigns_[i].clear();
+//     // batch_float_feasigns_[i].reserve(16);
+//     // batch_uint64_feasigns_[i].reserve(5000);
 //     offset_[i].clear();
 //     offset_[i].push_back(0);
 //   }
@@ -1601,6 +1468,18 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 //   ins_content_vec_.reserve(ins_vec.size());
 //   ins_id_vec_.clear();
 //   ins_id_vec_.reserve(ins_vec.size());
+
+//   int uint64_total_num = 0;
+//   int float_total_num = 0;
+
+//   timeline_1.Start();
+//   // for (size_t i = 0; i < ins_vec.size(); ++i) {
+//   //   auto& r = ins_vec[i];
+//   //   ins_id_vec_.push_back(r.ins_id_);
+//   //   ins_content_vec_.push_back(r.content_);
+
+//   // }
+
 //   for (size_t i = 0; i < ins_vec.size(); ++i) {
 //     auto& r = ins_vec[i];
 //     ins_id_vec_.push_back(r.ins_id_);
@@ -1608,13 +1487,13 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 //     for (auto& item : r.float_feasigns_) {
 //       batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
 //       visit_[item.slot()] = true;
+//       // float_total_num += 1;
 //     }
 //     for (auto& item : r.uint64_feasigns_) {
-//       VLOG(0) << "item: " << item.slot() << "  sign().uint64_feasign_:" <<
-//       item.sign().uint64_feasign_;
 //       batch_uint64_feasigns_[item.slot()].push_back(
 //           item.sign().uint64_feasign_);
 //       visit_[item.slot()] = true;
+//       // uint64_total_num += 1;
 //     }
 //     for (size_t j = 0; j < use_slots_.size(); ++j) {
 //       const auto& type = all_slots_type_[j];
@@ -1624,61 +1503,157 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 //         // fill slot value with default value 0
 //         if (type[0] == 'f') {  // float
 //           batch_float_feasigns_[j].push_back(0.0);
+//           // float_total_num += 1;
 //         } else if (type[0] == 'u') {  // uint64
-//           VLOG(0) <<"use_slots_: " << j << " visit_[j] :" << visit_[j] << "
-//           push 0";
 //           batch_uint64_feasigns_[j].push_back(0);
+//           // uint64_total_num += 1;
 //         }
 //       }
 //       // get offset of this ins in this slot
 //       if (type[0] == 'f') {  // float
 //         offset_[j].push_back(batch_float_feasigns_[j].size());
-//         // use_slots_: 318 batch_float_feasigns_ size:7857
-//         // VLOG(0) <<"use_slots_: " << j << " batch_float_feasigns_ size:" <<
-//         batch_float_feasigns_[j].size();
+//         if (offset_[j].size() <= 1) {
+//           float_total_num += offset_[j].back();
+//         } else {
+//           float_total_num += offset_[j].back() - *(offset_[j].end()-2);
+//         }
+
 //       } else if (type[0] == 'u') {  // uint64
 //         offset_[j].push_back(batch_uint64_feasigns_[j].size());
-//         // VLOG(0) <<"use_slots_: " << j << " batch_uint64_feasigns_ size:"
-//         << batch_uint64_feasigns_[j].size();
+//         if (offset_[j].size() <= 1) {
+//           uint64_total_num += offset_[j].back();
+//         } else {
+//           uint64_total_num += offset_[j].back() - *(offset_[j].end()-2);
+//         }
 //       }
 //     }
 //   }
+//   timeline_1.Pause();
+
+//   timeline_cpucopy.Start();
+
+//   // 1. create 大fused_tensor
+//   // uint64 tensor
+//   LoDTensor fused_uint64_tensor;
+//   // float tensor
+//   LoDTensor fused_float_tensor;
+//   fused_uint64_tensor.mutable_data<int64_t>({uint64_total_num, 1},
+//                                             platform::CPUPlace());
+//   fused_float_tensor.mutable_data<float>({float_total_num, 1},
+//                                          platform::CPUPlace());
+
+//   // uint64_total_num = 0;
+//   // float_total_num = 0;
+//   int uint64_total_num2 = 0;
+//   int float_total_num2 = 0;
 
 //   for (size_t i = 0; i < use_slots_.size(); ++i) {
 //     if (feed_vec_[i] == nullptr) {
 //       continue;
 //     }
-//     // total_instance:10201 (大部分2048)
 //     int total_instance = offset_[i].back();
 //     const auto& type = all_slots_type_[i];
+//     // 2.   【cpu】slice 出来，feasign拷贝 进去
 //     if (type[0] == 'f') {  // float
-//       float* feasign = batch_float_feasigns_[i].data();
-//       float* tensor_ptr =
-//           feed_vec_[i]->mutable_data<float>({total_instance, 1},
-//           this->place_);
-//       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
+//       auto sub_tensor = fused_float_tensor.Slice(
+//           static_cast<int64_t>(float_total_num2),
+//           static_cast<int64_t>(float_total_num2 + total_instance));
+//       float* sub_tensor_ptr =
+//           sub_tensor.mutable_data<float>(fused_float_tensor.place());
+//       memcpy(sub_tensor_ptr, batch_float_feasigns_[i].data(),
+//              total_instance * sizeof(float));
+//       float_total_num2 += total_instance;
 //     } else if (type[0] == 'u') {  // uint64
-//       // no uint64_t type in paddlepaddle
-//       uint64_t* feasign = batch_uint64_feasigns_[i].data();
-//       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
-//           {total_instance, 1}, this->place_);
-//       CopyToFeedTensor(tensor_ptr, feasign, total_instance *
-//       sizeof(int64_t));
+//       auto sub_tensor = fused_uint64_tensor.Slice(
+//           static_cast<int64_t>(uint64_total_num2),
+//           static_cast<int64_t>(uint64_total_num2 + total_instance));
+//       int64_t* sub_tensor_ptr =
+//           sub_tensor.mutable_data<int64_t>(fused_uint64_tensor.place());
+//       memcpy(sub_tensor_ptr, batch_uint64_feasigns_[i].data(),
+//              total_instance * sizeof(int64_t));
+//       uint64_total_num2 += total_instance;
 //     }
-//     // offset_[i].back(): 10201 (大部分2048)
-//     // feed_vec_[i]->numel(): 10201
+//   }
+//   timeline_cpucopy.Pause();
+
+//   PADDLE_ENFORCE_EQ(
+//       uint64_total_num, uint64_total_num2,
+//       platform::errors::InvalidArgument("In batch reader, the"
+//               "uint64_total_num must be %d, but received %d.",
+//               uint64_total_num,
+//               uint64_total_num2));
+//   PADDLE_ENFORCE_EQ(
+//       float_total_num, float_total_num2,
+//       platform::errors::InvalidArgument("In batch reader, the"
+//               "uint64_total_num must be %d, but received %d.",
+//               float_total_num,
+//               float_total_num2));
+
+//   // 3.  [gpu] fused_tensor 拷贝到 gpu_tensor中
+//   // memcopy
+
+//   // // uint64 tensor
+//   // LoDTensor gpu_fused_uint64_tensor_;
+//   // // float tensor
+//   // LoDTensor gpu_fused_float_tensor_;
+//   timeline_gpucopy.Start();
+
+//   gpu_fused_uint64_tensor_.mutable_data<int64_t>({uint64_total_num, 1},
+//                                                  this->place_);
+//   gpu_fused_float_tensor_.mutable_data<float>({float_total_num, 1},
+//                                               this->place_);
+
+//   framework::TensorCopy(
+//       fused_uint64_tensor, this->place_,
+//       *platform::DeviceContextPool::Instance().Get(this->place_),
+//       &gpu_fused_uint64_tensor_);
+//   framework::TensorCopy(
+//       fused_float_tensor, this->place_,
+//       *platform::DeviceContextPool::Instance().Get(this->place_),
+//       &gpu_fused_float_tensor_);
+//   timeline_gpucopy.Pause();
+//   // auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+//   // platform::DeviceContextPool::Instance().Get(this->place_))
+//   //                   ->stream();
+//   // cudaStreamSynchronize(stream);
+
+//   // 4.   sharedatawith 到 feed_vec_[i]的tensor
+
+//   timeline_share.Start();
+//   float_total_num = 0;
+//   uint64_total_num = 0;
+
+//   for (size_t i = 0; i < use_slots_.size(); ++i) {
+//     if (feed_vec_[i] == nullptr) {
+//       continue;
+//     }
+//     int total_instance = offset_[i].back();
+//     const auto& type = all_slots_type_[i];
+
+//     if (type[0] == 'f') {  // float
+//       // feed_vec_[i]->mutable_data<float>({total_instance, 1},
+//       this->place_);
+//       feed_vec_[i]->ShareDataWith(gpu_fused_float_tensor_.Slice(
+//           static_cast<int64_t>(float_total_num),
+//           static_cast<int64_t>(float_total_num + total_instance)));
+//       float_total_num += total_instance;
+//     } else if (type[0] == 'u') {  // uint64
+//       // feed_vec_[i]->mutable_data<int64_t>({total_instance, 1},
+//       this->place_);
+//       feed_vec_[i]->ShareDataWith(gpu_fused_uint64_tensor_.Slice(
+//           static_cast<int64_t>(uint64_total_num),
+//           static_cast<int64_t>(uint64_total_num + total_instance)));
+
+//       uint64_total_num += total_instance;
+//     }
 //     auto& slot_offset = offset_[i];
-//     VLOG(0) <<"total_instance:" << total_instance << "  this->input_type_" <<
-//     this->input_type_;
 //     if (this->input_type_ == 0) {
 //       if (!use_slots_is_dense_[i]) {
 //         LoD data_lod{slot_offset};
 //         feed_vec_[i]->set_lod(data_lod);
-//         VLOG(0) <<"feed_vec_["<< i << "] ->numel():"<< feed_vec_[i]->numel();
 //       }
 //     } else if (this->input_type_ == 1) {
 //       if (!use_slots_is_dense_[i]) {
-//         VLOG(0) <<"total_instance:" << i << " input_type_=1";
 //         std::vector<size_t> tmp_offset;
 //         PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
 //                           platform::errors::InvalidArgument(
@@ -1703,8 +1678,280 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 //       feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
 //     }
 //   }
+//   timeline_share.Pause();
+//   timeline.Pause();
+//   double all_time =  timeline.ElapsedSec();
+//   VLOG(0) << "PutToFeedVec all cost time:" << all_time << " timeline_1:
+//   percent:"
+//     << timeline_1.ElapsedSec()/all_time << " cpucopy percent:" <<
+//     timeline_cpucopy.ElapsedSec()/all_time
+//     << " gpucopy percent:" << timeline_gpucopy.ElapsedSec()/all_time
+//     << " share percent:" << timeline_share.ElapsedSec()/all_time;
 // #endif
 // }
+
+void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
+  // fill_timer_.Resume();
+
+  int slot_size = use_slots_.size();
+  int offset_cols_size = (ins_num + 1);
+  size_t slot_total_num = (slot_size * offset_cols_size);
+  pack_->resize_gpu_slot_offsets(slot_total_num * sizeof(size_t));
+
+  VLOG(0) << "use_slots_:" << use_slots_.size();
+  auto& value = pack_->value();
+  const UsedSlotGpuType* used_slot_gpu_types =
+      static_cast<const UsedSlotGpuType*>(pack_->get_gpu_slots());
+  FillSlotValueOffset(
+      ins_num, slot_size, reinterpret_cast<size_t*>(pack_->gpu_slot_offsets()),
+      value.d_uint64_offset.data(), uint64_use_slot_size_,
+      value.d_float_offset.data(), float_use_slot_size_, used_slot_gpu_types);
+
+  // fill_timer_.Pause();
+  size_t* d_slot_offsets = reinterpret_cast<size_t*>(pack_->gpu_slot_offsets());
+
+  // offset_timer_.Resume();
+  HostBuffer<size_t>& offsets = pack_->offsets();
+  offsets.resize(slot_total_num);
+  HostBuffer<void*>& h_tensor_ptrs = pack_->h_tensor_ptrs();
+  h_tensor_ptrs.resize(slot_size);
+  // alloc gpu memory
+  pack_->resize_tensor();
+
+  LoDTensor& float_tensor = pack_->float_tensor();
+  LoDTensor& uint64_tensor = pack_->uint64_tensor();
+
+  int64_t float_offset = 0;
+  int64_t uint64_offset = 0;
+  // offset_timer_.Pause();
+
+  // copy_timer_.Resume();
+  // copy index
+  CUDA_CHECK(cudaMemcpy(offsets.data(), d_slot_offsets,
+                        slot_total_num * sizeof(size_t),
+                        cudaMemcpyDeviceToHost));
+  // copy_timer_.Pause();
+
+  std::stringstream ss;
+  for (size_t k = 0; k < offsets.size(); k++) {
+    ss << offsets[k] << ",";
+  }
+  VLOG(0) << "offsets INFO:" << ss.str();
+
+  for (int j = 0; j < slot_size; ++j) {
+    // auto& feed = feed_vec_[j];
+    if (feed_vec_[j] == nullptr) {
+      h_tensor_ptrs[j] = nullptr;
+      continue;
+    }
+
+    size_t* off_start_ptr = &offsets[j * offset_cols_size];
+
+    int total_instance = static_cast<int>(off_start_ptr[offset_cols_size - 1]);
+    CHECK(total_instance >= 0) << "slot idx:" << j
+                               << ", total instance:" << total_instance;
+    const auto& type = all_slots_type_[j];
+    // fill slot value with default value 0
+    if (type[0] == 'f') {  // float
+      if (total_instance > 0) {
+        feed_vec_[j]->ShareDataWith(float_tensor.Slice(
+            static_cast<int64_t>(float_offset),
+            static_cast<int64_t>(float_offset + total_instance)));
+        feed_vec_[j]->Resize({total_instance, 1});
+        float_offset += total_instance;
+        h_tensor_ptrs[j] = feed_vec_[j]->mutable_data<float>(this->place_);
+      } else {
+        h_tensor_ptrs[j] = feed_vec_[j]->mutable_data<float>(
+            {total_instance, 1}, this->place_);
+      }
+    } else if (type[0] == 'u') {  // uint64
+      if (total_instance > 0) {
+        feed_vec_[j]->ShareDataWith(uint64_tensor.Slice(
+            static_cast<int64_t>(uint64_offset),
+            static_cast<int64_t>(uint64_offset + total_instance)));
+        feed_vec_[j]->Resize({total_instance, 1});
+        uint64_offset += total_instance;
+        h_tensor_ptrs[j] = feed_vec_[j]->mutable_data<int64_t>(this->place_);
+      } else {
+        h_tensor_ptrs[j] = feed_vec_[j]->mutable_data<int64_t>(
+            {total_instance, 1}, this->place_);
+      }
+    }
+
+    if (use_slots_is_dense_[j]) {
+      // if (info.inductive_shape_index != -1) {
+      //   info.local_shape[info.inductive_shape_index] =
+      //       total_instance / info.total_dims_without_inductive;
+      // }
+      if (inductive_shape_index_[j] != -1) {
+        use_slots_shape_[j][inductive_shape_index_[j]] =
+            total_instance / total_dims_without_inductive_[j];
+      }
+      feed_vec_[j]->Resize(phi::make_ddim(use_slots_shape_[j]));
+    } else {
+      LoD& lod = (*feed_vec_[j]->mutable_lod());
+      lod.resize(1);
+      lod[0].resize(offset_cols_size);
+      paddle::framework::MixVector<size_t> mixv_lod(&lod[0]);
+      memcpy(mixv_lod.MutableData(platform::CPUPlace()), off_start_ptr,
+             offset_cols_size * sizeof(size_t));
+    }
+  }
+  VLOG(0) << "SHARE float_offset:" << float_offset
+          << " uint64_offset:" << uint64_offset;
+
+  // trans_timer_.Resume();
+  void** dest_gpu_p = reinterpret_cast<void**>(pack_->slot_buf_ptr());
+  CUDA_CHECK(cudaMemcpy(dest_gpu_p, h_tensor_ptrs.data(),
+                        slot_size * sizeof(void*), cudaMemcpyHostToDevice));
+
+  CopyForTensor(ins_num, slot_size, dest_gpu_p,
+                (const size_t*)pack_->gpu_slot_offsets(),
+                (const uint64_t*)value.d_uint64_keys.data(),
+                (const int*)value.d_uint64_offset.data(),
+                (const int*)value.d_uint64_lens.data(), uint64_use_slot_size_,
+                (const float*)value.d_float_keys.data(),
+                (const int*)value.d_float_offset.data(),
+                (const int*)value.d_float_lens.data(), float_use_slot_size_,
+                used_slot_gpu_types);
+  VLOG(0) << "done CopyForTensor:";
+
+  // trans_timer_.Pause();
+}
+
+void MultiSlotInMemoryDataFeed::PutToFeedVec(
+    const std::vector<Record>& ins_vec) {
+// #ifdef _LINUX
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  pack_->pack_instance(ins_vec);
+  BuildSlotBatchGPU(pack_->ins_num());
+#else
+  // platform::Timer timeline;
+  // platform::Timer timeline_1;
+  // platform::Timer timeline_copy;
+  // platform::Timer timeline_gpucopy;
+  // timeline.Start();
+  // timeline_1.Start();
+
+  for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
+    batch_float_feasigns_[i].clear();
+    batch_uint64_feasigns_[i].clear();
+    offset_[i].clear();
+    offset_[i].push_back(0);
+  }
+  ins_content_vec_.clear();
+  ins_content_vec_.reserve(ins_vec.size());
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(ins_vec.size());
+  for (size_t i = 0; i < ins_vec.size(); ++i) {
+    auto& r = ins_vec[i];
+    ins_id_vec_.push_back(r.ins_id_);
+    ins_content_vec_.push_back(r.content_);
+    for (auto& item : r.float_feasigns_) {
+      batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
+      visit_[item.slot()] = true;
+    }
+    for (auto& item : r.uint64_feasigns_) {
+      batch_uint64_feasigns_[item.slot()].push_back(
+          item.sign().uint64_feasign_);
+      visit_[item.slot()] = true;
+    }
+    for (size_t j = 0; j < use_slots_.size(); ++j) {
+      const auto& type = all_slots_type_[j];
+      if (visit_[j]) {
+        visit_[j] = false;
+      } else {
+        // fill slot value with default value 0
+        if (type[0] == 'f') {  // float
+          batch_float_feasigns_[j].push_back(0.0);
+        } else if (type[0] == 'u') {  // uint64
+          batch_uint64_feasigns_[j].push_back(0);
+        }
+      }
+      // get offset of this ins in this slot
+      if (type[0] == 'f') {  // float
+        offset_[j].push_back(batch_float_feasigns_[j].size());
+        // use_slots_: 318 batch_float_feasigns_ size:7857
+      } else if (type[0] == 'u') {  // uint64
+        offset_[j].push_back(batch_uint64_feasigns_[j].size());
+      }
+    }
+  }
+  // timeline_1.Pause();
+
+  // timeline_copy.Start();
+  // timeline_gpucopy.Start();
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    // timeline_gpucopy.Resume();
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
+    // total_instance:10201 (大部分2048)
+    int total_instance = offset_[i].back();
+    const auto& type = all_slots_type_[i];
+    if (type[0] == 'f') {  // float
+      float* feasign = batch_float_feasigns_[i].data();
+      float* tensor_ptr =
+          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
+    } else if (type[0] == 'u') {  // uint64
+      // no uint64_t type in paddlepaddle
+      uint64_t* feasign = batch_uint64_feasigns_[i].data();
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
+    }
+    // timeline_gpucopy.Pause();
+    // offset_[i].back(): 10201 (大部分2048)
+    // feed_vec_[i]->numel(): 10201
+    auto& slot_offset = offset_[i];
+    // VLOG(0) <<"total_instance:" << total_instance << "  this->input_type_" <<
+    // this->input_type_;
+    if (this->input_type_ == 0) {
+      if (!use_slots_is_dense_[i]) {
+        LoD data_lod{slot_offset};
+        feed_vec_[i]->set_lod(data_lod);
+        // VLOG(0) <<"feed_vec_["<< i << "] ->numel():"<< feed_vec_[i]->numel();
+      }
+    } else if (this->input_type_ == 1) {
+      if (!use_slots_is_dense_[i]) {
+        // VLOG(0) <<"total_instance:" << i << " input_type_=1";
+        std::vector<size_t> tmp_offset;
+        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+                          platform::errors::InvalidArgument(
+                              "In batch reader, the sparse tensor lod size "
+                              "must be 2, but received %d.",
+                              slot_offset.size()));
+        const auto& max_size = slot_offset[1];
+        tmp_offset.reserve(max_size + 1);
+        for (unsigned int k = 0; k <= max_size; k++) {
+          tmp_offset.emplace_back(k);
+        }
+        slot_offset = tmp_offset;
+        LoD data_lod{slot_offset};
+        feed_vec_[i]->set_lod(data_lod);
+      }
+    }
+    if (use_slots_is_dense_[i]) {
+      if (inductive_shape_index_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_index_[i]] =
+            total_instance / total_dims_without_inductive_[i];
+      }
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+    }
+  }
+// timeline_copy.Pause();
+// timeline_gpucopy.Pause();
+// timeline.Pause();
+// double all_time =  timeline.ElapsedSec();
+// VLOG(0) << "PutToFeedVec all cost time:" << all_time << " timeline_1:
+// percent:"
+//   << timeline_1.ElapsedSec()/all_time << " copy percent:" <<
+//   timeline_copy.ElapsedSec()/all_time
+//   << " gpucopy percent:" << timeline_gpucopy.ElapsedSec()/all_time;
+
+#endif
+}
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>
@@ -2596,9 +2843,9 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
         for (int j = 0; j < num; ++j) {
           uint64_t feasign =
               static_cast<uint64_t>(strtoull(endptr, &endptr, 10));
-          if (feasign == 0 && !used_slots_info_[info.used_idx].dense) {
-            continue;
-          }
+          // if (feasign == 0 && !used_slots_info_[info.used_idx].dense) {
+          //   continue;
+          // }
           slot_fea.push_back(feasign);
           ++uint64_total_slot_num;
         }
@@ -2621,8 +2868,21 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
   return (uint64_total_slot_num > 0);
 }
 
+void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
+  CheckInit();
+  for (int i = 0; i < use_slot_size_; ++i) {
+    feed_vec_[i] =
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<LoDTensor>();
+  }
+}
+
 void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
                                               int num) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  paddle::platform::SetDeviceId(place_.GetDeviceId());
+  pack_->pack_instance(ins_vec, num);
+  BuildSlotBatchGPU(pack_->ins_num());
+#else
   for (int j = 0; j < use_slot_size_; ++j) {
     auto& feed = feed_vec_[j];
     if (feed == nullptr) {
@@ -2699,6 +2959,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
       feed_vec_[j]->set_lod(data_lod);
     }
   }
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
@@ -2764,17 +3025,22 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
 bool SlotRecordInMemoryDataFeed::Start() {
 #ifdef _LINUX
   this->CheckSetFileList();
-  if (input_channel_->Size() != 0) {
-    std::vector<SlotRecord> data;
-    input_channel_->Read(data);
-  }
+// if (input_channel_->Size() != 0) {
+//   std::vector<SlotRecord> data;
+//   input_channel_->Read(data);
+// }
 #endif
-  if (batch_offsets_.size() > 0) {
-    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
-    enable_heterps_ = true;
-    this->offset_index_ = 0;
-  }
+  // if (batch_offsets_.size() > 0) {
+  //   VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
+  //   enable_heterps_ = true;
+  //   this->offset_index_ = 0;
+  // }
+  this->offset_index_ = 0;
   this->finish_start_ = true;
+#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
+  CHECK(paddle::platform::is_gpu_place(this->place_));
+  pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
+#endif
   return true;
 }
 
@@ -2784,7 +3050,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 
   VLOG(3) << "enable heter next: " << offset_index_
           << " batch_offsets: " << batch_offsets_.size();
-  if (offset_index_ >= batch_offsets_.size()) {
+  if (offset_index_ >= static_cast<int>(batch_offsets_.size())) {
     VLOG(3) << "offset_index: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
     return 0;
@@ -2793,12 +3059,13 @@ int SlotRecordInMemoryDataFeed::Next() {
   this->batch_size_ = batch.second;
   VLOG(3) << "batch_size_=" << this->batch_size_
           << ", thread_id=" << thread_id_;
-  if (this->batch_size_ != 0) {
-    PutToFeedVec(&records_[batch.first], this->batch_size_);
-  } else {
-    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
-            << thread_id_;
-  }
+  PutToFeedVec(&records_[batch.first], this->batch_size_);
+  // if (this->batch_size_ != 0) {
+  //   PutToFeedVec(&records_[batch.first], this->batch_size_);
+  // } else {
+  //   VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+  //           << thread_id_;
+  // }
   VLOG(3) << "enable heter next: " << offset_index_
           << " batch_offsets: " << batch_offsets_.size()
           << " baych_size: " << this->batch_size_;
@@ -2808,6 +3075,560 @@ int SlotRecordInMemoryDataFeed::Next() {
   return 0;
 #endif
 }
+
+void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
+  // fill_timer_.Resume();
+
+  int offset_cols_size = (ins_num + 1);
+  size_t slot_total_num = (use_slot_size_ * offset_cols_size);
+  pack_->resize_gpu_slot_offsets(slot_total_num * sizeof(size_t));
+  VLOG(0) << "offset_cols_size:" << offset_cols_size
+          << " use_slot_size_:" << use_slot_size_ << " ins_num:" << ins_num;
+
+  auto& value = pack_->value();
+  const UsedSlotGpuType* used_slot_gpu_types =
+      static_cast<const UsedSlotGpuType*>(pack_->get_gpu_slots());
+  FillSlotValueOffset(ins_num, use_slot_size_,
+                      reinterpret_cast<size_t*>(pack_->gpu_slot_offsets()),
+                      value.d_uint64_offset.data(), uint64_use_slot_size_,
+                      value.d_float_offset.data(), float_use_slot_size_,
+                      used_slot_gpu_types);
+  // fill_timer_.Pause();
+  size_t* d_slot_offsets = reinterpret_cast<size_t*>(pack_->gpu_slot_offsets());
+
+  // offset_timer_.Resume();
+  HostBuffer<size_t>& offsets = pack_->offsets();
+  offsets.resize(slot_total_num);
+  HostBuffer<void*>& h_tensor_ptrs = pack_->h_tensor_ptrs();
+  h_tensor_ptrs.resize(use_slot_size_);
+  // alloc gpu memory
+  pack_->resize_tensor();
+
+  LoDTensor& float_tensor = pack_->float_tensor();
+  LoDTensor& uint64_tensor = pack_->uint64_tensor();
+
+  int64_t float_offset = 0;
+  int64_t uint64_offset = 0;
+  // offset_timer_.Pause();
+
+  // copy_timer_.Resume();
+  // copy index
+  CUDA_CHECK(cudaMemcpy(offsets.data(), d_slot_offsets,
+                        slot_total_num * sizeof(size_t),
+                        cudaMemcpyDeviceToHost));
+  std::stringstream ss;
+  for (size_t k = 0; k < offsets.size(); k++) {
+    ss << offsets[k] << ",";
+  }
+  VLOG(0) << "offsets INFO:" << ss.str();
+  // copy_timer_.Pause();
+
+  // data_timer_.Resume();
+
+  for (int j = 0; j < use_slot_size_; ++j) {
+    auto& feed = feed_vec_[j];
+    if (feed == nullptr) {
+      h_tensor_ptrs[j] = nullptr;
+      continue;
+    }
+
+    size_t* off_start_ptr = &offsets[j * offset_cols_size];
+
+    int total_instance = static_cast<int>(off_start_ptr[offset_cols_size - 1]);
+    CHECK(total_instance >= 0) << "slot idx:" << j
+                               << ", total instance:" << total_instance;
+    auto& info = used_slots_info_[j];
+
+    // fill slot value with default value 0
+    if (info.type[0] == 'f') {  // float
+      if (total_instance > 0) {
+        feed->ShareDataWith(float_tensor.Slice(
+            static_cast<int64_t>(float_offset),
+            static_cast<int64_t>(float_offset + total_instance)));
+        feed->Resize({total_instance, 1});
+        float_offset += total_instance;
+        h_tensor_ptrs[j] = feed->mutable_data<float>(this->place_);
+      } else {
+        h_tensor_ptrs[j] =
+            feed->mutable_data<float>({total_instance, 1}, this->place_);
+      }
+    } else if (info.type[0] == 'u') {  // uint64
+      if (total_instance > 0) {
+        feed->ShareDataWith(uint64_tensor.Slice(
+            static_cast<int64_t>(uint64_offset),
+            static_cast<int64_t>(uint64_offset + total_instance)));
+        feed->Resize({total_instance, 1});
+        uint64_offset += total_instance;
+        h_tensor_ptrs[j] = feed->mutable_data<int64_t>(this->place_);
+      } else {
+        h_tensor_ptrs[j] =
+            feed->mutable_data<int64_t>({total_instance, 1}, this->place_);
+      }
+    }
+
+    if (info.dense) {
+      if (info.inductive_shape_index != -1) {
+        info.local_shape[info.inductive_shape_index] =
+            total_instance / info.total_dims_without_inductive;
+      }
+      feed->Resize(phi::make_ddim(info.local_shape));
+    } else {
+      LoD& lod = (*feed->mutable_lod());
+      lod.resize(1);
+      lod[0].resize(offset_cols_size);
+      paddle::framework::MixVector<size_t> mixv_lod(&lod[0]);
+      memcpy(mixv_lod.MutableData(platform::CPUPlace()), off_start_ptr,
+             offset_cols_size * sizeof(size_t));
+    }
+  }
+  VLOG(0) << "SHARE float_offset:" << float_offset
+          << " uint64_offset:" << uint64_offset;
+  // data_timer_.Pause();
+
+  // trans_timer_.Resume();
+  void** dest_gpu_p = reinterpret_cast<void**>(pack_->slot_buf_ptr());
+  CUDA_CHECK(cudaMemcpy(dest_gpu_p, h_tensor_ptrs.data(),
+                        use_slot_size_ * sizeof(void*),
+                        cudaMemcpyHostToDevice));
+
+  CopyForTensor(ins_num, use_slot_size_, dest_gpu_p,
+                (const size_t*)pack_->gpu_slot_offsets(),
+                (const uint64_t*)value.d_uint64_keys.data(),
+                (const int*)value.d_uint64_offset.data(),
+                (const int*)value.d_uint64_lens.data(), uint64_use_slot_size_,
+                (const float*)value.d_float_keys.data(),
+                (const int*)value.d_float_offset.data(),
+                (const int*)value.d_float_lens.data(), float_use_slot_size_,
+                used_slot_gpu_types);
+  // trans_timer_.Pause();
+}
+
+#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
+MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+                                   const std::vector<UsedSlotInfo>& infos) {
+  place_ = place;
+  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(place))
+                ->stream();
+
+  ins_num_ = 0;
+  pv_num_ = 0;
+  used_float_num_ = 0;
+  used_uint64_num_ = 0;
+
+  used_slot_size_ = static_cast<int>(infos.size());
+  for (int i = 0; i < used_slot_size_; ++i) {
+    auto& info = infos[i];
+    if (info.type[0] == 'u') {
+      gpu_used_slots_.push_back({1, info.slot_value_idx});
+      ++used_uint64_num_;
+    } else {
+      gpu_used_slots_.push_back({0, info.slot_value_idx});
+      ++used_float_num_;
+    }
+  }
+  copy_host2device(&gpu_slots_, gpu_used_slots_.data(), gpu_used_slots_.size());
+
+  slot_buf_ptr_ = memory::AllocShared(place_, used_slot_size_ * sizeof(void*));
+
+  int device_id = place_.GetDeviceId();
+  VLOG(3) << "begin get batch pack device id: " << device_id;
+  // sync
+  CUDA_CHECK(cudaStreamSynchronize(stream_));
+}
+
+MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+                                   const std::vector<SlotConf>& slot_conf) {
+  place_ = place;
+  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(place))
+                ->stream();
+
+  ins_num_ = 0;
+  pv_num_ = 0;
+  used_float_num_ = 0;
+  used_uint64_num_ = 0;
+
+  used_slot_size_ = static_cast<int>(slot_conf.size());
+  for (int i = 0; i < used_slot_size_; ++i) {
+    auto& info = slot_conf[i];
+    if (info.type[0] == 'u') {
+      gpu_used_slots_.push_back({1, info.slot_value_idx});
+      ++used_uint64_num_;
+    } else {
+      gpu_used_slots_.push_back({0, info.slot_value_idx});
+      ++used_float_num_;
+    }
+  }
+  // uint64_slot_offsets_.resize(used_slot_size_);
+  // float_slot_offsets_.resize(used_slot_size_);
+
+  copy_host2device(&gpu_slots_, gpu_used_slots_.data(), gpu_used_slots_.size());
+
+  slot_buf_ptr_ = memory::AllocShared(place_, used_slot_size_ * sizeof(void*));
+
+  int device_id = place_.GetDeviceId();
+  VLOG(3) << "begin get batch pack device id: " << device_id;
+  // sync
+  CUDA_CHECK(cudaStreamSynchronize(stream_));
+}
+
+MiniBatchGpuPack::~MiniBatchGpuPack() {}
+
+void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
+  place_ = place;
+  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(place))
+                ->stream();
+  ins_num_ = 0;
+  pv_num_ = 0;
+
+  pack_timer_.Reset();
+  trans_timer_.Reset();
+}
+
+void MiniBatchGpuPack::pack_all_data(const SlotRecord* ins_vec, int num) {
+  int uint64_total_num = 0;
+  int float_total_num = 0;
+
+  buf_.h_uint64_lens.resize(num + 1);
+  buf_.h_uint64_lens[0] = 0;
+  buf_.h_float_lens.resize(num + 1);
+  buf_.h_float_lens[0] = 0;
+
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    uint64_total_num += r->slot_uint64_feasigns_.slot_values.size();
+    buf_.h_uint64_lens[i + 1] = uint64_total_num;
+    float_total_num += r->slot_float_feasigns_.slot_values.size();
+    buf_.h_float_lens[i + 1] = float_total_num;
+  }
+
+  int uint64_cols = (used_uint64_num_ + 1);
+  buf_.h_uint64_offset.resize(uint64_cols * num);
+  buf_.h_uint64_keys.resize(uint64_total_num);
+
+  int float_cols = (used_float_num_ + 1);
+  buf_.h_float_offset.resize(float_cols * num);
+  buf_.h_float_keys.resize(float_total_num);
+
+  size_t fea_num = 0;
+  uint64_total_num = 0;
+  float_total_num = 0;
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    auto& uint64_feasigns = r->slot_uint64_feasigns_;
+    fea_num = uint64_feasigns.slot_values.size();
+    if (fea_num > 0) {
+      memcpy(&buf_.h_uint64_keys[uint64_total_num],
+             uint64_feasigns.slot_values.data(), fea_num * sizeof(uint64_t));
+    }
+    // else if (fea_num == 0) {
+    //   buf_.h_uint64_keys[uint64_total_num] = 0;
+    //   uint64_total_num += 1;
+    //   buf_.h_uint64_offset[i * uint64_cols] =
+    // }
+    uint64_total_num += fea_num;
+    // copy uint64 offset
+    memcpy(&buf_.h_uint64_offset[i * uint64_cols],
+           uint64_feasigns.slot_offsets.data(), sizeof(int) * uint64_cols);
+
+    auto& float_feasigns = r->slot_float_feasigns_;
+    fea_num = float_feasigns.slot_values.size();
+    memcpy(&buf_.h_float_keys[float_total_num],
+           float_feasigns.slot_values.data(), fea_num * sizeof(float));
+    float_total_num += fea_num;
+    // VLOG(0) << "uint64_feasigns.slot_values.size():" <<
+    // uint64_feasigns.slot_values.size()
+    //         << "  uint64_total_num:" << uint64_total_num
+    //         << " float_feasigns.slot_values.size(): " << fea_num
+    //         << " float_total_num:" << float_total_num;
+
+    // copy float offset
+    memcpy(&buf_.h_float_offset[i * float_cols],
+           float_feasigns.slot_offsets.data(), sizeof(int) * float_cols);
+  }
+  VLOG(0) << "float_total_num:" << float_total_num
+          << " uint64_total_num:" << uint64_total_num
+          << "buf_.h_float_offset:" << buf_.h_float_lens.back()
+          << " buf_.h_uint64_lens:" << buf_.h_uint64_lens.back();
+  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
+      << "uint64 value length error";
+  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
+      << "float value length error";
+}
+void MiniBatchGpuPack::pack_uint64_data(const SlotRecord* ins_vec, int num) {
+  int uint64_total_num = 0;
+
+  buf_.h_float_lens.clear();
+  buf_.h_float_keys.clear();
+  buf_.h_float_offset.clear();
+
+  buf_.h_uint64_lens.resize(num + 1);
+  buf_.h_uint64_lens[0] = 0;
+
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    uint64_total_num += r->slot_uint64_feasigns_.slot_values.size();
+    buf_.h_uint64_lens[i + 1] = uint64_total_num;
+  }
+
+  int uint64_cols = (used_uint64_num_ + 1);
+  buf_.h_uint64_offset.resize(uint64_cols * num);
+  buf_.h_uint64_keys.resize(uint64_total_num);
+
+  size_t fea_num = 0;
+  uint64_total_num = 0;
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    auto& uint64_feasigns = r->slot_uint64_feasigns_;
+    fea_num = uint64_feasigns.slot_values.size();
+    if (fea_num > 0) {
+      memcpy(&buf_.h_uint64_keys[uint64_total_num],
+             uint64_feasigns.slot_values.data(), fea_num * sizeof(uint64_t));
+    }
+    uint64_total_num += fea_num;
+    // copy uint64 offset
+    memcpy(&buf_.h_uint64_offset[i * uint64_cols],
+           uint64_feasigns.slot_offsets.data(), sizeof(int) * uint64_cols);
+  }
+  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
+      << "uint64 value length error";
+}
+void MiniBatchGpuPack::pack_float_data(const SlotRecord* ins_vec, int num) {
+  int float_total_num = 0;
+
+  buf_.h_uint64_lens.clear();
+  buf_.h_uint64_offset.clear();
+  buf_.h_uint64_keys.clear();
+
+  buf_.h_float_lens.resize(num + 1);
+  buf_.h_float_lens[0] = 0;
+
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    float_total_num += r->slot_float_feasigns_.slot_values.size();
+    buf_.h_float_lens[i + 1] = float_total_num;
+  }
+
+  int float_cols = (used_float_num_ + 1);
+  buf_.h_float_offset.resize(float_cols * num);
+  buf_.h_float_keys.resize(float_total_num);
+
+  size_t fea_num = 0;
+  float_total_num = 0;
+  for (int i = 0; i < num; ++i) {
+    auto r = ins_vec[i];
+    auto& float_feasigns = r->slot_float_feasigns_;
+    fea_num = float_feasigns.slot_values.size();
+    memcpy(&buf_.h_float_keys[float_total_num],
+           float_feasigns.slot_values.data(), fea_num * sizeof(float));
+    float_total_num += fea_num;
+
+    // copy float offset
+    memcpy(&buf_.h_float_offset[i * float_cols],
+           float_feasigns.slot_offsets.data(), sizeof(int) * float_cols);
+  }
+  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
+      << "float value length error";
+}
+
+void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
+  // pack_timer_.Resume();
+  ins_num_ = num;
+  batch_ins_ = ins_vec;
+  CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
+  // uint64 and float
+  if (used_uint64_num_ > 0 && used_float_num_ > 0) {
+    pack_all_data(ins_vec, num);
+  } else if (used_uint64_num_ > 0) {  // uint64
+    pack_uint64_data(ins_vec, num);
+  } else {  // only float
+    pack_float_data(ins_vec, num);
+  }
+  // pack_timer_.Pause();
+  // to gpu
+  transfer_to_gpu();
+}
+
+void MiniBatchGpuPack::pack_uint64_data(const std::vector<Record>& ins_vec) {
+  int uint64_total_num = 0;
+
+  auto num = ins_vec.size();
+  buf_.h_float_lens.clear();
+  buf_.h_float_keys.clear();
+  buf_.h_float_offset.clear();
+
+  buf_.h_uint64_lens.resize(num + 1);
+  buf_.h_uint64_lens[0] = 0;
+
+  for (size_t i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    uint64_total_num += r.uint64_feasigns_.size();
+    buf_.h_uint64_lens[i + 1] = uint64_total_num;
+  }
+
+  int uint64_cols = (used_uint64_num_ + 1);
+  buf_.h_uint64_offset.resize(uint64_cols * num);
+  buf_.h_uint64_keys.resize(uint64_total_num);
+
+  size_t fea_num = 0;
+  uint64_total_num = 0;
+  for (size_t i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    fea_num = r.uint64_feasigns_.size();
+    if (fea_num > 0) {
+      memcpy(&buf_.h_uint64_keys[uint64_total_num], r.uint64_feasigns_.data(),
+             fea_num * sizeof(uint64_t));
+    }
+    uint64_total_num += fea_num;
+
+    // copy uint64 offset
+    memcpy(&buf_.h_uint64_offset[i * uint64_cols], r.uint64_offset_.data(),
+           sizeof(int) * uint64_cols);
+  }
+  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
+      << "uint64 value length error";
+}
+
+void MiniBatchGpuPack::pack_float_data(const std::vector<Record>& ins_vec) {
+  int float_total_num = 0;
+  auto num = ins_vec.size();
+
+  buf_.h_uint64_lens.clear();
+  buf_.h_uint64_offset.clear();
+  buf_.h_uint64_keys.clear();
+
+  buf_.h_float_lens.resize(num + 1);
+  buf_.h_float_lens[0] = 0;
+
+  for (size_t i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    float_total_num += r.float_feasigns_.size();
+    buf_.h_float_lens[i + 1] = float_total_num;
+  }
+
+  int float_cols = (used_float_num_ + 1);
+  buf_.h_float_offset.resize(float_cols * num);
+  buf_.h_float_keys.resize(float_total_num);
+
+  size_t fea_num = 0;
+  float_total_num = 0;
+  for (size_t i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    fea_num = r.float_feasigns_.size();
+    memcpy(&buf_.h_float_keys[float_total_num], r.float_feasigns_.data(),
+           fea_num * sizeof(float));
+    float_total_num += fea_num;
+
+    // copy float offset
+    memcpy(&buf_.h_float_offset[i * float_cols], r.float_offset_.data(),
+           sizeof(int) * float_cols);
+  }
+  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
+      << "float value length error";
+}
+
+void MiniBatchGpuPack::pack_all_data(const std::vector<Record>& ins_vec) {
+  int uint64_total_num = 0;
+  int float_total_num = 0;
+  CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
+
+  auto num = ins_vec.size();
+  buf_.h_uint64_lens.resize(num + 1);
+  buf_.h_uint64_lens[0] = 0;
+  buf_.h_float_lens.resize(num + 1);
+  buf_.h_float_lens[0] = 0;
+
+  for (size_t i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    uint64_total_num += r.uint64_feasigns_.size();
+    buf_.h_uint64_lens[i + 1] = uint64_total_num;
+    float_total_num += r.float_feasigns_.size();
+    buf_.h_float_lens[i + 1] = float_total_num;
+  }
+
+  int uint64_cols = (used_uint64_num_ + 1);
+  buf_.h_uint64_offset.resize(uint64_cols * num);
+  buf_.h_uint64_keys.resize(uint64_total_num);
+
+  int float_cols = (used_float_num_ + 1);
+  buf_.h_float_offset.resize(float_cols * num);
+  buf_.h_float_keys.resize(float_total_num);
+
+  size_t fea_num = 0;
+  uint64_total_num = 0;
+  float_total_num = 0;
+  for (size_t i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    fea_num = r.uint64_feasigns_.size();
+    if (fea_num > 0) {
+      memcpy(&buf_.h_uint64_keys[uint64_total_num], r.uint64_feasigns_.data(),
+             fea_num * sizeof(uint64_t));
+    }
+    uint64_total_num += fea_num;
+
+    fea_num = r.float_feasigns_.size();
+    memcpy(&buf_.h_float_keys[float_total_num], r.float_feasigns_.data(),
+           fea_num * sizeof(float));
+    float_total_num += fea_num;
+
+    // for (int j = 0; j < used_slot_size_; ++j) {
+    //   uint64_slot_offsets_[j] = r.uint64_feasigns_.size();
+    //   float_slot_offsets_[j] = r.float_feasigns_.size();
+    // }
+    // copy uint64 offset
+    VLOG(0) << i << " r.uint64_offset_ SIZE:" << r.uint64_offset_.size();
+    memcpy(&buf_.h_uint64_offset[i * uint64_cols], r.uint64_offset_.data(),
+           sizeof(int) * uint64_cols);
+
+    VLOG(0) << i << " r.float_offset_ SIZE:" << r.float_offset_.size();
+
+    // copy float offset
+    memcpy(&buf_.h_float_offset[i * float_cols], r.float_offset_.data(),
+           sizeof(int) * float_cols);
+  }
+  VLOG(0) << "float_total_num:" << float_total_num
+          << " uint64_total_num:" << uint64_total_num
+          << "buf_.h_float_offset:" << buf_.h_float_lens.back()
+          << " buf_.h_uint64_lens:" << buf_.h_uint64_lens.back();
+  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
+      << "uint64 value length error";
+  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
+      << "float value length error";
+}
+
+void MiniBatchGpuPack::pack_instance(const std::vector<Record>& ins_vec) {
+  // pack_timer_.Resume();
+  auto num = ins_vec.size();
+  ins_num_ = num;
+  CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
+  // uint64 and float
+  if (used_uint64_num_ > 0 && used_float_num_ > 0) {
+    pack_all_data(ins_vec);
+  } else if (used_uint64_num_ > 0) {  // uint64
+    pack_uint64_data(ins_vec);
+  } else {  // only float
+    pack_float_data(ins_vec);
+  }
+  // pack_timer_.Pause();
+  // to gpu
+  transfer_to_gpu();
+}
+
+void MiniBatchGpuPack::transfer_to_gpu(void) {
+  // trans_timer_.Resume();
+  copy_host2device(&value_.d_uint64_lens, buf_.h_uint64_lens);
+  copy_host2device(&value_.d_uint64_keys, buf_.h_uint64_keys);
+  copy_host2device(&value_.d_uint64_offset, buf_.h_uint64_offset);
+
+  copy_host2device(&value_.d_float_lens, buf_.h_float_lens);
+  copy_host2device(&value_.d_float_keys, buf_.h_float_keys);
+  copy_host2device(&value_.d_float_offset, buf_.h_float_offset);
+  CUDA_CHECK(cudaStreamSynchronize(stream_));
+  // trans_timer_.Pause();
+}
+#endif
 
 }  // namespace framework
 }  // namespace paddle
