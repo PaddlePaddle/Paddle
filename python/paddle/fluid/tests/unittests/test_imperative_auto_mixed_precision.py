@@ -581,9 +581,9 @@ class TestGradScalerStateDict(unittest.TestCase):
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_use_state_dict = self.train_resnet(
-                    enable_amp=True, use_data_loader=False, use_save_load=True)
+                    enable_amp=True, use_data_loader=True, use_save_load=True)
                 out_no_state_dict = self.train_resnet(
-                    enable_amp=True, use_data_loader=False, use_save_load=False)
+                    enable_amp=True, use_data_loader=True, use_save_load=False)
             print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
             self.assertTrue(
                 np.allclose(out_use_state_dict[0], out_no_state_dict[0]))
@@ -847,9 +847,9 @@ class TestPureFp16SaveLoad(unittest.TestCase):
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_use_save_load = self.train_resnet(
-                    enable_amp=True, use_data_loader=False, use_save_load=True)
+                    enable_amp=True, use_data_loader=True, use_save_load=True)
                 out_no_save_load = self.train_resnet(
-                    enable_amp=True, use_data_loader=False, use_save_load=False)
+                    enable_amp=True, use_data_loader=True, use_save_load=False)
             print('save_load:', out_use_save_load[0], out_no_save_load[0])
             self.assertTrue(
                 np.allclose(out_use_save_load[0], out_no_save_load[0]))
@@ -859,99 +859,104 @@ class TestPureFp16SaveLoad(unittest.TestCase):
         func_isinstance()
 
 
-# class TestPureFp16InferenceSaveLoad(unittest.TestCase):
-#     def test_inference_save_load(self):
-#         def func_isinstance():
-#             BATCH_SIZE = 16
-#             BATCH_NUM = 4
-#             EPOCH_NUM = 4
-#             IMAGE_SIZE = 784
-#             CLASS_NUM = 10
+class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+    def test_inference_save_load(self):
+        def func_isinstance():
+            BATCH_SIZE = 16
+            BATCH_NUM = 4
+            EPOCH_NUM = 4
+            IMAGE_SIZE = 784
+            CLASS_NUM = 10
 
-#             # define a random dataset
-#             class RandomDataset(paddle.io.Dataset):
-#                 def __init__(self, num_samples):
-#                     self.num_samples = num_samples
+            # define a random dataset
+            class RandomDataset(paddle.io.Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
 
-#                 def __getitem__(self, idx):
-#                     image = np.random.random([IMAGE_SIZE]).astype('float32')
-#                     label = np.random.randint(0, CLASS_NUM - 1,
-#                                             (1, )).astype('int64')
-#                     return image, label
+                def __getitem__(self, idx):
+                    image = np.random.random([IMAGE_SIZE]).astype('float32')
+                    label = np.random.randint(0, CLASS_NUM - 1,
+                                              (1, )).astype('int64')
+                    return image, label
 
-#                 def __len__(self):
-#                     return self.num_samples
+                def __len__(self):
+                    return self.num_samples
 
-#             class LinearNet(nn.Layer):
-#                 def __init__(self):
-#                     super(LinearNet, self).__init__()
-#                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
-#                 def forward(self, x):
-#                     return self._linear(x)
+                def forward(self, x):
+                    return self._linear(x)
 
-#             def train(layer, loader, loss_fn, opt):
-#                 for epoch_id in range(EPOCH_NUM):
-#                     for batch_id, (image, label) in enumerate(loader()):
-#                         with paddle.amp.auto_cast(
-#                                 enable=True,
-#                                 custom_white_list=None,
-#                                 custom_black_list=None,
-#                                 level='O2'):
-#                             out = layer(image)
-#                             loss = loss_fn(out, label)
-#                         loss.backward()
-#                         opt.step()
-#                         opt.clear_grad()
+            def train(layer, loader, loss_fn, opt):
+                for epoch_id in range(EPOCH_NUM):
+                    for batch_id, (image, label) in enumerate(loader()):
+                        with paddle.amp.auto_cast(
+                                enable=True,
+                                custom_white_list=None,
+                                custom_black_list=None,
+                                level='O2'):
+                            out = layer(image)
+                            loss = loss_fn(out, label)
+                        loss.backward()
+                        opt.step()
+                        opt.clear_grad()
 
-#             # train
-#             layer = LinearNet()
-#             adam = paddle.optimizer.Adam(
-#                 learning_rate=0.001,
-#                 parameters=layer.parameters(),
-#                 multi_precision=True)
-#             loss_fn = nn.CrossEntropyLoss()
-#             layer, adam = paddle.amp.decorate(
-#                 models=layer, optimizers=adam, save_dtype='float32')
-#             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-#             loader = paddle.io.DataLoader(
-#                 dataset,
-#                 batch_size=BATCH_SIZE,
-#                 shuffle=True,
-#                 drop_last=True,
-#                 num_workers=2)
+            # train
+            layer = LinearNet()
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.001,
+                parameters=layer.parameters(),
+                multi_precision=True)
+            loss_fn = nn.CrossEntropyLoss()
+            layer, adam = paddle.amp.decorate(
+                models=layer, optimizers=adam, save_dtype='float32')
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            loader = paddle.io.DataLoader(
+                dataset,
+                batch_size=BATCH_SIZE,
+                shuffle=True,
+                drop_last=True,
+                num_workers=2)
 
-#             train(layer, loader, loss_fn, adam)
+            train(layer, loader, loss_fn, adam)
 
-#             # save 
-#             path = "example_model/linear"
-#             paddle.jit.save(
-#                 layer, path, input_spec=[InputSpec(
-#                     shape=[IMAGE_SIZE], name='x')])
+            # save 
+            path = "example_model/linear"
+            paddle.jit.save(
+                layer,
+                path,
+                input_spec=[InputSpec(
+                    shape=[IMAGE_SIZE], name='x')])
 
-#             # jit.load
-#             loaded_layer = paddle.jit.load(path)
+            # jit.load
+            loaded_layer = paddle.jit.load(path)
 
-#             # inference
-#             loaded_layer.eval()
-#             x = np.random.randn(1, IMAGE_SIZE).astype('float32')
-#             x_tensor = paddle.to_tensor(x)
-#             pred = loaded_layer(x_tensor)
+            # inference
+            loaded_layer.eval()
+            x = np.random.randn(1, IMAGE_SIZE).astype('float32')
+            x_tensor = paddle.to_tensor(x)
+            pred = loaded_layer(x_tensor)
 
-#             # load_inference_model
-#             paddle.enable_static()
-#             exe = paddle.static.Executor(paddle.CPUPlace())
-#             [inference_program, feed_target_names, fetch_targets] = (
-#                 paddle.static.load_inference_model(path, exe))
-#             tensor_img = x
-#             results = exe.run(inference_program,
-#                             feed={feed_target_names[0]: tensor_img},
-#                             fetch_list=fetch_targets)
-#             self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
+            # load_inference_model
+            paddle.enable_static()
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            [inference_program, feed_target_names, fetch_targets] = (
+                paddle.static.load_inference_model(path, exe))
+            tensor_img = x
+            results = exe.run(inference_program,
+                              feed={feed_target_names[0]: tensor_img},
+                              fetch_list=fetch_targets)
+            print("pred.numpy()", pred.numpy())
+            print("results", results)
+            self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
+            paddle.disable_static()
 
-#         with _test_eager_guard():
-#             func_isinstance()
-#         func_isinstance()
+        func_isinstance()
+        with _test_eager_guard():
+            func_isinstance()
 
 
 class TestResnet2(unittest.TestCase):
@@ -1092,30 +1097,37 @@ class TestResnet2(unittest.TestCase):
             func_isinstance()
         func_isinstance()
 
-    # def test_with_data_loader(self):
-    #     with fluid.dygraph.guard():
-    #         out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
-    #         out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
-    #         out_pure_fp16 = self.train_resnet(
-    #             enable_amp=True, use_data_loader=True, level='O2')
-    #     print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-    #     self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
-    #     self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+    def test_with_data_loader(self):
+        def func_isinstance():
+            with fluid.dygraph.guard():
+                out_fp32 = self.train_resnet(
+                    enable_amp=False, use_data_loader=True)
+                out_amp = self.train_resnet(
+                    enable_amp=True, use_data_loader=True)
+                out_pure_fp16 = self.train_resnet(
+                    enable_amp=True, use_data_loader=True, level='O2')
+            print(out_fp32[0], out_amp[0], out_pure_fp16[0])
+            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
+            self.assertTrue(
+                np.allclose(
+                    out_fp32[0], out_pure_fp16[0], atol=1.e-2))
+
+        with _test_eager_guard():
+            func_isinstance()
+        func_isinstance()
 
     def test_param_group(self):
         def func_isinstance():
             with fluid.dygraph.guard():
                 out_fp32 = self.train_resnet(
                     enable_amp=False,
-                    use_data_loader=False,
+                    use_data_loader=True,
                     use_param_group=True)
                 out_amp = self.train_resnet(
-                    enable_amp=True,
-                    use_data_loader=False,
-                    use_param_group=True)
+                    enable_amp=True, use_data_loader=True, use_param_group=True)
                 out_pure_fp16 = self.train_resnet(
                     enable_amp=True,
-                    use_data_loader=False,
+                    use_data_loader=True,
                     use_param_group=True,
                     level='O2')
             print(out_fp32[0], out_amp[0], out_pure_fp16[0])
@@ -1129,93 +1141,100 @@ class TestResnet2(unittest.TestCase):
         func_isinstance()
 
 
-# class TestResnet(unittest.TestCase):
-#     """
-#     Use paddle-1.x API
-#     """
+class TestResnet(unittest.TestCase):
+    """
+    Use paddle-1.x API
+    """
 
-#     def train_resnet(self, enable_amp=True, level='O1'):
-#         seed = 90
+    def train_resnet(self, enable_amp=True, level='O1'):
+        seed = 90
 
-#         batch_size = train_parameters["batch_size"]
-#         batch_num = 1
+        batch_size = train_parameters["batch_size"]
+        batch_num = 1
 
-#         with fluid.dygraph.guard():
-#             paddle.seed(seed)
-#             paddle.framework.random._manual_program_seed(seed)
+        with fluid.dygraph.guard():
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
-#             resnet = ResNet(use_cudnn=True)
-#             optimizer = optimizer_setting(
-#                 train_parameters, parameter_list=resnet.parameters())
-#             optimizer = paddle.optimizer.Momentum(
-#                 parameters=resnet.parameters(), multi_precision=True)
-#             np.random.seed(seed)
-#             train_reader = paddle.batch(
-#                 paddle.dataset.flowers.train(use_xmap=False),
-#                 batch_size=batch_size)
+            resnet = ResNet(use_cudnn=True)
+            optimizer = optimizer_setting(
+                train_parameters, parameter_list=resnet.parameters())
+            optimizer = paddle.optimizer.Momentum(
+                parameters=resnet.parameters(), multi_precision=True)
+            np.random.seed(seed)
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
 
-#             dy_param_init_value = {}
-#             for param in resnet.parameters():
-#                 dy_param_init_value[param.name] = param.numpy()
+            dy_param_init_value = {}
+            for param in resnet.parameters():
+                dy_param_init_value[param.name] = param.numpy()
 
-#             program = None
-#             scaler = paddle.fluid.dygraph.AmpScaler(
-#                 enable=enable_amp, init_loss_scaling=2.**10)
+            program = None
+            scaler = paddle.fluid.dygraph.AmpScaler(
+                enable=enable_amp, init_loss_scaling=2.**10)
 
-#             if enable_amp and (level == 'O2'):
-#                 resnet, optimizer = paddle.fluid.dygraph.amp_decorate(
-#                     models=resnet, optimizers=optimizer, level='O2')
+            if enable_amp and (level == 'O2'):
+                resnet, optimizer = paddle.fluid.dygraph.amp_decorate(
+                    models=resnet, optimizers=optimizer, level='O2')
 
-#             for batch_id, data in enumerate(train_reader()):
-#                 if batch_id >= batch_num:
-#                     break
-#                 dy_x_data = np.array(
-#                     [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-#                 if len(np.array([x[1]
-#                                  for x in data]).astype('int64')) != batch_size:
-#                     continue
-#                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-#                     -1, 1)
-#                 img = fluid.dygraph.to_variable(dy_x_data)
-#                 label = fluid.dygraph.to_variable(y_data)
-#                 label.stop_gradient = True
-#                 with paddle.fluid.dygraph.amp_guard(
-#                         enable=enable_amp, level=level):
-#                     out = resnet(img)
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= batch_num:
+                    break
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    -1, 1)
+                img = fluid.dygraph.to_variable(dy_x_data)
+                label = fluid.dygraph.to_variable(y_data)
+                label.stop_gradient = True
+                with paddle.fluid.dygraph.amp_guard(
+                        enable=enable_amp, level=level):
+                    out = resnet(img)
 
-#                 loss = fluid.layers.cross_entropy(input=out, label=label)
-#                 avg_loss = fluid.layers.mean(x=loss)
+                loss = fluid.layers.cross_entropy(input=out, label=label)
+                avg_loss = fluid.layers.mean(x=loss)
 
-#                 dy_out = avg_loss.numpy()
+                dy_out = avg_loss.numpy()
 
-#                 scaled_loss = scaler.scale(avg_loss)
-#                 scaled_loss.backward()
+                scaled_loss = scaler.scale(avg_loss)
+                scaled_loss.backward()
 
-#                 scaler.minimize(optimizer, scaled_loss)
+                scaler.minimize(optimizer, scaled_loss)
 
-#                 dy_grad_value = {}
-#                 for param in resnet.parameters():
-#                     if param.trainable:
-#                         np_array = np.array(param._grad_ivar().value()
-#                                             .get_tensor())
-#                         dy_grad_value[param.name + fluid.core.grad_var_suffix(
-#                         )] = np_array
+                dy_grad_value = {}
+                for param in resnet.parameters():
+                    if param.trainable:
+                        np_array = np.array(param._grad_ivar().value()
+                                            .get_tensor())
+                        dy_grad_value[param.name + fluid.core.grad_var_suffix(
+                        )] = np_array
 
-#                 resnet.clear_gradients()
+                resnet.clear_gradients()
 
-#                 dy_param_value = {}
-#                 for param in resnet.parameters():
-#                     dy_param_value[param.name] = param.numpy()
+                dy_param_value = {}
+                for param in resnet.parameters():
+                    dy_param_value[param.name] = param.numpy()
 
-#         return dy_out, dy_param_value, dy_grad_value
+        return dy_out, dy_param_value, dy_grad_value
 
-#     def test_resnet(self):
-#         out_fp32 = self.train_resnet(enable_amp=False)
-#         out_amp = self.train_resnet(enable_amp=True)
-#         out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
-#         print(out_fp32[0], out_amp[0], out_pure_fp16[0])
-#         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
-#         self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-1))
+    def test_resnet(self):
+        def func_isinstance():
+            out_fp32 = self.train_resnet(enable_amp=False)
+            out_amp = self.train_resnet(enable_amp=True)
+            out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
+            print(out_fp32[0], out_amp[0], out_pure_fp16[0])
+            self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+            self.assertTrue(
+                np.allclose(
+                    out_fp32[0], out_pure_fp16[0], atol=1.e-1))
+
+        with _test_eager_guard():
+            func_isinstance()
+        func_isinstance()
 
 
 class TestLayerNormFp16(unittest.TestCase):
@@ -1275,35 +1294,30 @@ class TestBf16(unittest.TestCase):
         func_isinstance()
 
 
-# class TestAmpWithPyLyer(unittest.TestCase):
-#     def test_pylayer(self):
-#         def func_isinstance():
-#             class MyMM(PyLayer):
-#                 @staticmethod
-#                 def forward(ctx, a, b):
-#                     ctx.save_for_backward(a, b)
-#                     return a.mm(b)
+class TestAmpWithPyLyer(unittest.TestCase):
+    def test_pylayer(self):
+        class MyMM(PyLayer):
+            @staticmethod
+            def forward(ctx, a, b):
+                ctx.save_for_backward(a, b)
+                return a.mm(b)
 
-#                 @staticmethod
-#                 def backward(ctx, grad):
-#                     a, b = ctx.saved_tensor()
-#                     # NOTE(zhiqiu): a and b is float32 now, while grad is fp16 when forward runs with auto_cast()
-#                     # thus, the mm operation raise errors because of the dtype of inputs are inconsistent before.
-#                     return grad.mm(b.t()), a.t().mm(grad)
+            @staticmethod
+            def backward(ctx, grad):
+                a, b = ctx.saved_tensor()
+                # NOTE(zhiqiu): a and b is float32 now, while grad is fp16 when forward runs with auto_cast()
+                # thus, the mm operation raise errors because of the dtype of inputs are inconsistent before.
+                return grad.mm(b.t()), a.t().mm(grad)
 
-#             x = paddle.rand([10, 10])
-#             y = paddle.rand([10, 10])
-#             x.stop_gradient = False
-#             y.stop_gradient = False
+        x = paddle.rand([10, 10])
+        y = paddle.rand([10, 10])
+        x.stop_gradient = False
+        y.stop_gradient = False
 
-#             with paddle.amp.auto_cast():
-#                 res = MyMM.apply(x, y)
-#                 loss = paddle.mean(res)
-#             loss.backward()
-
-#         with _test_eager_guard():
-#             func_isinstance()
-#         func_isinstance()
+        # with paddle.amp.auto_cast():
+        res = MyMM.apply(x, y)
+        loss = paddle.mean(res)
+        loss.backward()
 
 
 class TestAmpWithHook(unittest.TestCase):
