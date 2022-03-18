@@ -982,7 +982,6 @@ class TheOnePSRuntime(RuntimeBase):
             return
 
         sparse_table_maps = self.ps_desc_builder.sparse_table_maps
-        print('wangbin sparse_table_maps: {}'.format(sparse_table_maps))
         dirname = os.path.normpath(dirname)
         pserver_id = self.role_maker._role_id()
 
