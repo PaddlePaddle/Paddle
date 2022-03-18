@@ -1163,7 +1163,7 @@ static std::string GenerateGradNodeCreationContent(
       const char* SET_GRAD_OUT_META_TEMPLATE =
           "      grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
           "      if(%s) grad_node->AddEdges(%s, %d);\n";
@@ -1177,7 +1177,7 @@ static std::string GenerateGradNodeCreationContent(
       const char* SET_GRAD_OUT_META_TEMPLATE =
           "      grad_node->SetGradOutMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE = "      grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
@@ -1214,9 +1214,8 @@ static std::string GenerateGradNodeCreationContent(
       }
       const char* SET_GRAD_IN_META_TEMPLATE =
           "      grad_node->SetGradInMeta(%s, %d);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
-                                  inplace_input_autograd_name, output_position);
+      grad_node_creation_str += paddle::string::Sprintf(
+          SET_GRAD_IN_META_TEMPLATE, inplace_input_name, output_position);
 
       // Intermediate Tensor does not require CheckAndRetainGrad
       if (!output.intermediate()) {
@@ -1247,9 +1246,9 @@ static std::string GenerateGradNodeCreationContent(
               SET_HISTORY_TEMPLATE, output_autograd_name);
         }
         const char* SET_GRAD_IN_META_TEMPLATE =
-            "      grad_node->SetGradInMeta(&%s, %d);\n";
+            "      grad_node->SetGradInMeta(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
-            SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+            SET_GRAD_IN_META_TEMPLATE, output_name, output_position);
 
       } else {
         pass_stop_gradient_args += ", " + output_autograd_name;
@@ -1268,7 +1267,7 @@ static std::string GenerateGradNodeCreationContent(
         const char* SET_GRAD_IN_META_TEMPLATE =
             "      grad_node->SetGradInMeta(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
-            SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+            SET_GRAD_IN_META_TEMPLATE, output_name, output_position);
       }
 
       // Intermediate Tensor does not require CheckAndRetainGrad
@@ -1995,7 +1994,7 @@ static std::string GenerateSingleOpBase(
             !is_op_base_per_duplicable_input) {
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
               "{ \"%s\", egr::EagerUtils::CreateVars( "
-              "this->OutputMeta()[%d].Size() ) },";
+              "this->OutputMeta()[%d].size() ) },";
           outs_contents_str += paddle::string::Sprintf(
               GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
         } else {
@@ -2214,7 +2213,7 @@ static std::string GenerateGradNodeCCContents(
 
   if (is_op_base_per_duplicable_input) {
     const char* OP_BASE_PER_DUP_INPUT_TEMPLATE =
-        "  for(int i = 0; i < this->OutputMeta()[0].Size(); i++) {\n"
+        "  for(size_t i = 0; i < this->OutputMeta()[0].size(); i++) {\n"
         "    %s\n"
         "  }\n";
     generated_grad_function_body = paddle::string::Sprintf(
@@ -2226,6 +2225,8 @@ static std::string GenerateGradNodeCCContents(
       "GradNode%s::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
       "  %s\n"
+      "  if(NeedComplexToRealConversion()) "
+      "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
   generated_grad_function_body =
       paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
