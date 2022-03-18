@@ -545,33 +545,33 @@
 
 
 
-# bitwise_and
-# - api : bitwise_and
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : BitwiseInferMeta
-#   kernel :
-#     func : bitwise_and
+bitwise_and
+- api : bitwise_and
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BitwiseInferMeta
+  kernel :
+    func : bitwise_and
 
-# # bitwise_or
-# - api : bitwise_or
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : BitwiseInferMeta
-#   kernel :
-#     func : bitwise_or
+# bitwise_or
+- api : bitwise_or
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BitwiseInferMeta
+  kernel :
+    func : bitwise_or
 
 
-# # bitwise_xor
-# - api : bitwise_xor
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : BitwiseInferMeta
-#   kernel :
-#     func : bitwise_xor
+# bitwise_xor
+- api : bitwise_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BitwiseInferMeta
+  kernel :
+    func : bitwise_xor
 
 # bitwise_not
 - api : bitwise_not
@@ -804,33 +804,33 @@
     func : log_loss
   backward : log_loss_grad
 
-# # logical_and
-# - api : logical_and
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : LogicalInferMeta
-#   kernel :
-#     func : logical_and
+# logical_and
+- api : logical_and
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : LogicalInferMeta
+  kernel :
+    func : logical_and
 
-# # logical_or
-# - api : logical_or
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : LogicalInferMeta
-#   kernel :
-#     func : logical_or
+# logical_or
+- api : logical_or
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : LogicalInferMeta
+  kernel :
+    func : logical_or
 
 
-# # logical_xor
-# - api : logical_xor
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : LogicalInferMeta
-#   kernel :
-#     func : logical_xor
+# logical_xor
+- api : logical_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : LogicalInferMeta
+  kernel :
+    func : logical_xor
 
 # logical_not
 - api : logical_not
@@ -849,6 +849,7 @@
 #     func : MaksedSelectInferMeta
 #   kernel :
 #     func : masked_select
+#     dtype : x
 #   backward : masked_select_grad
 
 # # multi_dot
