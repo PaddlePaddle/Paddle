@@ -19,7 +19,7 @@ SET(MKLDNN_PREFIX_DIR     ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     ${GIT_URL}/oneapi-src/oneDNN.git)
-SET(MKLDNN_TAG            145c4b50196ac90ec1b946fb80cb5cef6e7d2d35)
+SET(MKLDNN_TAG            c13174f87f64cf4d7dc55908789c71c5cbef5da5)
 
 
 # Introduce variables:
