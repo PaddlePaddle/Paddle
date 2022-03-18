@@ -228,6 +228,19 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_cpu(TensorObject* self, PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  auto cp_tensor =
+      self->tensor.copy_to(phi::TransToPhiBackend(phi::CPUPlace()), true);
+  egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
+  egr::EagerUtils::autograd_meta(&cp_tensor)
+      ->SetPersistable(
+          egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
+  return ToPyObject(cp_tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
@@ -266,7 +279,7 @@ static PyObject* tensor_method_copy_(TensorObject* self, PyObject* args,
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
   }
 
-  self->tensor.copy_(src_tensor, blocking);
+  self->tensor.copy_(src_tensor, self->tensor.inner_place(), blocking);
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
@@ -316,23 +329,25 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
     grad = meta->MutableGrad();
   }
 
-  if (grad->is_selected_rows()) {
-    auto selected_rows =
-        std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
-    if (selected_rows->mutable_value()->IsInitialized()) {
-      selected_rows->mutable_rows()->clear();
-      selected_rows->mutable_value()->clear();
-    }
-  } else if (grad->is_dense_tensor()) {
-    if (grad->initialized()) {
-      if (set_to_zero) {
-        grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
-      } else {
-        VLOG(4) << "Gradient of " << self->tensor.name()
-                << " is initialized, will be released.";
-        auto dense_tensor =
-            std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
-        dense_tensor->MoveMemoryHolder();
+  if (grad->impl()) {
+    if (grad->is_selected_rows()) {
+      auto selected_rows =
+          std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
+      if (selected_rows->mutable_value()->IsInitialized()) {
+        selected_rows->mutable_rows()->clear();
+        selected_rows->mutable_value()->clear();
+      }
+    } else if (grad->is_dense_tensor()) {
+      if (grad->initialized()) {
+        if (set_to_zero) {
+          grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+        } else {
+          VLOG(4) << "Gradient of " << self->tensor.name()
+                  << " is initialized, will be released.";
+          auto dense_tensor =
+              std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
+          dense_tensor->MoveMemoryHolder();
+        }
       }
     }
   }

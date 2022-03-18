@@ -57,21 +57,28 @@ class AutogradMeta;
 class GradSlotMeta {
  public:
   GradSlotMeta() = default;
-  void Init(size_t size) {
-    size_ = static_cast<int>(size);
-    stop_gradient_.resize(size, false);
+  bool IsStopGradient() const { return stop_gradient_; }
+  void SetStopGradient(bool stop_gradient = true) {
+    stop_gradient_ = stop_gradient;
   }
 
-  bool IsInitialized() const { return size_ != -1; }
-  bool IsStopGradient(size_t rank) const { return stop_gradient_[rank]; }
-  int Size() const { return size_; }
-  void SetStopGradient(size_t rank, bool stop_gradient = true) {
-    stop_gradient_.at(rank) = stop_gradient;
+  void SetTensorMeta(const phi::DenseTensorMeta& meta) {
+    meta_ = std::make_shared<phi::DenseTensorMeta>(meta);
+  }
+  bool HasTensorMeta() const { return meta_ && meta_.get(); }
+  const phi::DenseTensorMeta& GetTensorMeta() const {
+    if (!HasTensorMeta()) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "meta_ of GradSlotMeta has not been initialized yet."
+          "You're expected to check Edge availability with HasTensorMeta()"
+          "before calling GetTensorMeta() interface."));
+    }
+    return *meta_.get();
   }
 
  private:
-  int size_{-1};
-  std::vector<bool> stop_gradient_{false};
+  bool stop_gradient_{false};
+  std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
 class GradNodeBase {
@@ -95,8 +102,12 @@ class GradNodeBase {
    * is better choice to fit this format.
    * **/
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) = 0;
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      bool create_graph = false) = 0;
 
+  virtual void ClearTensorWrappers() = 0;
+
+  virtual bool IsTensorWrappersCleared() = 0;
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
@@ -108,25 +119,30 @@ class GradNodeBase {
   void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
   void AddEdges(AutogradMeta* meta, size_t slot_id);
 
-  /**
-   * GetEdges is designed to get all edges of current node**/
-  const std::vector<std::vector<Edge>>& GetEdges() const;
+  // adj_edges were moved inside OutputMeta(), so no available direct access
+  // from GradNodeBase.
+  // To access Edges, get GradSlotMeta by calling OutputMeta(), then use
+  // slot_meta.GetEdge()
 
   /**
    * Get Input Meta of current Grad node**/
-  const std::vector<GradSlotMeta>& InputMeta() const;
+  const std::vector<std::vector<GradSlotMeta>>& InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const std::vector<GradSlotMeta>& OutputMeta() const;
+  const std::vector<std::vector<GradSlotMeta>>& OutputMeta() const;
   /**
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(std::vector<AutogradMeta*>* fwd_out, size_t slot_rank);
-  void SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank);
+  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
+                     size_t slot_rank);
+  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
+                     size_t slot_rank);
 
-  void SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in, size_t slot_rank);
-  void SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
+                      size_t slot_rank);
+  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+                      size_t slot_rank);
 
   /**
    * Default setters for Grad in/out meta this should be used for same special
@@ -158,11 +174,21 @@ class GradNodeBase {
   std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
 
+  /**
+    * Handle Complex - Real Type Promotion
+    * **/
+  void HandleComplexGradToRealGrad(
+      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads);
+  bool NeedComplexToRealConversion() { return need_complex_to_real_; }
+
   virtual std::string name() { return "GradNodeBase"; }
 
- private:
-  // TODO(jiabin): Use SmallVector instead after merge PR from develop
+  /**
+       * GetEdges is designed to get all edges of current node**/
+  const std::vector<std::vector<Edge>>& GetEdges() const;
 
+ private:
+  // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
   // Edges recorded the backward related node info, which indicate all edges
   // linked
   // by this Grad Node.
@@ -170,10 +196,10 @@ class GradNodeBase {
   std::vector<std::vector<Edge>> adj_edges_;
 
   // bwd_out_meta_ is used to record Grad output info for backward
-  std::vector<GradSlotMeta> bwd_out_meta_;
+  std::vector<std::vector<GradSlotMeta>> bwd_out_meta_;
 
   // bwd_in_meta_ used to record Grad input info for backward
-  std::vector<GradSlotMeta> bwd_in_meta_;
+  std::vector<std::vector<GradSlotMeta>> bwd_in_meta_;
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward
@@ -184,6 +210,8 @@ class GradNodeBase {
                         /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
 
+  // We handle complex to real conversion only if any complex GradIn is involved
+  bool need_complex_to_real_ = false;
   int64_t next_hook_id_{0};
 };
 
