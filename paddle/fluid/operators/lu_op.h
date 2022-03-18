@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace paddle {

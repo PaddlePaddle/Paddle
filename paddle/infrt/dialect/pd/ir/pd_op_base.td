@@ -8,7 +8,7 @@ include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 
-def PD_Dialect : Dialect {
+def Paddle_Dialect : Dialect {
   let name = "pd";
 
   let description = [{
@@ -16,16 +16,16 @@ def PD_Dialect : Dialect {
 
     This dialect contains the PaddlePaddle operators.
   }];
-
-  let cppNamespace = "mlir::pd";
+  let hasConstantMaterializer = 1;
+  let cppNamespace = "infrt::pd";
 }
 
 class PD_Op<string mnemonic, list<OpTrait> traits = []> :
-      Op<PD_Dialect, mnemonic, traits>;
+      Op<Paddle_Dialect, mnemonic, traits>;
 
 
 class PD_PaddleAttr <string name, string description> :
-      Attr<CPred<"$_self.isa<mlir::pd::" # name # "Attr>()">,
+      Attr<CPred<"$_self.isa<infrt::pd::" # name # "Attr>()">,
           "PaddlePaddle " # description # " attribute">;
 
 
@@ -33,12 +33,12 @@ class PD_PaddleAttr <string name, string description> :
 // PaddlePaddle type definitions
 //===----------------------------------------------------------------------===//
 
-def PD_PDDialectType : Type<CPred<"$_self.isa<mlir::pd::PDType>()">, "PaddlePaddle type">;
+def PD_PDDialectType : Type<CPred<"$_self.isa<infrt::pd::PDType>()">, "PaddlePaddle type">;
 
 class PD_PaddleType <string name, string description> :
-      Type<CPred<"$_self.isa<mlir::pd::" # name #"Type>()">,
+      Type<CPred<"$_self.isa<infrt::pd::" # name #"Type>()">,
          "Paddle " # description # " type">,
-      BuildableType<"getType<mlir::pd::" # name # "Type>()">;
+      BuildableType<"getType<infrt::pd::" # name # "Type>()">;
 
 //===----------------------------------------------------------------------===//
 // Integer types

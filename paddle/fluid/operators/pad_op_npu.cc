@@ -90,5 +90,5 @@ namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(pad, ops::PadNPUKernel<plat::float16>,
                        ops::PadNPUKernel<float>, ops::PadNPUKernel<int>);
 
-REGISTER_OP_NPU_KERNEL(pad_grad, ops::PadNPUKernel<plat::float16>,
+REGISTER_OP_NPU_KERNEL(pad_grad, ops::PadGradNPUKernel<plat::float16>,
                        ops::PadGradNPUKernel<float>);
