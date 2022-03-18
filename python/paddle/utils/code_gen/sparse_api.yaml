@@ -4,6 +4,7 @@
   kernel :
     func : sparse_conv3d
     layout : x
+  backward : conv3d_grad
 
 - api : to_dense
   args : (Tensor x)
