@@ -100,6 +100,14 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void KthvalueInferMeta(const MetaTensor& x,
+                       int k,
+                       int axis,
+                       bool keepdim,
+                       MetaTensor* out,
+                       MetaTensor* indices,
+                       MetaConfig = MetaConfig());
+
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
@@ -176,6 +184,8 @@ void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
+
+void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 

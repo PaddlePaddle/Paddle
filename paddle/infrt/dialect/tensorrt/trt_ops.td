@@ -60,6 +60,39 @@ def TRT_ActivationOp : TRT_Op<"Activation", [NoSideEffect]> {
   let results = (outs DenseTensor:$output);
 }
 
+def TRT_FullyConnectedOp : TRT_Op<"FullyConnected", [NoSideEffect]> {
+  let summary = "TensorRT IFullyConnectedLayer";
+  let description = [{
+    TensorRT IFullyConnectedLayer
+  }];
+  let arguments = (ins
+    DenseTensor:$input_tensor,
+    DenseTensor:$kernel_weights,
+    DenseTensor:$bias_weights,
+    SI32Attr:$out_channel_num
+  );
+  let results = (outs
+    DenseTensor:$output_tensor
+  );
+}
+
+def TRT_ConvolutionOp : TRT_Op<"Convolution", [NoSideEffect]> {
+  let summary = "TensorRT IConvolutionLayer";
+  let description = [{
+    TensorRT IConvolutionLayer
+  }];
+  let arguments = (ins
+    DenseTensor:$input_tensor,
+    DenseTensor:$kernel_weights,
+    DenseTensor:$bias_weights,
+    SI32Attr:$out_channel_num,
+    I32ArrayAttr:$kernel_size
+  );
+  let results = (outs
+    DenseTensor:$output_tensor
+  );
+}
+
 def TRT_ElementWiseOp : TRT_Op<"ElementWise", [NoSideEffect]> {
   let summary = "TensorRT IElementWiseLayer";
   let description = [{

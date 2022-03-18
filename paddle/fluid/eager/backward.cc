@@ -370,7 +370,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       if (grad_tensors[i].is_initialized()) {
         // Deep copy
         paddle::experimental::Tensor tmp_tensor;
-        tmp_tensor.copy_(grad_tensors[i], true);
+        tmp_tensor.copy_(grad_tensors[i], grad_tensors[i].inner_place(), true);
         node_input_buffers_dict[grad_node]->add(input_info.first,
                                                 input_info.second, tmp_tensor);
       } else {
@@ -517,11 +517,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
 
     // TODO(jiabin): Should we erase it or find a more efficient way.
+
     node_input_buffers_dict.erase(node);
 
     // Prepare GradTensorHolder for next node
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
@@ -532,6 +532,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     for (size_t i = 0; i < edges.size(); i++) {
       for (size_t j = 0; j < edges[i].size(); j++) {
         const Edge& edge = edges[i][j];
+
         auto edge_rank = edge.GetEdgeRankInfo();
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with
@@ -545,6 +546,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
             grad_output_tensors[i].empty()) {
           continue;
         }
+
         PADDLE_ENFORCE_LT(
             j, grad_output_tensors[i].size(),
             paddle::platform::errors::Fatal(
