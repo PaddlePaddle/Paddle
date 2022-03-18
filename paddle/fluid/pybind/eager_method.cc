@@ -173,7 +173,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);
 
-  if (self->tensor.is_cpu()) {
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     platform::CPUPlace place;
@@ -182,7 +182,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
                                     pybind11::detail::array_proxy(array)->data),
                          place, dense_tensor->data(), sizeof_dtype * numel);
 #if defined(PADDLE_WITH_CUDA)
-  } else if (self->tensor.is_cuda()) {
+  } else if (self->tensor.is_gpu()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
 

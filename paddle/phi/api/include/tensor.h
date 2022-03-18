@@ -253,12 +253,20 @@ class PADDLE_API Tensor final {
   bool is_cpu() const;
 
   /**
-   * @brief Determine whether the tensor device is CUDA
+   * @brief Determine whether the tensor device is GPU
    *
    * @return true
    * @return false
    */
-  bool is_cuda() const;
+  bool is_gpu() const;
+
+  /**
+   * @brief Determine whether the tensor device is GPU_PINNED
+   *
+   * @return true
+   * @return false
+   */
+  bool is_gpu_pinned() const;
 
   /* Part 4: Data Access methods */
 
