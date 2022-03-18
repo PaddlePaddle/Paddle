@@ -38,11 +38,12 @@ namespace paddle {
 namespace memory {
 
 TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
+  VLOG(1) << "Begin Run";
   std::shared_ptr<Allocation> pre_allocation =
       AllocShared(platform::CUDAPlace(), 100000000);
   pre_allocation.reset();
   ProfilerStart("alloc.prof");
-  for (int i = 0; i < 100000; ++i) {
+  for (int i = 0; i < 10000000; ++i) {
     size_t alloc_size = rand() % 10000000;
     std::shared_ptr<Allocation> allocation_implicit_stream =
         AllocShared(platform::CUDAPlace(), alloc_size);

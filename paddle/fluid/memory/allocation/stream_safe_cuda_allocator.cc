@@ -154,9 +154,13 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
+void StreamSafeCUDAAllocator::SetDefaultStream(const gpuStream_t& stream) {
+  default_stream_ = stream;
+}
+
 phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  // platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
-  //                      platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -184,8 +188,8 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
-  // platform::RecordEvent("StreamSafeCUDAAllocator::Free",
-  //                      platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent("StreamSafeCUDAAllocator::Free",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       static_cast<StreamSafeCUDAAllocation*>(allocation);
 
@@ -217,6 +221,12 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
 }
 
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
+  // NOTE(Ruibiao): This condition is to reduce lock competion. It does not need
+  // to be thread-safe since here occasional misjudgments are permissible.
+  if (unfreed_allocations_.empty()) {
+    return;
+  }
+
   std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
   for (auto it = unfreed_allocations_.begin();
        it != unfreed_allocations_.end();) {
