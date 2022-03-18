@@ -554,6 +554,67 @@ void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(DataType::BOOL);
 }
 
+void KthvalueInferMeta(const MetaTensor& x,
+                       int k,
+                       int axis,
+                       bool keepdim,
+                       MetaTensor* out,
+                       MetaTensor* indices,
+                       MetaConfig config) {
+  auto input_dims = x.dims();
+  const int& dim_size = input_dims.size();
+  PADDLE_ENFORCE_LT(axis,
+                    dim_size,
+                    phi::errors::InvalidArgument(
+                        "the axis must be [-%d, %d), but received %d .",
+                        dim_size,
+                        dim_size,
+                        axis));
+  PADDLE_ENFORCE_GE(axis,
+                    -dim_size,
+                    phi::errors::InvalidArgument(
+                        "the axis must be [-%d, %d), but received %d .",
+                        dim_size,
+                        dim_size,
+                        axis));
+  if (axis < 0) axis += dim_size;
+  PADDLE_ENFORCE_GE(
+      k,
+      1,
+      phi::errors::InvalidArgument(
+          "the k in the kthvalue must >= 1, but received %d .", k));
+  PADDLE_ENFORCE_GE(
+      input_dims.size(),
+      1,
+      phi::errors::InvalidArgument("input of kthvalue must have >= 1d shape"));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_GE(
+        input_dims[axis],
+        k,
+        phi::errors::InvalidArgument(
+            "input of kthvalue must have >= %d columns in axis of %d",
+            k,
+            axis));
+  }
+  std::vector<int64_t> dimvec;
+  for (int64_t i = 0; i < axis; i++) {
+    dimvec.emplace_back(input_dims[i]);
+  }
+  if (keepdim) {
+    dimvec.emplace_back(static_cast<int64_t>(1));
+  }
+  for (int64_t i = axis + 1; i < dim_size; i++) {
+    dimvec.emplace_back(input_dims[i]);
+  }
+  DDim dims = phi::make_ddim(dimvec);
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  indices->set_dims(dims);
+  indices->share_lod(x);
+  indices->set_dtype(x.dtype());
+}
+
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   auto dims = x.dims();
   auto n_dim = dims.size();
@@ -1589,7 +1650,7 @@ void UnchangedInferMetaCheckAxis(const MetaTensor& x,
   PADDLE_ENFORCE_GE(
       axis,
       -rank,
-      errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Attr(axis) value should be in range [-R, R-1], "
           "R is the rank of Input(X). But received axis: %d, R: %d.",
           axis,
