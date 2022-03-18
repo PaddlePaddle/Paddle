@@ -175,10 +175,9 @@ void MLIRModelGenImpl::UpdateModelParams(
       auto name = builder_.getStringAttr(var_desc.name());
       std::vector<int64_t> dims = RepeatedToVector<int64_t>(
           var_desc.type().lod_tensor().tensor().dims());
-      mlir::Type precision_;
-      ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                      builder_,
-                      &precision_);
+      infrt::PrecisionType precision_;
+      ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
+                           &precision_);
       mlir::Type type_ = infrt::DenseTensorType::get(
           context_, infrt::TargetType::CPU, precision_, infrt::LayoutType::ANY);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
