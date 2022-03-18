@@ -82,6 +82,7 @@ DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Log, LogFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 
@@ -143,6 +144,8 @@ PD_REGISTER_KERNEL(expm1,
                    float,
                    double,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    log, CPU, ALL_LAYOUT, phi::LogKernel, float, double, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}

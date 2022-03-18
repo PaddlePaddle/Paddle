@@ -1775,9 +1775,9 @@ REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
 /* ==========================  Log register ==================================*/
 REGISTER_OPERATOR(
     log, ops::ActivationOp, ops::LogOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+    ops::ActivationGradOpMaker<phi::funcs::LogGradFunctor<float>::FwdDeps(),
                                paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+    ops::ActivationGradOpMaker<phi::funcs::LogGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad,
@@ -1790,7 +1790,7 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
+// REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
 
 REGISTER_OP_CPU_KERNEL(
     log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,

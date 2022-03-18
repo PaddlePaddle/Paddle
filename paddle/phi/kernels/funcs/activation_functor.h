@@ -389,6 +389,30 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// log(x) = natural logarithm of x
+template <typename T>
+struct LogFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    LOG(ERROR) << "2";
+    out.device(d) = x.log();
+  }
+};
+
+template <typename T>
+struct LogGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<T>(1) / x);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 // rsqrt(x) = x^(-1/2)
 template <typename T>
 struct RsqrtFunctor : public BaseActivationFunctor<T> {
@@ -1710,6 +1734,28 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(-dout * sin(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaNewLogFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // log(x) = log(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    LOG(ERROR) << "11";
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(log(x));
+  }
+};
+
+template <typename T>
+struct CudaNewLogGradFunctor : public BaseActivationFunctor<T> {
+  // dx = dout / x
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout / x;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

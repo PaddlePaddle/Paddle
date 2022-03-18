@@ -352,26 +352,6 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// log(x) = natural logarithm of x
-template <typename T>
-struct LogFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log();
-  }
-};
-
-template <typename T>
-struct LogGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (static_cast<T>(1) / x);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 // log2(x) = logarithm to the base 2 of the elements of x
 template <typename T>
 struct Log2Functor : public BaseActivationFunctor<T> {
@@ -795,16 +775,27 @@ inline void ExtractDoubleGradTensorWithInputDOut(
 }
 
 template <typename DeviceContext, typename Functor>
-class SquareDoubleGradKernel
+class LogDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
-  void Compute(const framework::ExecutionContext& ctx) const override {}
-};
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *X, *ddX, *dOut;
+    X = ddX = dOut = nullptr;
+    framework::Tensor *dX, *ddOut;
+    dX = ddOut = nullptr;
 
-template <typename DeviceContext, typename Functor>
-class LogDoubleGradKernel
-    : public SquareDoubleGradKernel<DeviceContext, Functor> {};
+    ExtractDoubleGradTensorWithInputDOut(ctx, &X, &ddX, &dX, &dOut, &ddOut);
+
+    if (dX) dX->mutable_data<T>(X->dims(), ctx.GetPlace());
+    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
+
+    auto& place = ctx.template device_context<DeviceContext>();
+
+    Functor functor;
+    functor(place, X, ddX, ddOut, dOut, dX);
+  }
+};
 
 template <typename DeviceContext, typename Functor>
 class ELUDoubleGradKernel

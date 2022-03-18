@@ -36,6 +36,7 @@ void ActivationGPUImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
+  LOG(ERROR) << "run here";
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
@@ -101,6 +102,7 @@ DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log, CudaNewLogFunctor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -212,6 +214,9 @@ PD_REGISTER_KERNEL(square,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    log, GPU, ALL_LAYOUT, phi::LogKernel, float, double, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)

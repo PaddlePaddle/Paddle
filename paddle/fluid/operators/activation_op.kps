@@ -66,27 +66,6 @@ struct CudaZeroGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaLogFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // log(x) = log(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log(x));
-  }
-};
-
-template <typename T>
-struct CudaLogGradFunctor : public BaseActivationFunctor<T> {
-  // dx = dout / x
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / x;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -396,6 +375,7 @@ class ActivationCudaKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(ERROR) << "111";
     const framework::Tensor* x = nullptr;
     framework::Tensor* out = nullptr;
     ExtractActivationTensor(ctx, &x, &out);
@@ -553,20 +533,17 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::CELUGradGradFunctor<double>>,
     ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
                               ops::CELUGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
 
-/* ===========================   sqrt register  ============================= */
+// REGISTER_ACTIVATION_CUDA_KERNEL(log, Log, CudaLogFunctor,
+// CudaLogGradFunctor);
 
-/* ========================================================================== */
-
-/* ===========================   rsqrt register  =============================
- */
-
-/* ========================================================================== */
-
-/* ===========================  square register  ============================ */
-
-/* ========================================================================== */
+REGISTER_OP_CUDA_KERNEL(
+    log_grad_grad, ops::LogDoubleGradKernel<plat::CUDADeviceContext,
+                                            ops::LogGradGradFunctor<float>>,
+    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
+                             ops::LogGradGradFunctor<double>>,
+    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
+                             ops::LogGradGradFunctor<plat::float16>>);
 
 /* ==========================   pow register  ============================ */
 REGISTER_OP_CUDA_KERNEL(
@@ -583,29 +560,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<int64_t>>,
     ops::PowGradKernel<plat::CUDADeviceContext,
                        ops::PowGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ==========================   logit register  ============================ */
-namespace ops = paddle::operators;
-/* ========================================================================== */
-
-/* ==========================   exp register  ============================ */
-/* ========================================================================== */
-
-/* ==========================   expm1 register  ============================ */
-/* ========================================================================== */
-
-/* ==========================  Log register ==================================*/
-REGISTER_ACTIVATION_CUDA_KERNEL(log, Log, CudaLogFunctor, CudaLogGradFunctor);
-
-REGISTER_OP_CUDA_KERNEL(
-    log_grad_grad, ops::LogDoubleGradKernel<plat::CUDADeviceContext,
-                                            ops::LogGradGradFunctor<float>>,
-    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
-                             ops::LogGradGradFunctor<double>>,
-    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
-                             ops::LogGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
 
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
   __macro(softshrink, SoftShrink, CudaSoftShrinkFunctor,                      \

@@ -26,107 +26,177 @@ from paddle.fluid import compiler, Program, program_guard
 paddle.enable_static()
 np.random.seed(0)
 
+# def atan2_grad(x1, x2, dout):
+#     dx1 = dout * x2 / (x1 * x1 + x2 * x2)
+#     dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
+#     return dx1, dx2
 
-def atan2_grad(x1, x2, dout):
-    dx1 = dout * x2 / (x1 * x1 + x2 * x2)
-    dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
-    return dx1, dx2
+# class TestAtan2(OpTest):
+#     def setUp(self):
+#         self.op_type = "atan2"
+#         self.init_dtype()
+
+#         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(self.dtype)
+#         x2 = np.random.uniform(0.1, 1, [15, 17]).astype(self.dtype)
+#         out = np.arctan2(x1, x2)
+
+#         self.inputs = {'X1': x1, 'X2': x2}
+#         self.outputs = {'Out': out}
+
+#     def test_check_grad(self):
+#         self.check_grad(['X1', 'X2'], 'Out')
+
+#     def test_check_output(self):
+#         self.check_output()
+
+#     def init_dtype(self):
+#         self.dtype = np.float64
+
+# class TestAtan2_float(TestAtan2):
+#     def init_dtype(self):
+#         self.dtype = np.float32
+
+#     def test_check_grad(self):
+#         if self.dtype not in [np.int32, np.int64]:
+#             self.check_grad(
+#                 ['X1', 'X2'],
+#                 'Out',
+#                 user_defined_grads=atan2_grad(self.inputs['X1'],
+#                                               self.inputs['X2'],
+#                                               1 / self.inputs['X1'].size))
+
+# class TestAtan2_float16(TestAtan2_float):
+#     def init_dtype(self):
+#         self.dtype = np.float16
+
+# class TestAtan2_int32(TestAtan2_float):
+#     def init_dtype(self):
+#         self.dtype = np.int32
+
+# class TestAtan2_int64(TestAtan2_float):
+#     def init_dtype(self):
+#         self.dtype = np.int64
+
+# class TestAtan2API(unittest.TestCase):
+#     def init_dtype(self):
+#         self.dtype = 'float64'
+#         self.shape = [11, 17]
+
+#     def setUp(self):
+#         self.init_dtype()
+#         self.x1 = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+#         self.x2 = np.random.uniform(-1, -0.1, self.shape).astype(self.dtype)
+#         self.place = [paddle.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             self.place.append(paddle.CUDAPlace(0))
+
+#     def test_static_api(self):
+#         paddle.enable_static()
+
+#         def run(place):
+#             with paddle.static.program_guard(paddle.static.Program()):
+#                 X1 = paddle.fluid.data('X1', self.shape, dtype=self.dtype)
+#                 X2 = paddle.fluid.data('X2', self.shape, dtype=self.dtype)
+#                 out = paddle.atan2(X1, X2)
+#                 exe = paddle.static.Executor(place)
+#                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
+#             out_ref = np.arctan2(self.x1, self.x2)
+#             for r in res:
+#                 self.assertEqual(np.allclose(out_ref, r), True)
+
+#         for place in self.place:
+#             run(place)
+
+#     def test_dygraph_api(self):
+#         def run(place):
+#             paddle.disable_static(place)
+#             X1 = paddle.to_tensor(self.x1)
+#             X2 = paddle.to_tensor(self.x2)
+#             out = paddle.atan2(X1, X2)
+#             out_ref = np.arctan2(self.x1, self.x2)
+#             self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+#             paddle.enable_static()
+
+#         for place in self.place:
+#             run(place)
 
 
-class TestAtan2(OpTest):
+class TestActivation(OpTest):
     def setUp(self):
-        self.op_type = "atan2"
+        self.op_type = "log"
         self.init_dtype()
 
-        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(self.dtype)
-        x2 = np.random.uniform(0.1, 1, [15, 17]).astype(self.dtype)
-        out = np.arctan2(x1, x2)
+        np.random.seed(2049)
+        x = np.random.uniform(0.1, 1, [2, 2]).astype(self.dtype)
+        out = np.log(x)
 
-        self.inputs = {'X1': x1, 'X2': x2}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out')
-
     def test_check_output(self):
-        self.check_output()
+        # self.check_output( check_dygraph=False)
+        place = core.CUDAPlace(0)
+        print("!!!", self.op_type)
+        # place = core.CPUPlace()
+        self.check_output_with_place(place)
 
-    def init_dtype(self):
-        self.dtype = np.float64
+# def test_check_grad(self):
+#     if self.dtype == np.float16:
+#         return
+#     self.check_grad(['X'], 'Out')
 
-
-class TestAtan2_float(TestAtan2):
     def init_dtype(self):
         self.dtype = np.float32
 
-    def test_check_grad(self):
-        if self.dtype not in [np.int32, np.int64]:
-            self.check_grad(
-                ['X1', 'X2'],
-                'Out',
-                user_defined_grads=atan2_grad(self.inputs['X1'],
-                                              self.inputs['X2'],
-                                              1 / self.inputs['X1'].size))
+    def init_kernel_type(self):
+        pass
 
 
-class TestAtan2_float16(TestAtan2_float):
-    def init_dtype(self):
-        self.dtype = np.float16
+# class TestLog(TestActivation):
+#     def setUp(self):
+#         self.op_type = "log"
+#         self.init_dtype()
 
+#         np.random.seed(1024)
+#         x = np.random.uniform(0.1, 1, [2,2]).astype(self.dtype)
+#         out = np.log(x)
 
-class TestAtan2_int32(TestAtan2_float):
-    def init_dtype(self):
-        self.dtype = np.int32
+#         self.op_type = "log"
+#         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+#         self.outputs = {'Out': out}
 
+#     def test_check_grad(self):
+#         if self.dtype == np.float16:
+#             return
+#         self.check_grad(['X'], 'Out')
 
-class TestAtan2_int64(TestAtan2_float):
-    def init_dtype(self):
-        self.dtype = np.int64
+#     def test_error(self):
+#         in1 = fluid.layers.data(
+#             name="in1", shape=[11, 17], append_batch_size=False, dtype="int32")
+#         in2 = fluid.layers.data(
+#             name="in2", shape=[11, 17], append_batch_size=False, dtype="int64")
 
+#         self.assertRaises(TypeError, fluid.layers.log, in1)
+#         self.assertRaises(TypeError, fluid.layers.log, in2)
 
-class TestAtan2API(unittest.TestCase):
-    def init_dtype(self):
-        self.dtype = 'float64'
-        self.shape = [11, 17]
+# class TestActFp16(TestLog):
 
-    def setUp(self):
-        self.init_dtype()
-        self.x1 = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-        self.x2 = np.random.uniform(-1, -0.1, self.shape).astype(self.dtype)
-        self.place = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+#     def init_dtype(self):
+#         self.dtype = np.float16
 
-    def test_static_api(self):
-        paddle.enable_static()
+#     def test_check_output(self):
+#         place = core.CUDAPlace(0)
+#         #place = core.CPUPlace()
+#         # support_fp16 = core.is_float16_supported(place)
+#         # if support_fp16:
+#         self.check_output_with_place(place, atol=1e-5)
 
-        def run(place):
-            with paddle.static.program_guard(paddle.static.Program()):
-                X1 = paddle.fluid.data('X1', self.shape, dtype=self.dtype)
-                X2 = paddle.fluid.data('X2', self.shape, dtype=self.dtype)
-                out = paddle.atan2(X1, X2)
-                exe = paddle.static.Executor(place)
-                res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
-            out_ref = np.arctan2(self.x1, self.x2)
-            for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
-
-        for place in self.place:
-            run(place)
-
-    def test_dygraph_api(self):
-        def run(place):
-            paddle.disable_static(place)
-            X1 = paddle.to_tensor(self.x1)
-            X2 = paddle.to_tensor(self.x2)
-            out = paddle.atan2(X1, X2)
-            out_ref = np.arctan2(self.x1, self.x2)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-            paddle.enable_static()
-
-        for place in self.place:
-            run(place)
-
+#     # def test_check_grad(self):
+#     #     place = core.CUDAPlace(0)
+#     #     support_fp16 = core.is_float16_supported(place)
+#     #     if support_fp16 and grad_check:
+#     #         self.check_grad_with_place(
+#     #             place, ['X'], 'Out', max_relative_error=1e-5)
 
 if __name__ == '__main__':
     unittest.main()

@@ -178,6 +178,7 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, CudaTanhShrinkGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, CudaSiluGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, CudaSoftsignGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, CudaSquareGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, CudaNewLogGradFunctor);
 
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, CudaExpGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, CudaExpm1GradFunctor);
@@ -339,6 +340,14 @@ PD_REGISTER_KERNEL(expm1_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::Expm1GradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(log_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogGradKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
