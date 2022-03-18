@@ -37,7 +37,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 
-static size_t max_num_benchmark_runs = 5000;
+static size_t max_num_benchmark_runs = 4000;
 
 namespace egr {
 
