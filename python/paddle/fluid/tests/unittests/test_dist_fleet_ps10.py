@@ -74,7 +74,7 @@ class TestExponentialDecay(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(loss)
+        optimizer.minimize([loss])
         fleet.init_server()
 
 
