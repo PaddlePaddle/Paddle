@@ -26,7 +26,7 @@ void BatchNormInferKernel(const Context& dev_ctx,
                           const DenseTensor& bias,
                           const DenseTensor& mean,
                           const DenseTensor& variance,
-                          const Scalar& momentum,
+                          float momentum,
                           float epsilon,
                           const std::string& data_layout,
                           DenseTensor* y,
@@ -66,14 +66,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    phi::BatchNormInferKernel,
                    float,
                    double) {}
-#if defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(batch_norm_infer,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormInferKernel,
-                   float,
-                   phi::dtype::float16) {}
-#elif defined(PADDLE_WITh_CUDA)
+#ifdef PADDLE_WITH_CUDA
 PD_REGISTER_KERNEL(batch_norm_infer,
                    GPU,
                    ALL_LAYOUT,
@@ -86,4 +79,12 @@ PD_REGISTER_KERNEL(batch_norm_infer,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
 }
+#endif
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(batch_norm_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormInferKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif

@@ -40,7 +40,7 @@ void BatchNormKernel(const Context& ctx,
                      const DenseTensor& bias,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const Scalar& momentum,
+                     float momentum,
                      float epsilon,
                      const std::string& data_layout_str,
                      bool is_test,
@@ -146,12 +146,10 @@ void BatchNormKernel(const Context& ctx,
     // if MomentumTensor is set, use MomentumTensor value, momentum
     // is only used in this training branch
 
-    auto momentum_v = momentum.to<float>();
-
     running_mean_arr =
-        running_mean_arr * momentum_v + saved_mean_e * (1. - momentum_v);
+        running_mean_arr * momentum + saved_mean_e * (1. - momentum);
     running_var_arr =
-        running_var_arr * momentum_v + saved_variance_e * (1. - momentum_v);
+        running_var_arr * momentum + saved_variance_e * (1. - momentum);
   }
 
   // use SavedMean and SavedVariance to do normalize

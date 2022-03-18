@@ -147,7 +147,7 @@ void BatchNormKernel(const Context &ctx,
                      const DenseTensor &bias,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
-                     const Scalar &momentum,
+                     float momentum,
                      float epsilon_f,
                      const std::string &data_layout_str,
                      bool is_test,
@@ -441,8 +441,7 @@ void BatchNormKernel(const Context &ctx,
       // skip the batch norm calculation, let y = x.
       paddle::framework::TensorCopy(x, ctx.GetPlace(), y);
     } else {
-      auto momentum_v = momentum.to<float>();
-      double this_factor = 1. - momentum_v;
+      double this_factor = 1. - momentum;
 
       bool called = false;
 #if CUDNN_VERSION_MIN(7, 4, 1)

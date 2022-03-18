@@ -17,9 +17,12 @@
 namespace phi {
 
 KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  bool is_test = paddle::any_cast<int>(ctx.Attr("is_test"));
-  // Why here not need `MomentumTensor`?
-  if (is_test) {
+  bool is_test = paddle::any_cast<bool>(ctx.Attr("is_test"));
+  bool use_global_stats = paddle::any_cast<bool>(ctx.Attr("use_global_stats"));
+  bool trainable_statistics =
+      paddle::any_cast<bool>(ctx.Attr("trainable_statistics"));
+  // Dispenable `MomentumTensor` is useless now
+  if (is_test && !use_global_stats && !trainable_statistics) {
     return KernelSignature("batch_norm_infer",
                            {"X", "Scale", "Bias", "Mean", "Variance"},
                            {"momentum", "epsilon", "data_layout"},
