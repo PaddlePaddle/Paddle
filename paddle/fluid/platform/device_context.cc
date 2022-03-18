@@ -36,6 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/phi/api/include/context_pool.h"
+
 namespace paddle {
 namespace memory {
 
@@ -152,6 +155,9 @@ inline void EmplaceDeviceContext(
         // lazy evaluation. i.e., only create device context at
         // first `Get`
         auto* dev_ctx = new DevCtx(p);
+        // init the phi DeviceContextPool at same time
+        auto& context_pool =
+            paddle::experimental::DeviceContextPool::Instance();
         if (is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto* cuda_ctx = dynamic_cast<CUDADeviceContext*>(dev_ctx);
@@ -183,6 +189,26 @@ inline void EmplaceDeviceContext(
             memory::allocation::AllocatorFacade::Instance()
                 .GetZeroAllocator(p)
                 .get());
+        // insert Context pointer into phi DeviceContextPool
+        // only get CPU and GPU DeviceContext now, add other DeviceContext type
+        // later if needed
+        if (platform::is_cpu_place(p)) {
+          context_pool.Insert(
+              static_cast<platform::Place>(p),
+              static_cast<
+                  const typename framework::ConvertToPhiContext<DevCtx>::TYPE*>(
+                  dev_ctx));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        } else if (platform::is_gpu_place(p)) {
+          context_pool.Insert(
+              static_cast<platform::Place>(p),
+              static_cast<
+                  const typename framework::ConvertToPhiContext<DevCtx>::TYPE*>(
+                  dev_ctx));
+#endif
+        } else {
+          // skip other places now, do nothing
+        }
         return PtrType(dev_ctx);
       }));
 }
