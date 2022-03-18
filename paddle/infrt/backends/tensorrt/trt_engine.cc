@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 namespace backends {
@@ -235,10 +236,20 @@ bool TrtEngine::SetupNetworkAndConfig(const BuildOptions& build,
   return true;
 }
 
+void TrtEngine::PrepareOutputHandle(const std::string& out_name) {
+  phi::DenseTensor t;
+  outputs_.emplace(out_name, t);
+}
+
+phi::DenseTensor* TrtEngine::GetOutput(const std::string& name) {
+  return &outputs_[name];
+}
+
+size_t TrtEngine::GetOutputNum() const { return outputs_.size(); }
+
 bool TrtEngine::SetUpInference(
     const InferenceOptions& inference,
-    const std::unordered_map<std::string, phi::DenseTensor*>& inputs,
-    std::unordered_map<std::string, phi::DenseTensor*>* outputs) {
+    const std::unordered_map<std::string, phi::DenseTensor*>& inputs) {
   // TODO(wilber): now only create one exec_context
   FreshDeviceId();
   CHECK(engine_ != nullptr);
@@ -252,10 +263,10 @@ bool TrtEngine::SetUpInference(
     bindings_.front()->AddBinding(
         bind_index, it.first, true, it.second, nvinfer1::DataType::kFLOAT);
   }
-  for (auto& it : *outputs) {
+  for (auto& it : outputs_) {
     const int bind_index = engine_->getBindingIndex(it.first.c_str());
     bindings_.front()->AddBinding(
-        bind_index, it.first, false, it.second, nvinfer1::DataType::kFLOAT);
+        bind_index, it.first, false, &it.second, nvinfer1::DataType::kFLOAT);
   }
 
   return true;
@@ -290,11 +301,13 @@ void TrtEngine::StaticRun(const phi::GPUContext& ctx) {
     const int bind_index = engine_->getBindingIndex(bind.name.c_str());
     std::vector<int32_t> ddim;
     auto dims = engine_->getBindingDimensions(bind_index);
+    CHECK_NE(runtime_batch, -1) << "runtime_batch should not be -1.";
     ddim.push_back(runtime_batch);
     for (int i = 0; i < dims.nbDims; ++i) {
       ddim.push_back(dims.d[i]);
     }
     bind.buffer->Resize(phi::make_ddim(ddim));
+    // TODO(wilber): now only support float output.
     ctx.Alloc<float>(bind.buffer, sizeof(float) * bind.buffer->numel());
     buffers[bind_index] = static_cast<void*>(bind.buffer->data<float>());
   }

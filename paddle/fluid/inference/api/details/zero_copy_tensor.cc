@@ -22,12 +22,22 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/allocator.h"
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#endif
 
 namespace paddle_infer {
 
 using float16 = paddle::platform::float16;
 
 void Tensor::Reshape(const std::vector<int> &shape) {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    shape_.assign(shape.begin(), shape.end());
+    return;
+  }
+#endif
+
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
       paddle::platform::errors::PreconditionNotMet(
@@ -123,6 +133,11 @@ T *Tensor::data(PlaceType *place, int *size) const {
 }
 
 DataType Tensor::type() const {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    return dtype_;
+  }
+#endif
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
@@ -145,6 +160,13 @@ PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    ORTCopyFromCpu<T>(data);
+    return;
+  }
+#endif
+
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -382,6 +404,13 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
 
 template <typename T>
 void Tensor::CopyToCpu(T *data) const {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    ORTCopyToCpu<T>(data);
+    return;
+  }
+#endif
+
   CopyToCpuImpl<T>(data, nullptr, nullptr, nullptr);
 }
 
@@ -489,12 +518,7 @@ template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
 
-Tensor::Tensor(void *scope) : scope_{scope} {
-  PADDLE_ENFORCE_NOT_NULL(scope_,
-                          paddle::platform::errors::PreconditionNotMet(
-                              "The `scope` can not be nullptr. It should be "
-                              "set to the pointer of scope."));
-}
+Tensor::Tensor(void *scope) : scope_{scope} {}
 
 template <typename T>
 void *Tensor::FindTensor() const {
@@ -513,6 +537,26 @@ void *Tensor::FindTensor() const {
 }
 
 std::vector<int> Tensor::shape() const {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    std::vector<int> shape;
+    // input handle
+    if (idx_ < 0) {
+      shape.assign(shape_.begin(), shape_.end());
+    } else {  // output handle
+      auto binding = binding_.lock();
+      PADDLE_ENFORCE_NOT_NULL(binding,
+                              paddle::platform::errors::PreconditionNotMet(
+                                  "output tensor [%s] no binding ptr", name_));
+      std::vector<Ort::Value> outputs = binding->GetOutputValues();
+      Ort::Value &value = outputs[idx_];
+      auto info = value.GetTensorTypeAndShapeInfo();
+      auto ort_shape = info.GetShape();
+      shape.assign(ort_shape.begin(), ort_shape.end());
+    }
+    return shape;
+  }
+#endif
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
@@ -572,5 +616,100 @@ void Tensor::SetPlace(PlaceType place, int device) {
   place_ = place;
   device_ = device;
 }
+
+#ifdef PADDLE_WITH_ONNXRUNTIME
+void Tensor::SetOrtMark(bool is_ort_tensor) { is_ort_tensor_ = is_ort_tensor; }
+
+void Tensor::SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding) {
+  binding_ = binding;
+}
+
+Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, float *data,
+                       size_t size, const int64_t *shape, size_t shape_len) {
+  return Ort::Value::CreateTensor<float>(memory_info, data, size, shape,
+                                         shape_len);
+}
+
+Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, int64_t *data,
+                       size_t size, const int64_t *shape, size_t shape_len) {
+  return Ort::Value::CreateTensor<int64_t>(memory_info, data, size, shape,
+                                           shape_len);
+}
+
+Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, int32_t *data,
+                       size_t size, const int64_t *shape, size_t shape_len) {
+  return Ort::Value::CreateTensor<int32_t>(memory_info, data, size, shape,
+                                           shape_len);
+}
+
+Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, uint8_t *data,
+                       size_t size, const int64_t *shape, size_t shape_len) {
+  return Ort::Value::CreateTensor<uint8_t>(memory_info, data, size, shape,
+                                           shape_len);
+}
+
+Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, int8_t *data,
+                       size_t size, const int64_t *shape, size_t shape_len) {
+  return Ort::Value::CreateTensor<int8_t>(memory_info, data, size, shape,
+                                          shape_len);
+}
+
+Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info, float16 *data,
+                       size_t size, const int64_t *shape, size_t shape_len) {
+  return Ort::Value::CreateTensor(memory_info, static_cast<void *>(data),
+                                  size * sizeof(float16), shape, shape_len,
+                                  ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
+}
+
+template <typename T>
+void Tensor::ORTCopyFromCpu(const T *data) {
+  auto binding = binding_.lock();
+  PADDLE_ENFORCE_NOT_NULL(binding,
+                          paddle::platform::errors::PreconditionNotMet(
+                              "input tensor [%s] no binding ptr", name_));
+  const char *device_name = place_ == PlaceType::kCPU ? "Cpu" : "Cuda";
+  Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator, device_,
+                              OrtMemTypeDefault);
+  size_t size = std::accumulate(begin(shape_), end(shape_), 1UL,
+                                std::multiplies<size_t>());
+  auto ort_value = GetOrtVaule(memory_info, const_cast<T *>(data), size,
+                               shape_.data(), shape_.size());
+  binding->BindInput(name_.c_str(), ort_value);
+}
+
+template <typename T>
+void Tensor::ORTCopyToCpu(T *data) const {
+  auto binding = binding_.lock();
+  PADDLE_ENFORCE_NOT_NULL(binding,
+                          paddle::platform::errors::PreconditionNotMet(
+                              "output tensor [%s] no binding ptr", name_));
+  std::vector<Ort::Value> outputs = binding->GetOutputValues();
+  Ort::Value &value = outputs[idx_];
+  auto info = value.GetTensorTypeAndShapeInfo();
+  size_t size = info.GetElementCount() * sizeof(T);
+
+  if (place_ == PlaceType::kCPU) {
+    std::memcpy(static_cast<void *>(data), value.GetTensorData<void *>(), size);
+  } else {
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data),
+                         paddle::platform::CUDAPlace(device_),
+                         value.GetTensorData<void>(), size, nullptr);
+  }
+}
+
+template void Tensor::ORTCopyFromCpu<float>(const float *data);
+template void Tensor::ORTCopyFromCpu<int64_t>(const int64_t *data);
+template void Tensor::ORTCopyFromCpu<int32_t>(const int32_t *data);
+template void Tensor::ORTCopyFromCpu<uint8_t>(const uint8_t *data);
+template void Tensor::ORTCopyFromCpu<int8_t>(const int8_t *data);
+template void Tensor::ORTCopyFromCpu<float16>(const float16 *data);
+
+template void Tensor::ORTCopyToCpu<float>(float *data) const;
+template void Tensor::ORTCopyToCpu<int32_t>(int32_t *data) const;
+template void Tensor::ORTCopyToCpu<uint8_t>(uint8_t *data) const;
+template void Tensor::ORTCopyToCpu<int8_t>(int8_t *data) const;
+template void Tensor::ORTCopyToCpu<float16>(float16 *data) const;
+#endif
 
 }  // namespace paddle_infer

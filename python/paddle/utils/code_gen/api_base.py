@@ -698,7 +698,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
             self.outputs['types'], 'SetKernelOutput', code_indent, inplace_flag)
         api_func_name = self.get_api_func_name() + ('_' if inplace_flag else '')
         return f"""
-{code_indent}  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  VLOG(6) << "{self.api} API kernel: " << kernel;

@@ -1117,7 +1117,7 @@ static std::string GenerateGradNodeCreationContent(
       const char* SET_GRAD_OUT_META_TEMPLATE =
           "    grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
           "    if(%s) grad_node->AddEdges(%s, %d);\n";
@@ -1129,9 +1129,9 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(&%s, %d);\n";
+          "    grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
@@ -1165,9 +1165,9 @@ static std::string GenerateGradNodeCreationContent(
             paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
       }
       const char* SET_GRAD_IN_META_TEMPLATE =
-          "    grad_node->SetGradInMeta(&%s, %d);\n";
+          "    grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+          SET_GRAD_IN_META_TEMPLATE, output_name, output_position);
 
     } else {
       pass_stop_gradient_args += ", " + output_autograd_name;
@@ -1186,7 +1186,7 @@ static std::string GenerateGradNodeCreationContent(
       const char* SET_GRAD_IN_META_TEMPLATE =
           "    grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+          SET_GRAD_IN_META_TEMPLATE, output_name, output_position);
     }
 
     // Intermediate Tensor does not require CheckAndRetainGrad
@@ -1965,7 +1965,7 @@ static std::string GenerateSingleOpBase(
             !is_op_base_per_duplicable_input) {
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
               "{ \"%s\", egr::EagerUtils::CreateVars( "
-              "this->OutputMeta()[%d].Size() ) },";
+              "this->OutputMeta()[%d].size() ) },";
           outs_contents_str += paddle::string::Sprintf(
               GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
         } else {
@@ -2193,7 +2193,7 @@ static std::string GenerateGradNodeCCContents(
 
   if (is_op_base_per_duplicable_input) {
     const char* OP_BASE_PER_DUP_INPUT_TEMPLATE =
-        "  for(int i = 0; i < this->OutputMeta()[0].Size(); i++) {\n"
+        "  for(size_t i = 0; i < this->OutputMeta()[0].size(); i++) {\n"
         "    %s\n"
         "  }\n";
     generated_grad_function_body = paddle::string::Sprintf(
@@ -2205,6 +2205,8 @@ static std::string GenerateGradNodeCCContents(
       "GradNode%s::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
       "  %s\n"
+      "  if(NeedComplexToRealConversion()) "
+      "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
   generated_grad_function_body =
       paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
@@ -2214,7 +2216,8 @@ static std::string GenerateGradNodeCCContents(
   const char* GRAD_FUNCTION_TEMPLATE =
       "std::vector<std::vector<paddle::experimental::Tensor>> "
       "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) {\n%s\n}";
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, "
+      "bool create_graph) {\n%s\n}";
   std::string grad_function_str = paddle::string::Sprintf(
       GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
 
@@ -2249,18 +2252,28 @@ static std::string GenerateGradNodeHeaderContents(
       "\n"
       "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
       "operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads) "
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, const "
+      "bool create_graph = false) "
       "override;\n"
       "\n"
+      "  void ClearTensorWrappers() override { \n"
+      "%s\n"
+      "    is_tensor_wrappers_cleared = true;\n"
+      "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
+      "  bool IsTensorWrappersCleared() override { \n"
+      "    return is_tensor_wrappers_cleared;\n"
+      "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
+      "   bool is_tensor_wrappers_cleared = false;\n"
+      "\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2294,6 +2307,7 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string set_tensor_wrappers_str = "";
   std::string tensor_wrapper_members_str = "";
+  std::string clear_tensor_wrappers_str = "";
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -2325,6 +2339,13 @@ static std::string GenerateGradNodeHeaderContents(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
             struct_tensor_wrapper_name);
 
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
+            "for (auto tw: %s)   {\n"
+            "       tw.clear();\n"
+            "     }\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
+
       } else {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
             "const paddle::experimental::Tensor& %s";
@@ -2337,10 +2358,14 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
             tensor_wrapper_name, full_reserved_str);
+
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
@@ -2355,8 +2380,8 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, op_type, set_tensor_wrappers_str, set_attr_map_str,
-      tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
+      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
 
   return grad_node_str;
 }
