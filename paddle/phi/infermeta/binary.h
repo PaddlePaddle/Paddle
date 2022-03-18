@@ -90,6 +90,11 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              int axis,
                              MetaTensor* out);
 
+void ExpandAsInferMeta(const MetaTensor& x,
+                       paddle::optional<const MetaTensor&> y,
+                       const std::vector<int>& target_shape,
+                       MetaTensor* out);
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
@@ -102,6 +107,11 @@ void GatherNdInferMeta(const MetaTensor& x,
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
+
+void GridSampleBaseInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
@@ -120,6 +130,8 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           int dim,
                           MetaTensor* output);
 
+void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,
@@ -133,6 +145,12 @@ void MatmulInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
+void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
+                           const MetaTensor& value,
+                           bool out_int32,
+                           bool right,
+                           MetaTensor* out);
 
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
