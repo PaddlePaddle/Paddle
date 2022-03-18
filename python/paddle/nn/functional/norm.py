@@ -489,7 +489,7 @@ def local_response_norm(x,
             format(dim))
 
     for i, sz in enumerate(sizes):
-        if not sz > 0:
+        if not sz > 0 and i > 0:
             raise ValueError("Expected every dim's size to be larger than 0, "
                              "but the size of the {}-th dim is {}".format(i,
                                                                           sz))
