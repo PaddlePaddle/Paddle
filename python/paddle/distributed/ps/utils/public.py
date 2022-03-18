@@ -23,7 +23,6 @@ import logging
 import six
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
 import paddle.distributed.fleet as fleet
 
@@ -76,8 +75,8 @@ def logger_config(log_path, logging_name):
 
 
 ps_log_root_dir = '/ps_log/'
-logger = logger_config(
-    log_path='/ps_usr_print_log', logging_name='ps_usr_print_log')
+
+#logger = logger_config(log_path='/ps_usr_print_log', logging_name='ps_usr_print_log')
 
 
 class DistributedMode:
@@ -94,8 +93,7 @@ class TrainerRuntimeConfig(object):
         num_threads = os.getenv("CPU_NUM", "1")
         send_queue_size = num_threads
         k_steps = valid_strategy.a_sync_configs["k_steps"]
-        logger.info("ps mode in strategy: {}, {}".format(
-            valid_strategy.a_sync, valid_strategy.a_sync_configs["k_steps"]))
+
         if not valid_strategy.a_sync and k_steps == 0:
             self.mode = DistributedMode.SYNC
 
@@ -241,17 +239,11 @@ def get_ps_endpoints(role_maker):
 
 
 def get_heter_worker_endpoint(role_maker):
-    try:
-        return role_maker._get_heter_worker_endpoint()
-    except Exception:
-        return role_maker.get_heter_worker_endpoint()
+    return role_maker._get_heter_worker_endpoint()
 
 
 def get_trainer_endpoint(role_maker):
-    try:
-        return role_maker._get_trainer_endpoint()
-    except Exception:
-        return role_maker.get_trainer_endpoint()
+    return role_maker._get_trainer_endpoint()
 
 
 def get_previous_stage_trainers(role_maker):
@@ -344,6 +336,7 @@ def get_dense_send_context(program,
         aggregate = True
         print("public get_dense_send_context dense_table:", grad_name,
               var_numel, origin_varnames)
+        from paddle.fluid.core import CommContext
         dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                 [var_numel], origin_varnames, trainer_id,
                                 aggregate, False, False, idx, False, False,
@@ -366,6 +359,7 @@ def get_dense_send_context(program,
         aggregate = True
         print("public get_dense_send_context data_norm table:", grad_name,
               var_numel, origin_varnames)
+        from paddle.fluid.core import CommContext
         data_norm_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False, True,
@@ -380,6 +374,7 @@ def get_dense_send_context(program,
             var_numel = reduce(lambda x, y: x * y, var.shape)
             grad_name = origin_varname
             aggregate = True
+            from paddle.fluid.core import CommContext
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], [origin_varname], trainer_id,
                                     aggregate, False, False, idx, False, False,
@@ -409,7 +404,7 @@ def get_geo_trainer_send_context(context):
 
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
-
+            from paddle.fluid.core import CommContext
             sparse_ctx = CommContext(grad_name, [grad_name],
                                      ["127.0.0.1:6071"], [var_numel],
                                      [grad_name], trainer_id, True, True,
@@ -434,6 +429,7 @@ def _step_ctx(idx, role_maker):
     endpoints = get_ps_endpoints(role_maker)
     sections = [1] * len(endpoints)
     names = [name] * len(endpoints)
+    from paddle.fluid.core import CommContext
     ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
                       True, False, False, idx, True, False, -1)
     return name, ctx
@@ -478,6 +474,7 @@ def get_the_one_send_context(context,
                   splited_varname, shape)
             if grad_name in send_ctx:
                 continue
+            from paddle.fluid.core import CommContext
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False, False,

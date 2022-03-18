@@ -17,7 +17,6 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import math
 import paddle.distributed.fleet as fleet
-from paddle.distributed.ps.utils.public import logger
 
 
 class DNNLayer(nn.Layer):

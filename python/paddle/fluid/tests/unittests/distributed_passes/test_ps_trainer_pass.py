@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 from ps_pass_test_base import *
-from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
+from paddle.distributed.ps.utils.public import ps_log_root_dir
 from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
@@ -60,9 +60,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/async_run_minimize_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/async_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_cpu_async passed!')
+            print('test_ps_optimizer_minimize_cpu_async passed!')
         else:
-            logger.error('test_ps_optimizer_minimize_cpu_async failed!')
+            print('test_ps_optimizer_minimize_cpu_async failed!')
 
     def test_ps_optimizer_minimize_cpu_sync(self):
         self.init()
@@ -82,9 +82,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/sync_run_minimize_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/sync_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_cpu_sync passed!')
+            print('test_ps_optimizer_minimize_cpu_sync passed!')
         else:
-            logger.error('test_ps_optimizer_minimize_cpu_sync failed!')
+            print('test_ps_optimizer_minimize_cpu_sync failed!')
         '''
 
     def test_ps_optimizer_minimize_cpu_geo(self):
@@ -105,9 +105,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/geo_run_minimize_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/geo_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_cpu_geo passed!')
+            print('test_ps_optimizer_minimize_cpu_geo passed!')
         else:
-            logger.error('test_ps_optimizer_minimize_cpu_geo failed!')
+            print('test_ps_optimizer_minimize_cpu_geo failed!')
 
     # heter ps 二阶段
     def test_ps_optimizer_minimize_heter(self):
@@ -135,9 +135,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file3 = '/ps_log/heter_run_minimize_debug:_0_heter_worker_main.prototxt'
         file4 = '/ps_log/heter_run_minimize_debug:_1_heter_worker_main.prototxt'
         if self.check(file1, file2) and self.check(file3, file4):
-            logger.info('test_ps_optimizer_minimize_heter passed!')
+            print('test_ps_optimizer_minimize_heter passed!')
         else:
-            logger.error('test_ps_optimizer_minimize_heter failed!')
+            print('test_ps_optimizer_minimize_heter failed!')
         '''
 
     def test_ps_optimizer_minimize_gpu(self):
@@ -158,9 +158,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/gpubox_run_minimize_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/gpubox_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_gpu passed!')
+            print('test_ps_optimizer_minimize_gpu passed!')
         else:
-            logger.error('test_ps_optimizer_minimize_gpu failed!')
+            print('test_ps_optimizer_minimize_gpu failed!')
 
     def test_append_send_ops_pass(self):
         self.init()
@@ -183,9 +183,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/async_append_send_ops_pass_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/async_append_send_ops_pass_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger.info('test_append_send_ops_pass passed!')
+            print('test_append_send_ops_pass passed!')
         else:
-            logger.info('test_append_send_ops_pass failed!')
+            print('test_append_send_ops_pass failed!')
 
     def test_distributed_ops_pass(self):
         pass

@@ -62,15 +62,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['valid_strategy'] = self.user_defined_strategy
         attrs['trainer'] = TrainerRuntimeConfig(self.user_defined_strategy)
         attrs['ps_mode'] = attrs['trainer'].mode
-        logger.info("ps_mode: {}".format(attrs['ps_mode']))
+        print("ps_mode: {}".format(attrs['ps_mode']))
         attrs['role_maker'] = self.role_maker
         attrs[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
         attrs['is_worker'] = self.role_maker._is_worker()
         attrs['is_server'] = self.role_maker._is_server()
         attrs['is_heter_worker'] = self.role_maker._is_heter_worker()
-        logger.info("this process is heter? {}".format(attrs[
-            'is_heter_worker']))
+        print("this process is heter? {}".format(attrs['is_heter_worker']))
         attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
             "use_ps_gpu"]
         attrs['lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
@@ -111,13 +110,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                 no_grad_set)
         if startup_program == None:
             startup_program = paddle.static.default_startup_program()
-        print("program after inner optimizer minimize:",
-              str(loss.block.program))
+        print("program after inner optimizer minimize:{}".format(
+            str(loss.block.program)))
         self._set_origin_programs([loss])
         self._init_ps_pass_context(loss, startup_program)
         ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
             self.pass_ctx)
         ps_builder._build_programs()
+        print("program after pass:{}".format(str(loss.block.program)))
         return None, None
 
     def minimize_losses_impl(self,
@@ -182,7 +182,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if not var.persistable or var.desc.type(
             ) != core.VarDesc.VarType.LOD_TENSOR:
                 continue
-            set_var_lod_type(var)
             param_memory_size += get_var_mem_size(var)
             processed_var_names.add(varname)
 
@@ -212,9 +211,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         data_count *= (-x)
                     else:
                         data_count *= x
-                program_tmp_vars[var_name] = (
-                    data_count, neg_dim_count,
-                    vars_metatools.dtype_to_size[var.dtype])
+                program_tmp_vars[var_name] = (data_count, neg_dim_count,
+                                              dtype_to_size[var.dtype])
 
         for varname in program_tmp_vars:
             data_count, neg_dim_count, type_size = program_tmp_vars[varname]
@@ -223,18 +221,26 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             var_memory = data_count * type_size
             upper_mem_use += var_memory
 
+        print('free mem: {}, upper_mem_use: {}'.format(free, upper_mem_use))
         if upper_mem_use < free:
             return True
         else:
             return False
 
     def _enable_strategy(self, dist_strategy, context):
+        a_sync_configs = dist_strategy.a_sync_configs
         if dist_strategy.a_sync_configs["k_steps"] >= 0:
             return
         dist_strategy.a_sync = True
+        a_sync_configs = dist_strategy.a_sync_configs
+
         is_geo = self._can_apply_geo(context["origin_main_program"])
-        dist_strategy.a_sync_configs["k_steps"] = 800 if is_geo else 0
+
+        a_sync_configs["k_steps"] = 800 if is_geo else 0
+        dist_strategy.a_sync_configs = a_sync_configs
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.a_sync = False
+        a_sync_configs = dist_strategy.a_sync_configs
         dist_strategy.a_sync_configs["k_steps"] = -1
+        dist_strategy.a_sync_configs = a_sync_configs

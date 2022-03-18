@@ -24,9 +24,9 @@ import paddle.fluid as fluid
 
 import paddle
 from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import *
-from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
+from paddle.distributed.ps.utils.public import ps_log_root_dir
 from ps_dnn_trainer import DnnTrainer
-from paddle.distributed.fleet.proto import ps_pb2
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 from google.protobuf import text_format
 
 
@@ -51,8 +51,8 @@ class TestTheOnePs(PsPassTestBase):
         f.close()
         str1 = text_format.MessageToString(ps_desc_1)
         str2 = text_format.MessageToString(ps_desc_2)
-        #logger.info('### msg10: {}'.format(str1))
-        #logger.info('### msg20: {}'.format(str2))
+        #print('### msg10: {}'.format(str1))
+        #print('### msg20: {}'.format(str2))
         if str1 == str2:
             return True
         else:
@@ -81,13 +81,13 @@ class TestTheOnePs(PsPassTestBase):
         desc3 = '/ps_desc_baseline/async_server_ps_desc'
         desc4 = '/ps_log/async_new_server_ps_desc'
         if self.check(desc1, desc2):
-            logger.info('test_ps_cpu_async ps_desc: worker passed!')
+            print('test_ps_cpu_async ps_desc: worker passed!')
         else:
-            logger.info('test_ps_cpu_async ps_desc: worker failed!')
+            print('test_ps_cpu_async ps_desc: worker failed!')
         if self.check(desc3, desc4):
-            logger.info('test_ps_cpu_async ps_desc: server passed!')
+            print('test_ps_cpu_async ps_desc: server passed!')
         else:
-            logger.info('test_ps_cpu_async ps_desc: server failed!')
+            print('test_ps_cpu_async ps_desc: server failed!')
 
     def test_ps_cpu_geo(self):
         self.init()
@@ -109,13 +109,13 @@ class TestTheOnePs(PsPassTestBase):
         desc3 = '/ps_desc_baseline/geo_server_ps_desc'
         desc4 = '/ps_log/geo_new_server_ps_desc'
         if self.check(desc1, desc2):
-            logger.info('test_ps_cpu_geo ps_desc: worker passed!')
+            print('test_ps_cpu_geo ps_desc: worker passed!')
         else:
-            logger.info('test_ps_cpu_geo ps_desc: worker failed!')
+            print('test_ps_cpu_geo ps_desc: worker failed!')
         if self.check(desc3, desc4):
-            logger.info('test_ps_cpu_geo ps_desc: server passed!')
+            print('test_ps_cpu_geo ps_desc: server passed!')
         else:
-            logger.info('test_ps_cpu_geo ps_desc: server failed!')
+            print('test_ps_cpu_geo ps_desc: server failed!')
 
 
 if __name__ == '__main__':

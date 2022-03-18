@@ -15,7 +15,7 @@
 import warnings
 
 import os
-from paddle.distributed.fleet.proto import ps_pb2
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.fluid import core
@@ -778,11 +778,11 @@ class PsDescBuilder(object):
         return text_format.MessageToString(self.ps_desc)
 
     def build_server_desc(self):
+        self.sparse_table_maps = {}
         for table in self.tables:
             table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
             )
             table._set(table_proto)
-            self.sparse_table_maps = {}
             if table_proto.type == ps_pb2.PS_SPARSE_TABLE and table_proto.common is not None:
                 self.sparse_table_maps[
                     table_proto.common.table_name] = table_proto.table_id
@@ -982,7 +982,7 @@ class TheOnePSRuntime(RuntimeBase):
             return
 
         sparse_table_maps = self.ps_desc_builder.sparse_table_maps
-
+        print('wangbin sparse_table_maps: {}'.format(sparse_table_maps))
         dirname = os.path.normpath(dirname)
         pserver_id = self.role_maker._role_id()
 

@@ -22,7 +22,6 @@ import inspect
 import unittest
 import numpy as np
 from collections import OrderedDict
-from paddle.distributed.ps.utils.public import logger
 from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
 import paddle.distributed.fleet as fleet
 

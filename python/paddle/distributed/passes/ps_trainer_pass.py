@@ -49,7 +49,6 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
-        logger.info("dummy_output: {}".format(dummy_output))
         program.global_block().append_op(
             type="send",
             inputs={"X": send_input_vars},
@@ -81,24 +80,19 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
         else:
             send_ctx = get_the_one_send_context(attrs)  # async、sync 等各种模式
-        logger.info("send_ctx: {}".format(send_ctx))
         dummys = []
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
                 continue
             if send.program_id() != id(attrs['loss'].block.program):
                 continue
-            logger.info('merged_name, send: {}, {}'.format(merged_name, send))
             is_sparse = 1 if send.is_sparse() else 0
             is_sparse = 2 if send.is_distributed() else is_sparse
             dummys.append(
                 self._append_send_op(main_program,
                                      send.origin_varnames(), merged_name,
                                      is_sparse, send.table_id(), ps_mode))
-        logger.info('ps trainer pass - ps mode: {}'.format(ps_mode))
-        logger.info('dummys: {}'.format(dummys))
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
-            logger.info('insert send_barrier_op')
             trainer_id = get_role_id(attrs['role_maker'])
             self._append_barrier_op(main_program, dummys, trainer_id)
 
@@ -1149,7 +1143,7 @@ class SplitFlOpsPass(PassBase):
                 'send_var_name': self.partA_to_partB_tensor_name,
                 'recv_var_name': [],
                 'message_name': comm_info,
-                'next_endpoints': ['127.0.0.1:99'],  # TODO: partB_endpoints
+                'next_endpoints': ['127.0.0.1:8090'],  # TODO: partB_endpoints
                 'previous_endpoints': [],
                 'trainer_id': 0,  # TODO
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -1168,7 +1162,7 @@ class SplitFlOpsPass(PassBase):
                 'send_var_name': self.partB_to_partA_grad_name,
                 'recv_var_name': [],
                 'message_name': comm_info,
-                'next_endpoints': ['127.0.0.1:98'],  # TODO: partA_endpoints
+                'next_endpoints': ['127.0.0.1:8080'],  # TODO: partA_endpoints
                 'previous_endpoints': [],
                 'trainer_id': 1,  # TODO
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -1250,8 +1244,6 @@ class SplitFlOpsPass(PassBase):
             program, bp_op_output))
 
     def _get_partA_program(self, block):
-        self._get_partB_to_partA_grad(block, self.PART_A_JOINT_OP_DEVICE_FlAG)
-
         # 1. create block 0
         # 1.1 insert send op
         op_idx = self._find_joint_forward_op(block,
@@ -1267,14 +1259,12 @@ class SplitFlOpsPass(PassBase):
                 break
         first_block = self._get_block_by_idx(op_list, self.partA_program, 0)
         self._insert_partA_communicate_op(first_block, op_idx + 1)
-        logger.info('partA-first_block:{}'.format(first_block))
-        # TODO
-        # check
+        # logger.info('partA-first_block:{}'.format(first_block))
 
         # 2. create block 1
         bp_op_list = get_bp_op_list(block)
         push_sparse_op_list = get_distributed_push_sparse_op_list(block)
-        logger.info('bp_op_list: {}'.format(bp_op_list))
+        # logger.info('bp_op_list: {}'.format(bp_op_list))
         second_block = self._get_block_by_idx(bp_op_list + push_sparse_op_list,
                                               self.partA_program, 1)
         # 2.1. insert partA recv op 
@@ -1283,9 +1273,9 @@ class SplitFlOpsPass(PassBase):
         attrs = {
             "message_to_block_id": [grad_to_block_id],
             "optimize_blocks": [],
-            "endpoint": '127.0.0.1:98',  # TODO
+            "endpoint": get_trainer_endpoint(self.role_maker),
             "fanin": 0,
-            "pserver_id": 0,  # TODO
+            "pserver_id": get_role_id(self.role_maker),
             "distributed_mode": self.ps_mode,
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -1301,9 +1291,7 @@ class SplitFlOpsPass(PassBase):
         delete_same_ops(block, send_ops)
         dense_grad_vars = self._find_dense_grad_vars(bp_op_list)
         add_send_op(self.ori_main_program, second_block, dense_grad_vars)
-        logger.info('partA-second_block:{}'.format(second_block))
-        # TODO
-        # check
+        # logger.info('partA-second_block:{}'.format(second_block))
 
     def _get_partB_program(self, block):
         op_idx1 = self._find_joint_forward_op(
@@ -1336,16 +1324,15 @@ class SplitFlOpsPass(PassBase):
         bp_op_list = get_bp_op_list(second_block)
         dense_grad_vars = self._find_dense_grad_vars(bp_op_list)
         add_send_op(self.ori_main_program, second_block, dense_grad_vars)
-        logger.info('test wangbin@@@')
 
         # 3. insert partB recv op
         block_input_flag = "forward_joint_{}_{}@fl_ps".format(1, 2)
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
-            "optimize_blocks": [],
-            "endpoint": '127.0.0.1:99',
-            "fanin": 1,
+            "optimize_blocks": [second_block],  ## what to do?
+            "endpoint": get_heter_worker_endpoint(self.role_maker),
+            "fanin": len(get_previous_stage_trainers(self.role_maker)),
             "pserver_id": 1,  # TODO
             "distributed_mode": self.ps_mode,
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
@@ -1358,35 +1345,38 @@ class SplitFlOpsPass(PassBase):
             outputs={},
             attrs=attrs)
 
-        logger.info('partB-first_block:{}'.format(first_block))
-        logger.info('partB-second_block:{}'.format(second_block))
+        #logger.info('partB-first_block:{}'.format(first_block))
+        #logger.info('partB-second_block:{}'.format(second_block))
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
         self.role_maker = attrs['role_maker']
         self.ps_mode = attrs['ps_mode']
+        self.is_part_b = attrs['is_heter_worker']  # TODO
         self.ori_main_program = main_program
         self.ori_main_block = main_program.block(0)
 
         party_program_map = self._split_fl_program()
 
-        p = party_program_map['a']
+        prog_a = party_program_map['a']
         _main_file = ps_log_root_dir + '6_fl_A_main_program.prototxt'
-        #debug_program(_main_file, p)
-        self.partA_program = framework.Program()
-        self._get_partA_program(p.global_block())
+        debug_program(_main_file, prog_a)
+        self._get_partB_to_partA_grad(prog_a.global_block(),
+                                      self.PART_A_JOINT_OP_DEVICE_FlAG)
 
-        p = party_program_map['b']
+        prog_b = party_program_map['b']
         _main_file = ps_log_root_dir + '6_fl_B_main_program.prototxt'
-        #debug_program(_main_file, p)
-        self.partB_program = framework.Program()
-        self._get_partB_program(p.global_block())
+        debug_program(_main_file, prog_b)
 
-        self._clear_op_device_flag(self.partA_program)
-        self._clear_op_device_flag(self.partB_program)
-
-        check_program(self.partA_program)
-        check_program(self.partB_program)
-
-        pass_ctx._attrs['part_a_main_program'] = self.partA_program
-        pass_ctx._attrs['part_b_main_program'] = self.partB_program
+        if not self.is_part_b:
+            self.partA_program = framework.Program()
+            self._get_partA_program(prog_a.global_block())
+            pass_ctx._attrs['part_a_main_program'] = self.partA_program
+            self._clear_op_device_flag(self.partA_program)
+            check_program(self.partA_program)
+        else:
+            self.partB_program = framework.Program()
+            self._get_partB_program(prog_b.global_block())
+            pass_ctx._attrs['part_b_main_program'] = self.partB_program
+            self._clear_op_device_flag(self.partB_program)
+            check_program(self.partB_program)
