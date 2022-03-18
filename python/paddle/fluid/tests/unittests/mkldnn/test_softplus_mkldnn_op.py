@@ -41,13 +41,14 @@ class TestSoftplusOneDNNOp(OpTest):
         self.set_dtype()
         self.attrs = {'use_mkldnn': True, 'beta': self.beta}
         self.x = np.random.random(self.x_shape)
-        self.inputs = {'X': np.random.random(self.x_shape).astype(np.float32)}
+        self.out = ref_softplus(self.x, self.beta, self.threshold)
 
         if self.dtype != np.float32:
             self.x = convert_float_to_uint16(self.x)
 
+        self.inputs = {'X': self.out}
         self.outputs = {
-            'Out': ref_softplus(self.x, self.beta, self.threshold)
+            'Out': ref_softplus(self.out, self.beta, self.threshold)
         }
 
     def config(self):
@@ -81,21 +82,27 @@ class TestSoftplus3DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
         self.x_shape = (20, 4, 2)
         self.beta = 0.4
 
+
 class TestSoftplusBF16OneDNNOp(TestSoftplusOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
+
 
 class TestSoftplus4DBF16OneDNNOp(TestSoftplus4DOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
 
+
 class TestSoftplus6DBF16OneDNNOp(TestSoftplus6DOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
 
-class TestSoftplus3DExtendedFunctorBF16OneDNNOp(TestSoftplus3DExtendedFunctorOneDNNOp):
+
+class TestSoftplus3DExtendedFunctorBF16OneDNNOp(
+        TestSoftplus3DExtendedFunctorOneDNNOp):
     def set_dtype(self):
         self.dtype = np.uint16
+
 
 if __name__ == "__main__":
     paddle.enable_static()

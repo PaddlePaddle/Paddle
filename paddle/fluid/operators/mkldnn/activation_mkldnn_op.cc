@@ -353,4 +353,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
     softplus, MKLDNN, paddle::platform::CPUPlace,
     ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>,
-    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<paddle::platform::bfloat16>>);
+    ops::MKLDNNActivationKernel<
+        ops::SoftplusMKLDNNFunctor<paddle::platform::bfloat16>>);
