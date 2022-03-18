@@ -37,6 +37,8 @@ REGISTER_PSCORE_CLASS(Table, CommonDenseTable);
 REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
 #ifdef PADDLE_WITH_HETERPS
 REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
+REGISTER_PSCORE_CLASS(GraphSampler, CompleteGraphSampler);
+REGISTER_PSCORE_CLASS(GraphSampler, BasicBfsGraphSampler);
 #endif
 REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
