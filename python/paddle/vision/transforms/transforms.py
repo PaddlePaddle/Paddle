@@ -390,16 +390,16 @@ class Resize(BaseTransform):
             from PIL import Image
             from paddle.vision.transforms import Resize
 
-            fake_img = Image.fromarray((np.random.rand(100, 120, 3) * 255.).astype(np.uint8))
+            fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
 
             transform = Resize(size=224)
-            fake_img = transform(fake_img)
-            print(fake_img.size)
-            # (268, 224)
+            converted_img = transform(fake_img)
+            print(converted_img.size)
+            # (262, 224)
 
             transform = Resize(size=(200,150))
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            converted_img = transform(fake_img)
+            print(converted_img.size)
             # (150, 200)
     """
 
