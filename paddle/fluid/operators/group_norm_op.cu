@@ -153,6 +153,21 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
 }
 
 template <typename T>
+__device__ __forceinline__ void ReduceAddMeanAndVar(T* mean, T* var, T x_mean,
+                                                    T x_var) {
+  const int nc = blockIdx.x;
+  x_mean = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
+      x_mean, kps::AddFunctor<T>());
+  x_var = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
+      x_var, kps::AddFunctor<T>());
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    mean[nc] = static_cast<T>(x_mean);
+    var[nc] = static_cast<T>(x_var);
+  }
+}
+
+template <typename T>
 __global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
   int i = blockIdx.x;
   T x_mean = 0, x_var = 0;
@@ -162,10 +177,9 @@ __global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
     x_mean += val;
     x_var += val * val;
   }
-  x_mean /= size;
-  x_var /= size;
-  CudaAtomicAddWithWarp(&mean[i], x_mean);
-  CudaAtomicAddWithWarp(&var[i], x_var);
+  x_mean = x_mean / size;
+  x_var = x_var / size;
+  ReduceAddMeanAndVar<T>(mean, var, x_mean, x_var);
 }
 
 template <typename T, typename AccT, int VecSize>
@@ -174,21 +188,14 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);
   AccT x_var = static_cast<AccT>(0);
-  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
   x += i * size;
+  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
   phi::Array<const T*, 1> ins;
   ins[0] = x;
   ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
-
-  x_mean = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
-      x_mean, kps::AddFunctor<AccT>());
-  x_var = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
-      x_var, kps::AddFunctor<AccT>());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    mean[i] = static_cast<T>(x_mean / size);
-    var[i] = static_cast<T>(x_var / size);
-  }
+  x_mean = x_mean / size;
+  x_var = x_var / size;
+  ReduceAddMeanAndVar<AccT>(mean, var, x_mean, x_var);
 }
 
 template <typename T, int flags>
@@ -272,10 +279,6 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     Tensor temp_var;
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
-
-    set_zero(dev_ctx, mean, static_cast<T>(0));
-    set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-
     auto* x_data = x->data<T>();
     auto* y_data = y->data<T>();
     auto* mean_data = mean->data<T>();
@@ -319,7 +322,7 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       dim3 grids(x_dims[0] * groups);
       dim3 blocks(block_size_nchw);
-      if (size < vec_size) {
+      if (size < vec_size * block_size_nchw) {
         ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
             x_data, mean_data, temp_var_data, size);
       } else {
@@ -328,6 +331,8 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
             x_data, mean_data, temp_var_data, size);
       }
     } else {
+      set_zero(dev_ctx, mean, static_cast<T>(0));
+      set_zero(dev_ctx, &temp_var, static_cast<T>(0));
       GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
           x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
           temp_var_data);
@@ -418,7 +423,24 @@ __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
   }
 }
 
-template <typename T, int BlockDim>
+template <typename T, typename AccT, int VecSize>
+__global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
+                                            T* ds, T* db) {
+  int i = blockIdx.x;
+  AccT ds_sum = static_cast<AccT>(0);
+  AccT db_sum = static_cast<AccT>(0);
+  x += i * imsize;
+  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
+
+  phi::Array<const T*, 2> ins;
+  ins[0] = x;
+  ins[1] = dy;
+  ThreadReduce<T, AccT, VecSize, 2>(ins, imsize, input_offset, &db_sum,
+                                    &ds_sum);
+  ReduceAddMeanAndVar<AccT>(db, ds, db_sum, ds_sum);
+}
+
+template <typename T>
 __global__ void ScalarGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
                                         T* ds, T* db) {
   const int nc = blockIdx.x;
@@ -429,17 +451,7 @@ __global__ void ScalarGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
     ds_sum += dy[index] * x[index];
     db_sum += dy[index];
   }
-
-  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage ds_storage;
-  __shared__ typename BlockReduce::TempStorage db_storage;
-  ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
-  db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    ds[nc] = ds_sum;
-    db[nc] = db_sum;
-  }
+  ReduceAddMeanAndVar<T>(db, ds, db_sum, ds_sum);
 }
 
 template <typename T>
@@ -614,9 +626,25 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     if (data_layout == DataLayout::kNCHW) {
-      ScalarGetDsDbCUDAKernel<
-          T, block_dims><<<x_dims[0] * C, block_dims, 0, dev_ctx.stream()>>>(
-          imsize, x_data, dy_data, ds_data, db_data);
+      using AccT = typename details::MPTypeTrait<T>::Type;
+      constexpr int vec_size = sizeof(float4) / sizeof(T);
+      const int max_num_threads = 1024;
+      int max_block_size = std::min(imsize / vec_size, max_num_threads);
+      int block_size_nchw = 1;
+      while (block_size_nchw < max_block_size) {
+        block_size_nchw *= 2;
+      }
+      block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
+      dim3 blocks(block_size_nchw);
+      if (imsize < vec_size * block_size_nchw) {
+        ScalarGetDsDbCUDAKernel<
+            T><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
+            imsize, x_data, dy_data, ds_data, db_data);
+      } else {
+        VectorizedGetDsDbCUDAKernel<
+            T, AccT, vec_size><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
+            imsize, x_data, dy_data, ds_data, db_data);
+      }
 
       if (d_scale || d_bias) {
         const int block = 256;
