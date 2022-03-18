@@ -296,14 +296,13 @@ __global__ void ChannelClipAndQuantKernelQuantAxis1(const T* in, const T* scale,
                                                     const int bin_cnt,
                                                     const int n, const int cin,
                                                     const int cout, T* out) {
-  T s = scale[blockIdx.x % cout];
+  T s = scale[blockIdx.x];
   T inv_s = inverse(s);
+  int channel_size = n / cout;
+  const T* in_c = in + blockIdx.x * channel_size;
+  T* out_c = out + blockIdx.x * channel_size;
 
-  int wh_size = n / (cin * cout);
-  const T* in_c = in + blockIdx.x * wh_size;
-  T* out_c = out + blockIdx.x * wh_size;
-
-  for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
+  for (int i = threadIdx.x; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
@@ -336,10 +335,12 @@ struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
       ChannelClipAndQuantKernelQuantAxis0<T><<<grid, block, 0, ctx.stream()>>>(
           in_data, scale_data, bin_cnt, num, in_dims[0], out_data);
     } else if (quant_axis == 1) {
-      int grid = in_dims[0] * in_dims[1];
+      int channel_in = in_dims[0];
+      int channel_out = in_dims[1];
+      int grid = channel_out;
       int block = 1024;
       ChannelClipAndQuantKernelQuantAxis1<T><<<grid, block, 0, ctx.stream()>>>(
-          in_data, scale_data, bin_cnt, num, in_dims[0], in_dims[1], out_data);
+          in_data, scale_data, bin_cnt, num, channel_in, channel_out, out_data);
     }
   }
 };
