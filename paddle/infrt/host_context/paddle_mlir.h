@@ -14,20 +14,20 @@
 #ifndef PADDLE_INFRT_HOST_CONTEXT_PADDLE_MLIR_H_
 #define PADDLE_INFRT_HOST_CONTEXT_PADDLE_MLIR_H_
 
+#include <llvm/Support/CommandLine.h>
+#include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/AsmState.h>
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/MLIRContext.h>
 #include <fstream>
 #include <iostream>
 #include <string>
 
-#include "llvm/Support/CommandLine.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
-#include "mlir/IR/AsmState.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/MLIRContext.h"
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
-
 #include "paddle/infrt/dialect/init_dialects.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/tensor_shape.h"

@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/roi_pool_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/kernels/roi_pool_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -57,7 +58,7 @@ class ROIPoolOp : public framework::OperatorWithKernel {
             "%d-dimensional LoDTensor",
             rois_dims.size()));
     PADDLE_ENFORCE_EQ(
-        rois_dims[1], kROISize,
+        rois_dims[1], phi::kROISize,
         platform::errors::InvalidArgument(
             "ROIs should be a 2-D LoDTensor with shape (num_rois, 4)"
             "given as [[x1, y1, x2, y2], ...]. But the second dimension of  "
@@ -216,16 +217,7 @@ REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
                   ops::ROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::ROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
-REGISTER_OP_CPU_KERNEL(
-    roi_pool,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
-    roi_pool_grad,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>);
+
 REGISTER_OP_VERSION(roi_pool)
     .AddCheckpoint(
         R"ROC(
