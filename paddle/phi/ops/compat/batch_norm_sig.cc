@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  bool is_test = paddle::any_cast<int>(ctx.Attr("axis"));
+  bool is_test = paddle::any_cast<int>(ctx.Attr("is_test"));
   // Why here not need `MomentumTensor`?
   if (is_test) {
     return KernelSignature("batch_norm_infer",
