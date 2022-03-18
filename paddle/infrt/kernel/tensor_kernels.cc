@@ -146,8 +146,8 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
 
 // TensorList related methods.
 #ifdef INFRT_WITH_PHI
-  registry->AddKernel("dt.tensor_list_get_tensor",
-                      INFRT_KERNEL(TensorListGetTensor));
+  registry->AddKernelWithAttrs(
+      "dt.tensor_list_get_tensor", INFRT_KERNEL(TensorListGetTensor), {"id"});
   registry->AddKernel("dt.tensor_list_get_size",
                       INFRT_KERNEL(TensorListGetSize));
 #endif
