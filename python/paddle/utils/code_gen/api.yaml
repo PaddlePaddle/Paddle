@@ -34,6 +34,11 @@
   kernel :
     func : conj
 
+- api : copy_to
+  args : (Tensor x, Backend backend, bool blocking)
+  output : Tensor
+  invoke : copy_to_impl(x, backend, blocking)
+
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -116,7 +121,7 @@
   backward : matmul_grad
 
 - api : mean
-  args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
+  args : (Tensor x, int64[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
@@ -136,6 +141,14 @@
   output : Tensor
   invoke : full_like(x, 1, dtype, place)
 
+- api : pool2d
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel:
+    func : pool2d
+
 - api : reshape
   args : (Tensor x, ScalarArray shape)
   output : Tensor(out)
@@ -143,6 +156,15 @@
     func : ReshapeInferMeta
   kernel :
     func : reshape
+  inplace : (x -> out)
+
+- api : relu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu
   inplace : (x -> out)
 
 - api : scale
@@ -153,6 +175,7 @@
     param : [x]
   kernel :
     func : scale, scale_sr
+  inplace : (x -> out)
 
 - api : sign
   args : (Tensor x)
@@ -161,6 +184,19 @@
     func : UnchangedInferMeta
   kernel :
     func : sign
+
+- api : softmax
+  args : (Tensor x, int axis)
+  output : Tensor
+  infer_meta :
+    func : SoftmaxInferMeta
+  kernel :
+    func : sotfmax
+
+- api : split
+  args : (Tensor x, ScalarArray num_or_sections, Scalar axis)
+  output : Tensor[]
+  invoke : split_impl(x, num_or_sections, axis)
 
 - api : subtract
   args : (Tensor x, Tensor y)
@@ -171,16 +207,70 @@
     func : subtract
 
 - api : sum
-  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : SumInferMeta
   kernel :
     func : sum
-    param : [x, axis, dtype, keep_dim]
     data_type : x
 
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+
+- api : one_hot
+  args : (Tensor x, Scalar num_classes)
+  output : Tensor
+  infer_meta :
+    func : OneHotInferMeta
+  kernel :
+    func : one_hot
+    
+- api : digamma
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : digamma
+  backward : digamma_grad
+
+- api : abs
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : abs
+  backward : abs_grad
+
+- api : trunc
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : trunc
+  backward : trunc_grad
+
+# - api : norm
+#   args : (Tensor x, int axis, float epsilon, bool is_test)
+#   output : Tensor(out), Tensor(norm)
+#   infer_meta :
+#     func : NormInferMeta
+#   kernel :
+#     func : norm
+#   intermediate : norm
+#   backward : norm_grad
+
+- api : diagonal
+  args : (Tensor x, int offset, int axis1, int axis2)
+  output : Tensor
+  infer_meta :
+    func : DiagonalInferMeta
+  kernel :
+    func : diagonal
+  backward : diagonal_grad

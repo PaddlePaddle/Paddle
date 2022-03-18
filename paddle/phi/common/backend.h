@@ -50,7 +50,10 @@ enum class Backend : uint8_t {
 
   // the third library backend
   MKLDNN,
-  CUDNN,
+  GPUDNN,  // cuDNN and hipDNN
+
+  // paddle kernel primitives backend
+  KPS,
 
   // end of backend types
   NUM_BACKENDS,
@@ -71,17 +74,17 @@ enum class Backend : uint8_t {
    * Of course, we have also considered solving this problem through different
    * named macros, for example, if we define
    *
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND
    *
    * Based on this design pattern, the dtype and layout also have the same
    * requirements, this cause we need to define a series of macros
    *
-   * PT_REGISTER_KERNEL_FOR_ALL_DTYPE
-   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
-   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
    *
    * It makes the system of registering macros more complicated, we think
    * this is not a simple design, so we still adopt the design of providing
@@ -112,8 +115,11 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MKLDNN:
       os << "MKLDNN";
       break;
-    case Backend::CUDNN:
-      os << "CUDNN";
+    case Backend::GPUDNN:
+      os << "GPUDNN";
+      break;
+    case Backend::KPS:
+      os << "KPS";
       break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
@@ -135,9 +141,6 @@ inline Backend StringToBackend(const char* backend_cstr) {
   if (s == std::string("Undefined")) {
     return Backend::UNDEFINED;
   }
-  for (size_t i = 0; i < s.size(); ++i) {
-    s[i] = toupper(s[i]);
-  }
   if (s == std::string("CPU")) {
     return Backend::CPU;
   } else if (s == std::string("GPU")) {
@@ -148,8 +151,10 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MKLDNN")) {
     return Backend::MKLDNN;
-  } else if (s == std::string("CUDNN")) {
-    return Backend::CUDNN;
+  } else if (s == std::string("GPUDNN")) {
+    return Backend::GPUDNN;
+  } else if (s == std::string("KPS")) {
+    return Backend::KPS;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::GetOrRegisterGlobalDeviceTypeId(s));

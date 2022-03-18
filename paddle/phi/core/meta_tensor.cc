@@ -72,6 +72,10 @@ void MetaTensor::set_layout(DataLayout layout) {
 }
 
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
+  if (meta_tensor.lod().size() == 0) {
+    // no need share
+    return;
+  }
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->lod =
         meta_tensor.lod();
@@ -98,19 +102,40 @@ const LoD& MetaTensor::lod() const {
 }
 
 void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
-  if (phi::DenseTensor::classof(tensor_)) {
-    set_dims(meta_tensor.dims());
-    set_dtype(meta_tensor.dtype());
-    set_layout(meta_tensor.layout());
-    share_lod(meta_tensor);
-  } else if (phi::SelectedRows::classof(tensor_)) {
-    set_dims(meta_tensor.dims());
+  if (phi::DenseTensor::classof(tensor_) ||
+      phi::SelectedRows::classof(tensor_)) {
+    share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     set_layout(meta_tensor.layout());
     share_lod(meta_tensor);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported sharing meta for `%s`.", tensor_->type_info().name()));
+  }
+}
+
+TensorBase* MetaTensor::tensor() const { return tensor_; }
+
+void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
+  bool is_dense_tensor = phi::DenseTensor::classof(tensor_);
+  bool is_selected_rows = phi::SelectedRows::classof(tensor_);
+  if (is_dense_tensor || is_selected_rows) {
+    set_dims(meta_tensor.dims());
+    if (is_selected_rows) {
+      const auto in_tensor_base = meta_tensor.tensor();
+      PADDLE_ENFORCE_EQ(
+          phi::SelectedRows::classof(in_tensor_base),
+          true,
+          errors::InvalidArgument("The input MetaTensor is SelectedRows, but "
+                                  "the output MetaTensor is not this type."));
+      auto* selected_rows_out = static_cast<SelectedRows*>(tensor_);
+      auto* selected_rows_in = static_cast<SelectedRows*>(in_tensor_base);
+      selected_rows_out->set_rows(selected_rows_in->rows());
+      selected_rows_out->set_height(selected_rows_in->height());
+    }
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported sharing dims for `%s`.", tensor_->type_info().name()));
   }
 }
 

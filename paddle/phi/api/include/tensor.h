@@ -49,8 +49,6 @@ namespace paddle {
 
 namespace experimental {
 
-class CompatiblePTenTensorUtils;
-
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
@@ -59,7 +57,7 @@ class AbstractAutogradMeta {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ "Paddle Tensor Operation (pten)" Library ].
+ * [ "Paddle Tensor Operation (phi)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
@@ -326,7 +324,7 @@ class PADDLE_API Tensor final {
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
-  std::shared_ptr<phi::TensorBase> impl() const;
+  const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
    * @brief Set the implemention of current Tensor.
@@ -334,6 +332,13 @@ class PADDLE_API Tensor final {
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
+
+  /**
+   * @brief Set the implemention of current Tensor.
+   *
+   * @param impl
+   */
+  void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
@@ -366,7 +371,7 @@ class PADDLE_API Tensor final {
   /* Part 5: Data Transform methods */
   /* Alert!!!!: All copy method can only deep copy impl, autograd info only be
    * copied */
-  /* out of pten */
+  /* out of phi */
   /**
    * @brief Copy the current Tensor data to the specified device
    * and return the new Tensor. It's usually used to set the input tensor data.
@@ -399,7 +404,9 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return void
    */
-  void copy_(const Tensor& src, const bool blocking);
+  void copy_(const Tensor& src,
+             const phi::Place& target_place,
+             const bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
@@ -474,10 +481,21 @@ class PADDLE_API Tensor final {
    */
   void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
 
-  /* Part 9: Auto generated Tensor methods */
+  /* Part 9: Inplace methods */
 
- private:
-  friend class CompatiblePTenTensorUtils;
+  /**
+   * @brief Increase inplace version
+   */
+  void bump_inplace_version();
+
+  /**
+   * @brief Get current inplace version
+   *
+   * @return uint32_t
+   */
+  uint32_t current_inplace_version();
+
+  /* Part 10: Auto generated Tensor methods */
 
  private:
   /**

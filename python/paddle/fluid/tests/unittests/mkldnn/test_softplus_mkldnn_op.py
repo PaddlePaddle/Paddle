@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -38,14 +38,23 @@ class TestSoftplusOneDNNOp(OpTest):
         self.beta = 1
         self.threshold = 20
         self.config()
+        self.set_dtype()
         self.attrs = {'use_mkldnn': True, 'beta': self.beta}
+        self.x = np.random.random(self.x_shape)
         self.inputs = {'X': np.random.random(self.x_shape).astype(np.float32)}
+
+        if self.dtype != np.float32:
+            self.x = convert_float_to_uint16(self.x)
+
         self.outputs = {
-            'Out': ref_softplus(self.inputs['X'], self.beta, self.threshold)
+            'Out': ref_softplus(self.x, self.beta, self.threshold)
         }
 
     def config(self):
         self.x_shape = (10, 10)
+
+    def set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -72,6 +81,21 @@ class TestSoftplus3DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
         self.x_shape = (20, 4, 2)
         self.beta = 0.4
 
+class TestSoftplusBF16OneDNNOp(TestSoftplusOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
+
+class TestSoftplus4DBF16OneDNNOp(TestSoftplus4DOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
+
+class TestSoftplus6DBF16OneDNNOp(TestSoftplus6DOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
+
+class TestSoftplus3DExtendedFunctorBF16OneDNNOp(TestSoftplus3DExtendedFunctorOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
 
 if __name__ == "__main__":
     paddle.enable_static()

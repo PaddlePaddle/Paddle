@@ -499,6 +499,27 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
                                         output_desc, output));
 }
 
+/* static */ void MLUCnnl::Concat(const MLUDeviceContext& dev_ctx,
+                                  const int pack_num, const int axis,
+                                  const cnnlTensorDescriptor_t inputs_desc[],
+                                  const void* const inputs[],
+                                  const cnnlTensorDescriptor_t output_desc,
+                                  void* output) {
+  cnnlHandle_t handle = dev_ctx.cnnl_handle();
+
+  size_t workspace_size = 0;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlGetConcatWorkspaceSize(handle, pack_num, &workspace_size));
+
+  Tensor workspace(paddle::experimental::DataType::INT8);
+  workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
+  void* workspace_ptr = workspace.mutable_data(dev_ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlConcat(handle, pack_num, axis, inputs_desc,
+                                        inputs, workspace_ptr, workspace_size,
+                                        output_desc, output));
+}
+
 /* static */ void MLUCnnl::Div(
     const ExecutionContext& ctx, cnnlComputationPreference_t prefer,
     const cnnlTensorDescriptor_t in0_desc, const void* in0,
@@ -971,6 +992,27 @@ MLUCnnlTrigonDesc::~MLUCnnlTrigonDesc() {
   Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
       {static_cast<int64_t>(workspace_size)}, dev_ctx);
   void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSplit(handle, split_num, axis, input_desc,
+                                       input_ptr, workspace_ptr, workspace_size,
+                                       output_descs, output_ptrs));
+}
+
+/* static */ void MLUCnnl::Split(const MLUDeviceContext& dev_ctx, int split_num,
+                                 int axis,
+                                 const cnnlTensorDescriptor_t input_desc,
+                                 const void* input_ptr,
+                                 const cnnlTensorDescriptor_t output_descs[],
+                                 void* output_ptrs[]) {
+  cnnlHandle_t handle = dev_ctx.cnnl_handle();
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(
+      cnnlGetSplitWorkspaceSize(handle, split_num, &workspace_size));
+
+  Tensor workspace(paddle::experimental::DataType::INT8);
+  workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
+  void* workspace_ptr = workspace.mutable_data(dev_ctx.GetPlace());
 
   PADDLE_ENFORCE_MLU_SUCCESS(cnnlSplit(handle, split_num, axis, input_desc,
                                        input_ptr, workspace_ptr, workspace_size,

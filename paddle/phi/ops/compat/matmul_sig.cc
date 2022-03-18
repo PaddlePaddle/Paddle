@@ -49,13 +49,13 @@ KernelSignature MatmulTripleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(matmul_v2, matmul);
-PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad, matmul_grad);
-PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad_grad, matmul_double_grad);
-PT_REGISTER_BASE_KERNEL_NAME(matmul_v2_triple_grad, matmul_triple_grad);
+PD_REGISTER_BASE_KERNEL_NAME(matmul_v2, matmul);
+PD_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad, matmul_grad);
+PD_REGISTER_BASE_KERNEL_NAME(matmul_v2_grad_grad, matmul_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(matmul_v2_triple_grad, matmul_triple_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad, phi::MatmulGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(matmul_v2_grad_grad,
+PD_REGISTER_ARG_MAPPING_FN(matmul_v2_grad, phi::MatmulGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(matmul_v2_grad_grad,
                            phi::MatmulDoubleGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(matmul_v2_triple_grad,
+PD_REGISTER_ARG_MAPPING_FN(matmul_v2_triple_grad,
                            phi::MatmulTripleGradOpArgumentMapping);

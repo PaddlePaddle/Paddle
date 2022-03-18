@@ -1224,8 +1224,12 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
   proto::VarType::TensorDesc desc;
   {  // int32_t size
      // proto buffer
-    int32_t size;
+    int32_t size = -1;
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    PADDLE_ENFORCE_EQ(is.good(), true, platform::errors::Unavailable(
+                                           "Cannot read tensor desc size"));
+    PADDLE_ENFORCE_GE(size, 0, platform::errors::InvalidArgument(
+                                   "Tensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
@@ -1455,22 +1459,10 @@ std::ostream& print_tensor<paddle::platform::complex<double>>(
 }
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod) {
-  os << "{";
-  for (auto& v : lod) {
-    os << "{";
-    bool is_first = true;
-    for (auto& i : v) {
-      if (is_first) {
-        os << i;
-        is_first = false;
-      } else {
-        os << ", " << i;
-      }
-    }
-    os << "}";
-  }
-  os << "}";
-
+  // NOTE(xiongkun):
+  // https://stackoverflow.com/questions/5195512/namespaces-and-operator-resolution
+  // if we don't redefine, the operator << of phi / framework LoD is not found.
+  paddle::string::operator<<(os, lod);
   return os;
 }
 
@@ -1478,6 +1470,11 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
 }  // namespace paddle
 
 namespace phi {
+
+std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  paddle::string::operator<<(os, lod);
+  return os;
+}
 
 std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   if (t.lod().size() > 0) {

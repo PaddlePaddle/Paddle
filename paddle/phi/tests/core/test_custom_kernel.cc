@@ -17,6 +17,8 @@ limitations under the License. */
 #define _LINUX
 #endif
 
+#include <gtest/gtest.h>
+
 #ifdef _LINUX
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -30,8 +32,6 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 
-#include <gtest/gtest.h>
-
 // user kernel function
 namespace custom_kernel {
 
@@ -43,7 +43,7 @@ template <typename T, typename Context>
 void FakeDot(const Context& dev_ctx,
              const phi::DenseTensor& x,
              const phi::DenseTensor& y,
-             const std::vector<phi::DenseTensor>& fake_input_vec,
+             const std::vector<const phi::DenseTensor*>& fake_input_vec,
              bool fake_attr_bool,
              int fake_attr_int,
              float fake_attr_float,
@@ -98,16 +98,16 @@ void FakeDot(const Context& dev_ctx,
 }
 }  // namespace custom_kernel
 
-PD_REGISTER_KERNEL(fake_dot,
-                   CPU,
-                   ALL_LAYOUT,
-                   custom_kernel::FakeDot,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   int8_t,
-                   uint8_t) {}
+PD_REGISTER_BUILTIN_KERNEL(fake_dot,
+                           CPU,
+                           ALL_LAYOUT,
+                           custom_kernel::FakeDot,
+                           float,
+                           double,
+                           int,
+                           int64_t,
+                           int8_t,
+                           uint8_t) {}
 
 namespace phi {
 namespace tests {
@@ -146,12 +146,10 @@ TEST(CustomKernel, custom_kernel_dot) {
               custom_fake_dot_kernels.end());
 
   // 3.before register
-  auto& kernel_factory_instance = phi::KernelFactory::Instance();
   auto& kernels = phi::KernelFactory::Instance().kernels();
-  EXPECT_TRUE(!kernel_factory_instance.HasCompatiblePtenKernel(op_name));
+  EXPECT_TRUE(kernels.find(op_name) == kernels.end());
 
-  // mock fake_dot is supported by phi for HasCompatiblePtenKernel check while
-  // registering
+  // mock fake_dot is supported by phi for check while registering
   auto& fake_dot_kernels = kernels[op_name];
 
   EXPECT_TRUE(fake_dot_kernels.find(
@@ -174,7 +172,9 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // register
-  phi::RegisterCustomKernels(phi::CustomKernelMap::Instance());
+  phi::CustomKernelMap::Instance().RegisterCustomKernels();
+
+  EXPECT_EQ(0, static_cast<int>(custom_fake_dot_kernels.size()));
 
   EXPECT_TRUE(fake_dot_kernels.find(
                   phi::KernelKey(backend, layout, phi::DataType::FLOAT32)) !=
@@ -196,7 +196,7 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // 4.kernel select
-  auto kernel = kernel_factory_instance.SelectKernelOrThrowError(
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       op_name, phi::KernelKey(backend, layout, phi::DataType::UINT8));
 
   // 5.prepare parameters for kernel
@@ -251,7 +251,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   phi::dtype::float16 fake_attr_f16 = phi::dtype::float16(5);
   phi::DataType fake_attr_dtype = phi::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
-  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPtenPlace(backend));
+  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
   phi::Scalar fake_attr_scalar{tmp_tensor};
   phi::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
@@ -271,7 +271,7 @@ TEST(CustomKernel, custom_kernel_dot) {
 
   auto dense_out = std::make_shared<phi::DenseTensor>(
       phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(backend)),
+          phi::TransToPhiPlace(backend)),
       phi::DenseTensorMeta());
 
   phi::MetaTensor meta_out(dense_out.get());

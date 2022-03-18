@@ -17,10 +17,11 @@
 #include <llvm/ADT/SetVector.h>
 #include <mlir/Analysis/SliceAnalysis.h>
 #include <mlir/IR/Builders.h>
-#include <paddle/infrt/dialect/pd_ops.h>
 #include <list>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 namespace infrt {
 namespace trt {
@@ -54,8 +55,8 @@ bool reverseDfs(std::vector<mlir::Operation *> source,
 
 // merge the first&second graph op to a new graph op.
 void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
-                             mlir::pd::GraphOp first,
-                             mlir::pd::GraphOp second) {
+                             infrt::pd::GraphOp first,
+                             infrt::pd::GraphOp second) {
   // comput inputs and outputs
   ::llvm::SmallVector<mlir::Value, 4> inputs(first.getOperands()), outputs;
   for (mlir::Value input : second.getOperands()) {
@@ -84,7 +85,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   // create the new graph op
   builder.setInsertionPoint(first);
   auto loc = first.getLoc();
-  auto graph_op = builder.create<mlir::pd::GraphOp>(loc, return_types, inputs);
+  auto graph_op = builder.create<infrt::pd::GraphOp>(loc, return_types, inputs);
   mlir::Block *block = new mlir::Block;
   auto copy_range = second.getBody()->without_terminator();
   block->getOperations().splice(block->begin(),
@@ -97,7 +98,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
                                 copy_range.begin(),
                                 copy_range.end());
   builder.setInsertionPointToEnd(block);
-  builder.create<mlir::pd::ReturnOp>(loc, outputs);
+  builder.create<::infrt::ReturnOp>(loc, outputs);
   graph_op.body().push_back(block);
 
   // mapping the output
@@ -142,20 +143,20 @@ void topoSortBlock(mlir::Block &body) {  // NOLINT
 }  // namespace
 
 // Implementation of the trtGraphFusePass.
-void trtGraphFusePass::runOnFunction() {
+void TRTGraphFusePass::runOnFunction() {
   mlir::Block &body = getFunction().front();
   mlir::OpBuilder builder(&body, body.begin());
   bool changed = false;
   do {
     changed = false;
     for (auto &op : body) {
-      mlir::pd::GraphOp graph_op =
-          ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
+      infrt::pd::GraphOp graph_op =
+          ::llvm::dyn_cast_or_null<infrt::pd::GraphOp>(&op);
       if (nullptr == graph_op) continue;
 
       for (auto user_op : op.getUsers()) {
-        mlir::pd::GraphOp user_graph_op =
-            ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(user_op);
+        infrt::pd::GraphOp user_graph_op =
+            ::llvm::dyn_cast_or_null<infrt::pd::GraphOp>(user_op);
         if (nullptr == user_graph_op) continue;
         // get all dst input nodes except src.
         std::vector<mlir::Operation *> source_nodes;

@@ -18,9 +18,106 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
 
-void ConcatInferMeta(const std::vector<MetaTensor>& x,
+// Common InferMeta Functions for multiary operators, The format like:
+//
+//   1. The number of input MetaTensor is more than 3:
+//      void [FunctionDesc|OpName]InferMeta(const MetaTensor& x,
+//                                          const MetaTensor& y,
+//                                          const MetaTensor& z,
+//                                          const MetaTensor& w,
+//                                          ...,
+//                                          MetaTensor* out) {}
+//
+//   2. There are `const vector<MetaTensor*>&` in params:
+//      void [FunctionDesc|OpName]InferMeta(const vector<MetaTensor*>& x,
+//                                          ...,
+//                                          MetaTensor* out) {}
+//
+// NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
+
+std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
+
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out);
+
+void AdamaxInferMeta(const MetaTensor& param,
+                     const MetaTensor& grad,
+                     const MetaTensor& learning_rate,
+                     const MetaTensor& moment,
+                     const MetaTensor& inf_norm,
+                     const MetaTensor& beta1_pow,
+                     float beta1,
+                     float beta2,
+                     float epsilon,
+                     MetaTensor* param_out,
+                     MetaTensor* moment_out,
+                     MetaTensor* inf_norm_out);
+
+void AucInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& stat_pos,
+                  const MetaTensor& stat_neg,
+                  const std::string& curve,
+                  int num_thresholds,
+                  int slide_steps,
+                  MetaTensor* auc,
+                  MetaTensor* stat_pos_out,
+                  MetaTensor* stat_neg_out,
+                  MetaConfig config = MetaConfig());
+
+void BilinearTensorProductInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& weight,
+                                    paddle::optional<const MetaTensor&> bias,
+                                    MetaTensor* out,
+                                    MetaConfig config = MetaConfig());
+
+void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+                               std::vector<MetaTensor*> out);
+
+void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out);
+
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
+void PsroiPoolInferMeta(const MetaTensor& x,
+                        const MetaTensor& rois,
+                        paddle::optional<const MetaTensor&> rois_num,
+                        int pooled_height,
+                        int pooled_width,
+                        int output_channels,
+                        float spatial_scale,
+                        MetaTensor* out);
+
+void WhereInferMeta(const MetaTensor& condition,
+                    const MetaTensor& x,
+                    const MetaTensor& y,
+                    MetaTensor* out);
 
 }  // namespace phi

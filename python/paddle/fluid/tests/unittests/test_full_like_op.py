@@ -62,6 +62,15 @@ class TestFullOp(unittest.TestCase):
         self.assertTrue((out.numpy() == out_numpy).all(), True)
         paddle.enable_static()
 
+    def test_full_like_fill_inf(self):
+        paddle.disable_static()
+        input = paddle.arange(6, 10, dtype='float32')
+        out = paddle.full_like(input, fill_value=float('inf'))
+        out_numpy = np.random.random((4)).astype("float32")
+        out_numpy.fill(float('inf'))
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
+
 
 class TestFullOpError(unittest.TestCase):
     def test_errors(self):

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -77,7 +78,7 @@ class PassStopGradientIter : public IterHelper<AutogradMeta*> {
       VLOG(2) << "Tensor is NULL";
       return;
     }
-    element->SetStopGradient(stop_gradient_);
+    element->WeakSetStopGradient(stop_gradient_);
   }
 
   bool stop_gradient_ = true;
@@ -101,6 +102,8 @@ class EagerUtils {
       const paddle::experimental::Tensor& target);
 
   static std::shared_ptr<GradNodeBase> grad_node(
+      const paddle::experimental::Tensor& target);
+  static paddle::experimental::Tensor* mutable_grad(
       const paddle::experimental::Tensor& target);
 
   // Set history is used to set backward info during forward process, it will
@@ -142,6 +145,19 @@ class EagerUtils {
     iter.apply(std::forward<Args>(args)...);
   }
 
+  static void CheckInplace(const paddle::experimental::Tensor& target,
+                           const AutogradMeta* autograd_meta,
+                           bool require_any_grad) {
+    if (require_any_grad && autograd_meta) {
+      PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(target),
+                        false, paddle::platform::errors::InvalidArgument(
+                                   "Leaf Var (%s) that doesn't stop gradient "
+                                   "can't use inplace strategy.",
+                                   target.name()));
+    }
+  }
+
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
       TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
@@ -169,21 +185,31 @@ class EagerUtils {
   static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
       const size_t num);
   // Construct Tensor From var
+  static void ModifyInplaceInput(
+      const std::shared_ptr<EagerVariable>& inplace_variable,
+      paddle::experimental::Tensor* inplace_tensor);
   static std::vector<paddle::experimental::Tensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(
       const std::shared_ptr<EagerVariable>& out);
-  // Sync Back to origin output Tensor
-  static void OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
-                               paddle::experimental::Tensor* tensor);
-  static void OverwriteOutputs(const paddle::experimental::Tensor& out,
-                               paddle::experimental::Tensor* tensor);
-  static void OverwriteOutputs(
+  static void GetOutput(const std::shared_ptr<EagerVariable>& out,
+                        paddle::experimental::Tensor* out_var);
+  static void GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs,
-      const std::vector<paddle::experimental::Tensor*>& tensors);
-  static void OverwriteOutputs(
-      const std::vector<paddle::experimental::Tensor>& outs,
-      const std::vector<paddle::experimental::Tensor*>& tensors);
+      std::vector<paddle::experimental::Tensor>* result);
+  static void GetOutputs(
+      const std::vector<std::shared_ptr<EagerVariable>>& outs,
+      const std::vector<paddle::experimental::Tensor*>& out_var);
+  static void GetOutputs(const std::shared_ptr<EagerVariable>& out,
+                         std::vector<paddle::experimental::Tensor>* result);
+  static void GetOutputs(
+      const std::shared_ptr<EagerVariable>& out,
+      const std::vector<paddle::experimental::Tensor*>& out_var);
+
+  static void Output2Result(
+      const std::vector<paddle::experimental::Tensor*>& out_var,
+      std::vector<paddle::experimental::Tensor>* result);
+
   // end Intermidate needed
 
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);

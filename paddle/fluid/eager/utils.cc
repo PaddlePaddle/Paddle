@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -21,9 +22,8 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, true,
@@ -109,15 +109,35 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
   }
 }
 
+paddle::experimental::Tensor* EagerUtils::mutable_grad(
+    const paddle::experimental::Tensor& target) {
+  auto* meta = nullable_autograd_meta(target);
+  if (meta) {
+    return meta->MutableGrad();
+  } else {
+    return nullptr;
+  }
+}
+
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
+    if (autograd_meta->GradNode()) {
+      VLOG(7) << "Should not set grad node twice, original node is:"
+              << autograd_meta->GradNode()->name()
+              << "current is: " << grad_node->name();
+    }
     autograd_meta->SetGradNode(grad_node);
   }
 }
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
+  if (autograd_meta->GradNode()) {
+    VLOG(7) << "Should not set grad node twice, original node is:"
+            << autograd_meta->GradNode()->name()
+            << "current is: " << grad_node->name();
+  }
   autograd_meta->SetGradNode(grad_node);
 }
 
@@ -192,6 +212,27 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
   return res;
 }
 
+void EagerUtils::ModifyInplaceInput(
+    const std::shared_ptr<EagerVariable>& inplace_variable,
+    paddle::experimental::Tensor* inplace_tensor) {
+  // Only modify the meta information of the inplace tensor, because
+  // EagerVariable cannot modify Tensor's meta information after inplace
+  // op (such as ``reshape``) is executed.
+  PADDLE_ENFORCE_NOT_NULL(inplace_tensor,
+                          paddle::platform::errors::Fatal(
+                              "Inplace Tensor is null and cannot be modified. "
+                              "We are tring to Modify Inplace Input from its "
+                              "shared_ptr, this error may indicate the inplace "
+                              " input is nullptr"));
+  if (phi::DenseTensor::classof(inplace_variable->GetTensorBase().get())) {
+    phi::DenseTensor* variable_dense_tensor =
+        static_cast<phi::DenseTensor*>(inplace_variable->GetTensorBase().get());
+    phi::DenseTensor* tensor_dense_tensor =
+        static_cast<phi::DenseTensor*>(inplace_tensor->impl().get());
+    tensor_dense_tensor->set_meta(variable_dense_tensor->meta());
+  }
+}
+
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs) {
   std::vector<paddle::experimental::Tensor> res;
@@ -220,53 +261,62 @@ paddle::experimental::Tensor EagerUtils::GetOutput(
   return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
 }
 
-void EagerUtils::OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
-                                  paddle::experimental::Tensor* tensor) {
+void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
+                           paddle::experimental::Tensor* out_var) {
   PADDLE_ENFORCE_NOT_NULL(
-      tensor, paddle::platform::errors::Fatal(
-                  "Tensor is null and cannot be copied. "
-                  "We are tring to OverwriteOutput from its "
-                  "shared_ptr, this error may indicate some outputs "
-                  "are nullptr"));
-  tensor->set_impl(out->GetTensorBase());
+      out_var, paddle::platform::errors::Fatal(
+                   "Tensor is null and cannot be copied. "
+                   "We are tring to OverwriteOutput from its "
+                   "shared_ptr, this error may indicate some outputs "
+                   "are nullptr"));
+  out_var->set_impl(out->GetTensorBase());
 }
 
-void EagerUtils::OverwriteOutputs(
+void EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs,
-    const std::vector<paddle::experimental::Tensor*>& tensors) {
-  PADDLE_ENFORCE_EQ(
-      outs.size(), tensors.size(),
-      paddle::platform::errors::Fatal(
-          "We are tring to OverwriteOutputs which passed in and it expected "
-          "elements num of outs and origin outputs are equal, but we got outs "
-          "size of: %d, and tensors passed in size is: %d",
-          outs.size(), tensors.size()));
+    std::vector<paddle::experimental::Tensor>* result) {
   for (size_t i = 0; i < outs.size(); i++) {
-    OverwriteOutputs(outs[i], tensors[i]);
+    result->emplace_back(outs[i]->GetTensorBase());
   }
 }
 
-void EagerUtils::OverwriteOutputs(const paddle::experimental::Tensor& out,
-                                  paddle::experimental::Tensor* tensor) {
-  PADDLE_ENFORCE_NOT_NULL(
-      tensor, paddle::platform::errors::Fatal(
-                  "Tensor is null and cannot be copied. "
-                  "We are tring to OverwriteOutput from its "
-                  "shared_ptr, this error may indicate some outputs "
-                  "are nullptr"));
-  *tensor = out;
-}
-void EagerUtils::OverwriteOutputs(
-    const std::vector<paddle::experimental::Tensor>& outs,
-    const std::vector<paddle::experimental::Tensor*>& tensors) {
+void EagerUtils::GetOutputs(
+    const std::vector<std::shared_ptr<EagerVariable>>& outs,
+    const std::vector<paddle::experimental::Tensor*>& out_var) {
   for (size_t i = 0; i < outs.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
-        tensors[i], paddle::platform::errors::Fatal(
+        out_var[i], paddle::platform::errors::Fatal(
                         "Tensor is null and cannot be copied. "
                         "We are tring to OverwriteOutput from its "
                         "shared_ptr, this error may indicate some outputs "
                         "are nullptr"));
-    *tensors[i] = outs[i];
+    out_var[i]->set_impl(outs[i]->GetTensorBase());
+  }
+}
+
+void EagerUtils::GetOutputs(const std::shared_ptr<EagerVariable>& out,
+                            std::vector<paddle::experimental::Tensor>* result) {
+  result->emplace_back(out->GetTensorBase());
+}
+
+void EagerUtils::GetOutputs(
+    const std::shared_ptr<EagerVariable>& out,
+    const std::vector<paddle::experimental::Tensor*>& out_var) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_var[0], paddle::platform::errors::Fatal(
+                      "Tensor is null and cannot be copied. "
+                      "We are tring to OverwriteOutput from its "
+                      "shared_ptr, this error may indicate some outputs "
+                      "are nullptr"));
+  out_var[0]->set_impl(out->GetTensorBase());
+}
+
+void EagerUtils::Output2Result(
+    const std::vector<paddle::experimental::Tensor*>& out_var,
+    std::vector<paddle::experimental::Tensor>* result) {
+  result->reserve(out_var.size());
+  for (size_t i = 0; i < out_var.size(); i++) {
+    result->emplace_back(*out_var[i]);
   }
 }
 
@@ -333,7 +383,8 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   } else {
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
-      autograd_ptr->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      autograd_ptr->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;

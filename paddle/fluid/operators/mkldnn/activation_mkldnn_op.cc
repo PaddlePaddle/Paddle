@@ -263,6 +263,10 @@ template <typename T>
 using ExpMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
 
 template <typename T>
+using RoundMKLDNNFunctor =
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
+
+template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
@@ -322,6 +326,10 @@ namespace ops = paddle::operators;
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
+#define REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(act_type, functor) \
+  REGISTER_OP_KERNEL(act_type, MKLDNN, ::paddle::platform::CPUPlace,  \
+                     ops::MKLDNNActivationKernel<ops::functor<float>>);
+
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
   __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradUseOutFunctor);              \
@@ -339,7 +347,10 @@ namespace ops = paddle::operators;
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
 
+REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
+
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
     softplus, MKLDNN, paddle::platform::CPUPlace,
-    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>);
+    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>,
+    ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<paddle::platform::bfloat16>>);

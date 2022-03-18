@@ -99,18 +99,19 @@ def param_guard(parameters):
         yield
 
 
-def _convert_into_variable(var_base):
+def _convert_into_variable(tensor):
     """
     Convert Varbase into Variable.
     """
-    if isinstance(var_base, core.VarBase):
+    if isinstance(tensor, (core.eager.Tensor, core.VarBase)):
         # Check whether has been created before.
-        new_var = var_base.block._find_var_recursive(var_base.name)
+        new_var = tensor.block._find_var_recursive(tensor.name)
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
         # Convert ParamBase into Parameter with same attributes in dy2stat.
-        elif isinstance(var_base, framework.ParamBase):
-            new_var = var_base._to_static_var(to_parameter=True)
+        elif isinstance(tensor,
+                        (framework.EagerParamBase, framework.ParamBase)):
+            new_var = tensor._to_static_var(to_parameter=True)
         else:
             # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
             # same attributes and set persistable=True to allow saving this var.
@@ -120,13 +121,13 @@ def _convert_into_variable(var_base):
 
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
             # non-persistable. See case of `drop_state` in lstm api.
-            is_persistable = len(var_base.shape) > 0
+            is_persistable = len(tensor.shape) > 0
 
-            new_var = var_base._to_static_var(
+            new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable)
         return new_var
     else:
-        return var_base
+        return tensor
 
 
 def enabled():
@@ -564,16 +565,25 @@ def grad(outputs,
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var,
-                    core.VarBase), "Elements of {} must be Variable".format(
-                        name)
+                if core._in_eager_mode():
+                    assert isinstance(
+                        each_var, core.eager.
+                        Tensor), "Elements of {} must be Tensor".format(name)
+                else:
+                    assert isinstance(
+                        each_var,
+                        core.VarBase), "Elements of {} must be Variable".format(
+                            name)
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list,
-                core.VarBase), "{} must be Variable or list of Variable".format(
-                    name)
+            if core._in_eager_mode():
+                assert isinstance(
+                    in_out_list, core.eager.
+                    Tensor), "{} must be Tensor or list of Tensor".format(name)
+            else:
+                assert isinstance(
+                    in_out_list, core.VarBase
+                ), "{} must be Variable or list of Variable".format(name)
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -585,9 +595,14 @@ def grad(outputs,
 
         for each_var in grad_outputs:
             if each_var is not None:
-                assert isinstance(
-                    each_var, core.VarBase
-                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                if core._in_eager_mode():
+                    assert isinstance(
+                        each_var, core.eager.Tensor
+                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                else:
+                    assert isinstance(
+                        each_var, core.VarBase
+                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
     else:
         grad_outputs = []
 
@@ -599,14 +614,27 @@ def grad(outputs,
         no_grad_vars = []
     elif isinstance(no_grad_vars, core.VarBase):
         no_grad_vars = [no_grad_vars]
+    elif isinstance(no_grad_vars, core.eager.Tensor):
+        no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            assert isinstance(
-                var, core.VarBase), "no_grad_vars can only contains Variable"
+            if core._in_eager_mode():
+                assert isinstance(
+                    var,
+                    core.eager.Tensor), "no_grad_vars can only contains Tensor"
+            else:
+                assert isinstance(
+                    var,
+                    core.VarBase), "no_grad_vars can only contains Variable"
     else:
-        raise AssertionError(
-            "no_grad_vars must be None, Variable or list/tuple/set of Variables")
+        if core._in_eager_mode():
+            raise AssertionError(
+                "no_grad_vars must be None, Tensor or list/tuple/set of Tensors")
+        else:
+            raise AssertionError(
+                "no_grad_vars must be None, Variable or list/tuple/set of Variables"
+            )
 
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
@@ -620,6 +648,11 @@ def grad(outputs,
 
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
+
+    if core._in_eager_mode():
+        return core.eager.run_partial_grad(
+            outputs, inputs, grad_outputs, retain_graph, create_graph,
+            only_inputs, allow_unused, no_grad_vars)
 
     place = core.Place()
     place.set_place(framework._current_expected_place())

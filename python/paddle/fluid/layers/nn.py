@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_eager_mode
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -6254,6 +6254,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             # the shape of reshaped_3 is [6,8].
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            tmp_tensor_type = core.eager.Tensor
+        else:
+            tmp_tensor_type = Variable
         #TODO(zhiqiu): enable inplace in dygraph mode.
         if inplace:
             warnings.warn(
@@ -6265,7 +6269,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 for item in shape
             ]
             out, _ = _C_ops.reshape2(x, None, 'shape', shape)
-        elif isinstance(shape, Variable):
+        elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
         else:
@@ -6295,7 +6299,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 if dim_size == -1:
                     assert unk_dim_idx == -1, (
                         "Only one dimension value of 'shape' in reshape can "
-                        "be -1. But received shape[%d] is also -1." % dim_idx)
+                        "be -1. But received shape[%d] is also -1.\n"
+                        "\n\t# N = x.shape()[2]\t\t# N is an int. "
+                        "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
+                        "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
+                        "\t# z.shape is [-1, -1, 4]\n\n"
+                        "    If your target shape in Reshape represents dynamic shape, "
+                        "please turn it into a Tensor under @to_static. See above example for details."
+                        % dim_idx)
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
                     assert dim_idx < len(x.shape), (
@@ -10144,6 +10155,9 @@ def flatten(x, axis=1, name=None):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
         'flatten')
+    if in_dygraph_mode():
+        return _C_ops.flatten2(x, 'axis', axis)[0]
+
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):
@@ -11132,24 +11146,30 @@ def slice(input, axes, starts, ends):
 
         infer_flags = list(1 for i in range(len(axes)))
 
+        if _in_eager_mode():
+            tmp_tensor_type = core.eager.Tensor
+        else:
+            tmp_tensor_type = Variable
+
         if isinstance(starts, (list, tuple)):
             starts = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
             attrs += ('starts', starts)
-        elif isinstance(starts, Variable):
+        elif isinstance(starts, tmp_tensor_type):
             starts_tensor = starts
             starts.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
 
         if isinstance(ends, (list, tuple)):
             ends = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in ends
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item for item in ends
             ]
             attrs += ('ends', ends)
-        elif isinstance(ends, Variable):
+        elif isinstance(ends, tmp_tensor_type):
             ends_tensor = ends
             ends_tensor.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))

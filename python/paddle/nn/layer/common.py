@@ -15,10 +15,10 @@
 # TODO: define the common classes to build a neural network
 import paddle
 from ...fluid.dygraph import Flatten  # noqa: F401
-from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 from paddle.nn import Layer
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -1456,7 +1456,7 @@ class Embedding(Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if in_dygraph_mode() and padding_idx != -1:
+        if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
@@ -1554,7 +1554,7 @@ class Unfold(Layer):
 
 
 class Fold(Layer):
-    """
+    r"""
 
     This Op is used to combines an array of sliding local blocks into a large containing
     tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
@@ -1565,7 +1565,6 @@ class Fold(Layer):
     can be calculated as following.
 
     .. math::
-
         H_out &= output_size[0]
         W_out &= output_size[1]
         C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
@@ -1573,19 +1572,19 @@ class Fold(Layer):
     Parameters:
         output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
+        paddings(int|list|tuple):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -1604,10 +1603,10 @@ class Fold(Layer):
             import paddle
             import paddle.nn as nn
 
-            x = paddle.randn([2,12,9])
-            fold = nn.Fold(output_sizes=(4, 4), kernel_sizes=2)
+            x = paddle.randn([2,3*2*2,12])
+            fold = nn.Fold(output_sizes=[4, 5], kernel_sizes=2)
             y = fold(x)
-            # y.shape = [2,3,4,4]
+            # y.shape = [2,3,4,5]
    """
 
     def __init__(self,
