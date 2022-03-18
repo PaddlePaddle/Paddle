@@ -48,7 +48,7 @@ class LogSoftmaxGradNPUKernel : public framework::OpKernel<T> {
     auto* dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     const int rank = dOut->dims().size();
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     dX->mutable_data<T>(ctx.GetPlace());
