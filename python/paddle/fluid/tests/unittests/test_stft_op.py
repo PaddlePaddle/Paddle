@@ -59,7 +59,7 @@ class TestStftOp(OpTest):
         self.outputs = {'Out': stft_np(x=self.inputs['X'], **self.attrs)}
 
     def initTestCase(self):
-        input_shape = (2, 1600)
+        input_shape = (2, 100)
         input_type = 'float64'
         attrs = {
             'n_fft': 50,

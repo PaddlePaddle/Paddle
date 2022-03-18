@@ -81,7 +81,7 @@ class OverlapAddOp : public framework::OperatorWithKernel {
               hop_length, frame_length));
     }
 
-    if (n_frames == -1 && frame_length == -1) {
+    if (n_frames == -1) {
       seq_length = -1;
     } else {
       seq_length = (n_frames - 1) * hop_length + frame_length;

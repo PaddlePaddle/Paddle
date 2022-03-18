@@ -546,7 +546,7 @@ def istft(x,
 
     window_envelop = overlap_add(
         x=paddle.tile(
-            x=paddle.multiply(window, window),
+            x=paddle.multiply(window, window).unsqueeze(0),
             repeat_times=[n_frames, 1]).transpose(
                 perm=[1, 0]),  # (n_fft, num_frames)
         hop_length=hop_length,
@@ -566,7 +566,7 @@ def istft(x,
         window_envelop = window_envelop[start:start + length]
 
     # Check whether the Nonzero Overlap Add (NOLA) constraint is met.
-    if window_envelop.abs().min().item() < 1e-11:
+    if in_dygraph_mode() and window_envelop.abs().min().item() < 1e-11:
         raise ValueError(
             'Abort istft because Nonzero Overlap Add (NOLA) condition failed. For more information about NOLA constraint please see `scipy.signal.check_NOLA`(https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.check_NOLA.html).'
         )
