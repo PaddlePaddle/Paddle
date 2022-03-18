@@ -3195,4 +3195,5 @@ def create_test_act_bf16_class(parent,
 create_test_act_bf16_class(TestRelu)
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -293,4 +293,64 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
           d_ddx);
 }
 
+template <typename T, typename Context>
+void SquareDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& out_grad,
+                            const DenseTensor& x_grad_grad,
+                            DenseTensor* x_grad,
+                            DenseTensor* out_grad_grad) {
+  if (x_grad) {
+    x_grad->Resize(x.dims());
+    dev_ctx.template Alloc<T>(x_grad);
+  }
+  if (out_grad_grad) {
+    out_grad_grad->Resize(out_grad.dims());
+    dev_ctx.template Alloc<T>(out_grad_grad);
+  }
+
+  funcs::SquareGradGradFunctor<T> functor;
+  functor(dev_ctx, &x, &x_grad_grad, out_grad_grad, &out_grad, x_grad);
+}
+
+template <typename T, typename Context>
+void SqrtDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& x_grad,
+                          const DenseTensor& x_grad_grad,
+                          DenseTensor* out_grad,
+                          DenseTensor* out_grad_grad) {
+  if (out_grad) {
+    out_grad->Resize(out.dims());
+    dev_ctx.template Alloc<T>(out_grad);
+  }
+  if (out_grad_grad) {
+    out_grad_grad->Resize(out.dims());
+    dev_ctx.template Alloc<T>(out_grad_grad);
+  }
+
+  funcs::SqrtGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &x_grad_grad, out_grad_grad, out_grad, &x_grad);
+}
+
+template <typename T, typename Context>
+void RsqrtDoubleGradKernel(const Context& dev_ctx,
+                           const DenseTensor& out,
+                           const DenseTensor& x_grad,
+                           const DenseTensor& x_grad_grad,
+                           DenseTensor* out_grad,
+                           DenseTensor* out_grad_grad) {
+  if (out_grad) {
+    out_grad->Resize(out.dims());
+    dev_ctx.template Alloc<T>(out_grad);
+  }
+  if (out_grad_grad) {
+    out_grad_grad->Resize(out.dims());
+    dev_ctx.template Alloc<T>(out_grad_grad);
+  }
+
+  funcs::RsqrtGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &x_grad_grad, out_grad_grad, out_grad, &x_grad);
+}
+
 }  // namespace phi

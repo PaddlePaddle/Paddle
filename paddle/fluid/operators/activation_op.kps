@@ -557,47 +557,15 @@ REGISTER_OP_CUDA_KERNEL(
 
 /* ===========================   sqrt register  ============================= */
 
-REGISTER_OP_CUDA_KERNEL(
-    sqrt_grad_grad,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<float>>,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<double>>,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<plat::float16>>,
-    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                              ops::SqrtGradGradFunctor<plat::bfloat16>>);
 /* ========================================================================== */
 
 /* ===========================   rsqrt register  =============================
  */
 
-REGISTER_OP_CUDA_KERNEL(
-    rsqrt_grad_grad,
-    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                               ops::RsqrtGradGradFunctor<float>>,
-    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                               ops::RsqrtGradGradFunctor<double>>,
-    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                               ops::RsqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ===========================  square register  ============================ */
 
-REGISTER_OP_CUDA_KERNEL(
-    square_grad_grad,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<float>>,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<double>>,
-    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>,
-    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<plat::bfloat16>>,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<int>>,
-    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */

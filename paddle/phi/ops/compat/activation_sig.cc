@@ -143,6 +143,24 @@ KernelSignature EluDoubleGradOpArgumentMapping(
       "elu_double_grad", {"X", "DOut", "DDX"}, {"alpha"}, {"DX", "DDOut"});
 }
 
+KernelSignature SquareDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "square_double_grad", {"X", "DOut", "DDX"}, {}, {"DX", "DDOut"});
+}
+
+KernelSignature SqrtDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "sqrt_double_grad", {"Out", "DX", "DDX"}, {}, {"DOut", "DDOut"});
+}
+
+KernelSignature RsqrtDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "rsqrt_double_grad", {"Out", "DX", "DDX"}, {}, {"DOut", "DDOut"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
@@ -152,6 +170,9 @@ PD_REGISTER_BASE_KERNEL_NAME(softshrink, soft_shrink);
 PD_REGISTER_BASE_KERNEL_NAME(softshrink_grad, soft_shrink_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elu_grad_grad, elu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(sigmoid_grad_grad, sigmoid_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(sqrt_grad_grad, sqrt_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(rsqrt_grad_grad, rsqrt_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
@@ -212,3 +233,10 @@ PD_REGISTER_ARG_MAPPING_FN(logsigmoid_grad,
                            phi::LogSigmoidGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_sigmoid_grad,
                            phi::HardSigmoidGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(square_grad_grad,
+                           phi::SquareDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sqrt_grad_grad,
+                           phi::SqrtDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(rsqrt_grad_grad,
+                           phi::RsqrtDoubleGradOpArgumentMapping);

@@ -1679,13 +1679,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                                              ops::SqrtGradGradFunctor<float>>,
-    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::SqrtGradGradFunctor<double>>,
-    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::SqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ===========================   rsqrt register  =============================
@@ -1706,14 +1699,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::RsqrtGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    rsqrt_grad_grad,
-    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
-                               ops::RsqrtGradGradFunctor<float>>,
-    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
-                               ops::RsqrtGradGradFunctor<double>>,
-    ops::RsqrtDoubleGradKernel<plat::CPUDeviceContext,
-                               ops::RsqrtGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================   square register  ============================ */
@@ -1734,18 +1719,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    square_grad_grad,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<float>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<double>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<int>>,
-    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */

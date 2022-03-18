@@ -307,6 +307,34 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  const DenseTensor* dOut,
+                  DenseTensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(*ddX);
+    auto x = EigenVector<T>::Flatten(*X);
+    // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
+    // calculate dx first, so ddy can inplace ddx
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(*dX);
+
+      auto dout = EigenVector<T>::Flatten(*dOut);
+      dx.device(*d) = ddx * static_cast<T>(2) * dout;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(*ddOut);
+      ddout.device(*d) = ddx * static_cast<T>(2) * x;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 // sqrt(x) = x^(1/2)
 template <typename T>
 struct SqrtFunctor : public BaseActivationFunctor<T> {
@@ -332,6 +360,35 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  DenseTensor* dOut,
+                  const DenseTensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(*ddX);
+    auto out = EigenVector<T>::Flatten(*Out);
+    // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
+    // calculate dy first, so ddy can inplace ddx
+    if (dOut) {
+      auto dx = EigenVector<T>::Flatten(*dX);
+      auto dout = EigenVector<T>::Flatten(*dOut);
+      dout.device(*d) = dx * ddx * static_cast<T>(-1) / out;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(*ddOut);
+      ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // rsqrt(x) = x^(-1/2)
 template <typename T>
 struct RsqrtFunctor : public BaseActivationFunctor<T> {
@@ -352,6 +409,35 @@ struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
     dx.device(d) = static_cast<T>(-0.5) * dout * out * out * out;
   }
 
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct RsqrtGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  DenseTensor* dOut,
+                  const DenseTensor* dX) const {
+    auto ddx = EigenVector<T>::Flatten(*ddX);
+    auto out = EigenVector<T>::Flatten(*Out);
+    auto* d = dev.eigen_device();
+
+    // rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * dx * ddx
+    if (dOut) {
+      auto dx = EigenVector<T>::Flatten(*dX);
+      auto dout = EigenVector<T>::Flatten(*dOut);
+      dout.device(*d) = (static_cast<T>(3.0) / out) * dx * ddx;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(*ddOut);
+      ddout.device(*d) = ddx * static_cast<T>(-0.5) * out * out * out;
+    }
+  }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
   }
