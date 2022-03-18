@@ -102,7 +102,7 @@ class GradNodeBase {
    * is better choice to fit this format.
    * **/
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
       bool create_graph = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
