@@ -222,4 +222,57 @@ void EluDoubleGradKernel(const Context& dev_ctx,
   functor(dev_ctx, &x, &ddx, ddout, &dout, dx);
 }
 
+template <typename T, typename Context>
+void SigmoidDoubleGradKernel(const Context& dev_ctx,
+                             const DenseTensor& out,
+                             const DenseTensor& ddx,
+                             const DenseTensor& dout,
+                             DenseTensor* dout_new,
+                             DenseTensor* ddout) {
+  if (dout_new) {
+    dout_new->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout_new);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  funcs::SigmoidGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &ddx, &dout, dout_new, ddout);
+}
+
+template <typename T, typename Context>
+void SigmoidTripleGradKernel(const Context& dev_ctx,
+                             const DenseTensor& out,
+                             const DenseTensor& ddx,
+                             const DenseTensor& dout,
+                             const DenseTensor& d_ddout,
+                             const DenseTensor& d_dout_new,
+                             DenseTensor* d_out_new,
+                             DenseTensor* d_dout,
+                             DenseTensor* d_ddx) {
+  if (d_dout) {
+    d_dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+  if (d_out_new) {
+    d_dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(d_out_new);
+  }
+  if (d_ddx) {
+    d_dout->Resize(ddx.dims());
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  funcs::SigmoidTripleGradFunctor<T> functor;
+  functor(dev_ctx,
+          &out,
+          &ddx,
+          &dout,
+          &d_ddout,
+          &d_dout_new,
+          d_dout,
+          d_out_new,
+          d_ddx);
+}
+
 }  // namespace phi

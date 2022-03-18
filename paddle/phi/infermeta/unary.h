@@ -187,6 +187,8 @@ void RollInferMeta(const MetaTensor& x,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
 
+void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,
@@ -223,6 +225,15 @@ void SumRawInferMeta(const MetaTensor& x,
 void TileInferMeta(const MetaTensor& x,
                    const ScalarArray& repeat_times,
                    MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
+void TopKInferMeta(const MetaTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   MetaTensor* out,
+                   MetaTensor* indices,
                    MetaConfig config = MetaConfig());
 
 void TraceInferMeta(
