@@ -457,7 +457,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose_grad,
                             Conv2dTranposeGradInferShapeFunctor,
                             PD_INFER_META(phi::ConvTransposeGradInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
-    conv2d_transpose_double_grad, Conv2dTranposeDoubleGradInferShapeFunctor,
+    conv2d_transpose_grad_grad, Conv2dTranposeDoubleGradInferShapeFunctor,
     PD_INFER_META(phi::Conv2dTransposeDoubleGradInferMeta));
 
 REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,

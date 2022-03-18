@@ -330,21 +330,20 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
       auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::miopenConvolutionBackwardfiltereights(
-                handle,
-                &alpha,
-                args2.odesc.desc(),
-                x_data + x_offset * g,
-                args2.idesc.desc(),
-                dout_data + dout_offset * g,
-                args2.cdesc.desc(),
-                filter_algo,
-                &beta,
-                args2.wdesc.desc(),
-                dfilter_data + filter_offset * g,
-                cudnn_workspace,
-                workspace_size));
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardWeights(
+            handle,
+            &alpha,
+            args2.odesc.desc(),
+            x_data + x_offset * g,
+            args2.idesc.desc(),
+            dout_data + dout_offset * g,
+            args2.cdesc.desc(),
+            filter_algo,
+            &beta,
+            args2.wdesc.desc(),
+            dfilter_data + filter_offset * g,
+            cudnn_workspace,
+            workspace_size));
       };
 #else   // PADDLE_WITH_HIP
       auto cudnn_func = [&](void* cudnn_workspace) {
@@ -449,8 +448,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   std::vector<int> dilations_ = dilations;
 
   bool deterministic = FLAGS_cudnn_deterministic;
-  const bool channel_last =
-      (data_format == "NHfilterC" || data_format == "NDHfilterC");
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
   // transform DenseTensors to channel first-----------
   DenseTensor transformed_x_channel(x.type());
@@ -958,7 +956,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       wkspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
-                dynload::miopenConvolutionBackwardfiltereights(
+                dynload::miopenConvolutionBackwardWeights(
                     handle,
                     &alpha,
                     args3.odesc.desc(),
