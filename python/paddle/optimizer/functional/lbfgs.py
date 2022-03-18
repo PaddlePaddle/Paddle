@@ -59,14 +59,15 @@ def miminize_lbfgs(objective_func,
             type to be used.
     
     Returns:
-        num_func_calls : number of objective function called.
-        position : the position of the last iteration. If the search converged, this value is the argmin of 
+        is_converge (bool): Indicates whether found the minimum within tolerance.
+        num_func_calls (int): number of objective function called.
+        position (Tensor): the position of the last iteration. If the search converged, this value is the argmin of 
         the objective function regrading to the initial position.
-        objective_value : objective function value at the `position`.
-        objective_gradient : objective function gradient at the `position`.
+        objective_value (Tensor): objective function value at the `position`.
+        objective_gradient (Tensor): objective function gradient at the `position`.
     """
 
-    if initial_inverse_hessian_estimate == None:
+    if initial_inverse_hessian_estimate is None:
         initial_inverse_hessian_estimate = paddle.eye(initial_position.shape[0],
                                                       dtype=dtype)
 

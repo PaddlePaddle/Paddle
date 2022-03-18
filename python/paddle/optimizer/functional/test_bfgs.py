@@ -44,7 +44,7 @@ class TestBfgs(unittest.TestCase):
 
 
     def test_quadratic_nd(self):
-        for dimension in [1, 2, 1000]:
+        for dimension in [1, 2, 20]:
             minimum = np.random.random(size=[dimension]).astype('float32')
             scale = np.exp(np.random.random(size=[dimension]).astype('float32'))
             def func2(x):
@@ -54,10 +54,14 @@ class TestBfgs(unittest.TestCase):
             
             x0  = np.random.random(size=[dimension]).astype('float32')
             results = self.test_static_graph(func2, x0)
-            self.assertTrue(np.allclose(minimum, results[1]))
+            self.assertTrue(np.allclose(minimum, results[2]))
+            self.assertTrue(results[0][0])
+            print(results[1])
 
-            #results = self.test_dynamic_graph(func2, x0)
-            #self.assertTrue(np.allclose(minimum, results[1].numpy())) 
+            results = self.test_dynamic_graph(func2, x0)
+            self.assertTrue(np.allclose(minimum, results[2].numpy()))
+            self.assertTrue(results[0])
+            print(results[1])
 
 
     def test_inf_minima(self):
@@ -69,10 +73,11 @@ class TestBfgs(unittest.TestCase):
             ) * x * x / 2 + extream_point[0] * extream_point[1] * x
 
         x0  = np.array([-1.7]).astype('float32')
-        self.test_static_graph(func, x0)
-        #self.assertRaises(UserWarning, self.test_static_graph, func, x0)
+        results = self.test_static_graph(func, x0)
+        self.assertFalse(results[0][0])
 
-        self.assertRaises(UserWarning, self.test_dynamic_graph, func, x0)
+        results = self.test_dynamic_graph(func, x0)
+        self.assertFalse(results[0])
 
         
     def test_multi_minima(self):
@@ -87,10 +92,10 @@ class TestBfgs(unittest.TestCase):
         x1 = np.array([-1.3], dtype='float32')
 
         results = self.test_static_graph(func, x0)
-        self.assertTrue(np.allclose(0.8, results[1]))
+        self.assertTrue(np.allclose(0.8, results[2]))
 
         results = self.test_static_graph(func, x1)
-        self.assertTrue(np.allclose(-1.1, results[1]))
+        self.assertTrue(np.allclose(-1.1, results[2]))
 
 
     def test_rosenbrock(self):
@@ -113,10 +118,10 @@ class TestBfgs(unittest.TestCase):
         x0 = np.random.random(size=[2]).astype('float32')
 
         results = self.test_static_graph(func, x0)
-        self.assertTrue(np.allclose(minimum, results[1]))
+        self.assertTrue(np.allclose(minimum, results[2]))
 
         results = self.test_static_graph(func, x0)
-        self.assertTrue(np.allclose(minimum, results[1]))
+        self.assertTrue(np.allclose(minimum, results[2]))
 
 
     def test_initial_inverse_hessian_estimate(self):
@@ -124,12 +129,11 @@ class TestBfgs(unittest.TestCase):
             return paddle.dot(x, x)
 
         x0  = np.random.random(size=[2]).astype('float32')
-        H0 = [[1.0, 2.0], [3.0, 1.0]]
-        H1 = [[1.0, 2.0], [2.0, 1.0]]
+        H0 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
+        H1 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
         
-        #self.assertRaises(ValueError, self.test_dynamic_graph, func, x0, H0=H0)
-        #self.assertRaises(ValueError, self.test_dynamic_graph, func, x0, H0=H1)
-        self.test_dynamic_graph(func, x0)
+        self.assertRaises(ValueError, self.test_dynamic_graph, func, x0, H0=H0)
+        self.assertRaises(ValueError, self.test_dynamic_graph, func, x0, H0=H1)
 
         
     def test_static_line_search_fn(self):
@@ -143,7 +147,9 @@ class TestBfgs(unittest.TestCase):
 
 
 test = TestBfgs()
-test.test_inf_minima()
+#test.test_initial_inverse_hessian_estimate()
+test.test_quadratic_nd()
+
 
 #if __name__ == '__main__':
     #unittest.main()

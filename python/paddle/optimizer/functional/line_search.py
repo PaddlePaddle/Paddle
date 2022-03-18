@@ -17,6 +17,8 @@ from utils import _value_and_gradient
 from paddle.fluid.framework import in_dygraph_mode
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
+    # cubic interpolation use two points and their function value and gradient.
+    # Usually it has a better covergence than bisect.
     if in_dygraph_mode():
         if x1 <= x2:
             xmin, xmax = (x1, x2)
@@ -52,8 +54,7 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
         def false_func():
             return (xmin + xmax) / 2.
 
-        pred = paddle.greater_equal(x=d2_square, y=paddle.full(shape=[1], fill_value=0.))
-        min_pos = paddle.static.nn.cond(pred, true_func, false_func)
+        min_pos = paddle.static.nn.cond(d2_square >= 0., true_func, false_func)
         return min_pos
 
 
@@ -101,12 +102,18 @@ def strong_wolfe(f,
         return phi_value, f_grad, phi_grad
 
     def zoom(alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi, phi_0, derphi_0):
-        max_zoom_iters = 10
+        max_zoom_iters = max_iters
         if in_dygraph_mode():
             j = 0
             while j < max_zoom_iters:
-                #alpha_j = 0.5 * (alpha_lo + alpha_hi) # num_func_calls = 26
-                alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo, alpha_hi, phi_hi, derphi_hi)# num_func_calls = 21
+                if paddle.abs(alpha_hi - alpha_lo) < tolerance_change:
+                    break
+
+                alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo, alpha_hi, phi_hi, derphi_hi)
+                min_change = 0.1 * paddle.abs(alpha_hi - alpha_lo)
+                if paddle.minimum(paddle.abs(alpha_j - alpha_lo), paddle.abs(alpha_j - alpha_hi)) < min_change:
+                    alpha_j = 0.5 * (alpha_lo + alpha_hi)
+
                 phi_j, derf_j, derphi_j = phi_and_derphi(alpha_j)
 
                 if (phi_j > phi_0 + c1 * alpha_j * derphi_0) or phi_j >= phi_lo:
@@ -136,13 +143,15 @@ def strong_wolfe(f,
             done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
             def cond(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi):
-                pred1 = paddle.abs(alpha_hi - alpha_lo) < tolerance_change
-                paddle.assign(done | pred1, done)
+                pred = paddle.abs(alpha_hi - alpha_lo) < tolerance_change
+                paddle.assign(done | pred, done)
                 return (j < max_zoom_iters) & ~done_zoom
 
             def body(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi):
-                #alpha_j = 0.5 * (alpha_lo + alpha_hi) # 26
                 alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo, alpha_hi, phi_hi, derphi_hi) # 21
+                min_change = 0.1 * paddle.abs(alpha_hi - alpha_lo)
+                pred = paddle.minimum(paddle.abs(alpha_j - alpha_lo), paddle.abs(alpha_j - alpha_hi)) < min_change
+                alpha_j = paddle.static.nn.cond(pred, lambda: 0.5 * (alpha_lo + alpha_hi), lambda: alpha_j)
 
                 phi_j, derf_j, derphi_j = phi_and_derphi(alpha_j)
 
@@ -190,17 +199,24 @@ def strong_wolfe(f,
                 ])
             
             return alpha_lo, phi_lo, derf_lo, j
+    
+    # variable that can be used by both mode
+    alpha_max = paddle.full(shape=[1], fill_value=alpha_max, dtype=dtype)
 
+    alpha_1 = paddle.full(shape=[1], fill_value=0., dtype=dtype)
+    alpha_2 = paddle.full(shape=[1], fill_value=initial_step_length, dtype=dtype)
+
+    phi_1, derf_1, derphi_1  = phi_and_derphi(alpha_1)
+    phi_0 = paddle.assign(phi_1)
+    derphi_0 = paddle.assign(derphi_1)
+    ls_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
+
+    alpha_star = paddle.full(shape=[1], fill_value=0, dtype=dtype)
+    phi_star = paddle.assign(phi_1)
+    derf_star = paddle.assign(derf_1)
+
+    i = paddle.full(shape=[1], fill_value=0, dtype='int64')
     if in_dygraph_mode():
-        alpha_1 = 0.
-        alpha_2 = initial_step_length
-        phi_0, _, derphi_0 = phi_1, derf_1, derphi_1  = phi_and_derphi(alpha_1)
-        ls_func_calls = 1
-        alpha_star = 0.
-        phi_star = phi_1
-        derf_star = derf_1
-
-        i = 0
         while i < max_iters:
             phi_2, derf_2, derphi_2 = phi_and_derphi(alpha_2)
             ls_func_calls += 1
@@ -231,28 +247,11 @@ def strong_wolfe(f,
             phi_1 = phi_2
             derf_1 = derf_2
 
-            alpha_2 = 2 * alpha_2
-            if alpha_max is not None:
-                alpha_2 = min(alpha_2, alpha_max)
+            alpha_2 = min(2 * alpha_2, alpha_max)
             i += 1
-
         return alpha_star, phi_star, derf_star, ls_func_calls
     else:
-        i = paddle.full(shape=[1], fill_value=0, dtype='int64')
-
-        alpha_1 = paddle.full(shape=[1], fill_value=0., dtype=dtype)
-        phi_0, _, derphi_0 = phi_and_derphi(alpha_1)
-        phi_1, derf_1, derphi_1  = phi_and_derphi(alpha_1)
-        ls_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
-        zoom_func_calls = paddle.full(shape=[1], fill_value=0, dtype='int64')
-
-        alpha_2 = paddle.full(shape=[1], fill_value=initial_step_length, dtype=dtype)
         done = paddle.full(shape=[1], fill_value=False, dtype='bool')
-        
-        alpha_star = paddle.full(shape=[1], fill_value=0, dtype=dtype)
-        phi_star = paddle.assign(phi_1)
-        derf_star = paddle.assign(derf_1)
-        alpha_max = paddle.full(shape=[1], fill_value=alpha_max, dtype=dtype)
 
         def cond(i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done):
             return (i < max_iters) & ~done
