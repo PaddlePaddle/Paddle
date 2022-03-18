@@ -147,9 +147,9 @@ class TestBfgs(unittest.TestCase):
 
 
 test = TestBfgs()
-#test.test_initial_inverse_hessian_estimate()
+test.test_initial_inverse_hessian_estimate()
 test.test_quadratic_nd()
-
+test.test_rosenbrock()
 
 #if __name__ == '__main__':
     #unittest.main()

@@ -96,7 +96,7 @@ def miminize_bfgs(objective_func,
     xk = paddle.assign(initial_position)
 
     value1, g1 = _value_and_gradient(objective_func, xk)
-    num_func_calls = paddle.assign(1)
+    num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
     k = paddle.full(shape=[1], fill_value=0, dtype='int64')
     if in_dygraph_mode():

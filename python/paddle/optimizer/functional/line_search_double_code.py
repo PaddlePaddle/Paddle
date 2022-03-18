@@ -105,59 +105,9 @@ def strong_wolfe(f,
         max_zoom_iters = max_iters
         done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
         j = paddle.full(shape=[1], fill_value=0, dtype='int64')
-        def body(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi):
-            alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo, alpha_hi, phi_hi, derphi_hi) # 21
-            min_change = 0.1 * paddle.abs(alpha_hi - alpha_lo)
-            pred = paddle.minimum(paddle.abs(alpha_j - alpha_lo), paddle.abs(alpha_j - alpha_hi)) < min_change
-            alpha_j = paddle.static.nn.cond(pred, lambda: 0.5 * (alpha_lo + alpha_hi), lambda: alpha_j)
-
-            phi_j, derf_j, derphi_j = phi_and_derphi(alpha_j)
-
-            def true_fn():
-                paddle.assign(alpha_j, alpha_hi)
-                paddle.assign(phi_j, phi_hi)
-                paddle.assign(derphi_j, derphi_hi)
-
-            def false_fn(alpha_lo, done_zoom):
-                def true_fn():
-                    paddle.assign(alpha_j, alpha_lo)
-                    paddle.assign(phi_j, phi_lo)
-                    paddle.assign(derphi_j, derphi_lo)
-                    paddle.assign(derf_j, derf_lo)
-
-                pred3 = (paddle.abs(derphi_j) <= -c2 * derphi_0)
-                paddle.assign(pred3, done_zoom)
-                paddle.static.nn.cond(pred3, true_fn, None)
-
-                def true_fn():
-                    paddle.assign(alpha_hi, alpha_lo)
-
-                pred4 = ~done_zoom & (derphi_j * (alpha_hi - alpha_lo) >= 0)
-                paddle.static.nn.cond(pred4, true_fn, None)
-
-                paddle.assign(alpha_j, alpha_lo)
-                paddle.assign(phi_j, phi_lo)
-                paddle.assign(derphi_j, derphi_lo)
-                paddle.assign(derf_j, derf_lo)
-
-            pred2 = (phi_j > phi_0 + c1 * alpha_j * derphi_0) | (
-                phi_j >= phi_lo)
-            paddle.static.nn.cond(pred2, true_fn,
-                                lambda: false_fn(alpha_lo, done_zoom))
-            j = paddle.static.nn.cond(done_zoom, lambda: j, lambda: j + 1)
-            return [
-                j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi
-            ]
+        
         if in_dygraph_mode():
             while j < max_zoom_iters:
-                results = body(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi)
-                done_zoom = results[1]
-                if paddle.abs(alpha_hi - alpha_lo) < tolerance_change:
-                    break
-                if done_zoom:
-                    break
-                print("done_zoom: ", )
-                """
                 if paddle.abs(alpha_hi - alpha_lo) < tolerance_change:
                     break
 
@@ -188,7 +138,7 @@ def strong_wolfe(f,
                     derphi_lo = derphi_j
                     derf_lo = derf_j
 
-                j += 1"""
+                j += 1
             return alpha_lo, phi_lo, derf_lo, j
         else:
             done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
