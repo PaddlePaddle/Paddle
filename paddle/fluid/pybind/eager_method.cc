@@ -327,23 +327,25 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
     grad = meta->MutableGrad();
   }
 
-  if (grad->is_selected_rows()) {
-    auto selected_rows =
-        std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
-    if (selected_rows->mutable_value()->IsInitialized()) {
-      selected_rows->mutable_rows()->clear();
-      selected_rows->mutable_value()->clear();
-    }
-  } else if (grad->is_dense_tensor()) {
-    if (grad->initialized()) {
-      if (set_to_zero) {
-        grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
-      } else {
-        VLOG(4) << "Gradient of " << self->tensor.name()
-                << " is initialized, will be released.";
-        auto dense_tensor =
-            std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
-        dense_tensor->MoveMemoryHolder();
+  if (grad->impl()) {
+    if (grad->is_selected_rows()) {
+      auto selected_rows =
+          std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
+      if (selected_rows->mutable_value()->IsInitialized()) {
+        selected_rows->mutable_rows()->clear();
+        selected_rows->mutable_value()->clear();
+      }
+    } else if (grad->is_dense_tensor()) {
+      if (grad->initialized()) {
+        if (set_to_zero) {
+          grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+        } else {
+          VLOG(4) << "Gradient of " << self->tensor.name()
+                  << " is initialized, will be released.";
+          auto dense_tensor =
+              std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
+          dense_tensor->MoveMemoryHolder();
+        }
       }
     }
   }
@@ -716,6 +718,15 @@ static PyObject* set_grad_type(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t inplace_version = self->tensor.current_inplace_version();
+
+  return ToPyObject(inplace_version);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -763,6 +774,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_grad_type", (PyCFunction)(void (*)(void))set_grad_type,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
