@@ -69,6 +69,15 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
+PD_REGISTER_KERNEL(elementwise_heaviside,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
 PD_REGISTER_KERNEL(add_raw,
                    GPU,
                    ALL_LAYOUT,
