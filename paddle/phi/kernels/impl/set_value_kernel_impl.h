@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
-#include "paddle/fluid/operators/slice_utils.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
 

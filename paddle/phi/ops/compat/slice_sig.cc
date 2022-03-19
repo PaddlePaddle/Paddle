@@ -18,6 +18,9 @@ namespace phi {
 
 KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
   // if input is Tensor Array
+  if (ctx.IsDenseTensorVectorInput("Input")) {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
 
   if (ctx.HasInput("StartsTensor")) {
     if (ctx.HasInput("EndsTensor")) {
@@ -95,6 +98,10 @@ KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorVectorInput("Input")) {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
+
   if (ctx.HasInput("StartsTensor")) {
     if (ctx.HasInput("EndsTensor")) {
       return KernelSignature("slice_grad",
