@@ -37,7 +37,7 @@
 - api : copy_to
   args : (Tensor x, Place place, bool blocking)
   output : Tensor
-  invoke : copy_to_impl(x, backend, blocking)
+  invoke : copy_to_impl(x, place, blocking)
 
 - api : divide
   args : (Tensor x, Tensor y)

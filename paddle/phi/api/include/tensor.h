@@ -31,7 +31,6 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/place.h"
-#include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
@@ -407,11 +406,11 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param backend, The target backend of which the tensor will copy to.
+   * @param place, The target place of which the tensor will copy to.
    * @param blocking, Should we copy this in sync way.
    * @return Tensor
    */
-  Tensor copy_to(Backend backend, bool blocking) const;
+  Tensor copy_to(Place place, bool blocking) const;
 
   /**
    * @brief Transfer the source Tensor to current Tensor.

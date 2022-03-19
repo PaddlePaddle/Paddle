@@ -395,7 +395,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   platform::CUDADeviceGuard gpuGuard;
   for (auto& place : places) {
     gpuGuard.SetDeviceIndex(place.GetDeviceId());
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::Backend::GPU);
+    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::GPUPlace());
     barrierTensors.push_back(dt);
   }
   auto task = ProcessGroupNCCL::AllReduce(barrierTensors);
