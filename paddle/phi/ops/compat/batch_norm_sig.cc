@@ -21,8 +21,10 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   bool use_global_stats = paddle::any_cast<bool>(ctx.Attr("use_global_stats"));
   bool trainable_statistics =
       paddle::any_cast<bool>(ctx.Attr("trainable_statistics"));
+  bool fuse_with_relu = paddle::any_cast<bool>(ctx.Attr("fuse_with_relu"));
   // Dispenable `MomentumTensor` is useless now
-  if (is_test && !use_global_stats && !trainable_statistics) {
+  if (is_test && !use_global_stats && !trainable_statistics &&
+      !fuse_with_relu) {
     return KernelSignature("batch_norm_infer",
                            {"X", "Scale", "Bias", "Mean", "Variance"},
                            {"momentum", "epsilon", "data_layout"},
