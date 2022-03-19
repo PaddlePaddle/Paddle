@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -230,7 +230,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_launch_coverage',
     'test_mkldnn_conv_activation_fuse_pass',
     'test_inference_model_io',
-    'test_fusion_repeated_fc_relu_op',  #'heter_listen_and_server_test', 
+    'test_fusion_repeated_fc_relu_op',  #'heter_listen_and_server_test',
     'cudnn_desc_test',
     'test_beam_search_op',
     'test_var_conv_2d',
@@ -1182,7 +1182,7 @@ LOWEST_PARALLEL_JOB_NEW = [
 ]
 
 # *=======These unittest doesn't occupy GPU memory, just run as CPU unittest=======* #
-# It run 16 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, 
+# It run 16 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED,
 # just remove it from this list.
 CPU_PARALLEL_JOB = [
     'test_static_save_load_large',
@@ -2781,7 +2781,7 @@ TWO_PARALLEL_JOB = [
     'test_trt_convert_anchor_generator',
     'test_trt_convert_clip',
     'test_trt_convert_batch_norm',
-    'test_cuda_stream_event'
+    'test_cuda_stream_event',
 ]
 
 
