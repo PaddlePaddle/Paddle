@@ -812,6 +812,15 @@ static PyObject* tensor_method_is_sparse_csr(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t inplace_version = self->tensor.current_inplace_version();
+
+  return ToPyObject(inplace_version);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -880,6 +889,8 @@ PyMethodDef variable_methods[] = {
     {"is_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
+    {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind

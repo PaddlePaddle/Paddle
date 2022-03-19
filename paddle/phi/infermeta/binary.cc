@@ -918,6 +918,103 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void PReluInferMeta(const MetaTensor& x,
+                    const MetaTensor& alpha,
+                    const std::string& mode,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  auto x_dim = x.dims();
+  if (mode == "all") {
+    PADDLE_ENFORCE_EQ(phi::product(alpha.dims()),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "For mode 'all', size of weight Alpha must be one. "
+                          "But recevied alpha's size: %d.",
+                          product(alpha.dims())));
+  } else if (mode == "channel") {
+    auto x_rank = x_dim.size();
+    PADDLE_ENFORCE_GE(x_rank,
+                      2,
+                      phi::errors::InvalidArgument(
+                          "For mode 'channel', rank of input X must be "
+                          "equal or larger than 2. But recevied X's "
+                          "rank: %d",
+                          x_rank));
+    PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                      true,
+                      phi::errors::InvalidArgument(
+                          "For mode 'channel', data_format must be one of "
+                          "NCHW and NHWC. But recevied data_format: %s",
+                          data_format));
+    if (data_format == "NCHW" || config.is_run_mkldnn_kernel) {
+      PADDLE_ENFORCE_EQ(product(alpha.dims()) == x_dim[1],
+                        true,
+                        phi::errors::InvalidArgument(
+                            "For mode 'channel', size of weight Alpha must be "
+                            "equal to the number of channels of input(x). But "
+                            "recevied alpha's size: %d, x_dim[1]: %d",
+                            product(alpha.dims()),
+                            x_dim[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(product(alpha.dims()) == x_dim[x_rank - 1],
+                        true,
+                        phi::errors::InvalidArgument(
+                            "For mode 'channel', size of weight Alpha must be "
+                            "equal to the number of channels of input(x). But "
+                            "recevied alpha's size: %d, x_dim[%d]: %d",
+                            product(alpha.dims()),
+                            x_rank - 1,
+                            x_dim[x_rank - 1]));
+    }
+  } else if (mode == "element") {
+    auto alpha_dim = alpha.dims();
+    auto alpha_rank = alpha_dim.size();
+    auto x_rank = x_dim.size();
+    PADDLE_ENFORCE_GE(x_rank,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "For mode 'element', rank of input X must be "
+                          "equal or larger than 2. But recevied X's "
+                          "rank: %d",
+                          x_rank));
+    PADDLE_ENFORCE_EQ(
+        alpha_rank,
+        x_rank,
+        phi::errors::InvalidArgument(
+            "For mode 'element', rank of weight Alpha must be ",
+            "equal to the rank of input(x). But recevied alpha's rank: %d, "
+            "x's rank: %d.",
+            alpha_rank,
+            x_rank));
+    size_t x_product = 1;
+    size_t alpha_product = 1;
+    for (int64_t i = x_rank - 1; i > 0; i--) {
+      x_product *= x_dim[i];
+      alpha_product *= alpha_dim[i];
+    }
+    PADDLE_ENFORCE_EQ(
+        alpha_product,
+        x_product,
+        phi::errors::InvalidArgument(
+            "For mode 'element', the size of weight Alpha must be "
+            "equal to the size of input(x). But recevied alpha's size: %d, "
+            "x's size: %d.",
+            alpha_product,
+            x_product));
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attr(mode) of prelu must be one of 'all', 'channel', or 'element'. "
+        "But recevied "
+        "mode: '%s'.",
+        mode));
+  }
+  out->set_dims(x_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
