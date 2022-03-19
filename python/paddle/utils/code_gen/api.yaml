@@ -465,6 +465,15 @@
     func : atanh
   backward : atanh_grad
 
+# sigmoid
+- api : sigmoid
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sigmoid
+  backward : sigmoid_grad
 
 # arg_min  # int64 ???? dtype
 - api : argmin

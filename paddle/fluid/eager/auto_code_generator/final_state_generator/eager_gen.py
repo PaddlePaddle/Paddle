@@ -815,8 +815,8 @@ def GenerateNodeCreationCodes(
             set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
             set_grad_in_meta = f"        grad_node->SetGradInMeta(api_result, {pos});"
         else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
-            set_grad_in_meta = f"        grad_node->SetGradInMeta(api_result[{pos}], {pos});"
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(std::get<{pos}>(api_result), {pos});"
 
         set_out_rank_list.append(set_out_rank)
         set_history_list.append(set_history)
