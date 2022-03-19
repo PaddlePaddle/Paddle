@@ -20,63 +20,66 @@ import paddle
 import paddle.nn.functional as F
 import paddle.fluid as fluid
 
-from paddle.optimizer.functional.line_search import strong_wolfe
 from paddle.optimizer.functional.bfgs import minimize_bfgs
 
 np.random.seed(123)
 
 
-class TestBfgs(unittest.TestCase):
-    def test_static_graph(self,
-                          func,
-                          x0,
-                          H0=None,
-                          line_search_fn='strong_wolfe'):
-        dimension = x0.shape[0]
-        paddle.enable_static()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            X = paddle.static.data(name='x', shape=[dimension], dtype='float32')
-            Y = minimize_bfgs(
-                func,
-                X,
-                initial_inverse_hessian_estimate=H0,
-                line_search_fn=line_search_fn)
-
-        exe = fluid.Executor()
-        exe.run(startup)
-        return exe.run(main, feed={'x': x0}, fetch_list=[Y])
-
-    def test_dynamic_graph(self,
-                           func,
-                           x0,
-                           H0=None,
-                           line_search_fn='strong_wolfe'):
-        paddle.disable_static()
-        return minimize_bfgs(
+def test_static_graph(func,
+                      x0,
+                      H0=None,
+                      line_search_fn='strong_wolfe',
+                      dtype='float32'):
+    dimension = x0.shape[0]
+    paddle.enable_static()
+    main = fluid.Program()
+    startup = fluid.Program()
+    with fluid.program_guard(main, startup):
+        X = paddle.static.data(name='x', shape=[dimension], dtype=dtype)
+        Y = minimize_bfgs(
             func,
-            x0,
+            X,
             initial_inverse_hessian_estimate=H0,
-            line_search_fn=line_search_fn)
+            line_search_fn=line_search_fn,
+            dtype=dtype)
 
+    exe = fluid.Executor()
+    exe.run(startup)
+    return exe.run(main, feed={'x': x0}, fetch_list=[Y])
+
+
+def test_dynamic_graph(func,
+                       x0,
+                       H0=None,
+                       line_search_fn='strong_wolfe',
+                       dtype='float32'):
+    paddle.disable_static()
+    return minimize_bfgs(
+        func,
+        x0,
+        initial_inverse_hessian_estimate=H0,
+        line_search_fn=line_search_fn,
+        dtype=dtype)
+
+
+class TestBfgs(unittest.TestCase):
     def test_quadratic_nd(self):
-        for dimension in [1, 2, 20]:
+        for dimension in [1, 2, 10]:
             minimum = np.random.random(size=[dimension]).astype('float32')
             scale = np.exp(np.random.random(size=[dimension]).astype('float32'))
 
-            def func2(x):
+            def func(x):
                 minimum_ = paddle.assign(minimum)
                 scale_ = paddle.assign(scale)
                 return paddle.sum(
                     paddle.multiply(scale_, (F.square_error_cost(x, minimum_))))
 
             x0 = np.random.random(size=[dimension]).astype('float32')
-            results = self.test_static_graph(func2, x0)
+            results = test_static_graph(func=func, x0=x0)
             self.assertTrue(np.allclose(minimum, results[2]))
             self.assertTrue(results[0][0])
 
-            results = self.test_dynamic_graph(func2, x0)
+            results = test_dynamic_graph(func=func, x0=x0)
             self.assertTrue(np.allclose(minimum, results[2].numpy()))
             self.assertTrue(results[0])
 
@@ -91,10 +94,10 @@ class TestBfgs(unittest.TestCase):
             ) * x * x / 2 + extream_point[0] * extream_point[1] * x
 
         x0 = np.array([-1.7]).astype('float32')
-        results = self.test_static_graph(func, x0)
+        results = test_static_graph(func, x0)
         self.assertFalse(results[0][0])
 
-        results = self.test_dynamic_graph(func, x0)
+        results = test_dynamic_graph(func, x0)
         self.assertFalse(results[0])
 
     def test_multi_minima(self):
@@ -108,20 +111,22 @@ class TestBfgs(unittest.TestCase):
         x0 = np.array([0.82], dtype='float32')
         x1 = np.array([-1.3], dtype='float32')
 
-        results = self.test_static_graph(func, x0)
+        results = test_static_graph(func, x0, dtype='float32')
         self.assertTrue(np.allclose(0.8, results[2]))
 
-        results = self.test_dynamic_graph(func, x1)
+        results = test_dynamic_graph(func, x1, dtype='float32')
         self.assertTrue(np.allclose(-1.1, results[2]))
 
     def test_rosenbrock(self):
-        """Tests BFGS on the Rosenbrock function.
+        """
+        Tests BFGS on the Rosenbrock function.
         The Rosenbrock function is a standard optimization test case. In two
         dimensions, the function is (a, b > 0):
         f(x, y) = (a - x)^2 + b (y - x^2)^2
         The function has a global minimum at (a, a^2). This minimum lies inside
         a parabolic valley (y = x^2).
         """
+
         a = np.random.random(size=[1]).astype('float32')
         minimum = [a.item(), (a**2).item()]
         b = np.random.random(size=[1]).astype('float32')
@@ -134,11 +139,11 @@ class TestBfgs(unittest.TestCase):
 
         x0 = np.random.random(size=[2]).astype('float32')
 
-        results = self.test_static_graph(func, x0)
+        results = test_static_graph(func, x0)
         self.assertTrue(np.allclose(minimum, results[2]))
 
-        #results = self.test_dynamic_graph(func, x0)
-        #self.assertTrue(np.allclose(minimum, results[2]))
+        results = test_dynamic_graph(func, x0)
+        self.assertTrue(np.allclose(minimum, results[2]))
 
     def test_initial_inverse_hessian_estimate(self):
         def func(x):
@@ -146,15 +151,16 @@ class TestBfgs(unittest.TestCase):
 
         x0 = np.random.random(size=[2]).astype('float32')
         H0 = np.array([[1.0, 0.0], [0.0, 1.0]]).astype('float32')
-        H1 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
+        H1 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float64')
         H2 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
 
-        results = self.test_static_graph(func, x0, H0)
+        results = test_static_graph(func, x0, H0, dtype='float32')
         self.assertTrue(np.allclose([0., 0.], results[2]))
         self.assertTrue(results[0][0])
 
-        self.assertRaises(ValueError, self.test_dynamic_graph, func, x0, H0=H1)
-        self.assertRaises(ValueError, self.test_dynamic_graph, func, x0, H0=H2)
+        self.assertRaises(
+            ValueError, test_dynamic_graph, func, x0, H0=H1, dtype='float64')
+        self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H2)
 
     def test_static_line_search_fn(self):
         def func(x):
@@ -164,13 +170,13 @@ class TestBfgs(unittest.TestCase):
 
         self.assertRaises(
             NotImplementedError,
-            self.test_static_graph,
+            test_static_graph,
             func,
             x0,
             line_search_fn='other')
         self.assertRaises(
             NotImplementedError,
-            self.test_dynamic_graph,
+            test_dynamic_graph,
             func,
             x0,
             line_search_fn='other')

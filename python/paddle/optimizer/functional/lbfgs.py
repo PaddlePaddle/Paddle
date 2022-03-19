@@ -21,6 +21,11 @@ import paddle
 from paddle.fluid.framework import in_dygraph_mode
 
 
+def create_tmp_var(program, name, dtype, shape):
+    return program.current_block().create_var(
+        name=name, dtype=dtype, shape=shape)
+
+
 def minimize_lbfgs(objective_func,
                    initial_position,
                    history_size=100,
@@ -72,22 +77,56 @@ def minimize_lbfgs(objective_func,
     if initial_inverse_hessian_estimate is None:
         H0 = I
     else:
-        H0 = paddle.assign(initial_inverse_hessian_estimate)
+        if isinstance(initial_inverse_hessian_estimate,
+                      np.ndarray) and in_dygraph_mode():
+            # paddle.assign will convert numpy array float64 to float32, so when input is numpy, use another way
+            # and set_value needs value to be `numpy.ndarray` or `LoDTensor`, so need to keep both ways.
+            H0 = paddle.empty(
+                initial_inverse_hessian_estimate.shape, dtype=dtype)
+            H0.set_value(value=initial_inverse_hessian_estimate)
+        else:
+            H0 = paddle.assign(initial_inverse_hessian_estimate)
+
         is_symmetric = paddle.all(paddle.equal(H0, H0.t()))
         # In static mode, raise is not supported, but cholesky will throw preconditionNotMet if 
         # H0 is not symmetric or positive definite.
-        if not is_symmetric:
-            raise ValueError(
-                "The initial_inverse_hessian_estimate should be symmetric, but the specified is not.\n{}".
-                format(H0))
-        try:
-            paddle.linalg.cholesky(H0)
-        except RuntimeError as error:
-            raise ValueError(
-                "The initial_inverse_hessian_estimate should be positive definite, but the specified is not.\n{}".
-                format(H0))
+        if in_dygraph_mode():
+            if not is_symmetric:
+                raise ValueError(
+                    "The initial_inverse_hessian_estimate should be symmetric, but the specified is not.\n{}".
+                    format(H0))
+            try:
+                paddle.linalg.cholesky(H0)
+            except RuntimeError as error:
+                raise ValueError(
+                    "The initial_inverse_hessian_estimate should be positive definite, but the specified is not.\n{}".
+                    format(H0))
+        else:
 
-    xk = paddle.assign(initial_position)
+            def raise_func():
+                raise ValueError(
+                    "The initial_inverse_hessian_estimate should be symmetric, but the specified is not.\n{}".
+                    format(H0))
+
+            out_var = create_tmp_var(
+                paddle.static.default_main_program(),
+                name='output',
+                dtype='float32',
+                shape=[-1])
+
+            def false_fn():
+                paddle.static.nn.py_func(
+                    func=raise_func, x=is_symmetric, out=out_var)
+
+            paddle.static.nn.cond(is_symmetric, None, false_fn)
+            paddle.linalg.cholesky(H0)
+
+    if isinstance(initial_position, np.ndarray) and in_dygraph_mode():
+        xk = paddle.empty(initial_position.shape, dtype=dtype)
+        xk.set_value(value=initial_position)
+    else:
+        xk = paddle.assign(initial_position)
+
     value, g1 = _value_and_gradient(objective_func, xk)
     num_func_calls = paddle.assign(1)
     if in_dygraph_mode():
@@ -226,7 +265,7 @@ def minimize_lbfgs(objective_func,
             rhok = 1. / paddle.dot(yk, sk)
 
             def true_fn2(rhok):
-                paddle.assign(1000.0, rhok)
+                rhok = 1000.0
 
             paddle.static.nn.cond(
                 paddle.any(paddle.isinf(rhok)), lambda: true_fn2(rhok), None)

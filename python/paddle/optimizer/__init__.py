@@ -23,7 +23,7 @@ from .sgd import SGD  # noqa: F401
 from .momentum import Momentum  # noqa: F401
 from .lamb import Lamb  # noqa: F401
 from . import lr  # noqa: F401
-from . import functional
+from . import functional  # noqa: F401
 
 __all__ = [     #noqa
            'Optimizer',
@@ -35,5 +35,6 @@ __all__ = [     #noqa
            'Adadelta',
            'SGD',
            'Momentum',
-           'Lamb'
+           'Lamb',
+           'functional'
 ]
