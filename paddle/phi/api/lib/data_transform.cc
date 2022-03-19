@@ -23,8 +23,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_device_transform.h"
 
-DECLARE_bool(stop_data_transform);
-
 namespace paddle {
 namespace experimental {
 
