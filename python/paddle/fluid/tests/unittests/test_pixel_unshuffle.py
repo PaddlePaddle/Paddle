@@ -23,26 +23,27 @@ import paddle.nn.functional as F
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
+paddle.enable_static()
 
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
     if data_format == "NCHW":
         n, c, h, w = x.shape
-        new_shape = (n, c, h / down_factor, down_factor, 
-                           w / down_factor, down_factor)
+        new_shape = (n, c, h // down_factor, down_factor, 
+                           w // down_factor, down_factor)
         npresult = np.reshape(x, new_shape)
         npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
-        oshape = [n, c * down_factor * down_factor, h / down_factor, 
-                                                    w / down_factor]
+        oshape = [n, c * down_factor * down_factor, h // down_factor, 
+                                                    w // down_factor]
         npresult = np.reshape(npresult, oshape)
         return npresult
     else:
         n, h, w, c = x.shape
-        new_shape = (n, h / down_factor, down_factor, 
-                        w / down_factor, down_factor, c)
+        new_shape = (n, h // down_factor, down_factor, 
+                        w // down_factor, down_factor, c)
         npresult = np.reshape(x, new_shape)
         npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
-        oshape = [n, h / down_factor, 
-                     w / down_factor, c * down_factor * down_factor]
+        oshape = [n, h // down_factor, 
+                     w // down_factor, c * down_factor * down_factor]
         npresult = np.reshape(npresult, oshape)
         return npresult
 
