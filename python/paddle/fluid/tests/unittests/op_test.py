@@ -734,6 +734,9 @@ class OpTest(unittest.TestCase):
             api_defaults = to_defaults_list(api_params, api_defaults)
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
+
+            print(api_params)
+            print(inputs_and_attrs)
             assert (
                 len(api_params) == len(inputs_and_attrs)
             ), "inputs and attrs length must equals to python api length. (May be output is in argument list?)"

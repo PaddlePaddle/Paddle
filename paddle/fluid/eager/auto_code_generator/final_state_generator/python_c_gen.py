@@ -78,7 +78,7 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
             get_eager_tensor_str += f"    auto {name} = GetTensorListFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         else:
             if is_optional:
-                get_eager_tensor_str += f"    auto {name} = GetOptionalTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+                get_eager_tensor_str += f"    auto {name} = GetOptionalTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, true);\n"
             else:
                 get_eager_tensor_str += f"    auto {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         dygraph_function_call_list[pos] = f"{name}"

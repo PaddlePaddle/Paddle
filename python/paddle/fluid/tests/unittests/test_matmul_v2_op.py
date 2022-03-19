@@ -75,6 +75,7 @@ class TestMatMulV2Op(OpTest):
         self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
+        self.python_api = paddle.matmul
         if self.is_bfloat16_op():
             x = np.random.random(self.x_shape).astype(np.float32)
             y = np.random.random(self.y_shape).astype(np.float32)
