@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unique_op.h"
-#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,68 +24,6 @@ namespace operators {
 class UniqueOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "unique");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "unique");
-    auto in_dims = ctx->GetInputDim("X");
-    if (!ctx->Attrs().Get<bool>("is_sorted")) {
-      OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index", "unique");
-      PADDLE_ENFORCE_EQ(in_dims.size(), 1,
-                        platform::errors::InvalidArgument(
-                            "The Input(X) should be 1-D Tensor, "
-                            "But now the dims of Input(X) is %d.",
-                            in_dims.size()));
-
-      ctx->SetOutputDim("Out", {-1});
-      ctx->SetOutputDim("Index", in_dims);
-      return;
-    }
-
-    bool return_index = ctx->Attrs().Get<bool>("return_index");
-    bool return_inverse = ctx->Attrs().Get<bool>("return_inverse");
-    bool return_counts = ctx->Attrs().Get<bool>("return_counts");
-    auto axis_vec = ctx->Attrs().Get<std::vector<int>>("axis");
-
-    if (return_index) {
-      OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "unique");
-    }
-    if (return_inverse) {
-      OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index", "unique");
-    }
-    if (return_counts) {
-      OP_INOUT_CHECK(ctx->HasOutput("Counts"), "Output", "Counts", "unique");
-    }
-
-    if (axis_vec.empty()) {
-      ctx->SetOutputDim("Out", {-1});
-      if (return_inverse) {
-        ctx->SetOutputDim("Index", {phi::product(in_dims)});
-      }
-    } else {
-      int axis = axis_vec[0];
-      if (axis < 0) {
-        axis += in_dims.size();
-      }
-      PADDLE_ENFORCE_LT(
-          axis, in_dims.size(),
-          platform::errors::InvalidArgument("The axis(%d) should be less than "
-                                            "the dimension size(%d) of x.",
-                                            axis, in_dims.size()));
-      auto out_dims = in_dims;
-      out_dims[axis] = -1;
-      ctx->SetOutputDim("Out", out_dims);
-      if (return_inverse) {
-        ctx->SetOutputDim("Index", {in_dims[axis]});
-      }
-    }
-    if (return_index) {
-      ctx->SetOutputDim("Indices", {-1});
-    }
-    if (return_counts) {
-      ctx->SetOutputDim("Counts", {-1});
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -152,40 +93,8 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(unique, ops::UniqueOp, ops::UniqueOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    unique, ops::UniqueKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UniqueKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UniqueKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::UniqueKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_VERSION(unique)
-    .AddCheckpoint(
-        R"ROC(
-        Upgrade unique, add 2 outputs [Indices, Counts] and 5 attribute
-        [return_index, return_inverse, return_counts, axis, is_sorted].
-      )ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewOutput("Indices",
-                       "The indices of the input tensor that result in the "
-                       "unique tensor.")
-            .NewOutput("Counts", "The counts for each unique element.")
-            .NewAttr("return_index",
-                     "If True, also return the indices of the input"
-                     " tensor that result in the unique Tensor.",
-                     false)
-            .NewAttr("return_inverse",
-                     "If True, also return the indices for where elements"
-                     " in the original input ended up in the returned unique "
-                     "tensor.",
-                     false)
-            .NewAttr("return_counts",
-                     "If True, also return the counts for each unique element.",
-                     false)
-            .NewAttr("axis",
-                     "The axis to apply unique. If None, the input will be "
-                     "flattened.",
-                     std::vector<int>{})
-            .NewAttr("is_sorted",
-                     "If True, the unique elements of X are in ascending order."
-                     "Otherwise, the unique elements are not sorted.",
-                     false));
+
+DECLARE_INFER_SHAPE_FUNCTOR(unique, UniqueRawInferMetaFunctor,
+                            PD_INFER_META(phi::UniqueRawInferMeta));
+REGISTER_OP_WITHOUT_GRADIENT(unique, ops::UniqueOp, ops::UniqueOpMaker,
+                             UniqueRawInferMetaFunctor);

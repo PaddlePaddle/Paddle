@@ -1824,6 +1824,85 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void UniqueInferMeta(const MetaTensor& x,
+                     bool return_index,
+                     bool return_inverse,
+                     bool return_counts,
+                     const std::vector<int>& axis,
+                     DataType dtype,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaTensor* inverse,
+                     MetaTensor* counts) {
+  bool is_sorted = true;
+  UniqueRawInferMeta(x,
+                     return_index,
+                     return_inverse,
+                     return_counts,
+                     axis,
+                     dtype,
+                     is_sorted,
+                     out,
+                     indices,
+                     inverse,
+                     counts);
+}
+
+void UniqueRawInferMeta(const MetaTensor& x,
+                        bool return_index,
+                        bool return_inverse,
+                        bool return_counts,
+                        const std::vector<int>& axis,
+                        DataType dtype,
+                        bool is_sorted,
+                        MetaTensor* out,
+                        MetaTensor* indices,
+                        MetaTensor* inverse,
+                        MetaTensor* counts) {
+  if (!is_sorted) {
+    PADDLE_ENFORCE_EQ(
+        x.dims().size(),
+        1,
+        phi::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
+                                     "But now the dims of Input(X) is %d.",
+                                     x.dims().size()));
+    out->set_dims(phi::make_ddim({-1}));
+    indices->set_dims(x.dims());
+    return;
+  }
+
+  if (axis.empty()) {
+    out->set_dims(phi::make_ddim({-1}));
+    if (return_inverse) {
+      indices->set_dims(phi::make_ddim({phi::product(x.dims())}));
+    }
+  } else {
+    int axis_value = axis[0];
+    if (axis_value < 0) {
+      axis_value += x.dims().size();
+    }
+    PADDLE_ENFORCE_LT(
+        axis_value,
+        x.dims().size(),
+        phi::errors::InvalidArgument("The axis(%d) should be less than "
+                                     "the dimension size(%d) of x.",
+                                     axis_value,
+                                     x.dims().size()));
+    auto out_dims = x.dims();
+    out_dims[axis_value] = -1;
+    out->set_dims(out_dims);
+    if (return_inverse) {
+      indices->set_dims(phi::make_ddim({x.dims()[axis_value]}));
+    }
+  }
+  if (return_index) {
+    indices->set_dims(phi::make_ddim({-1}));
+  }
+  if (return_counts) {
+    counts->set_dims(phi::make_ddim({-1}));
+  }
+}
+
 void UnStackInferMeta(const MetaTensor& x,
                       int axis,
                       int num,

@@ -12,12 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/range_function.h"
 #include "paddle/phi/kernels/range_kernel.h"
 
 namespace phi {
+
+template <typename Context, typename T>
+inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
+  T value = static_cast<T>(0);
+  if (x.place().GetType() != AllocationType::CPU) {
+    DenseTensor cpu_x;
+    phi::Copy(dev_ctx, x, phi::CPUPlace(), false, &cpu_x);
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x.data<T>()[0];
+  }
+  return value;
+}
 
 template <typename T>
 __global__ void Range(T start, T step, int64_t size, T* out) {
@@ -30,9 +44,9 @@ void RangeKernel(const Context& dev_ctx,
                  const DenseTensor& end,
                  const DenseTensor& step,
                  DenseTensor* out) {
-  T start_value = GetValue<T>(start);
-  T end_value = GetValue<T>(end);
-  T step_value = GetValue<T>(step);
+  T start_value = GetValue<Context, T>(dev_ctx, start);
+  T end_value = GetValue<Context, T>(dev_ctx, end);
+  T step_value = GetValue<Context, T>(dev_ctx, step);
 
   int64_t size = 0;
   GetSize(start_value, end_value, step_value, &size);
