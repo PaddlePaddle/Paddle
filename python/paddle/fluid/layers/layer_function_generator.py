@@ -260,7 +260,8 @@ def generate_activation_fn(op_type):
         if in_dygraph_mode():
             if _in_eager_mode():
                 op = getattr(_C_ops, "final_state_" + op_type)
-                return op(x)
+                if op:
+                    return op(x)
             op = getattr(_C_ops, op_type)
             return op(x)
 

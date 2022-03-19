@@ -948,9 +948,8 @@ def split(x, num_or_sections, axis=0, name=None):
             print(out1.shape)  # [3, 3, 5]
             print(out2.shape)  # [3, 3, 5]
     """
-    if paddle.in_dygraph_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_split(x, num_or_sections, dim)
+    if paddle.in_dynamic_mode() and _in_eager_mode():
+        return _C_ops.final_state_split(x, num_or_sections, dim)
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
 

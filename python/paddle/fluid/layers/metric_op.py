@@ -87,9 +87,9 @@ def accuracy(input, label, k=1, correct=None, total=None):
         _k = k.numpy().item(0) if isinstance(k, Variable) else k
         topk_out, topk_indices = _C_ops.top_k_v2(input, 'k', _k, 'sorted',
                                                  False)
-        if _in_eager_mode():
-            _acc = _C_ops.final_state_accuracy(topk_out, topk_indices, label)
-            return _acc
+        # if _in_eager_mode():
+        #     _acc = _C_ops.final_state_accuracy(topk_out, topk_indices, label)
+        #     return _acc
         _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
                                      total)
         return _acc

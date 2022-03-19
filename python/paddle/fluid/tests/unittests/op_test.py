@@ -1501,6 +1501,7 @@ class OpTest(unittest.TestCase):
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in eager dygraph mode")
+                    if check_eager:
                         with fluid.dygraph.base.guard():
                             with _test_eager_guard():
                                 self.assertListEqual(

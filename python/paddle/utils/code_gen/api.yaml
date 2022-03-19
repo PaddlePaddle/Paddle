@@ -166,6 +166,7 @@
   kernel :
     func : relu
   inplace : (x -> out)
+  backward : relu_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -191,7 +192,8 @@
   infer_meta :
     func : SoftmaxInferMeta
   kernel :
-    func : sotfmax
+    func : softmax
+  backward : softmax_grad
 
 - api : split
   args : (Tensor x, ScalarArray num_or_sections, Scalar axis)
@@ -342,15 +344,15 @@
   backward : segment_pool_grad
   
 
-# accuracy
-- api : accuracy
-  args : (Tensor x, Tensor indices, Tensor label)
-  output : Tensor(accuracy), Tensor(correct), Tensor(total)
-  infer_meta :
-    func : AccuracyInferMeta
-  kernel :
-    func : accuracy
-    dtype : x
+# # accuracy
+# - api : accuracy
+#   args : (Tensor x, Tensor indices, Tensor label)
+#   output : Tensor(accuracy), Tensor(correct), Tensor(total)
+#   infer_meta :
+#     func : AccuracyInferMeta
+#   kernel :
+#     func : accuracy
+#     dtype : x
 
 # sin
 - api : sin
@@ -474,6 +476,126 @@
   kernel :
     func : sigmoid
   backward : sigmoid_grad
+
+# tan
+- api : tan
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tan
+  backward : tan_grad
+
+# tanh_shrink
+- api : tanh_shrink
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tanh_shrink
+  backward : tanh_shrink_grad
+
+# silu
+- api : silu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : silu
+  backward : silu_grad
+
+# logsigmoid
+- api : logsigmoid
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : logsigmoid
+  backward : logsigmoid_grad
+
+# leaky_relu
+- api : leaky_relu
+  args : (Tensor x, float alpha)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : leaky_relu
+  backward : leaky_relu_grad
+
+# thresholded_relu
+- api : thresholded_relu
+  args : (Tensor x, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : thresholded_relu
+  backward : thresholded_relu_grad
+
+
+# soft_shrink
+- api : soft_shrink
+  args : (Tensor x, float lambda)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : soft_shrink
+  backward : soft_shrink_grad
+
+# hard_shrink
+- api : hard_shrink
+  args : (Tensor x, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_shrink
+  backward : hard_shrink_grad
+
+
+# elu
+- api : elu
+  args : (Tensor x, float alpha)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : elu
+  backward : elu_grad
+
+# brelu
+- api : brelu
+  args : (Tensor x, float t_min, float t_max)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : brelu
+  backward : brelu_grad
+
+# hard_sigmoid
+- api : hard_sigmoid
+  args : (Tensor x, float slope, float offset)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_sigmoid
+  backward : hard_sigmoid_grad
+
 
 # arg_min  # int64 ???? dtype
 - api : argmin
