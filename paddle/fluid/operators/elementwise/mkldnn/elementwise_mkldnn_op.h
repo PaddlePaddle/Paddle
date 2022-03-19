@@ -198,10 +198,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             platform::EventRole::kUniqueOp);
 
         reorder_p->execute(astream, *reorder_src_memory_p, *dst_memory);
-      }
-
-      // elementwise_mul & elementwise_div
-      else {
+      } else {  // elementwise_mul & elementwise_div
         platform::BinaryMKLDNNHandler<T> binary_handler(
             BINARY_OP, axis, onednn_engine, ctx.GetPlace(), dout, y, dx, 1.0f,
             1.0f, 1.0f);
@@ -253,10 +250,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         } else {
           broadcast_src_memory = reorder_src_memory_p;
         }
-      }
-
-      // elementwise_mul & elementwise_div
-      else {
+      } else {  // elementwise_mul & elementwise_div
         std::unordered_map<int, dnnl::memory> args;
         std::shared_ptr<dnnl::binary> binary_prim;
         std::shared_ptr<dnnl::memory> post_op_memory;
