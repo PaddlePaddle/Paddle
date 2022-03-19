@@ -350,7 +350,8 @@
     func : AccuracyInferMeta
   kernel :
     func : accuracy
-    dtype : x
+    data_type : x
+  intermediate : correct, total
 
 # sin
 - api : sin
