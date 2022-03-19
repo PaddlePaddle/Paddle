@@ -73,5 +73,82 @@ struct AnyFunctor {
   }
 };
 
+struct MeanGradFunctor {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    dx->device(place) = dy->broadcast(dim) / dx->constant(size);
+  }
+};
+
+struct SumGradFunctor {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    dx->device(place) = dy->broadcast(dim);
+  }
+};
+
+struct ProdGradFunctor {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    dx->device(place) = dy->broadcast(dim) * y->broadcast(dim) * x->inverse();
+  }
+};
+
+struct MaxOrMinGradFunctor {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    auto equals = (*x) == y->broadcast(dim);
+    auto ones = dx->constant(1);
+    auto zeros = dx->constant(0);
+    // If there are multiple minimum or maximum elements, the subgradient of
+    // each is the set [0, 1], and we pass gradient to all of them here.
+    dx->device(place) = dy->broadcast(dim) * equals.select(ones, zeros);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

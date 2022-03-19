@@ -69,6 +69,20 @@ void CompareInferMeta(const MetaTensor& x,
                       int axis,
                       MetaTensor* out);
 
+void ConvInferMeta(const MetaTensor& input,
+                   const MetaTensor& filter,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::string& paddding_algorithm,
+                   int groups,
+                   const std::vector<int>& dilations,
+                   const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void ConvTransposeInferMeta(const MetaTensor& x,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
@@ -151,6 +165,10 @@ void LogLossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void MaskedSelectInferMeta(const MetaTensor& x,
+                           const MetaTensor& mask,
+                           MetaTensor* out);
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
@@ -158,6 +176,13 @@ void MatmulInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
+void PReluInferMeta(const MetaTensor& x,
+                    const MetaTensor& alpha,
+                    const std::string& mode,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config);
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
@@ -185,6 +210,20 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
+
+void YoloBoxInferMeta(const MetaTensor& x,
+                      const MetaTensor& img_size,
+                      const std::vector<int>& anchors,
+                      int class_num,
+                      float conf_thresh,
+                      int downsample_ratio,
+                      bool clip_bbox,
+                      float scale_x_y,
+                      bool iou_aware,
+                      float iou_aware_factor,
+                      MetaTensor* boxes,
+                      MetaTensor* scores,
+                      MetaConfig config = MetaConfig());
 
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,

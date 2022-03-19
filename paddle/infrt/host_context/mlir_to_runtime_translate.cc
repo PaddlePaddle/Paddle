@@ -298,13 +298,20 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
     // add a naive implement.
     for (int i = 0, e = op->getNumOperands(); i < e; ++i) {
       auto operand = op->getOperand(i);
+      Value* arg_value{nullptr};
       if (operand.isa<mlir::BlockArgument>()) {
         mlir::BlockArgument arg = operand.dyn_cast<mlir::BlockArgument>();
-        Value* arg_value = GetValue(arg);
-        if (arg_value->is_type<phi::DenseTensor>()) {
-          impl_->runtime->FeedInArgs(
-              std::make_pair(std::to_string(i), ValueRef(arg_value)));
+        arg_value = GetValue(arg);
+      } else {
+        arg_value = GetValue(operand);
+        if (!arg_value) {
+          auto upstream_op = operand.getDefiningOp();
+          arg_value = GetOpResult(upstream_op);
         }
+      }
+      if (arg_value->is_type<phi::DenseTensor>()) {
+        impl_->runtime->FeedInArgs(
+            std::make_pair(std::to_string(i), ValueRef(arg_value)));
       }
     }
 #else
