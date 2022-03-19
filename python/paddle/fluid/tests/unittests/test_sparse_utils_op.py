@@ -46,6 +46,7 @@ class TestSparseUtils(unittest.TestCase):
             non_zero_elements = [1, 2, 3, 4, 5]
             dense_x = paddle.to_tensor(x)
             out = _C_ops.final_state_to_sparse_csr(dense_x)
+            print(out)
             assert np.array_equal(out.non_zero_crows().numpy(), non_zero_crows)
             assert np.array_equal(out.non_zero_cols().numpy(), non_zero_cols)
             assert np.array_equal(out.non_zero_elements().numpy(),
