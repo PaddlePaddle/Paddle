@@ -432,7 +432,6 @@ __global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
   AccT db_sum = static_cast<AccT>(0);
 
   x += i * imsize;
-  dy += i * imsize;
   const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
 
   phi::Array<const T*, 2> ins;
@@ -595,6 +594,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_scale_data = d_scale->data<T>();
     }
+
     T* d_bias_data = nullptr;
     if (d_bias) {
       d_bias->mutable_data<T>(ctx.GetPlace());
