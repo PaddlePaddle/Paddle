@@ -176,12 +176,12 @@ class ResNet(nn.Layer):
 
     Args:
         Block (BasicBlock|BottleneckBlock): block module of model.
-        depth (int): layers of resnet, default: 50.
-        groups (int): number of groupings of convolutional layers, default: 1.
-        width_per_group (int): base width of the convolutional layer for each group, default: 64.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer
+        depth (int, optional): layers of resnet, Default: 50.
+        groups (int, optional): number of groups for each convolution block, Default: 1.
+        width_per_group (int, optional): base width per convolution group for each convolution block, Default: 64.
+        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        with_pool (bool, optional): use pool before the last fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
@@ -190,16 +190,23 @@ class ResNet(nn.Layer):
             from paddle.vision.models import ResNet
             from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 
+            # build ResNet with 18 layers
+            resnet18 = ResNet(BasicBlock, 18)
+
+            # build ResNet with 50 layers
             resnet50 = ResNet(BottleneckBlock, 50)
 
-            wide_resnet50_2 = ResNet(BottleneckBlock, 50, width=64*2)
+            # build Wide ResNet model
+            wide_resnet50_2 = ResNet(BottleneckBlock, 50, width_per_group=64*2)
 
-            resnet18 = ResNet(BasicBlock, 18)
+            # build ResNeXt model
+            resnext50_32x4d = ResNet(BottleneckBlock, 50, groups=32, width_per_group=4)
 
             x = paddle.rand([1, 3, 224, 224])
             out = resnet18(x)
 
             print(out.shape)
+            # [1, 1000]
 
     """
 
@@ -320,7 +327,7 @@ def resnet18(pretrained=False, **kwargs):
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -338,6 +345,7 @@ def resnet18(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     return _resnet('resnet18', BasicBlock, 18, pretrained, **kwargs)
 
@@ -347,7 +355,7 @@ def resnet34(pretrained=False, **kwargs):
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -365,6 +373,7 @@ def resnet34(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     return _resnet('resnet34', BasicBlock, 34, pretrained, **kwargs)
 
@@ -374,7 +383,7 @@ def resnet50(pretrained=False, **kwargs):
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -392,6 +401,7 @@ def resnet50(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     return _resnet('resnet50', BottleneckBlock, 50, pretrained, **kwargs)
 
@@ -401,7 +411,7 @@ def resnet101(pretrained=False, **kwargs):
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -419,6 +429,7 @@ def resnet101(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     return _resnet('resnet101', BottleneckBlock, 101, pretrained, **kwargs)
 
@@ -428,7 +439,7 @@ def resnet152(pretrained=False, **kwargs):
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -446,6 +457,7 @@ def resnet152(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)
 
@@ -455,7 +467,7 @@ def resnext50_32x4d(pretrained=False, **kwargs):
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -473,6 +485,7 @@ def resnext50_32x4d(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs["groups"] = 32
     kwargs["width_per_group"] = 4
@@ -484,7 +497,7 @@ def resnext50_64x4d(pretrained=False, **kwargs):
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -502,6 +515,7 @@ def resnext50_64x4d(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs["groups"] = 64
     kwargs["width_per_group"] = 4
@@ -513,7 +527,7 @@ def resnext101_32x4d(pretrained=False, **kwargs):
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -531,6 +545,7 @@ def resnext101_32x4d(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs["groups"] = 32
     kwargs["width_per_group"] = 4
@@ -543,7 +558,7 @@ def resnext101_64x4d(pretrained=False, **kwargs):
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -561,6 +576,7 @@ def resnext101_64x4d(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs["groups"] = 64
     kwargs["width_per_group"] = 4
@@ -573,7 +589,7 @@ def resnext152_32x4d(pretrained=False, **kwargs):
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -591,6 +607,7 @@ def resnext152_32x4d(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs["groups"] = 32
     kwargs["width_per_group"] = 4
@@ -603,7 +620,7 @@ def resnext152_64x4d(pretrained=False, **kwargs):
     `"Aggregated Residual Transformations for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -621,6 +638,7 @@ def resnext152_64x4d(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs["groups"] = 64
     kwargs["width_per_group"] = 4
@@ -633,7 +651,7 @@ def wide_resnet50_2(pretrained=False, **kwargs):
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -651,6 +669,7 @@ def wide_resnet50_2(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet50_2', BottleneckBlock, 50, pretrained, **kwargs)
@@ -661,7 +680,7 @@ def wide_resnet101_2(pretrained=False, **kwargs):
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool, optional): If True, returns a model pre-trained on ImageNet. Default: False.
 
     Examples:
         .. code-block:: python
@@ -679,6 +698,7 @@ def wide_resnet101_2(pretrained=False, **kwargs):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet101_2', BottleneckBlock, 101, pretrained,
