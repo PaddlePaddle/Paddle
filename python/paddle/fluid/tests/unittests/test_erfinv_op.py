@@ -42,7 +42,7 @@ class TestErfinv(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -50,7 +50,7 @@ class TestErfinv(OpTest):
             'Out',
             user_defined_grads=[self.gradient],
             user_defined_grad_outputs=self.grad_out,
-            check_eager=True)
+            check_eager=False)
 
 
 class TestErfinvFP32(TestErfinv):

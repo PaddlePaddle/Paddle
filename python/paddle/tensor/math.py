@@ -322,8 +322,8 @@ def subtract(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_subtract( x, y)
+        # if _in_eager_mode():
+        #     return _C_ops.final_state_subtract( x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -2822,7 +2822,7 @@ def sign(x, name=None):
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_model():
+        if _in_eager_mode():
             return _C_op.final_state_sign(x)
         return _C_ops.sign(x)
 

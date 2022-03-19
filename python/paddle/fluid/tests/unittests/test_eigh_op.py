@@ -43,10 +43,10 @@ class TestEighOp(OpTest):
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Eigenvectors'], check_eager=True)
+        self.check_output(no_check_set=['Eigenvectors'], check_eager=False)
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"], check_eager=True)
+        self.check_grad(["X"], ["Eigenvalues"], check_eager=False)
 
 
 class TestEighUPLOCase(TestEighOp):

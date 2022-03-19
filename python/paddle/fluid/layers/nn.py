@@ -13329,8 +13329,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
-    if in_dygraph_mode() and _in_eager_mode():
-        return _C_ops.final_state_log_loss(input, label, epsilon)
+    # if in_dygraph_mode() and _in_eager_mode():
+    #     return _C_ops.final_state_log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')

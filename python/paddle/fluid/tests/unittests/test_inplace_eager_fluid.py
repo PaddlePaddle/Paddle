@@ -160,7 +160,6 @@ class TestDygraphInplace(unittest.TestCase):
                 var_a.stop_gradient = False
 
                 var_b = var_a**2
-
                 var_c = self.non_inplace_api_processing(
                     var_b)  # var_b is modified inplace before using it
 

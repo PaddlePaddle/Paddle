@@ -117,10 +117,10 @@ class TestSumOp1(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSumOp2(OpTest):
