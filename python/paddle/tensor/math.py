@@ -3910,3 +3910,53 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+def heaviside(x, y, name=None):
+    """
+    Computes the Heaviside step function determined by y for each element in x. The equation is:
+
+    .. math::
+        heaviside(x, y)=
+            \left\{
+                \begin{array}{lcl}
+                0,& &\text{if } \ x < 0, \\
+                y,& &\text{if } \ x = 0,\\
+                1,& &\text{if } \ x > 0.
+                \end{array}
+            \right.
+
+    **Note**:
+    ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.5, 0, 0.5])
+            y = paddle.to_tensor([0.1])
+            paddle.heaviside(x, y)
+            #    [0.        , 0.10000000, 1.        ]
+
+            x = paddle.to_tensor([[-0.5, 0, 0.5], [-0.5, 0.5, 0]])
+            y = paddle.to_tensor([0.1, 0.2, 0.3])
+            paddle.heaviside(x, y)
+            #    [[0.        , 0.20000000, 1.        ],
+            #     [0.        , 1.        , 0.30000001]]
+    """
+    op_type = 'elementwise_heaviside'
+    axis = -1
+    act = None
+    if paddle.in_dynamic_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
