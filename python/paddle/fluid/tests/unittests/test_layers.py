@@ -3799,7 +3799,7 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             x = self._get_data(name="X", shape=[1, 12, 12], dtype="float32")
-            out = layers.pixel_unshuffle(x, upscale_factor=3)
+            out = layers.pixel_unshuffle(x, downscale_factor=3)
             return (out)
 
     def make_mse_loss(self):

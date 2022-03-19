@@ -49,14 +49,12 @@ class PixelUnshuffleOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\", Specify the data format of the input data.")
         .SetDefault("NCHW");
 
-    //todo
     AddComment(R"DOC(
 		Pixel Unshuffle operator
-		This operator rearranges elements in a tensor of shape :math:`(*, C \times r^2, H, W)`
-    		to a tensor of shape :math:`(C, H \times r, W \times r)`.
+		This operator rearranges elements in a tensor of shape :math:`(*, C , H \times r, W \times r)`
+    		to a tensor of shape :math:`( C \times r^2, H, W)`, where r is downscale factor.
 
-		This is useful for implementing efficient sub-pixel convolution
-    		with a stride of :math:`1/r`.
+		This is taken as the inverse operator of Pixel Shuffle .
 
 		Please refer to the paper:
 		 `Real-Time Single Image and Video Super-Resolution Using an Efficient 

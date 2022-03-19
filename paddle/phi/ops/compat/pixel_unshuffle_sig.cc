@@ -34,4 +34,4 @@ KernelSignature PixelUnshuffleGradOpArgumentMapping(
 
 PD_REGISTER_ARG_MAPPING_FN(pixel_unshuffle, phi::PixelUnshuffleOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pixel_unshuffle_grad,
-                           phi::PixelUnshuffleOpArgumentMapping);
+                           phi::PixelUnshuffleGradOpArgumentMapping);

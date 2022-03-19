@@ -32,23 +32,23 @@ void PixelUnshuffleGradKernel(const Context& ctx,
   ctx.template Alloc<T>(dx);
   int factor = upscale_factor;
   bool channel_last = (data_format == "NHWC");
-  auto do_dims = dout->dims(); // n 9 4 4
-  auto dx_dims = dx->dims(); //n  1 12 12
+  auto do_dims = dout->dims();
+  auto dx_dims = dx->dims();
 
   DenseTensor t(*dout);
   if (!channel_last) {
-    t.Resize({do_dims[0], dx_dims[1], factor, factor, do_dims[2], do_dims[3]}); // m 1, 3, 3, 4, 4,
+    t.Resize({do_dims[0], dx_dims[1], factor, factor, do_dims[2], do_dims[3]});
   } else {
-    t.Resize({do_dims[0], do_dims[1], do_dims[2], dx_dims[1], factor, factor});
+    t.Resize({do_dims[0], do_dims[1], do_dims[2], dx_dims[3], factor, factor});
   }
 
-  std::vector<int> axis = {0, 1, 4, 2, 5, 3}; //m 1 4 3 4 3
+  std::vector<int> axis = {0, 1, 4, 2, 5, 3};
 
   DenseTensor o(*dx);
   if (!channel_last) {
-    o.Resize({do_dims[0], dx_dims[1], do_dims[2], factor, do_dims[3], factor}); //m 1, 4, 3, 4, 3
+    o.Resize({do_dims[0], dx_dims[1], do_dims[2], factor, do_dims[3], factor});
   } else {
-    o.Resize({do_dims[0], do_dims[1], factor, do_dims[2], factor, dx_dims[1]});
+    o.Resize({do_dims[0], do_dims[1], factor, do_dims[2], factor, dx_dims[3]});
   }
   phi::funcs::Transpose<Context, T, 6> trans;
   trans(ctx, t, &o, axis);

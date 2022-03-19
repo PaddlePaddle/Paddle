@@ -138,6 +138,7 @@ from .layer.distance import PairwiseDistance  # noqa: F401
 
 from .layer.vision import PixelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
+from .layer.vision import PixelUnshuffle  # noqa: F401pix
 
 from .utils.spectral_norm_hook import spectral_norm
 
@@ -306,4 +307,5 @@ __all__ = [     #noqa
            'MaxUnPool2D',
            'MaxUnPool3D',
            'HingeEmbeddingLoss',
+           'PixelUnshuffle',
 ]

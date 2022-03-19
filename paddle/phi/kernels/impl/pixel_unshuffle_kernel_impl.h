@@ -46,7 +46,7 @@ void PixelUnshuffleKernel(const Context& ctx,
   if (!channel_last) {
     o.Resize({in_dims[0], in_dims[1], factor, factor,  o_dims[2], o_dims[3]});
   } else {
-    o.Resize({in_dims[0], o_dims[1], o_dims[2], factor, factor, in_dims[1]});
+    o.Resize({in_dims[0], o_dims[1], o_dims[2], in_dims[3], factor, factor});
   }
 
   phi::funcs::Transpose<Context, T, 6> trans;
