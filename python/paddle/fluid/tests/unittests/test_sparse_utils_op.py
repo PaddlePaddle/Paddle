@@ -29,6 +29,7 @@ class TestSparseUtils(unittest.TestCase):
             dense_x = paddle.to_tensor(x)
             #TODO(zhangkaihuo): change to test the corresponding API
             out = _C_ops.final_state_to_sparse_coo(dense_x, 2)
+            print(out)
             assert np.array_equal(out.non_zero_indices().numpy(),
                                   non_zero_indices)
             assert np.array_equal(out.non_zero_elements().numpy(),
