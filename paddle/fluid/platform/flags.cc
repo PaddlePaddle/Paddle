@@ -701,6 +701,19 @@ PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, false,
                             "It controls whether to run PaddlePaddle using KP");
 
 /**
+ * New dygraph related FLAG
+ * Name: FLAGS_stop_data_transform
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_stop_data_transform=true would not support auto data transform
+ * in new dygraph mode.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    stop_data_transform, false,
+    "It controls whether to do data transform in new dygraph");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_allreduce_record_one_event
  * Since Version: 2.2.0

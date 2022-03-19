@@ -15,13 +15,16 @@ limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 
 #include "paddle/phi/core/compat/convert_utils.h"
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 namespace paddle {
 namespace experimental {
 namespace detail {
 
-BackendSet GetTensorBackendSet(const Tensor& t) {
-  BackendSet backend_set(phi::TransToPhiBackend(t.inner_place()));
+BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
+  BackendSet backend_set(phi::TransToPhiBackend(t.place()));
   switch (t.layout()) {
     case DataLayout::MKLDNN:
       backend_set = backend_set | BackendSet(Backend::MKLDNN);
@@ -34,6 +37,11 @@ BackendSet GetTensorBackendSet(const Tensor& t) {
 }
 
 std::size_t CountLeadingZeros(uint64_t val) {
+#if defined(__clang__) || defined(__GNUC__)
+  return __builtin_clzl(val);
+#elif defined(_MSC_VER)
+  return __lzcnt64(val);
+#else
   if (val == 0) {
     return 64;
   }
@@ -47,6 +55,7 @@ std::size_t CountLeadingZeros(uint64_t val) {
     }
   }
   return zero_bits;
+#endif
 }
 
 }  // namespace detail
