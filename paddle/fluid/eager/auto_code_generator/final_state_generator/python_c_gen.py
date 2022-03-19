@@ -337,7 +337,7 @@ class PythonCSingleFunctionGenerator:
                 "paddle::experimental::", namespace, forward_api_name)
         else:
             fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "", namespace, GetForwardFunctionName(forward_api_name))
+                "::", namespace, GetForwardFunctionName(forward_api_name))
 
         # Generate Record Event for performance profiling
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
