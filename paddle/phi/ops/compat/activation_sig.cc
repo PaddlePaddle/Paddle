@@ -130,6 +130,11 @@ KernelSignature EluOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("elu", {"X"}, {"alpha"}, {"Out"});
 }
 
+KernelSignature LogitGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "logit_grad", {"X", GradVarName("Out")}, {"eps"}, {GradVarName("X")});
+}
+
 KernelSignature EluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("elu_grad",
                          {"X", "Out", GradVarName("Out")},
@@ -212,3 +217,5 @@ PD_REGISTER_ARG_MAPPING_FN(logsigmoid_grad,
                            phi::LogSigmoidGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_sigmoid_grad,
                            phi::HardSigmoidGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(logit_grad, phi::LogitGradOpArgumentMapping);
