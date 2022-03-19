@@ -657,6 +657,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
         else:
             # Rearrange output order accordingly
             returns_str += f"returns[{fwd_position}] =  grad_api_returns[{grad_api_position}];\n"
+    returns_str += f"if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
     returns_str += f"return returns;\n"
 
     grad_node_name = GetGradNodeName(fwd_api_name)
@@ -770,16 +771,13 @@ def GenerateNodeCreationCodes(
             else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            print("!!!!", fwd_api_name, name, atype, pos)
-            if num_fwd_outputs == 1:
-                if IsVectorTensorType(atype):
-                    tw_name = f"std::get<{pos}>(api_result)"
-                else:
-                    tw_name = f"api_result"
+            if num_fwd_outputs > 1:
+                # Aligned with forward output position
+                assert name in forward_outputs_position_map.keys()
+                fwd_output_pos = forward_outputs_position_map[name][1]
+                tw_name = f"std::get<{fwd_output_pos}>(api_result)"
             else:
-                assert IsPlainTensorType(atype), atype
-                out_pos = pos - fwd_api_input_num
-                tw_name = f"std::get<{out_pos}>(api_result)"
+                tw_name = f"api_result"
 
             if is_optional:
                 set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
@@ -793,7 +791,7 @@ def GenerateNodeCreationCodes(
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"        grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
+        set_grad_out_meta = f"        grad_node->SetGradOutMeta({name}, {pos});"
         set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
@@ -810,17 +808,26 @@ def GenerateNodeCreationCodes(
         output_autograd_meta_name = GetAutoGradMetaName(name)
         set_out_rank = f"        egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
         set_history = f"        egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
-        set_grad_in_meta = f"        grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
+        if num_outputs == 1:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(api_result, {pos});"
+        else:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(std::get<{pos}>(api_result), {pos});"
 
         set_out_rank_list.append(set_out_rank)
         set_history_list.append(set_history)
         set_grad_in_meta_list.append(set_grad_in_meta)
+<<<<<<< HEAD
 
         if num_outputs == 1:
             set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
         else:
             set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
+=======
+>>>>>>> 95fbbc5b47a08bb5bb62d0161f795c9ff2ffb813
         set_retain_grad_list.append(set_retain_grad)
+
     set_out_rank_str = "\n".join(set_out_rank_list)
     set_history_str = "\n".join(set_history_list)
     set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
@@ -1092,7 +1099,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
-#include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/backward/sparse_bw_api.h"
 """
     file_contents += node_definition_str
     with open(filepath, 'a') as f:
