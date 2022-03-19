@@ -21,7 +21,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 
 from paddle.optimizer.functional.line_search import strong_wolfe
-from paddle.optimizer.functional.bfgs import miminize_bfgs
+from paddle.optimizer.functional.bfgs import minimize_bfgs
 
 np.random.seed(123)
 
@@ -38,7 +38,7 @@ class TestBfgs(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             X = paddle.static.data(name='x', shape=[dimension], dtype='float32')
-            Y = miminize_bfgs(
+            Y = minimize_bfgs(
                 func,
                 X,
                 initial_inverse_hessian_estimate=H0,
@@ -54,7 +54,7 @@ class TestBfgs(unittest.TestCase):
                            H0=None,
                            line_search_fn='strong_wolfe'):
         paddle.disable_static()
-        return miminize_bfgs(
+        return minimize_bfgs(
             func,
             x0,
             initial_inverse_hessian_estimate=H0,

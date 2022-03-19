@@ -23,6 +23,7 @@ from .sgd import SGD  # noqa: F401
 from .momentum import Momentum  # noqa: F401
 from .lamb import Lamb  # noqa: F401
 from . import lr  # noqa: F401
+from . import functional
 
 __all__ = [     #noqa
            'Optimizer',

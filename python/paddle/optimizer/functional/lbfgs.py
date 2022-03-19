@@ -14,14 +14,14 @@
 
 import numpy as np
 
-from line_search import strong_wolfe
-from utils import _value_and_gradient
+from .line_search import strong_wolfe
+from .utils import _value_and_gradient
 
 import paddle
 from paddle.fluid.framework import in_dygraph_mode
 
 
-def miminize_lbfgs(objective_func,
+def minimize_lbfgs(objective_func,
                    initial_position,
                    history_size=100,
                    max_iters=50,
