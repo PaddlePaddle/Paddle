@@ -27,22 +27,30 @@ import paddle.fluid as fluid
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
     if data_format == "NCHW":
         n, c, h, w = x.shape
-        new_shape = (n, c, h//down_factor, down_factor, w//down_factor, down_factor)
+        new_shape = (n, c, h // down_factor, down_factor, w // down_factor,
+                     down_factor)
         # reshape to (num,output_channel,h,downscale_factor,w,downscale_factor)
         npresult = np.reshape(x, new_shape)
         # transpose to (num,output_channel,downscale_factor,downscale_factor, h, w)
         npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
-        oshape = [n, c * (down_factor * down_factor), h // down_factor, w // down_factor]
+        oshape = [
+            n, c * (down_factor * down_factor), h // down_factor, w //
+            down_factor
+        ]
         npresult = np.reshape(npresult, oshape)
         return npresult
     else:
         n, h, w, c = x.shape
-        new_shape = (n, h//down_factor, down_factor, w//down_factor, down_factor, c)
+        new_shape = (n, h // down_factor, down_factor, w // down_factor,
+                     down_factor, c)
         # reshape to (num,h,w,downscale_factor,downscale_factor, output_channel)
         npresult = np.reshape(x, new_shape)
         # transpose to (num,h, w, output_channel,downscale_factor,downscale_factor)
         npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
-        oshape = [n, h // down_factor, w // down_factor, c * (down_factor * down_factor)]
+        oshape = [
+            n, h // down_factor, w // down_factor, c * (down_factor *
+                                                        down_factor)
+        ]
         npresult = np.reshape(npresult, oshape)
         return npresult
 
@@ -64,7 +72,10 @@ class TestPixelUnshuffleOp(OpTest):
         npresult = pixel_unshuffle_np(x, down_factor, self.format)
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
-        self.attrs = {'downscale_factor': down_factor, "data_format": self.format}
+        self.attrs = {
+            'downscale_factor': down_factor,
+            "data_format": self.format
+        }
 
     def init_data_format(self):
         self.format = "NCHW"
@@ -181,6 +192,7 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
     def test_dygraph2(self):
         self.run_dygraph(3, "NHWC")
 
+
 class TestPixelUnshuffleError(unittest.TestCase):
     def test_error_functional(self):
         def error_downscale_factor_negative():
@@ -211,7 +223,8 @@ class TestPixelUnshuffleError(unittest.TestCase):
         def error_data_format():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
-                pixel_unshuffle = F.pixel_unshuffle(paddle.to_tensor(x), 3, "WOW")
+                pixel_unshuffle = F.pixel_unshuffle(
+                    paddle.to_tensor(x), 3, "WOW")
 
         self.assertRaises(ValueError, error_data_format)
 

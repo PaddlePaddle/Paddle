@@ -23,10 +23,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void PixelUnshuffleGradKernel(const Context& ctx,
-                            const DenseTensor& out_grad,
-                            int upscale_factor,
-                            const std::string& data_format,
-                            DenseTensor* x_grad) {
+                              const DenseTensor& out_grad,
+                              int upscale_factor,
+                              const std::string& data_format,
+                              DenseTensor* x_grad) {
   auto* dout = &out_grad;
   auto* dx = x_grad;
   ctx.template Alloc<T>(dx);

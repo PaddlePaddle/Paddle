@@ -345,6 +345,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
                "data_format": data_format})
     return out
 
+
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     PixelUnshuffle Layer
@@ -400,19 +401,21 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
                              data_format))
     if downscale_factor < 1:
         raise ValueError("downscale factor should not less than 1."
-                         "But recevie downscale factor: {} ".format(downscale_factor))
+                         "But recevie downscale factor: {} ".format(
+                             downscale_factor))
 
     _, _, h, w = x.shape
     if data_format == "NHWC":
-        _, h, w, _= x.shape
+        _, h, w, _ = x.shape
 
     if h % downscale_factor != 0 or w % downscale_factor != 0:
-        raise ValueError("Both height and width should be divided by downscale_factor."
-                         "But recevie downscale factor: {} ".format(downscale_factor))
+        raise ValueError(
+            "Both height and width should be divided by downscale_factor."
+            "But recevie downscale factor: {} ".format(downscale_factor))
 
     if in_dynamic_mode():
         return _C_ops.pixel_unshuffle(x, "downscale_factor", downscale_factor,
-                                    "data_format", data_format)
+                                      "data_format", data_format)
 
     helper = LayerHelper("pixel_unshuffle", **locals())
     check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'pixel_unshuffle')
@@ -421,6 +424,8 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
         type="pixel_unshuffle",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"downscale_factor": downscale_factor,
-               "data_format": data_format})
+        attrs={
+            "downscale_factor": downscale_factor,
+            "data_format": data_format
+        })
     return out

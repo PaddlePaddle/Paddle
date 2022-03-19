@@ -126,7 +126,8 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle, PixelUnshuffleInferShapeFunctor,
                             PD_INFER_META(phi::PixelUnshuffleInferMeta));
 
-REGISTER_OPERATOR(pixel_unshuffle, ops::PixelUnshuffleOp, ops::PixelUnshuffleOpMaker,
+REGISTER_OPERATOR(pixel_unshuffle, ops::PixelUnshuffleOp,
+                  ops::PixelUnshuffleOpMaker,
                   ops::PixelUnshuffleGradMaker<paddle::framework::OpDesc>,
                   ops::PixelUnshuffleGradMaker<paddle::imperative::OpBase>,
                   PixelUnshuffleInferShapeFunctor);

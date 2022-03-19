@@ -142,15 +142,18 @@ class PixelUnshuffle(Layer):
 
         if not isinstance(downscale_factor, int):
             raise TypeError("downscale factor must be int type."
-                            "But recevie downscale factor: {} ".format(downscale_factor))
+                            "But recevie downscale factor: {} ".format(
+                                downscale_factor))
 
         if downscale_factor < 1:
             raise ValueError("downscale factor should not less than 1."
-                             "But recevie downscale factor: {} ".format(downscale_factor))
+                             "But recevie downscale factor: {} ".format(
+                                 downscale_factor))
 
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
-                             "But recevie Attr(data_format): {} ".format(data_format))
+                             "But recevie Attr(data_format): {} ".format(
+                                 data_format))
 
         self._downscale_factor = downscale_factor
         self._data_format = data_format
@@ -158,7 +161,7 @@ class PixelUnshuffle(Layer):
 
     def forward(self, x):
         return functional.pixel_unshuffle(x, self._downscale_factor,
-                                        self._data_format, self._name)
+                                          self._data_format, self._name)
 
     def extra_repr(self):
         main_str = 'downscale_factor={}'.format(self._downscale_factor)

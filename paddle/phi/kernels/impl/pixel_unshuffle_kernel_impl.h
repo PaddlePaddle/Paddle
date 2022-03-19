@@ -23,10 +23,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void PixelUnshuffleKernel(const Context& ctx,
-                        const DenseTensor& x,
-                        int downscale_factor,
-                        const std::string& data_format,
-                        DenseTensor* out) {
+                          const DenseTensor& x,
+                          int downscale_factor,
+                          const std::string& data_format,
+                          DenseTensor* out) {
   auto* in = &x;
   ctx.template Alloc<T>(out);
   int factor = downscale_factor;
@@ -44,7 +44,7 @@ void PixelUnshuffleKernel(const Context& ctx,
 
   DenseTensor o(*out);
   if (!channel_last) {
-    o.Resize({in_dims[0], in_dims[1], factor, factor,  o_dims[2], o_dims[3]});
+    o.Resize({in_dims[0], in_dims[1], factor, factor, o_dims[2], o_dims[3]});
   } else {
     o.Resize({in_dims[0], o_dims[1], o_dims[2], in_dims[3], factor, factor});
   }
