@@ -23,12 +23,7 @@
 
 namespace phi {
 
-template <typename T,
-          typename IdT,
-          int BlockDimX,
-          int BlockDimY,
-          int GridDimX,
-          bool PaddingFlag>
+template <typename T, typename IdT, bool PaddingFlag>
 __global__ void LookupTableV2(T *output,
                               const T *table,
                               const IdT *ids,
@@ -37,13 +32,13 @@ __global__ void LookupTableV2(T *output,
                               const int64_t D,
                               const int64_t padding_idx) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int i = idx; i < D; i += blockDim.x) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -53,7 +48,7 @@ __global__ void LookupTableV2(T *output,
         out[i] = tab[i];
       }
     }
-    idy += BlockDimY * GridDimX;
+    idy += blockDim.y * gridDim.x;
   }
 }
 
@@ -76,19 +71,20 @@ struct LookupTableV2CUDAFunctor {
     size_t D = weight_.dims()[1];
     size_t K = input_.numel();
 
+    const int gridx = 2 * dev_ctx_.GetSMCount();
     dim3 threads(256, 4);
-    dim3 grids(80, 1);
+    dim3 grids(gridx, 1);
 
-    const auto *table = weight_.template data<T>();
-    const auto *ids = input_.template data<IdT>();
+    const T *table = weight_.template data<T>();
+    const IdT *ids = input_.template data<IdT>();
     auto *output = out_->template mutable_data<T>(dev_ctx_.GetPlace());
     auto stream = dev_ctx_.stream();
 
     if (padding_idx_ == -1) {
-      LookupTableV2<T, IdT, 256, 4, 80, false><<<grids, threads, 0, stream>>>(
+      LookupTableV2<T, IdT, false><<<grids, threads, 0, stream>>>(
           output, table, ids, N, K, D, padding_idx_);
     } else {
-      LookupTableV2<T, IdT, 256, 4, 80, true><<<grids, threads, 0, stream>>>(
+      LookupTableV2<T, IdT, true><<<grids, threads, 0, stream>>>(
           output, table, ids, N, K, D, padding_idx_);
     }
   }
