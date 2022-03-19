@@ -165,6 +165,26 @@ inline void SubmPreProcess(const Context& dev_ctx,
             x_grad_ptr);
 }
 
+inline const std::vector<int> PoolResetKernel(
+    const std::vector<int>& kernel_sizes,
+    const int in_channels,
+    const int out_channels) {
+  std::vector<int> res(kernel_sizes);
+  res.resize(5);
+  res[3] = in_channels;
+  res[4] = out_channels;
+  return res;
+}
+
+inline void PrefixSum(const int* counter, int* offsets, const int n) {
+  int offset = 0;
+  for (int i = 0; i < n; i++) {
+    offsets[i] = offset;
+    offset += counter[i];
+  }
+  offsets[n] = offset;
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi
