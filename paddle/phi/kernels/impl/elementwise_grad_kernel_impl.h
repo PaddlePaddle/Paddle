@@ -628,4 +628,53 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const DenseTensor& out_grad,
+                                    int axis,
+                                    DenseTensor* x_grad,
+                                    DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+
+  auto out = out_grad;  // Fake out, not used
+  auto x_dim = x.dims();
+  auto y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    funcs::ElemwiseGradComputeNoBroadcast<Context,
+                                          T,
+                                          funcs::HeavisideGradDx<T>,
+                                          funcs::HeavisideGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::HeavisideGradDx<T>(),
+        funcs::HeavisideGradDy<T>());
+  } else {
+    funcs::ElemwiseGradComputeWithBroadcast<T,
+                                            funcs::HeavisideGradDx<T>,
+                                            funcs::HeavisideGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::HeavisideGradDx<T>(),
+        funcs::HeavisideGradDy<T>());
+  }
+}
+
 }  // namespace phi

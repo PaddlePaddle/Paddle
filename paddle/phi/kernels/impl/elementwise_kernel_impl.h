@@ -44,4 +44,15 @@ void ElementwiseFMinKernel(const Context& dev_ctx,
       dev_ctx, x, y, axis, funcs::FMinFunctor<T>(), out);
 }
 
+template <typename T, typename Context>
+void ElementwiseHeavisideKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& y,
+                                int axis,
+                                DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  funcs::ElementwiseCompute<funcs::HeavisideFunctor<T>, T, T>(
+      dev_ctx, x, y, axis, funcs::HeavisideFunctor<T>(), out);
+}
+
 }  // namespace phi

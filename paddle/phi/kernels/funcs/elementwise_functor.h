@@ -422,5 +422,27 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
   }
 };
 
+// Heaviside
+template <typename T>
+struct HeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct HeavisideGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(0);
+  }
+};
+
+template <typename T>
+struct HeavisideGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x == static_cast<T>(0));
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi
