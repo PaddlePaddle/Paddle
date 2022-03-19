@@ -25,7 +25,6 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/strided_slice_op.h"
-#include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
