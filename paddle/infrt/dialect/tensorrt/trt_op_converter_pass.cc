@@ -14,8 +14,7 @@
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
 #include <mlir/IR/Builders.h>
 #include <mlir/Transforms/DialectConversion.h>
-#include "paddle/infrt/dialect/infrt_base.h"
-#include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 
 namespace infrt {
@@ -24,11 +23,11 @@ namespace trt {
 #include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
 struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
-  PD2TRT_GraphLower(::mlir::MLIRContext *context)
+  explicit PD2TRT_GraphLower(::mlir::MLIRContext *context)
       : ::mlir::RewritePattern("pd.graph", 1, context, {"trt.create_engine"}) {}
   ::mlir::LogicalResult matchAndRewrite(
       ::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
-    auto casted_op = ::llvm::dyn_cast<mlir::pd::GraphOp>(op);
+    auto casted_op = ::llvm::dyn_cast<infrt::pd::GraphOp>(op);
     ::mlir::Operation::operand_range inputs = casted_op.inputs();
     auto ods_loc = rewriter.getFusedLoc(op->getLoc());
     CreateEngineOp create_engine_op;

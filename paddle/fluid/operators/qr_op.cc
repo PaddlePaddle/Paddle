@@ -145,8 +145,6 @@ REGISTER_OPERATOR(qr, ops::QrOp, ops::QrOpMaker,
 
 REGISTER_OPERATOR(qr_grad, ops::QrGradOp);
 
-REGISTER_OP_CPU_KERNEL(qr, ops::QrCPUKernel<float>, ops::QrCPUKernel<double>);
-
 REGISTER_OP_CPU_KERNEL(
     qr_grad, ops::QrGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::QrGradKernel<paddle::platform::CPUDeviceContext, double>);
