@@ -17,15 +17,10 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature FlattenOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasOutput("XShape")) {
-    return KernelSignature("flatten_with_xshape",
-                           {"X"},
-                           {"start_axis", "stop_axis"},
-                           {"Out", "XShape"});
-  } else {
-    return KernelSignature(
-        "flatten", {"X"}, {"start_axis", "stop_axis"}, {"Out"});
-  }
+  return KernelSignature("flatten_with_xshape",
+                         {"X"},
+                         {"start_axis", "stop_axis"},
+                         {"Out", "XShape"});
 }
 
 KernelSignature FlattenGradOpArgumentMapping(
