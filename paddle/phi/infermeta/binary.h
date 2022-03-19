@@ -165,4 +165,10 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
 
+void MatrixRankTolInferMeta(const MetaTensor& x,
+                            const MetaTensor& atol_tensor,
+                            bool use_default_tol,
+                            bool hermitian,
+                            DenseTensor* out);
+
 }  // namespace phi
