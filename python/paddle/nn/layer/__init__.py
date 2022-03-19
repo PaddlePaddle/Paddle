@@ -87,6 +87,7 @@ from .norm import SpectralNorm  # noqa: F401
 from .norm import LocalResponseNorm  # noqa: F401
 
 from .vision import PixelShuffle  # noqa: F401
+from .vision import PixelUnshuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .container import LayerDict  # noqa: F401
 

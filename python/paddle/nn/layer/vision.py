@@ -87,3 +87,67 @@ class PixelShuffle(Layer):
         if self._name is not None:
             main_str += ', name={}'.format(self._name)
         return main_str
+
+class PixelUnshuffle(Layer):
+    """
+    
+    PixelUnshuffle Layer    
+
+    This operator rearranges elements in a tensor of shape [N, C, H, W]
+    to a tensor of shape [N, C*downscale_factor**2, H/downscale_factor, W/downscale_factor],
+    or from shape [N, H, W, C] to [N, H/downscale_factor, W/downscale_factor, C*downscale_factor**2].
+    This operation is the reversion of PixelShuffle operation.
+    Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
+    Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
+    by Shi et. al (2016) for more details.
+
+    Parameters:
+
+        downscale_factor(int): factor to decrease spatial resolution.
+        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x: 4-D tensor with shape: (N, C, H, W) or (N, H, W, C).
+        - out: 4-D tensor with shape: (N, C*downscale_factor**2, H/downscale_factor, W/downscale_factor) or (N, H/downscale_factor, W/downscale_factor, C*downscale_factor**2).
+
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            import paddle.nn as nn
+
+            x = paddle.randn([2, 1, 12, 12])
+            pixel_unshuffle = nn.PixelUnshuffle(3)
+            out = pixel_unshuffle(x)
+            # out.shape = [2, 9, 4, 4]
+
+    """
+
+
+    def __init__(self, downscale_factor, data_format="NCHW", name=None):
+        super(PixelUnshuffle, self).__init__()
+
+        if not isinstance(downscale_factor, int):
+            raise TypeError("downscale factor must be int type")
+
+        if data_format not in ["NCHW", "NHWC"]:
+            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
+                             "But recevie data format: {}".format(data_format))
+
+        self._downscale_factor = downscale_factor
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return functional.pixel_unshuffle(x, self._downscale_factor,
+                                          self._data_format, self._name)
+
+    def extra_repr(self):
+        main_str = 'downscale_factor={}'.format(self._downscale_factor)
+        if self._data_format != 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str
