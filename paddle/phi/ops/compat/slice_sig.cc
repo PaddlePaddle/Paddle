@@ -17,6 +17,8 @@
 namespace phi {
 
 KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  // if input is Tensor Array
+
   if (ctx.HasInput("StartsTensor")) {
     if (ctx.HasInput("EndsTensor")) {
       return KernelSignature("slice",

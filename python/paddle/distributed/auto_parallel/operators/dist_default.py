@@ -55,9 +55,14 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
         for arg_name in op_desc.input_arg_names():
             serial_tensor = dist_op.get_serial_input(arg_name)
-            if serial_tensor.is_parameter:
-                continue
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if serial_tensor.is_parameter:
+                for mapping in dims_mapping:
+                    if mapping != -1:
+                        return False
+                # continue
+                # if len(dims_mapping) < 1:
+                #     continue
             if len(dims_mapping) > 1:
                 for mapping in dims_mapping[1:]:
                     if mapping != -1:
@@ -73,9 +78,14 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             xshape_arg_names = op_desc.output("XShape")
         for arg_name in op_desc.output_arg_names():
             serial_tensor = dist_op.get_serial_output(arg_name)
-            if serial_tensor.is_parameter:
-                continue
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if serial_tensor.is_parameter:
+                for mapping in dims_mapping:
+                    if mapping != -1:
+                        return False
+                # continue
+                # if len(dims_mapping) < 1:
+                #     continue
             if arg_name not in xshape_arg_names:
                 if len(dims_mapping) > 1:
                     for mapping in dims_mapping[1:]:
@@ -104,7 +114,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 for mapping in dims_mapping[1:]:
                     if mapping != -1:
                         return False
-            batch_dim_mappings.append(dims_mapping[0])
+            if len(dims_mapping) >= 1:
+                batch_dim_mappings.append(dims_mapping[0])
 
         # Check output compatibility
         output_names = op_desc.output_names()
@@ -121,7 +132,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     for mapping in dims_mapping[1:]:
                         if mapping != -1:
                             return False
-                batch_dim_mappings.append(dims_mapping[0])
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
             else:
                 if dims_mapping[0] != -1:
                     return False
@@ -129,7 +141,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     for mapping in dims_mapping[2:]:
                         if mapping != -1:
                             return False
-                batch_dim_mappings.append(dims_mapping[1])
+                if len(dims_mapping) >= 2:
+                    batch_dim_mappings.append(dims_mapping[1])
 
         # Check batch dim mapping compatibility
         if not all(batch_dim_mappings[0] == dim_mapping
@@ -143,7 +156,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         # The following statement will be replaced by a more elegent way
-        if op_desc.type() == "shape" or op_desc.type() == "slice":
+        if op_desc.type() == "shape" \
+            or op_desc.type() == "slice" \
+                or op_desc.type() == "while":
             return False
         output_names = op_desc.output_names()
         xshape_arg_names = []
@@ -155,16 +170,21 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             if serial_tensor.is_parameter:
                 continue
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-            batch_dim_mappings.append(dims_mapping[0])
+            if len(dims_mapping) >= 1:
+                batch_dim_mappings.append(dims_mapping[0])
         for arg_name in op_desc.output_arg_names():
             serial_tensor = dist_op.get_serial_output(arg_name)
             if serial_tensor.is_parameter:
                 continue
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
             if arg_name not in xshape_arg_names:
-                batch_dim_mappings.append(dims_mapping[0])
+                if len(dims_mapping) >= 1:
+                    batch_dim_mappings.append(dims_mapping[0])
             else:
                 batch_dim_mappings.append(dims_mapping[1])
+
+        if not batch_dim_mappings:
+            return changed
 
         compatible_dim_mapping = compute_compatible_dim_mapping(
             batch_dim_mappings)
@@ -174,7 +194,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             if serial_tensor.is_parameter:
                 continue
             dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-            if compatible_dim_mapping != dims_mapping[0]:
+            if len(dims_mapping
+                   ) >= 1 and compatible_dim_mapping != dims_mapping[0]:
                 dims_mapping[0] = compatible_dim_mapping
                 changed = True
         for arg_name in op_desc.output_arg_names():
@@ -183,11 +204,13 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 continue
             dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
             if arg_name not in xshape_arg_names:
-                if compatible_dim_mapping != dims_mapping[0]:
+                if len(dims_mapping
+                       ) >= 1 and compatible_dim_mapping != dims_mapping[0]:
                     dims_mapping[0] = compatible_dim_mapping
                     changed = True
             else:
-                if compatible_dim_mapping != dims_mapping[1]:
+                if len(dims_mapping
+                       ) >= 2 and compatible_dim_mapping != dims_mapping[1]:
                     dims_mapping[1] = compatible_dim_mapping
                     changed = True
 

@@ -27,10 +27,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-
 namespace paddle {
 namespace pybind {
 
@@ -46,6 +46,7 @@ extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
+extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -184,7 +185,7 @@ paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "EagerVariable, but got %s",
+        "Tensor, but got %s",
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -319,7 +320,7 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "EagerVariable, but got %s",
+        "DenseTensor, but got %s",
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -391,6 +392,19 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
   return dtype;
 }
 
+paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
+                                                              ssize_t arg_pos) {
+  if (PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_custom_op_kernel_ctx_pytype))) {
+    return ::pybind11::handle(obj).cast<paddle::CustomOpKernelContext>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "one of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace), "
+        "but got %s",
+        arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
 PyObject* ToPyObject(bool value) {
   if (value) {
     Py_INCREF(Py_True);
@@ -402,6 +416,8 @@ PyObject* ToPyObject(bool value) {
 }
 
 PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
+
+PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
 
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
@@ -425,6 +441,20 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
   }
+  return obj;
+}
+
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+  // For inplace op, directly return the input PyObject of the inplace tensor.
+  // [Parameter]
+  // value: Useless parameter.
+  // value_idx: Useless parameter.
+  // args: Input PyObject.
+  // arg_idx: Index of inplace PyObject in input args. Used to find the input
+  // inplace PyObject.
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  Py_INCREF(obj);
   return obj;
 }
 
@@ -478,20 +508,26 @@ PyObject* ToPyObject(const std::vector<double>& value) {
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value) {
+PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+                     bool return_py_none_if_not_initialize) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
-    PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-    if (obj) {
-      auto v = reinterpret_cast<TensorObject*>(obj);
-      new (&(v->tensor)) paddle::experimental::Tensor();
-      v->tensor = value[i];
+    if (!value[i].initialized() && return_py_none_if_not_initialize) {
+      Py_INCREF(Py_None);
+      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), Py_None);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "tp_alloc return null, can not new a PyObject."));
+      PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+      if (obj) {
+        auto v = reinterpret_cast<TensorObject*>(obj);
+        new (&(v->tensor)) paddle::experimental::Tensor();
+        v->tensor = value[i];
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "tp_alloc return null, can not new a PyObject."));
+      }
+      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
     }
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
   }
 
   return result;
@@ -928,6 +964,5 @@ paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
   return framework::TransToPhiDataType(type);
 }
-
 }  // namespace pybind
 }  // namespace paddle

@@ -29,4 +29,14 @@ void SliceRawKernel(const Context& ctx,
                     const std::vector<int64_t>& decrease_axis,
                     DenseTensor* out);
 
+template <typename T, typename Context>
+void SliceRawKernel(const Context& ctx,
+                    const std::vector<DenseTensor*>& input,
+                    const std::vector<int64_t>& axes,
+                    const ScalarArray& starts,
+                    const ScalarArray& ends,
+                    const std::vector<int64_t>& infer_flags,
+                    const std::vector<int64_t>& decrease_axis,
+                    std::vector<DenseTensor*> out);
+
 }  // namespace phi

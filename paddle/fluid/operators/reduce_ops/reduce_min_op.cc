@@ -14,21 +14,24 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
 
-REGISTER_REDUCE_OP(reduce_min);
-REGISTER_OP_CPU_KERNEL(
-    reduce_min, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
-                                  ops::MinFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, double,
-                      ops::MinFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::MinFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
-                      ops::MinFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    reduce_min_grad, ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                           float, ops::MaxOrMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,
-                          ops::MaxOrMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int,
-                          ops::MaxOrMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,
-                          ops::MaxOrMinGradFunctor>);
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
+namespace ops = paddle::operators;
+
+class ReduceMinOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_min"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_min"; }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_min, ReduceMinInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+
+REGISTER_OPERATOR(
+    reduce_min, ops::ReduceOp, ReduceMinOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    ReduceMinInferShapeFunctor);
+REGISTER_OPERATOR(reduce_min_grad, ops::ReduceGradOp)
