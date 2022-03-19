@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
