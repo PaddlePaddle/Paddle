@@ -35,7 +35,7 @@
     func : conj
 
 - api : copy_to
-  args : (Tensor x, Backend backend, bool blocking)
+  args : (Tensor x, Place place, bool blocking)
   output : Tensor
   invoke : copy_to_impl(x, backend, blocking)
 
@@ -56,7 +56,7 @@
     func : dot
 
 - api : empty
-  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU)
+  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -68,7 +68,7 @@
     backend : place
 
 - api : empty_like
-  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED)
+  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
@@ -88,7 +88,7 @@
     func : flatten
 
 - api : full
-  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU)
+  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -100,7 +100,7 @@
     backend : place
 
 - api : full_like
-  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED)
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
@@ -137,7 +137,7 @@
     func : multiply
 
 - api : ones_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
   output : Tensor
   invoke : full_like(x, 1, dtype, place)
 
@@ -216,7 +216,7 @@
     data_type : x
 
 - api : zeros_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
@@ -228,7 +228,7 @@
     func : OneHotInferMeta
   kernel :
     func : one_hot
-    
+
 - api : digamma
   args : (Tensor x)
   output : Tensor

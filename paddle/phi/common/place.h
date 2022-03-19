@@ -206,3 +206,10 @@ class CustomPlace : public Place {
 std::ostream& operator<<(std::ostream&, const Place&);
 
 }  // namespace phi
+
+namespace paddle {
+namespace experimental {
+using AllocationType = phi::AllocationType;
+using Place = phi::Place;
+}  // namespace experimental
+}  // namespace paddle

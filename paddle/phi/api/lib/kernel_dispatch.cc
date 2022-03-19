@@ -81,13 +81,17 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
   return dtype != DataType::UNDEFINED ? dtype : ParseDataType(tensor);
 }
 
-Backend ParseBackend(Backend backend) { return backend; }
+Backend ParseBackend(const Place& place) {
+  return phi::TransToPhiBackend(place);
+}
 Backend ParseBackend(const Tensor& tensor) {
   return phi::TransToPhiBackend(tensor.inner_place());
 }
 
-Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {
-  return backend != Backend::UNDEFINED ? backend : ParseBackend(tensor);
+Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
+  return place.GetType() != phi::AllocationType::UNDEFINED
+             ? ParseBackend(place)
+             : ParseBackend(tensor);
 }
 
 DataLayout ParseLayout(DataLayout layout) { return layout; }

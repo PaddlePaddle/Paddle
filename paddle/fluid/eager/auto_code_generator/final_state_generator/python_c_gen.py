@@ -34,7 +34,7 @@ atype_to_parsing_function = {
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
     "paddle::experimental::ScalarArray": "CastPyArg2ScalarArray",
-    "paddle::experimental::Backend": "CastPyArg2Backend",
+    "paddle::experimental::Place": "CastPyArg2Place",
     "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 
