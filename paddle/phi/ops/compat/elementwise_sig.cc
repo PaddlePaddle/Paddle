@@ -163,6 +163,14 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
       {"D_X", "D_Y", "D_DOut", "D_DDX", "D_DDY"});
 }
 
+KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("elementwise_heaviside_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
@@ -214,3 +222,6 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_fmax_grad,
 
 PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin_grad,
                            phi::ElementwiseFMinGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
+                           phi::ElementwiseHeavisideGradOpArgumentMapping);
