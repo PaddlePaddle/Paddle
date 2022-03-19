@@ -771,12 +771,11 @@ def GenerateNodeCreationCodes(
             else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            print("!!!!", fwd_api_name, name, atype, pos)
-            if num_fwd_outputs == 1:
-                if IsVectorTensorType(atype):
-                    tw_name = f"std::get<{pos}>(api_result)"
-                else:
-                    tw_name = f"api_result"
+            if num_fwd_outputs > 1:
+                # Aligned with forward output position
+                assert name in forward_outputs_position_map.keys()
+                fwd_output_pos = forward_outputs_position_map[name][1]
+                tw_name = f"std::get<{fwd_output_pos}>(api_result)"
             else:
                 assert IsPlainTensorType(atype), atype
                 out_pos = pos - fwd_api_input_num
@@ -1094,7 +1093,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
-#include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/backward/sparse_bw_api.h"
 """
     file_contents += node_definition_str
     with open(filepath, 'a') as f:
