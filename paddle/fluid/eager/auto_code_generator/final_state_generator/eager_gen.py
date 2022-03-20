@@ -719,7 +719,6 @@ def GenerateNodeCreationCodes(
     pass_stop_gradient_args_list = ["false"]
     num_fwd_outputs = len(forward_outputs_position_map.keys())
     for name, (rtype, pos) in forward_outputs_position_map.items():
-        print("@@@@", fwd_api_name, name, rtype, pos)
         output_autograd_meta_name = GetAutoGradMetaName(name)
         output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
         if num_fwd_outputs == 1:
@@ -753,8 +752,15 @@ def GenerateNodeCreationCodes(
 
     # SetAttributes
     set_attributes_list = []
-    for name, _, _, _ in backward_attrs_list:
-        set_attributes = f"        grad_node->SetAttribute{name}({name});"
+    forward_attrs_name_set = set()
+    for name, _, _, _ in forward_attrs_list:
+        forward_attrs_name_set.add(name)
+
+    for name, _, default_val_attr, _ in backward_attrs_list:
+        if name in forward_attrs_name_set:
+            set_attributes = f"        grad_node->SetAttribute{name}({name});"
+        else:
+            set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
 
@@ -818,14 +824,6 @@ def GenerateNodeCreationCodes(
         set_out_rank_list.append(set_out_rank)
         set_history_list.append(set_history)
         set_grad_in_meta_list.append(set_grad_in_meta)
-<<<<<<< HEAD
-
-        if num_outputs == 1:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
-        else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
-=======
->>>>>>> 95fbbc5b47a08bb5bb62d0161f795c9ff2ffb813
         set_retain_grad_list.append(set_retain_grad)
 
     set_out_rank_str = "\n".join(set_out_rank_list)
