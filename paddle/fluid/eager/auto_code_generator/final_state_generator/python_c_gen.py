@@ -351,7 +351,7 @@ class PythonCSingleFunctionGenerator:
         if inplace_map:
             assert len(
                 inplace_map
-            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{fwd_api_name}\" op got {len(inplace_map)}"
+            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
             for inplace_input, inplace_output in inplace_map.items():
                 return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
                     forward_api_name, inplace_input, forward_api_name,
