@@ -177,6 +177,9 @@ class Communicator(object):
                 comm = fluid.communicator.Communicator(prog)
                 comm.is_running()
         """
+        if self.communicator_ == None:
+            print('you must call init_with_ctx first to init comm before stop')
+            return
         self.communicator_.is_running()
 
     def recv(self):
