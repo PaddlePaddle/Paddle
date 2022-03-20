@@ -145,7 +145,8 @@ def jvp(func, xs, v=None):
     _check_inputs(func, xs, v)
     # _grad_preprocess will detach element of xs from computing graph when
     # stop_gradient=True. Therefore, must execute this method before
-    # calling func for avoiding breaking the dependencies between xs and ys.
+    # calling func for avoiding breaking the graph dependencies between xs and
+    # ys.
     xs, v = _grad_preprocess(xs), _grad_preprocess(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
@@ -153,12 +154,16 @@ def jvp(func, xs, v=None):
 
 
 def _double_backward_trick(ys, xs, v):
-    # double backward trick from computing jvp
-    # see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
-    tmp = [paddle.zeros_like(y) for y in _as_tensors(ys)] if isinstance(
+    """Double backward trick for computing ``jvp`` by ``vjp``
+
+    see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
+    """
+    # In theory, it can be any random value, using zeros at this palce is just
+    # for computing conveniently.
+    zeros_ys = [paddle.zeros_like(y) for y in _as_tensors(ys)] if isinstance(
         ys, typing.Sequence) else paddle.zeros_like(ys)
-    first_order_grad = _grad(ys, xs, tmp)
-    return _grad(first_order_grad, tmp, v)
+    first_order_grad = _grad(ys, xs, zeros_ys)
+    return _grad(first_order_grad, zeros_ys, v)
 
 
 @framework.dygraph_only
@@ -296,6 +301,7 @@ class Jacobian(object):
     variable and the j'th input variable.
 
     Examples:
+
         .. code-block:: python
             import paddle
             import numpy as np
@@ -324,101 +330,208 @@ class Jacobian(object):
             #  [0. 2. 2. 2. 0. 2. 2. 2.]]
     """
 
-    def __init__(self, func, inputs, batch=False):
-        r"""Constructing a Jacobian matrix.
-
-        Parameters:
-            func (Callable): a Python function that takes as input a Tensor
-                or a Tensor list and outputs a Tensor or a Tensor list.
-            inputs (Tensor|list[Tensor]): a Tensor or a list of Tensors as
-                `func`'s input.
-            batch (bool):  if True the 0'th axis is considered the batch
-                dimension, both on input and output.
-        """
-
-        def enable_grads(inputs):
-            if isinstance(inputs, (list, tuple)):
-                for x in inputs:
-                    x.stop_gradient = False
-            else:
-                assert isinstance(inputs, paddle.fluid.framework.Variable), (
-                    f"Expecting {inputs} to be paddle.fluid.framework.Variable,"
-                    f" however it's found to be a(n) {type(inputs)}.")
-                inputs.stop_gradient = False
-            return inputs
-
-        self.batch = batch
-        self.xs = enable_grads(inputs)
-        ys = func(inputs)
-        if not isinstance(ys, list):
-            ys = [ys]
-        self.y = self.flatten_all(ys)
-        self.ydim = self.y.shape[-1]
-        self.xdim = self.flatten_all(inputs).shape[-1]
-        self.bdim = self.y.shape[0]
-        self.jacobian = {}
-
-    def flatten(self, x):
-        to = [x.shape[0], -1] if self.batch else [-1]
-        return x.reshape(to)
-
-    def flatten_all(self, xs):
-        if isinstance(xs, (list, tuple)):
-            return paddle.concat([self.flatten(x) for x in xs], axis=-1)
+    def __init__(self, func, xs, is_batched=False, batched_last=False):
+        if not is_batched:
+            self._jacobian = _JacobianWithoutBatch(func, xs)
+        elif batched_last:
+            self._jacobian = _JacobianBatchLast(func, xs)
         else:
-            return self.flatten(xs)
+            self._jacobian = _JacobianBatchFirst(func, xs)
 
+    def __getitem__(self, indexes):
+        return self._jacobian[indexes]
+
+    @property
     def shape(self):
-        return (self.ydim, self.xdim)
+        return self._jacobian.shape
 
-    def __getitem__(self, tup):
-        if hasattr(tup, '__iter__'):
-            i, j = tup
+
+class _Jacobian(object):
+    """The base class for compute Jacobian matrix.
+    """
+
+    def __init__(self, fun, xs):
+        self._xs = _grad_preprocess(xs)
+        self._ys = fun(self._xs)
+        self._flatten_xs = self._flatten(_as_tensors(self._xs))
+        self._flatten_ys = self._flatten(_as_tensors(self._ys))
+        self._cache = {}
+
+    @property
+    def shape(self):
+        raise NotImplementedError
+
+    def _row_axis_index(self, indexes):
+        raise NotImplementedError
+
+    def _other_axes_indexes(self, indexes):
+        raise NotImplementedError
+
+    def _flatten(self, xs):
+        raise NotImplementedError
+
+    def _stack(self, rows):
+        raise NotImplementedError
+
+    def __getitem__(self, indexes):
+        indexes = _multi_index(indexes)
+        row_axis_index = self._row_axis_index(indexes)
+        other_axes_indexes = self._other_axes_indexes(indexes)
+
+        values = tuple()
+        for row in range(row_axis_index.start, row_axis_index.stop,
+                         row_axis_index.step):
+            value = self._cache.get(row)
+            if not row:
+                row = self._evaluate(row)
+                self._cache[row] = value
+            values.append(value)
+
+        return self._stack(values)[other_axes_indexes]
+
+    def _evaluate(self, row_index):
+        """Lazy evaluation at one row."""
+        raise NotImplementedError
+
+
+class _JacobianWithoutBatch(object):
+    """Compute Jacobian matrix without batch.
+    Suppose the mapping is :math:`f: R^M \to R^N`, the output shape is 
+    ``(N, M)`` .
+    """
+
+    def __init__(self, func, xs):
+        super(_JacobianWithoutBatch, self).__init__(func, xs)
+
+    @property
+    def shape(self):
+        return tuple(self._flatten_ys.shape[0], self._flatten_xs.shape[0])
+
+    def _row_axis_index(self, indexes):
+        return indexes[0]
+
+    def _other_axes_indexes(self, indexes):
+        return indexes[1]
+
+    def _flatten(self, xs):
+        return tuple(x.reshape((-1, )) for x in xs)
+
+    def _stack(self, rows):
+        return paddle.stack(rows)
+
+    def _evaluate(self, row_index):
+        return self._flatten(_grad(self._flatten_ys[row_index], self._xs))
+
+
+class _JacobianBatchLast(_Jacobian):
+    """Compute Jacobian matrix with batch at last axis.
+    Suppose the mapping is :math:`f: R^{M,B} \to R^{N,B}`, the output shape is 
+    ``(N, M, B)`` .
+    """
+
+    def __init__(self, func, xs):
+        super(_JacobianBatchLast, self).__init__(func, xs)
+
+    @property
+    def shape(self):
+        return tuple(self._flatten_ys.shape[0], self._flatten_xs.shape[0],
+                     self._flatten_xs.shape[1])
+
+    def _row_axis_index(self, indexes):
+        return indexes[0]
+
+    def _other_axes_indexes(self, indexes):
+        return indexes[1:]
+
+    def _flatten(self, xs):
+        return tuple(x.reshape((-1, self._flatten_xs.shape[-1])) for x in xs)
+
+    def _stack(self, rows):
+        return paddle.stack(rows, 0)
+
+    def _evaluate(self, row):
+        return self._flatten(_grad(self._flatten_ys[row, :], self._xs))
+
+
+class _JacobianBatchFirst(_Jacobian):
+    """Compute Jacobian matrix with batch at first axis.
+    Suppose the mapping is :math:`f: R^{B,M} \to R^{B,N}`, the output shape is 
+    ``(B, N, M)`` .
+    """
+
+    def __init__(self, func, xs):
+        super(_JacobianBatchFirst, self).__init__(func, xs)
+
+    @property
+    def shape(self):
+        return tuple(self._flatten_xs.shape[0], self._flatten_ys.shape[1],
+                     self._flatten_xs.shape[1])
+
+    def _row_axis_index(self, indexes):
+        return indexes[1]
+
+    def _other_axes_indexes(self, indexes):
+        return indexes[0] + indexes[2]
+
+    def _flatten(self, xs):
+        return tuple(x.reshape((self._flatten_xs.shape[-1], -1)) for x in xs)
+
+    def _stack(self, rows):
+        return paddle.stack(rows, 1)
+
+    def _evaluate(self, row_index):
+        return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
+
+
+def _multi_index(indexes, shape):
+    """A tool for parsing N-dimensional index into a standard format.
+
+    Currently supporting following input format:
+        * ([positive|negative|slice], ...), the right-most elements can be 
+            omited.
+
+    The standard format after converted is slice tuple which contains N elements:
+        * (slice(start,stop,step), ..., slice(start,stop,step))
+
+    Notes: 
+        Ellipsis indexes such as ``(..., i), (i, ...)`` is not supported.
+
+    Args:
+        indexes (tuple): The input indexes.
+        shape (tuple): The input shape.
+
+    Returns:
+        tuple: The standard format index as the above description.
+    """
+    indexes = (indexes, ) if isinstance(indexes, int) else indexes
+    # Fill the right-most elements.
+    indexes = indexes + [slice(0, None, None)] * (len(shape) - len(indexes))
+    # Convert to standard slice.
+    standard_indexes = tuple()
+    for i, index in enumerate(indexes):
+        if isinstance(index, int):
+            index = index if index >= 0 else shape[i] + index
+            standard_index = slice(index, index + 1, 1)
         else:
-            i, j = tup, None
-
-        full = isinstance(i, slice)
-
-        if full:
-            if 'full' not in self.jacobian:
-                rows = [
-                    self.flatten_all(gradients(self.y[..., i], self.xs))
-                    for i in range(self.ydim)
-                ]
-                self.jacobian['full'] = full_jacobian = paddle.stack(rows)
-            else:
-                full_jacobian = self.jacobian['full']
-
-            return full_jacobian[i] if j is None else full_jacobian[i][..., j]
-
-        assert 0 <= i < self.ydim, f"Jacobian index i={i} is not valid."
-        assert j is None or isinstance(j, slice) or (0 <= j < self.xdim), (
-            f"Jacobian index j={j} is not valid.")
-        if 'full' in self.jacobian:
-            JJ = self.jacobian['full']
-        else:
-            JJ = self.jacobian
-            if i not in self.jacobian:
-                self.jacobian[i] = self.flatten_all(
-                    gradients(self.y[..., i], self.xs))
-
-        if j is None:
-            return JJ[i]
-        else:
-            return JJ[i][..., j]
+            standard_index = slice(
+                start=0 if index.start is None else index.start,
+                stop=shape[i] if index.stop is None else index.stop,
+                step=1 if index.step is None else index.stop)
+        standard_indexes.append(standard_index)
+    return standard_indexes
 
 
 class Hessian(object):
-    def __init__(self, func, inputs, batch=False):
-        def f_x(xs):
-            return Jacobian(func, xs, batch=batch)[0]
+    def __init__(self, func, xs, is_batched=False, batched_last=False):
+        def _jacobian(xs):
+            return Jacobian(
+                func, xs, is_batched=is_batched, batched_last=batched_last)
 
-        self.symbolic = Jacobian(f_x, inputs, batch=batch)
-        self.xs = inputs
-        self.batch = batch
+        self.symbolic = Jacobian(
+            f_x, xs, is_batched=is_batched, batched_last=batched_last)
 
-    def __getitem__(self, tup):
-        return self.symbolic[tup]
+    def __getitem__(self, indexes):
+        return self.symbolic[indexes]
 
     def shape(self):
         return self.symbolic.shape()
