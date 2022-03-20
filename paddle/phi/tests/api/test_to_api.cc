@@ -86,7 +86,7 @@ TEST(Tensor, copy_to) {
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto tmp = x.copy_to(phi::GPUPlace(), false);
-  auto out = tmp.copy_to(phi::GPUPlace(), true);
+  auto out = tmp.copy_to(phi::CPUPlace(), true);
 #else
   auto out = x.copy_to(phi::CPUPlace(), false);
 #endif
