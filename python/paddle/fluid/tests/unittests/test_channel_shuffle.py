@@ -23,6 +23,8 @@ import paddle.nn.functional as F
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
+paddle.enable_static()
+
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
     if data_format == "NCHW":
@@ -95,8 +97,8 @@ class TestChannelShuffleAPI(unittest.TestCase):
                 name="x", shape=[2, 9, 4, 4], dtype="float64")
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64")
-            out_1 = F.channel_shuffle_np(x_1, 3)
-            out_2 = F.channel_shuffle_np(x_2, 3, "NHWC")
+            out_1 = F.channel_shuffle(x_1, 3)
+            out_2 = F.channel_shuffle(x_2, 3, "NHWC")
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(fluid.default_main_program(),
@@ -173,6 +175,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             result_functional = F.channel_shuffle(
                 paddle.to_tensor(x), 3, data_format)
             self.assertTrue(np.allclose(result_functional.numpy(), npresult))
+
+            channel_shuffle_str = 'groups={}'.format(groups)
+            if data_format != 'NCHW':
+                channel_shuffle_str += ', data_format={}'.format(data_format)
+            self.assertEqual(channel_shuffle.extra_repr(), channel_shuffle_str)
 
     def test_dygraph1(self):
         self.run_dygraph(3, "NCHW")
