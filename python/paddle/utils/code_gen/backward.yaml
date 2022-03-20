@@ -112,7 +112,7 @@
 #     func : maxout_grad
 
 
-# output is optional 如何处理
+# output is optional ??? 
 - backward_api : put_along_axis_grad
   forward : put_along_axis (Tensor x, Tensor index, Tensor value, int axis, str reduce) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, int axis, str reduce)

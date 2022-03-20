@@ -42,7 +42,7 @@ class BaseTestCase(OpTest):
             self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
 
 class TestCase0(BaseTestCase):
