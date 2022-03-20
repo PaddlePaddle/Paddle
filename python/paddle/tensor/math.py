@@ -3440,8 +3440,6 @@ def erfinv(x, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
 
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_erfinv( x )
         return _C_ops.erfinv(x)
 
     helper = LayerHelper('erfinv', **locals())
