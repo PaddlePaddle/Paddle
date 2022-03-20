@@ -156,122 +156,64 @@ def minimize_bfgs(objective_func,
     else:
         xk = paddle.assign(initial_position)
 
-    value1, g1 = _value_and_gradient(objective_func, xk)
+    value, g1 = _value_and_gradient(objective_func, xk)
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
+    # when the dim of x is 1000, it needs more than 30 iters to get all element converge to minimum.
     k = paddle.full(shape=[1], fill_value=0, dtype='int64')
-    if in_dygraph_mode():
-        is_converge = False
-        # when the dim of x is 1000, it needs more than 30 iters to get all element converge to minimum.
-        while k < max_iters:
-            pk = -paddle.matmul(Hk, g1)
+    done = paddle.full(shape=[1], fill_value=False, dtype='bool')
+    is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-            if line_search_fn == 'strong_wolfe':
-                alpha, value2, g2, ls_func_calls = strong_wolfe(
-                    f=objective_func,
-                    xk=xk,
-                    pk=pk,
-                    initial_step_length=initial_step_length)
-            else:
-                raise NotImplementedError(
-                    "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                    format(line_search_fn))
-            num_func_calls += ls_func_calls
+    def cond(k, done, is_converge, num_func_calls, xk, value, g1, Hk):
+        return (k < max_iters) & ~done
 
-            sk = alpha * pk
-            yk = g2 - g1
+    def body(k, done, is_converge, num_func_calls, xk, value, g1, Hk):
+        pk = -paddle.matmul(Hk, g1)
 
-            xk = xk + sk
-            g1 = g2
+        if line_search_fn == 'strong_wolfe':
+            alpha, value, g2, ls_func_calls = strong_wolfe(
+                f=objective_func,
+                xk=xk,
+                pk=pk,
+                initial_step_length=initial_step_length,
+                dtype=dtype)
+        else:
+            raise NotImplementedError(
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
+                format(line_search_fn))
+        num_func_calls += ls_func_calls
 
-            yk = paddle.unsqueeze(yk, 0)
-            sk = paddle.unsqueeze(sk, 0)
+        sk = alpha * pk
+        yk = g2 - g1
 
-            rhok = 1. / paddle.dot(yk, sk)
+        xk = xk + sk
+        g1 = g2
 
-            if paddle.any(paddle.isinf(rhok)):
-                rhok = 1000.0
+        sk = paddle.unsqueeze(sk, 0)
+        yk = paddle.unsqueeze(yk, 0)
 
-            Vk_transpose = I - rhok * sk * yk.t()
-            Vk = I - rhok * yk * sk.t()
-            Hk = paddle.matmul(paddle.matmul(Vk_transpose, Hk),
-                               Vk) + rhok * sk * sk.t()
-            k += 1
+        rhok_inv = paddle.dot(yk, sk)
+        rhok = paddle.static.nn.cond(
+            rhok_inv == 0., lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype), lambda: 1. / rhok_inv)
 
-            g_norm = paddle.linalg.norm(g1, p=np.inf)
-            if g_norm < tolerance_grad:
-                is_converge = True
-                break
-            pk_norm = paddle.linalg.norm(pk, p=np.inf)
-            if pk_norm < tolerance_change:
-                is_converge = True
-                break
-            # when alpha=0, there is no chance to get xk change.
-            if alpha == 0.:
-                break
+        Vk_transpose = I - rhok * sk * yk.t()
+        Vk = I - rhok * yk * sk.t()
+        Hk = paddle.matmul(paddle.matmul(Vk_transpose, Hk),
+                           Vk) + rhok * sk * sk.t()
 
-        return is_converge, num_func_calls, xk, value1, g1, Hk
-    else:
-        is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
-        done = paddle.full(shape=[1], fill_value=False, dtype='bool')
+        k += 1
 
-        def cond(k, done, is_converge, num_func_calls, xk, value1, g1, Hk):
-            return (k < max_iters) & ~done
+        gnorm = paddle.linalg.norm(g1, p=np.inf)
+        pk_norm = paddle.linalg.norm(pk, p=np.inf)
+        paddle.assign(done | (gnorm < tolerance_grad) |
+                      (pk_norm < tolerance_change), done)
+        paddle.assign(done, is_converge)
 
-        def body(k, done, is_converge, num_func_calls, xk, value1, g1, Hk):
-            pk = -paddle.matmul(Hk, g1)
+        paddle.assign(done | (alpha == 0.), done)
+        return [k, done, is_converge, num_func_calls, xk, value, g1, Hk]
 
-            if line_search_fn == 'strong_wolfe':
-                alpha, value2, g2, ls_func_calls = strong_wolfe(
-                    f=objective_func,
-                    xk=xk,
-                    pk=pk,
-                    initial_step_length=initial_step_length)
-            else:
-                raise NotImplementedError(
-                    "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                    format(line_search_fn))
-            num_func_calls += ls_func_calls
-
-            sk = alpha * pk
-            yk = g2 - g1
-            value_change = paddle.abs(value2 - value1)
-
-            xk = xk + sk
-            g1 = g2
-            value1 = value2
-
-            sk = paddle.unsqueeze(sk, 0)
-            yk = paddle.unsqueeze(yk, 0)
-
-            rhok = 1. / paddle.dot(yk, sk)
-
-            def true_fn2(rhok):
-                rhok = 1000.0
-
-            paddle.static.nn.cond(
-                paddle.any(paddle.isinf(rhok)), lambda: true_fn2(rhok), None)
-
-            Vk_transpose = I - rhok * sk * yk.t()
-            Vk = I - rhok * yk * sk.t()
-            Hk = paddle.matmul(paddle.matmul(Vk_transpose, Hk),
-                               Vk) + rhok * sk * sk.t()
-
-            k += 1
-
-            gnorm = paddle.linalg.norm(g1, p=np.inf)
-            pk_norm = paddle.linalg.norm(pk, p=np.inf)
-            paddle.assign(done | (gnorm < tolerance_grad) |
-                          (pk_norm < tolerance_change), done)
-            paddle.assign(done, is_converge)
-
-            paddle.assign(done | (alpha == 0.), done)
-            return [k, done, is_converge, num_func_calls, xk, value1, g1, Hk]
-
-        paddle.static.nn.while_loop(
-            cond=cond,
-            body=body,
-            loop_vars=[
-                k, done, is_converge, num_func_calls, xk, value1, g1, Hk
-            ])
-        return is_converge, num_func_calls, xk, value1, g1, Hk
+    paddle.static.nn.while_loop(
+        cond=cond,
+        body=body,
+        loop_vars=[k, done, is_converge, num_func_calls, xk, value, g1, Hk])
+    return is_converge, num_func_calls, xk, value, g1, Hk

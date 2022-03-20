@@ -128,180 +128,114 @@ def minimize_lbfgs(objective_func,
         xk = paddle.assign(initial_position)
 
     value, g1 = _value_and_gradient(objective_func, xk)
-    num_func_calls = paddle.assign(1)
-    if in_dygraph_mode():
-        is_converge = False
-        k = 0
-        sk_vec = []
-        yk_vec = []
-        rhok_vec = []
-        ai_vec = [None] * history_size
-        while k < max_iters:
-            vec_len = len(sk_vec)
-            q = g1
-            for i in range(vec_len - 1, -1, -1):
-                ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
-                q = q - ai_vec[i] * yk_vec[i]
 
-            r = paddle.matmul(H0, q)
+    k = paddle.full(shape=[1], fill_value=0, dtype='int64')
+    done = paddle.full(shape=[1], fill_value=False, dtype='bool')
+    is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
+    num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
-            for i in range(vec_len):
-                beta = rhok_vec[i] * paddle.dot(yk_vec[i], r)
-                r = r + sk_vec[i] * (ai_vec[i] - beta)
+    history_size = paddle.full(
+        shape=[1], fill_value=history_size, dtype='int64')
+    head = paddle.full(shape=[1], fill_value=1, dtype='int64')
+    tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
-            pk = -r
+    shape = initial_position.shape[0]
+    sk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
+    yk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
+    rhok_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
+    ai_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
 
-            if line_search_fn == 'strong_wolfe':
-                alpha, value, g2, ls_func_calls = strong_wolfe(
-                    f=objective_func,
-                    xk=xk,
-                    pk=pk,
-                    initial_step_length=initial_step_length)
-            else:
-                raise NotImplementedError(
-                    "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                    format(line_search_fn))
-            num_func_calls += ls_func_calls
+    def cond(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
+             yk_vec, rhok_vec, head, tail):
+        return (k < max_iters) & ~done
 
-            sk = alpha * pk
-            yk = g2 - g1
+    def body(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
+             yk_vec, rhok_vec, head, tail):
+        q = paddle.assign(g1)
 
-            rhok = 1. / paddle.dot(yk, sk)
-            if paddle.any(paddle.isinf(rhok)):
-                rhok = 1000.0
+        i = paddle.full(
+            shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64')
 
-            if len(sk_vec) > history_size:
-                sk_vec.pop(0)
-                yk_vec.pop(0)
-                rhok_vec.pop(0)
-            sk_vec.append(sk)
-            yk_vec.append(yk)
-            rhok_vec.append(rhok)
-            xk = xk + sk
-            g1 = g2
-            k += 1
+        def cond(i, q):
+            return i != tail
 
-            g_norm = paddle.linalg.norm(g1, p=np.inf)
-            if g_norm < tolerance_grad:
-                is_converge = True
-                break
-            pk_norm = paddle.linalg.norm(pk, p=np.inf)
-            if pk_norm < tolerance_change:
-                is_converge = True
-                break
-            # when alpha=0, there is no chance to get xk change.
-            if alpha == 0.:
-                break
-        return is_converge, num_func_calls, xk, value, g1
-    else:
-        is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
-        shape = initial_position.shape[0]
-        k = paddle.full(shape=[1], fill_value=0, dtype='int64')
-        history_size = paddle.assign(history_size)
-        head = paddle.full(shape=[1], fill_value=1, dtype='int64')
-        tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
-        done = paddle.full(shape=[1], fill_value=False, dtype='bool')
-        sk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
-        yk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
-        rhok_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
-        ai_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
+        def body(i, q):
+            ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
+            q = q - ai_vec[i] * yk_vec[i]
+            i = (i - 1).mod(history_size)
+            return i, q
 
-        def cond(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
-                 yk_vec, rhok_vec, head, tail):
-            return (k < max_iters) & ~done
+        paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, q])
 
-        def body(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
-                 yk_vec, rhok_vec, head, tail):
-            q = paddle.assign(g1)
+        r = paddle.matmul(H0, q)
 
-            i = paddle.full(
-                shape=[1],
-                fill_value=(head - 1).mod(history_size),
-                dtype='int64')
+        i = paddle.full(shape=[1], fill_value=tail + 1, dtype='int64')
 
-            def cond(i, q):
-                return i != tail
+        def cond(i, r):
+            return i != head
 
-            def body(i, q):
-                ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
-                q = q - ai_vec[i] * yk_vec[i]
-                i = (i - 1).mod(history_size)
-                return i, q
+        def body(i, r):
+            beta = rhok_vec[i] * paddle.dot(yk_vec[i], r)
+            r = r + sk_vec[i] * (ai_vec[i] - beta)
+            i = (i + 1).mod(history_size)
+            return i, r
 
-            paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, q])
+        paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, r])
 
-            r = paddle.matmul(H0, q)
+        pk = -r
 
-            i = paddle.full(shape=[1], fill_value=tail + 1, dtype='int64')
+        if line_search_fn == 'strong_wolfe':
+            alpha, value, g2, ls_func_calls = strong_wolfe(
+                f=objective_func,
+                xk=xk,
+                pk=pk,
+                initial_step_length=initial_step_length,
+                dtype=dtype)
+        else:
+            raise NotImplementedError(
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
+                format(line_search_fn))
+        paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
-            def cond(i, r):
-                return i != head
+        sk = alpha * pk
+        yk = g2 - g1
 
-            def body(i, r):
-                beta = rhok_vec[i] * paddle.dot(yk_vec[i], r)
-                r = r + sk_vec[i] * (ai_vec[i] - beta)
-                i = (i + 1).mod(history_size)
-                return i, r
+        rhok_inv = paddle.dot(yk, sk)
+        rhok = paddle.static.nn.cond(
+            rhok_inv == 0., lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype), lambda: 1. / rhok_inv)
 
-            paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, r])
+        sk_vec[head] = sk
+        yk_vec[head] = yk
+        rhok_vec[head] = rhok
+        head = (head + 1) % history_size
 
-            pk = -r
+        def true_fn(tail):
+            paddle.assign(tail + 1, tail)
 
-            if line_search_fn == 'strong_wolfe':
-                alpha, value, g2, ls_func_calls = strong_wolfe(
-                    f=objective_func,
-                    xk=xk,
-                    pk=pk,
-                    initial_step_length=initial_step_length)
-            else:
-                raise NotImplementedError(
-                    "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
-                    format(line_search_fn))
-            paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
+        paddle.static.nn.cond(head == tail, lambda: true_fn(tail), None)
 
-            sk = alpha * pk
-            yk = g2 - g1
+        xk = xk + sk
+        g1 = g2
+        k += 1
 
-            rhok = 1. / paddle.dot(yk, sk)
+        gnorm = paddle.linalg.norm(g1, p=np.inf)
+        pk_norm = paddle.linalg.norm(pk, p=np.inf)
+        paddle.assign(done | (gnorm < tolerance_grad) |
+                      (pk_norm < tolerance_change), done)
+        paddle.assign(done, is_converge)
+        # when alpha=0, there is no chance to get xk change.
+        paddle.assign(done | (alpha == 0.), done)
 
-            def true_fn2(rhok):
-                rhok = 1000.0
+        return [
+            k, done, is_converge, num_func_calls, value, xk, g1, sk_vec, yk_vec,
+            rhok_vec, head, tail
+        ]
 
-            paddle.static.nn.cond(
-                paddle.any(paddle.isinf(rhok)), lambda: true_fn2(rhok), None)
-
-            sk_vec[head] = sk
-            yk_vec[head] = yk
-            rhok_vec[head] = rhok
-            head = (head + 1) % history_size
-
-            def true_fn(tail):
-                paddle.assign(tail + 1, tail)
-
-            paddle.static.nn.cond(head == tail, lambda: true_fn(tail), None)
-
-            paddle.assign(xk + sk, xk)
-            paddle.assign(g2, g1)
-            k += 1
-
-            gnorm = paddle.linalg.norm(g1, p=np.inf)
-            pk_norm = paddle.linalg.norm(pk, p=np.inf)
-            paddle.assign(done | (gnorm < tolerance_grad) |
-                          (pk_norm < tolerance_change), done)
-            paddle.assign(done, is_converge)
-
-            paddle.assign(done | (alpha == 0.), done)
-
-            return [
-                k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
-                yk_vec, rhok_vec, head, tail
-            ]
-
-        paddle.static.nn.while_loop(
-            cond=cond,
-            body=body,
-            loop_vars=[
-                k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
-                yk_vec, rhok_vec, head, tail
-            ])
-        return is_converge, num_func_calls, xk, value, g1
+    paddle.static.nn.while_loop(
+        cond=cond,
+        body=body,
+        loop_vars=[
+            k, done, is_converge, num_func_calls, value, xk, g1, sk_vec, yk_vec,
+            rhok_vec, head, tail
+        ])
+    return is_converge, num_func_calls, xk, value, g1

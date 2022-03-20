@@ -108,10 +108,10 @@ class TestBfgs(unittest.TestCase):
             # All these minima may be reached from appropriate starting points.
             return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
 
-        x0 = np.array([0.82], dtype='float32')
+        x0 = np.array([0.82], dtype='float64')
         x1 = np.array([-1.3], dtype='float32')
 
-        results = test_static_graph(func, x0, dtype='float32')
+        results = test_static_graph(func, x0, dtype='float64')
         self.assertTrue(np.allclose(0.8, results[2]))
 
         results = test_dynamic_graph(func, x1, dtype='float32')

@@ -114,116 +114,69 @@ def strong_wolfe(f,
         # find the exact alpha from the bracket [alpha_lo, alpha_hi]
         max_zoom_iters = max_iters
         j = paddle.full(shape=[1], fill_value=0, dtype='int64')
+        done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-        if in_dygraph_mode():
-            while j < max_zoom_iters:
-                # the bracket is too small
-                if paddle.abs(alpha_hi - alpha_lo) < tolerance_change:
-                    break
+        def cond(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi,
+                 phi_hi, derphi_hi):
+            pred = paddle.abs(alpha_hi - alpha_lo) < tolerance_change
+            paddle.assign(done_zoom | pred, done_zoom)
+            return (j < max_zoom_iters) & ~done_zoom
 
-                alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo,
-                                               alpha_hi, phi_hi, derphi_hi)
-                # if the change of alpha_j is too small, use bisect instead.
-                min_change = 0.1 * paddle.abs(alpha_hi - alpha_lo)
-                if paddle.minimum(
-                        paddle.abs(alpha_j - alpha_lo),
-                        paddle.abs(alpha_j - alpha_hi)) < min_change:
-                    alpha_j = 0.5 * (alpha_lo + alpha_hi)
+        def body(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi,
+                 phi_hi, derphi_hi):
+            alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo,
+                                           alpha_hi, phi_hi, derphi_hi)  # 21
+            min_change = 0.1 * paddle.abs(alpha_hi - alpha_lo)
+            pred = paddle.minimum(
+                paddle.abs(alpha_j - alpha_lo),
+                paddle.abs(alpha_j - alpha_hi)) < min_change
+            alpha_j = paddle.static.nn.cond(
+                pred, lambda: 0.5 * (alpha_lo + alpha_hi), lambda: alpha_j)
 
-                phi_j, derf_j, derphi_j = phi_and_derphi(alpha_j)
+            phi_j, derf_j, derphi_j = phi_and_derphi(alpha_j)
 
-                if (phi_j > phi_0 + c1 * alpha_j * derphi_0) or phi_j >= phi_lo:
-                    alpha_hi = alpha_j
-                    phi_hi = phi_j
-                    derphi_hi = derphi_j
-                else:
-                    if paddle.abs(derphi_j) <= -c2 * derphi_0:
-                        alpha_lo = alpha_j
-                        phi_lo = phi_j
-                        derphi_lo = derphi_j
-                        derf_lo = derf_j
-                        break
-                    if derphi_j * (alpha_hi - alpha_lo) >= 0:
-                        alpha_hi = alpha_lo
-                        phi_hi = phi_lo
-                        derphi_hi = derphi_lo
-                    alpha_lo = alpha_j
-                    phi_lo = phi_j
-                    derphi_lo = derphi_j
-                    derf_lo = derf_j
+            def true_fn():
+                # use assing to modify the variable in-place
+                paddle.assign(alpha_j, alpha_hi)
+                paddle.assign(phi_j, phi_hi)
+                paddle.assign(derphi_j, derphi_hi)
 
-                j += 1
-            return alpha_lo, phi_lo, derf_lo, j
-        else:
-            done_zoom = paddle.full(shape=[1], fill_value=False, dtype='bool')
-
-            def cond(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo,
-                     alpha_hi, phi_hi, derphi_hi):
-                pred = paddle.abs(alpha_hi - alpha_lo) < tolerance_change
-                paddle.assign(done_zoom | pred, done_zoom)
-                return (j < max_zoom_iters) & ~done_zoom
-
-            def body(j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo,
-                     alpha_hi, phi_hi, derphi_hi):
-                alpha_j = cubic_interpolation_(alpha_lo, phi_lo, derphi_lo,
-                                               alpha_hi, phi_hi,
-                                               derphi_hi)  # 21
-                min_change = 0.1 * paddle.abs(alpha_hi - alpha_lo)
-                pred = paddle.minimum(
-                    paddle.abs(alpha_j - alpha_lo),
-                    paddle.abs(alpha_j - alpha_hi)) < min_change
-                alpha_j = paddle.static.nn.cond(
-                    pred, lambda: 0.5 * (alpha_lo + alpha_hi), lambda: alpha_j)
-
-                phi_j, derf_j, derphi_j = phi_and_derphi(alpha_j)
+            def false_fn(alpha_lo, done_zoom):
+                pred3 = (paddle.abs(derphi_j) <= -c2 * derphi_0)
+                paddle.assign(pred3, done_zoom)
 
                 def true_fn():
-                    # use assing to modify the variable in-place
-                    paddle.assign(alpha_j, alpha_hi)
-                    paddle.assign(phi_j, phi_hi)
-                    paddle.assign(derphi_j, derphi_hi)
+                    paddle.assign(alpha_lo, alpha_hi)
+                    paddle.assign(phi_lo, phi_hi)
+                    paddle.assign(derphi_lo, derphi_hi)
 
-                def false_fn(alpha_lo, done_zoom):
-                    def true_fn():
-                        paddle.assign(alpha_j, alpha_lo)
-                        paddle.assign(phi_j, phi_lo)
-                        paddle.assign(derphi_j, derphi_lo)
-                        paddle.assign(derf_j, derf_lo)
+                pred4 = ~done_zoom & (derphi_j * (alpha_hi - alpha_lo) >= 0)
+                paddle.static.nn.cond(pred4, true_fn, None)
 
-                    pred3 = (paddle.abs(derphi_j) <= -c2 * derphi_0)
-                    paddle.assign(pred3, done_zoom)
-                    paddle.static.nn.cond(pred3, true_fn, None)
+                paddle.assign(alpha_j, alpha_lo)
+                paddle.assign(phi_j, phi_lo)
+                paddle.assign(derphi_j, derphi_lo)
+                paddle.assign(derf_j, derf_lo)
 
-                    def true_fn():
-                        paddle.assign(alpha_hi, alpha_lo)
+            pred2 = (phi_j > phi_0 + c1 * alpha_j * derphi_0) | (
+                phi_j >= phi_lo)
+            paddle.static.nn.cond(pred2, true_fn,
+                                  lambda: false_fn(alpha_lo, done_zoom))
+            j = paddle.static.nn.cond(done_zoom, lambda: j, lambda: j + 1)
+            return [
+                j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi,
+                phi_hi, derphi_hi
+            ]
 
-                    pred4 = ~done_zoom & (derphi_j * (alpha_hi - alpha_lo) >= 0)
-                    paddle.static.nn.cond(pred4, true_fn, None)
+        paddle.static.nn.while_loop(
+            cond=cond,
+            body=body,
+            loop_vars=[
+                j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi,
+                phi_hi, derphi_hi
+            ])
 
-                    paddle.assign(alpha_j, alpha_lo)
-                    paddle.assign(phi_j, phi_lo)
-                    paddle.assign(derphi_j, derphi_lo)
-                    paddle.assign(derf_j, derf_lo)
-
-                pred2 = (phi_j > phi_0 + c1 * alpha_j * derphi_0) | (
-                    phi_j >= phi_lo)
-                paddle.static.nn.cond(pred2, true_fn,
-                                      lambda: false_fn(alpha_lo, done_zoom))
-                j = paddle.static.nn.cond(done_zoom, lambda: j, lambda: j + 1)
-                return [
-                    j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo,
-                    alpha_hi, phi_hi, derphi_hi
-                ]
-
-            paddle.static.nn.while_loop(
-                cond=cond,
-                body=body,
-                loop_vars=[
-                    j, done_zoom, alpha_lo, phi_lo, derphi_lo, derf_lo,
-                    alpha_hi, phi_hi, derphi_hi
-                ])
-
-            return alpha_lo, phi_lo, derf_lo, j
+        return j
 
     # variable that can be used by both mode
     alpha_max = paddle.full(shape=[1], fill_value=alpha_max, dtype=dtype)
@@ -244,102 +197,63 @@ def strong_wolfe(f,
     derf_star = paddle.assign(derf_1)
 
     i = paddle.full(shape=[1], fill_value=0, dtype='int64')
-    if in_dygraph_mode():
-        while i < max_iters:
-            phi_2, derf_2, derphi_2 = phi_and_derphi(alpha_2)
-            ls_func_calls += 1
-            if paddle.any(paddle.isinf(phi_2)):
-                break
+    done = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-            if (phi_2 > phi_0 + c1 * alpha_2 * derphi_0) or (phi_2 >= phi_0 and
-                                                             i > 1):
-                alpha_star, phi_star, derf_star, zoom_func_calls = zoom(
-                    alpha_1, phi_1, derphi_1, derf_1, alpha_2, phi_2, derphi_2,
-                    phi_0, derphi_0)
+    def cond(i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done):
+        return (i < max_iters) & ~done
 
-                ls_func_calls += zoom_func_calls
-                break
+    def body(i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done):
+        phi_2, derf_2, derphi_2 = phi_and_derphi(alpha_2)
+        paddle.assign(ls_func_calls + 1, ls_func_calls)
+        paddle.assign(done | paddle.any(paddle.isinf(phi_2)), done)
 
-            if paddle.abs(derphi_2) <= -c2 * derphi_0:
-                alpha_star = alpha_2
-                phi_star = phi_2
-                derf_star = derf_2
-                break
-            if derphi_2 >= 0:
-                alpha_star, phi_star, derf_star, zoom_func_calls = zoom(
-                    alpha_2, phi_2, derphi_2, derf_2, alpha_1, phi_1, derphi_1,
-                    phi_0, derphi_0)
+        def true_fn1():
+            j = zoom(alpha_1, phi_1, derphi_1, derf_1, alpha_2, phi_2, derphi_2,
+                     phi_0, derphi_0)
+            paddle.assign(alpha_1, alpha_star)
+            paddle.assign(phi_1, phi_star)
+            paddle.assign(derf_1, derf_star)
+            paddle.assign(ls_func_calls + j, ls_func_calls)
 
-                ls_func_calls += zoom_func_calls
-                break
+        pred1 = ~done & ((phi_2 > phi_0 + c1 * alpha_2 * derphi_0) | (
+            (phi_2 >= phi_0) & (i > 1)))
+        paddle.assign(done | pred1, done)
+        paddle.static.nn.cond(pred1, true_fn1, None)
 
-            alpha_1 = alpha_2
-            phi_1 = phi_2
-            derf_1 = derf_2
+        def true_fn2():
+            paddle.assign(alpha_2, alpha_star)
+            paddle.assign(phi_2, phi_star)
+            paddle.assign(derf_2, derf_star)
 
-            alpha_2 = min(2 * alpha_2, alpha_max)
-            i += 1
-        return alpha_star, phi_star, derf_star, ls_func_calls
-    else:
-        done = paddle.full(shape=[1], fill_value=False, dtype='bool')
+        pred2 = ~done & (paddle.abs(derphi_2) <= -c2 * derphi_0)
+        paddle.assign(done | pred2, done)
+        paddle.static.nn.cond(pred2, true_fn2, None)
 
-        def cond(i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done):
-            return (i < max_iters) & ~done
+        def true_fn3():
+            j = zoom(alpha_2, phi_2, derphi_2, derf_2, alpha_1, phi_1, derphi_1,
+                     phi_0, derphi_0)
+            paddle.assign(alpha_2, alpha_star)
+            paddle.assign(phi_2, phi_star)
+            paddle.assign(derf_2, derf_star)
+            paddle.assign(ls_func_calls + j, ls_func_calls)
 
-        def body(i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done):
-            phi_2, derf_2, derphi_2 = phi_and_derphi(alpha_2)
-            paddle.assign(ls_func_calls + 1, ls_func_calls)
-            paddle.assign(done | paddle.any(paddle.isinf(phi_2)), done)
+        pred3 = ~done & (derphi_2 >= 0)
+        paddle.assign(done | pred3, done)
+        paddle.static.nn.cond(pred3, true_fn3, None)
 
-            def true_fn1():
-                _, _, _, j = zoom(alpha_1, phi_1, derphi_1, derf_1, alpha_2,
-                                  phi_2, derphi_2, phi_0, derphi_0)
-                paddle.assign(alpha_1, alpha_star)
-                paddle.assign(phi_1, phi_star)
-                paddle.assign(derf_1, derf_star)
-                paddle.assign(ls_func_calls + j, ls_func_calls)
+        def false_fn():
+            paddle.assign(alpha_2, alpha_1)
+            paddle.assign(phi_2, phi_1)
+            paddle.assign(derf_2, derf_1)
+            paddle.assign(paddle.minimum(2 * alpha_2, alpha_max), alpha_2)
+            paddle.assign(i + 1, i)
 
-            pred1 = ~done & ((phi_2 > phi_0 + c1 * alpha_2 * derphi_0) | (
-                (phi_2 >= phi_0) & (i > 1)))
-            paddle.assign(done | pred1, done)
-            paddle.static.nn.cond(pred1, true_fn1, None)
+        paddle.static.nn.cond(done, None, false_fn)
+        return [i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done]
 
-            def true_fn2():
-                paddle.assign(alpha_2, alpha_star)
-                paddle.assign(phi_2, phi_star)
-                paddle.assign(derf_2, derf_star)
+    paddle.static.nn.while_loop(
+        cond=cond,
+        body=body,
+        loop_vars=[i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done])
 
-            pred2 = ~done & (paddle.abs(derphi_2) <= -c2 * derphi_0)
-            paddle.assign(done | pred2, done)
-            paddle.static.nn.cond(pred2, true_fn2, None)
-
-            def true_fn3():
-                _, _, _, j = zoom(alpha_2, phi_2, derphi_2, derf_2, alpha_1,
-                                  phi_1, derphi_1, phi_0, derphi_0)
-                paddle.assign(alpha_2, alpha_star)
-                paddle.assign(phi_2, phi_star)
-                paddle.assign(derf_2, derf_star)
-                paddle.assign(ls_func_calls + j, ls_func_calls)
-
-            pred3 = ~done & (derphi_2 >= 0)
-            paddle.assign(done | pred3, done)
-            paddle.static.nn.cond(pred3, true_fn3, None)
-
-            def false_fn():
-                paddle.assign(alpha_2, alpha_1)
-                paddle.assign(phi_2, phi_1)
-                paddle.assign(derf_2, derf_1)
-                paddle.assign(paddle.minimum(2 * alpha_2, alpha_max), alpha_2)
-                paddle.assign(i + 1, i)
-
-            paddle.static.nn.cond(done, None, false_fn)
-            return [i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done]
-
-        paddle.static.nn.while_loop(
-            cond=cond,
-            body=body,
-            loop_vars=[
-                i, ls_func_calls, alpha_1, alpha_2, phi_1, derf_1, done
-            ])
-
-        return alpha_star, phi_star, derf_star, ls_func_calls
+    return alpha_star, phi_star, derf_star, ls_func_calls
