@@ -20,7 +20,7 @@ import unittest
 
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunnerEager
+from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_mnist import TestMnist
 
 flag_name = os.path.splitext(__file__)[0]
@@ -59,7 +59,10 @@ class TestParallelDygraphMnistCPUEager(TestDistBase):
             log_name=flag_name)
 
 
-class TestParallelDygraphMnistSpawnEager(TestDistSpawnRunnerEager):
+class TestParallelDygraphMnistSpawnEager(TestDistSpawnRunner):
+    def _args_config(self, args):
+        args.eager_mode = True
+
     def test_mnist_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
