@@ -75,7 +75,7 @@ def PD_ElementType : Type<Or<[PD_Float.predicate,
 // def PD_Tensor : TensorOf<[PD_ElementType]>;
 def PD_Tensor1 : TensorOf<[PD_ElementType]>;
 
-def PD_Tensor :  AnyTypeOf<[PD_Tensor1, LoDTensor, DenseTensor],"pd.ttype">;
+def PD_Tensor :  AnyTypeOf<[PD_Tensor1, LoDTensor, DenseTensor],"pd.type">;
 
 def PD_Tensor_Array : VectorOf<[PD_Tensor]>;
 

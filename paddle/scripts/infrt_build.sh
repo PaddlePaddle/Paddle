@@ -47,6 +47,7 @@ function update_pd_ops() {
    # generate test model
    cd ${PADDLE_ROOT}
    python3 paddle/infrt/tests/model/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
+   python3 paddle/infrt/tests/model/linear_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/linear
 }
 
 function init() {
