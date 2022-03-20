@@ -119,20 +119,24 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     with device_guard("cpu"):
         # step_var = (step_var + 1) % k_step
         layers.increment(x=step_var, value=1.0, in_place=True)
-        main_block.append_op(
+        elementwise_mod_op = main_block.append_op(
             type='elementwise_mod',
             inputs={'X': step_var,
                     'Y': k_step_var},
             outputs={'Out': step_var},
             attrs={'axis': -1,
                    'use_mkldnn': False})
+        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            elementwise_mod_op, world_process_group.ranks, [-1], dist_context)
 
         # cond_var = (step_var == 0)
-        main_block.append_op(
+        equal_op = main_block.append_op(
             type='equal',
             inputs={'X': step_var,
                     'Y': zero_var},
             outputs={'Out': cond_var})
+        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            equal_op, world_process_group.ranks, [-1], dist_context)
 
     return cond_var
 
@@ -161,16 +165,17 @@ def _append_gradient_merge_backward_op(
         param_name = param.name
         param_var = main_block.var(param_name)
         assert (param_var is not None)
-        cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(grad.op)
-        assert cur_op_dist_attr is not None
+        ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(param_var)
+        assert ref_dist_attr is not None
         gradient_merge_var = main_block.create_var(
             name=param_name + "@GRAD@GradientMerge",
             shape=param_var.shape,
             dtype=param_var.dtype,
             persistable=True)
         param_to_gradient_merge[param_name] = gradient_merge_var
-        ref_process_mesh = cur_op_dist_attr.process_mesh
-        ref_dims_mapping = cur_op_dist_attr.get_input_dims_mapping(param_name)
+        ref_process_mesh = ref_dist_attr.process_mesh
+        ref_dims_mapping = ref_dist_attr.dims_mapping
+
         set_var_dist_attr(dist_context, gradient_merge_var, ref_dims_mapping,
                           ref_process_mesh)
 
@@ -197,8 +202,8 @@ def _append_gradient_merge_backward_op(
             attrs={'axis': -1,
                    'use_mkldnn': False})
         new_params_to_grads.append([param, gradient_merge_var])
-        #naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-        #    new_grad_op, ref_process_mesh, ref_dims_mapping, dist_context)
+        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+            new_grad_op, ref_process_mesh, ref_dims_mapping, dist_context)
     return new_params_to_grads, param_to_gradient_merge
 
 
