@@ -712,10 +712,10 @@ class TestParallelDyGraphRunnerBase(object):
             print_to_out(out_losses)
 
     def run_trainer_with_spawn(self, args):
-        if self.eager_mode:
-            self.run_trainer_with_spawn_in_eager_mode(args)
+        if args.eager_mode:
+            return self.run_trainer_with_spawn_in_eager_mode(args)
         else:
-            self.run_trainer_with_spawn_func(args)
+            return self.run_trainer_with_spawn_func(args)
 
     def run_trainer_with_spawn_func(self, args):
         # 1. enable dygraph
@@ -1032,8 +1032,8 @@ class TestDistBase(unittest.TestCase):
         self._port_set = set()
         self._python_interp = sys.executable
         self._sync_mode = True
-        self._eager_mode = False
         self._dist_port = 6175
+        self._eager_mode = False
         self._hogwild_mode = False
         self._enforce_place = None
         self._use_reduce = False
@@ -1079,6 +1079,7 @@ class TestDistBase(unittest.TestCase):
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 DIST_UT_PORT, DIST_UT_PORT + 1)
             DIST_UT_PORT += 2
+            self._dist_port = DIST_UT_PORT
 
         self._after_setup_config()
 

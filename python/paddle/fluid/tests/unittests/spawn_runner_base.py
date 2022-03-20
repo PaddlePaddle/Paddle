@@ -55,10 +55,14 @@ class TestDistSpawnRunner(unittest.TestCase):
             result_list.append(res_queue.get())
         return result_list
 
+    def _args_config(self, args):
+        return
+
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
         # 0. prepare model and args
         model = test_class()
         args = SpawnAssistTestArgs()
+        self._args_config(args)
 
         # 1. calc signal card loss
         losses = self._run(model, args)
@@ -83,23 +87,3 @@ class TestDistSpawnRunner(unittest.TestCase):
                 msg="The results of single-card execution and multi-card execution are inconsistent."
                 "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".
                 format(loss, dist_loss))
-
-
-class TestDistSpawnRunnerInEagerMode(TestDistSpawnRunner):
-    def _run(self, model, args):
-        args.update_method = "local"
-        args.eager_mode = True
-        return model.run_trainer_with_spawn(args)
-
-    def _run_parallel(self, model, args):
-        args.update_method = "nccl2"
-        args.eager_mode = True
-        context = paddle.distributed.spawn(
-            func=model.run_trainer_with_spawn,
-            args=(args, ),
-            nprocs=self.nprocs,
-            join=True)
-        result_list = []
-        for res_queue in context.return_queues:
-            result_list.append(res_queue.get())
-        return result_list

@@ -20,11 +20,10 @@ import unittest
 
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunnerInEagerMode
+from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_no_sync import TestNoSync
 from parallel_dygraph_no_sync_unused_params import TestNoSyncUnusedParam
 from parallel_dygraph_no_sync_control_flow import TestNoSyncControlFlow
-from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -32,7 +31,6 @@ flag_name = os.path.splitext(__file__)[0]
 class TestParallelDygraphNoSync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
-        self._dist_port = get_dist_port_from_flags()
         self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
@@ -50,7 +48,6 @@ class TestParallelDygraphNoSync(TestDistBase):
 class TestParallelDygraphNoSyncUnusedParam(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
-        self._dist_port = get_dist_port_from_flags()
         self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
@@ -68,7 +65,6 @@ class TestParallelDygraphNoSyncUnusedParam(TestDistBase):
 class TestParallelDygraphNoSyncControlFlow(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
-        self._dist_port = get_dist_port_from_flags()
         self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
@@ -83,21 +79,28 @@ class TestParallelDygraphNoSyncControlFlow(TestDistBase):
                 log_name=flag_name)
 
 
-class TestParallelDygraphNoSyncSpawn(TestDistSpawnRunnerInEagerMode):
+class TestParallelDygraphNoSyncSpawn(TestDistSpawnRunner):
     def test_no_sync_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-
             self.check_dist_result_with_spawn(test_class=TestNoSync, delta=1e-5)
 
 
-class TestParallelDygraphNoSyncUnusedParamSpawn(TestDistSpawnRunnerInEagerMode):
+class TestParallelDygraphNoSyncUnusedParamSpawn(TestDistSpawnRunner):
+    def _args_config(self, args):
+        args.find_unused_parameters = True
+        args.eager_mode = True
+
     def test_no_sync_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(
                 test_class=TestNoSyncUnusedParam, delta=1e-5)
 
 
-class TestParallelDygraphNoSyncControlFlowSpawn(TestDistSpawnRunnerInEagerMode):
+class TestParallelDygraphNoSyncControlFlowSpawn(TestDistSpawnRunner):
+    def _args_config(self, args):
+        args.find_unused_parameters = True
+        args.eager_mode = True
+
     def test_no_sync_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(

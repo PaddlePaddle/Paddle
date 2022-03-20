@@ -31,6 +31,7 @@ import paddle.distributed as dist
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.optimizer import SGD
 from paddle.fluid.initializer import NumpyArrayInitializer
+from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 
 def init_process_group(strategy=None):
@@ -38,9 +39,7 @@ def init_process_group(strategy=None):
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     envs = copy.copy(os.environ.copy())
-    port = 6175
-    if 'PADDLE_DIST_UT_PORT' in envs.keys():
-        port = int(envs['PADDLE_DIST_UT_PORT'])
+    port = get_dist_port_from_flags()
     store = paddle.fluid.core.TCPStore("127.0.0.1", port, is_master, nranks)
     if 'PADDLE_DISTRI_BACKEND' in envs.keys() and envs[
             'PADDLE_DISTRI_BACKEND'] == 'gloo':
@@ -75,8 +74,8 @@ class TestDistTraning(unittest.TestCase):
             self.generate_reducer("float16", process_group)
 
     def generate_reducer(self, dtype, process_group):
-        dev_id = ParallelEnv().dev_id
-        np.random.seed(2022 + dev_id)
+        local_rank = ParallelEnv().local_rank
+        np.random.seed(2022 + local_rank)
         paddle.set_default_dtype(dtype)
 
         w_1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(

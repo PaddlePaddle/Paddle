@@ -63,7 +63,6 @@ def start_local_trainers_cpu(trainer_endpoints,
     print(trainer_endpoints)
     for rank_id, endpoint in enumerate(trainer_endpoints):
         proc_env = {
-            "PADDLE_DIST_UT_PORT": "%d" % get_dist_port_from_flags(),
             "PADDLE_DISTRI_BACKEND": "gloo",
             "PADDLE_TRAINER_ID": "%d" % rank_id,
             "PADDLE_CURRENT_ENDPOINT": "%s" % endpoint,
@@ -112,7 +111,6 @@ def start_local_trainers(cluster,
     procs = []
     for t in pod.trainers:
         proc_env = {
-            "PADDLE_DIST_UT_PORT": "%d" % get_dist_port_from_flags(),
             "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
@@ -147,14 +145,10 @@ def start_local_trainers(cluster,
 
 
 def get_dist_port_from_flags():
-    from paddle.fluid import core
-    _global_flags_ = core.globals()
-    if _global_flags_.is_public('PADDLE_DIST_UT_PORT'):
-        port_flag = paddle.get_flags(['PADDLE_DIST_UT_PORT'])
-        dist_port = port_flag['PADDLE_DIST_UT_PORT']
-        return dist_port
-    else:
-        return 6175
+    DIST_UT_PORT = 6175
+    if os.getenv("PADDLE_DIST_UT_PORT"):
+        DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+    return DIST_UT_PORT
 
 
 class TestMultipleGpus(unittest.TestCase):

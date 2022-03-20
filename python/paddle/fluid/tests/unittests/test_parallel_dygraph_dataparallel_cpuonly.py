@@ -23,7 +23,6 @@ import os
 import subprocess
 
 from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
-from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 
 def get_cluster_from_args(selected_gpus):
@@ -67,7 +66,6 @@ def start_local_trainers(cluster,
     procs = []
     for t in pod.trainers:
         proc_env = {
-            "PADDLE_DIST_UT_PORT": "%d" % get_dist_port_from_flags(),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),

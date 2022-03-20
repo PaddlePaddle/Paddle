@@ -21,7 +21,6 @@ import unittest
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
-from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -31,7 +30,6 @@ class TestDygraphControlFlowSame(TestDistBase):
         self._sync_mode = False
         self._nccl2_mode = True
         self._eager_mode = True
-        self._dist_port = get_dist_port_from_flags()
         self._dygraph = True
         self._find_unused_parameters = True
 
@@ -49,7 +47,6 @@ class TestDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
         self._sync_mode = False
         self._nccl2_mode = True
         self._eager_mode = True
-        self._dist_port = get_dist_port_from_flags()
         self._dygraph = True
         self._accumulate_gradient = True
         self._find_unused_parameters = True
@@ -60,7 +57,6 @@ class TestDygraphControlFlowDiff(TestDistBase):
         self._sync_mode = False
         self._nccl2_mode = True
         self._eager_mode = True
-        self._eager_mode = get_dist_port_from_flags()
         self._dygraph = True
         self._find_unused_parameters = True
 
@@ -78,7 +74,6 @@ class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
         self._sync_mode = False
         self._nccl2_mode = True
         self._eager_mode = True
-        self._dist_port = get_dist_port_from_flags()
         self._dygraph = True
         self._accumulate_gradient = True
         self._find_unused_parameters = True

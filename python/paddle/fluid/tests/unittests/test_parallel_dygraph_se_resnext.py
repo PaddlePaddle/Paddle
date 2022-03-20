@@ -41,7 +41,25 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
                 log_name=flag_name)
 
 
+class TestParallelDygraphSeResNeXtInEagerMode(TestParallelDygraphSeResNeXt):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._eager_mode = True
+        self._nccl2_mode = True
+        self._dygraph = True
+
+
 class TestParallelDygraphSeResNeXtSpawn(TestDistSpawnRunner):
+    def test_se_resnext_with_spawn(self):
+        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+            self.check_dist_result_with_spawn(
+                test_class=TestSeResNeXt, delta=0.01)
+
+
+class TestParallelDygraphSeResNeXtSpawnEager(TestDistSpawnRunner):
+    def _args_config(self, args):
+        args.eager_mode = True
+
     def test_se_resnext_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(
