@@ -104,8 +104,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
 #else
 
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
-  // The parameters are on the cpu, therefore, synchronization is not
-  // necessary.
+  // The parameters are on the cpu, synchronization is not necessary.
   if (!argument->use_gpu()) return;
 
   auto &graph = argument->main_graph();
@@ -125,9 +124,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
   // We get all the vars from local_scope instead of the ProgramDesc.
-  // Because there exists the case that new parameter variables are not added
-  // to
-  // the program in the analysis pass.
+  // Because there exists the case that new parameter variables
+  // are not added to the program in the analysis pass.
   bool reserve_cpu_weights = false;
   bool with_dynamic_shape = false;
   if (argument->Has("max_input_shape") && argument->Has("min_input_shape") &&
