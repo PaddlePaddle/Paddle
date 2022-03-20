@@ -15,21 +15,21 @@
 #include "paddle/phi/kernels/embedding_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-struct LookupTableV2CPUSparseFunctor {
-  LookupTableV2CPUSparseFunctor(const Context& dev_ctx,
-                                const DenseTensor& input,
-                                const SelectedRows& weight,
-                                int64_t padding_idx,
-                                DenseTensor* out)
+struct EmbeddingCPUSparseFunctor {
+  EmbeddingCPUSparseFunctor(const Context& dev_ctx,
+                            const DenseTensor& input,
+                            const SelectedRows& weight,
+                            int64_t padding_idx,
+                            DenseTensor* out)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -45,7 +45,7 @@ struct LookupTableV2CPUSparseFunctor {
     auto output_t = out_;
     int64_t row_width = table_t.value().dims()[1];
     const auto* table = table_t.value().template data<T>();
-    auto* output = output_t->template mutable_data<T>(dev_ctx_.GetPlace());
+    auto* output = dev_ctx_.template Alloc<T>(output_t);
     auto input_data_type =
         paddle::framework::TransToProtoVarType(table_t.value().dtype());
 
@@ -94,10 +94,16 @@ void SparseWeightEmbeddingKernel(const Context& ctx,
                                  const SelectedRows& weight,
                                  int64_t padding_idx,
                                  DenseTensor* out) {
-  LookupTableV2CPUSparseFunctor<T, Context> functor(
+  EmbeddingCPUSparseFunctor<T, Context> functor(
       ctx, input, weight, padding_idx, out);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 }  // namespace phi

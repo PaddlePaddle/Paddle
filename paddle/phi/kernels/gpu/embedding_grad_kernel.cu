@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -36,12 +36,12 @@ __global__ void InputTypeConvert(const InT* in_ids,
 }
 
 template <typename T, typename IdT>
-__global__ void LookupTableV2Grad(T* table,
-                                  const T* output,
-                                  const IdT* ids,
-                                  const int64_t N,
-                                  const int64_t K,
-                                  const int64_t D) {
+__global__ void EmbeddingGrad(T* table,
+                              const T* output,
+                              const IdT* ids,
+                              const int64_t N,
+                              const int64_t K,
+                              const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
@@ -61,13 +61,13 @@ __global__ void LookupTableV2Grad(T* table,
 }
 
 template <typename T, typename Context>
-struct LookupTableV2GradCUDAFunctor {
-  LookupTableV2GradCUDAFunctor(const Context& dev_ctx,
-                               const DenseTensor& input,
-                               const DenseTensor& weight,
-                               const DenseTensor& out_grad,
-                               int64_t padding_idx,
-                               DenseTensor* weight_grad)
+struct EmbeddingGradCUDAFunctor {
+  EmbeddingGradCUDAFunctor(const Context& dev_ctx,
+                           const DenseTensor& input,
+                           const DenseTensor& weight,
+                           const DenseTensor& out_grad,
+                           int64_t padding_idx,
+                           DenseTensor* weight_grad)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -89,7 +89,7 @@ struct LookupTableV2GradCUDAFunctor {
 
       const T* d_output = d_output_t.template data<T>();
       const auto* ids = input_.template data<IdT>();
-      T* d_table = d_table_t->mutable_data<T>(dev_ctx_.GetPlace());
+      T* d_table = dev_ctx_.template Alloc<T>(d_table_t);
 
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -102,7 +102,7 @@ struct LookupTableV2GradCUDAFunctor {
       const int gridx = 2 * dev_ctx_.GetSMCount();
       dim3 threads(128, 8);
       dim3 grids(gridx, 1);
-      LookupTableV2Grad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
+      EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }
   }
@@ -123,20 +123,26 @@ void EmbeddingGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
-  LookupTableV2GradCUDAFunctor<T, Context> functor(
+  EmbeddingGradCUDAFunctor<T, Context> functor(
       ctx, input, weight, out_grad, padding_idx, weight_grad);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 template <typename T, typename Context>
-struct LookupTableV2SparseGradCUDAFunctor {
-  LookupTableV2SparseGradCUDAFunctor(const Context& dev_ctx,
-                                     const DenseTensor& input,
-                                     const DenseTensor& weight,
-                                     const DenseTensor& out_grad,
-                                     int64_t padding_idx,
-                                     SelectedRows* weight_grad)
+struct EmbeddingSparseGradCUDAFunctor {
+  EmbeddingSparseGradCUDAFunctor(const Context& dev_ctx,
+                                 const DenseTensor& input,
+                                 const DenseTensor& weight,
+                                 const DenseTensor& out_grad,
+                                 int64_t padding_idx,
+                                 SelectedRows* weight_grad)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -179,7 +185,7 @@ struct LookupTableV2SparseGradCUDAFunctor {
 
     auto* d_table_value = d_table->mutable_value();
     d_table_value->Resize({ids_num, table->dims()[1]});
-    d_table_value->template mutable_data<T>(gpu_place);
+    dev_ctx_.template Alloc<T>(d_table_value);
 
     auto* d_table_data = d_table_value->template data<T>();
     auto* d_output_data = d_output->template data<T>();
@@ -219,10 +225,16 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                                const DenseTensor& out_grad,
                                int64_t padding_idx,
                                SelectedRows* weight_grad) {
-  LookupTableV2SparseGradCUDAFunctor<T, Context> functor(
+  EmbeddingSparseGradCUDAFunctor<T, Context> functor(
       ctx, input, weight, out_grad, padding_idx, weight_grad);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 }  // namespace phi

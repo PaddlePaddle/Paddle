@@ -15,22 +15,21 @@
 #include "paddle/phi/kernels/embedding_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
 template <typename T, typename IdT, bool PaddingFlag>
-__global__ void LookupTableV2(T *output,
-                              const T *table,
-                              const IdT *ids,
-                              const int64_t N,
-                              const int64_t K,
-                              const int64_t D,
-                              const int64_t padding_idx) {
+__global__ void EmbeddingFW(T *output,
+                            const T *table,
+                            const IdT *ids,
+                            const int64_t N,
+                            const int64_t K,
+                            const int64_t D,
+                            const int64_t padding_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
@@ -53,12 +52,12 @@ __global__ void LookupTableV2(T *output,
 }
 
 template <typename T, typename Context>
-struct LookupTableV2CUDAFunctor {
-  LookupTableV2CUDAFunctor(const Context &dev_ctx,
-                           const DenseTensor &input,
-                           const DenseTensor &weight,
-                           int64_t padding_idx,
-                           DenseTensor *out)
+struct EmbeddingCUDAFunctor {
+  EmbeddingCUDAFunctor(const Context &dev_ctx,
+                       const DenseTensor &input,
+                       const DenseTensor &weight,
+                       int64_t padding_idx,
+                       DenseTensor *out)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -77,14 +76,14 @@ struct LookupTableV2CUDAFunctor {
 
     const T *table = weight_.template data<T>();
     const IdT *ids = input_.template data<IdT>();
-    auto *output = out_->template mutable_data<T>(dev_ctx_.GetPlace());
+    auto *output = dev_ctx_.template Alloc<T>(out_);
     auto stream = dev_ctx_.stream();
 
     if (padding_idx_ == -1) {
-      LookupTableV2<T, IdT, false><<<grids, threads, 0, stream>>>(
+      EmbeddingFW<T, IdT, false><<<grids, threads, 0, stream>>>(
           output, table, ids, N, K, D, padding_idx_);
     } else {
-      LookupTableV2<T, IdT, true><<<grids, threads, 0, stream>>>(
+      EmbeddingFW<T, IdT, true><<<grids, threads, 0, stream>>>(
           output, table, ids, N, K, D, padding_idx_);
     }
   }
@@ -103,10 +102,16 @@ void EmbeddingKernel(const Context &ctx,
                      const DenseTensor &weight,
                      int64_t padding_idx,
                      DenseTensor *out) {
-  LookupTableV2CUDAFunctor<T, Context> functor(
+  EmbeddingCUDAFunctor<T, Context> functor(
       ctx, input, weight, padding_idx, out);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int32_t>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 }  // namespace phi

@@ -15,20 +15,20 @@
 #include "paddle/phi/kernels/embedding_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-struct LookupTableV2CPUFunctor {
-  LookupTableV2CPUFunctor(const Context& dev_ctx,
-                          const DenseTensor& input,
-                          const DenseTensor& weight,
-                          int64_t padding_idx,
-                          DenseTensor* out)
+struct EmbeddingCPUFunctor {
+  EmbeddingCPUFunctor(const Context& dev_ctx,
+                      const DenseTensor& input,
+                      const DenseTensor& weight,
+                      int64_t padding_idx,
+                      DenseTensor* out)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -91,10 +91,15 @@ void EmbeddingKernel(const Context& ctx,
                      const DenseTensor& weight,
                      int64_t padding_idx,
                      DenseTensor* out) {
-  LookupTableV2CPUFunctor<T, Context> functor(
-      ctx, input, weight, padding_idx, out);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+  EmbeddingCPUFunctor<T, Context> functor(ctx, input, weight, padding_idx, out);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 }  // namespace phi

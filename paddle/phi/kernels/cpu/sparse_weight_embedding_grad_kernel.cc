@@ -15,21 +15,21 @@
 #include "paddle/phi/kernels/sparse_weight_embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-struct SparseWeightLookupTableV2GradCPUFunctor {
-  SparseWeightLookupTableV2GradCPUFunctor(const Context& dev_ctx,
-                                          const DenseTensor& input,
-                                          const SelectedRows& weight,
-                                          const DenseTensor& out_grad,
-                                          int64_t padding_idx,
-                                          DenseTensor* weight_grad)
+struct SparseWeightEmbeddingGradCPUFunctor {
+  SparseWeightEmbeddingGradCPUFunctor(const Context& dev_ctx,
+                                      const DenseTensor& input,
+                                      const SelectedRows& weight,
+                                      const DenseTensor& out_grad,
+                                      int64_t padding_idx,
+                                      DenseTensor* weight_grad)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -70,7 +70,8 @@ struct SparseWeightLookupTableV2GradCPUFunctor {
               ids_data[i],
               N,
               phi::errors::InvalidArgument(
-                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "Variable value (input) of "
+                  "OP(paddle.nn.functional.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
                   N,
@@ -79,7 +80,8 @@ struct SparseWeightLookupTableV2GradCPUFunctor {
               ids_data[i],
               0,
               phi::errors::InvalidArgument(
-                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "Variable value (input) of "
+                  "OP(paddle.nn.functional.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
                   N,
@@ -102,13 +104,13 @@ struct SparseWeightLookupTableV2GradCPUFunctor {
 };
 
 template <typename T, typename Context>
-struct SparseWeightLookupTableV2SparseGradCPUFunctor {
-  SparseWeightLookupTableV2SparseGradCPUFunctor(const Context& dev_ctx,
-                                                const DenseTensor& input,
-                                                const SelectedRows& weight,
-                                                const DenseTensor& out_grad,
-                                                int64_t padding_idx,
-                                                SelectedRows* weight_grad)
+struct SparseWeightEmbeddingSparseGradCPUFunctor {
+  SparseWeightEmbeddingSparseGradCPUFunctor(const Context& dev_ctx,
+                                            const DenseTensor& input,
+                                            const SelectedRows& weight,
+                                            const DenseTensor& out_grad,
+                                            int64_t padding_idx,
+                                            SelectedRows* weight_grad)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -132,7 +134,7 @@ struct SparseWeightLookupTableV2SparseGradCPUFunctor {
     auto* d_table_value = d_table->mutable_value();
     d_table_value->Resize({ids_num, table_dim[1]});
 
-    d_table_value->template mutable_data<T>(dev_ctx_.GetPlace());
+    dev_ctx_.template Alloc<T>(d_table_value);
 
     d_table->set_height(table_dim[0]);
 
@@ -170,10 +172,16 @@ void SparseWeightEmbeddingGradKernel(const Context& ctx,
                                      const DenseTensor& out_grad,
                                      int64_t padding_idx,
                                      DenseTensor* weight_grad) {
-  SparseWeightLookupTableV2GradCPUFunctor<T, Context> functor(
+  SparseWeightEmbeddingGradCPUFunctor<T, Context> functor(
       ctx, input, weight, out_grad, padding_idx, weight_grad);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 template <typename T, typename Context>
@@ -183,10 +191,16 @@ void SparseWeightEmbeddingSparseGradKernel(const Context& ctx,
                                            const DenseTensor& out_grad,
                                            int64_t padding_idx,
                                            SelectedRows* weight_grad) {
-  SparseWeightLookupTableV2SparseGradCPUFunctor<T, Context> functor(
+  SparseWeightEmbeddingSparseGradCPUFunctor<T, Context> functor(
       ctx, input, weight, out_grad, padding_idx, weight_grad);
-  paddle::framework::VisitIntDataType(
-      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+
+  if (input.dtype() == phi::DataType::INT32) {
+    functor.template apply<int>();
+  } else if (input.dtype() == phi::DataType::INT64) {
+    functor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW("emebdding input only support int32 and int64");
+  }
 }
 
 }  // namespace phi
