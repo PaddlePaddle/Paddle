@@ -373,10 +373,9 @@ std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
 
 aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
                                              aclMemType mem_type) {
-  auto dtype =
-      ConvertToNpuDtype(framework::TransToProtoVarType(tensor.dtype()));
+  auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
-  auto dims = phi::vectorize(tensor.dims());
+  auto dims = framework::vectorize(tensor.dims());
   int size = dims.size();
   // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
   // OP must be a scalar with shape[0]. At present, the shape
@@ -422,10 +421,14 @@ void NpuOpRunner::Run(aclrtStream stream) const {
   VLOG(4) << "attr: " << attr_;
   VLOG(4) << "stream: " << stream;
 
-  if (!FLAGS_npu_precision_mode.empty()) {
+  // PADDLE_ENFORCE_NPU_SUCCESS(aclopSetCompileFlag(aclOpCompileFlag::ACL_OP_COMPILE_FUZZ));
+
+  if (op_type_ == "LayerNorm") {
     PADDLE_ENFORCE_NPU_SUCCESS(
-        aclSetCompileopt(ACL_PRECISION_MODE, FLAGS_npu_precision_mode.c_str()));
-    VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
+        aclSetCompileopt(ACL_PRECISION_MODE, "allow_fp32_to_fp16"));
+  } else {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclSetCompileopt(ACL_PRECISION_MODE, "force_fp16"));
   }
 
   aclError ret = aclopCompileAndExecute(
@@ -460,14 +463,12 @@ void NpuOpRunner::TypeAdapter(
 
   for (size_t i = 0; i < input_type.size(); ++i) {
     bool cast_input =
-        (input_type[i] == -1 ||
-         input_type[i] != framework::TransToProtoVarType(inputs[i].dtype()));
+        (input_type[i] == -1 || input_type[i] != inputs[i].type());
     if (!cast_input) {
       tmp_inputs[i].ShareDataWith(inputs[i]);
     } else {
       tmp_inputs[i].Resize(inputs[i].dims());
-      tmp_inputs[i].mutable_data(dev_ctx.GetPlace(),
-                                 framework::TransToPhiDataType(input_type[i]));
+      tmp_inputs[i].mutable_data(dev_ctx.GetPlace(), input_type[i]);
 
       const auto &cast_runner = NpuOpRunner(
           "Cast", {inputs[i]}, {tmp_inputs[i]},
@@ -477,14 +478,12 @@ void NpuOpRunner::TypeAdapter(
   }
   for (size_t i = 0; i < output_type.size(); ++i) {
     bool cast_output =
-        (output_type[i] == -1 ||
-         output_type[i] != framework::TransToProtoVarType(outputs[i].dtype()));
+        (output_type[i] == -1 || output_type[i] != outputs[i].type());
     if (!cast_output) {
       tmp_outputs[i].ShareDataWith(outputs[i]);
     } else {
       tmp_outputs[i].Resize(outputs[i].dims());
-      tmp_outputs[i].mutable_data(
-          dev_ctx.GetPlace(), framework::TransToPhiDataType(output_type[i]));
+      tmp_outputs[i].mutable_data(dev_ctx.GetPlace(), output_type[i]);
     }
   }
 
@@ -492,14 +491,12 @@ void NpuOpRunner::TypeAdapter(
 
   for (size_t i = 0; i < output_type.size(); ++i) {
     bool cast_output =
-        (output_type[i] == -1 ||
-         output_type[i] != framework::TransToProtoVarType(outputs[i].dtype()));
+        (output_type[i] == -1 || output_type[i] != outputs[i].type());
     if (cast_output) {
       const auto &cast_runner = NpuOpRunner(
           "Cast", {tmp_outputs[i]}, {outputs[i]},
           {{"dst_type",
-            static_cast<int>(ConvertToNpuDtype(
-                framework::TransToProtoVarType(outputs[i].dtype())))}});
+            static_cast<int>(ConvertToNpuDtype(outputs[i].type()))}});
       cast_runner.Run(dev_ctx.stream());
     }
   }

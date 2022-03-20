@@ -442,7 +442,7 @@ AclInstance::AclInstance() {
     VLOG(4) << "Call aclInit(nullptr) ";
     PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
   }
-
+  std::cout << "FLAGS_npu_config_path: " << FLAGS_npu_config_path << std::endl;
   VLOG(4) << "Call aclrtSetDevice ";
   // NOTE(zhiqiu): why set devices here?
   // Because ACL creates a default context which contains 2 streams

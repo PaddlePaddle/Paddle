@@ -34,7 +34,6 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-
     int axis = ctx.Attr<int>("axis");
 
     bool direct_compute = false;
@@ -47,13 +46,43 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
       direct_compute = y_dims.size() == (x_dims.size() + axis);
     }
 
+    Tensor cast_x, cast_y;
+    if (x->type() != y->type()) {
+      if (x->type() != framework::proto::VarType::FP16) {
+        cast_x.set_type(framework::proto::VarType::FP16);
+        cast_x.Resize(x->dims());
+        cast_x.mutable_data<float16>(ctx.GetPlace());
+        auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP16);
+        const auto& runner_cast =
+            NpuOpRunner("Cast", {*x}, {cast_x},
+                        {{"dst_type", static_cast<int>(dst_dtype)}});
+        runner_cast.Run(dev_ctx.stream());
+        cast_y.ShareDataWith(*y);
+      } else {
+        cast_y.set_type(framework::proto::VarType::FP16);
+        cast_y.Resize(y->dims());
+        cast_y.mutable_data<float16>(ctx.GetPlace());
+        auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP16);
+        const auto& runner_cast =
+            NpuOpRunner("Cast", {*y}, {cast_y},
+                        {{"dst_type", static_cast<int>(dst_dtype)}});
+        runner_cast.Run(dev_ctx.stream());
+        cast_x.ShareDataWith(*x);
+      }
+    } else {
+      cast_x.set_type(x->type());
+      cast_y.set_type(y->type());
+      cast_x.ShareDataWith(*x);
+      cast_y.ShareDataWith(*y);
+    }
+
     if (direct_compute) {
-      const auto& runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
+      const auto& runner = NpuOpRunner("Add", {cast_x, cast_y}, {*out}, {});
       runner.Run(dev_ctx.stream());
     } else {
       Tensor transformed_x, transformed_y;
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      NpuElementWiseOpBroadcast<T>(dev_ctx, &cast_x, &cast_y, axis,
+                                   &transformed_x, &transformed_y);
       const auto& runner =
           NpuOpRunner("Add", {transformed_x, transformed_y}, {*out}, {});
       runner.Run(dev_ctx.stream());
@@ -96,7 +125,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         if (!reduce_axes.empty()) {
           Tensor tmp;
           tmp.ShareDataWith(*dx);
-          tmp.Resize(phi::make_ddim(dst_dims_vec));
+          tmp.Resize(framework::make_ddim(dst_dims_vec));
           const auto& runner =
               NpuOpRunner("ReduceSumD", {*dout}, {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
@@ -126,7 +155,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         if (!reduce_axes.empty()) {
           Tensor tmp;
           tmp.ShareDataWith(*dy);
-          tmp.Resize(phi::make_ddim(dst_dims_vec));
+          tmp.Resize(framework::make_ddim(dst_dims_vec));
           const auto& runner =
               NpuOpRunner("ReduceSumD", {*dout}, {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});

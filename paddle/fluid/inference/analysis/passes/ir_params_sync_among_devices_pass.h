@@ -35,15 +35,10 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
   std::string repr() const override;
 
  private:
+  void SyncParamsToGpu(Argument *argument);
+
 #ifdef PADDLE_WITH_ASCEND_CL
-  void CopyParamsToNpu(Argument *argument);
-#else
-
-  void GetVarNameToOpTypeMap(
-      const framework::ir::Graph& graph,
-      std::unordered_map<std::string, std::string>* var_name_op_type_map);
-
-  void CopyParamsToGpu(Argument* argument);
+  void SyncParamsToNpu(Argument *argument);
 #endif
 };
 
