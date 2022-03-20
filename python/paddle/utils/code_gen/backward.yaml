@@ -45,6 +45,27 @@
   kernel :
     func : subtract_grad
 
+- backward_api : multiply_grad
+  forward : multiply (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : multiply_grad
+
+- backward_api : divide_grad
+  forward : divide (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : divide_grad
+
+
 - backward_api : digamma_grad
   forward : digamma (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

@@ -47,6 +47,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : divide
+  backward : divide_grad
 
 - api : dot
   args : (Tensor x, Tensor y)
@@ -136,6 +137,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : multiply
+  backward : multiply_grad
 
 - api : ones_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
