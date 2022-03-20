@@ -209,6 +209,11 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                 paddle.to_tensor(x), 3, data_format)
             self.assertTrue(np.allclose(result_functional.numpy(), npresult))
 
+            pixel_unshuffle_str = 'downscale_factor={}, data_format={}'.format(
+                pixel_unshuffle._downscale_factor,
+                pixel_unshuffle._data_format)
+            self.assertTrue(pixel_unshuffle.extra_repr(), pixel_unshuffle_str)
+
     def test_dygraph1(self):
         '''test_dygraph1'''
 
