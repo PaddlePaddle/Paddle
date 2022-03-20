@@ -88,6 +88,7 @@ class PixelShuffle(Layer):
             main_str += ', name={}'.format(self._name)
         return main_str
 
+
 class PixelUnshuffle(Layer):
     """
     

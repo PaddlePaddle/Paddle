@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 
 paddle.enable_static()
 
+
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
     '''Numpy implementation of pixel unshuffle'''
 
@@ -75,7 +76,7 @@ class TestPixelUnshuffleOp(OpTest):
         self.inputs = {"X": x}
         self.outputs = {"Out": npresult}
         self.attrs = {
-            "downscale_factor": down_factor, 
+            "downscale_factor": down_factor,
             "data_format": self.format
         }
 
@@ -210,8 +211,7 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             self.assertTrue(np.allclose(result_functional.numpy(), npresult))
 
             pixel_unshuffle_str = 'downscale_factor={}, data_format={}'.format(
-                pixel_unshuffle._downscale_factor,
-                pixel_unshuffle._data_format)
+                pixel_unshuffle._downscale_factor, pixel_unshuffle._data_format)
             self.assertTrue(pixel_unshuffle.extra_repr(), pixel_unshuffle_str)
 
     def test_dygraph1(self):

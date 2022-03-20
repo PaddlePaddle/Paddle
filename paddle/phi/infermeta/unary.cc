@@ -890,7 +890,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
 
   if (!channel_last) {
     PADDLE_ENFORCE_EQ(
-        (input_dims[2] % downscale_factor) == 0 && 
+        (input_dims[2] % downscale_factor) == 0 &&
             (input_dims[3] % downscale_factor) == 0,
         true,
         phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
@@ -900,7 +900,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
                                      input_dims[3]));
   } else {
     PADDLE_ENFORCE_EQ(
-        (input_dims[1] % downscale_factor) == 0 && 
+        (input_dims[1] % downscale_factor) == 0 &&
             (input_dims[2] % downscale_factor) == 0,
         true,
         phi::errors::InvalidArgument("Downscale factor[%u] should divide both "

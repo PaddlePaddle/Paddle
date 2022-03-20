@@ -345,6 +345,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
                "data_format": data_format})
     return out
 
+
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel unshuffle operation.
