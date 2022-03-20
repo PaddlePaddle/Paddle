@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
