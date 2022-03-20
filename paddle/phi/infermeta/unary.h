@@ -153,9 +153,9 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            MetaTensor* out);
 
 void PixelUnshuffleInferMeta(const MetaTensor& x,
-                           int downscale_factor,
-                           const std::string& data_format,
-                           MetaTensor* out);
+                             int downscale_factor,
+                             const std::string& data_format,
+                             MetaTensor* out);
 
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,

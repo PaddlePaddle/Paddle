@@ -34,8 +34,8 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
         # transpose to (num,output_channel,downscale_factor,downscale_factor, h, w)
         npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
         oshape = [
-            n, c * (down_factor * down_factor), h // down_factor, w //
-            down_factor
+            n, c * (down_factor * down_factor), h // down_factor,
+            w // down_factor
         ]
         npresult = np.reshape(npresult, oshape)
         return npresult
@@ -48,8 +48,8 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
         # transpose to (num,h, w, output_channel,downscale_factor,downscale_factor)
         npresult = npresult.transpose(0, 1, 3, 5, 2, 4)
         oshape = [
-            n, h // down_factor, w // down_factor, c * (down_factor *
-                                                        down_factor)
+            n, h // down_factor, w // down_factor,
+            c * (down_factor * down_factor)
         ]
         npresult = np.reshape(npresult, oshape)
         return npresult

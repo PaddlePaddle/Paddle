@@ -21,9 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void PixelUnshuffleKernel(const Context& ctx,
-                        const DenseTensor& x,
-                        int downscale_factor,
-                        const std::string& data_format,
-                        DenseTensor* out);
+                          const DenseTensor& x,
+                          int downscale_factor,
+                          const std::string& data_format,
+                          DenseTensor* out);
 
 }  // namespace phi
