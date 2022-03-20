@@ -105,7 +105,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
 
         # check loss
         for i in range(iters):
-            self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
+            self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-4)
 
     def test_fuse_bn_act_pass_cpu(self):
         place = fluid.CPUPlace()
