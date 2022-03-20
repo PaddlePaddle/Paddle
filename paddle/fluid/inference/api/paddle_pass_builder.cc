@@ -356,6 +356,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
   if (!use_mkldnn_int8_) {
     passes_.clear();
     passes_.push_back("quant_dequant_mkldnn_pass");
+    passes_.push_back("quant_dequant_mkldnn_v2_fuse_pass");
+    passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");
@@ -377,7 +379,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("matmul_scale_fuse_pass");
     passes_.push_back("gpu_cpu_map_matmul_to_mul_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
-    passes_.push_back("mkldnn_placement_pass");
+//    passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("depthwise_conv_mkldnn_pass");
     passes_.push_back("conv_bn_fuse_pass");
     passes_.push_back("conv_eltwiseadd_bn_fuse_pass");

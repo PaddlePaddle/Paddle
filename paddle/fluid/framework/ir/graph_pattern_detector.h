@@ -1776,6 +1776,47 @@ struct ReshapeTransposeMatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
+// quant_linear, dequant_linear
+// named nodes:
+// quant_linear_in -> quant_linear_op -> quant_linear_out ->
+// dequant_linear -> dequant_linear_out -> conv
+// to dequant_linear_out -> conv
+struct QuantizeDequantizeLinearPattern : public PatternBase {
+  QuantizeDequantizeLinearPattern(PDPattern* pattern,
+                                  const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quantize_dequantize_linear") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(quantize_linear_in_x);
+  PATTERN_DECL_NODE(quantize_linear_in_scale);
+  PATTERN_DECL_NODE(quantize_linear_in_zeropoint);
+  PATTERN_DECL_NODE(quantize_linear_op);
+  PATTERN_DECL_NODE(quantize_linear_out);
+  PATTERN_DECL_NODE(dequantize_linear_op);
+  PATTERN_DECL_NODE(dequantize_linear_out);
+  // output need to be set to all followed ops
+};
+
+// dequantize_linear_in (X, Scale, ZeroPoint) ->dequantize_linear_op -> dequantize_linear_Y
+// to dequantize_linear_Y
+struct DequantizeLinearPattern : public PatternBase {
+  DequantizeLinearPattern(PDPattern* pattern,
+                                  const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequantize_linear") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(dequantize_linear_in_x);
+  PATTERN_DECL_NODE(dequantize_linear_in_scale);
+  PATTERN_DECL_NODE(dequantize_linear_in_zeropoint);
+  PATTERN_DECL_NODE(dequantize_linear_op);
+  PATTERN_DECL_NODE(dequantize_linear_out);
+  PATTERN_DECL_NODE(next_op);
+  // output need to be set to all followed ops
+};
+
 // Matmul + Transpose + Reshape
 struct MatmulTransposeReshapePattern : public PatternBase {
   MatmulTransposeReshapePattern(PDPattern* pattern,

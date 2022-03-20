@@ -29,7 +29,7 @@ class QuantDequantMkldnnPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
- private:
+//  private:
   void MarkSkipQuantizedOps(
       ir::Graph* graph, const std::unordered_set<std::string>& skip_ops) const;
 
@@ -66,21 +66,21 @@ class QuantDequantMkldnnPass : public FusePassBase {
       const std::unordered_set<std::string>& fake_quantize_dequantize_types)
       const;
 
-  bool IsInt8Weight(Node* op_node, Scope* scope,
-                    const std::string& weight_name) const;
+//   bool IsInt8Weight(Node* op_node, Scope* scope,
+//                     const std::string& weight_name) const;
 
-  void TransposeWeight(Tensor* input) const;
+//   void TransposeWeight(Tensor* input) const;
 
-  void DequantizeOpWeights(
-      Node* op_node, Scope* scope, const std::string& weight_name,
-      const std::string& output_name,
-      const std::unordered_map<std::string, std::vector<float>>&
-          weight_thresholds) const;
+//   void DequantizeOpWeights(
+//       Node* op_node, Scope* scope, const std::string& weight_name,
+//       const std::string& output_name,
+//       const std::unordered_map<std::string, std::vector<float>>&
+//           weight_thresholds) const;
 
-  void DequantizeWeights(
-      ir::Graph* graph, Scope* scope,
-      const std::unordered_map<std::string, std::vector<float>>&
-          weight_thresholds) const;
+//   void DequantizeWeights(
+//       ir::Graph* graph, Scope* scope,
+//       const std::unordered_map<std::string, std::vector<float>>&
+//           weight_thresholds) const;
 
   void UpdateActivations(ir::Graph* graph) const;
 

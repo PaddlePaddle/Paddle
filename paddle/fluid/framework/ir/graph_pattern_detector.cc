@@ -792,12 +792,13 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   // Conv Filter
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
-                              ->assert_is_persistable_var()
+                              // ->assert_is_persistable_var()
                               ->assert_is_op_input(conv_type, "Filter");
 
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op(conv_type);
+                           ->assert_is_op_output(conv_type,"Output");
+                          //  ->assert_is_only_output_of_op(conv_type);
 
   PDNode *eltwise_y_in_var = nullptr;
   PDNode *eltwise_out_var = nullptr;
@@ -807,7 +808,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
     // Bias
     eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
                            ->assert_is_op_input("elementwise_add", "Y")
-                           ->assert_is_persistable_var()
+                          //  ->assert_is_persistable_var()
                            ->AsInput();
     eltwise_out_var = pattern->NewNode(eltwise_out_repr())
                           ->AsIntermediate()
@@ -820,27 +821,27 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   // BN Scale
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->AsInput()
-                           ->assert_is_persistable_var()
-                           ->assert_is_op_input("batch_norm", "Scale")
-                           ->assert_has_n_outputs(1);
+                          //  ->assert_is_persistable_var()
+                           ->assert_has_n_outputs(1)
+                           ->assert_is_op_input("batch_norm", "Scale");
   // BN Bias
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
                           ->AsInput()
-                          ->assert_is_persistable_var()
-                          ->assert_is_op_input("batch_norm", "Bias")
-                          ->assert_has_n_outputs(1);
+                          // ->assert_is_persistable_var()
+                          // ->assert_has_n_outputs(1)
+                          ->assert_is_op_input("batch_norm", "Bias");
   // BN Mean
   auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
                           ->AsInput()
-                          ->assert_is_persistable_var()
-                          ->assert_is_op_input("batch_norm", "Mean")
-                          ->assert_has_n_outputs(1);
+                          // ->assert_is_persistable_var()
+                          ->assert_has_n_outputs(1)
+                          ->assert_is_op_input("batch_norm", "Mean");
   // BN Variance
   auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
                               ->AsInput()
-                              ->assert_is_persistable_var()
-                              ->assert_is_op_input("batch_norm", "Variance")
-                              ->assert_has_n_outputs(1);
+                              // ->assert_is_persistable_var()
+                              ->assert_has_n_outputs(1)
+                              ->assert_is_op_input("batch_norm", "Variance");
 
   // BN output
   auto *bn_out_var = pattern->NewNode(bn_out_repr())
@@ -849,8 +850,8 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
 
   auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
                               ->AsOutput()
-                              ->assert_is_op_output("batch_norm", "MeanOut")
-                              ->assert_has_n_outputs(0);
+                              ->assert_has_n_outputs(0)
+                              ->assert_is_op_output("batch_norm", "MeanOut");
 
   auto *bn_variance_out_var =
       pattern->NewNode(bn_variance_out_repr())
@@ -860,14 +861,14 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
 
   auto *bn_saved_mean_var = pattern->NewNode(bn_saved_mean_repr())
                                 ->AsOutput()
-                                ->assert_is_op_output("batch_norm", "SavedMean")
-                                ->assert_has_n_outputs(0);
+                                ->assert_has_n_outputs(0)
+                                ->assert_is_op_output("batch_norm", "SavedMean");
 
   auto *bn_saved_variance_var =
       pattern->NewNode(bn_saved_variance_repr())
           ->AsOutput()
-          ->assert_is_op_output("batch_norm", "SavedVariance")
-          ->assert_has_n_outputs(0);
+          ->assert_has_n_outputs(0)
+          ->assert_is_op_output("batch_norm", "SavedVariance");
 
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
 
@@ -3101,6 +3102,95 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
   matmul_op->LinksFrom({transpose_out}).LinksTo({matmul_out});
   return matmul_out;
 }
+
+// prev_op -> quantize_linear_in_x -> quantize_linear_op->quantize_linear_out->
+// dequantize_linear_op -> dequantize_linear_out
+PDNode *patterns::QuantizeDequantizeLinearPattern::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto quantize_linear_op = pattern->NewNode(quantize_linear_op_repr())
+                                ->assert_is_op("quantize_linear");
+  auto dequantize_linear_op = pattern->NewNode(dequantize_linear_op_repr())
+                                  ->assert_is_op("dequantize_linear");
+
+  auto quantize_linear_in_x = pattern->NewNode(quantize_linear_in_x_repr())
+                                  ->AsInput()
+                                  ->assert_is_op_input("quantize_linear", "X");
+  auto quantize_linear_in_scale =
+      pattern->NewNode(quantize_linear_in_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("quantize_linear", "Scale");
+  auto quantize_linear_in_zeropoint =
+      pattern->NewNode(quantize_linear_in_zeropoint_repr())
+          ->AsInput()
+          ->assert_is_op_input("quantize_linear", "ZeroPoint");
+
+  auto quantize_linear_out = pattern->NewNode(quantize_linear_out_repr())
+                                 ->AsIntermediate()
+                                 ->assert_is_op_input("dequantize_linear", "X")
+                                 ->assert_is_op_output("quantize_linear", "Y");
+  auto dequantize_linear_out =
+      pattern->NewNode(dequantize_linear_out_repr())
+          ->assert_is_op_output("dequantize_linear", "Y");
+
+  // where to remove the ops
+  // matmul_op->LinksTo({matmul_out});
+  // transpose_op->LinksTo({transpose_out_xshape});
+  // reshape_op->LinksTo({reshape_out_xshape});
+  // transpose_op->LinksFrom({matmul_out}).LinksTo({transpose_out});
+  // reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
+  prev_op->LinksTo({quantize_linear_in_x});
+  quantize_linear_op
+      ->LinksFrom({quantize_linear_in_x, quantize_linear_in_scale,
+                   quantize_linear_in_zeropoint})
+      .LinksTo({quantize_linear_out});
+  dequantize_linear_op->LinksFrom({quantize_linear_out})
+      .LinksTo({dequantize_linear_out});
+
+  return dequantize_linear_out;
+}
+
+
+// dequantize_linear_in (X, Scale, ZeroPoint) ->dequantize_linear_op -> dequantize_linear_Y
+// to dequantize_linear_Y
+PDNode *patterns::DequantizeLinearPattern::operator()() {
+  
+  auto dequantize_linear_op = pattern->NewNode(dequantize_linear_op_repr())
+                                  ->assert_is_op("dequantize_linear");
+
+  auto dequantize_linear_in_x = pattern->NewNode(dequantize_linear_in_x_repr())
+                                  ->AsInput()
+                                  ->assert_is_op_input("dequantize_linear", "X");
+                                  
+  auto dequantize_linear_in_scale =
+      pattern->NewNode(dequantize_linear_in_scale_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "Scale");
+
+  auto dequantize_linear_in_zeropoint =
+      pattern->NewNode(dequantize_linear_in_zeropoint_repr())
+          ->AsInput()
+          ->assert_is_op_input("dequantize_linear", "ZeroPoint");
+
+  auto dequantize_linear_out = pattern->NewNode(dequantize_linear_out_repr())
+                                 ->assert_is_op_output("dequantize_linear", "Y");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  // where to remove the ops
+  // matmul_op->LinksTo({matmul_out});
+  // transpose_op->LinksTo({transpose_out_xshape});
+  // reshape_op->LinksTo({reshape_out_xshape});
+  // transpose_op->LinksFrom({matmul_out}).LinksTo({transpose_out});
+  // reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
+  dequantize_linear_op
+      ->LinksFrom({dequantize_linear_in_x, dequantize_linear_in_scale,
+                   dequantize_linear_in_zeropoint})
+      .LinksTo({dequantize_linear_out});
+  next_op->LinksFrom({dequantize_linear_out});
+
+  return next_op;
+}
+
 
 // shared function for matmul and matmul_v2
 PDNode *patterns::MatmulTransposeReshapePattern::operator()(
