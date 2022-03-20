@@ -766,12 +766,10 @@ def GenerateNodeCreationCodes(
 
     # SetTensorWrappers
     set_tensor_wrappers_list = []
-    fwd_api_input_num = 0
     for name, (atype, is_fwd_input, pos) in backward_fwd_input_map.items():
         is_optional = (name in optional_inputs)
 
         if is_fwd_input:
-            fwd_api_input_num += 1
             if is_optional:
                 set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
             else:

@@ -48,7 +48,6 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
             }
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
-            print(wrapped_infermeta_name)
             args = []
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
@@ -135,7 +134,6 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
 
     for api in apis:
         api_item = ForwardAPI(api)
-        #print( str(api_item) )
         declare_code, defind_code, register_code = gene_wrapped_infermeta_and_register(
             api_item)
         header_file.write(declare_code)
