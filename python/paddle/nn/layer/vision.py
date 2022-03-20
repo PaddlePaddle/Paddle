@@ -125,7 +125,6 @@ class PixelUnshuffle(Layer):
 
     """
 
-
     def __init__(self, downscale_factor, data_format="NCHW", name=None):
         super(PixelUnshuffle, self).__init__()
 

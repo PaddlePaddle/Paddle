@@ -889,25 +889,25 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
   const bool channel_last = (data_format == "NHWC");
 
   if (!channel_last) {
-    PADDLE_ENFORCE_EQ((input_dims[2] % downscale_factor) == 0 && 
-                      (input_dims[3] % downscale_factor) == 0,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Downscale factor[%u] should divide both "
-                          "height[%u] and width[%u]",
-                          downscale_factor,
-                          input_dims[2],
-                          input_dims[3]));
+    PADDLE_ENFORCE_EQ(
+        (input_dims[2] % downscale_factor) == 0 && 
+            (input_dims[3] % downscale_factor) == 0,
+        true,
+        phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
+                                     "height[%u] and width[%u]",
+                                     downscale_factor,
+                                     input_dims[2],
+                                     input_dims[3]));
   } else {
-    PADDLE_ENFORCE_EQ((input_dims[1] % downscale_factor) == 0 && 
-                      (input_dims[2] % downscale_factor) == 0,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Downscale factor[%u] should divide both "
-                          "height[%u] and width[%u]",
-                          downscale_factor,
-                          input_dims[1],
-                          input_dims[2]));
+    PADDLE_ENFORCE_EQ(
+        (input_dims[1] % downscale_factor) == 0 && 
+            (input_dims[2] % downscale_factor) == 0,
+        true,
+        phi::errors::InvalidArgument("Downscale factor[%u] should divide both "
+                                     "height[%u] and width[%u]",
+                                     downscale_factor,
+                                     input_dims[1],
+                                     input_dims[2]));
   }
   auto output_dims = input_dims;
   output_dims[0] = input_dims[0];

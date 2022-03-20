@@ -386,6 +386,8 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
         type="pixel_unshuffle",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"downscale_factor": downscale_factor,
-               "data_format": data_format})
+        attrs={
+            "downscale_factor": downscale_factor,
+            "data_format": data_format
+        })
     return out
