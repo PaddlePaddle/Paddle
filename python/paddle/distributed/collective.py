@@ -107,7 +107,11 @@ class Group():
         self.name = name
 
     def is_member(self):
-        return self.nranks > 1 and self.rank >= 0
+        if self.rank < 0:
+            return False
+        if self.nranks < 2:
+            return False
+        return True
 
     def get_group_rank(self, rank):
         if self.is_member() and rank in self.ranks:
@@ -228,113 +232,7 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
     return pg
 
 
-def init_parallel_env(rank=None,
-                      world_size=None,
-                      backend="nccl",
-                      timeout=timedelta(0),
-                      pg_options=None):
-    """
-
-    Initialize the default process group.
-    
-    Args:
-        rank (int, optional): the rank of the current process from [0, world_size).
-            If you launch your training with paddle.distributed.run or 
-            paddle.distributed.launch module, None can be given. Default: None.
-        world_size (int, optional): total number of processes or devices.
-            If you launch your training with paddle.distributed.run or 
-            paddle.distributed.launch module, None can be given. Default: None.
-        backend (str, optional): the name of the backend used to initialize
-            the distributed environment. The value can be one of 'nccl' for
-            GPU, 'gloo' for CPU or 'hccl' for NPU. Default: 'nccl'.
-        timeout (datetime.timedelta, optional): timeout used for operations of
-            the group. Default: datetime.timedelta(0).
-        pg_options (dict, optional): options for the group. Default: None.
-
-    Returns:
-        Group: a group.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            paddle.distributed.init_parallel_env(0, 1)
-            
-            # how to start
-            # python paddle.distributed.run --gpus="0,1" train.py
-
-    """
-
-    global _group_map_by_name
-    global _default_group_name
-    if _default_group_name in _group_map_by_name:
-        raise RuntimeError(
-            "The global distributed process group has been initialized.")
-
-    if backend not in _valid_backend_list:
-        raise ValueError("Backend must be one of {}, but the given one is: {}".
-                         format(_valid_backend_list, backend))
-    _default_backend = backend
-
-    if not isinstance(timeout, timedelta):
-        raise ValueError("timeout must be of the type datetime.timedelta.")
-
-    if rank is None or world_size is None:
-        assert rank is None and world_size is None, (
-            "rank and world_size should be set or unset at the same time.")
-        trainer_id = os.getenv("PADDLE_TRAINER_ID", None)
-        trainer_num = os.getenv("PADDLE_TRAINERS_NUM", None)
-        if trainer_id is None or trainer_num is None:
-            warnings.warn("If rank and world_size are not set, please start "
-                          "your training with paddle.distributed.run or "
-                          "paddle.distributed.launch module. Otherwise, "
-                          "init_parallel_env will do nothing.")
-            return None
-        rank = int(trainer_id)
-        world_size = int(trainer_num)
-
-    if rank < 0 or world_size <= rank or world_size < 2:
-        raise ValueError(
-            "rank must be non-negative and world_size must be the "
-            "maximum rank plus one. Moreover, at least two processes are "
-            "required to create a process group.")
-
-    master_addr = os.getenv("MASTER_ADDR", None)
-    master_port = os.getenv("MASTER_PORT", None)
-    if not master_addr or not master_port:
-        endpoints = os.getenv("PADDLE_MASTER", None)
-        if not endpoints:
-            raise ValueError(
-                "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
-                "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
-                "and 'export MASTER_ADDR=54612'. Or you can start your training"
-                "with paddle.distributed.run module.")
-        master_addr, master_port = endpoints.split(":")
-
-    master_port = int(master_port)
-
-    is_master = rank == 0
-    global _default_store
-    _default_store = core.TCPStore(master_addr, master_port, is_master,
-                                   world_size, timeout)
-
-    pg = _new_process_group_impl(backend, _default_store, rank, world_size,
-                                 _default_group_name, pg_options)
-    ranks = list(range(world_size))
-    group = Group(
-        rank, world_size, id=0, ranks=ranks, pg=pg, name=_default_group_name)
-
-    paddle.fluid.dygraph.parallel_helper._set_parallel_ctx(True)
-    _group_map_by_name[_default_group_name] = group
-    return group
-
-
-def new_group(ranks=None,
-              backend=None,
-              group_name=None,
-              timeout=timedelta(0),
-              pg_options=None):
+def new_group(ranks=None, backend=None):
     """
     Create a new process group.
 
@@ -343,16 +241,13 @@ def new_group(ranks=None,
             all processes is used. Default: None.
         backend (str, optional): the name of the backend used to initialize
             the distributed environment. Default: the one for init_parallel_env.
-        timeout (datetime.timedelta, optional): timeout used for operations of
-            the group. Default: datetime.timedelta(0).
-        pg_options (dict, optional): options for the group. Default: None.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-            paddle.distributed.init_parallel_env(0, 1)
+            paddle.distributed.init_parallel_env()
             paddle.distributed.new_group([0, 1])
 
             # how to start

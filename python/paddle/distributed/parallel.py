@@ -29,6 +29,12 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+from paddle.distributed.collective import _group_map_by_name
+from paddle.distributed.collective import _default_group_name
+from paddle.distributed.collective import _valid_backend_list
+from paddle.distributed.collective import _default_backend
+from paddle.distributed.collective import _default_store
+from paddle.distributed.collective import _new_process_group_impl
 
 __all__ = []
 
@@ -159,48 +165,21 @@ def init_parallel_env():
 
     if not is_cpu_only and core.is_compiled_with_cuda():
         _check_var_exists("FLAGS_selected_gpus")
+        backend = "nccl" if backend == "auto" else backend
     elif not is_cpu_only and core.is_compiled_with_xpu():
         _check_var_exists('FLAGS_selected_xpus')
+        backend = "bkcl" if backend == "auto" else backend
     elif not is_cpu_only and core.is_compiled_with_npu():
         _check_var_exists('FLAGS_selected_npus')
+        backend = "hccl" if backend == "auto" else backend
     elif not is_cpu_only and core.is_compiled_with_mlu():
+        backend = "cncl" if backend == "auto" else backend
         _check_var_exists('FLAGS_selected_mlus')
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
-
-    node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
-    # 3: init gloo context (step 1: httpsever start)
-    init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
-    if is_cpu_only or init_gloo or backend == "heter":
-        ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
-        manager = Manager()
-        # glboal dict to store status
-        http_server_d = manager.dict()
-        http_server_d["running"] = False
-        if parallel_env.rank == 0:
-            # The scope for worker used by http server is '_worker'
-            size = {'_worker': parallel_env.world_size}
-            if backend == "heter":
-                size = {'_worker': len(node_num)}
-            http_server = Process(
-                target=_start_kv_server,
-                args=(int(ep_rank_0[1]), http_server_d, size))
-            http_server.daemon = True
-            http_server_d["running"] = True
-            http_server.start()
-
-    # 4. init NCCL ParallelStrategy
-    strategy = ParallelStrategy()
-    if parallel_helper._is_parallel_ctx_initialized():
-        warnings.warn("The parallel environment has been initialized.")
-    strategy.nranks = parallel_env.world_size
-    strategy.local_rank = parallel_env.rank
-    strategy.trainer_endpoints = parallel_env.trainer_endpoints
-    strategy.current_endpoint = parallel_env.current_endpoint
-    strategy.nrings = parallel_env.nrings
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
@@ -220,60 +199,132 @@ def init_parallel_env():
         place = core.MLUPlace(parallel_env.device_id)
 
     _set_expected_place(place)
-    # init nccl or hccl or bkcl or heter context
-    if is_cpu_only:
-        parallel_helper._set_parallel_ctx(
-            core.GLOOParallelContext(strategy, place))
-    elif (backend == "heter"):
-        parallel_helper._set_parallel_ctx(
-            core.HeterParallelContext(strategy, parallel_env.device_id))
-    elif core.is_compiled_with_cuda():
-        parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
-    elif core.is_compiled_with_xpu():
-        parallel_helper._set_parallel_ctx(
-            core.BKCLParallelContext(strategy, place))
-    elif core.is_compiled_with_npu():
-        parallel_helper._set_parallel_ctx(
-            core.HCCLParallelContext(strategy, place))
-    elif core.is_compiled_with_mlu():
-        parallel_helper._set_parallel_ctx(
-            core.CNCLParallelContext(strategy, place))
 
-    if backend != "heter":
-        other_endpoints = strategy.trainer_endpoints[:]
-        other_endpoints.remove(strategy.current_endpoint)
-        if not is_cpu_only and strategy.local_rank == 0:
-            wait_server_ready(other_endpoints)
+    group = None
+    if backend in _valid_backend_list:
+        assert _default_group_name not in _group_map_by_name, (
+            "The global distributed process group has been initialized.")
+        _default_backend = backend
+        rank = int(os.getenv("PADDLE_TRAINER_ID"))
+        world_size = int(os.getenv("PADDLE_TRAINERS_NUM"))
+        assert rank >= 0 and world_size > rank and world_size > 1, (
+            "rank must be non-negative and world_size must be the "
+            "maximum rank plus one. Moreover, at least two processes are "
+            "required to create a process group.")
+        master_addr = os.getenv("MASTER_ADDR", None)
+        master_port = os.getenv("MASTER_PORT", None)
+        if not master_addr or not master_port:
+            endpoints = os.getenv("PADDLE_MASTER", None)
+        if endpoints is None:
+            endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+        assert endpoints, (
+            "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
+            "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
+            "and 'export MASTER_ADDR=54612'. Or you can start your training"
+            "with paddle.distributed.run module.")
+        master_addr, master_port = endpoints.split(":")
+        master_port = int(master_port)
+        is_master = rank == 0
+        _default_store = core.TCPStore(master_addr, master_port, is_master,
+                                       world_size, timeout)
+        pg = _new_process_group_impl(backend, _default_store, rank, world_size,
+                                     _default_group_name, pg_options)
+        ranks = list(range(world_size))
+        group = Group(
+            rank,
+            world_size,
+            id=0,
+            ranks=ranks,
+            pg=pg,
+            name=_default_group_name)
 
-    parallel_helper._init_parallel_ctx()
+    else:
+        node_num = set(
+            [i.split(":")[0] for i in parallel_env.trainer_endpoints])
+        # 3: init gloo context (step 1: httpsever start)
+        if backend == "heter":
+            ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
+            manager = Manager()
+            # glboal dict to store status
+            http_server_d = manager.dict()
+            http_server_d["running"] = False
+            if parallel_env.rank == 0:
+                # The scope for worker used by http server is '_worker'
+                size = {'_worker': parallel_env.world_size}
+                if backend == "heter":
+                    size = {'_worker': len(node_num)}
+                http_server = Process(
+                    target=_start_kv_server,
+                    args=(int(ep_rank_0[1]), http_server_d, size))
+                http_server.daemon = True
+                http_server_d["running"] = True
+                http_server.start()
 
-    # 5: init gloo context (step 2: gloo init)
-    # dividing init_gloo into two part beacause nccl and gloo
-    # are separately looking for free ports which sometimes
-    # leads to port-conflict.
-    if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:
-        # compare to init_gloo, we don't need to 
-        # init gloo, because we do this in _init_parallel_ctx;
-        http_server_d["running"] = False
-        http_server.join()
+        # 4. init NCCL ParallelStrategy
+        strategy = ParallelStrategy()
+        if parallel_helper._is_parallel_ctx_initialized():
+            warnings.warn("The parallel environment has been initialized.")
+        strategy.nranks = parallel_env.world_size
+        strategy.local_rank = parallel_env.rank
+        strategy.trainer_endpoints = parallel_env.trainer_endpoints
+        strategy.current_endpoint = parallel_env.current_endpoint
+        strategy.nrings = parallel_env.nrings
 
-    elif init_gloo:
-        wait_server_ready([parallel_env.trainer_endpoints[0]])
-        gloo_strategy = core.GlooParallelStrategy()
-        gloo_strategy.rank = parallel_env.rank
-        gloo_strategy.rank_num = parallel_env.world_size
-        gloo_strategy.ip_address = ep_rank_0[0]
-        gloo_strategy.ip_port = int(ep_rank_0[1])
-        default_init_timeout_seconds = 3600
-        default_run_timeout_seconds = 9999999
-        gloo_strategy.init_seconds = default_init_timeout_seconds
-        gloo_strategy.run_seconds = default_run_timeout_seconds
-        gloo = core.GlooParallelContext(gloo_strategy)
-        gloo.init()
-        if parallel_env.rank == 0:
+        # init nccl or hccl or bkcl or heter context
+        if is_cpu_only:
+            parallel_helper._set_parallel_ctx(
+                core.GLOOParallelContext(strategy, place))
+        elif (backend == "heter"):
+            parallel_helper._set_parallel_ctx(
+                core.HeterParallelContext(strategy, parallel_env.device_id))
+        elif core.is_compiled_with_cuda():
+            parallel_helper._set_parallel_ctx(
+                core.NCCLParallelContext(strategy, place))
+        elif core.is_compiled_with_xpu():
+            parallel_helper._set_parallel_ctx(
+                core.BKCLParallelContext(strategy, place))
+        elif core.is_compiled_with_npu():
+            parallel_helper._set_parallel_ctx(
+                core.HCCLParallelContext(strategy, place))
+        elif core.is_compiled_with_mlu():
+            parallel_helper._set_parallel_ctx(
+                core.CNCLParallelContext(strategy, place))
+
+        if backend != "heter":
+            other_endpoints = strategy.trainer_endpoints[:]
+            other_endpoints.remove(strategy.current_endpoint)
+            if not is_cpu_only and strategy.local_rank == 0:
+                wait_server_ready(other_endpoints)
+
+        parallel_helper._init_parallel_ctx()
+
+        # 5: init gloo context (step 2: gloo init)
+        # dividing init_gloo into two part beacause nccl and gloo
+        # are separately looking for free ports which sometimes
+        # leads to port-conflict.
+        if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:
+            # compare to init_gloo, we don't need to 
+            # init gloo, because we do this in _init_parallel_ctx;
             http_server_d["running"] = False
             http_server.join()
+
+        elif init_gloo:
+            wait_server_ready([parallel_env.trainer_endpoints[0]])
+            gloo_strategy = core.GlooParallelStrategy()
+            gloo_strategy.rank = parallel_env.rank
+            gloo_strategy.rank_num = parallel_env.world_size
+            gloo_strategy.ip_address = ep_rank_0[0]
+            gloo_strategy.ip_port = int(ep_rank_0[1])
+            default_init_timeout_seconds = 3600
+            default_run_timeout_seconds = 9999999
+            gloo_strategy.init_seconds = default_init_timeout_seconds
+            gloo_strategy.run_seconds = default_run_timeout_seconds
+            gloo = core.GlooParallelContext(gloo_strategy)
+            gloo.init()
+            if parallel_env.rank == 0:
+                http_server_d["running"] = False
+                http_server.join()
+    return group
 
 
 def get_rank():
