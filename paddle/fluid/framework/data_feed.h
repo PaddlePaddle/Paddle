@@ -194,6 +194,9 @@ struct Record {
   std::vector<FeatureItem> float_feasigns_;
   std::vector<int> uint64_offset_;
   std::vector<int> float_offset_;
+  std::vector<uint64_t> uint64_feasign_values_;
+  std::vector<float> float_feasign_values_;
+
   std::string ins_id_;
   std::string content_;
   uint64_t search_id;
