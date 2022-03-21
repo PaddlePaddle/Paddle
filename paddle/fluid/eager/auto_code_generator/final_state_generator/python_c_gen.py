@@ -31,7 +31,6 @@ atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
     "int": "CastPyArg2Int",
     "long": "CastPyArg2Long",
-    "std::string": "CastPyArg2String",
     "int64_t": "CastPyArg2Long",
     "float": "CastPyArg2Float",
     "std::string": "CastPyArg2String",
