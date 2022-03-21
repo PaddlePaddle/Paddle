@@ -37,8 +37,8 @@ class RunCustomOpNode : public GradNodeBase {
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
-      override;
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      bool create_graph) override;
 
   std::string name() {
     return paddle::string::Sprintf("RunCustomOpNode: %s_grad", op_type_);
@@ -60,6 +60,12 @@ class RunCustomOpNode : public GradNodeBase {
       res.emplace_back(fwd_var->at(i).recover(nullptr));
     }
     return res;
+  }
+
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  bool IsTensorWrappersCleared() override {
+    VLOG(6) << "Do nothing here now";
+    return false;
   }
 
   void SetAttrs(const std::vector<paddle::any>& attr) { attrs_ = attr; }
