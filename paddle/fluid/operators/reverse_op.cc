@@ -16,6 +16,10 @@
 #include <memory>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -134,10 +138,12 @@ class ReverseGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(reverse, ReverseInferShapeFunctor,
+                            PD_INFER_META(phi::ReverseInferMeta));
 REGISTER_OPERATOR(reverse, ops::ReverseOp, ops::ReverseOpMaker,
                   ops::ReverseGradMaker<paddle::framework::OpDesc>,
                   ops::ReverseGradMaker<paddle::imperative::OpBase>,
-                  ops::ReverseOpVarTypeInference);
+                  ops::ReverseOpVarTypeInference, ReverseInferShapeFunctor);
 REGISTER_OPERATOR(reverse_grad, ops::ReverseOp, ops::ReverseOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     reverse, ops::ReverseKernel<paddle::platform::CPUDeviceContext, int>,
