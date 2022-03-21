@@ -30,7 +30,10 @@ const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   if (it == context_map_.end()) {
     // only when we need the specific DeviceContext, get and cache it
     auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-    context_map_[place] = dev_ctx;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      context_map_[place] = dev_ctx;
+    }
     return dev_ctx;
   }
   return it->second;
