@@ -31,9 +31,9 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self.env[str("DNNL_VERBOSE")] = str("1")
         self.env[str("FLAGS_use_mkldnn")] = str("1")
 
-        self.relu_regex = b"^dnnl_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x20"
-        self.ew_add_regex = b"^dnnl_verbose,exec,cpu,binary.+alg:binary_add,10x20x30:10x20x30"
-        self.matmul_regex = b"^dnnl_verbose,exec,cpu,matmul,.*10x20x30:10x30x20:10x20x20"
+        self.relu_regex = b"^onednn_verbose,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x20"
+        self.ew_add_regex = b"^onednn_verbose,exec,cpu,binary.+alg:binary_add,10x20x30:10x20x30"
+        self.matmul_regex = b"^onednn_verbose,exec,cpu,matmul,.*10x20x30:10x30x20:10x20x20"
 
     def flags_use_mkl_dnn_common(self, e):
         cmd = self._python_interp
