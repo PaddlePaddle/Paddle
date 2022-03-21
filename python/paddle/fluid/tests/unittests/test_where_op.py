@@ -29,6 +29,7 @@ from paddle.fluid.framework import _test_eager_guard
 class TestWhereOp(OpTest):
     def setUp(self):
         self.op_type = 'where'
+        self.python_api = paddle.where
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
@@ -391,5 +392,6 @@ class TestWhereOpError(unittest.TestCase):
             self.test_value_error()
 
 
-if (__name__ == '__main__'):
+if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

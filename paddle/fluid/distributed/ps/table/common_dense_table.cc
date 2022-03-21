@@ -128,6 +128,21 @@ int32_t CommonDenseTable::set_global_lr(float* lr) {
   return 0;
 }
 
+int32_t CommonDenseTable::Pull(TableContext& context) {
+  CHECK(context.value_type == Dense);
+  float* pull_values = context.pull_context.values;
+  return pull_dense(pull_values, context.num);
+}
+
+int32_t CommonDenseTable::Push(TableContext& context) {
+  CHECK(context.value_type == Dense);
+  if (context.pull_context.values != nullptr) {
+    const float* values = context.push_context.values;
+    return push_dense(values, context.num);
+  }
+  return 0;
+}
+
 int32_t CommonDenseTable::pull_dense(float* pull_values, size_t num) {
   std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
             pull_values);
