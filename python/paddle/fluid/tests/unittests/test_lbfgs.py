@@ -18,34 +18,40 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-import paddle.fluid as fluid
 
 from paddle.optimizer.functional.lbfgs import minimize_lbfgs
 
 np.random.seed(123)
 
 
-def test_static_graph(func,
-                      x0,
-                      H0=None,
-                      line_search_fn='strong_wolfe',
-                      dtype='float32'):
+def test_static_graph(func, x0, line_search_fn='strong_wolfe', dtype='float32'):
     dimension = x0.shape[0]
     paddle.enable_static()
-    main = fluid.Program()
-    startup = fluid.Program()
-    with fluid.program_guard(main, startup):
+    main = paddle.static.Program()
+    startup = paddle.static.Program()
+    with paddle.static.program_guard(main, startup):
         X = paddle.static.data(name='x', shape=[dimension], dtype=dtype)
-        Y = minimize_lbfgs(
-            func,
-            X,
-            initial_inverse_hessian_estimate=H0,
-            line_search_fn=line_search_fn,
-            dtype=dtype)
+        Y = minimize_lbfgs(func, X, line_search_fn=line_search_fn, dtype=dtype)
 
-    exe = fluid.Executor()
+    exe = paddle.static.Executor()
     exe.run(startup)
     return exe.run(main, feed={'x': x0}, fetch_list=[Y])
+
+
+def test_static_graph_H0(func, x0, H0, dtype='float32'):
+    paddle.enable_static()
+    main = paddle.static.Program()
+    startup = paddle.static.Program()
+    with paddle.static.program_guard(main, startup):
+        X = paddle.static.data(name='x', shape=[x0.shape[0]], dtype=dtype)
+        H = paddle.static.data(
+            name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype)
+        Y = minimize_lbfgs(
+            func, X, initial_inverse_hessian_estimate=H, dtype=dtype)
+
+    exe = paddle.static.Executor()
+    exe.run(startup)
+    return exe.run(main, feed={'x': x0, 'h': H0}, fetch_list=[Y])
 
 
 def test_dynamic_graph(func,
@@ -54,6 +60,9 @@ def test_dynamic_graph(func,
                        line_search_fn='strong_wolfe',
                        dtype='float32'):
     paddle.disable_static()
+    x0 = paddle.to_tensor(x0)
+    if H0 is not None:
+        H0 = paddle.to_tensor(H0)
     return minimize_lbfgs(
         func,
         x0,
@@ -77,11 +86,9 @@ class TestLbfgs(unittest.TestCase):
             x0 = np.random.random(size=[dimension]).astype('float32')
             results = test_static_graph(func, x0)
             self.assertTrue(np.allclose(minimum, results[2]))
-            self.assertTrue(results[0][0])
 
             results = test_dynamic_graph(func, x0)
             self.assertTrue(np.allclose(minimum, results[2].numpy()))
-            self.assertTrue(results[0])
 
     def test_inf_minima(self):
         extream_point = np.array([-1, 2]).astype('float32')
@@ -143,38 +150,36 @@ class TestLbfgs(unittest.TestCase):
         results = test_dynamic_graph(func, x0)
         self.assertTrue(np.allclose(minimum, results[2]))
 
-    def test_initial_inverse_hessian_estimate(self):
+    def test_exception(self):
         def func(x):
             return paddle.dot(x, x)
 
         x0 = np.random.random(size=[2]).astype('float32')
-        H0 = np.array([[1.0, 0.0], [0.0, 1.0]]).astype('float32')
-        H1 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float64')
-        H2 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
+        H0 = np.array([[2.0, 0.0], [0.0, 0.9]]).astype('float32')
 
-        results = test_static_graph(func, x0, H0)
+        # test dtype is not float32 or float64
+        x1 = np.random.random(size=[2]).astype('int32')
+        self.assertRaises(
+            ValueError, test_static_graph, func, x1, dtype='int32')
+
+        # test initial_inverse_hessian_estimate is good
+        results = test_static_graph_H0(func, x0, H0, dtype='float32')
         self.assertTrue(np.allclose([0., 0.], results[2]))
         self.assertTrue(results[0][0])
 
+        # test initial_inverse_hessian_estimate is bad and float64
+        x2 = np.random.random(size=[2]).astype('float64')
+        H1 = np.array([[1.0, 2.0], [3.0, 1.0]]).astype('float64')
+        H2 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
+
         self.assertRaises(
-            ValueError, test_dynamic_graph, func, x0, H0=H1, dtype='float64')
+            ValueError, test_static_graph_H0, func, x2, H0=H1, dtype='float64')
         self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H2)
 
-    def test_static_line_search_fn(self):
-        def func(x):
-            return paddle.dot(x, x)
-
-        x0 = np.random.random(size=[2]).astype('float32')
-
+        # test line_search_fn is bad
         self.assertRaises(
             NotImplementedError,
             test_static_graph,
-            func,
-            x0,
-            line_search_fn='other')
-        self.assertRaises(
-            NotImplementedError,
-            test_dynamic_graph,
             func,
             x0,
             line_search_fn='other')

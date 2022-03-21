@@ -15,21 +15,16 @@
 import numpy as np
 
 from .line_search import strong_wolfe
-from .utils import _value_and_gradient
+from .utils import _value_and_gradient, check_input_type, check_H0
 
 import paddle
 from paddle.fluid.framework import in_dygraph_mode
 
 
-def create_tmp_var(program, name, dtype, shape):
-    return program.current_block().create_var(
-        name=name, dtype=dtype, shape=shape)
-
-
 def minimize_bfgs(objective_func,
                   initial_position,
                   max_iters=50,
-                  tolerance_grad=1e-8,
+                  tolerance_grad=1e-7,
                   tolerance_change=1e-9,
                   initial_inverse_hessian_estimate=None,
                   line_search_fn='strong_wolfe',
@@ -101,60 +96,25 @@ def minimize_bfgs(objective_func,
             # the minimum of func is:  Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                     [0.42310646, 0.98076421])
     """
+
+    if dtype not in ['float32', 'float64']:
+        raise ValueError(
+            "The dtype must be 'float32' or 'float64', but the specified is {}.".
+            format(dtype))
+
+    op_name = 'minimize_bfgs'
+    check_input_type(initial_position, 'initial_position', dtype, op_name)
+
     I = paddle.eye(initial_position.shape[0], dtype=dtype)
     if initial_inverse_hessian_estimate is None:
-        H0 = I
+        initial_inverse_hessian_estimate = I
     else:
-        if isinstance(initial_inverse_hessian_estimate,
-                      np.ndarray) and in_dygraph_mode():
-            # paddle.assign will convert numpy array float64 to float32, so when input is numpy, use another way
-            # and set_value needs value to be `numpy.ndarray` or `LoDTensor`, so need to keep both ways.
-            H0 = paddle.empty(
-                initial_inverse_hessian_estimate.shape, dtype=dtype)
-            H0.set_value(value=initial_inverse_hessian_estimate)
-        else:
-            H0 = paddle.assign(initial_inverse_hessian_estimate)
+        check_input_type(initial_inverse_hessian_estimate,
+                         'initial_inverse_hessian_estimate', dtype, op_name)
+        check_H0(initial_inverse_hessian_estimate)
 
-        is_symmetric = paddle.all(paddle.equal(H0, H0.t()))
-        # In static mode, raise is not supported, but cholesky will throw preconditionNotMet if 
-        # H0 is not symmetric or positive definite.
-        if in_dygraph_mode():
-            if not is_symmetric:
-                raise ValueError(
-                    "The initial_inverse_hessian_estimate should be symmetric, but the specified is not.\n{}".
-                    format(H0))
-            try:
-                paddle.linalg.cholesky(H0)
-            except RuntimeError as error:
-                raise ValueError(
-                    "The initial_inverse_hessian_estimate should be positive definite, but the specified is not.\n{}".
-                    format(H0))
-        else:
-
-            def raise_func():
-                raise ValueError(
-                    "The initial_inverse_hessian_estimate should be symmetric, but the specified is not.\n{}".
-                    format(H0))
-
-            out_var = create_tmp_var(
-                paddle.static.default_main_program(),
-                name='output',
-                dtype='float32',
-                shape=[-1])
-
-            def false_fn():
-                paddle.static.nn.py_func(
-                    func=raise_func, x=is_symmetric, out=out_var)
-
-            paddle.static.nn.cond(is_symmetric, None, false_fn)
-            paddle.linalg.cholesky(H0)
-
-    Hk = paddle.assign(H0)
-    if isinstance(initial_position, np.ndarray) and in_dygraph_mode():
-        xk = paddle.empty(initial_position.shape, dtype=dtype)
-        xk.set_value(value=initial_position)
-    else:
-        xk = paddle.assign(initial_position)
+    Hk = paddle.assign(initial_inverse_hessian_estimate)
+    xk = initial_position
 
     value, g1 = _value_and_gradient(objective_func, xk)
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
