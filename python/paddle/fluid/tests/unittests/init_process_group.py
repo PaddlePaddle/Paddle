@@ -15,18 +15,34 @@
 from __future__ import print_function
 
 import unittest
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+import random
+import numpy as np
+import os
+import shutil
+
+import paddle
+from paddle.fluid import core
+import datetime
+from datetime import timedelta
+import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
-class TestProcessGroup(TestMultipleGpus):
-    def test_process_group_nccl(self):
-        self.run_mnist_2gpu('process_group_nccl.py')
+class TestProcessGroupFp32(unittest.TestCase):
+    def setUp(self):
+        self.config()
 
-    def test_process_group_gloo(self):
-        self.run_mnist_2gpu('process_group_gloo.py')
+    def config(self):
+        pass
 
     def test_init_process_group(self):
-        self.run_mnist_2gpu('init_process_group.py')
+        paddle.distributed.collective._init_parallel_env()
+        paddle.distributed.collective._new_group()
+        with self.assertRaises(ValueError):
+            paddle.distributed.collective._new_group(
+                backend="gloo", group_name="_default_pg")
+        print("test ok\n")
 
 
 if __name__ == "__main__":
