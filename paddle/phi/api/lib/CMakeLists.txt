@@ -37,8 +37,24 @@ set(sparse_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_
 set(sparse_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml)
 set(sparse_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/sparse_api.h)
 set(sparse_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_api.cc)
-set(sparse_api_header_file_tmp ${api_header_file}.tmp)
-set(sparse_api_source_file_tmp ${api_source_file}.tmp)
+set(sparse_api_header_file_tmp ${sparse_api_header_file}.tmp)
+set(sparse_api_source_file_tmp ${sparse_api_source_file}.tmp)
+
+# sparse bw api file
+set(sparse_bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api_gen.py)
+set(sparse_bw_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml)
+set(sparse_bw_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
+set(sparse_bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_bw_api.cc)
+set(sparse_bw_api_header_file_tmp ${sparse_bw_api_header_file}.tmp)
+set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
+
+# sparse bw api file
+set(sparse_bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api_gen.py)
+set(sparse_bw_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml)
+set(sparse_bw_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
+set(sparse_bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_bw_api.cc)
+set(sparse_bw_api_header_file_tmp ${sparse_bw_api_header_file}.tmp)
+set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 
 # wrapped infermeta file
 set(wrapped_infermeta_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
@@ -91,7 +107,20 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${sparse_api_header_file_tmp} ${sparse_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${sparse_api_source_file_tmp} ${sparse_api_source_file}
   COMMENT "copy_if_different ${sparse_api_header_file} ${sparse_sparse_api_source_file}"
-  DEPENDS ${sparse_api_yaml_file} ${sparse_api_gen_file} ${api_gen_base}
+  DEPENDS ${sparse_api_yaml_file} ${sparse_api_gen_file} ${api_gen_base} ${api_gen_file}
+  VERBATIM)
+
+# generate backward sparse api
+add_custom_command(
+  OUTPUT ${sparse_bw_api_header_file} ${sparse_bw_api_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} ${sparse_bw_api_gen_file}
+                 --api_yaml_path ${sparse_bw_api_yaml_file}
+                 --api_header_path ${sparse_bw_api_header_file_tmp}
+                 --api_source_path ${sparse_bw_api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${sparse_bw_api_header_file_tmp} ${sparse_bw_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${sparse_bw_api_source_file_tmp} ${sparse_bw_api_source_file}
+  COMMENT "copy_if_different ${sparse_bw_api_header_file} ${sparse_bw_sparse_api_source_file}"
+  DEPENDS ${sparse_bw_api_yaml_file} ${sparse_bw_api_gen_file} ${api_gen_base} ${api_gen_file} ${sparse_api_gen_file} ${bw_api_gen_file}
   VERBATIM)
 
 # generate wrapped infermeta
@@ -113,9 +142,10 @@ cc_library(phi_data_transform SRCS data_transform.cc DEPS phi_tensor_raw transfe
 cc_library(api_custom_impl SRCS api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
 cc_library(sparse_api_custom_impl SRCS sparse_api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
 
-cc_library(sparse_api SRCS sparse_api.cc DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api_custom_impl)
 cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform api_custom_impl)
 cc_library(phi_dygraph_api SRCS ${dygraph_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
 cc_library(phi_bw_function_api SRCS ${bw_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta phi_data_transform phi_function_api api_custom_impl)
+cc_library(sparse_api SRCS ${sparse_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api_custom_impl)
+cc_library(sparse_bw_api SRCS ${sparse_bw_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api sparse_api_custom_impl)
 
-cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api)
+cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api api_gen_utils kernel_dispatch infermeta)

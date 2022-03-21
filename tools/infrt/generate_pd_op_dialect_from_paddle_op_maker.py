@@ -16,8 +16,6 @@ import paddle.fluid.framework as framework
 from paddle.fluid import core
 from paddle import compat as cpt
 
-ops_having_canonicalization = {"elementwise_add", }
-
 
 # collect original ops: op which has both inference and grid defination
 def get_original_ops():
@@ -186,7 +184,7 @@ def generate_all_ops_inputs_outputs_map(op_descs):
     cpp_style_ops_outputs_map_str = start_ + ops_outputs_str + "\n};"
 
     # 3. Write to header file
-    dst_head_file = "../../paddle/infrt/dialect/pd_ops_info.h"
+    dst_head_file = "../../paddle/infrt/dialect/pd/common/pd_ops_info.h"
     with open(dst_head_file, 'w') as ops_inputs_outputs_head_file:
         ops_inputs_outputs_head_file.write(cpp_style_ops_inputs_map_str)
         ops_inputs_outputs_head_file.write("\n\n")
@@ -195,7 +193,7 @@ def generate_all_ops_inputs_outputs_map(op_descs):
 
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
-    dst_dialect_file = "../../paddle/infrt/dialect/pd_ops.td"
+    dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
     custom_dialect_file = "custom_pdop.td"
 
     # 1. Head files
@@ -214,7 +212,7 @@ def convert_op_proto_into_mlir(op_descs):
         "include \"mlir/Interfaces/InferTypeOpInterface.td\"",
         "include \"mlir/Interfaces/LoopLikeInterface.td\"",
         "include \"mlir/IR/OpBase.td\"",
-        "include \"paddle/infrt/dialect/pd_op_base.td\"",
+        "include \"paddle/infrt/dialect/pd/ir/pd_op_base.td\"",
         "",
     ]
 
@@ -245,7 +243,6 @@ def convert_op_proto_into_mlir(op_descs):
             op_type=op_type,
             left_brace="{")
         SUMMARY = '  let summary = "{} op";\n'.format(op_type)
-        CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
 
         # 2.2 Description
         contents = ""
@@ -348,7 +345,6 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(DESCRIPTION)
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
-            ops_mlir_file.write(CANONICALIZATION)
             ops_mlir_file.write("}\n")
 
     print("Skipped ops num: " + str(len(skipped_op_list)))

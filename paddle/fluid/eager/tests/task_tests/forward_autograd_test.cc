@@ -27,6 +27,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 TEST(Forward, SingleNode) {
@@ -133,11 +137,12 @@ TEST(Forward, LinearNodes) {
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges: Node 1 -> Node 0
-    const auto& node1_edge = grad_node1->OutputMeta()[0][0].GetEdge();
+    const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
+    const auto& node1_edge = node1_edges[0];
 
-    CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().second), 0);
-    CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
+    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().first), 0);
+    CHECK_EQ(static_cast<int>(node1_edge[0].GetEdgeRankInfo().second), 0);
+    CHECK_EQ(node1_edge[0].GetGradNode(), grad_node0);
   }
 }
 
@@ -227,14 +232,16 @@ TEST(Forward, BranchedNodes) {
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges
     // Node 1 -> Node 0
-    const auto& node1_edge = grad_node1->OutputMeta()[0][0].GetEdge();
+    const std::vector<std::vector<Edge>>& node1_edges = grad_node1->GetEdges();
+    const Edge& node1_edge = node1_edges[0][0];
 
     CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().first), 0);
     CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().second), 0);
     CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
 
     // Node 2 -> Node 0
-    const auto& node2_edge = grad_node2->OutputMeta()[0][0].GetEdge();
+    const std::vector<std::vector<Edge>>& node2_edges = grad_node2->GetEdges();
+    const Edge& node2_edge = node2_edges[0][0];
 
     CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().first), 0);
     CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().second), 0);

@@ -22,7 +22,9 @@
 
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/function.h"
+#include "paddle/infrt/host_context/symbol_table.h"
 #include "paddle/infrt/support/variant.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
 #include "paddle/infrt/tensor/dense_tensor_view.h"
@@ -40,7 +42,15 @@
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
-#endif
+
+#ifdef INFRT_WITH_GPU
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif  // INFRT_WITH_GPU
+#ifdef INFRT_WITH_TRT
+#include "paddle/infrt/backends/tensorrt/trt_engine.h"
+#include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
+#endif  // INFRT_WITH_TRT
+#endif  // INFRT_WITH_PHI
 
 namespace infrt {
 namespace host_context {
@@ -64,13 +74,20 @@ using ValueVariantType =
             tensor::DenseHostTensor,
             MlirFunctionExecutable*,
             tensor::TensorMap,
+            ::infrt::PrecisionType,
+            ::infrt::LayoutType,
+            ::infrt::TargetType,
 #ifdef INFRT_WITH_PHI
             ::phi::MetaTensor,
             ::phi::DenseTensor,
-            backends::CpuPhiAllocator,
             backends::CpuPhiContext,
+#ifdef INFRT_WITH_GPU
+            backends::GpuPhiContext,
+            ::phi::GPUContext,
+#endif
             ::phi::CPUContext,
             std::vector<const phi::DenseTensor*>,
+            std::vector<phi::DenseTensor*>,
             paddle::experimental::ScalarBase<phi::DenseTensor>,
             paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
             std::vector<phi::MetaTensor*>,
@@ -78,6 +95,10 @@ using ValueVariantType =
             paddle::experimental::Backend,
             paddle::experimental::DataLayout,
             paddle::experimental::DataType,
+#ifdef INFRT_WITH_TRT
+            ::infrt::backends::tensorrt::TrtEngine,
+            ::infrt::kernel::tensorrt::MlirOperationWithInfrtSymbol,
+#endif  // INFRT_WITH_TRT
 #endif
             std::vector<int16_t>,
             std::vector<int32_t>,
@@ -101,6 +122,9 @@ class Value : public common::Object {
   explicit Value(float x) : data(x) {}
   explicit Value(double x) : data(x) {}
   explicit Value(bool x) : data(x) {}
+  explicit Value(::infrt::TargetType x) : data(x) {}
+  explicit Value(::infrt::LayoutType x) : data(x) {}
+  explicit Value(::infrt::PrecisionType x) : data(x) {}
   explicit Value(std::string x) : data(x) {}
   explicit Value(tensor::TensorMap&& x) : data(x) {}
   explicit Value(std::vector<int16_t>&& x) : data(x) {}
@@ -112,11 +136,20 @@ class Value : public common::Object {
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
 #ifdef INFRT_WITH_PHI
-  explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
   explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
+#ifdef INFRT_WITH_GPU
+  explicit Value(::phi::GPUContext&& x) : data(std::move(x)) {}
+  explicit Value(backends::GpuPhiContext&& x) : data(std::move(x)) {}
+#endif
   explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
   explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
-  explicit Value(backends::CpuPhiAllocator&& x) : data(std::move(x)) {}
+#ifdef INFRT_WITH_TRT
+  explicit Value(::infrt::backends::tensorrt::TrtEngine&& x)
+      : data(std::move(x)) {}
+  explicit Value(::infrt::kernel::tensorrt::MlirOperationWithInfrtSymbol x)
+      : data(x) {}
+#endif  // INFRT_WITH_TRT
 #endif
 
   template <typename T>
@@ -179,10 +212,6 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
-  explicit ValueRef(::phi::MetaTensor&& val);
-  explicit ValueRef(backends::CpuPhiContext&& x);
-  explicit ValueRef(::phi::CPUContext&& x);
-  explicit ValueRef(::phi::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;

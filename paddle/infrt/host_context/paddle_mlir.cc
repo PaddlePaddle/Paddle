@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
-#include "paddle/infrt/dialect/pd_ops_info.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
-  context_->allowUnregisteredDialects();
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();
-  context_->getOrLoadDialect<infrt::dialect::INFRTDialect>();
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
-  context_->getOrLoadDialect<mlir::pd::PaddleDialect>();
+  context_->getOrLoadDialect<infrt::pd::PaddleDialect>();
+  context_->getOrLoadDialect<::infrt::InfrtDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
 
@@ -78,7 +79,7 @@ mlir::FuncOp MLIRModelGenImpl::UpdateModelModule(
 llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
     const infrt::paddle::framework_proto::ProgramDesc &program) {
   llvm::SmallVector<mlir::Type, 4> operandTypes;
-  operandTypes.push_back(infrt::dt::TensorMapType::get(context_));
+  operandTypes.push_back(infrt::DenseTensorMapType::get(context_));
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() != "feed") continue;
     for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
@@ -143,13 +144,14 @@ void MLIRModelGenImpl::UpdateModelParams(
     const infrt::paddle::framework_proto::ProgramDesc &program,
     mlir::FuncOp *mainFunc) {
   // update input vars
+  int input_index = 1;
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() == "feed") {
       for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
         // update input variables
         auto &in = op_desc.outputs()[var_idx];
         std::string input_var_name = in.arguments(0);
-        ::mlir::Value input_ = mainFunc->getArgument(1);
+        ::mlir::Value input_ = mainFunc->getArgument(input_index++);
         params_map_.insert(
             std::pair<std::string, mlir::Value>(input_var_name, input_));
       }
@@ -170,7 +172,11 @@ void MLIRModelGenImpl::UpdateModelParams(
       ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
                       builder_,
                       &precision_);
-      mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+      mlir::Type type_ =
+          infrt::DenseTensorType::get(context_,
+                                      infrt::TargetType::CPU,
+                                      infrt::PrecisionType::FLOAT32,
+                                      infrt::LayoutType::NCHW);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -196,8 +202,9 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
         llvm::SmallVector<mlir::Type, 4> resultTypes;
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
+
         mlir::OperationState state(loc,
-                                   mlir::ReturnOp::getOperationName(),
+                                   ::infrt::ReturnOp::getOperationName(),
                                    operands,
                                    resultTypes,
                                    attrs);
@@ -211,7 +218,6 @@ void MLIRModelGenImpl::buildOperation(
     const infrt::paddle::framework_proto::OpDesc &op_) {
   const std::string &op_name = "pd." + op_.type();
   mlir::Location loc = mlir::UnknownLoc::get(context_);
-
   llvm::SmallVector<mlir::Value, 4> operands = GetOpInputValue(op_);
   llvm::SmallVector<mlir::Type, 4> resultTypes = GetOpOutputType(op_);
   llvm::SmallVector<mlir::NamedAttribute, 4> attrs = GetOpAttributes(op_);
@@ -227,7 +233,6 @@ llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
   std::unordered_map<std::string, uint8_t> inputs_info = {};
   if (pd_dialect_inputs_info_map_.count(op_.type()))
     inputs_info = pd_dialect_inputs_info_map_.at(op_.type());
-
   for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
     auto &var = op_.inputs(var_idx);
     if (!var.arguments().empty()) {
@@ -249,10 +254,8 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
   // update op outputs info
   for (int var_idx = 0; var_idx < op_.outputs_size(); ++var_idx) {
     auto &var_name = op_.outputs(var_idx).arguments()[0];
-
     if (!pd_dialect_outputs_info.count(op_.outputs(var_idx).parameter()))
       continue;
-
     // update persistable tensors
     for (int i = 0; i < main_block_.vars_size(); i++) {
       auto var_desc = main_block_.vars(i);
@@ -315,7 +318,6 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
   llvm::ArrayRef<mlir::StringAttr> attr_names_ =
       registered_op_name_.getAttributeNames();
   std::vector<mlir::StringAttr> attr_names_vec_ = attr_names_.vec();
-
   // update attrs
   for (int attrs_num = 0; attrs_num < op_.attrs_size(); attrs_num++) {
     auto attr_name_ = op_.attrs(attrs_num).name();
@@ -325,7 +327,7 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
     switch (type) {
       ATTR_IMPL_CASE(FLOAT, f, getF32FloatAttr);
       ATTR_IMPL_CASE(BOOLEAN, b, getBoolAttr);
-      ATTR_IMPL_CASE(INT, i, getI32IntegerAttr);
+      ATTR_IMPL_CASE(INT, i, getSI32IntegerAttr);
       ATTR_IMPL_CASE(LONG, l, getI64IntegerAttr);
       ATTR_IMPL_CASE(STRING, s, getStringAttr);
 
@@ -351,11 +353,17 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
 void MLIRModelGenImpl::RegisterOpOutputVars(
     const infrt::paddle::framework_proto::OpDesc &op_,
     mlir::Operation *mlir_op_) {
+  std::unordered_map<std::string, uint8_t> pd_dialect_outputs_info =
+      pd_dialect_outputs_info_map_.at(op_.type());
+
   // op outputs
   for (int var_idx = 0; var_idx < op_.outputs_size(); ++var_idx) {
+    if (!pd_dialect_outputs_info.count(op_.outputs(var_idx).parameter()))
+      continue;
     auto &var_name = op_.outputs(var_idx).arguments()[0];
+    int index = pd_dialect_outputs_info[op_.outputs(var_idx).parameter()];
     // output name
-    auto var_ = mlir_op_->getResult(var_idx);
+    auto var_ = mlir_op_->getResult(index);
     params_map_.insert(std::pair<std::string, mlir::Value>(var_name, var_));
   }
 }

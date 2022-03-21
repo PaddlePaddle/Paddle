@@ -39,8 +39,15 @@ class GradNodeScale : public GradNodeBase {
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
-      override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+      bool create_graph = false) override;
+
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+
+  bool IsTensorWrappersCleared() override {
+    VLOG(6) << "Do nothing here now";
+    return false;
+  }
 
   void SetTensorWrappers_X(
       const std::vector<paddle::experimental::Tensor>& tensors);

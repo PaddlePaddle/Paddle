@@ -56,13 +56,18 @@ using namespace nvinfer1;  // NOLINT
 //
 // We have encapsulated this logic, please use the following programming model.
 //
-// TRTEngine trt_engine;
+// TrtEngine trt_engine;
 // trt_engine.Build(...);
 // trt_engine.SetUpInference(...);
 // trt_engine.Run(...);
-class TRTEngine {
+class TrtEngine {
  public:
-  explicit TRTEngine(int device_id);
+  explicit TrtEngine(int device_id = 0);
+
+  TrtEngine(const TrtEngine&) = delete;
+  TrtEngine& operator=(const TrtEngine&) = delete;
+  TrtEngine(TrtEngine&&) = default;
+  TrtEngine& operator=(TrtEngine&&) = default;
 
   nvinfer1::IBuilder* GetTrtBuilder();
 
@@ -76,10 +81,16 @@ class TRTEngine {
   // TODO(wilber): How to support multiple execution contexts?
   bool SetUpInference(
       const InferenceOptions& inference,
-      const std::unordered_map<std::string, phi::DenseTensor*>& inputs,
-      std::unordered_map<std::string, phi::DenseTensor*>* outputs);
+      const std::unordered_map<std::string, phi::DenseTensor*>& inputs);
 
   void GetEngineInfo();
+
+  void PrepareOutputHandle(const std::string& out_name);
+
+  // TODO(wilber): The output tensor names are: output_0, output_1, ...
+  phi::DenseTensor* GetOutput(const std::string&);
+
+  size_t GetOutputNum() const;
 
  private:
   void FreshDeviceId();
@@ -107,6 +118,7 @@ class TRTEngine {
   std::vector<std::unique_ptr<Bindings>> bindings_;
   int device_id_{0};
   bool is_dynamic_shape_{false};
+  std::unordered_map<std::string, phi::DenseTensor> outputs_;
 };
 
 }  // namespace tensorrt

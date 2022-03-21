@@ -76,27 +76,9 @@ class GradSlotMeta {
     return *meta_.get();
   }
 
-  void SetEdge(const Edge& edge) { edge_ = std::make_shared<Edge>(edge); }
-  bool HasEdge() const { return edge_ && edge_.get(); }
-  const Edge& GetEdge() const {
-    if (!HasEdge()) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "edge_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasEdge()"
-          "before calling GetEdge() interface."));
-    }
-    return *edge_.get();
-  }
-
  private:
   bool stop_gradient_{false};
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
-
-  // Edges recorded the backward related node info, which indicate all edges
-  // linked
-  // by this Grad Node.
-  // Why we need vector<vector<Edge>>: Edges is as same rank as bwd output.
-  std::shared_ptr<Edge> edge_ = nullptr;
 };
 
 class GradNodeBase {
@@ -120,8 +102,12 @@ class GradNodeBase {
    * is better choice to fit this format.
    * **/
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) = 0;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+      bool create_graph = false) = 0;
 
+  virtual void ClearTensorWrappers() = 0;
+
+  virtual bool IsTensorWrappersCleared() = 0;
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
@@ -200,8 +186,17 @@ class GradNodeBase {
 
   virtual std::string name() { return "GradNodeBase"; }
 
+  /**
+       * GetEdges is designed to get all edges of current node**/
+  const std::vector<std::vector<Edge>>& GetEdges() const;
+
  private:
-  // TODO(jiabin): Use SmallVector instead after merge PR from develop
+  // TODO(zhanlve): Merge adj_edges_ into GradOutMeta
+  // Edges recorded the backward related node info, which indicate all edges
+  // linked
+  // by this Grad Node.
+  // Why we need vector<vector<Edge>>: Edges is as same rank as bwd output.
+  std::vector<std::vector<Edge>> adj_edges_;
 
   // bwd_out_meta_ is used to record Grad output info for backward
   std::vector<std::vector<GradSlotMeta>> bwd_out_meta_;
