@@ -42,7 +42,8 @@ function make_ubuntu_dockerfile(){
 }
 
 function make_coverage_dockerfile(){
-  dockerfile_name="Dockerfile.cuda1143_cudnn821_trt_8230_gcc82_ubuntu18"
+  # dockerfile_name="Dockerfile.cuda1143_cudnn821_trt_8230_gcc82_ubuntu18"
+  dockerfile_name="Dockerfile.cuda10_cudnn7_gcc82_ubuntu16"
   sed "s/<baseimg>/11.4.3-cudnn8-devel-ubuntu18.04/g" ./Dockerfile.ubuntu18 >${dockerfile_name}
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
@@ -133,7 +134,7 @@ function make_ce_framework_dockcerfile(){
 }
 
 function main() {
-  make_ubuntu_dockerfile
+  # make_ubuntu_dockerfile
   make_coverage_dockerfile
   make_centos_dockerfile
   make_cinn_dockerfile
