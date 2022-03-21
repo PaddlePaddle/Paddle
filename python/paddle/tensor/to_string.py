@@ -14,7 +14,7 @@
 
 import paddle
 import numpy as np
-from paddle.fluid.layers import core
+from ..framework import core
 from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = []
@@ -223,12 +223,18 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
 def to_string(var, prefix='Tensor'):
     indent = len(prefix) + 1
 
+    dtype = convert_dtype(var.dtype)
+    if var.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     tensor = var.value().get_tensor()
     if not tensor._is_initialized():
         return "Tensor(Not initialized)"
 
+    if var.dtype == core.VarDesc.VarType.BF16:
+        var = var.astype('float32')
     np_var = var.numpy()
 
     if len(var.shape) == 0:
@@ -250,8 +256,79 @@ def to_string(var, prefix='Tensor'):
     return _template.format(
         prefix=prefix,
         shape=var.shape,
-        dtype=convert_dtype(var.dtype),
+        dtype=dtype,
         place=var._place_str,
         stop_gradient=var.stop_gradient,
         indent=' ' * indent,
         data=data)
+
+
+def _format_dense_tensor(tensor, indent):
+    np_tensor = tensor.numpy()
+
+    if len(tensor.shape) == 0:
+        size = 0
+    else:
+        size = 1
+        for dim in tensor.shape:
+            size *= dim
+
+    sumary = False
+    if size > DEFAULT_PRINT_OPTIONS.threshold:
+        sumary = True
+
+    max_width, signed = _get_max_width(_to_summary(np_tensor))
+
+    data = _format_tensor(
+        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
+    return data
+
+
+def sparse_tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{data})"
+    if tensor.is_sparse_coo():
+        indices_tensor = tensor.non_zero_indices()
+        elements_tensor = tensor.non_zero_elements()
+        indices_data = _format_dense_tensor(indices_tensor, indent)
+        elements_data = _format_dense_tensor(elements_tensor, indent)
+        data = 'non_zero_indices=' + indices_data + ',\nnon_zero_elements=' + elements_data
+    else:
+        crows_tensor = tensor.non_zero_crows()
+        cols_tensor = tensor.non_zero_cols()
+        elements_tensor = tensor.non_zero_elements()
+        crows_data = _format_dense_tensor(crows_tensor, indent)
+        cols_data = _format_dense_tensor(cols_tensor, indent)
+        elements_data = _format_dense_tensor(elements_tensor, indent)
+        data = 'non_zero_crows=' + crows_data + ',\nnon_zero_cols=' + cols_data + ',\nnon_zero_elements=' + elements_data
+
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=tensor.dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
+        indent=' ' * indent,
+        data=data)
+
+
+def tensor_to_string(tensor, prefix='Tensor'):
+    indent = len(prefix) + 1
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
+
+    if not tensor._is_initialized():
+        return "Tensor(Not initialized)"
+
+    if tensor.is_sparse():
+        return sparse_tensor_to_string(tensor, prefix)
+    else:
+        data = _format_dense_tensor(tensor, indent)
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=tensor.dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            data=data)

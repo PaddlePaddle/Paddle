@@ -258,7 +258,7 @@ class DeformableConvOp : public framework::OperatorWithKernel {
                             deformable_groups));
     }
 
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
   }
 
  protected:
@@ -338,8 +338,6 @@ REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
 
 REGISTER_OPERATOR(deformable_conv_grad, ops::DeformableConvGradOp);
 
-REGISTER_OP_CPU_KERNEL(deformable_conv, ops::DeformableConvCPUKernel<float>,
-                       ops::DeformableConvCPUKernel<double>);
 REGISTER_OP_CPU_KERNEL(deformable_conv_grad,
                        ops::DeformableConvGradCPUKernel<float>,
                        ops::DeformableConvGradCPUKernel<double>);

@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/layer_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +26,7 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   LayerNormMKLDNNHandler(const std::vector<int64_t>& dims, const float& epsilon,
                          const dnnl::normalization_flags& flags,
                          const bool& is_test, const MKLDNNMemoryFormat fmt,
-                         const mkldnn::engine engine, platform::Place cpu_place)
+                         const dnnl::engine engine, platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
     auto md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
@@ -46,7 +47,7 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
                                                         const Tensor* shift) {
     // OneDNN requires a single piece of memory for scale and shift data
-    const unsigned int C = framework::vectorize(scale->dims())[0];
+    const unsigned int C = phi::vectorize(scale->dims())[0];
 
     auto scaleshift_memory =
         this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
@@ -92,7 +93,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto src_tz = paddle::framework::vectorize(x->dims());
+    auto src_tz = phi::vectorize(x->dims());
     PADDLE_ENFORCE_EQ(begin_norm_axis, (src_tz.size() - 1),
                       platform::errors::InvalidArgument(
                           "MKL-DNN Layer Norm supports only last logical "
@@ -131,7 +132,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (with_scaleshift) {
-      std::shared_ptr<mkldnn::memory> scaleshift_memory =
+      std::shared_ptr<dnnl::memory> scaleshift_memory =
           handler.AcquireScaleShiftMemory(scale, bias);
       args.insert({DNNL_ARG_SCALE_SHIFT, *scaleshift_memory});
     }
@@ -139,7 +140,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     layer_norm_p->execute(astream, args);
     astream.wait();
 
-    y->set_layout(DataLayout::kMKLDNN);
+    y->set_layout(phi::DataLayout::kMKLDNN);
     y->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
@@ -150,4 +151,5 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 // TODO(jczaja): Enable FP32 when performance is good
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(layer_norm, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::LayerNormMKLDNNOpKernel<float>,
                    ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);

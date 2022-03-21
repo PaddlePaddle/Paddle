@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_PSCORE)
+#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSCORE)
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -26,7 +26,7 @@
 #define _LINUX
 #endif
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
 namespace paddle {
 namespace framework {
@@ -115,8 +115,6 @@ TEST(HeterPipelineTrainerTest, GPU) {
   t3.add_trainers(1);
   t3.add_trainers(1);
   t3.add_trainers(1);
-  t3.add_dump_fields("hello");
-  t3.add_dump_param("fc_0");
   auto* heter_section_param3 = t3.mutable_heter_section_param();
   heter_section_param3->set_num_pipeline_stages(3);
   heter_section_param3->set_pipeline_stage(2);

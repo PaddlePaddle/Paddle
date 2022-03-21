@@ -98,10 +98,20 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if attrs[0]['approximate'] == True or self.dims == 1:
+            valid_version = (7, 0, 0)
+            compile_version = paddle_infer.get_trt_compile_version()
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            self.assertTrue(compile_version == runtime_version)
+            # Dimension one only runs on Paddle OP
+            if self.dims == 1:
                 return 0, 3
-            else:
+            if compile_version >= valid_version:
                 return 1, 2
+            else:
+                if attrs[0]['approximate'] == True:
+                    return 0, 3
+                else:
+                    return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
@@ -126,18 +136,7 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-5
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.dims == 2:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When input dims is 2, pulgin will product a 4 dims output.")
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

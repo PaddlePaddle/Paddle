@@ -24,14 +24,14 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
-from paddle.fluid.framework import _set_expected_place, _current_expected_place
+from paddle.fluid.framework import _set_expected_place, _current_expected_place, set_flags
 
 # NOTE: queue has a different name in python2 and python3
 import queue
 
 import paddle
 from .. import core, layers
-from ..framework import in_dygraph_mode
+from ..framework import in_dygraph_mode, _in_eager_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
@@ -252,11 +252,17 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def __next__(self):
         try:
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
                     data = [
                         _restore_batch(d, s)
                         for d, s in zip(data, self._structure_infos[:len(
@@ -442,7 +448,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
-                self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    self._reader.read_next_var_list()
             elif self._return_list:
                 self._reader.read_next_list()
             else:
@@ -554,6 +564,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._rcvd_idx += 1
                     self._batches_outstanding -= 1
                 else:
+                    # NOTE: when _rcvd_idx catch up _send_idx, which means
+                    #       one of following:
+                    #       1. all 2 * num_workers batches have been loaded
+                    #          and stored in _blocking_queue
+                    #       2. all data drained
+                    #       we need to let _thread blocking at _data_queue
+                    #       get_data to inoccupy CPU, otherwise may occupy
+                    #       CPU time for model running
                     # NOTE: in persistent workers mode, do not check data
                     #       drained here, simply let it go to _data_queue
                     #       reading to get _ResumeIteration
@@ -563,7 +581,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         #       may also be data in blocking queue
                         if self._batches_outstanding < len(self._places):
                             return None
-                        continue
 
             if self._rcvd_idx in self._task_infos and \
                     len(self._task_infos[self._rcvd_idx]) == 3:
@@ -694,11 +711,17 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._blocking_queue.close()
 
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
                     data = [
                         _restore_batch(d, s)
                         for d, s in zip(data, self._structure_infos[:len(

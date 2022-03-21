@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class Tensor;
-
 void TransDataDevice(const Tensor& in, const platform::Place& dst_place,
                      Tensor* out);
 

@@ -35,14 +35,14 @@ inline std::vector<int> get_new_data(
   for (size_t i = 0; i < list_new_tensor.size(); ++i) {
     auto tensor = list_new_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
+        tensor->dims(), phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The tensor's shape in list of Op(crop_tensor) should be [1], "
             "but the value received is %d.",
             tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
 
       vec_new_data.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
@@ -83,7 +83,7 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
     }
   }
 
-  return framework::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
@@ -111,7 +111,8 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
     auto* shape_data = shape_tensor->data<int>();
     framework::Tensor cpu_shape_tensor;
     if (platform::is_gpu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
+                                        &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
     res = std::vector<int>(shape_data, shape_data + shape_tensor->numel());

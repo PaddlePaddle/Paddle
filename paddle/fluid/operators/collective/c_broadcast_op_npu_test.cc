@@ -26,21 +26,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
@@ -133,7 +131,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
   PrintDebugInfo("input data", init);
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num, num});
   ctx.Wait();
 
@@ -159,7 +157,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   std::vector<float> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);

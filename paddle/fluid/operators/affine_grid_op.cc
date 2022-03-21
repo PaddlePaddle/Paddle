@@ -18,12 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -103,8 +98,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
             theta_dims[2], theta_dims));
 
     // N * H * W * 2
-    ctx->SetOutputDim("Output",
-                      framework::make_ddim({theta_dims[0], -1, -1, 2}));
+    ctx->SetOutputDim("Output", phi::make_ddim({theta_dims[0], -1, -1, 2}));
     ctx->ShareLoD("Theta", "Output");
   }
 

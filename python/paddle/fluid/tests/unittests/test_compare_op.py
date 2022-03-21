@@ -30,12 +30,13 @@ def create_test_class(op_type, typename, callback):
             a = numpy.random.random(size=(10, 7)).astype(typename)
             b = numpy.random.random(size=(10, 7)).astype(typename)
             c = callback(a, b)
+            self.python_api = eval("paddle." + op_type)
             self.inputs = {'X': a, 'Y': b}
             self.outputs = {'Out': c}
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_eager=False)
 
         def test_errors(self):
             paddle.enable_static()
@@ -137,6 +138,19 @@ def create_paddle_case(op_type, callback):
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, 1.0)
                 self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_not_equal(self):
+            if self.op_type == "not_equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(
+                    np.array([1.2e-8, 2, 2, 1]), dtype="float32")
+                y = paddle.to_tensor(
+                    np.array([1.1e-8, 2, 2, 1]), dtype="float32")
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([0, 0, 0, 0]).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
@@ -325,4 +339,5 @@ class TestCompareOpPlace(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

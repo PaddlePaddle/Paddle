@@ -29,6 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -50,6 +52,18 @@ template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<float>>;
 template struct SetConstant<platform::CPUDeviceContext,
                             platform::complex<double>>;
+
+template struct SetConstant<phi::CPUContext, platform::float16>;
+template struct SetConstant<phi::CPUContext, platform::bfloat16>;
+template struct SetConstant<phi::CPUContext, float>;
+template struct SetConstant<phi::CPUContext, double>;
+template struct SetConstant<phi::CPUContext, int16_t>;
+template struct SetConstant<phi::CPUContext, int>;
+template struct SetConstant<phi::CPUContext, int64_t>;
+template struct SetConstant<phi::CPUContext, bool>;
+template struct SetConstant<phi::CPUContext, uint8_t>;
+template struct SetConstant<phi::CPUContext, platform::complex<float>>;
+template struct SetConstant<phi::CPUContext, platform::complex<double>>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
@@ -98,8 +112,8 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, framework::Tensor* out,
                   const std::vector<int>& axis) {
     const int rank = axis.size();
-    auto in_stride = framework::stride(in.dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = phi::stride(in.dims());
+    auto out_stride = phi::stride(out->dims());
     const T* in_ptr = in.data<T>();
     T* out_ptr = out->data<T>();
 
@@ -173,10 +187,31 @@ void set_constant_with_place<platform::NPUPinnedPlace>(
 }
 
 template <>
+void set_constant_with_place<platform::IPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("IPUPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(tensor->type(), TensorSetConstantCPU(tensor, value));
+}
+
+template <>
+void set_constant_with_place<platform::MLUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("MLUPlace is not supported"));
+}
+
+template <>
+void set_constant_with_place<platform::CustomPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("CustomPlace is not supported"));
 }
 
 template <>
@@ -205,7 +240,8 @@ void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  tensor->place().apply_visitor(func);
+  // tensor->place().apply_visitor(func);
+  paddle::platform::VisitPlace(tensor->place(), func);
 #else
   func(platform::CPUPlace());
 #endif

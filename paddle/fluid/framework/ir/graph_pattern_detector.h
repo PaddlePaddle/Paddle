@@ -487,6 +487,28 @@ struct ConvActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+// Elementwise with Activation
+// op: elementwise + activation
+// named nodes:
+// elementwise_a, elementwise_b,
+// elementwise_out, elementwise,
+// activation_out, activation
+struct ElementwiseActivation : public PatternBase {
+  ElementwiseActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_add_activation") {}
+
+  PDNode* operator()(PDNode* elementwise_a, const std::string& elementwise_type,
+                     const std::string& activation_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(elementwise);
+  PATTERN_DECL_NODE(activation);
+  // declare variable node's name
+  PATTERN_DECL_NODE(elementwise_b);
+  PATTERN_DECL_NODE(elementwise_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -863,6 +885,65 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+// The following patterns are used to fuse linear and act (ReLu or GeLU)
+// formula: act(F.linear(x))
+// op: matmul_v2 + elementwise_add + act
+// named nodes: matmul, elementwise_add, act
+//              matmul_w, matmul_out
+//              ele_bias, elewise_add_out, act_out
+struct LinearAct : public PatternBase {
+  LinearAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "linear_act") {}
+
+  PDNode* operator()(PDNode* x,
+                     const std::unordered_set<std::string>& act_types,
+                     bool with_grad_link, bool is_act_grad_x_from_act);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(ele_add);
+  PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(act_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(matmul_w);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(elewise_add_out);
+  PATTERN_DECL_NODE(ele_bias);
+  PATTERN_DECL_NODE(act_out);
+};
+
+// The following patterns are used to fuse linear_grad and act_grad (ReLu or
+// GeLU)
+// formula: the backward of F.linear( act(x) )
+// op: elementwise_add_grad + matmul_v2_grad + act_grad
+// named nodes: ele_add_grad, matmul_grad, act_grad
+//              ele_grad_bias, ele_grad_dx, ele_grad_dbias
+//              matmul_grad_x, matmul_grad_dx, matmul_grad_dx
+//              matmul_grad_dw, act_grad_dx
+struct ElewiseAddMatmulAct : public PatternBase {
+  ElewiseAddMatmulAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elewiseadd_matmul_act") {}
+
+  PDNode* operator()(PDNode* x,
+                     const std::unordered_set<std::string>& act_grad_types,
+                     bool without_x_gradient, bool is_act_grad_x_from_act);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad);
+  PATTERN_DECL_NODE(matmul_grad);
+  PATTERN_DECL_NODE(act_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(ele_out);
+  PATTERN_DECL_NODE(ele_grad_bias);
+  PATTERN_DECL_NODE(ele_grad_dx);
+  PATTERN_DECL_NODE(ele_grad_dbias);
+  PATTERN_DECL_NODE(matmul_grad_x);
+  PATTERN_DECL_NODE(matmul_grad_w);
+  PATTERN_DECL_NODE(matmul_grad_dx);
+  PATTERN_DECL_NODE(matmul_grad_dw);
+  PATTERN_DECL_NODE(act_grad_dx);
+};
+
 // Conv with Elementwise_add as bias
 // op: conv + elementwise_add
 // named nodes:
@@ -935,20 +1016,20 @@ struct Pool : public PatternBase {
   PATTERN_DECL_NODE(pool_output);
 };
 
-// ElementwiseAdd used in residual connections.
-// y_var is used and convolution output.
-// The operator is removed, when residual
-// connection fusion is on.
-struct ElementwiseAdd : public PatternBase {
-  ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_add") {}
+// Elementwise ops
+// Forward pass for element-wise operators (add, mul)
+// elementwise_mul_out is the result of the operator
+struct Elementwise : public PatternBase {
+  Elementwise(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise") {}
 
-  PDNode* operator()(PDNode* x_var, PDNode* y_var);
+  PDNode* operator()(PDNode* x_var, PDNode* y_var,
+                     const std::string elementwise_type);
 
-  PATTERN_DECL_NODE(elementwise_add_op);
-  PATTERN_DECL_NODE(elementwise_add_x);
-  PATTERN_DECL_NODE(elementwise_add_y);
-  PATTERN_DECL_NODE(elementwise_add_out);
+  PATTERN_DECL_NODE(elementwise_op);
+  PATTERN_DECL_NODE(elementwise_x);
+  PATTERN_DECL_NODE(elementwise_y);
+  PATTERN_DECL_NODE(elementwise_out);
 };
 
 // Transpose op
@@ -963,7 +1044,6 @@ struct Transpose : public PatternBase {
   PATTERN_DECL_NODE(transpose_in);
   PATTERN_DECL_NODE(transpose_op);
   PATTERN_DECL_NODE(transpose_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 // Reshape op
@@ -978,7 +1058,33 @@ struct Reshape : public PatternBase {
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);
   PATTERN_DECL_NODE(reshape_out);
-  PATTERN_DECL_NODE(next_op);
+};
+// Slice op
+// Forward pass for slice.
+// slice_out is a result of the operator.
+struct Slice : public PatternBase {
+  Slice(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "slice") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(slice_in);
+  PATTERN_DECL_NODE(slice_op);
+  PATTERN_DECL_NODE(slice_out);
+};
+
+// Nearest Interp op
+// Forward pass for nearest_interp.
+// nearest_interp_out is a result of the operator.
+struct NearestInterp : public PatternBase {
+  NearestInterp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "nearest_interp") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(nearest_interp_in);
+  PATTERN_DECL_NODE(nearest_interp_op);
+  PATTERN_DECL_NODE(nearest_interp_out);
 };
 
 // Matmul op
@@ -1016,6 +1122,36 @@ struct MatmulV2 : public PatternBase {
   PATTERN_DECL_NODE(matmul_v2_in_y);
   PATTERN_DECL_NODE(matmul_v2_op);
   PATTERN_DECL_NODE(matmul_v2_out);
+};
+
+// Matmul + scale
+// Forward pass.
+struct MatmulScale : public PatternBase {
+  MatmulScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(scale_in_x);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
+// Matmul_v2 + scale
+// Forward pass.
+struct MatmulV2Scale : public PatternBase {
+  MatmulV2Scale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_v2_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(matmul_v2_in_x);
+  PATTERN_DECL_NODE(matmul_v2_in_y);
+  PATTERN_DECL_NODE(matmul_v2_op);
+  PATTERN_DECL_NODE(scale_in_x);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
 };
 
 // Squeeze2 + Matmul
@@ -1387,6 +1523,7 @@ struct Bfloat16Placement : public PatternBase {
   PDNode* operator()(
       const std::unordered_set<std::string>& bfloat16_enabled_op_types);
 
+  PATTERN_DECL_NODE(op_in);
   PATTERN_DECL_NODE(op);
 };
 
@@ -1400,6 +1537,16 @@ struct OrphanedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(op);
   PATTERN_DECL_NODE(op_out);
   PATTERN_DECL_NODE(next_op);
+};
+
+struct UnsupportedBfloat16 : public PatternBase {
+  UnsupportedBfloat16(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "unsupported_bfloat16") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(op);
 };
 
 struct LastBfloat16Ops : public PatternBase {
@@ -1423,6 +1570,15 @@ struct FirstBfloat16Ops : public PatternBase {
 struct DuplicatedInputs : public PatternBase {
   DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "many_inputs_op") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(op);
+};
+
+struct DuplicatedOutputs : public PatternBase {
+  DuplicatedOutputs(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_outputs_op") {}
 
   PDNode* operator()();
 
@@ -1556,7 +1712,8 @@ struct ReshapeTransposeMatmulPattern : public PatternBase {
                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
 
-  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+  PDNode* operator()(const std::string& op_name, bool with_reshape_xshape,
+                     bool with_transpose_xshape);
 
   PATTERN_DECL_NODE(reshape_in);
   PATTERN_DECL_NODE(reshape_op);

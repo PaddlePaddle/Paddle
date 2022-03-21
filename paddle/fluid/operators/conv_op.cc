@@ -20,18 +20,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -63,7 +60,7 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (this->IsMKLDNNType() == false) &&
+  const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   PADDLE_ENFORCE_EQ(
@@ -101,8 +98,8 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimention and Attr(strides)'s length = %u.",
-          in_dims.size(), in_dims, strides.size(),
-          framework::make_ddim(strides), in_sub_stride_size));
+          in_dims.size(), in_dims, strides.size(), phi::make_ddim(strides),
+          in_sub_stride_size));
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
@@ -135,15 +132,15 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
 
   framework::DDim in_data_dims;
   if (channel_last) {
-    in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
   }
 
   framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
+      phi::slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                            in_data_dims, strides, ksize);
 
@@ -200,7 +197,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   if (input_data_type != framework::proto::VarType::INT8 &&
       input_data_type != framework::proto::VarType::UINT8 &&
       input_data_type != framework::proto::VarType::BF16) {
-    auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
+    auto filter_data_type =
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Filter")->dtype());
     PADDLE_ENFORCE_EQ(
         input_data_type, filter_data_type,
         platform::errors::InvalidArgument(
@@ -210,19 +208,19 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(input_data_type),
             paddle::framework::DataTypeToString(filter_data_type)));
   }
-#ifndef PADDLE_WITH_ASCEND_CL
-  if (input_data_type == framework::proto::VarType::FP16) {
-    PADDLE_ENFORCE_EQ(
-        library, framework::LibraryType::kCUDNN,
-        platform::errors::InvalidArgument(
-            "float16 can only be used when CUDNN or NPU is used"));
-  }
-#endif
+// #ifndef PADDLE_WITH_ASCEND_CL
+//   if (input_data_type == framework::proto::VarType::FP16) {
+//     PADDLE_ENFORCE_EQ(
+//         library, framework::LibraryType::kCUDNN,
+//         platform::errors::InvalidArgument(
+//             "float16 can only be used when CUDNN or NPU is used"));
+//   }
+// #endif
 #if PADDLE_WITH_CUDA
   if (input_data_type == framework::proto::VarType::BF16 &&
       library == framework::LibraryType::kCUDNN) {
     PADDLE_ENFORCE_GE(
-        platform::CudnnVersion(), 8100,
+        platform::DnnVersion(), 8100,
         platform::errors::InvalidArgument(
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
   }
@@ -846,6 +844,8 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(conv2d, Conv2dInferShapeFunctor,
+                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
@@ -856,6 +856,8 @@ REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad,
 REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise convolution op
+DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d, DepthwiseConv2dInferShapeFunctor,
+                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
@@ -865,6 +867,8 @@ REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
                   ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(depthwise_conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
+DECLARE_INFER_SHAPE_FUNCTOR(conv3d, Conv3dInferShapeFunctor,
+                            PD_INFER_META(phi::ConvInferMeta));
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv3DGradMaker<paddle::framework::OpDesc>,
@@ -873,42 +877,6 @@ REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad,
                   ops::Conv3DDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Conv3DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
-
-// depthwise conv kernel
-// TODO(xingzhaolong): neon kernel for mobile
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad_grad,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad_grad,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(conv2d)
     .AddCheckpoint(

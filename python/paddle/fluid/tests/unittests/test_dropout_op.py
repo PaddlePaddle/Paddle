@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle
 import paddle.static as static
 import paddle.fluid as fluid
@@ -233,6 +233,27 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.fix_seed = False
 
 
+class TestBF16DropoutOp(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.dtype = np.uint16
+
+        x = np.random.random((32, 64)).astype("float32")
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out':
+            convert_float_to_uint16(np.zeros((32, 64)).astype('float32')),
+            'Mask': np.zeros((32, 64)).astype('uint8')
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
     def test_seed_cpu_place(self):
         paddle.enable_static()
@@ -333,7 +354,7 @@ class TestDropoutFAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[40, 40], dtype="float32")
+            input = fluid.data(name="input", shape=[-1, -1], dtype="float32")
             res1 = paddle.nn.functional.dropout(x=input, p=0., training=False)
             res2 = paddle.nn.functional.dropout(
                 x=input, p=0., axis=0, training=True, mode='upscale_in_train')
@@ -380,7 +401,10 @@ class TestDropoutFAPI(unittest.TestCase):
                 training=False,
                 mode='upscale_in_train')
 
-            in_np = np.random.random([40, 40]).astype("float32")
+            res13 = paddle.nn.functional.dropout(
+                x=input, p=0.7, axis=1, training=True, mode='upscale_in_train')
+
+            in_np = np.ones([40, 40]).astype("float32")
             res_np = in_np
             res_np2 = np.zeros_like(in_np)
 
@@ -398,6 +422,9 @@ class TestDropoutFAPI(unittest.TestCase):
                                feed={"input": in_np},
                                fetch_list=[res10])
             self.assertTrue(np.allclose(fetches2[0], res_np2))
+            fetches3 = exe.run(fluid.default_main_program(),
+                               feed={"input": in_np},
+                               fetch_list=[res13])
 
     def test_static(self):
         for place in self.places:
@@ -470,6 +497,12 @@ class TestDropoutFAPI(unittest.TestCase):
                     p=0.,
                     axis=(0, 1),
                     training=False,
+                    mode='upscale_in_train')
+                res13 = paddle.nn.functional.dropout(
+                    x=input,
+                    p=0.5,
+                    axis=1,
+                    training=True,
                     mode='upscale_in_train')
 
             res_list = [
@@ -900,5 +933,65 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
             self.check_static_result(place=place)
 
 
+class TestDropoutBackward(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def cal_grad_upscale_train(self, mask, prob):
+        return mask.astype("float32") / (1 - prob)
+
+    def cal_grad_downscale_in_infer(self, mask):
+        return mask.astype("float32")
+
+    def test_backward_downscale_in_infer(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+
+                input = paddle.uniform([40, 40], dtype="float32")
+                input.stop_gradient = False
+                out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                out.backward()
+
+                self.assertTrue(
+                    np.array_equal(input.gradient(
+                    ), self.cal_grad_downscale_in_infer(mask.numpy())))
+
+    def test_backward_upscale_train(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+
+                prob = 0.5
+                input = paddle.uniform([40, 40], dtype="float32")
+                input.stop_gradient = False
+                out, mask = core.ops.dropout(input, 'dropout_prob', prob,
+                                             "dropout_implementation",
+                                             "upscale_in_train")
+                out.backward()
+
+                self.assertTrue(
+                    np.allclose(input.gradient(
+                    ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+    def test_backward_upscale_train_2(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+
+                prob = 0.3
+                input = paddle.uniform([40, 40], dtype="float32")
+                input.stop_gradient = False
+                out, mask = core.ops.dropout(input, 'dropout_prob', prob,
+                                             "dropout_implementation",
+                                             "upscale_in_train")
+                out.backward()
+
+                self.assertTrue(
+                    np.allclose(input.gradient(
+                    ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

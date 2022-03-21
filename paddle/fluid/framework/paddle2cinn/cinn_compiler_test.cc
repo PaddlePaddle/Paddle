@@ -27,15 +27,16 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
 DECLARE_string(allow_cinn_ops);
 DECLARE_string(deny_cinn_ops);
@@ -62,8 +63,8 @@ std::vector<std::string> GetCompilationKeys(const Graph& graph) {
   std::vector<std::string> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(
-          BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)));
+      compilation_keys.emplace_back(BOOST_GET_CONST(
+          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;
@@ -86,7 +87,8 @@ std::unordered_map<std::string, std::vector<int64_t>> GetInputsInfo(
   std::unordered_set<std::string> inputs;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      if (BOOST_GET_CONST(std::string, node->Op()->GetAttr(kCompilationKey)) !=
+      if (BOOST_GET_CONST(std::string,
+                          node->Op()->GetAttr(operators::kCompilationKey)) !=
           key) {
         continue;
       }
@@ -213,9 +215,10 @@ TEST(CinnCompilerTest, FlagController) {
     ASSERT_EQ(compilation_keys.size(), 1);
     const auto& compiling_graph = cinn_compiler->FindGraph(compilation_keys[0]);
     auto op_types = ExtractOpTypes(compiling_graph);
-    ASSERT_EQ(op_types.size(), 2);
+    ASSERT_EQ(op_types.size(), 3);
     ASSERT_EQ(op_types.count("feed"), 1);
     ASSERT_EQ(op_types.count("mul"), 1);
+    ASSERT_EQ(op_types.count("fetch"), 1);
   }
   // recover flags
   FLAGS_allow_cinn_ops = "";
@@ -255,7 +258,7 @@ TEST(CinnCompilerTest, Compile) {
   std::unordered_map<std::string, LoDTensor> create_inputs;
   for (const auto& pair : inputs_info) {
     auto& tensor = create_inputs[pair.first];
-    tensor.Resize(make_ddim(pair.second));
+    tensor.Resize(phi::make_ddim(pair.second));
     tensor.mutable_data<float>(platform::CPUPlace());
   }
   std::map<std::string, const LoDTensor*> input_tensors;
@@ -267,13 +270,20 @@ TEST(CinnCompilerTest, Compile) {
   auto compile_fn = [&](const Target& target) {
     const auto& compiled_obj =
         cinn_compiler->Compile(compiling_graph, input_tensors, target);
+    ASSERT_NE(compiled_obj.compiler, nullptr);
     ASSERT_NE(compiled_obj.runtime_program, nullptr);
     ASSERT_NE(compiled_obj.scope, nullptr);
     ASSERT_FALSE(compiled_obj.paddle2cinn_varmap.empty());
+    ASSERT_NE(compiled_obj.launch_context, nullptr);
     const auto& cached_obj =
         cinn_compiler->Compile(compilation_key, input_tensors, target);
     ASSERT_EQ(reinterpret_cast<std::uint64_t>(&compiled_obj),
               reinterpret_cast<std::uint64_t>(&cached_obj));
+    ASSERT_EQ(cached_obj.cached_index + 1, cinn_compiler->real_compiled_num());
+    const auto& ret_obj =
+        cinn_compiler->GetCompiledObject(cached_obj.cached_index);
+    ASSERT_EQ(reinterpret_cast<std::uint64_t>(&compiled_obj),
+              reinterpret_cast<std::uint64_t>(&ret_obj));
   };
 
   // GPU Compilation
@@ -290,3 +300,6 @@ TEST(CinnCompilerTest, Compile) {
 
 USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
+USE_OP(mul);
+USE_OP_ITSELF(relu);
+USE_OP_ITSELF(elementwise_add);

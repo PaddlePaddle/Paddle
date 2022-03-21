@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/range_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -50,7 +50,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     int64_t size = 0;
     GetSize(start, end, step, &size);
 
-    out->Resize(framework::make_ddim({size}));
+    out->Resize(phi::make_ddim({size}));
     out->mutable_data<T>(context.GetPlace());
 
     std::vector<T> odata;

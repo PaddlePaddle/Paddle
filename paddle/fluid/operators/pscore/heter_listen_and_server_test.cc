@@ -17,9 +17,12 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include <random>
+#include <sstream>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -33,8 +36,21 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 DECLARE_double(eager_delete_tensor_gb);
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
+
+std::string get_ip_port() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   framework::BlockDesc* block =
@@ -53,16 +69,13 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   return block;
 }
 
-void GetHeterListenAndServProgram(framework::ProgramDesc* program) {
+void GetHeterListenAndServProgram(framework::ProgramDesc* program,
+                                  std::string endpoint) {
   auto root_block = program->MutableBlock(0);
-
   auto* sub_block = AppendSendAndRecvBlock(program);
   std::vector<framework::BlockDesc*> optimize_blocks;
   optimize_blocks.push_back(sub_block);
-
   std::vector<std::string> message_to_block_id = {"x:1"};
-  std::string endpoint = "127.0.0.1:19944";
-
   framework::OpDesc* op = root_block->AppendOp();
   op->SetType("heter_listen_and_serv");
   op->SetInput("X", {});
@@ -129,7 +142,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   CreateVarsOnScope(scope, place);
 }
 
-void StartHeterServer() {
+void StartHeterServer(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -137,7 +150,7 @@ void StartHeterServer() {
   platform::CPUDeviceContext ctx(place);
 
   LOG(INFO) << "before GetHeterListenAndServProgram";
-  GetHeterListenAndServProgram(&program);
+  GetHeterListenAndServProgram(&program, endpoint);
   auto prepared = exe.Prepare(program, 0);
 
   LOG(INFO) << "before InitTensorsOnServer";
@@ -150,24 +163,30 @@ void StartHeterServer() {
 TEST(HETER_LISTEN_AND_SERV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  std::string endpoint = "127.0.0.1:19944";
-  std::string previous_endpoint = "127.0.0.1:19944";
+  std::string endpoint = get_ip_port();
+  std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
   FLAGS_eager_delete_tensor_gb = -1;
-  std::thread server_thread(StartHeterServer);
+  std::thread server_thread(StartHeterServer, endpoint);
   sleep(1);
-
   auto b_rpc_service = distributed::HeterServer::GetInstance();
   b_rpc_service->WaitServerReady();
   using MicroScope =
       std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
+  using MiniScope = std::unordered_map<int, framework::Scope*>;
+  std::shared_ptr<MiniScope> mini_scopes(new MiniScope{});
   std::shared_ptr<MicroScope> micro_scopes(new MicroScope{});
   std::shared_ptr<std::vector<framework::Scope*>> micro_scope(
       new std::vector<framework::Scope*>{});
-  (*micro_scope).push_back(new framework::Scope());
-  (*micro_scope).push_back(new framework::Scope());
+  auto* mini_scope = new framework::Scope();
+  (*mini_scopes)[0] = mini_scope;
+  auto* micro_scope_0 = &(mini_scope->NewScope());
+  auto* micro_scope_1 = &(mini_scope->NewScope());
+  (*micro_scope).push_back(micro_scope_0);
+  (*micro_scope).push_back(micro_scope_1);
   (*micro_scopes)[0] = micro_scope;
   b_rpc_service->SetMicroBatchScopes(micro_scopes);
+  b_rpc_service->SetMiniBatchScopes(mini_scopes);
 
   using TaskQueue =
       std::unordered_map<int,

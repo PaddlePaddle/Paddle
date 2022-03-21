@@ -1,11 +1,8 @@
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,38 +21,37 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/service/brpc_ps_server.h"
-#include "paddle/fluid/distributed/service/env.h"
-#include "paddle/fluid/distributed/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/service/graph_brpc_server.h"
-#include "paddle/fluid/distributed/service/graph_py_service.h"
-#include "paddle/fluid/distributed/service/ps_client.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
-#include "paddle/fluid/distributed/service/service.h"
-#include "paddle/fluid/distributed/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/service.h"
+#include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
-namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 void testSampleNodes(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
-  std::vector<uint64_t> ids;
+  std::vector<int64_t> ids;
   auto pull_status = worker_ptr_->random_sample_nodes(0, 0, 6, ids);
-  std::unordered_set<uint64_t> s;
-  std::unordered_set<uint64_t> s1 = {37, 59};
+  std::unordered_set<int64_t> s;
+  std::unordered_set<int64_t> s1 = {37, 59};
   pull_status.wait();
   for (auto id : ids) s.insert(id);
   ASSERT_EQ(true, s.size() == s1.size());
@@ -110,15 +106,16 @@ void testFeatureNodeSerializeFloat64() {
 
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
-  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  std::vector<std::vector<int64_t>> vs;
+  std::vector<std::vector<float>> vs1;
   auto pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 37), 4, vs);
+      0, std::vector<int64_t>(1, 37), 4, vs, vs1, true);
   pull_status.wait();
 
-  std::unordered_set<uint64_t> s;
-  std::unordered_set<uint64_t> s1 = {112, 45, 145};
+  std::unordered_set<int64_t> s;
+  std::unordered_set<int64_t> s1 = {112, 45, 145};
   for (auto g : vs[0]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
@@ -127,19 +124,21 @@ void testSingleSampleNeighboor(
   s.clear();
   s1.clear();
   vs.clear();
+  vs1.clear();
   pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 96), 4, vs);
+      0, std::vector<int64_t>(1, 96), 4, vs, vs1, true);
   pull_status.wait();
   s1 = {111, 48, 247};
   for (auto g : vs[0]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
     ASSERT_EQ(true, s1.find(g) != s1.end());
   }
   vs.clear();
-  pull_status = worker_ptr_->batch_sample_neighbors(0, {96, 37}, 4, vs, 0);
+  pull_status =
+      worker_ptr_->batch_sample_neighbors(0, {96, 37}, 4, vs, vs1, true, 0);
   pull_status.wait();
   ASSERT_EQ(vs.size(), 2);
 }
@@ -148,30 +147,30 @@ void testAddNode(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   worker_ptr_->clear_nodes(0);
   int total_num = 270000;
-  uint64_t id;
-  std::unordered_set<uint64_t> id_set;
+  int64_t id;
+  std::unordered_set<int64_t> id_set;
   for (int i = 0; i < total_num; i++) {
     while (id_set.find(id = rand()) != id_set.end())
       ;
     id_set.insert(id);
   }
-  std::vector<uint64_t> id_list(id_set.begin(), id_set.end());
+  std::vector<int64_t> id_list(id_set.begin(), id_set.end());
   std::vector<bool> weight_list;
   auto status = worker_ptr_->add_graph_node(0, id_list, weight_list);
   status.wait();
-  std::vector<uint64_t> ids[2];
+  std::vector<int64_t> ids[2];
   for (int i = 0; i < 2; i++) {
     auto sample_status =
         worker_ptr_->random_sample_nodes(0, i, total_num, ids[i]);
     sample_status.wait();
   }
-  std::unordered_set<uint64_t> id_set_check(ids[0].begin(), ids[0].end());
+  std::unordered_set<int64_t> id_set_check(ids[0].begin(), ids[0].end());
   for (auto x : ids[1]) id_set_check.insert(x);
   ASSERT_EQ(id_set.size(), id_set_check.size());
   for (auto x : id_set) {
     ASSERT_EQ(id_set_check.find(x) != id_set_check.end(), true);
   }
-  std::vector<uint64_t> remove_ids;
+  std::vector<int64_t> remove_ids;
   for (auto p : id_set_check) {
     if (remove_ids.size() == 0)
       remove_ids.push_back(p);
@@ -188,7 +187,7 @@ void testAddNode(
         worker_ptr_->random_sample_nodes(0, i, total_num, ids[i]);
     sample_status.wait();
   }
-  std::unordered_set<uint64_t> id_set_check1(ids[0].begin(), ids[0].end());
+  std::unordered_set<int64_t> id_set_check1(ids[0].begin(), ids[0].end());
   for (auto x : ids[1]) id_set_check1.insert(x);
   ASSERT_EQ(id_set_check1.size(), id_set_check.size());
   for (auto x : id_set_check1) {
@@ -197,14 +196,16 @@ void testAddNode(
 }
 void testBatchSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
-  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
-  std::vector<std::uint64_t> v = {37, 96};
-  auto pull_status = worker_ptr_->batch_sample_neighbors(0, v, 4, vs);
+  std::vector<std::vector<int64_t>> vs;
+  std::vector<std::vector<float>> vs1;
+  std::vector<std::int64_t> v = {37, 96};
+  auto pull_status =
+      worker_ptr_->batch_sample_neighbors(0, v, 4, vs, vs1, false);
   pull_status.wait();
-  std::unordered_set<uint64_t> s;
-  std::unordered_set<uint64_t> s1 = {112, 45, 145};
+  std::unordered_set<int64_t> s;
+  std::unordered_set<int64_t> s1 = {112, 45, 145};
   for (auto g : vs[0]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
@@ -214,7 +215,7 @@ void testBatchSampleNeighboor(
   s1.clear();
   s1 = {111, 48, 247};
   for (auto g : vs[1]) {
-    s.insert(g.first);
+    s.insert(g);
   }
   ASSERT_EQ(s.size(), 3);
   for (auto g : s) {
@@ -224,10 +225,6 @@ void testBatchSampleNeighboor(
 
 void testCache();
 void testGraphToBuffer();
-// std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
-//                        std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
-//                        std::string("59\ttreat\t45;0.34\t145;0.31\t112;0.21"),
-//                        std::string("97\tfood\t48;1.4\t247;0.31\t111;1.21")};
 
 std::string edges[] = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
@@ -420,7 +417,7 @@ void RunBrpcPushSparse() {
 
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
   dense_regions.insert(
-      std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
+      std::pair<int64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
 
   RunClient(dense_regions, 0, pserver_ptr_->get_service());
@@ -430,15 +427,16 @@ void RunBrpcPushSparse() {
       worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
   srand(time(0));
   pull_status.wait();
-  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  std::vector<std::vector<int64_t>> _vs;
+  std::vector<std::vector<float>> vs;
   testSampleNodes(worker_ptr_);
   sleep(5);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
   pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 10240001024), 4, vs);
+      0, std::vector<int64_t>(1, 10240001024), 4, _vs, vs, true);
   pull_status.wait();
-  ASSERT_EQ(0, vs[0].size());
+  ASSERT_EQ(0, _vs[0].size());
   paddle::distributed::GraphTable* g =
       (paddle::distributed::GraphTable*)pserver_ptr_->table(0);
   size_t ttl = 6;
@@ -447,18 +445,19 @@ void RunBrpcPushSparse() {
   while (round--) {
     vs.clear();
     pull_status = worker_ptr_->batch_sample_neighbors(
-        0, std::vector<uint64_t>(1, 37), 1, vs);
+        0, std::vector<int64_t>(1, 37), 1, _vs, vs, false);
     pull_status.wait();
 
     for (int i = 0; i < ttl; i++) {
-      std::vector<std::vector<std::pair<uint64_t, float>>> vs1;
+      std::vector<std::vector<int64_t>> vs1;
+      std::vector<std::vector<float>> vs2;
       pull_status = worker_ptr_->batch_sample_neighbors(
-          0, std::vector<uint64_t>(1, 37), 1, vs1);
+          0, std::vector<int64_t>(1, 37), 1, vs1, vs2, false);
       pull_status.wait();
-      ASSERT_EQ(vs[0].size(), vs1[0].size());
+      ASSERT_EQ(_vs[0].size(), vs1[0].size());
 
-      for (int j = 0; j < vs[0].size(); j++) {
-        ASSERT_EQ(vs[0][j].first, vs1[0][j].first);
+      for (int j = 0; j < _vs[0].size(); j++) {
+        ASSERT_EQ(_vs[0][j], vs1[0][j]);
       }
     }
   }
@@ -541,7 +540,7 @@ void RunBrpcPushSparse() {
 
   // Test Pull by step
 
-  std::unordered_set<uint64_t> count_item_nodes;
+  std::unordered_set<int64_t> count_item_nodes;
   // pull by step 2
   for (int test_step = 1; test_step < 4; test_step++) {
     count_item_nodes.clear();
@@ -559,16 +558,18 @@ void RunBrpcPushSparse() {
     ASSERT_EQ(count_item_nodes.size(), 12);
   }
 
-  vs = client1.batch_sample_neighbors(std::string("user2item"),
-                                      std::vector<uint64_t>(1, 96), 4);
-  ASSERT_EQ(vs[0].size(), 3);
-  std::vector<uint64_t> node_ids;
+  std::pair<std::vector<std::vector<int64_t>>, std::vector<float>> res;
+  res = client1.batch_sample_neighbors(
+      std::string("user2item"), std::vector<int64_t>(1, 96), 4, true, false);
+  ASSERT_EQ(res.first[0].size(), 3);
+  std::vector<int64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
-  vs = client1.batch_sample_neighbors(std::string("user2item"), node_ids, 4);
+  res = client1.batch_sample_neighbors(std::string("user2item"), node_ids, 4,
+                                       true, false);
 
-  ASSERT_EQ(vs.size(), 2);
-  std::vector<uint64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
+  ASSERT_EQ(res.first[1].size(), 1);
+  std::vector<int64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
   ASSERT_EQ(nodes_ids.size(), 2);
   ASSERT_EQ(true, (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
                       (nodes_ids[0] == 37 && nodes_ids[1] == 59));
@@ -640,7 +641,7 @@ void testCache() {
   strcpy(str, "54321");
   ::paddle::distributed::SampleResult* result =
       new ::paddle::distributed::SampleResult(5, str);
-  ::paddle::distributed::SampleKey skey = {6, 1};
+  ::paddle::distributed::SampleKey skey = {6, 1, false};
   std::vector<std::pair<::paddle::distributed::SampleKey,
                         paddle::distributed::SampleResult>>
       r;
@@ -681,28 +682,6 @@ void testCache() {
   }
   st.query(0, &skey, 1, r);
   ASSERT_EQ((int)r.size(), 0);
-  ::paddle::distributed::ScaledLRU<::paddle::distributed::SampleKey,
-                                   ::paddle::distributed::SampleResult>
-      cache1(2, 1, 4);
-  str = new char[18];
-  strcpy(str, "3433776521");
-  result = new ::paddle::distributed::SampleResult(strlen(str), str);
-  cache1.insert(1, &skey, result, 1);
-  ::paddle::distributed::SampleKey skey1 = {8, 1};
-  char* str1 = new char[18];
-  strcpy(str1, "3xcf2eersfd");
-  usleep(3000);  // sleep 3ms to guaruntee that skey1's time stamp is larger
-                 // than skey;
-  auto result1 = new ::paddle::distributed::SampleResult(strlen(str1), str1);
-  cache1.insert(0, &skey1, result1, 1);
-  sleep(1);  // sleep 1 s to guarantee that shrinking work is done
-  cache1.query(1, &skey, 1, r);
-  ASSERT_EQ((int)r.size(), 0);
-  cache1.query(0, &skey1, 1, r);
-  ASSERT_EQ((int)r.size(), 1);
-  char* p1 = (char*)r[0].second.buffer.get();
-  for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p1[j], str1[j]);
-  r.clear();
 }
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;

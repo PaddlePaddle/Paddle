@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
@@ -52,7 +52,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                                            "Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
-          input->type(), framework::proto::VarType::UINT8,
+          framework::TransToProtoVarType(input->dtype()),
+          framework::proto::VarType::UINT8,
           platform::errors::Unimplemented("Requantize does not support nonzero "
                                           "shift for signed input."));
     }
@@ -61,7 +62,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& engine = dev_ctx.GetEngine();
 
-    auto src_tz = paddle::framework::vectorize(input->dims());
+    auto src_tz = phi::vectorize(input->dims());
 
     float reorder_scale = scale_out / scale_in;
 
@@ -80,8 +81,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     if (reorder_p == nullptr) {
-      auto dst_tz = framework::vectorize(output->dims());
-      auto src_dt = framework::ToMKLDNNDataType(input->type());
+      auto dst_tz = phi::vectorize(output->dims());
+      auto src_dt = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(input->dtype()));
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
@@ -93,7 +95,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       int mask = 0;
       attri.set_output_scales(mask, {reorder_scale});
       if (with_shift) {
-        mkldnn::post_ops post_operations;
+        dnnl::post_ops post_operations;
         post_operations.append_sum();
         attri.set_post_ops(post_operations);
         uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
@@ -136,12 +138,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     }
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, *src_memory, *dst_memory);
-      astream.wait();
-    }
+
+    reorder_p->execute(astream, *src_memory, *dst_memory);
+    astream.wait();
 
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory));

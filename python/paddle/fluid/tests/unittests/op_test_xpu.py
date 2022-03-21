@@ -78,7 +78,8 @@ class XPUOpTest(OpTest):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
-                                inplace_atol=None):
+                                inplace_atol=None,
+                                check_eager=False):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         #xpu not support float64
         if self.dtype == np.float64:
@@ -105,7 +106,8 @@ class XPUOpTest(OpTest):
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
                               check_dygraph=True,
-                              numeric_place=None):
+                              numeric_place=None,
+                              check_eager=False):
         if place == None:
             place = paddle.XPUPlace(0)
 
@@ -121,17 +123,26 @@ class XPUOpTest(OpTest):
             return super().check_grad_with_place(
                 place, inputs_to_check, output_names, no_grad_set,
                 numeric_grad_delta, in_place, max_relative_error,
-                user_defined_grads, user_defined_grads, check_dygraph)
+                user_defined_grads, user_defined_grad_outputs, check_dygraph)
 
         a1 = self.get_grad_with_place(
-            place, inputs_to_check, output_names, no_grad_set=no_grad_set)
+            place,
+            inputs_to_check,
+            output_names,
+            no_grad_set=no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         a2 = self.get_grad_with_place(
-            place, inputs_to_check, output_names, no_grad_set=no_grad_set)
+            place,
+            inputs_to_check,
+            output_names,
+            no_grad_set=no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         a3 = self.get_grad_with_place(
             paddle.CPUPlace(),
             inputs_to_check,
             output_names,
-            no_grad_set=no_grad_set)
+            no_grad_set=no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         self._assert_is_close(a1, a2, inputs_to_check, 0.00000001,
                               "Gradient Check On two xpu")
         self._assert_is_close(a1, a3, inputs_to_check, max_relative_error,
@@ -145,7 +156,7 @@ class XPUOpTest(OpTest):
                             numeric_grad_delta=0.005,
                             in_place=False,
                             max_relative_error=0.005,
-                            user_defined_grads=None,
+                            user_defined_grad_outputs=None,
                             check_dygraph=True):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
@@ -191,15 +202,14 @@ class XPUOpTest(OpTest):
 
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
-            tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = six.moves.reduce(lambda a, b: a * b,
-                                           tensor_to_check.shape(), 1)
-            if tensor_size < 100:
-                self.__class__.input_shape_is_large = False
 
         if not type(output_names) is list:
             output_names = [output_names]
 
-        analytic_grads = self._get_gradient(inputs_to_check, place,
-                                            output_names, no_grad_set)
+        analytic_grads = self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         return analytic_grads

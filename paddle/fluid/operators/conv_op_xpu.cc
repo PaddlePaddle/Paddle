@@ -19,14 +19,16 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 class GemmConvXPUKernel : public framework::OpKernel<T> {
+  using XPUT = typename XPUTypeTrait<T>::Type;
+
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<Tensor>("Input");
+  void Compute(const framework::ExecutionContext &context) const override {
+    const Tensor *input = context.Input<Tensor>("Input");
     // The filter will be reshaped in the calculations,
     // so here use an assignment operation,
     // that avoids modifying the variable in the Scope.
     Tensor filter = *context.Input<Tensor>("Filter");
-    Tensor* output = context.Output<Tensor>("Output");
+    Tensor *output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
     int groups = context.Attr<int>("groups");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
@@ -41,10 +43,10 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
                           ("XPU do support data_format is NCHW in conv op.")));
 
     framework::DDim in_data_dims =
-        framework::slice_ddim(input->dims(), 2, input->dims().size());
+        phi::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -53,11 +55,16 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     const int img_h = static_cast<int>(input->dims()[2]);
     const int img_w = static_cast<int>(input->dims()[3]);
     const int f = static_cast<int>(filter.dims()[0]);
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::conv2d<float, float, float, int16_t>(
-        dev_ctx.x_context(), input->data<float>(), filter.data<float>(),
-        output->data<float>(), batch_size, img_c, img_h, img_w, f, ksize,
-        strides, paddings, dilations, groups, nullptr, nullptr, nullptr, true);
+
+    const XPUT *input_data = reinterpret_cast<const XPUT *>(input->data<T>());
+    const XPUT *filter_data = reinterpret_cast<const XPUT *>(filter.data<T>());
+    XPUT *output_data = reinterpret_cast<XPUT *>(output->data<T>());
+
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(
+        dev_ctx.x_context(), input_data, filter_data, output_data, batch_size,
+        img_c, img_h, img_w, f, ksize, strides, paddings, dilations, groups,
+        nullptr, nullptr, nullptr, true);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU conv kernel return wrong value[%d %s]",
@@ -67,14 +74,16 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class GemmConvGradXPUKernel : public framework::OpKernel<T> {
+  using XPUT = typename XPUTypeTrait<T>::Type;
+
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<Tensor>("Input");
-    const Tensor* output_grad =
+  void Compute(const framework::ExecutionContext &context) const override {
+    const Tensor *input = context.Input<Tensor>("Input");
+    const Tensor *output_grad =
         context.Input<Tensor>(framework::GradVarName("Output"));
-    Tensor* input_grad =
+    Tensor *input_grad =
         context.Output<Tensor>(framework::GradVarName("Input"));
-    Tensor* filter_grad =
+    Tensor *filter_grad =
         context.Output<Tensor>(framework::GradVarName("Filter"));
     // The filter and filter_grad will be reshaped in the calculations,
     // so here use an assignment operation,
@@ -95,10 +104,10 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
             ("XPU do support data_format is NCHW in conv grad op.")));
 
     framework::DDim in_data_dims =
-        framework::slice_ddim(input->dims(), 2, input->dims().size());
+        phi::slice_ddim(input->dims(), 2, input->dims().size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter.dims(), 2, filter.dims().size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -107,19 +116,27 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     const int img_h = static_cast<int>(input->dims()[2]);
     const int img_w = static_cast<int>(input->dims()[3]);
     const int f = static_cast<int>(filter.dims()[0]);
+
+    const XPUT *input_data = reinterpret_cast<const XPUT *>(input->data<T>());
+    const XPUT *filter_data = reinterpret_cast<const XPUT *>(filter.data<T>());
+    const XPUT *output_grad_data =
+        reinterpret_cast<const XPUT *>(output_grad->data<T>());
+    XPUT *input_grad_data = nullptr;
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
+      input_grad_data = reinterpret_cast<XPUT *>(input_grad->data<T>());
     }
+    XPUT *filter_grad_data = nullptr;
     if (filter_grad) {
       filter_grad->mutable_data<T>(context.GetPlace());
+      filter_grad_data = reinterpret_cast<XPUT *>(filter_grad->data<T>());
     }
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::conv2d_grad<float, float, float, int16_t>(
-        dev_ctx.x_context(), input->data<T>(), filter.data<T>(),
-        output_grad->data<T>(), input_grad ? input_grad->data<T>() : nullptr,
-        filter_grad ? filter_grad->data<T>() : nullptr, batch_size, img_c,
-        img_h, img_w, f, ksize, strides, paddings, dilations, groups, nullptr,
-        nullptr, nullptr, nullptr, nullptr, true);
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    int r = xpu::conv2d_grad<XPUT, XPUT, XPUT, int16_t>(
+        dev_ctx.x_context(), input_data, filter_data, output_grad_data,
+        input_grad_data, filter_grad_data, batch_size, img_c, img_h, img_w, f,
+        ksize, strides, paddings, dilations, groups, nullptr, nullptr, nullptr,
+        nullptr, nullptr, true);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU conv kernel return wrong value[%d %s]",
@@ -130,14 +147,22 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    depthwise_conv2d,
-    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
-    conv2d, ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    conv2d, ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext,
+                           paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     conv2d_grad,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext,
+                               paddle::platform::float16>);
+REGISTER_OP_XPU_KERNEL(
+    depthwise_conv2d,
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::GemmConvXPUKernel<paddle::platform::XPUDeviceContext,
+                           paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     depthwise_conv2d_grad,
-    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::GemmConvGradXPUKernel<paddle::platform::XPUDeviceContext,
+                               paddle::platform::float16>);
 #endif
