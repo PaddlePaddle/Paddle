@@ -48,6 +48,9 @@ class MemorySparseTable : public SparseTable {
   virtual int32_t push_dense(const float* values, size_t num) { return 0; }
   // unused method end
 
+  virtual int32_t Pull(TableContext& context);
+  virtual int32_t Push(TableContext& context);
+
   virtual int32_t initialize();
   virtual int32_t initialize_shard() { return 0; }
   virtual int32_t initialize_value();

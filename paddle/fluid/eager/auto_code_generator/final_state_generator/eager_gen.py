@@ -656,6 +656,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
         else:
             # Rearrange output order accordingly
             returns_str += f"returns[{fwd_position}] =  grad_api_returns[{grad_api_position}];\n"
+    returns_str += f"if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
     returns_str += f"return returns;\n"
 
     grad_node_name = GetGradNodeName(fwd_api_name)
@@ -729,7 +730,7 @@ def GenerateNodeCreationCodes(
         else:
             # Tuple api_result
             if IsPlainTensorType(rtype):
-                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
+                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
             else:
                 assert IsVectorTensorType(rtype)
                 output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
@@ -766,8 +767,11 @@ def GenerateNodeCreationCodes(
             else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            if IsVectorTensorType(atype):
-                tw_name = f"api_result[{pos}]"
+            if num_fwd_outputs > 1:
+                # Aligned with forward output position
+                assert name in forward_outputs_position_map.keys()
+                fwd_output_pos = forward_outputs_position_map[name][1]
+                tw_name = f"std::get<{fwd_output_pos}>(api_result)"
             else:
                 tw_name = f"api_result"
 
@@ -783,7 +787,7 @@ def GenerateNodeCreationCodes(
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"        grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
+        set_grad_out_meta = f"        grad_node->SetGradOutMeta({name}, {pos});"
         set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
@@ -800,17 +804,18 @@ def GenerateNodeCreationCodes(
         output_autograd_meta_name = GetAutoGradMetaName(name)
         set_out_rank = f"        egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
         set_history = f"        egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
-        set_grad_in_meta = f"        grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
+        if num_outputs == 1:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(api_result, {pos});"
+        else:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(std::get<{pos}>(api_result), {pos});"
 
         set_out_rank_list.append(set_out_rank)
         set_history_list.append(set_history)
         set_grad_in_meta_list.append(set_grad_in_meta)
-
-        if num_outputs == 1:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
-        else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
         set_retain_grad_list.append(set_retain_grad)
+
     set_out_rank_str = "\n".join(set_out_rank_list)
     set_history_str = "\n".join(set_history_list)
     set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
@@ -932,7 +937,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
             returns_list[0] = f"api_result"
         else:
             # Tuple api_result
-            returns_list[pos] = f"api_result[{pos}]"
+            returns_list[pos] = f"std::get<{pos}>(api_result)"
 
         if IsPlainTensorType(rtype):
             returns_type_list[pos] = "paddle::experimental::Tensor"
@@ -1082,7 +1087,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
-#include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/backward/sparse_bw_api.h"
 """
     file_contents += node_definition_str
     with open(filepath, 'a') as f:
