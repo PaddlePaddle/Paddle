@@ -62,6 +62,7 @@ class TestNanmeanAPI(unittest.TestCase):
                 axis = tuple(axis)
                 if len(axis) == 0:
                     axis = None
+
             out_ref = np.nanmean(x, axis, keepdims=keepdim)
             if np.isnan(out_ref).sum():
                 nan_mask = np.isnan(out_ref)
