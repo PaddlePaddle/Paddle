@@ -122,7 +122,7 @@ struct normal_distribution;
 template <typename T>
 struct uniform_distribution {
   __device__ inline T operator()(curandStatePhilox4_32_10_t *state) const {
-    return curand_uniform(state);
+    return static_cast<T>(curand_uniform(state));
   }
   static constexpr int kReturnsCount = 1;
 };

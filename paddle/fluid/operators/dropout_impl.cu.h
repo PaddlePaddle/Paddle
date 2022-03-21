@@ -51,8 +51,8 @@ struct DstValGenerator {
   HOSTDEVICE inline T operator()(const T src_val, const T rand) const {
     using MT = typename details::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
-    if ((rand) < dropout_prob_) {
-      return 0;
+    if (static_cast<float>(rand) < dropout_prob_) {
+      return static_cast<T>(0);
     } else {
       return is_upscale_in_train_
                  ? static_cast<T>(static_cast<MT>(src_val) * factor)
@@ -68,12 +68,10 @@ struct MaskValGenerator {
       : dropout_prob_(dropout_prob) {}
 
   HOSTDEVICE inline T operator()(const T rand) const {
-    // rand = static_cast<float4>(rand);
-    using MT = typename details::MPTypeTrait<T>::Type;
-    if (rand < dropout_prob_) {
-      return 0;
+    if (static_cast<float>(rand) < dropout_prob_) {
+      return static_cast<T>(0);
     } else {
-      return 1;
+      return static_cast<T>(1);
     }
   }
 };
@@ -122,9 +120,11 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const T* src, MaskType* mask, T* dst,
                                           bool is_upscale_in_train,
                                           uint64_t increment) {
-  size_t main_offset = n / (BLOCK_NUM_X * kCount) * (BLOCK_NUM_X * kCount);
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
-  static constexpr int kCount = DistOp::kReturnsCount;
+  static constexpr int kCount =
+      phi::funcs::uniform_distribution<T>::kReturnsCount;
+  size_t main_offset = n / (BLOCK_NUM_X * kCount) * (BLOCK_NUM_X * kCount);
+  size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
 #ifdef PADDLE_WITH_HIP
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
@@ -140,19 +140,18 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   MaskType mask_result[kCount];
   using Rand = phi::funcs::uniform_distribution<T>;
 
-  size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
   int deal_size = BLOCK_NUM_X * kCount;
-
   auto dst_functor = DstValGenerator<T>(dropout_prob, is_upscale_in_train);
   auto mask_functor = MaskValGenerator<T>(dropout_prob);
-  int fix = idx * kCount;
+  size_t fix = idx * kCount;
   for (; fix < main_offset; fix += stride) {
-    kps::ReadData<T, kCount, 1, 1, false>(src_val, src + fix, deal_size);
-    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(rands, Rand(), &state);
+    kps::ReadData<T, kCount, 1, 1, false>(&src_val[0], src + fix, deal_size);
+    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(&rands[0], Rand(),
+                                                      &state);
     kps::ElementwiseBinary<T, T, kCount, 1, 1, DstValGenerator<T>>(
-        dst_result, src_val, rands, dst_functor);
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator>(
-        mask_result, src_val, mask_functor);
+        &dst_result[0], &src_val[0], &rands[0], dst_functor);
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator<T>>(
+        &mask_result[0], &src_val[0], mask_functor);
     kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
                                                   deal_size);
     kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_result[0],
@@ -160,16 +159,16 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   }
   int remainder = n - fix;
   if (remainder) {
-    kps::ReadData<T, kCount, 1, 1, false>(src_val, src + fix, remainder);
-    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(rands, Rand(), &state);
+    kps::ReadData<T, kCount, 1, 1, true>(&src_val[0], src + fix, remainder);
+    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(&rands[0], Rand(),
+                                                      &state);
     kps::ElementwiseBinary<T, T, kCount, 1, 1, DstValGenerator<T>>(
-        dst_result, src_val, rands, dst_functor);
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator>(
-        mask_result, src_val, mask_functor);
-    kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
-                                                  remainder);
-    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_result[0],
-                                           remainder);
+        &dst_result[0], &src_val[0], &rands[0], dst_functor);
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator<T>>(
+        &mask_result[0], &src_val[0], mask_functor);
+    kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
+                                                 remainder);
+    kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_result[0], remainder);
   }
 }
 
@@ -217,7 +216,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     uint64_t increment;
     // VectorizedRandomGenerator use curand_uniform4, so we only support
     // vec_size is 4;
-    constexpr int vec_size = uniform_distribution<T>::kReturnsCount;
+    constexpr int vec_size = phi::funcs::uniform_distribution<T>::kReturnsCount;
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
     auto offset =
@@ -252,6 +251,22 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     }
   }
 }
+
+template <typename T, typename MaskType>
+struct CudaDropoutGradFunctor {
+  using MT = typename details::MPTypeTrait<T>::Type;
+
+  explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
+
+  __device__ __forceinline__ T operator()(const T dout,
+                                          const MaskType mask) const {
+    return static_cast<T>(static_cast<MT>(dout) * static_cast<MT>(mask) *
+                          factor_);
+  }
+
+ private:
+  MT factor_;
+};
 
 template <typename T>
 void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
