@@ -47,6 +47,9 @@ class ProfilerState(Enum):
 class ProfilerTarget(Enum):
     r"""
     Target device for profiling.
+
+    CPU: Profile events on CPU.
+    GPU: Profile events on GPU.
     """
     CPU = 0
     GPU = 1

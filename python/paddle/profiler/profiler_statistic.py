@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,6 +34,15 @@ _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
 class SortedKeys(Enum):
     r"""
     Sorted keys for printing summary table.
+
+    CPUTotal: Sorted by CPU total time.
+    CPUAvg: Sorted by CPU average time.
+    CPUMax: Sorted by CPU max time.
+    CPUMin: Sorted by CPU min time.
+    GPUTotal: Sorted by GPU total time.
+    GPUAvg: Sorted by GPU average time.
+    GPUMax: Sorted by GPU max time.
+    GPUMin: Sorted by GPU min time.
     """
     CPUTotal = 0
     CPUAvg = 1
@@ -170,9 +179,9 @@ class TimeRangeSummary:
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns))
                 self.call_times[hostnode.type] += 1
-                if hostnode.type == TracerEventType.Operator and any([
-                        name in hostnode.name for name in _CommunicationOpName
-                ]):  # special case, communication op
+                if hostnode.type == TracerEventType.Operator and any(
+                    [name in hostnode.name for name in
+                     _CommunicationOpName]):  # special case, communication op
                     CPUTimeRange[TracerEventType.Communication].append(
                         (hostnode.start_ns, hostnode.end_ns))
                     self.call_times[TracerEventType.Communication] += 1
