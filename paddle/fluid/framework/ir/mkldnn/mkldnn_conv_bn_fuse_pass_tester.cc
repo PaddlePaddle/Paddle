@@ -28,12 +28,13 @@
 
 USE_OP_ITSELF(batch_norm);
 USE_OP_DEVICE_KERNEL(batch_norm, MKLDNN);
-USE_OP(conv2d_transpose);
+USE_OP_ITSELF(conv2d_transpose);
 USE_OP_DEVICE_KERNEL(conv2d_transpose, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(gelu);
+USE_OP_ITSELF(gelu);
 USE_OP_DEVICE_KERNEL(gelu, MKLDNN);
+PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {
 namespace framework {
