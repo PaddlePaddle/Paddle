@@ -17,11 +17,39 @@
 namespace phi {
 namespace funcs {
 
-//////// Sum Functor ///////
-struct SumFunctor {
+//////// Frobenius Norm Functor ///////
+struct FrobeniusNormFunctor {
   template <typename DeviceContext, typename X, typename Y, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->sum(dim);
+    y->device(place) = ((x->square()).sum(dim)).sqrt();
+  }
+};
+
+struct FrobeniusNormGradFunctor {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
+    dx->device(place) = y->broadcast(dim);
+    dx->device(place) = *dx + dx->constant(1e-12f);
+    dx->device(place) = (*x / *dx) * (dy->broadcast(dim));
+  }
+};
+
+//////// Max Functor ///////
+struct MaxFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->maximum(dim);
   }
 };
 
@@ -41,11 +69,11 @@ struct ProdFunctor {
   }
 };
 
-//////// Max Functor ///////
-struct MaxFunctor {
+//////// Sum Functor ///////
+struct SumFunctor {
   template <typename DeviceContext, typename X, typename Y, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->maximum(dim);
+    y->device(place) = x->sum(dim);
   }
 };
 

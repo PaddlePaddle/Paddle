@@ -4264,6 +4264,7 @@ All parameter, weight, gradient are variables in Paddle.
                  platform::ipu::IpuBackend::GetInstance());
            },
            py::return_value_policy::reference)
+      .def("weights_to_host", &platform::ipu::IpuBackend::WeightsToHost)
       .def("detach", &platform::ipu::IpuBackend::Detach)
       .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
@@ -4310,6 +4311,15 @@ All parameter, weight, gradient are variables in Paddle.
                      self.SetTensorLocation(
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
+                   }
+                 } else if (option_name == "accumulate_outer_fragment") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::vector<int> values;
+                     for (auto value : option.second.cast<py::list>()) {
+                       values.push_back(value.cast<int>());
+                     }
+                     self.SetAccumulateOuterFragmentSettings(
+                         option.first.cast<std::uint64_t>(), values);
                    }
                  } else if (option_name == "custom_op") {
                    std::string paddle_op;

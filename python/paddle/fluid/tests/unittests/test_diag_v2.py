@@ -27,6 +27,7 @@ from paddle.fluid.framework import _test_eager_guard
 class TestDiagV2Op(OpTest):
     def setUp(self):
         self.op_type = "diag_v2"
+        self.python_api = paddle.diag
         self.x = np.random.rand(10, 10)
         self.offset = 0
         self.padding_value = 0.0
@@ -267,4 +268,5 @@ class TestDiagV2API(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
