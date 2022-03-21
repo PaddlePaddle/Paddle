@@ -453,25 +453,20 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-    bool is_last_dim =
-        (rank == 2) && (reduce_rank == 1) && (reduce_dim[0] == 1);
-    if (rank == reduce_rank || is_last_dim) {
 #ifdef PADDLE_WITH_XPU_KP
-      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+    bool not_higher = x_dim[0] > 1;
 #else
-      reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+    int device_id = paddle::platform::GetCurrentDeviceId();
+    int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
+    bool not_higher = x_dim[0] >= max_grid_z;
 #endif
+    if (reduce_last_dim && (reduce_rank == 1)) {
+      reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
     } else if (reduce_rank == 1) {
-// ReduceFirstDim and reduceSecondDim
-#ifdef PADDLE_WITH_XPU_KP
-      if (reduce_dim[0] == 0) {
-        reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
-      } else {
+      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
+      if (rank == 3 && not_higher) {
         reduce_type = static_cast<int>(ReduceType::kReduceAny);
       }
-#else
-      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
-#endif
     } else {
       reduce_type = static_cast<int>(ReduceType::kReduceAny);
     }
@@ -756,7 +751,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(reduce_num);
     }
-    Ty result = static_cast<Ty>(final_opt(reduce_var));
+    Ty result = static_cast<Ty>(reduce_var);
     kps::details::WriteData<Ty>(
         y + store_offset + i, &result, static_cast<int>(need_store));
   }
