@@ -16,7 +16,7 @@ from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -1402,7 +1402,8 @@ def gather(x, index, axis=None, name=None):
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        x, 'x',
+        ['float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
         'gather')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
 
@@ -1566,6 +1567,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_scatter(x, index, updates, overwrite)
         return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
     check_variable_and_dtype(

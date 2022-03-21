@@ -89,9 +89,9 @@ __global__ void BroadcastKernelBinary(
 template <typename T>
 void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
                            const T* in0, const T* in1, T* out) {
-  int in_vec_size = std::min(platform::GetVectorizedSize<T>(in0),
-                             platform::GetVectorizedSize<T>(in1));
-  int out_vec_size = std::min(4, platform::GetVectorizedSize<T>(out));
+  int in_vec_size =
+      std::min(phi::GetVectorizedSize<T>(in0), phi::GetVectorizedSize<T>(in1));
+  int out_vec_size = std::min(4, phi::GetVectorizedSize<T>(out));
   int vec_size = std::min(out_vec_size, in_vec_size);
 
   int numel = m * n;
@@ -191,9 +191,9 @@ void SetConfigForColumnReduce(const int max_threads, const int reduce_num,
 
   int num_block = (max_threads / left_num);
   if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-    *blocking_size = phi::kernels::details::GetLastPow2(reduce_num / num_block);
+    *blocking_size = phi::funcs::details::GetLastPow2(reduce_num / num_block);
     if (*blocking_size <= 1) {
-      *blocking_size = phi::kernels::details::GetLastPow2(sqrt(reduce_num));
+      *blocking_size = phi::funcs::details::GetLastPow2(sqrt(reduce_num));
     } else if (*blocking_size * 2 < reduce_num) {
       *blocking_size *= 2;
     }

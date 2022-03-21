@@ -35,7 +35,7 @@ while_block_info = {}
 class AllGatherOpDesc:
     """
     Describe the allgather op in the reshard phase.
- 
+
     Args:
         group (list): Process group.
     """
@@ -59,7 +59,7 @@ class AllGatherOpDesc:
 class SendOpDesc:
     """
     Describe the send op in the reshard phase.
- 
+
     Args:
         partition_index (list): The index of partition in complete tensor.
         dst (int): The destination process to receive.
@@ -89,7 +89,7 @@ class SendOpDesc:
 class RecvOpDesc:
     """
     Describe the recv op in the reshard op.
- 
+
     Args:
         partition_index (list): The index of partition in complete tensor.
         src (int): The source process to send.
@@ -119,7 +119,7 @@ class RecvOpDesc:
 class SliceOpDesc:
     """
     Describe the slice op in the reshard phase.
- 
+
     Args:
         starts (list): It represents starting indices of corresponding axis in ``axes``.
         ends (list):  It represents ending indices of corresponding axis in ``axes``.
@@ -155,7 +155,7 @@ class SliceOpDesc:
 class ConcatOpDesc:
     """
     Describe the concat op in the reshard phase.
- 
+
     Args:
         partition_index_list (list): A list contains all partition index.
     """
@@ -335,8 +335,6 @@ def _need_reshard(dist_tensor,
                     assert _is_unshard(tensor_dims_mapping)
                     assert _is_unshard(op_input_dims_mapping)
                 else:
-                    print(str(dist_op))
-                    print(str(dist_tensor))
                     if dist_tensor.serial_tensor.dtype == paddle.bool:
                         raise ValueError("Bool var is not supported reshard.")
 
@@ -389,12 +387,12 @@ def _compute_complete_shape(slice_shape, process_shape, dims_mapping):
 def find_op_desc_seq(dist_tensor, dist_op, actual_process_mesh, batch_size):
     """
     Find the op description sequence to reshard the source tensor for matching the op requirement.
- 
+
     Args:
         dist_tensor (DistributedTensor): A distributed tensor.
         dist_op (DistributedOperator): A distributed operator.
         actual_process_mesh (ProcessMesh): The actual op process mesh.
- 
+
     Returns:
         Dict, the dict represents the required op description sequence corresponding to process, The key of dict is
         process and value is a list containing op description.
@@ -1250,7 +1248,7 @@ def reshard(auto_parallel_main_prog,
             batch_size=None):
     """
     Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
- 
+
     Args:
         auto_parallel_main_prog (Program): An auto parallel main program.
         auto_parallel_startup_prog (Program): An auto parallel startup program.

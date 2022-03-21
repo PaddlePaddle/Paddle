@@ -46,9 +46,10 @@ void close_socket(SocketType socket) {
   hints.ai_socktype = SOCK_STREAM;
 
   const char* node = host.empty() ? nullptr : host.c_str();
+  const char* port_cstr = port.empty() ? nullptr : port.c_str();
 
   int n;
-  n = ::getaddrinfo(node, port.c_str(), &hints, &res);
+  n = ::getaddrinfo(node, port_cstr, &hints, &res);
   const char* gai_err = ::gai_strerror(n);
   const char* proto =
       (family == AF_INET ? "IPv4" : family == AF_INET6 ? "IPv6" : "");

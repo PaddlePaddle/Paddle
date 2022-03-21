@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -88,6 +89,8 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
+  // For compatibility with LoDTensorArray
+  virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
@@ -95,6 +98,13 @@ class ArgumentMappingContext {
   // use this function to mark it comes from InferShapeArgumentMappingContext
   // and will be used in infershape
   virtual bool IsForInferShape() const = 0;
+
+  // NOTE(paddle-dev): [ Why do we export this interface? ]
+  // In old Fluid framework, some operators' Attribute can be a Tensor or
+  // TensorList. In this case, the InferShape logic will be different
+  // under CompileTime and RuntimeTime. So we export this interface to
+  // handle it conveniently. See "gaussian_random_sig.cc" for details.
+  virtual bool IsRuntime() const { return true; }
 };
 
 }  // namespace phi
