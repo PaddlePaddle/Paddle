@@ -24,6 +24,7 @@
 namespace paddle {
 namespace distributed {
 
+// DownpourUnitAccessor
 class CtrCommonAccessor : public ValueAccessor {
  public:
   struct CtrCommonFeatureValue {

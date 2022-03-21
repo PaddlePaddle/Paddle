@@ -133,6 +133,7 @@ class Accessor:
                 break
 
         if not accessor_proto.HasField("accessor_class"):
+            # DownpourSparseValueAccessor
             accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
             if accessor_proto.accessor_class == "SparseAccessor":

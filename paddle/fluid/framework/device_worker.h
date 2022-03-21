@@ -111,9 +111,10 @@ class PullDenseWorker {
   bool CheckUpdateParam(uint64_t table_id);
 
  private:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
 #if defined(PADDLE_WITH_PSCORE)
-  std::shared_ptr<paddle::distributed::FleetWrapper> new_fleet_ptr_;
+  std::shared_ptr<paddle::distributed::FleetWrapper> fleet_ptr_;
+#else
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
 #endif
 
   PullDenseWorkerParameter param_;
@@ -349,6 +350,7 @@ class DownpourWorker : public HogwildWorker {
   // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
 };
 
+// Based on DownpourWorker，remove push pull code into operator
 #if defined(PADDLE_WITH_PSCORE)
 class DownpourLiteWorker : public HogwildWorker {
  public:

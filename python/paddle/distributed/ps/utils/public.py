@@ -451,10 +451,6 @@ def get_the_one_send_context(context,
     origin_programs = context['origin_main_programs']
 
     idx = 0
-    for i, program in enumerate(origin_programs):
-        merged_dense_pairs = context['merged_dense_pairs'][i]
-        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
-                                     trainer_id, split_dense_table)
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
     # print("public distibuted_varnames:", distibuted_varnames)
     for i, program in enumerate(origin_programs):
@@ -487,6 +483,11 @@ def get_the_one_send_context(context,
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+    for i, program in enumerate(origin_programs):
+        merged_dense_pairs = context['merged_dense_pairs'][i]
+        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
+                                     trainer_id, split_dense_table)
 
     if len(context['tensor_table']) > 0 and context['is_worker']:
         name, ctx = _step_ctx(idx, context['role_maker'])

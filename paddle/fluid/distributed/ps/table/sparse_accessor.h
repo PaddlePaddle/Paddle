@@ -24,6 +24,7 @@
 namespace paddle {
 namespace distributed {
 
+// no show click, for word2vec(DownpourSparseValueAccessor)
 class SparseAccessor : public ValueAccessor {
  public:
   struct SparseFeatureValue {

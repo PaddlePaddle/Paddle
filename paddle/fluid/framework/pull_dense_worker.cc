@@ -62,10 +62,10 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     current_version_[tid] = 0;
   }
 
-  fleet_ptr_ = FleetWrapper::GetInstance();
-
 #if defined(PADDLE_WITH_PSCORE)
-  new_fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+  fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+#else
+  fleet_ptr_ = FleetWrapper::GetInstance();
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -177,9 +177,8 @@ void PullDenseWorker::PullDense(bool force_update) {
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
 #elif defined(PADDLE_WITH_PSCORE)
-      new_fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid,
-                                         dense_value_names_[tid],
-                                         &pull_dense_status_, true);
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
+                                     &pull_dense_status_, true);
 #else
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, true);
