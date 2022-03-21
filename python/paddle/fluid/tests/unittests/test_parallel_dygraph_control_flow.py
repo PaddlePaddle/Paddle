@@ -93,5 +93,59 @@ class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
         self._find_unused_parameters = True
 
 
+class TestDygraphControlFlowSameEager(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._eager_mode = True
+        self._dygraph = True
+        self._find_unused_parameters = True
+
+    def test_net(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_control_flow_same.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestDygraphControlFlowSameAccGradEager(TestDygraphControlFlowSame):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._eager_mode = True
+        self._dygraph = True
+        self._accumulate_gradient = True
+        self._find_unused_parameters = True
+
+
+class TestDygraphControlFlowDiffEager(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._eager_mode = True
+        self._dygraph = True
+        self._find_unused_parameters = True
+
+    def test_net(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_control_flow_different.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestFleetDygraphControlFlowDiffAccGradEager(TestDygraphControlFlowDiff):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._eager_mode = True
+        self._dygraph = True
+        self._accumulate_gradient = True
+        self._find_unused_parameters = True
+
+
 if __name__ == "__main__":
     unittest.main()
