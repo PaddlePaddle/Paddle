@@ -189,12 +189,10 @@ HOSTDEVICE static inline void *PD_Memset(void *src, int ch, size_t size) {
 HOSTDEVICE static inline void *PD_Memcpy(void *dst,
                                          const void *src,
                                          size_t size) {
-  char *dest = (char *)dst;          // NOLINT
-  const char *source = (char *)src;  // NOLINT
   for (size_t i = 0; i < size; ++i) {
-    dest[i] = source[i];
+    ((char *)dst)[i] = ((const char *)src)[i];  // NOLINT
   }
-  return dest;
+  return dst;
 }
 
 HOSTDEVICE static inline void *PD_Malloc(size_t size) { return malloc(size); }
@@ -339,7 +337,6 @@ HOSTDEVICE static inline char *PD_PString_ResizeUninitialized(PD_PString *str,
   size_t curr_cap = PD_PString_GetCapacity(str);
 
   if (new_size < curr_size && new_size < curr_cap / 2) {
-    // TODO(dero): Replace with shrink_to_fit flag.
     new_cap = PD_align16(curr_cap / 2 + 1) - 1;
   } else if (new_size > curr_cap) {
     new_cap = PD_align16(new_size + 1) - 1;
@@ -510,13 +507,6 @@ HOSTDEVICE static inline void PD_PString_Assign(PD_PString *dst,
       size_t size = PD_PString_GetSize(src);
 
       PD_PString_Copy(dst, src_c, size);
-    }
-      return;
-    case PD_PSTR_OFFSET: {
-      const char *src_c = PD_PString_GetDataPointer(src);
-      size_t size = PD_PString_GetSize(src);
-
-      PD_PString_AssignView(dst, src_c, size);
     }
       return;
     default:

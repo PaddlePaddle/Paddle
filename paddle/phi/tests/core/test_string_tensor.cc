@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <sstream>
 #include <string>
 #include <utility>
 #include "gtest/gtest.h"
@@ -79,12 +80,32 @@ TEST(string_tensor, ctor) {
   CHECK_EQ(tensor_3.data()[1], pshort_str);
 }
 
-TEST(pstring, dtype) {
+TEST(pstring, func) {
   pstring long_str = "A large pstring whose length is longer than 22.";
   pstring short_str = "A short pstring.";
-  // Test pstring assignment
+
+  // Test operator[]
+  CHECK_EQ(long_str[0], 'A');
+
+  // Test operator<<
+  std::ostringstream oss1, oss2;
+  oss1 << long_str;
+  CHECK_EQ(oss1.str(), long_str);
+
+  // Test iterator
+  for (auto it = long_str.begin(); it != long_str.end(); ++it) {
+    oss2 << *it;
+  }
+  CHECK_EQ(oss2.str(), long_str);
+
+  // Test comparision operators
+  CHECK_EQ((long_str < short_str), true);
+  CHECK_EQ((long_str > short_str), false);
+  CHECK_EQ((long_str == short_str), false);
+
+  // Test operator =
   long_str = short_str;
-  CHECK_EQ(long_str, short_str);
+  CHECK_EQ(short_str, long_str);
 }
 
 }  // namespace tests
