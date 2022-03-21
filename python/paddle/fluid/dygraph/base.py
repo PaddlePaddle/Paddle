@@ -565,16 +565,25 @@ def grad(outputs,
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var,
-                    core.VarBase), "Elements of {} must be Variable".format(
-                        name)
+                if core._in_eager_mode():
+                    assert isinstance(
+                        each_var, core.eager.
+                        Tensor), "Elements of {} must be Tensor".format(name)
+                else:
+                    assert isinstance(
+                        each_var,
+                        core.VarBase), "Elements of {} must be Variable".format(
+                            name)
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list,
-                core.VarBase), "{} must be Variable or list of Variable".format(
-                    name)
+            if core._in_eager_mode():
+                assert isinstance(
+                    in_out_list, core.eager.
+                    Tensor), "{} must be Tensor or list of Tensor".format(name)
+            else:
+                assert isinstance(
+                    in_out_list, core.VarBase
+                ), "{} must be Variable or list of Variable".format(name)
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -586,9 +595,14 @@ def grad(outputs,
 
         for each_var in grad_outputs:
             if each_var is not None:
-                assert isinstance(
-                    each_var, core.VarBase
-                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                if core._in_eager_mode():
+                    assert isinstance(
+                        each_var, core.eager.Tensor
+                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                else:
+                    assert isinstance(
+                        each_var, core.VarBase
+                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
     else:
         grad_outputs = []
 
@@ -598,16 +612,29 @@ def grad(outputs,
 
     if no_grad_vars is None:
         no_grad_vars = []
-    elif isinstance(no_grad_vars, core.VarBase):
+    elif isinstance(no_grad_vars, (core.VarBase, core.eager.Tensor)):
+        no_grad_vars = [no_grad_vars]
+    elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            assert isinstance(
-                var, core.VarBase), "no_grad_vars can only contains Variable"
+            if core._in_eager_mode():
+                assert isinstance(
+                    var,
+                    core.eager.Tensor), "no_grad_vars can only contains Tensor"
+            else:
+                assert isinstance(
+                    var,
+                    core.VarBase), "no_grad_vars can only contains Variable"
     else:
-        raise AssertionError(
-            "no_grad_vars must be None, Variable or list/tuple/set of Variables")
+        if core._in_eager_mode():
+            raise AssertionError(
+                "no_grad_vars must be None, Tensor or list/tuple/set of Tensors")
+        else:
+            raise AssertionError(
+                "no_grad_vars must be None, Variable or list/tuple/set of Variables"
+            )
 
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
@@ -621,6 +648,11 @@ def grad(outputs,
 
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
+
+    if core._in_eager_mode():
+        return core.eager.run_partial_grad(
+            outputs, inputs, grad_outputs, retain_graph, create_graph,
+            only_inputs, allow_unused, no_grad_vars)
 
     place = core.Place()
     place.set_place(framework._current_expected_place())
@@ -686,13 +718,13 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             y.shape     # [3L, 2L]
 
     """
-    support_type = (list, tuple, np.ndarray, core.VarBase, framework.Variable,
-                    core.Tensor, core.LoDTensor)
+    support_type = (list, tuple, np.ndarray, core.eager.Tensor, core.VarBase,
+                    framework.Variable, core.Tensor, core.LoDTensor)
     if not isinstance(value, support_type):
         raise TypeError(
             "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value)))
-    if isinstance(value, (core.VarBase, framework.Variable)):
+    if isinstance(value, (core.eager.Tensor, core.VarBase, framework.Variable)):
         return value
     elif isinstance(value, (core.Tensor, core.LoDTensor)):
         return core.VarBase(value)

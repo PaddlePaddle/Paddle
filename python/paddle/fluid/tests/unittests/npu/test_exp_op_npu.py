@@ -50,8 +50,6 @@ class TestExpNPUOP(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def init_dtype(self):

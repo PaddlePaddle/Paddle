@@ -119,7 +119,11 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       return var;
     }
 
-    return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
+    auto res_varbase = PyObjectCast<std::shared_ptr<imperative::VarBase>>(res);
+    // Here the reference count of `res` is 2, so we decreases the reference
+    // count manually to avoid memory leaks
+    Py_DECREF(res);
+    return res_varbase->SharedVar();
   }
 
  private:

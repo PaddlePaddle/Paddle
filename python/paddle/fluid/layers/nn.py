@@ -5611,6 +5611,8 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_transpose(x, perm)
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
@@ -6299,7 +6301,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 if dim_size == -1:
                     assert unk_dim_idx == -1, (
                         "Only one dimension value of 'shape' in reshape can "
-                        "be -1. But received shape[%d] is also -1." % dim_idx)
+                        "be -1. But received shape[%d] is also -1.\n"
+                        "\n\t# N = x.shape()[2]\t\t# N is an int. "
+                        "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
+                        "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
+                        "\t# z.shape is [-1, -1, 4]\n\n"
+                        "    If your target shape in Reshape represents dynamic shape, "
+                        "please turn it into a Tensor under @to_static. See above example for details."
+                        % dim_idx)
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
                     assert dim_idx < len(x.shape), (
@@ -8543,6 +8552,8 @@ def gather_nd(input, index, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather_nd(input, index)
         return _C_ops.gather_nd(input, index)
     check_variable_and_dtype(
         input, 'input',
@@ -8719,6 +8730,8 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_scatter_nd_add(ref, index, updates)
         op = getattr(_C_ops, 'scatter_nd_add')
         return op(ref, index, updates)
 
@@ -15285,6 +15298,8 @@ def gather_tree(ids, parents):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather_tree(ids, parents)
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
