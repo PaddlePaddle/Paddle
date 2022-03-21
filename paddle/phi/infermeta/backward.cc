@@ -64,6 +64,45 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void ConvTransposeGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& dout,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& output_padding,
+                                const std::vector<int>& output_size,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format,
+                                MetaTensor* dx,
+                                MetaTensor* dfilter) {
+  GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
+}
+
+void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
+                                        const MetaTensor& filter,
+                                        const MetaTensor& dout,
+                                        const MetaTensor& ddx,
+                                        const MetaTensor& ddfilter,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        const std::vector<int>& output_padding,
+                                        const std::vector<int>& output_size,
+                                        const std::string& padding_algorithm,
+                                        int groups,
+                                        const std::vector<int>& dilations,
+                                        const std::string& data_format,
+                                        MetaTensor* dx,
+                                        MetaTensor* dfilter,
+                                        MetaTensor* ddout) {
+  GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
+
+  if (ddout) {
+    ddout->share_meta(dout);
+  }
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

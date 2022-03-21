@@ -23,6 +23,7 @@ from test_multiclass_nms_op import iou
 from test_multiclass_nms_op import nms
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle
 
 
 def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
@@ -518,4 +519,5 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

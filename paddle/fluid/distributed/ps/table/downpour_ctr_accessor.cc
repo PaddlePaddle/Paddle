@@ -37,6 +37,16 @@ int DownpourCtrAccessor::initialize() {
   return 0;
 }
 
+void DownpourCtrAccessor::GetTableInfo(AccessorInfo& info) {
+  info.dim = dim();
+  info.size = size();
+  info.select_dim = select_dim();
+  info.select_size = select_size();
+  info.update_dim = update_dim();
+  info.update_size = update_size();
+  info.fea_dim = fea_dim();
+}
+
 size_t DownpourCtrAccessor::dim() {
   auto embedx_dim = _config.embedx_dim();
   return DownpourCtrFeatureValue::dim(embedx_dim);
