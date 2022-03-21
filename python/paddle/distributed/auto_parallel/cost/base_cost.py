@@ -12,19 +12,189 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
 import paddle
+
+COMM_OP_TYPE = [
+    "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum"
+]
+NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
+OP_COST_FACTORY = {}
+
+
+def _parse_op_to_desc(op, dist_context=None):
+    desc = {}
+    desc["op"] = op.type
+    vars = op.block.vars
+    input_desc = OrderedDict()
+    for input_name in op.input_names:
+        var_name_list = op.input(input_name)
+        var_desc = []
+        for var_name in var_name_list:
+            var = vars[var_name]
+            shape = None
+            if dist_context is not None:
+                dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                shape = dist_tensor.local_sizes()
+            else:
+                shape = var.shape
+            assert shape is not None
+            var_desc.append((var.dtype, shape))
+        input_desc[input_name] = var_desc
+    desc["inputs"] = input_desc
+
+    output_desc = OrderedDict()
+    for out_name in op.output_names:
+        var_name_list = op.output(out_name)
+        var_desc = []
+        for var_name in var_name_list:
+            var = vars[var_name]
+            shape = None
+            if dist_context is not None:
+                dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                shape = dist_tensor.local_sizes()
+            else:
+                shape = var.shape
+            assert shape is not None
+            var_desc.append((var.dtype, shape))
+        output_desc[out_name] = var_desc
+    desc["outputs"] = output_desc
+
+    attr_desc = op.all_attrs
+    desc["attrs"] = attr_desc
+
+    return desc
+
+
+def parse_to_desc(op=None, dist_op=None, dist_context=None):
+    desc = None
+    if op is None and dist_op is not None and dist_context is not None:
+        desc = _parse_op_to_desc(
+            op=dist_op.serial_op, dist_context=dist_context)
+    elif op is not None and dist_op is None and dist_context is None:
+        desc = _parse_op_to_desc(op)
+
+    return desc
+
+
+def parse_desc_to_str(desc):
+    def _parse_dtype(dtype):
+        dtype_str = ""
+        if dtype == paddle.float32:
+            dtype_str = "float32"
+        elif dtype == paddle.float16:
+            dtype_str = "float16"
+        elif dtype == paddle.int32:
+            dtype_str = "int32"
+        elif dtype == paddle.int64:
+            dtype_str = "int64"
+        elif dtype == paddle.unit8:
+            dtype_str = "unit8"
+        else:
+            raise TypeError("Unsupported dtype {}".format(dtype))
+        return dtype_str
+
+    assert isinstance(desc, dict)
+    desc_str_list = []
+    desc_str = None
+    dtype_str_list = []
+    dims_list = []
+    shape_list = []
+
+    desc_str_list.append(desc["op"])
+    inputs = desc["inputs"]
+    for key, item in inputs.items():
+        for dtype, shape in item:
+            dtype_str_list.append(_parse_dtype(dtype))
+            shape_list += list(shape)
+            dims = len(shape)
+            dims_list.append(dims)
+
+    dtype_str = "*".join(dtype_str_list)
+    dims_list = [str(item) for item in dims_list]
+    dims_str = "*".join(dims_list)
+
+    shape_list = [str(item) for item in shape_list]
+    shape_str = "[" + ",".join(shape_list) + "]"
+    desc_str_list += [dtype_str, dims_str, shape_str]
+    desc_str = "_".join(desc_str_list)
+
+    return desc_str
+
+
+class CommContext:
+    _instance = None
+    _has_instance = False
+
+    def __init__(self, cluster):
+        if CommContext._has_instance:
+            return
+        self.cluster = cluster
+        self._alpha_base_ring = 8.4
+        self._alpha_base_tree = 0
+        self._alpha_inter = None
+        self._alpha_intra
+        self._beta = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls, *args, **kwargs)
+            _has_instance = True
+        return cls._instance
+
+    @property
+    def alpha_inter(self):
+        if self._alpha_inter is None:
+            if cluster.alpha.inter == "NVL":
+                self._alpha_inter = 3.4
+            elif cluster.alpha.inter == "PHB":
+                self._alpha_inter = 5.7
+        return self._alpha_inter
+
+    @property
+    def alpha_intra(self):
+        if self._alpha_intra is None:
+            if cluster.alpha.intra == "NVL":
+                self._alpha_intra = 28
+            elif cluster.alpha.intra == "PHB":
+                self._alpha_intra = 28
+        return self._alpha_intra
+
+    @property
+    def alpha_base_ring(self):
+        return self._alpha_base_ring
+
+    @property
+    def alpha_base_tree(self):
+        return self._alpha_base_tree
+
+    def get_beta(self, ranks):
+        key = ','.join(map(str, sorted(ranks)))
+        max_beta = None
+        if key in self._beta.keys:
+            max_beta = self._beta[key]
+        else:
+            for i in range(len(ranks)):
+                for j in range(i + 1, len(ranks)):
+                    if min_beta == None:
+                        min_beta = cluster.get_beta(ranks[i], ranks[j])
+                    else:
+                        beta = cluster.get_beta(ranks[i], ranks[j])
+                        if beta > max_beta:
+                            max_beta = beta
+            self._beta[key] = max_beta
+
+        return max_beta
 
 
 class Cost:
-    def __init__(self, time=0., memory=0, flops=0):
+    def __init__(self, time=0, memory=0, flops=0):
         self.time = time
         self.memory = memory
         self.flops = flops
 
     def _check_time(self, val):
-        assert isinstance(
-            val, float
-        ) and val >= 0, "Time must be float and greater than or equal to 0."
+        assert val >= 0, "Time must be greater than or equal to 0."
 
     def _check_memory(self, val):
         assert isinstance(
@@ -66,6 +236,7 @@ class Cost:
         time = self.time + rhs.time
         memory = self.memory + rhs.memory
         flops = self.flops + rhs.flops
+        assert (time >= 0 and memory >= 0 and flops >= 0)
         return Cost(time, memory, flops)
 
     def __sub__(self, rhs):
@@ -73,26 +244,25 @@ class Cost:
         time = self.time - rhs.time
         memory = self.memory - rhs.memory
         flops = self.flops - rhs.flops
+        assert (time >= 0 and memory >= 0 and flops >= 0)
         return Cost(time, memory, flops)
 
 
 class OpCost:
-    def __init__(self, op=None, op_info=None, dist_context=None, cluster=None):
-        assert not (op is not None and op_info is not None)
-        assert not (op is None and op_info is None)
+    def __init__(self, op=None, op_desc=None):
+        assert (op is not None and op_desc is None) or (op is None and
+                                                        op_desc is not None)
         self._op = op
-        self._op_info = op_info
-        self._dist_context = dist_context
-        self._cluster = cluster
-        self._cost = None
+        self._op_desc = op_desc
+        self._cost = self.calc_cost()
 
     @property
     def op(self):
         return self._op
 
     @property
-    def op_info(self):
-        return self._op_info
+    def op_desc(self):
+        return self._op_desc
 
     @property
     def cost(self):
@@ -108,166 +278,6 @@ class OpCost:
         return 0
 
     def calc_cost(self):
-        raise NotImplementedError
-
-
-class CommContext:
-    _instance = None
-    _has_instance = False
-
-    def __init__(self, cluster):
-        if CommContext._has_instance:
-            return
-        self._alpha, self._beta = self.init_comm_args(cluster)
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls, *args, **kwargs)
-            _has_instance = True
-        return cls._instance
-
-    @property
-    def alpha(self):
-        return self._alpha
-
-    @property
-    def beta(self):
-        return self._beta
-
-    def init_comm_args(self, cluster):
-        alpha = 0
-        beta = {}
-        return aplha, beta
-
-
-class CommOpCost(OpCost):
-    COMM_OP_TYPE = [
-        "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum"
-    ]
-    OP_TYPE = "CommOp"
-
-    def __init__(self, op=None, op_info=None, dist_context=None, cluster=None):
-        super(CommOpCost, self).__init__(op, op_info, dist_context, cluster)
-        self._check_op_type(op, op_info)
-        self._comm_context = CommContext(self.cluster)
-
-    @property
-    def comm_context(self):
-        return self._comm_context
-
-    def _check_comm_op_type(op, op_info):
-        op_type = None
-        if op is not None:
-            op_type = op.type
-        elif op_info is not None:
-            op_type = op_info["op"]
-
-        if op_type not in COMM_OP_TYPE:
-            raise TypeError("Please Check op type in {}, but got {}.".format(
-                COMM_OP_TYPE, op_type))
-
-        if cls.OP_TYPE != "CommOp":
-            assert op_type == cls.OP_TYPE
-
-    def calc_cost(self):
-        # For comm op, its memory cost is 0 and flops is 0 in default
-        cost = Cost()
-        return cost
-
-
-def parse_op_info(op=None, op_info=None):
-    def _parse_dtype(dtype):
-        dtype_str = ""
-        if dtype == paddle.float32:
-            dtype_str = "float32"
-        elif dtype == paddle.float16:
-            dtype_str = "float16"
-        elif dtype == paddle.int32:
-            dtype_str = "int32"
-        elif dtype == paddle.int64:
-            dtype_str = "int64"
-        elif dtype == paddle.unit8:
-            dtype_str = "unit8"
-        else:
-            raise TypeError("Unsupported dtype {}".format(dtype))
-        return dtype_str
-
-    op_info_str_list = []
-    op_info_str = None
-    dtype_str_list = []
-    dims_list = []
-    shape_list = []
-    if op is not None:
-        op_info_str_list.append(str(op.type))
-        vars = op.block.vars
-        for input_name in op.input_names:
-            var_names = op.input(input_name)
-            for var_name in var_names:
-                var = vars[var_name]
-                dtype = _parse_dtype(var.dtype)
-                dtype_str_list.append(dtype)
-                shape_list += list(var.shape)
-                dims = len(shape)
-                dims_list.append(dims)
-
-    elif op_info is not None:
-        op_info_str_list.append(op_info["op"])
-        input_list = op_info["input"]
-        for input_info in input_list:
-            for dtype, shape in input_info:
-                dtype_str_list.append(_parse_dtype(dtype))
-                shape_list += list(shape)
-                dims = len(shape)
-                dims_list.append(dims)
-
-        dtype_str = "*".join(dtype_str_list)
-        dims_str = "*".join(dims_list)
-        shape_str = "[" + ",".join(shape_list) + "]"
-        op_info_str_list.append(dtype_str, dims_str, shape_str)
-        op_info_str = "_".join(op_info_str_list)
-
-    return op_info_str
-
-
-def calc_time_from_benchmark(op_info):
-    return 0
-
-
-class CompOpCost(OpCost):
-    SPEC_OP_TYPE = ["while"] + CommOpCost.COMM_OP_TYPE
-    OPTYPE = "CompOp"
-
-    def __init__(self, op=None, op_info=None, dist_context=None, cluster=None):
-        super(CompOpCost, self).__init__(op, op_info, dist_context, cluster)
-        self._check_comp_op_type(op, op_info)
-        self._cost = self.calc_cost()
-
-    def _check_comp_op_type(self, op, op_info):
-        op_type = None
-        if op is not None:
-            op_type = op.type
-        elif op_info is not None:
-            op_type = op_info["op"]
-
-        if op_type in SPEC_OP_TYPE:
-            raise TypeError("Please Check op type not in {}, but got {}.".
-                            format(SPEC_OP_TYPE, op_type))
-
-        if cls.OP_TYPE != "CompOp":
-            assert op_type == cls.OP_TYPE
-
-    def calc_flops(self):
-        return 0
-
-    def calc_time(self):
-        info = parse_op_info(self.op, self.op_info)
-        time = calc_time_from_benchmark(info)
-        return time
-
-    def calc_memory(self):
-        return 0
-
-    def calc_cost(self):
         time = self.calc_time()
         memory = self.calc_memory()
         flops = self.calc_flops()
@@ -275,7 +285,54 @@ class CompOpCost(OpCost):
         return cost
 
 
-OP_COST_FACTORY = {}
+class CommOpCost(OpCost):
+    OP_TYPE = "COMM"
+
+    def __init__(self, op=None, op_desc=None, comm_context=None):
+        super(CommOpCost, self).__init__(op=op, op_desc=op_desc)
+        self._check_comm_op_type()
+        self._comm_context = comm_context
+
+    @property
+    def comm_context(self):
+        return self._comm_context
+
+    def _check_comm_op_type(self):
+        op_type = None
+        if self.op is not None:
+            op_type = self.op.type
+        else:
+            op_type = self.op_desc["op"]
+
+        if self.OP_TYPE != "COMM":
+            assert op_type == self.OP_TYPE
+
+        if op_type not in COMM_OP_TYPE:
+            raise TypeError("Please Check op type in {}, but got {}.".format(
+                COMM_OP_TYPE, op_type))
+
+
+class CompOpCost(OpCost):
+    OPTYPE = "COMP"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(CompOpCost, self).__init__(op=op, op_desc=op_desc)
+        self._check_comp_op_type(op, op_desc)
+        self.cluster = cluster
+
+    def _check_comp_op_type(self, op, op_desc):
+        op_type = None
+        if op is not None:
+            op_type = op.type
+        elif op_desc is not None:
+            op_type = op_desc["op"]
+
+        if op_type in NON_COMP_TYPE:
+            raise TypeError("Please Check op type not in {}, but got {}.".
+                            format(NON_COMP_TYPE, op_type))
+
+        if self.OP_TYPE != "COMP":
+            assert op_type == self.OP_TYPE
 
 
 def register_op_cost(cls):
@@ -285,3 +342,15 @@ def register_op_cost(cls):
         OP_COST_FACTORY[op_type] = cls
 
     return register(op_type)
+
+
+def calc_time_from_model(op=None, desc=None, cluster=None, comm_context=None):
+    op_type = op.type if op is not None else desc["op"]
+    if op_type in COMM_OP_TYPE:
+        op_cost = OP_COST_FACTORY[op_type](op=op,
+                                           op_desc=desc,
+                                           comm_context=comm_context)
+    elif op_type not in NON_COMP_TYPE:
+        op_cost = OP_COST_FACTORY[op_type](op=op, op_desc=desc, cluster=cluster)
+    time = op_cost.calc_time()
+    return time

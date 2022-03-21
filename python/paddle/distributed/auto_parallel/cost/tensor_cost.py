@@ -16,33 +16,81 @@ from functools import reduce
 
 import paddle
 from paddle.fluid.framework import Variable
+from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
 
 from .base_cost import Cost
 
 
 class TensorCost:
-    def __init__(self, tensor, dist_context):
-        self.check_tensor(tensor)
+    def __init__(self, tensor=None, dist_tensor=None, shape=None, dtype=None):
+        self._check_args(tensor, dist_tensor, shape, dtype)
         self._tensor = tensor
+        self._dist_tensor = dist_tensor
+        self._shape = shape
+        self._dtype = dtype
         self._cost = self.calc_cost()
 
-    def check_tensor(self, tensor):
-        if not isinstance(tensor, Variable):
-            raise TypeError("Please check tensor type is Variable, but got {}".
-                            format(type(tensor)))
+    @property
+    def tensor(self):
+        return self._tensor
+
+    @property
+    def dist_tensor(self):
+        return self._dist_tensor
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def _check_args(self, tensor, dist_tensor, shape, dtype):
+        if tensor is not None:
+            assert (shape is None and dist_tensor is None and dtype is None)
+
+            if not isinstance(tensor, Variable):
+                raise TypeError(
+                    "Please check tensor type is Variable, but got {}".format(
+                        type(tensor)))
+
+        elif dist_tensor is not None:
+            assert (tensor is None and shape is None)
+            if not isinstance(dist_tensor, DistributedTensor):
+                raise TypeError(
+                    "Please check dist_tensor type is DistributedTensor, but got {}".
+                    format(type(dist_tensor)))
+
+        elif shape is not None:
+            assert (tensor is None and dist_tensor is None and
+                    dtype is not None)
+            if not isinstance(shape, (list, set)):
+                raise TypeError(
+                    "Please check shape type is list or set, but got {}".format(
+                        type(shape)))
+
+        elif dtype is not None:
+            assert (tensor is None and dist_tensor is None and
+                    shape is not None)
 
     @property
     def cost(self):
         return self._cost
 
     def calc_cost(self):
-        dtype = tensor.dtype
+        dtype = None
         shape = None
-        dist_tensor = dist_context.get_dist_tensor_for_program(tensor)
-        if dist_tensor:
-            shape = dist_tensor.local_sizes()
-        else:
-            shape = tensor.shape
+
+        if self.dist_tensor:
+            shape = self.dist_tensor.local_sizes()
+            dtype = self.dist_tensor.serial_tensor.dtype
+        elif self.tensor:
+            shape = self.tensor.shape
+            dtype = self.tensor.dtype
+        elif self.shape and self.dtype:
+            shape = self.shape
+            dtype = self.dtype
 
         total_count = reduce(lambda x, y: x * y, shape)
 
@@ -56,7 +104,7 @@ class TensorCost:
             dtype_factor = 2
 
         memory = total_count * dtype_factor
-        assert memory > 0
+        assert memory >= 0
         cost = Cost(memory=memory)
 
         return cost

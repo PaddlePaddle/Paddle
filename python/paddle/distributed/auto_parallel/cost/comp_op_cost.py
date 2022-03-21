@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import Cost, register_op_cost
+from .base_cost import Cost, register_op_cost, CompOpCost, OP_COST_FACTORY
 
 
 @register_op_cost
 class MatmulV2OpCost(CompOpCost):
     OP_TYPE = "matmul_v2"
 
-    def __init__(self, op=None, op_info=None, dist_context=None, cluster=None):
-        super(MatmulV2OpCost, self).__init__(op, op_info, dist_context, cluster)
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(OP_COST_FACTORY["matmul_v2"], self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
 
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
     def calc_flops(self):
-        return 0
-
-    def calc_memory(self):
+        # NOTE: The actual formula will be filled in the future
         return 0
 
     def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
         return 0

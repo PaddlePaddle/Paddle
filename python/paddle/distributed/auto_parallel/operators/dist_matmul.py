@@ -1209,9 +1209,6 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
-    def calc_dist_op_cost(self, dist_op, ctx=None):
-        assert ctx is not None
-
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1415,11 +1412,6 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulV2Impl2, self).__init__(name)
-
-    def calc_dist_op_cost(self, dist_op, ctx=None):
-        matmul_cost = OP_COST_FACTORY["matmul"](op=dist_op.serial_op)
-        cost = matmul_cost.cost
-        return cost
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc

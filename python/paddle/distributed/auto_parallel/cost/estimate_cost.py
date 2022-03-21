@@ -14,10 +14,14 @@
 
 
 class CostEstimator:
-    def __init__(self, program, dist_context, cluster, mode="modeling"):
+    def __init__(self,
+                 program,
+                 cluster=None,
+                 dist_context=None,
+                 mode="modeling"):
         self._program = program
-        self._dist_context = dist_context
         self._cluster = cluster
+        self._dist_context = dist_context
         self._check_mode(mode)
         self._mode = mode
         self._global_cost = None
@@ -59,7 +63,7 @@ class CostEstimator:
     def get_local_cost(self, rank=None):
         return 0
 
-    def _check_mode(mode):
+    def _check_mode(self, mode):
         if mode not in ["modeling", "profiling"]:
             raise ValueError(
                 "Just support modeling and profiling, but got {}".format(mode))
