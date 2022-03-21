@@ -37,6 +37,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
+DECLARE_bool(use_curand);
+
 namespace paddle {
 namespace operators {
 
@@ -175,6 +177,144 @@ __global__ void DropoutGradCUDAKernel(
   }
 }
 
+/*********************************************************************/
+/***** Function for new implementation(2022/03/14) of dropout OP *****/
+template <typename T>
+int get_vectorized_size(const framework::Tensor& x) {
+  const T* x_data = x.data<T>();
+  uint64_t address = reinterpret_cast<uint64_t>(x_data);
+  constexpr int vec4 = std::alignment_of<platform::AlignedVector<T, 4>>::value;
+  constexpr int vec2 = std::alignment_of<platform::AlignedVector<T, 2>>::value;
+  int vec_size = 1;
+  if (address % vec4 == 0) {
+    vec_size = 4;
+  } else if (address % vec2 == 0) {
+    vec_size = 2;
+  }
+
+  int64_t numel = x.numel();
+  while ((numel % vec_size) && vec_size >= 1) {
+    vec_size /= 2;
+  }
+
+  PADDLE_ENFORCE_GE(
+      vec_size, 1,
+      platform::errors::InvalidArgument(
+          " Tensor vectorized size must greater than or equal to 1"));
+
+  PADDLE_ENFORCE_LE(
+      vec_size, 4, platform::errors::InvalidArgument(
+                       " Tensor vectorized size must less than or equal to 4"));
+  return vec_size;
+}
+
+template <typename T, typename MaskType>
+__global__ void dropout_kernel(const size_t n, uint64_t seed,
+                               const float dropout_prob, const T* src,
+                               MaskType* mask, T* dst, bool is_upscale_in_train,
+                               uint64_t increment) {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  int thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+#ifdef PADDLE_WITH_HIP
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, thread_idx, increment, &state);
+#else
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, thread_idx, increment, &state);
+#endif
+
+  float p = 1.0 - dropout_prob;
+  MT factor = static_cast<MT>(1.0 / p);
+
+  size_t loop_times = 1;
+  for (; thread_idx < n; thread_idx += blockDim.x * gridDim.x * 4) {
+#ifdef PADDLE_WITH_HIP
+    float4 rand = hiprand_uniform4(&state);
+#else
+    float4 rand = curand_uniform4(&state);
+#endif
+    for (size_t ii = 0; ii < 4; ii++) {
+      size_t idx = thread_idx + ii * blockDim.x * gridDim.x;
+      if (idx < n) {
+        if ((&rand.x)[ii] < dropout_prob) {
+          mask[idx] = 1;
+          dst[idx] = is_upscale_in_train
+                         ? static_cast<T>(static_cast<MT>(src[idx]) * factor)
+                         : src[idx];
+        } else {
+          mask[idx] = 0;
+          dst[idx] = 0;
+        }
+      }
+    }
+    if (loop_times > 1) {
+      __syncthreads();
+    }
+    ++loop_times;
+  }
+}
+
+template <typename T, typename MaskType, size_t VecSize>
+__global__ void dropout_kernel_vec(const size_t n, uint64_t seed,
+                                   const float dropout_prob, const T* src,
+                                   MaskType* mask, T* dst,
+                                   bool is_upscale_in_train,
+                                   uint64_t increment) {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  using LoadT = platform::AlignedVector<T, VecSize>;
+  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
+
+#ifdef PADDLE_WITH_HIP
+  int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, idx, increment, &state);
+#else
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+#endif
+
+  float p = 1.0 - dropout_prob;
+  MT factor = static_cast<MT>(1.0 / p);
+
+  size_t loop_times = 1;
+
+  for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
+    LoadT src_val;
+    platform::Load<T, VecSize>(&src[i], &src_val);
+
+#ifdef PADDLE_WITH_HIP
+    float4 rand = hiprand_uniform4(&state);
+#else
+    float4 rand = curand_uniform4(&state);
+#endif
+
+    LoadT dst_val;
+    MaskLoadT mask_val;
+
+#pragma unroll
+    for (int j = 0; j < VecSize; j++) {
+      if ((&rand.x)[j] < p) {
+        mask_val[j] = 1;
+        dst_val[j] = is_upscale_in_train
+                         ? static_cast<T>(static_cast<MT>(src_val[j]) * factor)
+                         : src_val[j];
+      } else {
+        mask_val[j] = 0;
+        dst_val[j] = 0;
+      }
+    }
+
+    platform::Store<T, VecSize>(dst_val, &dst[i]);
+    platform::Store<MaskType, VecSize>(mask_val, &mask[i]);
+    if (loop_times > 1) {
+      __syncthreads();
+    }
+    ++loop_times;
+  }
+}
+/***************************************************************/
+
 template <typename T>
 void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
                               const std::string dropout_implementation,
@@ -208,25 +348,76 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
       return;
     }
 
-    // increment is used to set the args(offset) of curand_init, which defines
-    // offset in subsequence.
-    // The detail:
-    // https://docs.nvidia.com/cuda/curand/device-api-overview.html
-    // Increment should be at least the number of curand() random numbers used
-    // in each thread to avoid the random number generated this time being the
-    // same as the previous calls.
     uint64_t seed_data;
     uint64_t increment;
-    // VectorizedRandomGenerator use curand_uniform4, so we only support
-    // vec_size is 4;
+
     int vec_size = (phi::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
+    if (FLAGS_use_curand) {
+      vec_size = get_vectorized_size<T>(x);
+    }
+
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
-    auto offset =
-        ((x_numel - 1) / (gpu_config.GetThreadNum() * vec_size) + 1) * vec_size;
+    size_t grid_size = gpu_config.GetGridSize();
+    size_t block_size = gpu_config.GetBlockSize();
+    if (FLAGS_use_curand) {
+      int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+      const auto& prop = platform::GetDeviceProperties(device_id);
+      size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
+                             prop.multiProcessorCount / block_size;
+      grid_size = std::min(grid_size, max_grid_size);
+    }
 
+    auto offset =
+        ((x_numel - 1) / (grid_size * block_size * vec_size) + 1) * vec_size;
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
+
+    if (FLAGS_use_curand) {
+#ifdef PADDLE_WITH_HIP
+      switch (vec_size) {
+        case 4:
+          hipLaunchKernelGGL(HIP_KERNEL_NAME(dropout_kernel_vec<T, uint8_t, 4>),
+                             grid_size, block_size, 0, stream, x_numel,
+                             seed_data, dropout_prob, x_data, mask_data, y_data,
+                             upscale_in_train, increment);
+          break;
+        case 2:
+          hipLaunchKernelGGL(HIP_KERNEL_NAME(dropout_kernel_vec<T, uint8_t, 2>),
+                             grid_size, block_size, 0, stream, x_numel,
+                             seed_data, dropout_prob, x_data, mask_data, y_data,
+                             upscale_in_train, increment);
+          break;
+        case 1:
+          hipLaunchKernelGGL(HIP_KERNEL_NAME(dropout_kernel<T, uint8_t>),
+                             grid_size, block_size, 0, stream, x_numel,
+                             seed_data, dropout_prob, x_data, mask_data, y_data,
+                             upscale_in_train, increment);
+          break;
+      }
+#else
+      switch (vec_size) {
+        case 4:
+          dropout_kernel_vec<T, uint8_t,
+                             4><<<grid_size, block_size, 0, stream>>>(
+              x_numel, seed_data, dropout_prob, x_data, mask_data, y_data,
+              upscale_in_train, increment);
+          break;
+        case 2:
+          dropout_kernel_vec<T, uint8_t,
+                             2><<<grid_size, block_size, 0, stream>>>(
+              x_numel, seed_data, dropout_prob, x_data, mask_data, y_data,
+              upscale_in_train, increment);
+          break;
+        case 1:
+          dropout_kernel<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
+              x_numel, seed_data, dropout_prob, x_data, mask_data, y_data,
+              upscale_in_train, increment);
+          break;
+      }
+#endif
+      return;
+    }
 
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {
