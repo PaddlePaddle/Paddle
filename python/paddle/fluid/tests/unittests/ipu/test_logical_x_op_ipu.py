@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,32 +22,18 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMod
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestBase(IPUOpTest):
+class TestLogicalAnd(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_data_feed()
-        self.set_feed_attr()
-        self.set_op_attrs()
+        self.set_test_op()
 
     @property
     def fp16_enabled(self):
-        return True
+        return False
 
-    def set_atol(self):
-        self.atol = 3e-6
-        self.rtol = 1e-5
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
-
-    def set_data_feed(self):
-        data = np.random.uniform(size=[2, 3, 128, 128])
-        self.feed_fp32 = {"in_0": data.astype(np.float32)}
-        self.feed_fp16 = {"in_0": data.astype(np.float16)}
-
-    def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
-        self.feed_list = list(self.feed_fp32.keys())
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.logical_and
 
     def set_op_attrs(self):
         self.attrs = {}
@@ -64,18 +50,15 @@ class TestBase(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
+                    dtype=self.feed_dtype[0])
+                y = paddle.static.data(
+                    name=self.feed_list[1],
+                    shape=self.feed_shape[1],
+                    dtype=self.feed_dtype[1])
 
-                conv1 = paddle.static.nn.conv2d(
-                    x, num_filters=3, filter_size=3, bias_attr=False)
-                conv2 = paddle.static.nn.conv2d(
-                    conv1, num_filters=3, filter_size=3, bias_attr=False)
-                conv3 = paddle.static.nn.conv2d(
-                    conv2, num_filters=3, filter_size=3, bias_attr=False)
-                conv4 = paddle.static.nn.conv2d(
-                    conv3, num_filters=3, filter_size=3, bias_attr=False)
+                out = self.op(x, y, **self.attrs)
 
-            fetch_list = [conv4.name]
+            fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -88,8 +71,7 @@ class TestBase(IPUOpTest):
             if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(
-                    is_training=self.is_training, micro_batch_size=2)
+                ipu_strategy.set_graph_config(is_training=self.is_training)
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_precision_config(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(
@@ -98,21 +80,41 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            feed = self.feed_fp32
-            if exec_mode > ExecutionMode.IPU_FP32:
-                feed = self.feed_fp16
-
-            result = exe.run(program, feed=feed, fetch_list=fetch_list)
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
 
-    def test(self):
+    def run_test_base(self):
         output_dict = {}
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode).flatten()
+            output_dict[mode] = self._test_base(mode).astype(np.int32)
 
-        self.check(output_dict)
+        self.check(output_dict, check_shape=True)
+
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed.values()]
+        self.feed_list = list(self.feed.keys())
+        self.feed_dtype = ['bool', 'bool']
+
+    def set_data_feed0(self):
+        x = np.random.choice([True, False], size=(1, 3, 5, 5))
+        y = np.random.choice([True, False], size=(1, 3, 5, 5))
+        self.feed = {
+            "x": x.astype('bool'),
+            "y": y.astype('bool'),
+        }
+        self.set_feed_attr()
+
+    def test_case0(self):
+        self.set_data_feed0()
+        self.set_op_attrs()
+        self.run_test_base()
+
+
+class TestLogicalOr(TestLogicalAnd):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.logical_or
 
 
 if __name__ == "__main__":
