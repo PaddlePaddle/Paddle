@@ -551,7 +551,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("l3_workspace_size") = 16 * 1024 * 1024,
            py::arg("locked") = false, py::arg("autotune") = true,
            py::arg("autotune_file") = "", py::arg("precision") = "int16",
-           py::arg("adaptive_seqlen") = false)
+           py::arg("adaptive_seqlen") = false, py::arg("multi_stream") = false)
       .def("set_xpu_device_id", &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)

@@ -616,6 +616,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    argument_.SetXpuMultiStream(config_.xpu_multi_stream_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);

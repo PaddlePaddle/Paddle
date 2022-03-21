@@ -67,6 +67,9 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
   lite_cxx_config.set_xpu_conv_autotune(cfg.autotune, cfg.autotune_file);
   lite_cxx_config.set_xpu_multi_encoder_method(cfg.precision,
                                                cfg.adaptive_seqlen);
+  if (cfg.xpu_multi_stream) {
+    lite_cxx_config.enable_xpu_multi_stream();
+  }
   lite_cxx_config.set_xpu_dev_per_thread(cfg.device_id);
 #endif
 

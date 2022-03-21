@@ -170,7 +170,7 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, multiStream bool) {
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -178,7 +178,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(multiStream))
 }
 
 ///

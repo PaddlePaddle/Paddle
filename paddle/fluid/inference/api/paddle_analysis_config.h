@@ -229,7 +229,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
                  bool autotune = true, const std::string& autotune_file = "",
                  const std::string& precision = "int16",
-                 bool adaptive_seqlen = false);
+                 bool adaptive_seqlen = false, bool multi_stream = false);
   ///
   /// \brief Set XPU device id.
   ///
@@ -829,6 +829,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+  bool xpu_multi_stream_;
 
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;
