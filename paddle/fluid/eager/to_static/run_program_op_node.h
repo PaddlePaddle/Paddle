@@ -260,9 +260,9 @@ inline void RunProgramAPI(
   }
   VLOG(2) << "The number of sub scopes after forward: "
           << out_scope_vec->front()->kids().size();
-  // #ifdef PADDLE_WITH_MKLDNN
-  //     if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
-  // #endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
+#endif
 }
 
 inline void RunProgramGradAPI(
@@ -357,7 +357,7 @@ inline void RunProgramGradAPI(
   details::ShareTensorsFromScope(params_grad, *global_block, &scope);
 
   // Step5. drop current scope
-  // global_inner_scope->DeleteScope(&scope);
+  global_inner_scope->DeleteScope(&scope);
   VLOG(2) << "The number of sub scopes after backward: "
           << global_inner_scope->kids().size();
 }
@@ -370,8 +370,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>> &grads)
-      override {
+      const std::vector<std::vector<paddle::experimental::Tensor>> &grads,
+      bool create_graph) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     PADDLE_ENFORCE_EQ(
         grads.size(), 1,
@@ -400,6 +400,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
         paddle::platform::errors::InvalidArgument(
             "The grads[0].size() and fwd_out_names_.size() should be equal."));
     for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
+      auto &out_grad = egr::EagerUtils::unsafe_autograd_meta(*out_[i])->Grad();
+      const_cast<paddle::experimental::Tensor &>(out_grad).set_impl(
+          grads[0][i].impl());
+
       const_cast<paddle::experimental::Tensor &>(grads[0][i])
           .set_name(fwd_out_names_[i] + "@GRAD");
     }
@@ -409,6 +413,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
     // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
+  }
+
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  bool IsTensorWrappersCleared() override {
+    VLOG(6) << "Do nothing here now";
+    return false;
   }
 
   // SetAttrMap
@@ -432,6 +442,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     fwd_out_names_ = out_names;
   }
 
+  void SetOut(const std::vector<paddle::experimental::Tensor *> &out) {
+    out_ = out;
+  }
+
  protected:
   void ConstructGradTensors(
       const std::vector<paddle::experimental::Tensor> &fwd_tensors,
@@ -440,7 +454,11 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     // such as: name, tensor type(DenseTensor or SelectedRows).
     VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
     for (auto &fwd_t : fwd_tensors) {
-      grad_tensors->emplace_back(fwd_t.impl());
+      if (phi::DenseTensor::classof(fwd_t.impl().get())) {
+        grad_tensors->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (phi::SelectedRows::classof(fwd_t.impl().get())) {
+        grad_tensors->emplace_back(std::make_shared<phi::SelectedRows>());
+      }
       auto &grad_t = grad_tensors->back();
       grad_t.set_name(fwd_t.name() + "@GRAD");
     }
@@ -462,6 +480,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::framework::Scope *> step_scope_;
 
   std::vector<std::string> fwd_out_names_;
+  std::vector<paddle::experimental::Tensor *> out_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;

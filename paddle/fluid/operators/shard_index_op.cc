@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/shard_index_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,27 +23,6 @@ namespace operators {
 class ShardIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ShardIndex");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ShardIndex");
-
-    auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "Rank of Input(X) should be at least 2, "
-                          "but the value given is %d.",
-                          x_dims.size()));
-    if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
-      PADDLE_ENFORCE_EQ(x_dims[x_dims.size() - 1], 1U,
-                        platform::errors::InvalidArgument(
-                            "The last dimension of Input(X) should be 1, "
-                            "but the value given is %d.",
-                            x_dims[x_dims.size() - 1]));
-    }
-
-    ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", /* --> */ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -114,7 +96,10 @@ Examples:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(shard_index, ops::ShardIndexOp,
-                             ops::ShardIndexOpMaker);
-REGISTER_OP_CPU_KERNEL(shard_index, ops::ShardIndexCPUKernel<int>,
-                       ops::ShardIndexCPUKernel<int64_t>);
+DECLARE_INFER_SHAPE_FUNCTOR(shard_index, ShardIndexInferShapeFunctor,
+                            PD_INFER_META(phi::ShardIndexInferMeta));
+REGISTER_OPERATOR(
+    shard_index, ops::ShardIndexOp, ops::ShardIndexOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ShardIndexInferShapeFunctor);

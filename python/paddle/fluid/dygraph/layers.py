@@ -540,9 +540,8 @@ class Layer(object):
 
         """
         ret = [
-            param
-            for _, param in self.named_parameters(
-                include_sublayers=include_sublayers)
+            param for _, param in
+            self.named_parameters(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -761,7 +760,8 @@ class Layer(object):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not type(tensor) == core.VarBase:
+        elif tensor is not None and not (type(tensor) == core.VarBase or
+                                         type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
                 format(type(tensor).__name__))
@@ -797,9 +797,8 @@ class Layer(object):
 
         """
         ret = [
-            buffer
-            for _, buffer in self.named_buffers(
-                include_sublayers=include_sublayers)
+            buffer for _, buffer in
+            self.named_buffers(include_sublayers=include_sublayers)
         ]
         return ret
 

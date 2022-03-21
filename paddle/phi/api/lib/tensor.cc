@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -46,6 +48,7 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
@@ -111,8 +114,8 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "touching underlying data, this requires the total size of "
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
-    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->set_meta(
-        phi::DenseTensorMeta(dtype(), phi::make_ddim(shape)));
+    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->Resize(
+        phi::make_ddim(shape));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
@@ -131,6 +134,12 @@ bool Tensor::is_dense_tensor() const {
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
 }
+bool Tensor::is_sparse_coo_tensor() const {
+  return phi::SparseCooTensor::classof(impl_.get());
+}
+bool Tensor::is_sparse_csr_tensor() const {
+  return phi::SparseCsrTensor::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
@@ -142,7 +151,12 @@ PlaceType Tensor::place() const {
 }
 
 paddle::platform::Place Tensor::inner_place() const {
-  return ConvertExtPlaceToInnerPlace(place());
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::PermissionDenied(
+          "Null pointer error, the impl_ of Tensor should not be "
+          "Null when calling Tensor::inner_place()."));
+  return impl_->place();
 }
 
 bool Tensor::is_cpu() const {
@@ -286,10 +300,14 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
-std::shared_ptr<phi::TensorBase> Tensor::impl() const { return impl_; }
+const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
+}
+
+void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
+  impl_ = std::move(impl);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -335,6 +353,37 @@ AbstractAutogradMeta *Tensor::get_autograd_meta() const {
 void Tensor::set_autograd_meta(
     std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
   autograd_meta_ = std::move(autograd_meta);
+}
+
+void Tensor::bump_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: before bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+    inplace_version_counter.Bump();
+    VLOG(3) << "yoki: after bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "bump_inplace_version is only supported on DenseTensor now."));
+  }
+}
+
+uint32_t Tensor::current_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: print version: "
+            << inplace_version_counter.CurrentVersion();
+    return inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "current_inplace_version is only supported on DenseTensor now."));
+  }
+  return 0;
 }
 
 }  // namespace experimental

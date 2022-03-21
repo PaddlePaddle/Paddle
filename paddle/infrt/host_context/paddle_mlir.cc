@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
-#include "paddle/infrt/dialect/pd_ops_info.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
-  context_->allowUnregisteredDialects();
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();
-  context_->getOrLoadDialect<infrt::dialect::INFRTDialect>();
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
-  context_->getOrLoadDialect<mlir::pd::PaddleDialect>();
+  context_->getOrLoadDialect<infrt::pd::PaddleDialect>();
+  context_->getOrLoadDialect<::infrt::InfrtDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
 
@@ -56,7 +57,6 @@ mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(
   UpdateModelParams(program, &mainFunc);
   UpdateModelOps(program);
   UpdateModelOutputs(program);
-
   return module_;
 }
 
@@ -79,7 +79,7 @@ mlir::FuncOp MLIRModelGenImpl::UpdateModelModule(
 llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
     const infrt::paddle::framework_proto::ProgramDesc &program) {
   llvm::SmallVector<mlir::Type, 4> operandTypes;
-  operandTypes.push_back(infrt::dt::TensorMapType::get(context_));
+  operandTypes.push_back(infrt::DenseHostTensorMapType::get(context_));
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() != "feed") continue;
     for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
@@ -91,11 +91,15 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
         if (var_desc.name() == input_var_name) {
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
-          mlir::Type precision_;
-          ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                          builder_,
-                          &precision_);
-          mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+          infrt::PrecisionType precision_;
+          ConvertDataTypeToPhi(
+              var_desc.type().lod_tensor().tensor().data_type(), &precision_);
+          mlir::Type type_ =
+              infrt::DenseTensorType::get(context_,
+                                          infrt::TargetType::CPU,
+                                          precision_,
+                                          infrt::LayoutType::ANY);
+
           operandTypes.push_back(type_);
         }
       }
@@ -117,11 +121,14 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
         if (var_desc.name() == input_var_name) {
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
-          mlir::Type precision_;
-          ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                          builder_,
-                          &precision_);
-          mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+          infrt::PrecisionType precision_;
+          ConvertDataTypeToPhi(
+              var_desc.type().lod_tensor().tensor().data_type(), &precision_);
+          mlir::Type type_ =
+              infrt::DenseTensorType::get(context_,
+                                          infrt::TargetType::CPU,
+                                          precision_,
+                                          infrt::LayoutType::ANY);
           resultTypes.push_back(type_);
         }
       }
@@ -168,11 +175,11 @@ void MLIRModelGenImpl::UpdateModelParams(
       auto name = builder_.getStringAttr(var_desc.name());
       std::vector<int64_t> dims = RepeatedToVector<int64_t>(
           var_desc.type().lod_tensor().tensor().dims());
-      mlir::Type precision_;
-      ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                      builder_,
-                      &precision_);
-      mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+      infrt::PrecisionType precision_;
+      ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
+                           &precision_);
+      mlir::Type type_ = infrt::DenseTensorType::get(
+          context_, infrt::TargetType::CPU, precision_, infrt::LayoutType::ANY);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -198,8 +205,9 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
         llvm::SmallVector<mlir::Type, 4> resultTypes;
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
+
         mlir::OperationState state(loc,
-                                   mlir::ReturnOp::getOperationName(),
+                                   ::infrt::ReturnOp::getOperationName(),
                                    operands,
                                    resultTypes,
                                    attrs);
@@ -257,11 +265,13 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
       if (var_desc.name() == var_name) {
         std::vector<int64_t> dims = RepeatedToVector<int64_t>(
             var_desc.type().lod_tensor().tensor().dims());
-        mlir::Type precision_;
-        ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
-                        builder_,
-                        &precision_);
-        mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+        infrt::PrecisionType precision_;
+        ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
+                             &precision_);
+        mlir::Type type_ = infrt::DenseTensorType::get(context_,
+                                                       infrt::TargetType::CPU,
+                                                       precision_,
+                                                       infrt::LayoutType::ANY);
         resultTypes.push_back(type_);
       }
     }
@@ -322,7 +332,7 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
     switch (type) {
       ATTR_IMPL_CASE(FLOAT, f, getF32FloatAttr);
       ATTR_IMPL_CASE(BOOLEAN, b, getBoolAttr);
-      ATTR_IMPL_CASE(INT, i, getI32IntegerAttr);
+      ATTR_IMPL_CASE(INT, i, getSI32IntegerAttr);
       ATTR_IMPL_CASE(LONG, l, getI64IntegerAttr);
       ATTR_IMPL_CASE(STRING, s, getStringAttr);
 
@@ -393,6 +403,41 @@ bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
       return true;
     case infrt::paddle::framework_proto::VarType::Type::VarType_Type_UINT8:
       *type = builder.getIntegerType(8, /*isSigned=*/false);
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool ConvertDataTypeToPhi(infrt::paddle::framework_proto::VarType::Type dtype,
+                          infrt::PrecisionType *type) {
+  switch (dtype) {
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP16:
+      *type = infrt::PrecisionType::FLOAT16;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP32:
+      *type = infrt::PrecisionType::FLOAT32;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP64:
+      *type = infrt::PrecisionType::FLOAT64;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_BOOL:
+      *type = infrt::PrecisionType::BOOL;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT8:
+      *type = infrt::PrecisionType::INT8;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT16:
+      *type = infrt::PrecisionType::INT16;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT32:
+      *type = infrt::PrecisionType::INT32;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_INT64:
+      *type = infrt::PrecisionType::INT64;
+      return true;
+    case infrt::paddle::framework_proto::VarType::Type::VarType_Type_UINT8:
+      *type = infrt::PrecisionType::UINT8;
       return true;
     default:
       return false;

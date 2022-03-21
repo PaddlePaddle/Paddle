@@ -484,5 +484,98 @@ TEST(ARG_MAP, set_value) {
       "set_value");
 }
 
+TEST(ARG_MAP, set_value_grad) {
+  TestArgumentMappingContext arg_case(
+      {"Out@GRAD", "StartsTensorList", "EndsTensorList"},
+      {},
+      {},
+      {"Input@GRAD", "ValueTensor@GRAD"},
+      {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case1(
+      {"Out@GRAD", "StartsTensorList", "StepsTensorList"},
+      {},
+      {},
+      {"Input@GRAD", "ValueTensor@GRAD"},
+      {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case1)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case2({"Out@GRAD", "StartsTensorList"},
+                                       {},
+                                       {},
+                                       {"Input@GRAD", "ValueTensor@GRAD"},
+                                       {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case2)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case3(
+      {"Out@GRAD", "EndsTensorList", "StepsTensorList"},
+      {},
+      {},
+      {"Input@GRAD", "ValueTensor@GRAD"},
+      {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case3)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case4({"Out@GRAD", "EndsTensorList"},
+                                       {},
+                                       {},
+                                       {"Input@GRAD", "ValueTensor@GRAD"},
+                                       {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case4)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case5({"Out@GRAD", "StepsTensorList"},
+                                       {},
+                                       {},
+                                       {"Input@GRAD", "ValueTensor@GRAD"},
+                                       {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case5)
+                .name,
+            "set_value_grad");
+}
+
+TEST(ARG_MAP, allclose) {
+  TestArgumentMappingContext arg_case1(
+      {"Input", "Other", "Rtol"},
+      {},
+      {{"atol", paddle::any(std::string{"1e-8"})},
+       {"equal_nan", paddle::any(false)}},
+      {"Out"},
+      {});
+  auto signature1 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("allclose")(arg_case1);
+  ASSERT_EQ(signature1.name, "allclose");
+  auto attr_names1 = std::get<1>(signature1.args);
+  ASSERT_EQ(attr_names1[0], "Rtol");
+
+  TestArgumentMappingContext arg_case2(
+      {"Input", "Other", "Atol"},
+      {},
+      {{"rtol", paddle::any(std::string{"1e-5"})},
+       {"equal_nan", paddle::any(false)}},
+      {"Out"},
+      {});
+  auto signature2 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("allclose")(arg_case2);
+  ASSERT_EQ(signature2.name, "allclose");
+  auto attr_names2 = std::get<1>(signature2.args);
+  ASSERT_EQ(attr_names2[1], "Atol");
+}
+
 }  // namespace tests
 }  // namespace phi
