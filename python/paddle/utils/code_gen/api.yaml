@@ -193,12 +193,3 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
-
-
-#  =================================== sep0
-
-
-#  =================================== sep1
-
-
-#  =================================== sep2
