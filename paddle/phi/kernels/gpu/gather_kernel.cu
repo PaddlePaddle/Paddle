@@ -46,6 +46,7 @@ void GatherKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 0) return;
+  if (index.numel() == 0) return;
   if (index_type == phi::DataType::INT32) {
     phi::funcs::GPUGather<T, int>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT64) {
