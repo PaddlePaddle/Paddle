@@ -77,44 +77,6 @@ struct MaskValGenerator {
 };
 
 template <typename T, typename MaskType>
-__global__ void RandomGenerator(const size_t n, uint64_t seed,
-                                const float dropout_prob, const T* src,
-                                MaskType* mask, T* dst,
-                                bool is_upscale_in_train, uint64_t increment) {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-#ifdef PADDLE_WITH_HIP
-  hiprandStatePhilox4_32_10_t state;
-  hiprand_init(seed, idx, increment, &state);
-#else
-  curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
-#endif
-
-  MaskType mask_val;
-  T dst_val;
-  MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
-  for (; idx < n; idx += blockDim.x * gridDim.x) {
-    T src_val = src[idx];
-#ifdef PADDLE_WITH_HIP
-    if (hiprand_uniform(&state) < dropout_prob) {
-#else
-    if (curand_uniform(&state) < dropout_prob) {
-#endif
-      mask_val = 0;
-      dst_val = 0;
-    } else {
-      mask_val = 1;
-      dst_val = is_upscale_in_train
-                    ? static_cast<T>(static_cast<MT>(src_val) * factor)
-                    : src_val;
-    }
-    mask[idx] = mask_val;
-    dst[idx] = dst_val;
-  }
-}
-
-template <typename T, typename MaskType>
 __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const float dropout_prob,
                                           const T* src, MaskType* mask, T* dst,
@@ -223,7 +185,6 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
         ((x_numel - 1) / (gpu_config.GetThreadNum() * vec_size) + 1) * vec_size;
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
-
     VectorizedRandomGenerator<T, uint8_t><<<
         gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream>>>(
         size, seed_data, dropout_prob, x_data, mask_data, y_data,
