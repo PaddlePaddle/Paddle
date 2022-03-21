@@ -159,10 +159,13 @@ inline void EmplaceDeviceContext(
               cuda_ctx,
               platform::errors::InvalidArgument(
                   "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
-          // Note: A trick method to init context, why GetAllocator interface
-          // needs a stream parameter?
+          // NOTE(Ruibiao): Do not pass a stream parameter to
+          // AllocatorFacade::GetAllocator when initializing context, because it
+          // may require the default stream from DeviceContextPool. If you have
+          // to do so, please add an extra parameter
+          // "force_change_default_stream = true".
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(p, cuda_ctx->stream())
+                                    .GetAllocator(p)
                                     .get());
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(

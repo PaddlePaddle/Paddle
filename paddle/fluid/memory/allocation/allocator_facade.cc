@@ -221,15 +221,14 @@ class AllocatorFacadePrivate {
         // stream (i.e., the stream directly got from DeviceContex), while the
         // 'cuda_allocators_' map(place -> map(stream -> Allocator)) hold the
         // StreamSafeCUDAAllocator releate to non-default stream (i.e., the
-        // stream users pass in).
-        // The default stream Allocator is built in the structure of
-        // AllocatorFacadePrivate, while the non-default stream is build in a
-        // delayed manner in GetAllocator function with 'create_if_not_found =
-        // ture'.
-        // We make special treatment for the default stream for performance
-        // reasons. Since most Alloc calls are for default stream in
-        // application, treating it separately can avoid lots of overhead of
-        // acquiring default stream and applying read-write lock.
+        // stream users pass in). The default stream Allocator is built in the
+        // structure of AllocatorFacadePrivate, while the non-default stream is
+        // build in a delayed manner in GetAllocator function with
+        // 'create_if_not_found = ture'. We make special treatment for the
+        // default stream for performance reasons. Since most Alloc calls are
+        // for default stream in application, treating it separately can avoid
+        // lots of overhead of acquiring default stream and applying read-write
+        // lock.
         if (FLAGS_use_stream_safe_cuda_allocator) {
           WrapStreamSafeCUDAAllocatorForDefault();
         }
@@ -359,6 +358,7 @@ class AllocatorFacadePrivate {
       const platform::CUDAPlace& place, const gpuStream_t& stream,
       bool create_if_not_found = false) {
     if (stream == GetDefaultStream(place)) {
+      VLOG(7) << "Get Allocator by passing in a default stream";
       return GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
     }
 
@@ -382,6 +382,16 @@ class AllocatorFacadePrivate {
       InitStreamSafeCUDAAllocator(place, stream);
       return cuda_allocators_[place][stream];
     }
+  }
+
+  const std::shared_ptr<StreamSafeCUDAAllocator>
+  GetDefaultStreamSafeCUDAAllocator(const platform::CUDAPlace& place) const {
+    const auto iter = default_stream_safe_cuda_allocators_.find(place);
+    PADDLE_ENFORCE_NE(
+        iter, default_stream_safe_cuda_allocators_.end(),
+        platform::errors::NotFound(
+            "No StreamSafeCUDAAllocator found for the place, %s", place));
+    return iter->second;
   }
 
   gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) {
@@ -656,6 +666,26 @@ class AllocatorFacadePrivate {
         /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
   }
 
+  void WrapStreamSafeCUDAAllocatorForDefault() {
+    for (auto& pair : allocators_) {
+      auto& place = pair.first;
+      if (platform::is_gpu_place(place)) {
+        std::shared_ptr<StreamSafeCUDAAllocator>&& allocator =
+            std::make_shared<StreamSafeCUDAAllocator>(
+                pair.second, place, /* default_stream = */ nullptr,
+                /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
+        pair.second = allocator;
+
+        // NOTE(Ruibiao): A tricky implement to give StreamSafeCUDAAllocator an
+        // ability to interact with the outside world, i.e., change default
+        // stream from outside
+        default_stream_safe_cuda_allocators_[place] = allocator;
+        VLOG(8) << "WrapStreamSafeCUDAAllocator for " << place
+                << ", allocator address = " << pair.second.get();
+      }
+    }
+  }
+
   void WrapCUDARetryAllocator(platform::CUDAPlace p, gpuStream_t stream,
                               size_t retry_time) {
     PADDLE_ENFORCE_GT(
@@ -834,17 +864,6 @@ class AllocatorFacadePrivate {
 #endif
   }
 
-  void WrapStreamSafeCUDAAllocatorForDefault() {
-    for (auto& pair : allocators_) {
-      auto& place = pair.first;
-      if (platform::is_gpu_place(place)) {
-        pair.second = std::make_shared<StreamSafeCUDAAllocator>(
-            pair.second, place, /* default_stream = */ nullptr,
-            /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
-      }
-    }
-  }
-
   void WrapCUDARetryAllocator(size_t retry_time) {
     PADDLE_ENFORCE_GT(
         retry_time, 0,
@@ -859,6 +878,8 @@ class AllocatorFacadePrivate {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // a standalone CUDA allocator to support multi-stream GC in new executor
+  std::map<platform::Place, std::shared_ptr<StreamSafeCUDAAllocator>>
+      default_stream_safe_cuda_allocators_;
   CUDAAllocatorMap cuda_allocators_;
   std::shared_timed_mutex cuda_allocator_mutex_;
 #endif
@@ -924,29 +945,22 @@ void* AllocatorFacade::GetBasePtr(
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, const gpuStream_t& stream,
     bool force_change_default_stream) {
+  AllocatorFacadePrivate* m = GetPrivate();
   if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
       FLAGS_use_system_allocator == false) {
     if (force_change_default_stream) {
-      const std::shared_ptr<Allocator>& allocator = GetPrivate()->GetAllocator(
-          place, /* A non-zero num to choose allocator_ */ 1);
-      const std::shared_ptr<StreamSafeCUDAAllocator>&
-          stream_safe_cuda_allocator =
-              std::dynamic_pointer_cast<StreamSafeCUDAAllocator>(allocator);
-      PADDLE_ENFORCE_NOT_NULL(
-          stream_safe_cuda_allocator,
-          platform::errors::Unavailable(
-              "Can not change the default stream of the allocator for place "
-              "%s, because it is failed to cast to StreamSafeCUDAAllocator.",
-              place));
-      stream_safe_cuda_allocator->SetDefaultStream(stream);
-      return allocator;
+      const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
+          m->GetDefaultStreamSafeCUDAAllocator(place);
+      allocator->SetDefaultStream(stream);
+      VLOG(8) << "Force change default stream to " << stream
+              << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
+              << place;
     } else {
-      return GetPrivate()->GetAllocator(place, stream,
-                                        /*create_if_not_found=*/true);
+      return m->GetAllocator(place, stream,
+                             /*create_if_not_found=*/true);
     }
   }
-  return GetPrivate()->GetAllocator(
-      place, /* A non-zero num to choose allocator_ */ 1);
+  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 #endif
 
