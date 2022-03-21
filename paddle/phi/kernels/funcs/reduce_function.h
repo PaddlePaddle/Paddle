@@ -658,9 +658,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
   // the last dim gets involved in reduction
   int store_offset = 0;
   int stride_left = 0;
-  auto Final =
-      is_mean ? kps::DivideFunctor<MPType> : kps::IdentityFunctor<MPType>;
-  auto final_opt = Final(reduce_num);
   if (reduce_last_dim) {
     auto block = ReduceIndexMapping<true>(dim);
     input_idx = block.BlockIdY() * block.BlockDimX();
@@ -756,7 +753,9 @@ __global__ void ReduceAnyKernel(const Tx* x,
 
     kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(
         &reduce_var, &reduce_var, reducer, reduce_last_dim);
-
+    if (is_mean) {
+      reduce_var = reduce_var / static_cast<MPType>(reduce_num);
+    }
     Ty result = static_cast<Ty>(final_opt(reduce_var));
     kps::details::WriteData<Ty>(
         y + store_offset + i, &result, static_cast<int>(need_store));
@@ -791,9 +790,6 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
   int block_offset = idy * left_num + idz * reduce_num;
   const _ptr_ Tx* input = x + block_offset;
   Tx reduce_input;
-  auto Final =
-      is_mean ? kps::DivideFunctor<MPType> : kps::IdentityFunctor<MPType>;
-  auto final_opt = Final(reduce_num);
   for (; idx < size; idx += stride) {
     MPType reduce_var = init;
     MPType reduce_compute = init;
@@ -839,7 +835,11 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                   kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &reduce_compute, reducer, false);
     }
-    Ty result = static_cast<Ty>(final_opt(reduce_var));
+
+    if (is_mean) {
+      reduce_var = reduce_var / static_cast<MPType>(reduce_num);
+    }
+    Ty result = static_cast<Ty>(reduce_var);
     kps::WriteData<Ty, 1, 1, 1, true>(
         y + store_offset + idx, &result, dim.rem_x);
   }
