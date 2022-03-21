@@ -67,6 +67,7 @@ class TestScatterNdAddSimpleOp(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
         ref_np = np.random.random([100]).astype("float64")
         index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
         updates_np = np.random.random([100]).astype("float64")
@@ -76,10 +77,10 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
@@ -89,6 +90,7 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
         ref_np = np.random.random((10, 10)).astype("float64")
         index_np = np.array([[], []]).astype("int32")
         updates_np = np.random.random((2, 10, 10)).astype("float64")
@@ -99,10 +101,10 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
@@ -112,6 +114,7 @@ class TestScatterNdAddWithHighRankSame(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
         shape = (3, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("float64")
         index_np = np.vstack(
@@ -125,10 +128,10 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):
@@ -138,6 +141,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
         shape = (8, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("double")
         index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
@@ -150,10 +154,10 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out')
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
 
 
 #Test Python API

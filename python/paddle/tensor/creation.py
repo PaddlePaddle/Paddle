@@ -974,6 +974,8 @@ def diag(x, offset=0, padding_value=0, name=None):
           # [4]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_diag(x, offset, padding_value)
         return _C_ops.diag_v2(x, "offset", offset, "padding_value",
                               padding_value)
 

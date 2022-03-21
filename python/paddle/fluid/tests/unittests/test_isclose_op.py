@@ -210,6 +210,9 @@ class TestIscloseOpFloat64(TestIscloseOp):
         self.atol = np.array([0]).astype("float64")
         self.equal_nan = False
 
+    def test_check_output(self):
+        self.check_output()
+
 
 class TestIscloseOpLargeDimInput(TestIscloseOp):
     def set_args(self):
@@ -222,4 +225,5 @@ class TestIscloseOpLargeDimInput(TestIscloseOp):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

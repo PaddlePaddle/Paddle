@@ -184,6 +184,9 @@ def equal(x, y, name=None):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_equal(x, y)
+
         return _C_ops.equal(x, y)
 
     check_variable_and_dtype(
@@ -226,6 +229,9 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_greater_equal(x, y)
+
         return _C_ops.greater_equal(x, y)
 
     check_variable_and_dtype(x, "x",
@@ -272,6 +278,9 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_greater_than(x, y)
+
         return _C_ops.greater_than(x, y)
 
     check_variable_and_dtype(x, "x",
@@ -319,6 +328,9 @@ def less_equal(x, y, name=None):
             print(result1)  # result1 = [True True False]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_less_equal(x, y)
+
         return _C_ops.less_equal(x, y)
 
     check_variable_and_dtype(
@@ -362,6 +374,9 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_less_than(x, y)
+
         return _C_ops.less_than(x, y)
 
     check_variable_and_dtype(
@@ -405,6 +420,9 @@ def not_equal(x, y, name=None):
             print(result1)  # result1 = [False True True]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_not_equal(x, y)
+
         return _C_ops.not_equal(x, y)
 
     check_variable_and_dtype(
@@ -446,7 +464,7 @@ def is_tensor(x):
             print(check)  #False
             
     """
-    return isinstance(x, Tensor)
+    return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
