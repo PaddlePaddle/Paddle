@@ -17,7 +17,7 @@ import paddle
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -542,7 +542,7 @@ def where(condition, x=None, y=None, name=None):
 
 
     Args:
-        condition(Tensor): The condition to choose x or y.
+        condition(Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
         x(Tensor or Scalar, optional): x is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
         y(Tensor or Scalar, optional): y is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
 
@@ -621,6 +621,9 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_where(broadcast_condition, broadcast_x,
+                                            broadcast_y)
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         helper = LayerHelper("where", **locals())
@@ -712,6 +715,8 @@ def index_sample(x, index):
 
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_index_sample(x, index)
         return _C_ops.index_sample(x, index)
 
     helper = LayerHelper("index_sample", **locals())

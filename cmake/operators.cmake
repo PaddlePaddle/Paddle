@@ -73,6 +73,12 @@ function(op_library TARGET)
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
                 list(APPEND cu_srcs ${TARGET}.cu)
             endif()
+            # rename in KP: .kps -> .cu
+            if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
+                file(COPY ${TARGET}.kps DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})
+                file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
+                list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
+            endif()
             if (WITH_NV_JETSON)
                 list(REMOVE_ITEM cu_srcs "decode_jpeg_op.cu")
             endif()
@@ -95,6 +101,12 @@ function(op_library TARGET)
             endif()
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
                 list(APPEND hip_srcs ${TARGET}.cu)
+            endif()
+            # rename in KP: .kps -> .cu
+            if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
+                file(COPY ${TARGET}.kps DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})
+                file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
+                list(APPEND hip_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
             endif()
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
                 set(PART_CUDA_KERNEL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu
@@ -281,11 +293,11 @@ function(op_library TARGET)
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
     "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op")
-    
-            if ("${TARGET}" STREQUAL "${manual_pybind_op}")
-                set(pybind_flag 1)
-            endif()
-        endforeach()
+
+        if ("${TARGET}" STREQUAL "${manual_pybind_op}")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
 
     # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
@@ -466,7 +478,7 @@ function(op_library TARGET)
     if (${pybind_flag} EQUAL 0)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
-        file(APPEND ${pybind_file} "USE_OP(relu);\n")
+        file(APPEND ${pybind_file} "USE_OP_ITSELF(relu);\n")
       elseif(${TARGET} STREQUAL "fake_dequantize")
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "fake_quantize")

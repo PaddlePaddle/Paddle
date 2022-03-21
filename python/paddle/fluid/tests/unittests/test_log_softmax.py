@@ -14,8 +14,9 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 import paddle
+import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 np.random.seed(10)
@@ -72,6 +73,33 @@ class TestLogSoftmaxShape(TestLogSoftmaxOp):
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
     def set_attrs(self):
         self.axis = 1
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLogSoftmaxBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'log_softmax'
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = -1
+
+        x = np.random.uniform(0.1, 1., self.shape).astype(np.float32)
+        out = np.apply_along_axis(ref_log_softmax, self.axis, x)
+        self.x_grad = ref_log_softmax_grad(x, self.axis)
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {'axis': self.axis}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
@@ -147,4 +175,5 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

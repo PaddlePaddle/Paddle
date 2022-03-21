@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/errors.h"
 
 #include "glog/logging.h"
-
+DECLARE_bool(retain_grad_for_all_tensor);
 namespace egr {
 
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
@@ -39,8 +39,8 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
-operator()(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+           bool create_graph) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -62,7 +62,7 @@ operator()(
     grad_out = grads[0][0];
   }
 
-  if (!weak_grad_.expired()) {
+  if (!weak_grad_.expired() && FLAGS_retain_grad_for_all_tensor) {
     auto grad = weak_grad_.lock();
     CopyOrAddTensor(grad.get(), grad_out);
   }
@@ -76,13 +76,13 @@ operator()(
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    const std::function<void(void)>& hook) {
-  reduce_hooks_.emplace_back(hook);
+    std::shared_ptr<TensorVoidHook>&& hook) {
+  reduce_hooks_.emplace_back(std::move(hook));
 }
 
 void GradNodeAccumulation::ApplyReduceHooks() {
   for (auto& hook : reduce_hooks_) {
-    hook();
+    (*hook)();
   }
 }
 }  // namespace egr

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 namespace paddle {
@@ -21,7 +22,7 @@ namespace experimental {
 namespace detail {
 
 BackendSet GetTensorBackendSet(const Tensor& t) {
-  BackendSet backend_set(phi::TransToPtenBackend(t.inner_place()));
+  BackendSet backend_set(phi::TransToPhiBackend(t.inner_place()));
   switch (t.layout()) {
     case DataLayout::MKLDNN:
       backend_set = backend_set | BackendSet(Backend::MKLDNN);
@@ -52,8 +53,8 @@ std::size_t CountLeadingZeros(uint64_t val) {
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  return pool.Get(phi::TransToPtenPlace(backend));
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  return pool.GetMutable(phi::TransToPhiPlace(backend));
 }
 
 DataType ParseDataType(DataType dtype) { return dtype; }
@@ -83,7 +84,7 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
 
 Backend ParseBackend(Backend backend) { return backend; }
 Backend ParseBackend(const Tensor& tensor) {
-  return phi::TransToPtenBackend(tensor.inner_place());
+  return phi::TransToPhiBackend(tensor.inner_place());
 }
 
 Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {

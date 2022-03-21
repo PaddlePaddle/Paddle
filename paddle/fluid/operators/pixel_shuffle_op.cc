@@ -9,9 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pixel_shuffle_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -19,56 +22,6 @@ namespace operators {
 class PixelShuffleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of PixelShuffleOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of PixelShuffleOp should not be null."));
-
-    auto input_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "Input should be a 4-D tensor of format [N, C, H, W] "
-                          "or [N, H, W, C], but got %u.",
-                          input_dims.size()));
-
-    auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
-
-    const std::string data_format =
-        ctx->Attrs().Get<std::string>("data_format");
-    const bool channel_last = (data_format == "NHWC");
-
-    if (!channel_last) {
-      PADDLE_ENFORCE_EQ(
-          input_dims[1] % (upscale_factor * upscale_factor), 0,
-          platform::errors::InvalidArgument(
-              "The square of upscale_factor[%u] should divide the "
-              "number of channel[%u]",
-              upscale_factor * upscale_factor, input_dims[1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          input_dims[3] % (upscale_factor * upscale_factor), 0,
-          platform::errors::InvalidArgument(
-              "The square of upscale_factor[%u] should divide the "
-              "number of channel[%u]",
-              upscale_factor * upscale_factor, input_dims[3]));
-    }
-    auto output_dims = input_dims;
-    output_dims[0] = input_dims[0];
-    if (!channel_last) {
-      output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
-      output_dims[2] = input_dims[2] * upscale_factor;
-      output_dims[3] = input_dims[3] * upscale_factor;
-    } else {
-      output_dims[1] = input_dims[1] * upscale_factor;
-      output_dims[2] = input_dims[2] * upscale_factor;
-      output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
-    }
-    ctx->SetOutputDim("Out", output_dims);
-  }
 };
 
 class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -171,21 +124,15 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle, PixelShuffleInferShapeFunctor,
+                            PD_INFER_META(phi::PixelShuffleInferMeta));
+
 REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
                   ops::PixelShuffleGradMaker<paddle::framework::OpDesc>,
-                  ops::PixelShuffleGradMaker<paddle::imperative::OpBase>);
+                  ops::PixelShuffleGradMaker<paddle::imperative::OpBase>,
+                  PixelShuffleInferShapeFunctor);
 
 REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    pixel_shuffle,
-    ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    pixel_shuffle_grad,
-    ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(pixel_shuffle)
     .AddCheckpoint(
