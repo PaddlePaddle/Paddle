@@ -72,6 +72,26 @@ void AucInferMeta(const MetaTensor& input,
                   MetaTensor* stat_neg_out,
                   MetaConfig config = MetaConfig());
 
+void BatchNormInferMeta(const MetaTensor& x,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
+                        const MetaTensor& mean,
+                        const MetaTensor& variance,
+                        float momentum,
+                        float epsilon,
+                        const std::string& data_layout,
+                        bool is_test,
+                        bool use_global_stats,
+                        bool trainable_statistics,
+                        bool fuse_with_relu,
+                        MetaTensor* y,
+                        MetaTensor* mean_out,
+                        MetaTensor* variance_out,
+                        MetaTensor* saved_mean,
+                        MetaTensor* saved_variance,
+                        MetaTensor* reserve_space,
+                        MetaConfig config = MetaConfig());
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
@@ -86,6 +106,23 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out);
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
