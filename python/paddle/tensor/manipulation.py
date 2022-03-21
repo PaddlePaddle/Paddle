@@ -263,6 +263,9 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
 
 setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
+if core._in_eager_mode():
+    setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
+
 
 @dygraph_only
 def tolist(x):
