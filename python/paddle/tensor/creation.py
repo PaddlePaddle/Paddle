@@ -28,6 +28,7 @@ from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHol
 from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  # noqa: F401
+from ..fluid.layers import logspace  # noqa: F401
 import paddle
 from paddle import _C_ops
 from ..framework import _in_eager_mode

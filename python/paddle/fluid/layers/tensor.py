@@ -56,6 +56,7 @@ __all__ = [
     'isfinite',
     'range',
     'linspace',
+    'logspace',
     'zeros_like',
     'ones_like',
     'diag',
@@ -1550,6 +1551,124 @@ def linspace(start, stop, num, dtype=None, name=None):
         inputs={'Start': tensor_start,
                 'Stop': tensor_stop,
                 'Num': tensor_num},
+        attrs={'dtype': dtype},
+        outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
+    return out
+
+
+def logspace(start, stop, num, base=10.0, dtype=None, name=None):
+    r"""
+    This OP return fixed number of logarithmical-evenly spaced values within a given interval.
+
+    Args:
+        start(int|float|Tensor): The input :attr:`start` is exponent of first entry in 
+            the sequence. It is a scalar, or a Tensor of shape [1] with input data 
+            type int32, int64, float32 or float64.
+        stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the 
+            sequence. It is a scalar, or a Tensor of shape [1] with input data 
+            type int32, int64, float32 or float64.
+        num(int|Tensor): The input :attr:`num` is given number of items in the sequence. 
+            It is an int scalar, or a Tensor of shape [1] with data type int32.
+        base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. 
+            It is a scalar, or a Tensor of shape [1] with input data type int32, int64, 
+            float32 or float64.
+        dtype(np.dtype|str, optional): The data type of output tensor, it could be
+            int32, int64, float32 and float64. Default: if None, the data type is float32.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
+
+    Returns:
+        Tensor: the output data type will be float32, float64. The 1-D tensor with 
+            fixed number of evenly spaced values, the data shape of this tensor 
+            is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just 
+            has the value with exponential of :attr:`start` with base :attr:`base`. 
+
+    Examples:
+        .. code-block:: python
+
+             import paddle
+             data = paddle.logspace(0, 10, 5, 2, 'float32')
+             # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
+             data = paddle.logspace(0, 10, 1, 2, 'float32')
+             # [1.]
+
+    """
+    if dtype is None:
+        dtype = 'float32'
+    tensor_num = num
+    tensor_start = start
+    tensor_stop = stop
+    tensor_base = base
+    if not isinstance(num, Variable):
+        check_type(num, 'num', (int), 'logspace')
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start)
+    if not isinstance(stop, Variable):
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop)
+    if not isinstance(num, Variable):
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num)
+    if not isinstance(base, Variable):
+        with device_guard("cpu"):
+            tensor_base = fill_constant([1], dtype, base)
+    if in_dygraph_mode():
+        return _C_ops.logspace(tensor_start, tensor_stop, tensor_num, tensor_base, 'dtype',
+                               dtype)
+
+    helper = LayerHelper("logspace", **locals())
+
+    start_dtype = convert_dtype(tensor_start.dtype)
+    stop_dtype = convert_dtype(tensor_stop.dtype)
+    base_dtype = convert_dtype(tensor_base.dtype)
+    out_dtype = convert_dtype(dtype)
+    if isinstance(start, Variable):
+        check_dtype(start.dtype, 'start',
+                    ['float32', 'float64', 'int32', 'int64'], 'logspace')
+    else:
+        check_type(start, 'start', (int, float), 'logspace')
+
+    if isinstance(stop, Variable):
+        check_dtype(stop.dtype, 'stop',
+                    ['float32', 'float64', 'int32', 'int64'], 'logspace')
+    else:
+        check_type(stop, 'stop', (int, float), 'logspace')
+    
+    if isinstance(num, Variable):
+        check_dtype(num.dtype, 'num', ['int32'], 'logspace')
+    
+    if isinstance(base, Variable):
+        check_dtype(base.dtype, 'base',
+                    ['float32', 'float64', 'int32', 'int64'], 'logspace')
+    else:
+        check_type(base, 'base', (int, float), 'logspace')
+
+    check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
+                'logspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64"
+                                 or base_dtype == "float64")
+                                 and out_dtype in ["float32", "int32"]) or \
+       ((stop_dtype == "int64" or start_dtype == "int64"
+                               or base_dtype == "int64")
+                               and out_dtype == "int32"):
+        raise ValueError(
+            "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
+            "which may cause data type overflows. Please reset attr(dtype) of logspace."
+            .format(start_dtype, stop_dtype, base_dtype, dtype))
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='logspace',
+        inputs={'Start': tensor_start,
+                'Stop': tensor_stop,
+                'Num': tensor_num,
+                'Base': tensor_base},
         attrs={'dtype': dtype},
         outputs={'Out': [out]})
     if isinstance(num, int):
