@@ -57,6 +57,4 @@ PD_REGISTER_KERNEL(take_along_axis,
                    double,
                    int,
                    uint8_t,
-                   int64_t) {
-  kernel->InputAt(1).SetDataType(phi::DataType::ALL_DTYPE);
-}
+                   int64_t) {}
