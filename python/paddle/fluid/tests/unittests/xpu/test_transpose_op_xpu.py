@@ -28,7 +28,7 @@ paddle.enable_static()
 
 class XPUTestTransposeOp(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = "transpose"
+        self.op_name = "transpose2"
         self.use_dynamic_create_class = False
 
     class TestTransposeOp(XPUOpTest):
