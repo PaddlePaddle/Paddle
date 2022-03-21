@@ -773,3 +773,6 @@ DEFINE_bool(enable_ins_parser_file, false,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
+
+PADDLE_DEFINE_EXPORTED_string(inplace_addto_external_ops, "",
+                              "The external ops which support inplace addto.");

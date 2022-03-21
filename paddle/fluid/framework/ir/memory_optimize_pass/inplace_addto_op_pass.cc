@@ -14,11 +14,15 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/string_helper.h"
+
+DECLARE_string(inplace_addto_external_ops);
 
 namespace paddle {
 namespace framework {
@@ -32,6 +36,17 @@ struct VarHandle;
 namespace paddle {
 namespace framework {
 namespace ir {
+
+static std::unordered_set<std::string> InplaceAddtoOpSet() {
+  std::unordered_set<std::string> inplace_addto_ops{
+      {"conv2d_grad", "resnet_unit_grad"}};
+  auto external_ops =
+      string::split_string(FLAGS_inplace_addto_external_ops, ",");
+  for (const auto &op : external_ops) {
+    inplace_addto_ops.insert(string::trim_spaces(op));
+  }
+  return inplace_addto_ops;
+}
 
 class Graph;
 
@@ -85,6 +100,8 @@ class InplaceAddToOpPass : public MemoryReusePass {
 };
 
 void InplaceAddToOpPass::Run(Graph *graph) const {
+  const auto inplace_addto_ops = InplaceAddtoOpSet();
+
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
@@ -179,9 +196,7 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
         out_var_ptr->GeneratedOp());
 
     // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
-    if (right_generated_op->Name() != "conv2d_grad" &&
-        right_generated_op->Name() != "resnet_unit_grad" && 
-	right_generated_op->Name() != "custom_fused_dense_grad") {
+    if (inplace_addto_ops.count(right_generated_op->Name()) == 0) {
       continue;
     }
 
