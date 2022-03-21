@@ -29,6 +29,26 @@ KernelSignature DeformableConvOpArgumentMapping(
                          {"Output"});
 }
 
+KernelSignature DeformableConvGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "deformable_conv_grad",
+      {"Input", "Offset", "Filter", "Mask", GradVarName("Output")},
+      {"strides",
+       "paddings",
+       "dilations",
+       "deformable_groups",
+       "groups",
+       "im2col_step"},
+      {GradVarName("Input"),
+       GradVarName("Offset"),
+       GradVarName("Filter"),
+       GradVarName("Mask")});
+}
+
 }  // namespace phi
+
 PD_REGISTER_ARG_MAPPING_FN(deformable_conv,
                            phi::DeformableConvOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(deformable_conv_grad,
+                           phi::DeformableConvGradOpArgumentMapping);
