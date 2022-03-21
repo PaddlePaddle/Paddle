@@ -2931,9 +2931,10 @@ function check_coverage_build() {
 
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
-    dev_coverage_build_size=`cat build_size`
+    dev_coverage_build_size=`cat build_size|sed 's#G##g'`
+    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
 
-    diff_coverage_build_size=`echo $(($buildSize - $dev_coverage_build_size))`
+    diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
     set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
