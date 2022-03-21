@@ -122,6 +122,7 @@ class SparseAccessor : public ValueAccessor {
   };
   SparseAccessor() {}
   virtual int initialize();
+  virtual void GetTableInfo(AccessorInfo& info);
   virtual ~SparseAccessor() {}
 
   // value维度
