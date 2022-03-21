@@ -34,10 +34,9 @@ class GradNodePyLayer : public GradNodeBase {
 
   ~GradNodePyLayer() override { Py_DECREF(ctx_); };
 
-  // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
-      override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+      bool create_graph = false) override;
 
   std::string name() {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
