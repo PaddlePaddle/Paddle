@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
+import timeit
 import logging
 from collections import OrderedDict
 
@@ -127,7 +127,8 @@ class Benchmark(object):
             # set reader for the current event at the first iter
             if self.current_event.reader is None:
                 self.current_event.reader = reader
-            elif self.current_event.reader is not reader:
+            elif self.current_event.reader.__dict__[
+                    '_dataset'] != reader.__dict__['_dataset']:
                 # enter a new task but not calling beign() to record it.
                 # we pause the timer until the end of new task, so that 
                 # the cost of new task is not added to the current event.
@@ -135,9 +136,10 @@ class Benchmark(object):
                 self.current_event.need_record = False
         else:
             # when the new task exits, continue timing for the current event.
-            if self.current_event.reader is reader:
+            if self.current_event.reader.__dict__[
+                    '_dataset'] == reader.__dict__['_dataset']:
                 self.current_event.need_record = True
-                self.hooks['timer_hook'].start_time = time.time()
+                self.hooks['timer_hook'].start_time = timeit.default_timer()
 
 
 class TimerHook(Hook):
@@ -149,16 +151,16 @@ class TimerHook(Hook):
     def begin(self, benchmark):
         benchmark.events.push(Event())
         benchmark.current_event = benchmark.events.peek()
-        self.start_time = time.time()
+        self.start_time = timeit.default_timer()
 
     def before_reader(self, benchmark):
-        self.start_reader = time.time()
+        self.start_reader = timeit.default_timer()
 
     def after_reader(self, benchmark):
         if (benchmark.current_event is None) or (
                 not benchmark.current_event.need_record):
             return
-        reader_cost = time.time() - self.start_reader
+        reader_cost = timeit.default_timer() - self.start_reader
         benchmark.current_event.record_reader(reader_cost)
         if benchmark.current_event.total_iters >= benchmark.current_event.skip_iter:
             benchmark.current_event.update_records(
@@ -168,7 +170,7 @@ class TimerHook(Hook):
         if (benchmark.current_event is None) or (
                 not benchmark.current_event.need_record):
             return
-        batch_cost = time.time() - self.start_time
+        batch_cost = timeit.default_timer() - self.start_time
         benchmark.current_event.record_batch(batch_cost, benchmark.num_samples)
         if benchmark.current_event.total_iters >= benchmark.current_event.skip_iter:
             benchmark.current_event.update_records(
@@ -180,7 +182,7 @@ class TimerHook(Hook):
                 current_speed = 1.0 / batch_cost  # steps/s
             benchmark.current_event.update_records(
                 current_speed, benchmark.current_event.speed_records)
-        self.start_time = time.time()
+        self.start_time = timeit.default_timer()
 
     def end(self, benchmark):
         if benchmark.events.is_empty():
@@ -188,7 +190,7 @@ class TimerHook(Hook):
         self.print_summary(benchmark)
         benchmark.events.pop()
         benchmark.current_event = benchmark.events.peek()
-        self.start_time = time.time()
+        self.start_time = timeit.default_timer()
 
     def print_summary(self, benchmark):
         summary = benchmark.current_event.get_summary()
