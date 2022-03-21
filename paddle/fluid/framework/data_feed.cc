@@ -372,8 +372,6 @@ bool InMemoryDataFeed<T>::Start() {
 template <typename T>
 int InMemoryDataFeed<T>::Next() {
 #ifdef _LINUX
-  platform::Timer timeline;
-  timeline.Start();
   this->CheckStart();
   if (!enable_heterps_) {
     CHECK(output_channel_ != nullptr);
@@ -427,9 +425,6 @@ int InMemoryDataFeed<T>::Next() {
             << " batch_offsets: " << batch_offsets_.size()
             << " baych_size: " << this->batch_size_;
   }
-  timeline.Pause();
-  VLOG(0) << "InMemoryDataFeed<T>::Next() cost time=" << timeline.ElapsedSec()
-          << " seconds, thread_id=" << thread_id_;
   return this->batch_size_;
 #else
   return 0;
@@ -1186,12 +1181,12 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->rank = rank;
       pos += len + 1;
     }
-    instance->uint64_feasign_values_.clear();
-    instance->float_feasign_values_.clear();
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
     instance->float_offset_.clear();
     instance->uint64_offset_.clear();
     instance->float_offset_.reserve(float_use_slot_size_ + 1);
     instance->uint64_offset_.reserve(uint64_use_slot_size_ + 1);
+#endif
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
@@ -1221,6 +1216,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         instance->uid_ = feasign;
       }
 #endif
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           instance->float_offset_.push_back(instance->float_feasigns_.size());
@@ -1240,13 +1237,6 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
           instance->uint64_offset_.push_back(instance->uint64_feasigns_.size());
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-// if uint64 feasign is equal to zero, ignore it
-// except when slot is dense
-#if !defined(PADDLE_WITH_CUDA) || !defined(PADDLE_WITH_HETERPS)
-            if (feasign == 0 && !use_slots_is_dense_[i]) {
-              continue;
-            }
-#endif
             FeatureFeasign f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
@@ -1263,8 +1253,48 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         }
       }
     }
+
     instance->uint64_offset_.push_back(instance->uint64_feasigns_.size());
     instance->float_offset_.push_back(instance->float_feasigns_.size());
+#else
+      if (idx != -1) {
+        if (all_slots_type_[i][0] == 'f') {  // float
+          for (int j = 0; j < num; ++j) {
+            float feasign = strtof(endptr, &endptr);
+            // if float feasign is equal to zero, ignore it
+            // except when slot is dense
+            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
+              continue;
+            }
+            FeatureFeasign f;
+            f.float_feasign_ = feasign;
+            instance->float_feasigns_.push_back(FeatureItem(f, idx));
+          }
+        } else if (all_slots_type_[i][0] == 'u') {  // uint64
+          for (int j = 0; j < num; ++j) {
+            uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
+
+            // if uint64 feasign is equal to zero, ignore it
+            // except when slot is dense
+            if (feasign == 0 && !use_slots_is_dense_[i]) {
+              continue;
+            }
+            FeatureFeasign f;
+            f.uint64_feasign_ = feasign;
+            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+          }
+        }
+        pos = endptr - str;
+      } else {
+        for (int j = 0; j <= num; ++j) {
+          // pos = line.find_first_of(' ', pos + 1);
+          while (line[pos + 1] != ' ') {
+            pos++;
+          }
+        }
+      }
+    }
+#endif
     instance->float_feasigns_.shrink_to_fit();
     instance->uint64_feasigns_.shrink_to_fit();
     fea_num_ += instance->uint64_feasigns_.size();
@@ -1472,7 +1502,6 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
                         cudaMemcpyDeviceToHost));
 
   for (int j = 0; j < slot_size; ++j) {
-    // auto& feed = feed_vec_[j];
     if (feed_vec_[j] == nullptr) {
       h_tensor_ptrs[j] = nullptr;
       continue;
@@ -1513,10 +1542,6 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
     }
 
     if (use_slots_is_dense_[j]) {
-      // if (info.inductive_shape_index != -1) {
-      //   info.local_shape[info.inductive_shape_index] =
-      //       total_instance / info.total_dims_without_inductive;
-      // }
       if (inductive_shape_index_[j] != -1) {
         use_slots_shape_[j][inductive_shape_index_[j]] =
             total_instance / total_dims_without_inductive_[j];
@@ -1549,7 +1574,6 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
-// #ifdef _LINUX
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   pack_->pack_instance(ins_vec);
   BuildSlotBatchGPU(pack_->ins_num());
@@ -1593,7 +1617,6 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       // get offset of this ins in this slot
       if (type[0] == 'f') {  // float
         offset_[j].push_back(batch_float_feasigns_[j].size());
-        // use_slots_: 318 batch_float_feasigns_ size:7857
       } else if (type[0] == 'u') {  // uint64
         offset_[j].push_back(batch_uint64_feasigns_[j].size());
       }
@@ -1604,7 +1627,6 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     if (feed_vec_[i] == nullptr) {
       continue;
     }
-    // total_instance
     int total_instance = offset_[i].back();
     const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float
@@ -1651,7 +1673,6 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
-
 #endif
 }
 
@@ -2545,9 +2566,6 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
         for (int j = 0; j < num; ++j) {
           uint64_t feasign =
               static_cast<uint64_t>(strtoull(endptr, &endptr, 10));
-          // if (feasign == 0 && !used_slots_info_[info.used_idx].dense) {
-          //   continue;
-          // }
           slot_fea.push_back(feasign);
           ++uint64_total_slot_num;
         }
@@ -2727,19 +2745,18 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
 bool SlotRecordInMemoryDataFeed::Start() {
 #ifdef _LINUX
   this->CheckSetFileList();
-// if (input_channel_->Size() != 0) {
-//   std::vector<SlotRecord> data;
-//   input_channel_->Read(data);
-// }
+  if (input_channel_->Size() != 0) {
+    std::vector<SlotRecord> data;
+    input_channel_->Read(data);
+  }
 #endif
-  // if (batch_offsets_.size() > 0) {
-  //   VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
-  //   enable_heterps_ = true;
-  //   this->offset_index_ = 0;
-  // }
-  this->offset_index_ = 0;
+  if (batch_offsets_.size() > 0) {
+    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
+    enable_heterps_ = true;
+    this->offset_index_ = 0;
+  }
   this->finish_start_ = true;
-#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
 #endif
@@ -2752,7 +2769,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 
   VLOG(3) << "enable heter next: " << offset_index_
           << " batch_offsets: " << batch_offsets_.size();
-  if (offset_index_ >= static_cast<int>(batch_offsets_.size())) {
+  if (offset_index_ >= batch_offsets_.size()) {
     VLOG(3) << "offset_index: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
     return 0;
@@ -2761,13 +2778,12 @@ int SlotRecordInMemoryDataFeed::Next() {
   this->batch_size_ = batch.second;
   VLOG(3) << "batch_size_=" << this->batch_size_
           << ", thread_id=" << thread_id_;
-  PutToFeedVec(&records_[batch.first], this->batch_size_);
-  // if (this->batch_size_ != 0) {
-  //   PutToFeedVec(&records_[batch.first], this->batch_size_);
-  // } else {
-  //   VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
-  //           << thread_id_;
-  // }
+  if (this->batch_size_ != 0) {
+    PutToFeedVec(&records_[batch.first], this->batch_size_);
+  } else {
+    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+            << thread_id_;
+  }
   VLOG(3) << "enable heter next: " << offset_index_
           << " batch_offsets: " << batch_offsets_.size()
           << " baych_size: " << this->batch_size_;
@@ -2882,7 +2898,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
                 used_slot_gpu_types);
 }
 
-#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
                                    const std::vector<UsedSlotInfo>& infos) {
   place_ = place;
@@ -2939,8 +2955,6 @@ MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
       ++used_float_num_;
     }
   }
-  // uint64_slot_offsets_.resize(used_slot_size_);
-  // float_slot_offsets_.resize(used_slot_size_);
 
   copy_host2device(&gpu_slots_, gpu_used_slots_.data(), gpu_used_slots_.size());
 

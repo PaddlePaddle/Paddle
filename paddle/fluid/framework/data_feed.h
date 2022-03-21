@@ -103,21 +103,16 @@ struct SlotValues {
     slot_values.reserve(fea_num);
     int slot_num = static_cast<int>(slot_feasigns.size());
     slot_offsets.resize(slot_num + 1);
-    VLOG(0) << "INTO add_slot_feasigns:" << fea_num << " slot_num:" << slot_num;
-    std::stringstream ss;
 
     for (int i = 0; i < slot_num; ++i) {
       auto& slot_val = slot_feasigns[i];
       slot_offsets[i] = static_cast<uint32_t>(slot_values.size());
-      ss << slot_offsets[i] << ",";
       uint32_t num = static_cast<uint32_t>(slot_val.size());
       if (num > 0) {
         slot_values.insert(slot_values.end(), slot_val.begin(), slot_val.end());
       }
     }
     slot_offsets[slot_num] = slot_values.size();
-    ss << slot_offsets[slot_num] << "\n";
-    VLOG(0) << " slot offset:" << ss.str();
   }
   void clear(bool shrink) {
     slot_offsets.clear();
@@ -805,17 +800,6 @@ class DLManager {
   std::map<std::string, DLHandle> handle_map_;
 };
 
-// struct ReadInfo {
-//   int batch_size;
-//   std::vector<LoDTensor*> feed_vec;
-
-//   ReadInfo() {}
-//   ReadInfo(int batch_size, std::vector<LoDTensor*> feed_vec) {
-//     batch_size = batch_size;
-//     feed_vec = feed_vec;
-//   }
-// };
-
 class DataFeed {
  public:
   DataFeed() {
@@ -1492,10 +1476,6 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual void PutToFeedVec(const Record* ins_vec, int num);
 
  protected:
-// // uint64 tensor
-// LoDTensor gpu_fused_uint64_tensor_;
-// // float tensor
-// LoDTensor gpu_fused_float_tensor_;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   void BuildSlotBatchGPU(const int ins_num);
   void FillSlotValueOffset(const int ins_num, const int used_slot_num,
@@ -1522,7 +1502,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  public:
   SlotRecordInMemoryDataFeed() {}
   virtual ~SlotRecordInMemoryDataFeed() {
-#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
     if (pack_ != nullptr) {
       pack_ = nullptr;
     }
@@ -1574,11 +1554,9 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   size_t float_total_dims_size_ = 0;
   std::vector<int> float_total_dims_without_inductives_;
 
-#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   MiniBatchGpuPack* pack_ = nullptr;
 #endif
-  int offset_index_ = 0;
-  std::string parser_so_path_;
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
