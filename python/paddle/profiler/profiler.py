@@ -247,12 +247,12 @@ class Profiler:
     Profiler context manager, user interface to manage profile process.
 
     Parameters:
-        targets (iterable): list of tracing targets, currently supported values:``ProfilerTarget.CPU``,``ProfilerTarget.GPU``.
+        targets (iterable): list of tracing targets, currently supported values, ``ProfilerTarget.CPU``,``ProfilerTarget.GPU``.
         scheduler (callable or tuple): If it is a callable object, it takes a step number as parameter and return the corresponding ``ProfilerState``.
-            If not provided, the default sheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
+            If not provided, the default scheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
             which means profiling range [start_batch, end_batch).
         on_trace_ready (callable): callable object, takes the Profiler object as parameter, which provides a way for users to do post-processing.
-            This callable object will be called when ``sheduler`` returns ``ProfilerState.RECORD_AND_RETURN``.
+            This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``.
 
     Examples:
         1. profiling range [2, 5)
