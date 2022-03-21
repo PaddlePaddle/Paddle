@@ -13,14 +13,29 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
+#include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/phi/data_type.h"
 #include "paddle/infrt/kernel/phi/context_kernels.h"
+#include "paddle/infrt/paddle/model_parser.h"
+#include "paddle/infrt/paddle/scope.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 
 #ifdef INFRT_WITH_GPU
 #include <cuda_runtime.h>
 #endif
+
+namespace paddle {
+namespace platform {
+using DeviceContext = ::phi::DeviceContext;
+}  // namespace platform
+namespace framework {
+using LoDTensor = ::phi::DenseTensor;
+void DeserializeFromStream(std::istream& is,
+                           LoDTensor* tensor,
+                           const platform::DeviceContext& dev_ctx);
+}
+}  // namespace paddle
 
 namespace infrt {
 namespace kernel {
@@ -130,6 +145,89 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   std::cout << "]\n";
 #undef PRINT_META_DATA
 }
+
+::infrt::phi::DenseTensorMap LoadParams(
+    host_context::Attribute<std::string> path) {
+  const auto& file_path = path.get();
+  std::cout << "loading params from: " << file_path << std::endl;
+  ::infrt::phi::DenseTensorMap map;
+
+  const std::string model_path = file_path + "/__model__";
+  auto pb_proto_prog = paddle::LoadProgram(model_path);
+  auto main_block = pb_proto_prog->blocks(0);
+
+  for (auto& var : main_block.vars()) {
+    if (var.name() == "feed" || var.name() == "fetch" || !var.persistable())
+      continue;
+    std::string param_path = file_path + "/" + var.name();
+    std::ifstream param_file(param_path, std::ios::binary);
+    switch (var.type().type()) {
+      case ::paddle::framework::proto::VarType_Type_LOD_TENSOR: {
+        std::unique_ptr<::phi::DenseTensor> tensor{
+            std::make_unique<::phi::DenseTensor>()};
+        ::phi::CPUContext ctx;
+        ::paddle::framework::DeserializeFromStream(
+            param_file, tensor.get(), ctx);
+        map.SetDenseTensor(var.name(), std::move(tensor));
+      } break;
+      default: {
+        LOG(WARNING) << "Var `" << var.name() << "` type `"
+                     << static_cast<int>(var.type().type())
+                     << "` has not been supported now.";
+      }
+    }
+  }
+  return map;
+}
+
+::infrt::phi::DenseTensorMap LoadCombinedParams(
+    host_context::Attribute<std::string> model_path,
+    host_context::Attribute<std::string> params_path) {
+  const auto& model = model_path.get();
+  std::cout << "loading params from: " << model << std::endl;
+  ::infrt::phi::DenseTensorMap map;
+
+  auto pb_proto_prog = paddle::LoadProgram(model);
+  auto main_block = pb_proto_prog->blocks(0);
+
+  std::ifstream param_file(params_path.get(), std::ios::binary);
+
+  std::set<std::string> tmp;
+  for (auto& var : main_block.vars()) {
+    if (var.name() == "feed" || var.name() == "fetch" || !var.persistable()) {
+      continue;
+    }
+    if (var.type().type() ==
+        ::paddle::framework::proto::VarType_Type_LOD_TENSOR) {
+      tmp.emplace(var.name());
+    } else {
+      llvm_unreachable("the tensor type is illegal.");
+    }
+  }
+
+  for (auto& var : tmp) {
+    std::unique_ptr<::phi::DenseTensor> tensor{
+        std::make_unique<::phi::DenseTensor>()};
+    ::phi::CPUContext ctx;
+    ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
+    map.SetDenseTensor(var, std::move(tensor));
+  }
+
+  return map;
+}
+
+::phi::DenseTensor TensorMapGetTensor(
+    const ::infrt::phi::DenseTensorMap& map,
+    host_context::Attribute<std::string> name) {
+  auto* tensor = map.GetDenseTensor(name.get());
+  CHECK(tensor);
+  return *tensor;
+}
+
+int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
+  return map.size();
+}
+
 }  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

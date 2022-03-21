@@ -18,6 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid import ParamAttr, initializer
+import paddle
 
 
 class TestCreateParameterError(unittest.TestCase):
@@ -50,4 +51,5 @@ class TestCreateParameterError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
