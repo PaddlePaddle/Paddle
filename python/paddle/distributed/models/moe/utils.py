@@ -63,28 +63,29 @@ def _assign_pos(x, cum_count):
     Args:
         x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
-        cum_count (Tensor): The cumulative sum tokens of experts. Every element in the list must be a Tensor whose 
+        cum_count (Tensor): The cumulative sum tokens of counters. Every element in the list must be a Tensor whose 
             data type should be int64.
   
     Returns:
-        out (Tensor): Assemble tokens in the order of experts. 
+        out (Tensor): Assemble numbers in the order of counters. 
     
     Examples:
         .. code-block:: python
 
             # required: distributed
             import paddle
-            local_expert_count = [2, 0, 2, 0]
-            gate_idx = [
+            number_count = [2, 0, 2, 0]
+            numbers = [
                 [0, 2],
                 [0, 2]
             ]
-            local_expert_count = paddle.to_tensor(local_expert_count)
-            gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
-            lec_cum = paddle.cumsum(local_expert_count)
-            pos = paddle.distributed.utils.assign_pos(x=gate_idx, cum_count=lec_cum)
+            number_count = paddle.to_tensor(number_count)
+            numbers = paddle.to_tensor(numbers, dtype="int32")
+            num_cum = paddle.cumsum(number_count)
+            pos = paddle.distributed.utils.assign_pos(x=numbers, cum_count=num_cum)
             print(pos) # the result: (2, 0, 3, 1)
     """
+    print("last num:", cum_count)
     if in_dygraph_mode():
         return core.ops.assign_pos(x, cum_count, cum_count[-1])
     else:
@@ -98,7 +99,7 @@ def _assign_pos(x, cum_count):
             inputs={
                 'X': [x],
                 'cum_count': [cum_count],
-                "eff_gates_len": [cum_count[-1]]
+                "eff_num_len": [cum_count[-1]]
             },
             outputs={'Out': [out]})
         return out

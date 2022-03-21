@@ -24,7 +24,7 @@ class AssignPosOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("cum_count"), "Input", "cum_count",
                    "AssignPos");
-    OP_INOUT_CHECK(ctx->HasInput("eff_gates_len"), "Input", "eff_gates_len",
+    OP_INOUT_CHECK(ctx->HasInput("eff_num_len"), "Input", "eff_num_len",
                    "AssignPos");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AssignPos");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AssignPos");
@@ -42,7 +42,7 @@ class AssignPosOp : public framework::OperatorWithKernel {
                           "The dtype of the cum_count and X should be same"));
     PADDLE_ENFORCE_EQ(cum_count_dtype, framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
-                          "The dtype of the cum_count_dtype, eff_gates_len and "
+                          "The dtype of the cum_count_dtype, eff_num_len and "
                           "X should be same as int64"));
     return framework::OpKernelType(cum_count_dtype, ctx.device_context());
   }
@@ -51,20 +51,17 @@ class AssignPosOp : public framework::OperatorWithKernel {
 class AssignPosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "The tensor which indicates the tokens belong to which topk experts.");
-    AddInput("cum_count", "The cumulative sum tokens of experts.");
-    AddInput("eff_gates_len",
-             "The effective numbers of tokens should be sent.");
-    AddOutput("Out", "Assemble tokens in the order of experts.");
+    AddInput("X", "numbers to scatter.");
+    AddInput("cum_count", "The cumulative sum count of numbers.");
+    AddInput("eff_num_len",
+             "The effective numbers of numbers should be scattered.");
+    AddOutput("Out", "Assemble numbers in the order of counters.");
 
     AddComment(R"DOC(
 assign_pos_op Operator.
 
 Assign pos decides which tokens should be fetched belong to 
-specially expert orderingly.
-
+specially counter orderingly.
 
 )DOC");
   }
@@ -78,8 +75,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(assign_pos, ops::AssignPosOp,
                              ops::AssignPosOpMaker);
-
-// REGISTER_OPERATOR(assign_pos, ops::AssignPosOp, ops::AssignPosOpMaker)
 
 REGISTER_OP_CPU_KERNEL(assign_pos, ops::AssignPosOpCPUKernel<int>,
                        ops::AssignPosOpCPUKernel<int64_t>);
