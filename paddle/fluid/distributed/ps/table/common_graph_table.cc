@@ -138,7 +138,6 @@ int BasicBfsGraphSampler::run_graph_sampling() {
     int init_size = 0;
     //__sync_fetch_and_add
     std::function<int(int, int64_t)> bfs = [&, this](int i, int id) -> int {
-      VLOG(0) << "in bfs " << i << " " << id;
       if (this->status == GraphSamplerStatus::terminating) {
         int task_left = __sync_sub_and_fetch(&task_size, 1);
         if (task_left == 0) {

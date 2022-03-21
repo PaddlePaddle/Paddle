@@ -87,7 +87,7 @@ void testSampleRate() {
     distributed::GraphTable graph_table;
     graph_table.initialize(table_proto);
     std::cerr << "initializing done";
-    // prepare_file(edge_file_name, edges);
+    prepare_file(edge_file_name, edges);
     graph_table.load(std::string(edge_file_name), std::string("e>"));
     int sample_actual_size = -1;
     int step = 4, cur = 0;
@@ -105,7 +105,8 @@ void testSampleRate() {
       cur += sample_actual_size;
     }
     std::cerr << "load ids done" << std::endl;
-    std::vector<int64_t> sample_id[10], actual_size[10], sample_neighbors[10];
+    std::vector<int64_t> sample_id[10], sample_neighbors[10];
+    std::vector<int> actual_size[10];
     auto func = [&rwlock, &graph_table, &ids, &sample_id, &actual_size,
                  &sample_neighbors, &start, &fixed_key_size,
                  &sample_size](int i) {
@@ -125,14 +126,15 @@ void testSampleRate() {
         if (exit) break;
         std::vector<std::shared_ptr<char>> buffers(sn);
         std::vector<int> ac(sn);
-        graph_table.random_sample_neighbors(ids.data() + s, sample_size,
-                                            buffers, ac, false);
+        auto status = graph_table.random_sample_neighbors(
+            ids.data() + s, sample_size, buffers, ac, false);
         for (int j = s; j < s + sn; j++) {
           sample_id[i].push_back(ids[j]);
-          actual_size[i].push_back(ac[j]);
-          for (int k = 0; k < ac[j]; k++) {
+          actual_size[i].push_back(ac[j - s] / sizeof(int64_t));
+          int ss = ac[j - s] / sizeof(int64_t);
+          for (int k = 0; k < ss; k++) {
             sample_neighbors[i].push_back(
-                *((int64_t *)(buffers[j].get() + k * sizeof(int64_t))));
+                *((int64_t *)(buffers[j - s].get() + k * sizeof(int64_t))));
           }
         }
       }
@@ -150,25 +152,6 @@ void testSampleRate() {
     std::cerr << "total time cost without cache is " << tt.count() << " us"
               << std::endl;
   }
-  // pthread_rwlock_wrlock(&rwlock);
-  // pthread_rwlock_unlock(&rwlock);
-  // std::vector<paddle::framework::GpuPsCommGraph> res;
-  // std::promise<int> prom;
-  // std::future<int> fut = prom.get_future();
-  // graph_table.set_graph_sample_callback(
-  //     [&res, &prom](std::vector<paddle::framework::GpuPsCommGraph> &res0) {
-  //       res = res0;
-  //       prom.set_value(0);
-  //     });
-  // graph_table.start_graph_sampling();
-  // fut.get();
-  // graph_table.end_graph_sampling();
-  // ASSERT_EQ(2, res.size());
-  // // 37 59 97
-  // for (int i = 0; i < (int)res[1].node_size; i++) {
-  //   std::cout << res[1].node_list[i].node_id << std::endl;
-  // }
-  // ASSERT_EQ(3, res[1].node_size);
 
   const int gpu_num = 8;
   ::paddle::distributed::GraphParameter table_proto;
