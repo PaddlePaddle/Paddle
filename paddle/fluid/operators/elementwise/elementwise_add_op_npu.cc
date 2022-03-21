@@ -48,8 +48,8 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
 
     Tensor cast_x, cast_y;
     if (x->type() != y->type()) {
-      if (x->type() != framework::proto::VarType::FP16) {
-        cast_x.set_type(framework::proto::VarType::FP16);
+      if (x->type() != paddle::experimental::DataType::FLOAT16) {
+        cast_x.set_type(paddle::experimental::DataType::FLOAT16);
         cast_x.Resize(x->dims());
         cast_x.mutable_data<float16>(ctx.GetPlace());
         auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP16);
@@ -59,7 +59,7 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
         runner_cast.Run(dev_ctx.stream());
         cast_y.ShareDataWith(*y);
       } else {
-        cast_y.set_type(framework::proto::VarType::FP16);
+        cast_y.set_type(paddle::experimental::DataType::FLOAT16);
         cast_y.Resize(y->dims());
         cast_y.mutable_data<float16>(ctx.GetPlace());
         auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP16);
