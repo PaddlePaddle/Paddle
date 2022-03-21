@@ -1048,12 +1048,10 @@ class TestDistBase(unittest.TestCase):
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 self._find_free_port(), self._find_free_port())
         else:
-            print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 DIST_UT_PORT, DIST_UT_PORT + 1)
             DIST_UT_PORT += 2
             self._dist_port = DIST_UT_PORT
-            print("self._dist_port :", self._dist_port)
 
         self._after_setup_config()
 
