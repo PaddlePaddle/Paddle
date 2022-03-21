@@ -18,7 +18,6 @@ PaddlePaddle, as the first independent R&D deep learning platform in China, has 
 PaddlePaddle is originated from industrial practices with dedication and commitments to industrialization. It has been widely adopted by a wide range of sectors including manufacturing, agriculture, enterprise service, and so on while serving more than 4 million developers, 157,000 companies and generating 476,000 models. With such advantages, PaddlePaddle has helped an increasing number of partners commercialize AI.
 
 
-
 ## Installation
 
 ### Latest PaddlePaddle Release: [v2.2](https://github.com/PaddlePaddle/Paddle/tree/release/2.2)
