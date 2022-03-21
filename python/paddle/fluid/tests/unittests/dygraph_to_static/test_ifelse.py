@@ -20,6 +20,7 @@ import unittest
 import paddle
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+import paddle.fluid.core as core
 
 from ifelse_simple_func import *
 
@@ -379,7 +380,7 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
         return out
 
     def test_ast_to_func(self):
-        self.assertIsInstance(self.out[0], paddle.Tensor)
+        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
         self.assertIsInstance(self.out[1], int)
 
 
@@ -390,8 +391,8 @@ class TestDy2StIfElseRetInt2(TestDy2StIfElseRetInt1):
         self.out = self.get_dy2stat_out()
 
     def test_ast_to_func(self):
-        self.assertIsInstance(self.out[0], paddle.Tensor)
-        self.assertIsInstance(self.out[1], paddle.Tensor)
+        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
+        self.assertIsInstance(self.out[1], (paddle.Tensor, core.eager.Tensor))
 
 
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
@@ -401,7 +402,7 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
         self.out = self.get_dy2stat_out()
 
     def test_ast_to_func(self):
-        self.assertIsInstance(self.out, paddle.Tensor)
+        self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
 
 
 class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):

@@ -33,13 +33,14 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
     run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
+    Py_RETURN_NONE;
   } catch (...) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
     ThrowExceptionToPython(std::current_exception());
+    return nullptr;
   }
-  Py_RETURN_NONE;
 }
 
 static PyMethodDef CustomEagerFinalStateMethods[] = {

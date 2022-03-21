@@ -106,8 +106,8 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
             expected_type = (expected_type, )
         expected_type += (core.VarBase, )
         #  TODO(jiabin): uncomment it when we support declarative mode in eager
-        # if _in_eager_mode():
-        #     expected_type += (core.eager.Tensor, )
+        if core._in_eager_mode():
+            expected_type += (core.eager.Tensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "

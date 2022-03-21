@@ -251,6 +251,9 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
         self.assertTrue(np.array_equal(egr_tensor12.numpy(), x))
 
+        egr_tensor13 = paddle.randn([2, 2])
+        self.assertTrue("eager_tmp" in egr_tensor13.name)
+
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):
             eager_param = EagerParamBase(shape=None, dtype="float32")

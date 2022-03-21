@@ -277,11 +277,6 @@ inline void RunProgramGradAPI(
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
 
-  // TODO(dev): Remove this line hard code. And need to deal with the out_grad
-  // name problem.
-  // const_cast<paddle::experimental::Tensor &>(out_grad[0])
-  //     .set_name("matmul_v2_0.tmp_0@GRAD");
-
   auto *global_block =
       BOOST_GET_CONST(paddle::framework::BlockDesc *, attrs.at("global_block"));
   auto orig_end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
@@ -381,8 +376,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "out_grads[0].size() : " << grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
-    ConstructGradTensors(x_, &x_grad);
-    ConstructGradTensors(params_, &params_grad);
+    ConstructXGradTensors(x_, &x_grad);
+    ConstructParamGradTensors(params_, &params_grad);
     std::vector<paddle::experimental::Tensor *> x_grad_ptr;
     std::vector<paddle::experimental::Tensor *> params_grad_ptr;
     for (auto &i : x_grad) {
@@ -447,29 +442,46 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
  protected:
-  void ConstructGradTensors(
-      const std::vector<paddle::experimental::Tensor> &fwd_tensors,
-      std::vector<paddle::experimental::Tensor> *grad_tensors) {
+  void ConstructXGradTensors(
+      const std::vector<paddle::experimental::Tensor> &x,
+      std::vector<paddle::experimental::Tensor> *x_grad) {
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
-    VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
-    for (auto &fwd_t : fwd_tensors) {
-      if (phi::DenseTensor::classof(fwd_t.impl().get())) {
-        grad_tensors->emplace_back(std::make_shared<phi::DenseTensor>());
-      } else if (phi::SelectedRows::classof(fwd_t.impl().get())) {
-        grad_tensors->emplace_back(std::make_shared<phi::SelectedRows>());
+    for (auto &t : x) {
+      auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
+      if (t_meta->StopGradient()) {
+        continue;
       }
-      auto &grad_t = grad_tensors->back();
-      grad_t.set_name(fwd_t.name() + "@GRAD");
+      if (t.is_dense_tensor()) {
+        x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (t.is_selected_rows()) {
+        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      }
+      x_grad->back().set_name(t.name() + "@GRAD");
     }
   }
 
-  void ConstructGradTensors(
-      const std::vector<paddle::experimental::Tensor> &fwd_tensors) {
-    VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
-    for (auto &fwd_t : fwd_tensors) {
-      auto grad_tesnor = egr::EagerUtils::unsafe_autograd_meta(fwd_t)->Grad();
-      grad_tesnor.set_name(fwd_t.name() + "@GRAD");
+  void ConstructParamGradTensors(
+      const std::vector<paddle::experimental::Tensor> &param,
+      std::vector<paddle::experimental::Tensor> *param_grad) {
+    for (auto &t : param) {
+      auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
+      if (t_meta->StopGradient()) {
+        continue;
+      }
+      auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
+      if (t_grad.is_dense_tensor()) {
+        param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
+      } else if (t_grad.is_selected_rows()) {
+        param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+      }
+      param_grad->back().set_name(t.name() + "@GRAD");
+
+      // auto grad_tesnor =
+      // egr::EagerUtils::unsafe_autograd_meta(fwd_t)->Grad();
+      // grad_tensors->emplace_back(grad_tesnor.impl());
+      // auto &grad_t = grad_tensors->back();
+      // grad_t.set_name(fwd_t.name() + "@GRAD");
     }
   }
 

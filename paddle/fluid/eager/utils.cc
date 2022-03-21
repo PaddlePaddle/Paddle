@@ -270,6 +270,7 @@ void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
                    "shared_ptr, this error may indicate some outputs "
                    "are nullptr"));
   out_var->set_impl(out->GetTensorBase());
+  out_var->set_name(out->name());
 }
 
 void EagerUtils::GetOutputs(

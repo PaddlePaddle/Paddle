@@ -118,7 +118,8 @@ class TestWithNestedOutput(unittest.TestCase):
         self.assertTrue(len(dygraph_res) == len(static_res))
 
         for dy_var, st_var in zip(dygraph_res, static_res):
-            if isinstance(dy_var, fluid.core.VarBase):
+            if isinstance(dy_var,
+                          (fluid.core.VarBase, fluid.core.eager.Tensor)):
                 self.assertTrue(np.allclose(dy_var.numpy(), st_var.numpy()))
             else:
                 self.assertTrue(dy_var, st_var)

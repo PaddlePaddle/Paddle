@@ -218,7 +218,7 @@ class TestReturnBase(unittest.TestCase):
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
                 return tuple(r.numpy() for r in res)
-            elif isinstance(res, core.VarBase):
+            elif isinstance(res, (core.VarBase, core.eager.Tensor)):
                 return res.numpy()
             return res
 
