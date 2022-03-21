@@ -119,6 +119,9 @@ class BarrierTable : public Table {
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 
+  virtual int32_t Pull(TableContext &context) { return 0; }
+  virtual int32_t Push(TableContext &context) { return 0; }
+
   int32_t pull_dense(float *values, size_t num) override { return 0; }
 
   int32_t push_dense(const float *values, size_t num) override { return 0; }
