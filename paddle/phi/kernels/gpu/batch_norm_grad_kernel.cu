@@ -569,7 +569,7 @@ void BatchNormGradRawKernel(const Context &ctx,
                   /*activationDesc=*/nullptr,
                   /*sizeInBytes=*/&workspace_size));
 
-      workspace_tensor.Resize({workspace_size});
+      workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
       workspace_ptr = ctx.template Alloc<T>(&workspace_tensor);
 
       PADDLE_ENFORCE_GPU_SUCCESS(

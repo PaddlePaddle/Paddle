@@ -497,9 +497,9 @@ void BatchNormKernel(const Context &ctx,
                   /*xDesc=*/data_desc_,
                   /*sizeInBytes=*/&reserve_space_size));
 
-      reserve_space->Resize({reserve_space_size});
+      reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
       reserve_space_ptr = ctx.template Alloc<T>(reserve_space);
-      workspace_tensor.Resize({workspace_size});
+      workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
       workspace_ptr = ctx.template Alloc<T>(&workspace_tensor);
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
