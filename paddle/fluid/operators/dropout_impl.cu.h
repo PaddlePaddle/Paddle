@@ -35,10 +35,48 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/functors.h"
-
 namespace paddle {
 namespace operators {
+template <typename T>
+struct DstValGenerator {
+  const float dropout_prob_;
+  const bool is_upscale_in_train_;
+  HOSTDEVICE inline DstValGenerator(const float dropout_prob,
+                                    const bool is_upscale_in_train)
+      : dropout_prob_(dropout_prob),
+        is_upscale_in_train_(is_upscale_in_train) {}
+
+  HOSTDEVICE inline T operator()(const T src_val, const T rand) const {
+    using MT = typename details::MPTypeTrait<T>::Type;
+    MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
+    if ((rand) < dropout_prob_) {
+      return 0;
+    } else {
+      return is_upscale_in_train_
+                 ? static_cast<T>(static_cast<MT>(src_val) * factor)
+                 : src_val;
+    }
+  }
+};
+
+template <typename T>
+struct MaskValGenerator {
+  const float dropout_prob_;
+  HOSTDEVICE inline MaskValGenerator(const float dropout_prob)
+      : dropout_prob_(dropout_prob) {}
+
+  HOSTDEVICE inline T operator()(const T rand) const {
+    // rand = static_cast<float4>(rand);
+    using MT = typename details::MPTypeTrait<T>::Type;
+    if (rand < dropout_prob_) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+};
 
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
@@ -78,100 +116,60 @@ __global__ void RandomGenerator(const size_t n, uint64_t seed,
   }
 }
 
-template <typename T, typename MaskType, int VecSize>
+template <typename T, typename MaskType>
 __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const float dropout_prob,
                                           const T* src, MaskType* mask, T* dst,
                                           bool is_upscale_in_train,
                                           uint64_t increment) {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
-
+  size_t main_offset = n / (BLOCK_NUM_X * kCount) * (BLOCK_NUM_X * kCount);
+  size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
+  static constexpr int kCount = DistOp::kReturnsCount;
 #ifdef PADDLE_WITH_HIP
-  int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   hiprandStatePhilox4_32_10_t state;
-  hiprand_init(seed, idx, increment, &state);
+  hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = hiprandStatePhilox4_32_10_t;
 #else
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
+  curand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = curandStatePhilox4_32_10_t;
 #endif
+  T src_val[kCount];
+  T rands[kCount];
+  T dst_result[kCount];
+  MaskType mask_result[kCount];
+  using Rand = phi::funcs::uniform_distribution<T>;
 
-  MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
-  for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
-    LoadT src_val;
-    phi::Load<T, VecSize>(&src[i], &src_val);
+  size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
+  int deal_size = BLOCK_NUM_X * kCount;
 
-#ifdef PADDLE_WITH_HIP
-    float4 rand = hiprand_uniform4(&state);
-#else
-    float4 rand = curand_uniform4(&state);
-#endif
-
-    LoadT dst_val;
-    MaskLoadT mask_val;
-
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      if ((&rand.x)[j] < dropout_prob) {
-        dst_val[j] = 0;
-        mask_val[j] = 0;
-      } else {
-        dst_val[j] = is_upscale_in_train
-                         ? static_cast<T>(static_cast<MT>(src_val[j]) * factor)
-                         : src_val[j];
-        mask_val[j] = 1;
-      }
-    }
-
-    phi::Store<T, VecSize>(dst_val, &dst[i]);
-    phi::Store<MaskType, VecSize>(mask_val, &mask[i]);
+  auto dst_functor = DstValGenerator<T>(dropout_prob, is_upscale_in_train);
+  auto mask_functor = MaskValGenerator<T>(dropout_prob);
+  int fix = idx * kCount;
+  for (; fix < main_offset; fix += stride) {
+    kps::ReadData<T, kCount, 1, 1, false>(src_val, src + fix, deal_size);
+    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(rands, Rand(), &state);
+    kps::ElementwiseBinary<T, T, kCount, 1, 1, DstValGenerator<T>>(
+        dst_result, src_val, rands, dst_functor);
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator>(
+        mask_result, src_val, mask_functor);
+    kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
+                                                  deal_size);
+    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_result[0],
+                                           deal_size);
   }
-}
-
-template <typename T, typename MaskType>
-struct CudaDropoutGradFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
-
-  explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
-
-  __device__ __forceinline__ T operator()(const T dout,
-                                          const MaskType mask) const {
-    return static_cast<T>(static_cast<MT>(dout) * static_cast<MT>(mask) *
-                          factor_);
-  }
-
- private:
-  MT factor_;
-};
-
-template <typename T, typename MaskType, int VecSize>
-__global__ void DropoutGradCUDAKernel(
-    const T* dout, const MaskType* mask,
-    const typename details::MPTypeTrait<T>::Type factor, const int64_t size,
-    T* dx) {
-  using MT = typename details::MPTypeTrait<T>::Type;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
-
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
-    LoadT dout_val;
-    phi::Load<T, VecSize>(&dout[i], &dout_val);
-
-    MaskLoadT mask_val;
-    phi::Load<MaskType, VecSize>(&mask[i], &mask_val);
-
-    LoadT dx_val;
-
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      dx_val[j] = static_cast<T>(static_cast<MT>(dout_val[j]) *
-                                 static_cast<MT>(mask_val[j]) * factor);
-    }
-
-    phi::Store<T, VecSize>(dx_val, &dx[i]);
+  int remainder = n - fix;
+  if (remainder) {
+    kps::ReadData<T, kCount, 1, 1, false>(src_val, src + fix, remainder);
+    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(rands, Rand(), &state);
+    kps::ElementwiseBinary<T, T, kCount, 1, 1, DstValGenerator<T>>(
+        dst_result, src_val, rands, dst_functor);
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator>(
+        mask_result, src_val, mask_functor);
+    kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
+                                                  remainder);
+    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_result[0],
+                                           remainder);
   }
 }
 
@@ -219,41 +217,18 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     uint64_t increment;
     // VectorizedRandomGenerator use curand_uniform4, so we only support
     // vec_size is 4;
-    int vec_size = (phi::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
+    constexpr int vec_size = uniform_distribution<T>::kReturnsCount;
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
     auto offset =
         ((x_numel - 1) / (gpu_config.GetThreadNum() * vec_size) + 1) * vec_size;
-
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
 
-#ifdef __HIPCC__
-    if (vec_size == 4 && size % 4 == 0) {
-      hipLaunchKernelGGL(
-          HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>),
-          gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream, size,
-          seed_data, dropout_prob, x_data, mask_data, y_data, upscale_in_train,
-          increment);
-    } else {
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(RandomGenerator<T, uint8_t>),
-                         gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0,
-                         stream, size, seed_data, dropout_prob, x_data,
-                         mask_data, y_data, upscale_in_train, increment);
-    }
-#else
-    if (vec_size == 4 && size % 4 == 0) {
-      VectorizedRandomGenerator<T, uint8_t, 4><<<
-          gpu_config.block_per_grid, gpu_config.thread_per_block, 0, stream>>>(
-          size, seed_data, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train, increment);
-    } else {
-      RandomGenerator<T, uint8_t><<<gpu_config.block_per_grid,
-                                    gpu_config.thread_per_block, 0, stream>>>(
-          size, seed_data, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train, increment);
-    }
-#endif
+    VectorizedRandomGenerator<T, uint8_t><<<
+        gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream>>>(
+        size, seed_data, dropout_prob, x_data, mask_data, y_data,
+        upscale_in_train, increment);
   } else {
     if (upscale_in_train) {
 // todo: can y share with data with x directly?
