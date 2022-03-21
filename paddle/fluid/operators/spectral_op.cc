@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/spectral_op.h"
+#include "paddle/fluid/operators/spectral_helper.h"
 
 namespace paddle {
 namespace operators {
