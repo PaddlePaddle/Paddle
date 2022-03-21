@@ -395,8 +395,8 @@ template <typename T>
 class NPUConv3dKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    Tensor* input = const_cast<Tensor*>(ctx.Input<Tensor>("Input"));
-    Tensor* filter = const_cast<Tensor*>(ctx.Input<Tensor>("Filter"));
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
     Tensor* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -420,9 +420,21 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
                                      "= [%d]",
                                      groups));
 
-    input->set_layout(DataLayout::kNCDHW);
-    filter->set_layout(DataLayout::kNCDHW);
-    output->set_layout(DataLayout::kNCDHW);
+    auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto input_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(input->dims(), dev_ctx);
+    auto filter_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(filter->dims(), dev_ctx);
+    auto output_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(output->dims(), dev_ctx);
+
+    input_tensor.ShareDataWith(*input);
+    filter_tensor.ShareDataWith(*filter);
+    output_tensor.ShareDataWith(*output);
+
+    input_tensor.set_layout(DataLayout::kNCDHW);
+    filter_tensor.set_layout(DataLayout::kNCDHW);
+    output_tensor.set_layout(DataLayout::kNCDHW);
 
     // update padding and dilation
     auto in_dims = input->dims();
@@ -440,13 +452,14 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(5, 1);
     std::vector<int> dilations_vec(5, 1);
 
-    Tensor input_tensor, output_tensor;
+    // Tensor input_tensor, output_tensor;
 
-    input_tensor.ShareDataWith(*input);
-    output_tensor.ShareDataWith(*output);
+    // input_tensor.ShareDataWith(*input);
+    // output_tensor.ShareDataWith(*output);
 
-    input_tensor.set_layout(DataLayout::kNCDHW);
-    output_tensor.set_layout(DataLayout::kNCDHW);
+    // input_tensor.set_layout(DataLayout::kNCDHW);
+    // output_tensor.set_layout(DataLayout::kNCDHW);
+
     strides_vec[2] = strides[0];
     strides_vec[3] = strides[1];
     strides_vec[4] = strides[2];
@@ -456,7 +469,7 @@ class NPUConv3dKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     const auto& runner =
-        NpuOpRunner("Conv3D", {input_tensor, *filter}, {output_tensor},
+        NpuOpRunner("Conv3D", {input_tensor, filter_tensor}, {output_tensor},
                     {{"strides", strides_vec},
                      {"pads", paddings},
                      {"dilations", dilations_vec},
@@ -470,10 +483,9 @@ template <typename T>
 class NPUConv3dGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    Tensor* input = const_cast<Tensor*>(ctx.Input<Tensor>("Input"));
-    Tensor* filter = const_cast<Tensor*>(ctx.Input<Tensor>("Filter"));
-    Tensor* output_grad = const_cast<Tensor*>(
-        ctx.Input<Tensor>(framework::GradVarName("Output")));
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    const Tensor* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
@@ -498,9 +510,22 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
                                      "= [%d]",
                                      groups));
 
-    input->set_layout(DataLayout::kNCDHW);
-    filter->set_layout(DataLayout::kNCDHW);
-    output_grad->set_layout(DataLayout::kNCDHW);
+    auto &dev_ctx = ctx.template device_context<NPUDeviceContext>();
+    auto input_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(input->dims(), dev_ctx);
+    auto filter_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(filter->dims(), dev_ctx);
+    auto output_grad_tensor =
+        ctx.AllocateTmpTensor<T, NPUDeviceContext>(output_grad->dims(), dev_ctx);
+
+    input_tensor.ShareDataWith(*input);
+    filter_tensor.ShareDataWith(*filter);
+    output_grad_tensor.ShareDataWith(*output_grad);
+
+    input_tensor.set_layout(DataLayout::kNCDHW);
+    filter_tensor.set_layout(DataLayout::kNCDHW);
+    output_grad_tensor.set_layout(DataLayout::kNCDHW);
+
     if (input_grad) {
       input_grad->set_layout(DataLayout::kNCDHW);
     }
@@ -524,13 +549,14 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(5, 1);
     std::vector<int> dilations_vec(5, 1);
 
-    Tensor input_tensor, output_grad_tensor;
+    // Tensor input_tensor, output_grad_tensor;
 
-    input_tensor.ShareDataWith(*input);
-    output_grad_tensor.ShareDataWith(*output_grad);
+    // input_tensor.ShareDataWith(*input);
+    // output_grad_tensor.ShareDataWith(*output_grad);
 
-    input_tensor.set_layout(DataLayout::kNCDHW);
-    output_grad_tensor.set_layout(DataLayout::kNCDHW);
+    // input_tensor.set_layout(DataLayout::kNCDHW);
+    // output_grad_tensor.set_layout(DataLayout::kNCDHW);
+
     strides_vec[2] = strides[0];
     strides_vec[3] = strides[1];
     strides_vec[4] = strides[2];
@@ -565,7 +591,7 @@ class NPUConv3dGradKernel : public framework::OpKernel<T> {
       input_grad_tensor.set_layout(DataLayout::kNCDHW);
 
       const auto& runner =
-          NpuOpRunner("Conv3DBackpropInputD", {*filter, output_grad_tensor},
+          NpuOpRunner("Conv3DBackpropInputD", {filter_tensor, output_grad_tensor},
                       {input_grad_tensor}, {{"input_size", input_shape_vec},
                                             {"strides", strides_vec},
                                             {"pads", paddings},
