@@ -325,7 +325,6 @@ class DistributedContext:
         all_nodes = []
         # for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
         for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
-
             for node in graph.all_nodes():
                 all_nodes.append(node)
         for node in all_nodes:
