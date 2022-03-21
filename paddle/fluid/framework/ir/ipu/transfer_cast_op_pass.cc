@@ -30,7 +30,8 @@ void TransferCastOpPass::ApplyImpl(ir::Graph* graph) const {
 
   auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
   auto enable_fp16 = ipu_backend->GetIpuStrategy()->enable_fp16;
-  if (enable_fp16) {
+  auto transfer_cast_op = ipu_backend->GetIpuStrategy()->transfer_cast_op;
+  if (enable_fp16 && transfer_cast_op) {
     for (auto* node : graph->Nodes()) {
       if (node->IsOp() && node->Op()->Type() == "popart_cast") {
         if (BOOST_GET_CONST(std::string, node->Op()->GetAttr("to")) ==
