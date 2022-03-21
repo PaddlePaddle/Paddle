@@ -5611,6 +5611,8 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_transpose(x, perm)
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
@@ -8550,6 +8552,8 @@ def gather_nd(input, index, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather_nd(input, index)
         return _C_ops.gather_nd(input, index)
     check_variable_and_dtype(
         input, 'input',
@@ -8726,6 +8730,8 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_scatter_nd_add(ref, index, updates)
         op = getattr(_C_ops, 'scatter_nd_add')
         return op(ref, index, updates)
 
@@ -15292,6 +15298,8 @@ def gather_tree(ids, parents):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather_tree(ids, parents)
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())

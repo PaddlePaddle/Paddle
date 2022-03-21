@@ -17,7 +17,7 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
-#include "paddle/fluid/operators/layer_norm_op.h"
+#include "paddle/phi/kernels/layer_norm_kernel.h"
 
 namespace paddle {
 namespace inference {
@@ -83,7 +83,7 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * feature_size,
                   cudaMemcpyHostToDevice, stream);
 
-  paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
+  phi::LayerNormDirectCUDAFunctor<float> layer_norm;
   layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
              variance_d, begin_norm_axis, eps);
   return cudaGetLastError() != cudaSuccess;
@@ -177,7 +177,7 @@ int LayerNormPluginDynamic::enqueue(
     cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * feature_size,
                     cudaMemcpyHostToDevice, stream);
 
-    paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
+    phi::LayerNormDirectCUDAFunctor<float> layer_norm;
     layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
                variance_d, begin_norm_axis, eps);
   } else {
