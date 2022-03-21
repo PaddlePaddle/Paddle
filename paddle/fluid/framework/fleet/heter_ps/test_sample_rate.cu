@@ -152,7 +152,7 @@ void testSampleRate() {
     std::cerr << "total time cost without cache is " << tt.count() << " us"
               << std::endl;
   }
-
+/*
   const int gpu_num = 8;
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.set_gpups_mode(true);
@@ -209,7 +209,7 @@ void testSampleRate() {
       std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
   std::cerr << "total time cost without cache is " << tt.count() << " us"
             << std::endl;
-
+*/
 #endif
 }
 
