@@ -137,6 +137,12 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* pre_out,
                                   MetaTensor* w_out);
 
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out);
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 void PsroiPoolInferMeta(const MetaTensor& x,

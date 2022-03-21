@@ -550,6 +550,43 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void LogspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       const MetaTensor& base,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto num_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (num_dims.size() == 1) && (num_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   num_dims));
+  auto b_dims = base.dims();
+  PADDLE_ENFORCE_EQ(
+      (b_dims.size() == 1) && (b_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Base) must be [1],"
+                                   "but received input shape is [%s].",
+                                   b_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
