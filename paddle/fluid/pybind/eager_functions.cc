@@ -85,24 +85,6 @@ class EagerNumpyAllocation : public phi::Allocation {
   PyObject* arr_;
 };
 
-static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
-                                              PyObject* kwargs) {
-  EAGER_TRY
-  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
-  egr::Controller::Instance().SetExpectedPlace(place);
-
-  Py_INCREF(Py_None);
-  return Py_None;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* eager_api_get_expected_place(PyObject* self, PyObject* args,
-                                              PyObject* kwargs) {
-  EAGER_TRY
-  return ToPyObject(egr::Controller::Instance().GetExpectedPlace());
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
   EAGER_TRY
@@ -463,12 +445,6 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_set_expected_place",
-     (PyCFunction)(void (*)(void))eager_api_set_expected_place,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_get_expected_place",
-     (PyCFunction)(void (*)(void))eager_api_get_expected_place,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
      METH_VARARGS | METH_KEYWORDS, NULL},

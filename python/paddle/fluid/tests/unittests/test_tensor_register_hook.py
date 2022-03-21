@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(nn.Layer):

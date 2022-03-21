@@ -54,6 +54,7 @@ __all__ = [
     'xpu_places',
     'mlu_places',
     'cuda_pinned_places',
+    '_non_static_mode',
     'in_dygraph_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
@@ -74,6 +75,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
+_in_eager_mode_ = True
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -82,10 +84,78 @@ _already_patch_eager_tensor = False
 _global_flags_ = core.globals()
 core._disable_eager_mode()
 
+# Some explanation of our execution system 2022.03
+# For now we have 3 kinds of execution system, since we refactored dygraph mode to 
+# build a fast execution system for dynamic mode. But we can't just remove all legacy
+# code once we present the new system for some historical reason. That's why we have 
+# these flags.
+# 
+# 1. _non_static_mode():
+# _non_static_mode means  we are now running in legacy dygraph mode or dygraph mode. 
+# 2. dygraph_mode():
+# This flags inidicates we are now running in dygraph mode which called eager mode before.
+# 3. _in_legacy_dygraph():
+# This flags inidicates we are now running in legacy dygraph mode
+# 
+# They have a relation ship as below:
+# Both dygraph_mode and _in_legacy_dygraph are _non_static_mode, but if you are running in 
+# dygraph mode means you are not in _in_legacy_dygraph.
+# 
+# Why we have to make different of _in_legacy_dygraph and dygraph_mode?
+# In some performance issue, we find that python if statement cause server performance problem
+# and we need our new dygraph mode becomes as fast as it could be. That's why we make these flags
+# to make sure in most case, we find new dygraph mode first with only one if statement.
+
+
+def _enable_legacy_dygraph():
+    _in_eager_mode_ = False
+
+
+def _disable_legacy_dygraph():
+    _in_eager_mode_ = True
+
+
+def in_dygraph_mode():
+    """
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API checks whether paddle runs in dynamic graph mode.
+
+    You can turn ON static graph mode by `enable_static <../dygraph/base/disable_dygraph_en.html>`_ ,
+    and turn OFF static graph mode by `disable_static <../dygraph/base/enable_dygraph_en.html>`_  .
+
+    Returns:
+        bool: Whether paddle runs in dynamic graph mode.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
+
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
+    """
+    return (_dygraph_tracer_ is not None) and _in_eager_mode_
+
+
+def _in_legacy_dygraph():
+    return (not _in_eager_mode_) and (_dygraph_tracer_ is not None)
+
+
+def _non_static_mode():
+    return _dygraph_tracer_ is not None
+
 
 @signature_safe_contextmanager
 def _test_eager_guard(tracer=None):
-    core._enable_eager_mode()
+    _disable_legacy_dygraph()
     _C_ops.switch_to_eager_ops()
     global _already_patch_eager_tensor
     if not _already_patch_eager_tensor:
@@ -94,14 +164,10 @@ def _test_eager_guard(tracer=None):
         from .dygraph import monkey_patch_math_varbase
         monkey_patch_math_varbase()
         _already_patch_eager_tensor = True
-    if tracer is None:
-        core._set_eager_tracer(_dygraph_tracer_)
-    else:
-        core._set_eager_tracer(tracer)
     try:
         yield
     finally:
-        core._disable_eager_mode()
+        _enable_legacy_dygraph()
         _C_ops.switch_to_core_ops()
 
 
@@ -271,44 +337,10 @@ def require_version(min_version, max_version=None):
                 % (min_version, fluid_version.full_version, min_version))
 
 
-def in_dygraph_mode():
-    """
-
-    .. note::
-        Dynamic graph mode is turn ON by default since paddle 2.0.0
-
-    This API checks whether paddle runs in dynamic graph mode.
-
-    You can turn ON static graph mode by `enable_static <../dygraph/base/disable_dygraph_en.html>`_ ,
-    and turn OFF static graph mode by `disable_static <../dygraph/base/enable_dygraph_en.html>`_  .
-
-    Returns:
-        bool: Whether paddle runs in dynamic graph mode.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
-
-            paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
-
-            paddle.disable_static()
-            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
-
-    """
-    return _dygraph_tracer_ is not None
-
-
-def _in_eager_mode():
-    return core._in_eager_mode() and in_dygraph_mode()
-
-
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
-        assert not in_dygraph_mode(
-        ), "We don't support %s in imperative mode" % func.__name__
+        assert not _non_static_mode(
+        ), "We don't support %s in dynamic graph mode" % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -316,7 +348,7 @@ def _dygraph_not_support_(func):
 
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
-        assert in_dygraph_mode(
+        assert _non_static_mode(
         ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
         return func(*args, **kwargs)
 
@@ -325,7 +357,7 @@ def _dygraph_only_(func):
 
 def _static_only_(func):
     def __impl__(*args, **kwargs):
-        assert not in_dygraph_mode(
+        assert not _non_static_mode(
         ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
@@ -443,8 +475,6 @@ def _set_dygraph_tracer_expected_place(place):
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
-    if _in_eager_mode():
-        return core.eager._set_expected_place(place)
     _set_dygraph_tracer_expected_place(place)
 
 
@@ -931,7 +961,7 @@ def name_scope(prefix=None):
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
-    if in_dygraph_mode():
+    if _non_static_mode():
         yield
     else:
         assert prefix, "namescope prefix can not be empty."
@@ -1056,7 +1086,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _in_eager_mode():
+    if not _in_legacy_dygraph():
         eager_tensor = core.eager.Tensor(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [], name, type
@@ -1064,10 +1094,11 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
             if persistable else False)
         eager_tensor.retain_grads()
         return eager_tensor
-    return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
-                        list(shape) if shape else [], name, type
-                        if type else core.VarDesc.VarType.LOD_TENSOR, True
-                        if persistable else False)
+    else:
+        return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
+                            list(shape) if shape else [], name, type
+                            if type else core.VarDesc.VarType.LOD_TENSOR, True
+                            if persistable else False)
 
 
 class VariableMetaClass(type):
@@ -1075,10 +1106,10 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-            if _in_eager_mode():
-                return issubclass(t, core.eager.Tensor)
-            return issubclass(t, core.VarBase)
+            return issubclass(t, core.eager.Tensor)
         else:
+            if _in_legacy_dygraph():
+                return issubclass(t, core.VarBase)
             return issubclass(t, Variable)
 
 
@@ -1087,10 +1118,10 @@ class ParameterMetaClass(VariableMetaClass):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-            if _in_eager_mode():
-                return issubclass(t, EagerParamBase)
-            return issubclass(t, ParamBase)
+            return issubclass(t, EagerParamBase)
         else:
+            if _in_legacy_dygraph():
+                return issubclass(t, ParamBase)
             return issubclass(t, Parameter)
 
 
@@ -2477,7 +2508,7 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-        if in_dygraph_mode():
+        if _non_static_mode():
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
@@ -2619,7 +2650,7 @@ class Operator(object):
                         else:
                             out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
-                        if not in_dygraph_mode():
+                        if not _non_static_mode():
                             if isinstance(arg, six.string_types):
                                 block.var(arg).op = self
                             else:
@@ -3310,7 +3341,7 @@ class Block(object):
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
-        if in_dygraph_mode():
+        if _non_static_mode():
             var = _varbase_creator(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
@@ -3362,7 +3393,7 @@ class Block(object):
         d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
             if in_dygraph_mode():
-                var = ParamBase(
+                var = EagerParamBase(
                     d.shape(),
                     d.dtype(),
                     type=orig_var_type,
@@ -3373,17 +3404,29 @@ class Block(object):
                     regularizer=regularizer,
                     error_clip=error_clip)
             else:
-                var = Parameter(
-                    self,
-                    d.shape(),
-                    d.dtype(),
-                    type=orig_var_type,
-                    name=new_name,
-                    stop_gradient=stop_gradient,
-                    trainable=trainable,
-                    optimize_attr=optimize_attr,
-                    regularizer=regularizer,
-                    error_clip=error_clip)
+                if _in_legacy_dygraph():
+                    var = ParamBase(
+                        d.shape(),
+                        d.dtype(),
+                        type=orig_var_type,
+                        name=new_name,
+                        stop_gradient=stop_gradient,
+                        trainable=trainable,
+                        optimize_attr=optimize_attr,
+                        regularizer=regularizer,
+                        error_clip=error_clip)
+                else:
+                    var = Parameter(
+                        self,
+                        d.shape(),
+                        d.dtype(),
+                        type=orig_var_type,
+                        name=new_name,
+                        stop_gradient=stop_gradient,
+                        trainable=trainable,
+                        optimize_attr=optimize_attr,
+                        regularizer=regularizer,
+                        error_clip=error_clip)
         elif var_type == "Variable":
             var = Variable(
                 self,
@@ -3409,12 +3452,12 @@ class Block(object):
         global_block = self.program.global_block()
         param = None
         if in_dygraph_mode():
-            if _in_eager_mode():
-                param = EagerParamBase(*args, **kwargs)
-            else:
-                param = ParamBase(*args, **kwargs)
+            param = EagerParamBase(*args, **kwargs)
         else:
-            param = Parameter(global_block, *args, **kwargs)
+            if _in_legacy_dygraph():
+                param = ParamBase(*args, **kwargs)
+            else:
+                param = Parameter(global_block, *args, **kwargs)
 
         if 'initializer' in kwargs:
 
@@ -3455,7 +3498,7 @@ class Block(object):
         Returns:
             Operator: the append Operator.
         """
-        if in_dygraph_mode():
+        if _non_static_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
             type = kwargs.get("type", None)
@@ -3558,7 +3601,7 @@ class Block(object):
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        if in_dygraph_mode():
+        if _non_static_mode():
             type = kwargs.get("type", None)
             attrs = kwargs.get("attrs", {})
             op = Operator(
@@ -3690,7 +3733,7 @@ class Block(object):
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
-                new_p = ParamBase(
+                new_p = EagerParamBase(
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
@@ -3702,19 +3745,32 @@ class Block(object):
                     error_clip=p.error_clip,
                     name=v.name)
             else:
-                new_p = Parameter(
-                    block=self,
-                    shape=v.shape,
-                    dtype=v.dtype,
-                    type=v.type,
-                    lod_level=v.lod_level
-                    if v.type == core.VarDesc.VarType.LOD_TENSOR else None,
-                    stop_gradient=p.stop_gradient,
-                    trainable=p.trainable,
-                    optimize_attr=p.optimize_attr,
-                    regularizer=p.regularizer,
-                    error_clip=p.error_clip,
-                    name=v.name)
+                if _in_legacy_dygraph():
+                    new_p = ParamBase(
+                        shape=v.shape,
+                        dtype=v.dtype,
+                        type=v.type,
+                        lod_level=v.lod_level,
+                        stop_gradient=p.stop_gradient,
+                        trainable=p.trainable,
+                        optimize_attr=p.optimize_attr,
+                        regularizer=p.regularizer,
+                        error_clip=p.error_clip,
+                        name=v.name)
+                else:
+                    new_p = Parameter(
+                        block=self,
+                        shape=v.shape,
+                        dtype=v.dtype,
+                        type=v.type,
+                        lod_level=v.lod_level
+                        if v.type == core.VarDesc.VarType.LOD_TENSOR else None,
+                        stop_gradient=p.stop_gradient,
+                        trainable=p.trainable,
+                        optimize_attr=p.optimize_attr,
+                        regularizer=p.regularizer,
+                        error_clip=p.error_clip,
+                        name=v.name)
             self.vars[new_p.name] = new_p
 
     def _clone_variable(self, var, force_persistable=True):
@@ -6760,16 +6816,12 @@ def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
-    if _in_eager_mode():
-        core.eager._set_expected_place(place)
     _set_dygraph_tracer_expected_place(place)
 
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
-        if _in_eager_mode():
-            core.eager._set_expected_place(_global_expected_place_)
         _set_dygraph_tracer_expected_place(_global_expected_place_)
 
 

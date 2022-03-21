@@ -191,11 +191,11 @@ def test_type_error(unit_test, use_npu, type_str_map):
         if binary_op:
             if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            if not fluid.in_dygraph_mode():
+            if not fluid._non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
-            if not fluid.in_dygraph_mode():
+            if not fluid._non_static_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 

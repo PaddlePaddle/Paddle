@@ -31,7 +31,7 @@ import queue
 
 import paddle
 from .. import core, layers
-from ..framework import in_dygraph_mode, _in_eager_mode
+from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
@@ -252,31 +252,32 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def __next__(self):
         try:
             if in_dygraph_mode():
-                if _in_eager_mode():
-                    data = core.eager.read_next_tensor_list(
-                        self._reader.read_next_list()[0])
-                else:
-                    data = self._reader.read_next_var_list()
+                data = core.eager.read_next_tensor_list(
+                    self._reader.read_next_list()[0])
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
-                if self._return_list:
-                    data = self._reader.read_next_list()
-                    for i in range(len(data)):
-                        data[i] = data[i]._move_to_list()
-                    data = [
-                        _restore_batch(d, s)
-                        for d, s in zip(data, self._structure_infos[:len(
-                            self._places)])
-                    ]
-                    self._structure_infos = self._structure_infos[len(
-                        self._places):]
-                    # static graph organized data on multi-device with list, if
-                    # place number is 1, there is only 1 device, extra the data
-                    # from list for devices to be compatible with dygraph mode
-                    if len(self._places) == 1:
-                        data = data[0]
-                else:
-                    data = self._reader.read_next()
+                if _in_legacy_dygraph():
+                    data = self._reader.read_next_var_list()
+                    data = _restore_batch(data, self._structure_infos.pop(0))
+                else:  # in static mode
+                    if self._return_list:
+                        data = self._reader.read_next_list()
+                        for i in range(len(data)):
+                            data[i] = data[i]._move_to_list()
+                        data = [
+                            _restore_batch(d, s)
+                            for d, s in zip(data, self._structure_infos[:len(
+                                self._places)])
+                        ]
+                        self._structure_infos = self._structure_infos[len(
+                            self._places):]
+                        # static graph organized data on multi-device with list, if
+                        # place number is 1, there is only 1 device, extra the data
+                        # from list for devices to be compatible with dygraph mode
+                        if len(self._places) == 1:
+                            data = data[0]
+                    else:
+                        data = self._reader.read_next()
 
             return data
         except StopIteration:
@@ -448,15 +449,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
-                if _in_eager_mode():
-                    data = core.eager.read_next_tensor_list(
-                        self._reader.read_next_list()[0])
-                else:
-                    self._reader.read_next_var_list()
-            elif self._return_list:
-                self._reader.read_next_list()
+                data = core.eager.read_next_tensor_list(
+                    self._reader.read_next_list()[0])
             else:
-                data = self._reader.read_next()
+                if _in_legacy_dygraph():
+                    self._reader.read_next_var_list()
+                elif self._return_list:
+                    self._reader.read_next_list()
+                else:
+                    data = self._reader.read_next()
 
         # 3. reset all states
         self._send_idx = 0
@@ -711,31 +712,32 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._blocking_queue.close()
 
             if in_dygraph_mode():
-                if _in_eager_mode():
-                    data = core.eager.read_next_tensor_list(
-                        self._reader.read_next_list()[0])
-                else:
-                    data = self._reader.read_next_var_list()
+                data = core.eager.read_next_tensor_list(
+                    self._reader.read_next_list()[0])
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
-                if self._return_list:
-                    data = self._reader.read_next_list()
-                    for i in range(len(data)):
-                        data[i] = data[i]._move_to_list()
-                    data = [
-                        _restore_batch(d, s)
-                        for d, s in zip(data, self._structure_infos[:len(
-                            self._places)])
-                    ]
-                    self._structure_infos = self._structure_infos[len(
-                        self._places):]
-                    # static graph organized data on multi-device with list, if
-                    # place number is 1, there is only 1 device, extra the data
-                    # from list for devices to be compatible with dygraph mode
-                    if len(self._places) == 1:
-                        data = data[0]
+                if _in_legacy_dygraph():
+                    data = self._reader.read_next_var_list()
+                    data = _restore_batch(data, self._structure_infos.pop(0))
                 else:
-                    data = self._reader.read_next()
+                    if self._return_list:
+                        data = self._reader.read_next_list()
+                        for i in range(len(data)):
+                            data[i] = data[i]._move_to_list()
+                        data = [
+                            _restore_batch(d, s)
+                            for d, s in zip(data, self._structure_infos[:len(
+                                self._places)])
+                        ]
+                        self._structure_infos = self._structure_infos[len(
+                            self._places):]
+                        # static graph organized data on multi-device with list, if
+                        # place number is 1, there is only 1 device, extra the data
+                        # from list for devices to be compatible with dygraph mode
+                        if len(self._places) == 1:
+                            data = data[0]
+                    else:
+                        data = self._reader.read_next()
             self._on_output_batch()
             return data
         except StopIteration:

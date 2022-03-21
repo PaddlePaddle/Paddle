@@ -22,7 +22,7 @@ import numpy as np
 
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
+from ..fluid.framework import core, _varbase_creator, _non_static_mode
 import paddle
 from paddle import _C_ops
 
@@ -791,7 +791,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             result = paddle.metric.accuracy(input=predictions, label=label, k=1)
             # [0.5]
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         if correct is None:
             correct = _varbase_creator(dtype="int32")
         if total is None:

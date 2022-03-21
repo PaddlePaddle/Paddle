@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .layer_function_generator import templatedoc
-from ..framework import Variable, in_dygraph_mode
+from ..framework import Variable, _non_static_mode
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..core import VarDesc
@@ -146,7 +146,7 @@ def sequence_conv(input,
              x_conved = paddle.static.nn.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'sequence_conv')
@@ -246,7 +246,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
                  dtype='float32', lod_level=1)
              x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)  
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_softmax', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -348,7 +348,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             last_x = paddle.static.nn.sequence_pool(input=x, pool_type='last')
             first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'sequence_pool')
@@ -424,7 +424,7 @@ def sequence_concat(input, name=None):
             y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
             out = paddle.static.nn.sequence_concat(input=[x, y])
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_concat', **locals())
 
@@ -619,7 +619,7 @@ def sequence_slice(input, offset, length, name=None):
              subseqs = paddle.static.nn.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper("sequence_slice", **locals())
 
@@ -768,7 +768,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    dtype: float
             #    data: [1 2 1 2 3 4 3 4]
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand')
@@ -889,7 +889,7 @@ def sequence_expand_as(x, y, name=None):
             #    dtype: float
             #    data: [1 1 1 2 2 2 3 4]
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand_as')
@@ -993,7 +993,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             out = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
     """
 
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_pad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -1077,7 +1077,7 @@ def sequence_unpad(x, length, name=None):
             unpad_data = paddle.static.nn.sequence_unpad(x=pad_data, length=len)
     """
 
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_unpad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -1146,7 +1146,7 @@ def sequence_reshape(input, new_dim):
             x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
             x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_reshape', **locals())
     check_variable_and_dtype(input, 'input',
@@ -1228,7 +1228,7 @@ def sequence_scatter(input, index, updates, name=None):
             output = paddle.static.nn.sequence_scatter(input, index, updates)
 
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_scatter', **locals())
 
@@ -1305,7 +1305,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(input, 'input', ['int32', 'int64'],
                              'sequence_enumerate')
@@ -1445,7 +1445,7 @@ def sequence_reverse(x, name=None):
             x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
             x_reversed = paddle.static.nn.sequence_reverse(x)
     """
-    assert not in_dygraph_mode(), (
+    assert not _non_static_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper("sequence_reverse", **locals())
     check_variable_and_dtype(x, 'x',

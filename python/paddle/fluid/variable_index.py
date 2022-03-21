@@ -665,7 +665,7 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
-    if paddle.fluid.framework.in_dygraph_mode():
+    if paddle.fluid.framework._non_static_mode():
         var._bump_inplace_version()
 
     cur_block = default_main_program().current_block()

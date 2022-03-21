@@ -261,7 +261,7 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        if framework._in_eager_mode():
+        if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
 

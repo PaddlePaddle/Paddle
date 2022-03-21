@@ -15,7 +15,7 @@
 import paddle
 import numpy as np
 from paddle import _C_ops
-from paddle.fluid.framework import _test_eager_guard, Variable
+from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygraph
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
 import paddle.compat as cpt
@@ -58,7 +58,7 @@ def _create_out(var):
     assert isinstance(var, Variable)
     var_desc = var.desc
     varbase = None
-    if not core._in_eager_mode():
+    if _in_legacy_dygraph():
         var_base = core.VarBase(var_desc.dtype(),
                                 var_desc.shape(),
                                 var_desc.name(), var_desc.type(), False)

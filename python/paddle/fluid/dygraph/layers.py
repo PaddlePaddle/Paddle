@@ -35,7 +35,7 @@ from .base import program_desc_tracing_guard, param_guard, in_declarative_mode, 
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -106,7 +106,7 @@ class Layer(object):
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
-        self._init_in_dynamic_mode = framework.in_dygraph_mode()
+        self._init_in_dynamic_mode = framework._non_static_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -161,7 +161,7 @@ class Layer(object):
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if in_dygraph_mode():
+        if _non_static_mode():
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
@@ -202,7 +202,7 @@ class Layer(object):
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if in_dygraph_mode():
+        if _non_static_mode():
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
@@ -1468,7 +1468,7 @@ class Layer(object):
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
 
-        if in_dygraph_mode():
+        if _non_static_mode():
             for param, state in matched_param_state:
                 param.set_value(state)
         else:

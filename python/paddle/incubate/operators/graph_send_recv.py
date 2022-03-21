@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
@@ -82,7 +82,7 @@ def graph_send_recv(x, src_index, dst_index, pool_type="sum", name=None):
             "pool_type should be `sum`, `mean`, `max` or `min`, but received %s"
             % pool_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index, 'pool_type',
                                           pool_type.upper())
         return out

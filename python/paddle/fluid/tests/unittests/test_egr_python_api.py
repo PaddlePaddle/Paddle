@@ -15,7 +15,7 @@
 import paddle.fluid.core as core
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_legacy_dygraph
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
 import copy
@@ -726,13 +726,12 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
 
     def test_global_properties(self):
         print("Test_global_properties")
-        self.assertFalse(core._in_eager_mode())
+        self.assertTrue(in_dygraph_mode())
         with _test_eager_guard():
-            self.assertTrue(core._in_eager_mode())
-        self.assertFalse(core._in_eager_mode())
+            self.assertTrue(in_dygraph_mode())
+        self.assertFalse(in_dygraph_mode())
 
     def test_place_guard(self):
-        core._enable_eager_mode()
         if core.is_compiled_with_cuda():
             paddle.set_device("gpu:0")
             with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
@@ -741,7 +740,6 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             paddle.set_device("cpu")
             with paddle.fluid.framework._dygraph_place_guard(core.CPUPlace()):
                 self.assertTrue(core.eager._get_expected_place().is_cpu_place())
-        core._disable_eager_mode()
 
     def test_value(self):
         with _test_eager_guard():
@@ -889,7 +887,7 @@ class EagerGuardTestCase(unittest.TestCase):
     def test__test_eager_guard(self):
         tracer = paddle.fluid.dygraph.tracer.Tracer()
         with _test_eager_guard(tracer):
-            self.assertTrue(_in_eager_mode())
+            self.assertTrue(in_dygraph_mode())
 
 
 if __name__ == "__main__":

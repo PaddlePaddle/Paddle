@@ -25,7 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import _get_paddle_place, _in_eager_mode
+from ..framework import _get_paddle_place, _in_legacy_dygraph
 import paddle
 
 __all__ = [
@@ -85,7 +85,8 @@ _functional_dygraph_context_manager = None
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
+    if in_declarative_mode() and not framework._non_static_mode(
+    ) and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, list):
@@ -138,8 +139,8 @@ def enabled():
     and :ref:`api_fluid_dygraph_disable_dygraph` api .
 
     **Note**:
-        ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
-        ``fluid.in_dygraph_mode`` is recommended to use.
+        ``fluid.dygraph.enabled`` is the alias of ``fluid._non_static_mode``, and
+        ``fluid._non_static_mode`` is recommended to use.
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
@@ -154,7 +155,7 @@ def enabled():
             fluid.disable_dygraph()
             print(fluid.dygraph.enabled())  # False
     """
-    return framework.in_dygraph_mode()
+    return framework._non_static_mode()
 
 
 def enable_dygraph(place=None):
@@ -565,7 +566,7 @@ def grad(outputs,
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
-                if core._in_eager_mode():
+                if not _in_legacy_dygraph():
                     assert isinstance(
                         each_var, core.eager.
                         Tensor), "Elements of {} must be Tensor".format(name)
@@ -576,7 +577,7 @@ def grad(outputs,
                             name)
             return in_out_list
         else:
-            if core._in_eager_mode():
+            if not _in_legacy_dygraph():
                 assert isinstance(
                     in_out_list, core.eager.
                     Tensor), "{} must be Tensor or list of Tensor".format(name)
@@ -595,7 +596,7 @@ def grad(outputs,
 
         for each_var in grad_outputs:
             if each_var is not None:
-                if core._in_eager_mode():
+                if not _in_legacy_dygraph():
                     assert isinstance(
                         each_var, core.eager.Tensor
                     ), "grad_outputs must be None, a Variable or a list containing None or Variables"
@@ -619,7 +620,7 @@ def grad(outputs,
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            if core._in_eager_mode():
+            if not _in_legacy_dygraph():
                 assert isinstance(
                     var,
                     core.eager.Tensor), "no_grad_vars can only contains Tensor"
@@ -628,7 +629,7 @@ def grad(outputs,
                     var,
                     core.VarBase), "no_grad_vars can only contains Variable"
     else:
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             raise AssertionError(
                 "no_grad_vars must be None, Tensor or list/tuple/set of Tensors")
         else:
@@ -649,16 +650,16 @@ def grad(outputs,
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
 
-    if core._in_eager_mode():
+    if not _in_legacy_dygraph():
         return core.eager.run_partial_grad(
             outputs, inputs, grad_outputs, retain_graph, create_graph,
             only_inputs, allow_unused, no_grad_vars)
-
-    place = core.Place()
-    place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(inputs, outputs, grad_outputs,
-                                     no_grad_vars, place, create_graph,
-                                     retain_graph, allow_unused, only_inputs)
+    else:
+        place = core.Place()
+        place.set_place(framework._current_expected_place())
+        return core.dygraph_partial_grad(
+            inputs, outputs, grad_outputs, no_grad_vars, place, create_graph,
+            retain_graph, allow_unused, only_inputs)
 
 
 @framework.dygraph_only
@@ -753,7 +754,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        if _in_eager_mode():
+        if not _in_legacy_dygraph():
             return core.eager.Tensor(value,
                                      framework._current_expected_place(), False,
                                      zero_copy, name if name else None, True)

@@ -282,7 +282,7 @@ class AdamW(Adam):
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(
                 param_and_grad[0])
 

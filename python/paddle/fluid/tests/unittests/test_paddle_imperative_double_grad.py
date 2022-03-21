@@ -18,7 +18,7 @@ import unittest
 from unittest import TestCase
 import numpy as np
 import paddle
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 import paddle.fluid.core as core
 
 
@@ -229,7 +229,7 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             pass
         else:
             loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
@@ -271,7 +271,7 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             pass
         else:
             loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
@@ -312,7 +312,7 @@ class TestDygraphDoubleGrad(TestCase):
 
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             pass
         else:
             loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)

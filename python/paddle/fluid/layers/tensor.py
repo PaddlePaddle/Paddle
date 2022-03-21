@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
+from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -243,7 +243,7 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         out = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
@@ -318,7 +318,7 @@ def concat(input, axis=0, name=None):
                 #  [14 15 16]]
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
@@ -457,7 +457,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
             fluid.layers.array_write(x1, i + 1, array)
             output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             input, list), "The 'input' in tensor_array_to_tensor must be list"
         from .nn import stack, concat
@@ -602,7 +602,7 @@ def assign(input, output=None):
         input = numpy.array(input)
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
-    # but in_dygraph_mode()==False under @to_static, which means
+    # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
@@ -662,9 +662,9 @@ def assign(input, output=None):
                 value_name: values
             })
 
-    if is_inplace and in_dygraph_mode():
+    if is_inplace and _non_static_mode():
         # TODO(jiabin): Remove this when we support inplace
-        if not core._in_eager_mode():
+        if _in_legacy_dygraph():
             output._bump_inplace_version()
 
     return output
@@ -728,7 +728,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['str_value'] = str(float(value))
             attrs['value'] = float(value)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         shape = utils.convert_shape_to_list(shape)
         if out is None:
             out = _varbase_creator(dtype=dtype)
@@ -1298,7 +1298,7 @@ def has_inf(x):
           # [False]
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.isinf(x)
 
     check_type(x, 'x', (Variable), 'has_inf')
@@ -1327,7 +1327,7 @@ def has_nan(x):
           # [False]
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.isnan(x)
 
     check_type(x, 'x', (Variable), 'has_nan')
@@ -1439,7 +1439,7 @@ def range(start, end, step, dtype, name=None):
     elif step.dtype != dtype:
         step = cast(step, dtype)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = _C_ops.range(start, end, step)
         out.stop_gradient = True
         return out
@@ -1510,7 +1510,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                dtype)
 
@@ -1698,7 +1698,7 @@ def eye(num_rows,
     else:
         num_columns = num_rows
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
                          num_columns)
 
@@ -1724,7 +1724,7 @@ def eye(num_rows,
         re_shape = [1] * len(batch_shape)
         re_shape = re_shape + [num_rows, num_columns]
         expand_times = batch_shape + [1, 1]
-        if in_dygraph_mode():
+        if _non_static_mode():
             out = _C_ops.reshape(out, 'shape', re_shape)
             return _C_ops.expand(out, None, 'expand_times', expand_times)
 

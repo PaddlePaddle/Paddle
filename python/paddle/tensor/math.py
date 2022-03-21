@@ -27,7 +27,7 @@ from paddle.tensor import cast
 from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from paddle.static import Variable
-from ..framework import core, _in_eager_mode
+from ..framework import core, _in_legacy_dygraph, in_dygraph_mode
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -1082,21 +1082,22 @@ def trunc(input, name=None):
             #         [[0., 0.],
             #         [0., 0.]]))
     '''
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return  _C_ops.final_state_trunc(input)
-        return _C_ops.trunc(input)
+    if in_dygraph_mode():
+        return  _C_ops.final_state_trunc(input)
     else:
-        inputs = {"X": input}
-        attrs = {}
+        if _in_legacy_dygraph():
+            return _C_ops.trunc(input)
+        else:
+            inputs = {"X": input}
+            attrs = {}
 
-        helper = LayerHelper("trunc", **locals())
-        check_variable_and_dtype(input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+            helper = LayerHelper("trunc", **locals())
+            check_variable_and_dtype(input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-        helper.append_op(
-            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
-        return out
+            helper.append_op(
+                type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
+            return out
 
 
 
@@ -2426,10 +2427,11 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #        [0.17020577, 0.27325270]])
             
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_diagonal(x, offset, axis1, axis2)
-        return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+    if in_dygraph_mode():
+        return _C_ops.final_state_diagonal(x, offset, axis1, axis2)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
@@ -3187,10 +3189,11 @@ def digamma(x, name=None):
             #        [ nan       ,  5.32286835]])
     """
 
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_digamma(x)
-        return _C_ops.digamma(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_digamma(x)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.digamma(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
     helper = LayerHelper('digamma', **locals())

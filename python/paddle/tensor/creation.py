@@ -30,7 +30,7 @@ from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dty
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..framework import _in_eager_mode
+from ..framework import _in_legacy_dygraph
 
 __all__ = []
 
@@ -164,9 +164,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    # TOOD(jiabin): Support kwargs in eager tensor constructor
-    if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
+    if not _in_legacy_dygraph() and isinstance(data, np.ndarray):
+        return core.eager.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=False,
+            name=None,
+            stop_gradient=stop_gradient)
     else:
         return paddle.Tensor(
             value=data,

@@ -21,7 +21,7 @@ from paddle import _C_ops
 from ..fluid import core
 from ..fluid.data_feeder import (check_dtype, check_type,
                                  check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
                             elementwise_mul, elementwise_sub, nn, ops, tensor)
 from ..tensor import arange, concat, gather_nd, multinomial
@@ -90,7 +90,7 @@ class Uniform(Distribution):
     """
 
     def __init__(self, low, high, name=None):
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(low, 'low',
                        (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Uniform')
@@ -141,7 +141,7 @@ class Uniform(Distribution):
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
@@ -188,7 +188,7 @@ class Uniform(Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dygraph_mode():
+        if _non_static_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
@@ -218,7 +218,7 @@ class Uniform(Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dygraph_mode():
+        if _non_static_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
 

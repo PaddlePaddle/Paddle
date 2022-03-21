@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from .beta import Beta
 from .categorical import Categorical
 from .dirichlet import Dirichlet
@@ -186,7 +186,7 @@ def _kl_expfamily_expfamily(p, q):
     p_log_norm = p._log_normalizer(*p_natural_params)
 
     try:
-        if in_dygraph_mode():
+        if _non_static_mode():
             p_grads = paddle.grad(
                 p_log_norm, p_natural_params, create_graph=True)
         else:
