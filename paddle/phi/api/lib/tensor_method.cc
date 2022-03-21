@@ -2,7 +2,7 @@
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -182,6 +183,16 @@ void Tensor::copy_(const Tensor &src,
         "copy selected rows please raise a issue."));
   }
 }
+
+Tensor Tensor::to_sparse_coo(const int64_t sparse_dim) {
+  return experimental::sparse::to_sparse_coo_impl(*this, sparse_dim);
+}
+
+Tensor Tensor::to_sparse_csr() {
+  return experimental::sparse::to_sparse_csr_impl(*this);
+}
+
+Tensor Tensor::to_dense() { return experimental::sparse::to_dense_impl(*this); }
 
 }  // namespace experimental
 }  // namespace paddle
