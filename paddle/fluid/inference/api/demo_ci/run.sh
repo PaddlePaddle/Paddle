@@ -53,7 +53,11 @@ if [ $7 == ON ]; then
   if [[ -e "MobileNetV2.inference.model.tar.gz" ]]; then
     echo "MobileNetV2.inference.model.tar.gz has been downloaded."
   else
-    wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
+    if [ $WIN_DETECT != "" ]; then
+      wget -q -Y off http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
+    else
+      wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
+    fi
     tar xzf *.tar.gz
   fi
   cd ..

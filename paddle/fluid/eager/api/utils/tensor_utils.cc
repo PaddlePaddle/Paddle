@@ -30,7 +30,8 @@ namespace egr_utils_api {
 
 bool IsLeafTensor(const paddle::experimental::Tensor& target) {
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
-  if (std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
+  if (!grad_node ||
+      std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
     return true;
   }
 
