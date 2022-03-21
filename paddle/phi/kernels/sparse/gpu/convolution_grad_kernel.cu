@@ -38,7 +38,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& rulebook,
                       const DenseTensor& kernel,
-                      const SparseCooTensor& out_grad,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
@@ -110,30 +110,15 @@ void Conv3dGradKernel(const Context& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    blas.GEMM(CblasTrans,
-              CblasNoTrans,
-              x.non_zero_elements().dims()[1],
-              out_grad.non_zero_elements().dims()[1],
-              x.non_zero_elements().dims()[0],
-              static_cast<T>(1),
-              x.non_zero_elements().data<T>(),
-              out_grad.non_zero_elements().data<T>(),
-              static_cast<T>(0),
-              d_kernel_ptr + half_kernel_size * in_channels * out_channels);
-
-    // call gemm: d_x = out_grad * transpose(kernel)
-    // (n, out_channels) * (out_channels, in_channels)
-    T* x_grad_ptr = x_grad->data<T>();
-    blas.GEMM(CblasNoTrans,
-              CblasTrans,
-              out_grad.non_zero_elements().dims()[0],
-              in_channels,
-              out_grad.non_zero_elements().dims()[1],
-              static_cast<T>(1),
-              out_grad.non_zero_elements().data<T>(),
-              kernel.data<T>() + half_kernel_size * in_channels * out_channels,
-              static_cast<T>(0),
-              x_grad_ptr);
+    phi::funcs::sparse::SubmPreProcess<T, Context>(dev_ctx,
+                                                   x,
+                                                   kernel,
+                                                   out_grad,
+                                                   in_channels,
+                                                   out_channels,
+                                                   half_kernel_size,
+                                                   kernel_grad,
+                                                   x_grad);
     if (max_count == 0) {
       return;
     }
@@ -155,12 +140,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
   GatherKernel<T, int><<<config.block_per_grid.x,
                          config.thread_per_block.x,
                          0,
-                         dev_ctx.stream()>>>(
-      out_grad.non_zero_elements().data<T>(),
-      rulebook_ptr + rulebook_len * 2,
-      out_grad_features_ptr,
-      rulebook_len,
-      out_channels);
+                         dev_ctx.stream()>>>(out_grad.data<T>(),
+                                             rulebook_ptr + rulebook_len * 2,
+                                             out_grad_features_ptr,
+                                             rulebook_len,
+                                             out_channels);
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {

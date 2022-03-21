@@ -24,7 +24,7 @@ atype_to_parsing_function = {
     "long": "CastPyArg2Long",
     "int64_t": "CastPyArg2Long",
     "float": "CastPyArg2Float",
-    "string": "CastPyArg2String",
+    "std::string": "CastPyArg2String",
     "std::vector<bool>": "CastPyArg2Booleans",
     "std::vector<int>": "CastPyArg2Ints",
     "std::vector<long>": "CastPyArg2Longs",
@@ -94,9 +94,13 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
+    pythonc_event_str = f"paddle::platform::RecordEvent pythonc_record_event(\"{fwd_api_name} pybind_imperative_func\", paddle::platform::TracerEventType::Operator, 1);"
+
     PYTHON_C_FUNCTION_TEMPLATE = """
 static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
 {{
+  {}
+
   PyThreadState *tstate = nullptr;
   try
   {{
@@ -136,8 +140,8 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
         fwd_function_name = namespace_str + GetForwardFunctionName(fwd_api_name)
 
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-        fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
-        fwd_function_name, dygraph_function_call_str)
+        fwd_api_name, pythonc_event_str, fwd_api_name, get_eager_tensor_str,
+        parse_attributes_str, fwd_function_name, dygraph_function_call_str)
 
     python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void)) {namespace_str}eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
@@ -231,6 +235,7 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 #include  "paddle/fluid/pybind/op_function_common.h"
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include  "paddle/fluid/pybind/exception.h"
+#include  "paddle/fluid/platform/profiler/event_tracing.h"
 #include  <Python.h>
 
 namespace paddle {{

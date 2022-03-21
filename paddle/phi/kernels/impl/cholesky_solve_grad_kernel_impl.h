@@ -24,12 +24,11 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/tril_triu_op.h"
 
 namespace phi {
 
@@ -115,7 +114,7 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   const auto H = y_bst_dims_vec[y_bst_ndim - 2];
   const auto W = y_bst_dims_vec[y_bst_ndim - 1];
   phi::funcs::ForRange<Context> y_for_range(dev_ctx, dy_bst.numel());
-  paddle::operators::TrilTriuCompute<T> tril_triu_functor(
+  phi::funcs::TrilTriuCompute<T> tril_triu_functor(
       dy_bst.data<T>(), 0, !upper, H, W, dy_bst_upper.data<T>());
   y_for_range(tril_triu_functor);
 
