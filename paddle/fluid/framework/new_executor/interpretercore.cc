@@ -41,7 +41,7 @@ namespace paddle {
 namespace framework {
 // NOTE(Aurelius84): Need a better strategy to determine it.
 static constexpr size_t kHostNumThreads = 4;
-static constexpr size_t kDeviceNumThreads = 2;
+static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
   return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
@@ -527,25 +527,17 @@ void InterpreterCore::RunNextInstructions(
             });
       }
     }
-    auto direct_run_ops = interpreter::merge_vector(next_instr.DirectRunIds(),
-                                                    next_instr.EventRunIds());
-    size_t first_op = 0;
-    for (auto next_id : direct_run_ops) {
+    // keep all async_ops running in current thread
+    for (auto next_id : next_instr.DirectRunIds()) {
       if (IsReady(next_id)) {
-        // only keep one op running in current thread
-        if (first_op == 0) {
-          first_op = next_id;
-          continue;
-        }
-        // move rest ops into other threads
-        async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref] {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+        reserved_next_ops->push(next_id);
       }
     }
-    if (first_op != 0) reserved_next_ops->push(first_op);
+    for (auto next_id : next_instr.EventRunIds()) {
+      if (IsReady(next_id)) {
+        reserved_next_ops->push(next_id);
+      }
+    }
   } else {
     // move async_ops into async_thread
     for (auto next_id : next_instr.EventRunIds()) {
