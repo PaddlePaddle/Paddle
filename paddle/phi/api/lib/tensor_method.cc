@@ -84,26 +84,26 @@ void Tensor::copy_(const Tensor &src,
   if (is_initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
                       src.dtype(),
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s, "
                           "Tensor Copy cannot be performed!",
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(impl()->type_info().id(),
                       src.impl()->type_info().id(),
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "Copy cannot be performed!",
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(target_place,
                       inner_place(),
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Place is different of dst tensor and args %s, which "
                           "current tensor holds %s "
                           "Copy cannot be performed!",
-                          target_place.DebugString(),
-                          inner_place().DebugString()));
+                          target_place,
+                          inner_place()));
     kernel_key_set.backend_set =
         kernel_key_set.backend_set |
         BackendSet(phi::TransToPhiBackend(inner_place()));
@@ -177,7 +177,7 @@ void Tensor::copy_(const Tensor &src,
                  blocking,
                  static_cast<phi::SelectedRows *>(impl_.get()));
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "
         "copy selected rows please raise a issue."));
   }

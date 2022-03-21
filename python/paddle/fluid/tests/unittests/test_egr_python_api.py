@@ -644,7 +644,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                 self.assertEqual(tensor4.stop_gradient, False)
                 self.assertTrue(tensor4.place.is_gpu_place())
 
-                tensor5 = tensor2.cpu()
+                tensor5 = tensor4.cpu()
                 self.assertTrue(np.array_equal(tensor5.numpy(), arr2))
                 self.assertEqual(tensor5.persistable, True)
                 self.assertEqual(tensor5.stop_gradient, False)
