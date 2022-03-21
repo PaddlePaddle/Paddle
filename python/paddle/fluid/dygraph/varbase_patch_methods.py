@@ -28,6 +28,7 @@ from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
+from paddle import _C_ops
 
 
 class TensorHookRemoveHelper(object):
@@ -782,7 +783,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        return _C_ops_.assign(self)
+        return _C_ops.assign(self)
 
     @framework.dygraph_only
     def value(self):
