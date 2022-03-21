@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,10 +25,11 @@ from spawn_runner_base import TestDistSpawnRunner
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestDygraphControlFlowSame(TestDistBase):
+class TestDygraphControlFlowSameEager(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
+        self._eager_mode = True
         self._dygraph = True
         self._find_unused_parameters = True
 
@@ -41,28 +42,21 @@ class TestDygraphControlFlowSame(TestDistBase):
                 log_name=flag_name)
 
 
-class TestFleetDygraphControlFlowSame(TestDygraphControlFlowSame):
+class TestDygraphControlFlowSameAccGradEager(TestDygraphControlFlowSameEager):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
-        self._dygraph = True
-        self._use_fleet_api = True
-        self._find_unused_parameters = True
-
-
-class TestFleetDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
+        self._eager_mode = True
         self._dygraph = True
         self._accumulate_gradient = True
         self._find_unused_parameters = True
 
 
-class TestDygraphControlFlowDiff(TestDistBase):
+class TestDygraphControlFlowDiffEager(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
+        self._eager_mode = True
         self._dygraph = True
         self._find_unused_parameters = True
 
@@ -75,19 +69,12 @@ class TestDygraphControlFlowDiff(TestDistBase):
                 log_name=flag_name)
 
 
-class TestFleetDygraphControlFlowDiff(TestDygraphControlFlowDiff):
+class TestFleetDygraphControlFlowDiffAccGradEager(
+        TestDygraphControlFlowDiffEager):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
-        self._dygraph = True
-        self._use_fleet_api = True
-        self._find_unused_parameters = True
-
-
-class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
+        self._eager_mode = True
         self._dygraph = True
         self._accumulate_gradient = True
         self._find_unused_parameters = True

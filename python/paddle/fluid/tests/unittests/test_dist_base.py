@@ -645,50 +645,29 @@ class TestParallelDyGraphRunnerBase(object):
                 import random
                 random.seed(seed)
 
-                if args.update_method != "local":
-                    paddle.distributed.init_parallel_env()
-
-                nranks = len(args.endpoints.split(",")) if args.endpoints else 1
-                rank = ParallelEnv().local_rank
-                is_master = True if rank == 0 else False
-                store = paddle.fluid.core.TCPStore("127.0.0.1", args.dist_port,
-                                                   is_master, nranks)
-                if args.update_method == "nccl2":
-                    group = core.ProcessGroupNCCL(store, rank, nranks)
-                elif args.update_method == "gloo":
-                    group = core.ProcessGroupGloo(store, rank, nranks)
-
                 model, train_reader, opt = self.get_model()
 
                 #if args.update_method == "nccl2":
-                if args.update_method == "nccl2" or args.update_method == "bkcl" or args.update_method == "hccl":
+                if args.update_method in ["nccl2", "gloo"]:
+                    paddle.distributed.init_parallel_env()
+                    nranks = ParallelEnv().nranks
+                    rank = ParallelEnv().local_rank
+                    is_master = True if rank == 0 else False
+                    store = paddle.fluid.core.TCPStore(
+                        "127.0.0.1", args.dist_port, is_master, nranks)
+                    if args.update_method == "nccl2":
+                        group = core.ProcessGroupNCCL(store, rank, nranks)
+                    elif args.update_method == "gloo":
+                        group = core.ProcessGroupGloo(store, rank, nranks)
 
                     print_to_err(
                         type(self).__name__,
                         "begin to prepare context in dygraph with nccl2")
-                    if not args.find_unused_parameters:
-                        model = dygraph.parallel.DataParallel(
-                            model,
-                            process_group=group,
-                            find_unused_parameters=False)
-                    else:
-                        model = dygraph.parallel.DataParallel(
-                            model,
-                            process_group=group,
-                            find_unused_parameters=True)
+                    model = dygraph.parallel.DataParallel(
+                        model,
+                        process_group=group,
+                        find_unused_parameters=args.find_unused_parameters)
                     print_to_err(type(self).__name__, "model built in dygraph")
-
-                elif args.update_method == "gloo":
-                    if not args.find_unused_parameters:
-                        model = dygraph.parallel.DataParallel(
-                            model,
-                            process_group=group,
-                            find_unused_parameters=False)
-                    else:
-                        model = dygraph.parallel.DataParallel(
-                            model,
-                            process_group=group,
-                            find_unused_parameters=True)
 
                 out_losses = []
                 print_to_err(
@@ -737,10 +716,8 @@ class TestParallelDyGraphRunnerBase(object):
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method in ["nccl2", "gloo"]:
-            if args.find_unused_parameters:
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-            else:
-                model = paddle.DataParallel(model, find_unused_parameters=False)
+            model = paddle.DataParallel(
+                model, find_unused_parameters=args.find_unused_parameters)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -788,14 +765,10 @@ class TestParallelDyGraphRunnerBase(object):
         with _test_eager_guard():
             model, train_reader, opt = self.get_model()
             if args.update_method in ["nccl2", "gloo"]:
-                if args.find_unused_parameters:
-                    model = paddle.DataParallel(
-                        model, process_group=group, find_unused_parameters=True)
-                else:
-                    model = paddle.DataParallel(
-                        model,
-                        process_group=group,
-                        find_unused_parameters=False)
+                model = paddle.DataParallel(
+                    model,
+                    process_group=group,
+                    find_unused_parameters=args.find_unused_parameters)
 
             out_losses = []
             for step_id, data in enumerate(train_reader()):
@@ -1080,6 +1053,7 @@ class TestDistBase(unittest.TestCase):
                 DIST_UT_PORT, DIST_UT_PORT + 1)
             DIST_UT_PORT += 2
             self._dist_port = DIST_UT_PORT
+            print("self._dist_port :", self._dist_port)
 
         self._after_setup_config()
 
