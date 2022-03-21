@@ -942,35 +942,35 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
         input_dims[2] % downscale_factor,
         0,
         phi::errors::InvalidArgument(
-          "The square of downscale_factor[%u] should divide the "
-          "height[%u]",
-          downscale_factor,
-          input_dims[2]));
+            "The square of downscale_factor[%u] should divide the "
+            "height[%u]",
+            downscale_factor,
+            input_dims[2]));
     PADDLE_ENFORCE_EQ(
         input_dims[3] % downscale_factor,
         0,
         phi::errors::InvalidArgument(
-          "The square of downscale_factor[%u] should divide the "
-          "height[%u]",
-          downscale_factor,
-          input_dims[3]));
+            "The square of downscale_factor[%u] should divide the "
+            "height[%u]",
+            downscale_factor,
+            input_dims[3]));
   } else {
     PADDLE_ENFORCE_EQ(
         input_dims[1] % downscale_factor,
         0,
         phi::errors::InvalidArgument(
-          "The square of downscale_factor[%u] should divide the "
-          "width[%u]",
-          downscale_factor,
-          input_dims[1]));
+            "The square of downscale_factor[%u] should divide the "
+            "width[%u]",
+            downscale_factor,
+            input_dims[1]));
     PADDLE_ENFORCE_EQ(
         input_dims[2] % downscale_factor,
         0,
         phi::errors::InvalidArgument(
-          "The square of downscale_factor[%u] should divide the "
-          "width[%u]",
-          downscale_factor,
-          input_dims[2]));
+            "The square of downscale_factor[%u] should divide the "
+            "width[%u]",
+            downscale_factor,
+            input_dims[2]));
   }
 
   auto output_dims = input_dims;
