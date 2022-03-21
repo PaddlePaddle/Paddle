@@ -219,8 +219,8 @@ message GraphParameter {
   optional string gpups_graph_sample_class = 3
       [ default = "CompleteGraphSampler" ];
   optional string gpups_graph_sample_args = 4 [ default = "" ];
-  optional bool use_cache = 5 [ default = true ];
-  optional float cache_ratio = 6 [ default = 0.3 ];
+  optional bool use_cache = 5 [ default = false ];
+  optional int32 cache_size_limit = 6 [ default = 100000 ];
   optional int32 cache_ttl = 7 [ default = 5 ];
   optional GraphFeature graph_feature = 8;
   optional string table_name = 9 [ default = "" ];

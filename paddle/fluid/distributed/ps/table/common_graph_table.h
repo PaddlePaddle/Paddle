@@ -544,6 +544,8 @@ class GraphTable : public SparseTable {
   std::unordered_set<int64_t> extra_nodes;
   std::unordered_map<int64_t, size_t> extra_nodes_to_thread_index;
   bool use_cache, use_duplicate_nodes;
+  int cache_size_limit;
+  int cache_ttl;
   mutable std::mutex mutex_;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS

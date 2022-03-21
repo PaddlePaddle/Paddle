@@ -1108,6 +1108,12 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
   }
 #endif
   task_pool_size_ = graph.task_pool_size();
+  use_cache = graph.use_cache();
+  if (use_cache) {
+    cache_size_limit = graph.cache_size_limit();
+    cache_ttl = graph.cache_ttl();
+    make_neighbor_sample_cache((size_t)cache_size_limit, (size_t)cache_ttl);
+  }
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
