@@ -23,9 +23,13 @@ class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
   using BatchSizeLikeOp::BatchSizeLikeOp;
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    framework::OpKernelType kernel_type = framework::OpKernelType(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.device_context());
+    if (ctx.Attr<bool>("force_cpu")) {
+      kernel_type.place_ = platform::CPUPlace();
+    }
+    return kernel_type;
   }
 };
 
