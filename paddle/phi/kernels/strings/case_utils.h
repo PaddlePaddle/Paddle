@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,7 +39,7 @@ struct AsciiToUpper {
   }
 };
 
-template <typename DeviceContext>
+template <typename Context>
 struct UTF8ToLower {
   HOSTDEVICE UTF8ToLower(const uint8_t* unicode_flag_map,
                          const uint16_t* cases_map)
@@ -51,7 +54,7 @@ struct UTF8ToLower {
   const uint16_t* cases_map_;
 };
 
-template <typename DeviceContext>
+template <typename Context>
 struct UTF8ToUpper {
   HOSTDEVICE UTF8ToUpper(const uint8_t* unicode_flag_map,
                          const uint16_t* cases_map)

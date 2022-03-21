@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/kernels/strings/case_convert_kernel.h"
 #include "paddle/phi/kernels/strings/strings_empty_kernel.h"
+#include "paddle/phi/kernels/strings/strings_lower_upper_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
 namespace phi {

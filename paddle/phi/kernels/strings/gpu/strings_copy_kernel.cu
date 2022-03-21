@@ -19,11 +19,10 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/strings/strings_deserialize_kernel.h"
-#include "paddle/phi/kernels/strings/strings_serialize_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/strings/gpu/copy_utils.h"
 
 using pstring = ::phi::dtype::pstring;
 
@@ -47,19 +46,20 @@ void Copy(const Context& dev_ctx,
 
   if (src_place == dst_place &&
       src_place.GetType() == phi::AllocationType::CPU) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The src and dst tensor are all CPU tensor, you should call copy "
-        "function in CPU mode."));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The src and dst string tensor are all "
+                                     "CPU string tensor, you should call copy "
+                                     "function in CPU mode."));
   }
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
+  VLOG(3) << "StringTensorCopy " << src.dims() << " from " << src.place()
+          << " to " << dst_place;
 
   dst->Resize(src.dims());
   auto* dst_ptr = dev_ctx.template Alloc<dtype::pstring>(dst);
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
-    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-            << dst_place;
+    VLOG(3) << "Skip copy the same string data async from " << src_place
+            << " to " << dst_place;
     return;
   }
 
@@ -69,7 +69,7 @@ void Copy(const Context& dev_ctx,
       dst_place.GetType() == phi::AllocationType::CPU) {
     // Situation 1: gpu_place->cpu_place
     DenseTensor gpu_serialized = phi::Empty<uint8_t, GPUContext>(dev_ctx, {1});
-    phi::strings::Serialize(dev_ctx, src, &gpu_serialized);
+    phi::strings::SerializeOnGPU(dev_ctx, src, &gpu_serialized);
 
     DenseTensor cpu_serialized;
     cpu_serialized.Resize(gpu_serialized.dims());
@@ -77,7 +77,7 @@ void Copy(const Context& dev_ctx,
 
     phi::Copy(dev_ctx, gpu_serialized, dst_place, false, &cpu_serialized);
 
-    phi::strings::Deserialize(dev_ctx, cpu_serialized, dst);
+    phi::strings::DeserializeOnCPU(dev_ctx, cpu_serialized, dst);
 
   } else if (src_place.GetType() == phi::AllocationType::CPU &&
              dst_place.GetType() == phi::AllocationType::GPU) {
@@ -86,14 +86,14 @@ void Copy(const Context& dev_ctx,
     cpu_serialized.Resize({1});
     dev_ctx.template HostAlloc<uint8_t>(&cpu_serialized);
 
-    phi::strings::Serialize(dev_ctx, src, &cpu_serialized);
+    phi::strings::SerializeOnCPU(dev_ctx, src, &cpu_serialized);
 
     DenseTensor gpu_serialized =
         phi::EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
     phi::Copy(
         dev_ctx, cpu_serialized, dev_ctx.GetPlace(), false, &gpu_serialized);
 
-    phi::strings::Deserialize(dev_ctx, gpu_serialized, dst);
+    phi::strings::DeserializeOnGPU(dev_ctx, gpu_serialized, dst);
   } else if (src_place.GetType() == phi::AllocationType::GPU &&
              dst_place.GetType() == phi::AllocationType::GPU) {
     // Situation 3: gpu_place->gpu_place

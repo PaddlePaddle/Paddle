@@ -26,15 +26,15 @@ void Copy(const Context& dev_ctx,
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << src_place;
+  VLOG(3) << "StringTensorCopy " << src.dims() << " from " << src.place()
+          << " to " << src_place;
 
   dst->Resize(src.dims());
   dtype::pstring* dst_ptr = dev_ctx.template Alloc<dtype::pstring>(dst);
 
   if (src_ptr == dst_ptr) {
-    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-            << src_place;
+    VLOG(3) << "Skip copy the same string data async from " << src_place
+            << " to " << src_place;
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;

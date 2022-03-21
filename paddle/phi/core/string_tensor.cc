@@ -104,6 +104,7 @@ void StringTensor::init_holder() {
   void* ptr = holder_->ptr();
   auto& place = holder_->place();
   auto bytes_size = holder_->size();
+  VLOG(6) << "Init StringTensor data with bytes:" << bytes_size;
   if (place.GetType() == phi::AllocationType::CPU) {
     std::memset(ptr, 0, bytes_size);
   } else if (place.GetType() == phi::AllocationType::GPU) {
@@ -114,6 +115,12 @@ void StringTensor::init_holder() {
     cudaMemset(ptr, 0, bytes_size);
 #endif
 #endif
+  } else {
+    // TODO(zhoushunjie): Need to support more places
+    PADDLE_THROW(errors::Unimplemented(
+        "StringTensor only support CPU or GPU place currently, but it wants to "
+        "create StringTensor on %s",
+        place.DebugString()));
   }
 }
 
@@ -142,7 +149,7 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
 
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
-    VLOG(10) << "Allocate data with bytes: " << bytes;
+    VLOG(10) << "Allocate string data with bytes: " << bytes;
     holder_.reset();
     holder_ = allocator->Allocate(bytes);
     // Initialize the allocated bytes

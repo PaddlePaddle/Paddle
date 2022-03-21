@@ -27,11 +27,11 @@ endif()
 cc_test(test_cpu_vec SRCS test_cpu_vec.cc DEPS blas cpu_info)
 
 # For String Kernels
-cc_test(test_strings_case_convert_dev_api SRCS test_strings_case_convert_dev_api.cc DEPS phi phi_api_utils)
+cc_test(test_strings_lower_upper_dev_api SRCS test_strings_lower_upper_dev_api.cc DEPS phi phi_api_utils)
 IF(WITH_GPU)
-  nv_test(test_strings_case_convert_dev_gpu_api SRCS test_strings_case_convert_dev_api.cu DEPS phi phi_api_utils)
+  nv_test(test_strings_lower_upper_dev_gpu_api SRCS test_strings_lower_upper_dev_api.cu DEPS phi phi_api_utils)
 ELSEIF(WITH_ROCM)
-  hip_test(test_strings_case_convert_dev_gpu_api SRCS test_strings_case_convert_dev_api.cu DEPS phi phi_api_utils)
+  hip_test(test_strings_lower_upper_dev_gpu_api SRCS test_strings_lower_upper_dev_api.cu DEPS phi phi_api_utils)
 ENDIF()
 
 cc_test(test_strings_copy_dev_api SRCS test_strings_copy_dev_api.cc DEPS phi phi_api_utils)

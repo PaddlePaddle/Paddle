@@ -152,6 +152,8 @@ message VarType {
     STRINGS = 26;
     VOCAB = 27;
     FEED_LIST = 28;
+    // The data type of phi::StringTensor
+    PSTRING = 29;
   }
 
   required Type type = 1;
