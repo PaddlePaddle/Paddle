@@ -94,33 +94,17 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         def data_generator():
             batch_data = None
             for step, data in enumerate(self.dataset):
-                if not isinstance(data, list) and not isinstance(data, tuple):
+                if not isinstance(data, list):
                     data = to_list(data)
-
-                _inputs = data[:len(self._inputs)]
-                _labels = data[len(self._inputs):]
-                if _labels:
-                    data = [_inputs, _labels]
-                else:
-                    data = [_inputs]
 
                 if batch_data is None:
                     batch_data = [[] for i in range(len(data))]
 
                 for idx in range(len(data)):
-                    batch_data[idx].extend(data[idx])
+                    batch_data[idx].append(data[idx])
 
                 if (step + 1) % self.batch_size == 0:
-                    if len(data) == 1 and len(batch_data[0]) == 1:
-                        yield (batch_data[0], )
-                    elif len(data) == 1:
-                        yield batch_data[0]
-                    elif len(data) == 2:
-                        yield batch_data[0], batch_data[1]
-                    else:
-                        raise ValueError(
-                            "data is expected to be in format `x`, `(x,)`, `(x, y)`"
-                        )
+                    yield batch_data
                     batch_data = None
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(

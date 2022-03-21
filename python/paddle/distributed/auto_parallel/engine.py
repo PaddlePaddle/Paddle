@@ -331,14 +331,18 @@ class Engine:
     def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        fetch_var = self._fetch_vars[self.mode]["outputs"]
-        if fetch_var[0].name not in dist_main_prog.global_block().vars:
+        fetch_var = []
+        for var in self._fetch_vars[self.mode]["outputs"]:
+            if var.name in dist_main_prog.global_block().vars:
+                fetch_var.append(var)
+
+        if fetch_var is []:
             outs = self._executor.run(dist_main_prog,
                                       use_program_cache=use_program_cache)
-            logs["pred"] = None
+            logs["pred"] = outs
         else:
             outs = self._executor.run(dist_main_prog,
-                                      fetch_list=to_list(fetch_var),
+                                      fetch_list=fetch_var,
                                       use_program_cache=use_program_cache,
                                       return_numpy=return_numpy)
             logs["pred"] = outs
