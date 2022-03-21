@@ -322,6 +322,158 @@ void NllLossRawInferMeta(const MetaTensor& input,
   total_weight->set_dtype(input.dtype());
 }
 
+void RoiAlignInferMeta(const MetaTensor& x,
+                       const MetaTensor& boxes,
+                       paddle::optional<const MetaTensor&> boxes_num,
+                       int pooled_height,
+                       int pooled_width,
+                       float spatial_scale,
+                       int sampling_ratio,
+                       bool aligned,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto input_dims = x.dims();
+  auto boxes_dims = boxes.dims();
+
+  if (boxes_num) {
+    auto boxes_num_dims = boxes_num->dims();
+    PADDLE_ENFORCE_EQ(
+        boxes_num_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The size of boxes_num should be 1"
+                                     ", but received size = %d",
+                                     boxes_num_dims.size()));
+  }
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The format of Input(x) in"
+                        "RoiAlignOp is NCHW. And the rank of input must be 4. "
+                        "But received rank = %d",
+                        input_dims.size()));
+  PADDLE_ENFORCE_EQ(boxes_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument("The rank of Input(boxes) "
+                                                 "in RoiAlignOp should be 2. "
+                                                 "But the rank of boxes is %d",
+                                                 boxes_dims.size()));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(boxes_dims[1],
+                      4,
+                      phi::errors::InvalidArgument(
+                          "The second dimension "
+                          "of Input(boxes) should be 4. But received the "
+                          "dimension = %d",
+                          boxes_dims[1]));
+  }
+
+  PADDLE_ENFORCE_GT(pooled_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The 'pooled_height' attribute in RoiAlignOp is "
+                        "invalid. The height must be greater than 0. But "
+                        "received 'pooled_height' = %d",
+                        pooled_height));
+  PADDLE_ENFORCE_GT(pooled_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The 'pooled_width' attribute in RoiAlignOp is "
+                        "invalid. The width must be greater than 0. But "
+                        "received 'pooled_width' = %d",
+                        pooled_width));
+  PADDLE_ENFORCE_GT(spatial_scale,
+                    0.0f,
+                    phi::errors::InvalidArgument(
+                        "The 'spatial_scale' attribute in RoiAlignOp is "
+                        "invalid. The scale must be greater than 0. But "
+                        "received 'spatial_scale' = %f",
+                        spatial_scale));
+
+  auto out_dims = input_dims;
+  out_dims[0] = boxes_dims[0];
+  out_dims[1] = input_dims[1];
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
+void RoiPoolInferMeta(const MetaTensor& x,
+                      const MetaTensor& boxes,
+                      paddle::optional<const MetaTensor&> boxes_num,
+                      int pooled_height,
+                      int pooled_width,
+                      float spatial_scale,
+                      MetaTensor* out,
+                      MetaTensor* arg_max) {
+  auto input_dims = x.dims();
+  auto boxes_dims = boxes.dims();
+
+  if (boxes_num) {
+    auto boxes_num_dims = boxes_num->dims();
+    PADDLE_ENFORCE_EQ(
+        boxes_num_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The second dimension of boxes_num should "
+                                     "be 1, but received dimension is %d",
+                                     boxes_num_dims.size()));
+  }
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The input data should be a four-dimensional "
+                        "tensor with [N,C,H,W], but received input data with "
+                        " %d dimension",
+                        input_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      boxes_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "boxes should be a 2-D LoDTensor with shape (num_boxes, 4)"
+          "given as [[x1, y1, x2, y2], ...], but received boxes is "
+          "%d-dimensional LoDTensor",
+          boxes_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      boxes_dims[1],
+      4,
+      phi::errors::InvalidArgument(
+          "boxes should be a 2-D LoDTensor with shape (num_boxes, 4)"
+          "given as [[x1, y1, x2, y2], ...]. But the second dimension of  "
+          "the received data is %d",
+          boxes_dims[1]));
+
+  PADDLE_ENFORCE_GT(
+      pooled_height,
+      0,
+      phi::errors::OutOfRange("The pooled output height must be greater than 0"
+                              "but received height is %d",
+                              pooled_height));
+  PADDLE_ENFORCE_GT(
+      pooled_width,
+      0,
+      phi::errors::OutOfRange("The pooled output width must be greater than 0"
+                              "but received width is %d",
+                              pooled_width));
+  PADDLE_ENFORCE_GT(
+      spatial_scale,
+      0.0f,
+      phi::errors::OutOfRange("The spatial scale must be greater than 0, "
+                              "but received spatial scale is %f",
+                              spatial_scale));
+
+  auto out_dims = input_dims;
+  out_dims[0] = boxes_dims[0];
+  out_dims[1] = input_dims[1];
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  arg_max->set_dims(out_dims);
+  arg_max->set_dtype(DataType::INT64);
+}
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,

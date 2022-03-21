@@ -43,7 +43,8 @@ precision_type_converter = {
     "float64": "FLOAT64",
     "complex64": "COMPLEX64",
     "complex128": "COMPLEX128",
-    "bool": "BOOL"
+    "bool": "BOOL",
+    "Undefined": "UNK"
 }
 
 kernel_types_info_file = "./kernels.json"

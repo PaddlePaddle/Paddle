@@ -258,6 +258,102 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     dout_result.device(place) = static_cast<T>(-1) * dout_result;
   }
 }
+template <typename T, typename Context>
+void ElementwiseFMaxGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+
+  auto out = out_grad;  // Fake out, not used
+  auto x_dim = x.dims();
+  auto y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    funcs::ElemwiseGradComputeNoBroadcast<Context,
+                                          T,
+                                          funcs::FMaxGradDx<T>,
+                                          funcs::FMaxGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMaxGradDx<T>(),
+        funcs::FMaxGradDy<T>());
+  } else {
+    funcs::ElemwiseGradComputeWithBroadcast<T,
+                                            funcs::FMaxGradDx<T>,
+                                            funcs::FMaxGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMaxGradDx<T>(),
+        funcs::FMaxGradDy<T>());
+  }
+}
+
+template <typename T, typename Context>
+void ElementwiseFMinGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  auto out = out_grad;  // Fake out, not used
+  auto x_dim = x.dims();
+  auto y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    funcs::ElemwiseGradComputeNoBroadcast<Context,
+                                          T,
+                                          funcs::FMinGradDx<T>,
+                                          funcs::FMinGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMinGradDx<T>(),
+        funcs::FMinGradDy<T>());
+  } else {
+    funcs::ElemwiseGradComputeWithBroadcast<T,
+                                            funcs::FMinGradDx<T>,
+                                            funcs::FMinGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMinGradDx<T>(),
+        funcs::FMinGradDy<T>());
+  }
+}
 
 template <typename T>
 struct MulGradDX {
