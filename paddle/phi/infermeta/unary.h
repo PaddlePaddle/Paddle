@@ -147,18 +147,15 @@ void PadInferMeta(const MetaTensor& input,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
-void Pad3dInferMeta(const MetaTensor& x,
-                    const ScalarArray& paddings,
-                    const std::string& mode,
-                    float value,
-                    const std::string& data_format,
-                    MetaTensor* out,
-                    MetaConfig config = MetaConfig());
-
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
                            MetaTensor* out);
+
+void PixelUnshuffleInferMeta(const MetaTensor& x,
+                             int downscale_factor,
+                             const std::string& data_format,
+                             MetaTensor* out);
 
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
@@ -262,10 +259,6 @@ void TransferLayoutInferMeta(const MetaTensor& x,
 void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
-
-void TransposeGradInferMeta(const MetaTensor& x,
-                            const std::vector<int>& axis,
-                            MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,

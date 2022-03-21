@@ -877,77 +877,6 @@ void PadInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
-void Pad3dInferMeta(const MetaTensor& x,
-                    const ScalarArray& paddings_scalar_array,
-                    const std::string& mode,
-                    float value,
-                    const std::string& data_format,
-                    MetaTensor* out,
-                    MetaConfig config) {
-  auto x_dim = x.dims();
-  PADDLE_ENFORCE_EQ(x_dim.size(),
-                    5,
-                    errors::InvalidArgument(
-                        "The size of Input(X)'s dimension should be equal to "
-                        "5, but received %d. ",
-                        x_dim.size()));
-
-  std::vector<int64_t> out_dims(x_dim.size());
-  out_dims[0] = x_dim[0];
-  if (paddings_scalar_array.FromTensor()) {
-    if (config.is_runtime) {
-      PADDLE_ENFORCE_EQ(
-          paddings_scalar_array.GetData().size(),
-          6,
-          errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
-                                  "[6], but received [%d].",
-                                  paddings_scalar_array.GetData().size()));
-    }
-    out_dims[1] = x_dim[1];
-    out_dims[2] = x_dim[2];
-    out_dims[3] = x_dim[3];
-  } else {
-    auto paddings = paddings_scalar_array.GetData();
-
-    PADDLE_ENFORCE_EQ(
-        paddings.size(),
-        6,
-        errors::InvalidArgument(
-            "Size of paddings should be equal to 6, but received %d.",
-            static_cast<int>(paddings.size())));
-    if (data_format == "NCDHW") {
-      out_dims[1] = x_dim[1];  // channel
-      out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
-                        ? x_dim[2]
-                        : (x_dim[2] + paddings[4] + paddings[5]);  // depth
-
-      out_dims[3] = ((!config.is_runtime) && (x_dim[3] < 0))
-                        ? x_dim[3]
-                        : (x_dim[3] + paddings[2] + paddings[3]);  // height
-
-      out_dims[4] = ((!config.is_runtime) && (x_dim[4] < 0))
-                        ? x_dim[4]
-                        : (x_dim[4] + paddings[0] + paddings[1]);  // width
-    } else {                                                       // NDHWC
-      out_dims[4] = x_dim[4];                                      // channel
-
-      out_dims[1] = ((!config.is_runtime) && (x_dim[1] < 0))
-                        ? x_dim[1]
-                        : (x_dim[1] + paddings[4] + paddings[5]);  // depth
-      out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
-                        ? x_dim[2]
-                        : (x_dim[2] + paddings[2] + paddings[3]);  // height
-      out_dims[3] = ((!config.is_runtime) && (x_dim[3] < 0))
-                        ? x_dim[3]
-                        : (x_dim[3] + paddings[0] + paddings[1]);  // width
-    }
-  }
-
-  out->set_dims(phi::make_ddim(out_dims));
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
-}
-
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
@@ -989,6 +918,71 @@ void PixelShuffleInferMeta(const MetaTensor& x,
     output_dims[1] = input_dims[1] * upscale_factor;
     output_dims[2] = input_dims[2] * upscale_factor;
     output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
+void PixelUnshuffleInferMeta(const MetaTensor& x,
+                             int downscale_factor,
+                             const std::string& data_format,
+                             MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(
+        input_dims[2] % downscale_factor,
+        0,
+        phi::errors::InvalidArgument(
+            "The square of downscale_factor[%u] should divide the "
+            "height[%u]",
+            downscale_factor,
+            input_dims[2]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[3] % downscale_factor,
+        0,
+        phi::errors::InvalidArgument(
+            "The square of downscale_factor[%u] should divide the "
+            "height[%u]",
+            downscale_factor,
+            input_dims[3]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        input_dims[1] % downscale_factor,
+        0,
+        phi::errors::InvalidArgument(
+            "The square of downscale_factor[%u] should divide the "
+            "width[%u]",
+            downscale_factor,
+            input_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[2] % downscale_factor,
+        0,
+        phi::errors::InvalidArgument(
+            "The square of downscale_factor[%u] should divide the "
+            "width[%u]",
+            downscale_factor,
+            input_dims[2]));
+  }
+
+  auto output_dims = input_dims;
+  output_dims[0] = input_dims[0];
+  if (!channel_last) {
+    output_dims[1] = input_dims[1] * (downscale_factor * downscale_factor);
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] / downscale_factor;
+  } else {
+    output_dims[1] = input_dims[1] / downscale_factor;
+    output_dims[2] = input_dims[2] / downscale_factor;
+    output_dims[3] = input_dims[3] * (downscale_factor * downscale_factor);
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
@@ -1739,17 +1733,6 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void TransposeGradInferMeta(const MetaTensor& x,
-                            const std::vector<int>& axis,
-                            MetaTensor* out) {
-  std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < axis.size(); i++) {
-    reversed_axis[axis[i]] = i;
-  }
-
-  TransposeInferMeta(x, reversed_axis, out);
-}
-
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor>* outs) {
@@ -1989,7 +1972,6 @@ void OneHotInferMeta(const MetaTensor& x,
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
-
   out->set_dtype(phi::DataType::FLOAT32);
 }
 
