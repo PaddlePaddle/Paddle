@@ -273,18 +273,18 @@ struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
                                                     const int bin_cnt,
-                                                    const int n, const int c,
-                                                    T* out) {
+                                                    const int64_t n,
+                                                    const int c, T* out) {
   int tid = threadIdx.x;
 
-  int channel_size = n / c;
+  int64_t channel_size = n / c;
   const T* in_c = in + blockIdx.x * channel_size;
   T* out_c = out + blockIdx.x * channel_size;
 
   T s = scale[blockIdx.x];
   T inv_s = inverse(s);
 
-  for (int i = tid; i < channel_size; i += blockDim.x) {
+  for (int64_t i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
@@ -293,24 +293,20 @@ __global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
   }
 }
 
-// ChannelClipAndQuantKernel for quant_axis is 1
+// ChannelClipAndQuantKernel for quant_axis is N
 template <typename T>
-__global__ void ChannelClipAndQuantKernelQuantAxis1(const T* in, const T* scale,
-                                                    const int bin_cnt,
-                                                    const int n, const int cin,
-                                                    const int cout, T* out) {
-  T s = scale[blockIdx.x];
-  T inv_s = inverse(s);
-  int channel_size = n / cout;
-  const T* in_c = in + blockIdx.x * channel_size;
-  T* out_c = out + blockIdx.x * channel_size;
-
-  for (int i = threadIdx.x; i < channel_size; i += blockDim.x) {
-    T x = in_c[i];
+__global__ void ChannelClipAndQuantKernelQuantAxisN(
+    const T* in, const T* scale, const int bin_cnt, const int64_t n,
+    const int nScale, const int quant_stride, T* out) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
+    T s = scale[(i / quant_stride) % nScale];
+    T inv_s = 1.0 / s;
+    T x = in[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
-    out_c[i] = round(v);
+    out[i] = round(v);
   }
 }
 
@@ -326,7 +322,7 @@ struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
                                           "the received is %d",
                                           quant_axis));
 
-    int num = in.numel();
+    int64_t num = in.numel();
     auto in_dims = in.dims();
     const T* in_data = in.data<T>();
     const T* scale_data = scale.data<T>();
@@ -337,13 +333,24 @@ struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
       int block = 1024;
       ChannelClipAndQuantKernelQuantAxis0<T><<<grid, block, 0, ctx.stream()>>>(
           in_data, scale_data, bin_cnt, num, in_dims[0], out_data);
-    } else if (quant_axis == 1) {
-      int channel_in = in_dims[0];
-      int channel_out = in_dims[1];
-      int grid = channel_out;
-      int block = 1024;
-      ChannelClipAndQuantKernelQuantAxis1<T><<<grid, block, 0, ctx.stream()>>>(
-          in_data, scale_data, bin_cnt, num, channel_in, channel_out, out_data);
+    } else {
+      int quant_stride = 1;
+      for (int i = quant_axis + 1; i < in_dims.size(); i++) {
+        quant_stride *= in_dims[i];
+      }
+      int64_t block_size =
+          std::min(num, static_cast<int64_t>(ctx.GetMaxThreadsPerBlock() / 4));
+      int64_t max_threads =
+          ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
+      const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1),
+                                          static_cast<int64_t>(1));
+
+      const int64_t grid_size =
+          std::min(max_blocks, (num + block_size - 1) / block_size);
+
+      ChannelClipAndQuantKernelQuantAxisN<T><<<grid_size, block_size>>>(
+          in_data, scale_data, bin_cnt, num, in_dims[quant_axis], quant_stride,
+          out_data);
     }
   }
 };
