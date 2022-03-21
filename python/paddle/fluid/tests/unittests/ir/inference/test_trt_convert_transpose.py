@@ -150,5 +150,46 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         self.run_test()
 
 
+class TrtConvertTranspose2Test(TrtConvertTransposeTest):
+    def sample_program_configs(self):
+        def generate_input1(attrs: List[Dict[str, Any]], batch):
+            if self.dims == 4:
+                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+            elif self.dims == 3:
+                return np.ones([batch, 3, 24]).astype(np.float32)
+            elif self.dims == 2:
+                return np.ones([batch, 24]).astype(np.float32)
+
+        for dims in [2, 3, 4]:
+            for batch in [1, 2, 4]:
+                for axis in [[0, 1, 3, 2], [0, 3, 2, 1], [3, 2, 0, 1],
+                             [0, 1, 2, 3], [0, 1, 2], [2, 0, 1], [1, 0],
+                             [0, 1]]:
+                    self.dims = dims
+                    dics = [{"axis": axis}, {}]
+                    ops_config = [{
+                        "op_type": "transpose2",
+                        "op_inputs": {
+                            "X": ["transpose_input"]
+                        },
+                        "op_outputs": {
+                            "Out": ["transpose_out"],
+                            "XShape": ["xshape"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "transpose_input": TensorConfig(data_gen=partial(
+                                generate_input1, dics, batch))
+                        },
+                        outputs=["transpose_out"])
+
+                    yield program_config
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -5635,7 +5635,7 @@ def transpose(x, perm, name=None):
                 "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
                 "dimension %d." % (idx, perm[idx], len(x.shape)))
 
-    helper = LayerHelper('transpose', **locals())
+    helper = LayerHelper('transpose2', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
