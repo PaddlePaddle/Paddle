@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +22,7 @@ from utils import _compute_numerical_jacobian, _compute_numerical_batch_jacobian
 def approx_jacobian(f, xs, dtype, eps=1e-5, batch=False):
     r"""Computes an approximate Jacobian matrix of a multi-valued function 
     using finite differences.
-    
+
     The function input is required to be an np array or a list of list of np 
     arrays. 
     """
@@ -116,8 +116,11 @@ class TestJacobianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
-            nrow, ncol = JJ.shape()
+            JJ = paddle.autograd.Jacobian(pd_f, xs, is_batched=batch)
+            if not batch:
+                nrow, ncol = JJ.shape
+            else:
+                nbatch, nrow, ncol = JJ.shape
             full_jacobian = JJ[:]
         exe = fluid.Executor(self.place)
         exe.run(startup)
@@ -128,6 +131,8 @@ class TestJacobianFloat32(unittest.TestCase):
         pd_jacobians = exe.run(main, feed=feeds, fetch_list=[full_jacobian])[0]
         np_jacobians = approx_jacobian(
             np_f, inps, self.dtype, self.eps, batch=batch)
+        if batch:
+            np_jacobians = np.transpose(np_jacobians, (1, 0, 2))
         self.assertTrue(
             np.allclose(pd_jacobians, np_jacobians, self.rtol, self.atol))
 
@@ -136,9 +141,14 @@ class TestJacobianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
-            nrow, ncol = JJ.shape()
-            rows = [JJ[i] for i in range(nrow)]
+            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, is_batched=batch)
+            if batch:
+                nbatch, nrow, ncol = JJ.shape
+                rows = [JJ[:, i, :] for i in range(nrow)]
+            else:
+                nrow, ncol = JJ.shape
+                rows = [JJ[i, :] for i in range(nrow)]
+
         exe = fluid.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
@@ -156,9 +166,15 @@ class TestJacobianFloat32(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, batch=batch)
-            nrow, ncol = JJ.shape()
-            entries = [JJ[i, j] for i in range(nrow) for j in range(ncol)]
+            JJ = paddle.autograd.functional.Jacobian(pd_f, xs, is_batched=batch)
+            if batch:
+                nbatch, nrow, ncol = JJ.shape
+                entries = [
+                    JJ[:, i, j] for i in range(nrow) for j in range(ncol)
+                ]
+            else:
+                nrow, ncol = JJ.shape
+                entries = [JJ[i, j] for i in range(nrow) for j in range(ncol)]
         exe = fluid.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
@@ -171,8 +187,7 @@ class TestJacobianFloat32(unittest.TestCase):
             np_jac[i, ..., j] for i in range(nrow) for j in range(ncol)
         ]
         for pd_entry, np_entry in zip(pd_entries, np_entries):
-            self.assertTrue(
-                np.allclose(pd_entry, np_entry, self.rtol, self.atol))
+            np.testing.assert_allclose(pd_entry, np_entry, self.rtol, self.atol)
 
     def test_square(self):
         def pd_f(x):
@@ -186,8 +201,7 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_entries(pd_f, np_f, self.A)
 
     def test_mul(self):
-        def pd_f(xs):
-            x, y = xs
+        def pd_f(x, y):
             return paddle.multiply(x, y)
 
         def np_f(xs):
@@ -202,8 +216,7 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_entries(pd_f, np_f, [self.B, self.C])
 
     def test_matmul(self):
-        def pd_f(xs):
-            x, y = xs
+        def pd_f(x, y):
             return paddle.matmul(x, y)
 
         def np_f(xs):
@@ -215,8 +228,7 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_entries(pd_f, np_f, [self.B, self.C])
 
     def test_batch_matmul(self):
-        def pd_f(xs):
-            x, y = xs
+        def pd_f(x, y):
             return paddle.matmul(x, y)
 
         def np_f(xs):
@@ -226,21 +238,6 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_fullmatrix(pd_f, np_f, [self.D, self.E], batch=True)
         self.run_test_by_rows(pd_f, np_f, [self.D, self.E], batch=True)
         self.run_test_by_entries(pd_f, np_f, [self.D, self.E], batch=True)
-
-
-class TestJacobianFloat64(TestJacobianFloat32):
-    @classmethod
-    def setUpClass(self):
-        paddle.enable_static()
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
-        else:
-            self.place = fluid.CPUPlace()
-        self.dtype = 'float64'
-        prepare_data(self, all_data_shapes, self.dtype)
-        self.eps = 1e-7
-        self.rtol = 1e-6
-        self.atol = 1e-6
 
 
 class TestHessianFloat64(unittest.TestCase):
@@ -262,8 +259,8 @@ class TestHessianFloat64(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             xs = make_tensors(inps)
-            HH = paddle.autograd.functional.Hessian(pd_f, xs, batch=batch)
-            nrow, ncol = HH.shape()
+            HH = paddle.autograd.functional.Hessian(pd_f, xs, is_batched=batch)
+            nrow, ncol = HH.shape
             full_hessian = HH[:]
         exe = fluid.Executor(self.place)
         exe.run(startup)

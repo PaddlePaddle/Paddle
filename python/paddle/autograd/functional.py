@@ -332,7 +332,7 @@ class Jacobian(object):
 
     def __init__(self, func, xs, is_batched=False, batched_last=False):
         if not is_batched:
-            self._jacobian = _JacobianWithoutBatch(func, xs)
+            self._jacobian = _JacobianNoBatch(func, xs)
         elif batched_last:
             self._jacobian = _JacobianBatchLast(func, xs)
         else:
@@ -347,12 +347,12 @@ class Jacobian(object):
 
 
 class _Jacobian(object):
-    """The base class for compute Jacobian matrix.
+    """The base class for computing Jacobian matrix.
     """
 
-    def __init__(self, fun, xs):
+    def __init__(self, func, xs):
         self._xs = _grad_preprocess(xs)
-        self._ys = fun(self._xs)
+        self._ys = func(*_as_tensors(self._xs))
         self._flatten_xs = self._flatten(_as_tensors(self._xs))
         self._flatten_ys = self._flatten(_as_tensors(self._ys))
         self._cache = {}
@@ -361,66 +361,64 @@ class _Jacobian(object):
     def shape(self):
         raise NotImplementedError
 
-    def _row_axis_index(self, indexes):
-        raise NotImplementedError
-
-    def _other_axes_indexes(self, indexes):
+    @property
+    def _row_axis(self):
         raise NotImplementedError
 
     def _flatten(self, xs):
         raise NotImplementedError
 
-    def _stack(self, rows):
+    def _stack(self, values):
         raise NotImplementedError
 
     def __getitem__(self, indexes):
-        indexes = _multi_index(indexes)
-        row_axis_index = self._row_axis_index(indexes)
-        other_axes_indexes = self._other_axes_indexes(indexes)
-
-        values = tuple()
-        for row in range(row_axis_index.start, row_axis_index.stop,
-                         row_axis_index.step):
+        row_index = _multi_index(indexes, self.shape)[self._row_axis]
+        if isinstance(row_index, int):
+            rows = (row_index, )
+        else:
+            rows = sorted(
+                tuple(range(row_index.start, row_index.stop, row_index.step)))
+        values = []
+        for row in rows:
             value = self._cache.get(row)
-            if not row:
-                row = self._evaluate(row)
+            if value is None:
+                value = self._evaluate(row)
                 self._cache[row] = value
             values.append(value)
+        return self._stack(values)[indexes]
 
-        return self._stack(values)[other_axes_indexes]
-
-    def _evaluate(self, row_index):
+    def _evaluate(self, row):
         """Lazy evaluation at one row."""
         raise NotImplementedError
 
 
-class _JacobianWithoutBatch(object):
+class _JacobianNoBatch(_Jacobian):
     """Compute Jacobian matrix without batch.
     Suppose the mapping is :math:`f: R^M \to R^N`, the output shape is 
     ``(N, M)`` .
     """
 
     def __init__(self, func, xs):
-        super(_JacobianWithoutBatch, self).__init__(func, xs)
+        super(_JacobianNoBatch, self).__init__(func, xs)
 
     @property
     def shape(self):
-        return tuple(self._flatten_ys.shape[0], self._flatten_xs.shape[0])
+        return (self._flatten_ys.shape[0], self._flatten_xs.shape[0])
 
-    def _row_axis_index(self, indexes):
-        return indexes[0]
-
-    def _other_axes_indexes(self, indexes):
-        return indexes[1]
+    @property
+    def _row_axis(self):
+        return 0
 
     def _flatten(self, xs):
-        return tuple(x.reshape((-1, )) for x in xs)
+        return paddle.concat(tuple(x.reshape((-1, )) for x in xs))
 
     def _stack(self, rows):
         return paddle.stack(rows)
 
     def _evaluate(self, row_index):
-        return self._flatten(_grad(self._flatten_ys[row_index], self._xs))
+        return self._flatten(_grad(
+            self._flatten_ys[row_index],
+            self._xs, ))
 
 
 class _JacobianBatchLast(_Jacobian):
@@ -434,17 +432,16 @@ class _JacobianBatchLast(_Jacobian):
 
     @property
     def shape(self):
-        return tuple(self._flatten_ys.shape[0], self._flatten_xs.shape[0],
-                     self._flatten_xs.shape[1])
+        return (self._flatten_ys.shape[0], self._flatten_xs.shape[0],
+                self._flatten_xs.shape[1])
 
-    def _row_axis_index(self, indexes):
-        return indexes[0]
-
-    def _other_axes_indexes(self, indexes):
-        return indexes[1:]
+    @property
+    def _row_axis(self):
+        return 0
 
     def _flatten(self, xs):
-        return tuple(x.reshape((-1, self._flatten_xs.shape[-1])) for x in xs)
+        return paddle.concat(
+            tuple(x.reshape((-1, x.shape[-1])) for x in _as_tensors(xs)), 0)
 
     def _stack(self, rows):
         return paddle.stack(rows, 0)
@@ -464,17 +461,16 @@ class _JacobianBatchFirst(_Jacobian):
 
     @property
     def shape(self):
-        return tuple(self._flatten_xs.shape[0], self._flatten_ys.shape[1],
-                     self._flatten_xs.shape[1])
+        return (self._flatten_xs.shape[0], self._flatten_ys.shape[1],
+                self._flatten_xs.shape[1])
 
-    def _row_axis_index(self, indexes):
-        return indexes[1]
-
-    def _other_axes_indexes(self, indexes):
-        return indexes[0] + indexes[2]
+    @property
+    def _row_axis(self):
+        return 1
 
     def _flatten(self, xs):
-        return tuple(x.reshape((self._flatten_xs.shape[-1], -1)) for x in xs)
+        return paddle.concat(
+            tuple(x.reshape((x.shape[0], -1)) for x in _as_tensors(xs)), 1)
 
     def _stack(self, rows):
         return paddle.stack(rows, 1)
@@ -491,7 +487,7 @@ def _multi_index(indexes, shape):
             omited.
 
     The standard format after converted is slice tuple which contains N elements:
-        * (slice(start,stop,step), ..., slice(start,stop,step))
+        * ([positive|slice], ..., [positive|slice])
 
     Notes: 
         Ellipsis indexes such as ``(..., i), (i, ...)`` is not supported.
@@ -503,22 +499,29 @@ def _multi_index(indexes, shape):
     Returns:
         tuple: The standard format index as the above description.
     """
-    indexes = (indexes, ) if isinstance(indexes, int) else indexes
+    indexes = indexes if isinstance(indexes, typing.Sequence) else (indexes, )
+    if any(isinstance(i, type(Ellipsis)) for i in indexes):
+        raise IndexError('Ellipsis index currently is not supported.')
     # Fill the right-most elements.
-    indexes = indexes + [slice(0, None, None)] * (len(shape) - len(indexes))
-    # Convert to standard slice.
-    standard_indexes = tuple()
+    indexes = indexes + (slice(0, None, None), ) * (len(shape) - len(indexes))
+    # Convert to positive index.
+    positive_indexes = []
     for i, index in enumerate(indexes):
-        if isinstance(index, int):
-            index = index if index >= 0 else shape[i] + index
-            standard_index = slice(index, index + 1, 1)
+        if isinstance(index, slice):
+            index = slice(index.start or 0, index.stop or shape[i],
+                          index.step or 1)
+            positive_indexes.append(
+                slice(
+                    index.start + shape[i] if index.start < 0 else index.start,
+                    index.stop + shape[i] if index.stop < 0 else index.stop,
+                    # Negative step means index backward, no need to convert to
+                    # positive interger.
+                    index.step))
+        elif isinstance(index, int):
+            positive_indexes.append(index + shape[i] if index < 0 else index)
         else:
-            standard_index = slice(
-                start=0 if index.start is None else index.start,
-                stop=shape[i] if index.stop is None else index.stop,
-                step=1 if index.step is None else index.stop)
-        standard_indexes.append(standard_index)
-    return standard_indexes
+            raise TypeError(f'Not supported index type {index}.')
+    return positive_indexes
 
 
 class Hessian(object):
@@ -559,7 +562,7 @@ def _replace_none_with_zero_tensor(xs, refs):
         return xs
 
 
-def _grad(ys, xs, v):
+def _grad(ys, xs, v=None):
     """A gradient function that can be used in dynamic graph and static graph.
 
     The ``grad`` combines ``paddle.grad`` used in dynamic graph and

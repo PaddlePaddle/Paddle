@@ -28,3 +28,5 @@ RTOL = {
     'complex128': 1e-6
 }
 ATOL = {'float32': 0.0, 'complex64': 0, 'float64': 0.0, 'complex128': 0}
+
+EPS = {'float32': 1e-3, 'float64': 1e-6}
