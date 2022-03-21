@@ -46,32 +46,34 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 void AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  queue_group_->AddTask(2, [this, &dependecy_count] {
+  VLOG(4) << "PrepareAtomicDeps";
+  auto p = std::make_shared<
+      std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
+  atomic_deps_ = p->get_future();
+  queue_group_->AddTask(2, [&dependecy_count, p] {
     auto* op_deps =
         new std::vector<std::atomic<size_t>>(dependecy_count.size());
     for (size_t i = 0; i < dependecy_count.size(); ++i) {
       (*op_deps)[i] = dependecy_count[i];
     }
-    VLOG(4) << op_deps << " " << (*op_deps).size();
-    // NOTE(zhiqiu): std::async with std::launch::async itself is not low weight
-    atomic_deps_ = std::async(std::launch::async, [op_deps]() {
-      return std::unique_ptr<std::vector<std::atomic<size_t>>>(op_deps);
-    });
+    VLOG(4) << "AtomicDeps:" << op_deps << " " << (*op_deps).size();
+    p->set_value(std::unique_ptr<std::vector<std::atomic<size_t>>>(op_deps));
   });
 }
 
 void AsyncWorkQueue::PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info) {
-  queue_group_->AddTask(2, [this, &vec_meta_info] {
+    qgi const std::vector<VariableMetaInfo>& vec_meta_info) {
+  VLOG(4) << "PrepareAtomicVarRef";
+  auto p = std::make_shared<
+      std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
+  atomic_var_ref_ = p->get_future();
+  queue_group_->AddTask(2, [&vec_meta_info, p] {
     auto* var_ref = new std::vector<std::atomic<size_t>>(vec_meta_info.size());
     for (size_t i = 0; i < vec_meta_info.size(); ++i) {
       (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
     }
-    VLOG(4) << var_ref << " " << (*var_ref).size();
-    // NOTE(zhiqiu): std::async with std::launch::async itself is not low weight
-    atomic_var_ref_ = std::async(std::launch::async, [var_ref]() {
-      return std::unique_ptr<std::vector<std::atomic<size_t>>>(var_ref);
-    });
+    VLOG(4) << "AtomicVarRef:" << var_ref << " " << (*var_ref).size();
+    p->set_value(std::unique_ptr<std::vector<std::atomic<size_t>>>(var_ref));
   });
 }
 
