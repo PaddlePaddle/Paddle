@@ -51,7 +51,7 @@ class BrpcPsServer : public PSServer {
     _server.Join();
     return 0;
   }
-  virtual int32_t port();
+  int32_t port();
 
  private:
   virtual int32_t initialize();
