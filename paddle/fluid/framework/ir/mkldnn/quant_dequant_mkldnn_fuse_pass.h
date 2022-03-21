@@ -35,43 +35,58 @@ class QuantDequantMkldnnFusePass : public FusePassBase {
 
   void GatherInfoFromFake(ir::Graph* graph, Scope* scope,
                           std::unordered_set<std::string> fake_dequantize_types,
-                          std::unordered_map<std::string, std::vector<float>>&
+                          std::unordered_map<std::string, std::vector<float>>*
                               weight_thresholds) const;
 
   void GatherInputScalesFromFake(
       ir::Graph* graph, Scope* scope,
       std::unordered_set<std::string> fake_quantize_types,
-      std::unordered_map<std::string, std::vector<float>>&
-          var_quant_scales)  // NOLINT
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
   void GatherOutputScalesFromAttr(
-      ir::Graph* graph, std::unordered_map<std::string, std::vector<float>>&
-                            var_quant_scales)  // NOLINT
+      ir::Graph* graph,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
+  void CollectFakeQuantizeOps(ir::Graph* graph, Node* op_node,
+                              std::unordered_set<const Node*>* nodes2rm) const;
+
+  void CollectFakeDequantizeOps(
+      ir::Graph* graph, Node* op_node,
+      std::unordered_set<const Node*>* nodes2rm) const;
+
   void RemoveFakeOps(
-      ir::Graph* graph, std::unordered_set<std::string> fake_quantize_types,
-      std::unordered_set<std::string> fake_dequantize_types,
-      std::unordered_set<std::string> fake_quantize_dequantize_types) const;
+      ir::Graph* graph,
+      const std::unordered_set<std::string> fake_quantize_types,
+      const std::unordered_set<std::string> fake_dequantize_types,
+      const std::unordered_set<std::string> fake_quantize_dequantize_types)
+      const;
+
+  bool IsInt8Weight(Node* op_node, Scope* scope,
+                    const std::string& weight_name) const;
+
+  void TransposeWeight(Tensor* input) const;
+
+  void DequantizeOpWeights(Node* op_node, Scope* scope,
+                           const std::string& weight_name,
+                           const std::string& output_name,
+                           std::unordered_map<std::string, std::vector<float>>*
+                               weight_thresholds) const;
 
   void DequantizeWeights(ir::Graph* graph, Scope* scope,
-                         std::unordered_map<std::string, std::vector<float>>&
+                         std::unordered_map<std::string, std::vector<float>>*
                              weight_thresholds) const;
 
   void UpdateActivations(ir::Graph* graph) const;
 
   void RemoveCtrlVars(ir::Graph* graph) const;
 
-  void SaveQuantInfo(ir::Graph* graph,
-                     std::unordered_map<std::string, std::vector<float>>&
-                         weight_thresholds,  // NOLINT
-                     std::unordered_map<std::string, std::vector<float>>&
-                         var_quant_scales)  // NOLINT
+  void SaveQuantInfo(
+      ir::Graph* graph,
+      std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
-
- private:
-  void TransposeWeight(Tensor* input) const;
 };
 }  // namespace ir
 }  // namespace framework

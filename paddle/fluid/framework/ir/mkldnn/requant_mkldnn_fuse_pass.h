@@ -21,8 +21,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using StringTensorPtrMap = std::unordered_map<std::string, Tensor*>;
-using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor*>>;
+using StringTensorMap = std::unordered_map<std::string, Tensor>;
+using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor>>;
 
 class RequantMkldnnFusePass : public FusePassBase {
  public:
@@ -37,13 +37,38 @@ class RequantMkldnnFusePass : public FusePassBase {
                            Tensor* tensor) const;
 
   void GetQuantInfo(ir::Graph* graph, Scope* scope,
-                    StringTensorPtrMap& weight_thresholds,  // NOLINT
-                    StringPairMap& var_quant_scales)        // NOLINT
-      const;
+                    StringTensorPtrMap* weight_thresholds,
+                    StringPairMap* var_quant_scales) const;
+
+  std::vector<float> GetScales(const Tensor& tensor, int axis) const;
+
+  void ComputeVarScales(ir::Graph* graph, Scope* scope,
+                        const std::unordered_set<std::string> ops,
+                        const std::string& weight_name, const int axis,
+                        StringPairMap* var_quant_scales) const;
+
+  void ComputeSingleGruWeightScales(Scope* scope,
+                                    const std::string& wx_var_name,
+                                    const std::string& wh_var_name,
+                                    Tensor* tensor) const;
+
+  void ComputeGruWeightScales(ir::Graph* graph, Scope* scope,
+                              const std::string& wx_name,
+                              const std::string& wh_name,
+                              StringPairMap* var_quant_scales) const;
+
+  void ComputeSingleLstmWeightScales(Scope* scope,
+                                     const std::string& wx_var_name,
+                                     const std::string& wh_var_name,
+                                     Tensor* tensor) const;
+
+  void ComputeLstmWeightScales(ir::Graph* graph, Scope* scope,
+                               const std::string& wx_name,
+                               const std::string& wh_name,
+                               StringPairMap* var_quant_scales) const;
 
   void ComputeWeightScales(ir::Graph* graph, Scope* scope,
-                           StringPairMap& var_quant_scales)  // NOLINT
-      const;
+                           StringPairMap* var_quant_scales) const;
 
   //   void PropagateScales(
   //       ir::Graph* graph, Scope* scope,

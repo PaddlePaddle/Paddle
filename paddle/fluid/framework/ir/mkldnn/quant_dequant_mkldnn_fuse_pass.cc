@@ -55,7 +55,7 @@ void QuantDequantMkldnnFusePass::MarkSkipQuantizedOps(
 void QuantDequantMkldnnFusePass::GatherInfoFromFake(
     ir::Graph* graph, Scope* scope,
     std::unordered_set<std::string> fake_dequantize_types,
-    std::unordered_map<std::string, std::vector<float>>& weight_thresholds)
+    std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
     const {
   VLOG(3) << "gather weight_thresholds from fake dequantized ops";
   for (auto* op_node :
@@ -69,7 +69,8 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
       if (op_desc->HasAttr("max_range")) {
         const float max_range =
             BOOST_GET_CONST(float, op_desc->GetAttr("max_range"));
-        weight_thresholds[x_var_name].push_back(127 * 127 / max_range);
+        weight_thresholds->insert(
+            std::make_pair(x_var_name, {127 * 127 / max_range}));
       } else {
         auto scale_name = op_desc->Input("Scales")[0];
         auto* var = scope->FindVar(scale_name);
@@ -79,9 +80,11 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
         auto* scale_tensor = var->GetMutable<LoDTensor>();
         auto scale_data =
             scale_tensor->mutable_data<float>(platform::CPUPlace());
+        std::vector<float> thresholds{};
         for (int i = 0; i < scale_tensor->numel(); i++) {
-          weight_thresholds[x_var_name].push_back(scale_data[i]);
+          thresholds.push_back(scale_data[i]);
         }
+        weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
       }
     }
   }
@@ -90,7 +93,7 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
 void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
     ir::Graph* graph, Scope* scope,
     std::unordered_set<std::string> fake_quantize_types,
-    std::unordered_map<std::string, std::vector<float>>& var_quant_scales)
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
   VLOG(3) << "gather input scales from fake quantized ops";
   for (auto* op_node :
@@ -121,14 +124,12 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
         scale = 0.0;
       }
 
-      auto iter_in = var_quant_scales.find(x_var_name);
-      if (iter_in == var_quant_scales.end()) {
-        var_quant_scales[x_var_name] = {scale};
+      if (!var_quant_scales->count(x_var_name)) {
+        var_quant_scales->insert(std::make_pair(x_var_name, {scale}));
       }
 
-      auto iter_out = var_quant_scales.find(out_var_name);
-      if (iter_out == var_quant_scales.end()) {
-        var_quant_scales[out_var_name] = {scale};
+      if (!var_quant_scales->count(out_var_name)) {
+        var_quant_scales->insert(std::make_pair(out_var_name, {scale}));
       }
     }
   }
@@ -136,7 +137,7 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
 
 void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
     ir::Graph* graph,
-    std::unordered_map<std::string, std::vector<float>>& var_quant_scales)
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
   VLOG(3) << "gather output scales from op's attr";
   for (auto* op_node :
@@ -154,100 +155,103 @@ void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
       for (auto iter = var_name_map.begin(); iter != var_name_map.end();
            ++iter) {
         for (auto var_name : iter->second) {
-          var_quant_scales[var_name] = {scale};
+          var_quant_scales->insert(std::make_pair(var_name, {scale}));
         }
       }
     }
   }
 }
 
+void QuantDequantMkldnnFusePass::CollectFakeQuantizeOps(
+    ir::Graph* graph, Node* op_node,
+    std::unordered_set<const Node*>* nodes2rm) const {
+  auto* op_desc = op_node->Op();
+  auto x_var_name = op_desc->Input("X")[0];
+  auto in_scale_name = op_desc->Input("InScale")[0];
+  auto out_var_name = op_desc->Output("Out")[0];
+  auto out_scale_name = op_desc->Output("OutScale")[0];
+
+  Node* fake_quant_in = nullptr;
+  Node* fake_quant_in_scale = nullptr;
+  for (auto* node_input : op_node->inputs) {
+    if (node_input->Name() == x_var_name) {
+      fake_quant_in = node_input;
+    } else if (node_input->Name() == in_scale_name) {
+      fake_quant_in_scale = node_input;
+    }
+  }
+
+  Node* fake_quant_out = nullptr;
+  Node* fake_quant_out_scale = nullptr;
+  for (auto* node_output : op_node->outputs) {
+    if (node_output->Name() == out_var_name) {
+      fake_quant_out = node_output;
+    } else if (node_output->Name() == out_scale_name) {
+      fake_quant_out_scale = node_output;
+    }
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(fake_quant_in,
+                          "The input var of quantize op is not found.");
+  PADDLE_ENFORCE_NOT_NULL(fake_quant_out,
+                          "The output var of quantize op is not found.");
+  std::string input_act_name = fake_quant_in->Var()->Name();
+  std::string output_act_name = fake_quant_out->Var()->Name();
+  auto outlinks = fake_quant_out->outputs;
+  for (auto* next_node : outlinks) {
+    next_node->Op()->RenameInput(output_act_name, input_act_name);
+    IR_NODE_LINK_TO(fake_quant_in, next_node);
+  }
+
+  nodes2rm->insert(op_node);
+  nodes2rm->insert(fake_quant_in_scale);
+  nodes2rm->insert(fake_quant_out);
+  nodes2rm->insert(fake_quant_out_scale);
+}
+
+void QuantDequantMkldnnFusePass::CollectFakeDequantizeOps(
+    ir::Graph* graph, Node* op_node,
+    std::unordered_set<const Node*>* nodes2rm) const {
+  auto* op_desc = op_node->Op();
+  auto x_var_name = op_desc->Input("X")[0];
+  auto out_var_name = op_desc->Output("Out")[0];
+
+  Node* fake_dequant_in = nullptr;
+  for (auto* node_input : op_node->inputs) {
+    if (node_input->Name() == x_var_name) {
+      fake_dequant_in = node_input;
+    }
+  }
+
+  Node* fake_dequant_out = nullptr;
+  for (auto* node_output : op_node->outputs) {
+    if (node_output->Name() == out_var_name) {
+      fake_dequant_out = node_output;
+    }
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(fake_dequant_in,
+                          "The input var of dequantize op is not found.");
+  PADDLE_ENFORCE_NOT_NULL(fake_dequant_out,
+                          "The output var of dequantize op is not found.");
+  std::string input_act_name = fake_dequant_in->Var()->Name();
+  std::string output_act_name = fake_dequant_out->Var()->Name();
+  auto outlinks = fake_dequant_out->outputs;
+  for (auto* next_node : outlinks) {
+    next_node->Op()->RenameInput(output_act_name, input_act_name);
+    IR_NODE_LINK_TO(fake_dequant_in, next_node);
+  }
+
+  nodes2rm->insert(op_node);
+  nodes2rm->insert(fake_dequant_out);
+}
+
 void QuantDequantMkldnnFusePass::RemoveFakeOps(
-    ir::Graph* graph, std::unordered_set<std::string> fake_quantize_types,
-    std::unordered_set<std::string> fake_dequantize_types,
-    std::unordered_set<std::string> fake_quantize_dequantize_types) const {
+    ir::Graph* graph, const std::unordered_set<std::string> fake_quantize_types,
+    const std::unordered_set<std::string> fake_dequantize_types,
+    const std::unordered_set<std::string> fake_quantize_dequantize_types)
+    const {
   VLOG(3) << "remove fake quantize and dequantize ops";
-  auto collect_fake_quantize = [&](ir::Graph* graph, Node* op_node,
-                                   std::unordered_set<const Node*>& nodes2rm) {
-    auto* op_desc = op_node->Op();
-    auto x_var_name = op_desc->Input("X")[0];
-    auto in_scale_name = op_desc->Input("InScale")[0];
-    auto out_var_name = op_desc->Output("Out")[0];
-    auto out_scale_name = op_desc->Output("OutScale")[0];
-
-    Node* fake_quant_in = nullptr;
-    Node* fake_quant_in_scale = nullptr;
-    for (auto* node_input : op_node->inputs) {
-      if (node_input->Name() == x_var_name) {
-        fake_quant_in = node_input;
-      } else if (node_input->Name() == in_scale_name) {
-        fake_quant_in_scale = node_input;
-      }
-    }
-
-    Node* fake_quant_out = nullptr;
-    Node* fake_quant_out_scale = nullptr;
-    for (auto* node_output : op_node->outputs) {
-      if (node_output->Name() == out_var_name) {
-        fake_quant_out = node_output;
-      } else if (node_output->Name() == out_scale_name) {
-        fake_quant_out_scale = node_output;
-      }
-    }
-
-    PADDLE_ENFORCE_NOT_NULL(fake_quant_in,
-                            "The input var of quantize op is not found.");
-    PADDLE_ENFORCE_NOT_NULL(fake_quant_out,
-                            "The output var of quantize op is not found.");
-    std::string input_act_name = fake_quant_in->Var()->Name();
-    std::string output_act_name = fake_quant_out->Var()->Name();
-    auto outlinks = fake_quant_out->outputs;
-    for (auto* next_node : outlinks) {
-      next_node->Op()->RenameInput(output_act_name, input_act_name);
-      IR_NODE_LINK_TO(fake_quant_in, next_node);
-    }
-
-    nodes2rm.insert(op_node);
-    nodes2rm.insert(fake_quant_in_scale);
-    nodes2rm.insert(fake_quant_out);
-    nodes2rm.insert(fake_quant_out_scale);
-  };
-
-  auto collect_fake_dequantize = [&](
-      ir::Graph* graph, Node* op_node,
-      std::unordered_set<const Node*>& nodes2rm) {
-    auto* op_desc = op_node->Op();
-    auto x_var_name = op_desc->Input("X")[0];
-    auto out_var_name = op_desc->Output("Out")[0];
-
-    Node* fake_dequant_in = nullptr;
-    for (auto* node_input : op_node->inputs) {
-      if (node_input->Name() == x_var_name) {
-        fake_dequant_in = node_input;
-      }
-    }
-
-    Node* fake_dequant_out = nullptr;
-    for (auto* node_output : op_node->outputs) {
-      if (node_output->Name() == out_var_name) {
-        fake_dequant_out = node_output;
-      }
-    }
-
-    PADDLE_ENFORCE_NOT_NULL(fake_dequant_in,
-                            "The input var of dequantize op is not found.");
-    PADDLE_ENFORCE_NOT_NULL(fake_dequant_out,
-                            "The output var of dequantize op is not found.");
-    std::string input_act_name = fake_dequant_in->Var()->Name();
-    std::string output_act_name = fake_dequant_out->Var()->Name();
-    auto outlinks = fake_dequant_out->outputs;
-    for (auto* next_node : outlinks) {
-      next_node->Op()->RenameInput(output_act_name, input_act_name);
-      IR_NODE_LINK_TO(fake_dequant_in, next_node);
-    }
-
-    nodes2rm.insert(op_node);
-    nodes2rm.insert(fake_dequant_out);
-  };
 
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
@@ -255,11 +259,12 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
     if (!op_node->IsOp()) continue;
 
     if (fake_quantize_types.count(op_node->Name())) {
-      collect_fake_quantize(graph, op_node, nodes2rm);
+      CollectFakeQuantizeOps(graph, op_node, &nodes2rm)
     } else if (fake_dequantize_types.count(op_node->Name())) {
       collect_fake_dequantize(graph, op_node, nodes2rm);
+      CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
     } else if (fake_quantize_dequantize_types.count(op_node->Name())) {
-      collect_fake_dequantize(graph, op_node, nodes2rm);
+      CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
     }
   }
 
@@ -311,121 +316,131 @@ void QuantDequantMkldnnFusePass::TransposeWeight(Tensor* input) const {
   }
 }
 
-void QuantDequantMkldnnFusePass::DequantizeWeights(
-    ir::Graph* graph, Scope* scope,
-    std::unordered_map<std::string, std::vector<float>>& weight_thresholds)
-    const {
-  VLOG(3) << "dequantize weight for ops which has weight";
-  auto is_int8_weights = [&](Node* op_node, Scope* scope,
-                             std::string weight_name) -> bool {
-    auto* op_desc = op_node->Op();
-    auto var_name = op_desc->Input(weight_name)[0];
-    auto* var = scope->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            "The input persistable var of %s op is not found.",
-                            op_desc->Type());
+bool QuantDequantMkldnnFusePass::IsInt8Weight(
+    Node* op_node, Scope* scope, const std::string& weight_name) const {
+  auto* op_desc = op_node->Op();
+  auto var_name = op_desc->Input(weight_name)[0];
+  auto* var = scope->FindVar(var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, "The input persistable var of %s op is not found.", op_desc->Type());
 
-    auto* weight_tensor = var->GetMutable<LoDTensor>();
-    auto weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
-    bool is_int8 = true;
-    for (int i = 0; i < weight_tensor->numel(); i++) {
-      if (weight_data[i] - static_cast<int>(weight_data[i]) != 0) {
-        is_int8 = false;
-        break;
-      }
+  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  auto weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+  bool is_int8 = true;
+  for (int i = 0; i < weight_tensor->numel(); i++) {
+    if (weight_data[i] - static_cast<int>(weight_data[i]) != 0) {
+      is_int8 = false;
+      break;
     }
-    return is_int8;
-  };
+  }
+  return is_int8;
+}
 
-  auto dequantize_op_weights = [&](
-      Node* op_node, Scope* scope, std::string weight_name,
-      std::string output_name,
-      std::unordered_map<std::string, std::vector<float>>& weight_thresholds) {
-    auto* op_desc = op_node->Op();
-    std::string weight_var_name = op_desc->Input(weight_name)[0];
-    std::string output_var_name = op_desc->Output(output_name)[0];
-    std::vector<float> scales = weight_thresholds[output_var_name];
-    auto* var = scope->FindVar(weight_var_name);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            "The input persistable var of %s op is not found.",
-                            op_desc->Type());
-    auto* weight_tensor = var->GetMutable<LoDTensor>();
-    const auto weight_dims = weight_tensor->dims();
+void QuantDequantMkldnnFusePass::DequantizeOpWeights(
+    Node* op_node, Scope* scope, const std::string& weight_name,
+    const std::string& output_name,
+    std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
+    const {
+  auto* op_desc = op_node->Op();
+  std::string weight_var_name = op_desc->Input(weight_name)[0];
+  std::string output_var_name = op_desc->Output(output_name)[0];
 
-    const int size = scales.size();
-    if (size == 1 || size == weight_dims[0]) {
-      auto weight_data =
-          weight_tensor->mutable_data<float>(platform::CPUPlace());
+  std::vector<float> scales;
+  auto iter = weight_thresholds->find(output_var_name);
+  if (iter != weight_thresholds->end()) {
+    scales = iter->second;
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Could not find threshold information for [%s] var, please check if "
+        "the model is correct.",
+        output_var_name));
+  }
+
+  auto* var = scope->FindVar(weight_var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, "The input persistable var of %s op is not found.", op_desc->Type());
+  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  const auto weight_dims = weight_tensor->dims();
+
+  const int size = scales.size();
+  if (size == 1 || size == weight_dims[0]) {
+    auto weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+    for (int i = 0; i < weight_tensor->numel(); i++) {
+      weight_data[i] /= 127;
+    }
+
+    TransposeWeight(weight_tensor);
+
+    if (size == 1) {
       for (int i = 0; i < weight_tensor->numel(); i++) {
-        weight_data[i] /= 127;
-      }
-
-      TransposeWeight(weight_tensor);
-
-      if (size == 1) {
-        for (int i = 0; i < weight_tensor->numel(); i++) {
-          weight_data[i] *= scales[0];
-        }
-      } else {
-        int step = 1;
-        for (int i = 1; i < weight_dims.size(); i++) {
-          step *= weight_dims[i];
-        }
-
-        for (int i = 0; i < size; i++) {
-          int begin = i * step;
-          for (int j = begin; j < begin + step; j++) {
-            weight_data[j] *= scales[i];
-          }
-        }
-      }
-
-      TransposeWeight(weight_tensor);
-    } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
-      auto weight_data =
-          weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
-      for (int i = 0; i < weight_tensor->numel(); i++) {
-        weight_data[i] /= 127;
-      }
-
-      int step_n = 1;
-      for (int i = 1; i < weight_dims.size(); i++) {
-        step_n *= weight_dims[i];
-      }
-      int step_c = step_n / size;
-      for (int i = 0; i < weight_dims[0]; i++) {
-        int begin_n = i * step_n;
-        for (int j = begin_n; j < begin_n + step_n; j++) {
-          for (int k = 0; k < size; k++) {
-            int begin_c = k * step_c;
-            for (int m = begin_c; m < begin_c + step_c; m++) {
-              weight_data[m] *= scales[k];
-            }
-          }
-        }
+        weight_data[i] *= scales[0];
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The size of weight scales vector (%d) does not "
-          "match the dimensions (%d) of the weights tensor %s.",
-          size, weight_tensor->dims().size(), weight_var_name));
+      int step = 1;
+      for (int i = 1; i < weight_dims.size(); i++) {
+        step *= weight_dims[i];
+      }
+
+      for (int i = 0; i < size; i++) {
+        int begin = i * step;
+        for (int j = begin; j < begin + step; j++) {
+          weight_data[j] *= scales[i];
+        }
+      }
     }
 
-    weight_tensor->Resize(weight_dims);
-  };
+    TransposeWeight(weight_tensor);
+  } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
+    auto weight_data =
+        weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
+    for (int i = 0; i < weight_tensor->numel(); i++) {
+      weight_data[i] /= 127;
+    }
+
+    int step_n = 1;
+    for (int i = 1; i < weight_dims.size(); i++) {
+      step_n *= weight_dims[i];
+    }
+    int step_c = step_n / size;
+    for (int i = 0; i < weight_dims[0]; i++) {
+      int begin_n = i * step_n;
+      for (int j = begin_n; j < begin_n + step_n; j++) {
+        for (int k = 0; k < size; k++) {
+          int begin_c = k * step_c;
+          for (int m = begin_c; m < begin_c + step_c; m++) {
+            weight_data[m] *= scales[k];
+          }
+        }
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The size of weight scales vector (%d) does not "
+        "match the dimensions (%d) of the weights tensor %s.",
+        size, weight_tensor->dims().size(), weight_var_name));
+  }
+
+  weight_tensor->Resize(weight_dims);
+}
+
+void QuantDequantMkldnnFusePass::DequantizeWeights(
+    ir::Graph* graph, Scope* scope,
+    std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
+    const {
+  VLOG(3) << "dequantize weight for ops which has weight";
 
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
-      if (is_int8_weights(op_node, scope, "Filter")) {
-        dequantize_op_weights(op_node, scope, "Filter", "Output",
-                              weight_thresholds);
+      if (IsInt8Weight(op_node, scope, "Filter")) {
+        DequantizeOpWeights(op_node, scope, "Filter", "Output",
+                            &weight_thresholds);
       }
     } else if (op_node->Name() == "mul" || op_node->Name() == "matmul" ||
                op_node->Name() == "matmul_v2") {
-      if (is_int8_weights(op_node, scope, "Y")) {
-        dequantize_op_weights(op_node, scope, "Y", "Out", weight_thresholds);
+      if (IsInt8Weight(op_node, scope, "Y")) {
+        DequantizeOpWeights(op_node, scope, "Y", "Out", &weight_thresholds);
       }
     }
   }
@@ -475,8 +490,8 @@ void QuantDequantMkldnnFusePass::RemoveCtrlVars(ir::Graph* graph) const {
 // for requant_mkldnn_fuse_pass
 void QuantDequantMkldnnFusePass::SaveQuantInfo(
     ir::Graph* graph,
-    std::unordered_map<std::string, std::vector<float>>& weight_thresholds,
-    std::unordered_map<std::string, std::vector<float>>& var_quant_scales)
+    std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
   VLOG(3) << "save variables in the first op's attr";
   for (auto* op_node :
@@ -486,11 +501,11 @@ void QuantDequantMkldnnFusePass::SaveQuantInfo(
       continue;
     op_node->Op()->SetAttr("has_quant_info", true);
 
-    for (auto iter = weight_thresholds.begin(); iter != weight_thresholds.end();
-         ++iter) {
+    for (auto iter = weight_thresholds->begin();
+         iter != weight_thresholds->end(); ++iter) {
       op_node->Op()->SetAttr(iter->first + "_weight_thresholds", iter->second);
     }
-    for (auto iter = var_quant_scales.begin(); iter != var_quant_scales.end();
+    for (auto iter = var_quant_scales->begin(); iter != var_quant_scales->end();
          ++iter) {
       op_node->Op()->SetAttr(iter->first + "_var_quant_scales", iter->second);
     }
@@ -503,32 +518,35 @@ void QuantDequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "quant_dequant_mkldnn_fuse_pass";
   FusePassBase::Init(pattern_name, graph);
 
-  std::unordered_set<std::string> skip_ops = {"conv2d", "depthwise_conv2d",
-                                              "mul", "matmul", "matmul_v2"};
-  std::unordered_set<std::string> fake_quantize_types = {
+  const std::unordered_set<std::string> skip_ops = {
+      "conv2d", "depthwise_conv2d", "mul", "matmul", "matmul_v2"};
+
+  const std::unordered_set<std::string> fake_quantize_types = {
       "fake_quantize_moving_average_abs_max", "fake_quantize_range_abs_max"};
-  std::unordered_set<std::string> fake_dequantize_types = {
+
+  const std::unordered_set<std::string> fake_dequantize_types = {
       "fake_dequantize_max_abs", "fake_channel_wise_dequantize_max_abs"};
-  std::unordered_set<std::string> fake_quantize_dequantize_types = {
+
+  const std::unordered_set<std::string> fake_quantize_dequantize_types = {
       "fake_quantize_dequantize_abs_max",
       "fake_quantize_dequantize_moving_average_abs_max",
       "fake_channel_wise_quantize_dequantize_abs_max"};
 
-  std::unordered_map<std::string, std::vector<float>> weight_thresholds;
-  std::unordered_map<std::string, std::vector<float>> var_quant_scales;
+  std::unordered_map<std::string, std::vector<float>> weight_thresholds{};
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
 
   auto* scope = param_scope();
   MarkSkipQuantizedOps(graph, skip_ops);
-  GatherInfoFromFake(graph, scope, fake_dequantize_types, weight_thresholds);
+  GatherInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
   GatherInputScalesFromFake(graph, scope, fake_quantize_types,
-                            var_quant_scales);
-  GatherOutputScalesFromAttr(graph, var_quant_scales);
+                            &var_quant_scales);
+  GatherOutputScalesFromAttr(graph, &var_quant_scales);
   RemoveFakeOps(graph, fake_quantize_types, fake_dequantize_types,
                 fake_quantize_dequantize_types);
-  DequantizeWeights(graph, scope, weight_thresholds);
+  DequantizeWeights(graph, scope, &weight_thresholds);
   UpdateActivations(graph);
   RemoveCtrlVars(graph);
-  SaveQuantInfo(graph, weight_thresholds, var_quant_scales);
+  SaveQuantInfo(graph, &weight_thresholds, &var_quant_scales);
 }
 
 }  // namespace ir
