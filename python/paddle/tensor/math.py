@@ -1031,12 +1031,11 @@ def nanmean(x,axis=None,keepdim=None,name=None):
     """
     if isinstance(axis, int):
         axis = [axis]
-    if axis == None:
-        return paddle.mean(x[~paddle.isnan(x)], keepdim=keepdim,name=name)
     check_variable_and_dtype(x, 'x/input',
                              ['uint16', 'float16', 'float32', 'float64'],
                              'nanmean' )
-    check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
+    if axis is not None:
+        check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
 
     cnt = paddle.sum(~paddle.isnan(x), axis = axis,keepdim=keepdim)
     return paddle.divide(paddle.nansum(x, axis=axis, keepdim=keepdim, name=name), cnt.astype(x.dtype))
