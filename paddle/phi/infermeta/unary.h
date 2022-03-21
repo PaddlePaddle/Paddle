@@ -74,6 +74,8 @@ void DiagInferMeta(const MetaTensor& x,
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
+void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask);
+
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
@@ -89,6 +91,8 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             bool hard,
                             int axis,
                             MetaTensor* out);
+void HistogramInferMeta(
+    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
 
@@ -99,6 +103,14 @@ void InferMetaFromVecValue(const MetaTensor& x,
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void KthvalueInferMeta(const MetaTensor& x,
+                       int k,
+                       int axis,
+                       bool keepdim,
+                       MetaTensor* out,
+                       MetaTensor* indices,
+                       MetaConfig = MetaConfig());
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
@@ -122,12 +134,26 @@ void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
                           MetaTensor* out);
+void NormInferMeta(const MetaTensor& x,
+                   int axis,
+                   float epsilon,
+                   bool is_test,
+                   MetaTensor* out,
+                   MetaTensor* norm);
 
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
                   float pad_value,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
+
+void Pad3dInferMeta(const MetaTensor& x,
+                    const ScalarArray& paddings,
+                    const std::string& mode,
+                    float value,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config = MetaConfig());
 
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
@@ -236,6 +262,10 @@ void TransferLayoutInferMeta(const MetaTensor& x,
 void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
+
+void TransposeGradInferMeta(const MetaTensor& x,
+                            const std::vector<int>& axis,
+                            MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
