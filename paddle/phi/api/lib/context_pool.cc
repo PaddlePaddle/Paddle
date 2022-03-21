@@ -25,40 +25,19 @@ DeviceContextPool& DeviceContextPool::Instance() {
   return g_device_context_pool;
 }
 
-const phi::DeviceContext* DeviceContextPool::Get(const Place& place) const {
+const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   auto it = context_map_.find(place);
-  PADDLE_ENFORCE_NE(
-      it,
-      context_map_.end(),
-      phi::errors::NotFound("The DeviceContext of %s does not exists.", place));
+  if (it == context_map_.end()) {
+    // only when we need the specific DeviceContext, get and cache it
+    auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    context_map_[place] = dev_ctx;
+    return dev_ctx;
+  }
   return it->second;
 }
 
 phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
   return const_cast<phi::DeviceContext*>(Get(place));
-}
-
-DeviceContextPool::DeviceContextPool() {
-  // We need to make sure that the correct value exists
-  // whenever we get the DeviceContext from DeviceContextPool
-  const auto& device_contexts =
-      paddle::platform::DeviceContextPool::Instance().device_contexts();
-  for (const auto& pair : device_contexts) {
-    // only get CPU and GPU DeviceContext now, add other DeviceContext type
-    // later if needed
-    if (platform::is_cpu_place(pair.first)
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        ||
-        platform::is_gpu_place(pair.first)) {
-#else
-            ) {
-#endif
-      const phi::DeviceContext* dev_ctx = pair.second.get().get();
-      VLOG(3) << "Init phi DeviceContextPool: insert {" << pair.first << ", "
-              << dev_ctx << "}";
-      context_map_[pair.first] = dev_ctx;
-    }
-  }
 }
 
 }  // namespace experimental
