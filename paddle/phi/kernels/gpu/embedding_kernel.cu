@@ -110,7 +110,8 @@ void EmbeddingKernel(const Context &ctx,
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-    PADDLE_THROW("emebdding input only support int32 and int64");
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "emebdding input only support int32 and int64"));
   }
 }
 
