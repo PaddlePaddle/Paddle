@@ -38,6 +38,8 @@ def parse_args():
         required=True,
         help="inferMeta wrap info file.")
     parser.add_argument(
+        "--attr_info_file", type=str, required=True, help="attr info file.")
+    parser.add_argument(
         "--generate_file",
         type=str,
         required=True,
@@ -57,6 +59,23 @@ def get_kernel_info(file_path):
     f = open(file_path, "r")
     cont = f.readlines()
     return [l.strip() for l in cont]
+
+
+def get_attr_info(file_path):
+    """
+    phi_gpu.argsort.float64.any $axisBool$descending
+    """
+    ret = {}
+    with open(file_path, 'r') as f:
+        cont = f.readlines()
+        for l in cont:
+            datas = l.strip().split(' ')
+            if len(datas) == 2:
+                attrs = datas[1].split('$')
+                ret[datas[0]] = attrs[1:]
+            else:
+                ret[datas[0]] = None
+    return ret
 
 
 def merge(infer_meta_data, kernel_data, wrap_data):
@@ -114,14 +133,14 @@ namespace kernel {
 
 def gen_context(val):
     if val == "CPU":
-        return "phi::CPUContext"
-    # elif val == "GPU":
-    #     return "phi::GPUContext"
+        return "phi::CPUContext", "phi_cpu"
+    elif val == "GPU":
+        return "phi::GPUContext", "phi_gpu"
     # elif val == "XPU":
-    #     return "phi::XPUContext"
+    #     return "phi::XPUContext", "phi_xpu"
     else:
         # raise Exception(f"Unknown context type {val}")
-        return ""
+        return "", ""
 
 
 def gen_layout(val):
@@ -195,34 +214,53 @@ def gen_dtype(vals: List[str]):
     return ir_dtypes, origin_dtypes
 
 
-# TODO(wilber): Now only process CPUContext.
-def gen_register_info(resources: List[List[str]]):
+# Note: Now only process CPUContext and GPUContext.
+
+
+def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
     """
-    resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
+    item: ['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta']
+    attr_data: {'phi_cpu.arg_min.float32.any': ['axisBool', 'keepdimsBool', 'flatten', 'dtype']}
     """
-    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {"
-    for item in resources:
-        # The output string is polluted by C++ macros, here the \ is removed
-        update_item = [v.strip('\\') for v in item]
+    ctx_name, ir_ctx_name = gen_context(item[1])
+    if (ctx_name == ""):
+        return ""
+    item[2] = gen_layout(item[2])
+    ir_dtypes, origin_dtypes = gen_dtype(item[4:-1])
+    infer_shape_func = "&phi::" + item[-1]
 
-        ctx_name = gen_context(update_item[1])
-        if (ctx_name == ""):
-            continue
-        update_item[2] = gen_layout(update_item[2])
-        ir_dtypes, origin_dtypes = gen_dtype(update_item[4:-1])
-        infer_shape_func = "&phi::" + update_item[-1]
+    res = ""
 
-        if update_item[-1] == "unknown":
-            # TODO(wilber): handle the unknown inferShape func.
-            continue
+    if item[-1] == "unknown":
+        # TODO(wilber): handle the unknown inferShape func.
+        return ""
 
-        for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
-            kernel_func = gen_kernel_func(update_item[3], ctx_name,
-                                          origin_dtype)
-            ir_name = 'phi_cpu.' + update_item[0].lower() + '.' + update_item[
-                2].lower() + '.' + ir_dtype
+    for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
+        kernel_func = gen_kernel_func(item[3], ctx_name, origin_dtype)
+        ir_name = ir_ctx_name + '.' + item[0].lower(
+        ) + '.' + ir_dtype + '.' + item[2].lower()
+        if ir_name in attr_data.keys() and attr_data[ir_name] is not None:
+            attr_names = ', '.join(
+                ["\"" + a + "\"" for a in attr_data[ir_name]])
             res += f"""
-  registry->AddKernel("{ir_name}","""
+registry->AddKernelWithAttrs("{ir_name}","""
+
+            res += f"""
+    std::bind(&KernelLauncherFunc<decltype({kernel_func}),
+                                  {kernel_func},
+                                  decltype({infer_shape_func}),
+                                  {infer_shape_func}>,
+              KernelLauncher<decltype({kernel_func}),
+                                  {kernel_func},
+                                  decltype({infer_shape_func}),
+                                  {infer_shape_func}>(),
+              std::placeholders::_1),
+    {{{attr_names}}});
+"""
+
+        else:
+            res += f"""
+registry->AddKernel("{ir_name}","""
 
             res += f"""
     std::bind(&KernelLauncherFunc<decltype({kernel_func}),
@@ -236,18 +274,54 @@ def gen_register_info(resources: List[List[str]]):
               std::placeholders::_1));
 """
 
+    return res
+
+
+def gen_register_info(resources: List[List[str]],
+                      attr_data: Dict[str, List[str]]):
+    """
+    resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
+    attr_data: {'phi_cpu.arg_min.float32.any': ['axisBool', 'keepdimsBool', 'flatten', 'dtype']}
+    """
+    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {"
+
+    # register cpu kernels.
+    for item in resources:
+        # The output string is polluted by C++ macros, here the \ is removed
+        update_item = [v.strip('\\') for v in item]
+        if update_item[1] != "CPU":
+            continue
+        code = gen_register_code_info(item, attr_data)
+        if (code == ""):
+            continue
+        res += code
+
+    # register gpu kernels.
+    res += "\n#ifdef INFRT_WITH_GPU"
+    for item in resources:
+        # The output string is polluted by C++ macros, here the \ is removed
+        update_item = [v.strip('\\') for v in item]
+        if update_item[1] != "GPU":
+            continue
+        code = gen_register_code_info(item, attr_data)
+        if (code == ""):
+            continue
+        res += code
+    res += "#endif // INFRT_WITH_GPU"
+
     res += "\n}"
     return res
 
 
 def gen_phi_kernel_register_code(resources: List[List[str]],
+                                 attr_data: Dict[str, List[str]],
                                  src_file_path: str):
     source_file = open(src_file_path, 'w')
     source_file.write(gen_warn_info())
     source_file.write(gen_include_headers())
     namespace = gen_namespace()
     source_file.write(namespace[0])
-    source_file.write(gen_register_info(resources))
+    source_file.write(gen_register_info(resources, attr_data))
     source_file.write(namespace[1])
     source_file.close()
 
@@ -257,5 +331,6 @@ if __name__ == "__main__":
     infer_meta_data = get_api_yaml_info(args.paddle_root_path)
     kernel_data = get_kernel_info(args.kernel_info_file)
     info_meta_wrap_data = get_kernel_info(args.infermeta_wrap_file)
+    attr_data = get_attr_info(args.attr_info_file)
     out = merge(infer_meta_data, kernel_data, info_meta_wrap_data)
-    gen_phi_kernel_register_code(out, args.generate_file)
+    gen_phi_kernel_register_code(out, attr_data, args.generate_file)

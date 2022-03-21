@@ -29,6 +29,16 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
+
+void AccuracyInferMeta(const MetaTensor& out,
+                       const MetaTensor& indice,
+                       const MetaTensor& label,
+                       MetaTensor* accuracy,
+                       MetaTensor* correct,
+                       MetaTensor* total,
+                       MetaConfig config = MetaConfig());
 
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
@@ -37,10 +47,51 @@ void AddmmInferMeta(const MetaTensor& input,
                     float beta,
                     MetaTensor* out);
 
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad);
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count);
+
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out);
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out);
+
+void NllLossRawInferMeta(const MetaTensor& input,
+                         const MetaTensor& label,
+                         paddle::optional<const MetaTensor&> weight,
+                         int64_t ignore_index,
+                         const std::string& reduction,
+                         MetaTensor* out,
+                         MetaTensor* total_weight,
+                         MetaConfig config = MetaConfig());
+
+void RoiAlignInferMeta(const MetaTensor& x,
+                       const MetaTensor& boxes,
+                       paddle::optional<const MetaTensor&> boxes_num,
+                       int pooled_height,
+                       int pooled_width,
+                       float spatial_scale,
+                       int sampling_ratio,
+                       bool aligned,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
+
+void RoiPoolInferMeta(const MetaTensor& x,
+                      const MetaTensor& boxes,
+                      paddle::optional<const MetaTensor&> boxes_num,
+                      int pooled_height,
+                      int pooled_width,
+                      float spatial_scale,
+                      MetaTensor* out,
+                      MetaTensor* arg_max);
 
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
@@ -53,9 +104,12 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& updates,
                            MetaTensor* out);
 
-void LerpInferMeta(const MetaTensor& x,
-                   const MetaTensor& y,
-                   const MetaTensor& weight,
-                   MetaTensor* out);
+void ViterbiDecodeInferMeta(const MetaTensor& input,
+                            const MetaTensor& transition,
+                            const MetaTensor& length,
+                            bool include_bos_eos_tag,
+                            MetaTensor* scores,
+                            MetaTensor* path,
+                            MetaConfig config = MetaConfig());
 
 }  // namespace phi

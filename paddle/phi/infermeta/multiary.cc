@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/multiary.h"
 #include <vector>
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
@@ -26,6 +28,42 @@ std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
     dims.emplace_back(tensor->dims());
   }
   return dims;
+}
+
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out) {
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      errors::InvalidArgument(
+          "Param and grad input of AdadeltaOp should have same dimension."));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_grad.dims(),
+      errors::InvalidArgument("Param and AvgSquaredGrad input of AdadeltaOp "
+                              "should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_update.dims(),
+      errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
+                              "should have same dimension"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  avg_squared_grad_out->set_dims(param_dims);
+  avg_squared_grad_out->set_dtype(avg_squared_grad.dtype());
+
+  avg_squared_update_out->set_dims(param_dims);
+  avg_squared_update_out->set_dtype(avg_squared_update.dtype());
 }
 
 void AdamaxInferMeta(const MetaTensor& param,
@@ -84,40 +122,229 @@ void AdamaxInferMeta(const MetaTensor& param,
   inf_norm_out->set_dtype(inf_norm.dtype());
 }
 
-void AdadeltaInferMeta(const MetaTensor& param,
-                       const MetaTensor& grad,
-                       const MetaTensor& avg_squared_grad,
-                       const MetaTensor& avg_squared_update,
-                       float rho,
-                       float epsilon,
-                       MetaTensor* param_out,
-                       MetaTensor* avg_squared_grad_out,
-                       MetaTensor* avg_squared_update_out) {
-  auto param_dims = param.dims();
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      grad.dims(),
-      errors::InvalidArgument(
-          "Param and grad input of AdadeltaOp should have same dimension."));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      avg_squared_grad.dims(),
-      errors::InvalidArgument("Param and AvgSquaredGrad input of AdadeltaOp "
-                              "should have same dimension"));
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      avg_squared_update.dims(),
-      errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
-                              "should have same dimension"));
+void AucInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& stat_pos,
+                  const MetaTensor& stat_neg,
+                  const std::string& curve,
+                  int num_thresholds,
+                  int slide_steps,
+                  MetaTensor* auc,
+                  MetaTensor* stat_pos_out,
+                  MetaTensor* stat_neg_out,
+                  MetaConfig config) {
+  auto predict_dims = input.dims();
+  auto label_dims = label.dims();
+  PADDLE_ENFORCE_GE(
+      predict_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input(Predict) has not been initialized properly. The "
+          "shape of Input(Predict) = [%s], the shape size must be "
+          "greater_equal 2.",
+          predict_dims));
+  auto predict_width = predict_dims[1];
+  PADDLE_ENFORCE_NE(
+      phi::product(predict_dims),
+      0,
+      phi::errors::InvalidArgument(
+          "The Input(Predict) has not been initialized properly. The "
+          "shape of Input(Predict) = [%s], the shape can not involes 0.",
+          predict_dims));
+  PADDLE_ENFORCE_NE(
+      phi::product(label_dims),
+      0,
+      phi::errors::InvalidArgument(
+          "The Input(Label) has not been initialized properly. The "
+          "shape of Input(Label) = [%s], the shape can not involes 0.",
+          label_dims));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_LE(
+        predict_width,
+        2,
+        phi::errors::InvalidArgument("Only support binary classification,"
+                                     "prediction dims[1] should be 1 or 2"));
+  }
+  auto predict_height = input.dims()[0];
+  auto label_height = label.dims()[0];
 
-  param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        predict_height,
+        label_height,
+        phi::errors::InvalidArgument("Out and Label should have same height."));
+  }
 
-  avg_squared_grad_out->set_dims(param_dims);
-  avg_squared_grad_out->set_dtype(avg_squared_grad.dtype());
+  int num_pred_buckets = num_thresholds + 1;
 
-  avg_squared_update_out->set_dims(param_dims);
-  avg_squared_update_out->set_dtype(avg_squared_update.dtype());
+  PADDLE_ENFORCE_GE(
+      num_pred_buckets,
+      1,
+      phi::errors::InvalidArgument("num_thresholds must larger than 1"));
+  PADDLE_ENFORCE_GE(
+      slide_steps,
+      0,
+      phi::errors::InvalidArgument("slide_steps must be natural number"));
+
+  auc->set_dims({1});
+  auc->set_dtype(DataType::INT64);
+
+  if (slide_steps) {
+    stat_pos_out->set_dims({(1 + slide_steps) * num_pred_buckets + 1});
+    stat_pos_out->set_dtype(DataType::INT64);
+    stat_neg_out->set_dims({(1 + slide_steps) * num_pred_buckets + 1});
+    stat_neg_out->set_dtype(DataType::INT64);
+  } else {
+    stat_pos_out->set_dims({1, num_pred_buckets});
+    stat_pos_out->set_dtype(DataType::INT64);
+    stat_neg_out->set_dims({1, num_pred_buckets});
+    stat_neg_out->set_dtype(DataType::INT64);
+  }
+}
+
+void BatchNormInferMeta(const MetaTensor& x,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
+                        const MetaTensor& mean,
+                        const MetaTensor& variance,
+                        float momentum,
+                        float epsilon,
+                        const std::string& data_layout_str,
+                        bool is_test,
+                        bool use_global_stats,
+                        bool trainable_statistics,
+                        bool fuse_with_relu,
+                        MetaTensor* y,
+                        MetaTensor* mean_out,
+                        MetaTensor* variance_out,
+                        MetaTensor* saved_mean,
+                        MetaTensor* saved_variance,
+                        MetaTensor* reserve_space,
+                        MetaConfig config) {
+  const auto x_dims = x.dims();
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0),
+        true,
+        phi::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but recieved %d. Input's shape is [%s].",
+            x_dims[i],
+            x_dims));
+  }
+
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input "
+          "X must greater than or equal to 2. But received: the shape of input "
+          "X = [%s], the dimension of input X =[%d]",
+          x_dims,
+          x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of input X "
+          "must smaller than or equal to 5. But received: the shape of input X "
+          "= [%s], the dimension of input X = [%d]",
+          x_dims,
+          x_dims.size()));
+
+  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+                             (data_layout == DataLayout::kNCHW)
+                         ? x_dims[1]
+                         : x_dims[x_dims.size() - 1]);
+  auto scale_dim = scale.dims();
+  auto bias_dim = bias.dims();
+
+  PADDLE_ENFORCE_EQ(
+      scale_dim.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of scale must equal to 1."
+          "But received: the shape of scale is [%s], the dimension "
+          "of scale is [%d]",
+          scale_dim,
+          scale_dim.size()));
+  PADDLE_ENFORCE_EQ(bias_dim.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: the dimension of bias must equal to 1."
+                        "But received: the shape of bias is [%s],the dimension "
+                        "of bias is [%d]",
+                        bias_dim,
+                        bias_dim.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(scale_dim[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: the shape of scale must equal to [%d]"
+                          "But received: the shape of scale is [%d]",
+                          C,
+                          scale_dim[0]));
+    PADDLE_ENFORCE_EQ(bias_dim[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: the shape of bias must equal to [%d]"
+                          "But received: the shape of bias is [%d]",
+                          C,
+                          bias_dim[0]));
+  }
+  y->set_dims(x_dims);
+  mean_out->set_dims({C});
+  variance_out->set_dims({C});
+  if (saved_mean) {
+    saved_mean->set_dims({C});
+  }
+  if (saved_variance) {
+    saved_variance->set_dims({C});
+  }
+  y->share_lod(x);
+}
+
+void BatchNormInferInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             const MetaTensor& mean,
+                             const MetaTensor& variance,
+                             float momentum,
+                             float epsilon,
+                             const std::string& data_layout,
+                             MetaTensor* y,
+                             MetaTensor* mean_out,
+                             MetaTensor* variance_out,
+                             MetaConfig config) {
+  BatchNormInferMeta(x,
+                     scale,
+                     bias,
+                     mean,
+                     variance,
+                     momentum,
+                     epsilon,
+                     data_layout,
+                     /*is_test=*/true,
+                     /*use_global_stats=*/false,
+                     /*trainable_statistics=*/false,
+                     /*fuse_with_relu=*/false,
+                     y,
+                     mean_out,
+                     variance_out,
+                     /*saved_mean=*/nullptr,
+                     /*saved_variance=*/nullptr,
+                     /*reserve_space=*/nullptr,
+                     config);
 }
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,
@@ -289,6 +516,188 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out) {
+  const int64_t input_dims = x.dims()[0];
+  const int64_t label_dims = label.dims()[0];
+  PADDLE_ENFORCE_EQ(input_dims,
+                    label_dims,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of "
+                        "input and label is expected to be the same. "
+                        "But received input's first dimension is %d; "
+                        "label's first dimension is %d.",
+                        input_dims,
+                        label_dims));
+
+  std::vector<int64_t> output_shape({input_dims, 1});
+  out->set_dims(phi::make_ddim(output_shape));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+  auto inputs_dims = GetMetaTensorsDim(x);
+
+  const size_t inputs_num = inputs_dims.size();
+  PADDLE_ENFORCE_GT(
+      inputs_num,
+      static_cast<size_t>(1),
+      phi::errors::InvalidArgument(
+          "The number of input tensors in multi_dot op should > 1."));
+
+  const size_t n = inputs_dims.size();
+  auto first_dim = inputs_dims[0];
+
+  bool is_vector = false;
+  phi::DDim out_dim;
+
+  PADDLE_ENFORCE_LT(
+      first_dim.size(),
+      static_cast<size_t>(3),
+      phi::errors::InvalidArgument(
+          "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_dim.size())));
+
+  // If the first tensor is 1D of size n view it as a row vector (1, n)
+  if (first_dim.size() == 1) {
+    first_dim = phi::make_ddim({1, static_cast<int>(first_dim[0])});
+    is_vector = true;
+  }
+
+  auto last_dim = inputs_dims[n - 1];
+  PADDLE_ENFORCE_LT(
+      last_dim.size(),
+      static_cast<size_t>(3),
+      phi::errors::InvalidArgument(
+          "the last input tensor of multi_dot must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_dim.size())));
+
+  // If the last tensor is 1D of size n view it as a column vector (n, 1)
+  if (last_dim.size() == 1) {
+    last_dim = phi::make_ddim({static_cast<int>(last_dim[0]), 1});
+    out_dim = is_vector ? phi::make_ddim({1}) : phi::make_ddim({first_dim[0]});
+  } else {
+    out_dim = is_vector ? phi::make_ddim({last_dim[1]})
+                        : phi::make_ddim({first_dim[0], last_dim[1]});
+  }
+
+  auto width = first_dim[1];
+  for (size_t i = 1; i < n - 1; i++) {
+    PADDLE_ENFORCE_EQ(inputs_dims[i].size(),
+                      static_cast<size_t>(2),
+                      phi::errors::InvalidArgument(
+                          "the input tensor of multi_dot op must be 2D."));
+
+    const auto& tmp_dim = inputs_dims[i];
+    PADDLE_ENFORCE_EQ(
+        tmp_dim[0],
+        width,
+        phi::errors::InvalidArgument(
+            "the input matrix does not meet the multiplication requirements."));
+    width = tmp_dim[1];
+  }
+
+  PADDLE_ENFORCE_EQ(
+      last_dim[0],
+      width,
+      phi::errors::InvalidArgument(
+          "the input matrix does not meet the multiplication requirements."));
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.at(0)->dtype());
+  out->share_lod(*x.at(0));
+}
+
+void PsroiPoolInferMeta(const MetaTensor& x,
+                        const MetaTensor& rois,
+                        paddle::optional<const MetaTensor&> rois_num,
+                        int pooled_height,
+                        int pooled_width,
+                        int output_channels,
+                        float spatial_scale,
+                        MetaTensor* out) {
+  auto input_dims = x.dims();
+  auto rois_dims = rois.dims();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      errors::InvalidArgument("The format of input tensor is NCHW"));
+  PADDLE_ENFORCE_EQ(rois_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  PADDLE_ENFORCE_EQ(rois_dims[1],
+                    4,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  if (rois_num.get_ptr()) {
+    auto rois_num_dims = rois_num->dims();
+    PADDLE_ENFORCE_EQ(
+        rois_num_dims.size(),
+        1,
+        errors::InvalidArgument("The second dimension of RoisNum should "
+                                "be 1, but received dimension is %d",
+                                rois_num_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      input_dims[1],
+      output_channels * pooled_height * pooled_width,
+      errors::InvalidArgument(
+          "the channel of X(%d) "
+          "should be equal to the product of "
+          "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
+          input_dims[1],
+          output_channels,
+          pooled_height,
+          pooled_width));
+
+  PADDLE_ENFORCE_GT(pooled_height,
+                    0,
+                    errors::InvalidArgument(
+                        "The pooled output height must be greater than 0"));
+  PADDLE_ENFORCE_GT(pooled_width,
+                    0,
+                    errors::InvalidArgument(
+                        "The pooled output width must be greater than 0"));
+  PADDLE_ENFORCE_GT(output_channels,
+                    1,
+                    errors::InvalidArgument(
+                        "The pooled output channels must greater than 1"));
+  PADDLE_ENFORCE_GT(
+      spatial_scale,
+      0.0f,
+      errors::InvalidArgument("The spatial scale must greater than 0."));
+
+  auto out_dims = input_dims;
+  out_dims[0] = rois_dims[0];
+  out_dims[1] =
+      output_channels;  // input_dims[1] / (pooled_height * pooled_width);
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
@@ -315,3 +724,6 @@ void WhereInferMeta(const MetaTensor& condition,
 }
 
 }  // namespace phi
+
+PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
+PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
