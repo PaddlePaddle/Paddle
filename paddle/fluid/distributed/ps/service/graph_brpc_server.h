@@ -43,7 +43,7 @@ class GraphBrpcServer : public PSServer {
     _server.Join();
     return 0;
   }
-  virtual int32_t port();
+  int32_t port();
 
   std::condition_variable *export_cv() { return &cv_; }
 
