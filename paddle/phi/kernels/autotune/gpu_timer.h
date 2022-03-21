@@ -17,6 +17,12 @@
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 
 namespace phi {
 
