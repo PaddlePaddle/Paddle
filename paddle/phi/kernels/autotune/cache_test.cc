@@ -17,7 +17,7 @@
 #include <functional>
 #include "glog/logging.h"
 
-void Algo() { VLOG(3) << "algo1"; }
+void Algo() { VLOG(3) << "algo test"; }
 
 TEST(AlgosCache, AlgosCache) {
   phi::AlgorithmsCache<std::function<void()>> cache;
@@ -37,7 +37,9 @@ TEST(AlgosCache, AlgosCache) {
                           algorithmFlags,
                           cudnn_dtype);
   cache.Set(key, Algo);
-  VLOG(3) << "1111: " << cache.Find(key);
+  EXPECT_EQ(cache.Find(key), true);
+  auto algo = cache.Get(key);
+  algo();
 
   x_shape = {4, 128, 128, 3};
   key = cache.GetKey(x_shape,
@@ -47,5 +49,5 @@ TEST(AlgosCache, AlgosCache) {
                      dilations,
                      algorithmFlags,
                      cudnn_dtype);
-  VLOG(3) << "2222: " << cache.Find(key);
+  EXPECT_EQ(cache.Find(key), false);
 }

@@ -25,6 +25,9 @@ namespace autotune {
 
 inline void HashCombine(std::size_t* seed) {}
 
+// combine hash value
+// ref:
+// https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
 template <typename T, typename... Rest>
 inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
   std::hash<T> hasher;
@@ -41,7 +44,7 @@ struct std::hash<std::vector<T>> {
   std::size_t operator()(std::vector<T> const& vec) const noexcept {
     std::size_t seed = 0;
     for (auto val : vec) {
-      autotune::HashCombine(seed, val);
+      autotune::HashCombine(&seed, val);
     }
     return seed;
   }
