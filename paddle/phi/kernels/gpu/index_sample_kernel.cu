@@ -35,7 +35,7 @@ void LimitGridDim(const Context& ctx, dim3* grid_dim) {
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-}
+}  // namespace
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleForward(const IndexT* index,
