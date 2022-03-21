@@ -641,7 +641,11 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     grad_api_args_str = ", ".join(grad_api_args)
 
     # Construct grad_api returns
-    num_bwd_outputs = len(backward_grad_output_map.keys())
+    max_pos = 0
+    for k, v in backward_grad_output_map.items():
+        if v[1] > max_pos:
+            max_pos = v[1]
+    num_bwd_outputs = max_pos + 1
     returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({num_bwd_outputs});\n"
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_output_map.items():
@@ -745,7 +749,11 @@ def GenerateNodeCreationCodes(
 
     # Node Construction
     num_bwd_inputs = len(backward_grad_input_map.keys())
-    num_bwd_outputs = len(backward_grad_output_map.keys())
+    max_pos = 0
+    for k, v in backward_grad_output_map.items():
+        if v[1] > max_pos:
+            max_pos = v[1]
+    num_bwd_outputs = max_pos + 1
     grad_node_name = GetGradNodeName(fwd_api_name)
     node_construction_str = f"        auto grad_node = std::make_shared<{grad_node_name}>({num_bwd_inputs}, {num_bwd_outputs});"
 
