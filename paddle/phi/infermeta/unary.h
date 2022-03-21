@@ -112,6 +112,12 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
+void LogsumexpInferMeta(const MetaTensor& input,
+                        const std::vector<int64_t>& axis,
+                        bool keepdim,
+                        bool reduce_all,
+                        MetaTensor* out);
+
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
