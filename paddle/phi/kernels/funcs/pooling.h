@@ -43,7 +43,7 @@ template <class T>
 class MaxPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
-  DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
+  HOSTDEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline void finalize(const T& pool_field, T* y) {}
 };
 
