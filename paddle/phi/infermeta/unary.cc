@@ -1881,7 +1881,7 @@ void UniqueInferMeta(const MetaTensor& x,
                      DataType dtype,
                      MetaTensor* out,
                      MetaTensor* indices,
-                     MetaTensor* inverse,
+                     MetaTensor* index,
                      MetaTensor* counts) {
   bool is_sorted = true;
   UniqueRawInferMeta(x,
@@ -1893,7 +1893,7 @@ void UniqueInferMeta(const MetaTensor& x,
                      is_sorted,
                      out,
                      indices,
-                     inverse,
+                     index,
                      counts);
 }
 
@@ -1906,7 +1906,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         bool is_sorted,
                         MetaTensor* out,
                         MetaTensor* indices,
-                        MetaTensor* inverse,
+                        MetaTensor* index,
                         MetaTensor* counts) {
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(
@@ -1916,14 +1916,14 @@ void UniqueRawInferMeta(const MetaTensor& x,
                                      "But now the dims of Input(X) is %d.",
                                      x.dims().size()));
     out->set_dims(phi::make_ddim({-1}));
-    indices->set_dims(x.dims());
+    index->set_dims(x.dims());
     return;
   }
 
   if (axis.empty()) {
     out->set_dims(phi::make_ddim({-1}));
     if (return_inverse) {
-      indices->set_dims(phi::make_ddim({phi::product(x.dims())}));
+      index->set_dims(phi::make_ddim({phi::product(x.dims())}));
     }
   } else {
     int axis_value = axis[0];
@@ -1941,7 +1941,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
     out_dims[axis_value] = -1;
     out->set_dims(out_dims);
     if (return_inverse) {
-      indices->set_dims(phi::make_ddim({x.dims()[axis_value]}));
+      index->set_dims(phi::make_ddim({x.dims()[axis_value]}));
     }
   }
   if (return_index) {

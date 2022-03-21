@@ -282,7 +282,7 @@ void UniqueInferMeta(const MetaTensor& x,
                      DataType dtype,
                      MetaTensor* out,
                      MetaTensor* indices,
-                     MetaTensor* inverse,
+                     MetaTensor* index,
                      MetaTensor* counts);
 
 void UniqueRawInferMeta(const MetaTensor& x,
@@ -294,7 +294,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         bool is_sorted,
                         MetaTensor* out,
                         MetaTensor* indices,
-                        MetaTensor* inverse,
+                        MetaTensor* index,
                         MetaTensor* counts);
 
 void UnStackInferMeta(const MetaTensor& x,

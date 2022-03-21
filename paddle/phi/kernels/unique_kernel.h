@@ -28,7 +28,7 @@ void UniqueKernel(const Context& dev_ctx,
                   DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices,
-                  DenseTensor* inverse,
+                  DenseTensor* index,
                   DenseTensor* counts);
 
 template <typename T, typename Context>
@@ -42,7 +42,7 @@ void UniqueRawKernel(const Context& dev_ctx,
                      bool is_sorted,
                      DenseTensor* out,
                      DenseTensor* indices,
-                     DenseTensor* inverse,
+                     DenseTensor* index,
                      DenseTensor* counts);
 
 }  // namespace phi

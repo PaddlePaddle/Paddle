@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/unique_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
-#include "paddle/phi/kernels/unique_kernel.h"
 
 namespace phi {
 
@@ -30,20 +30,21 @@ void UniqueKernel(const Context& context,
                   DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices,
-                  DenseTensor* inverse,
+                  DenseTensor* index,
                   DenseTensor* counts) {
   bool is_sorted = true;
-  UniqueRawKernel(x,
-                  return_index,
-                  return_inverse,
-                  return_counts,
-                  axis,
-                  dtype,
-                  is_sorted,
-                  out,
-                  indices,
-                  inverse,
-                  counts);
+  UniqueRawKernel<T, Context>(context,
+                              x,
+                              return_index,
+                              return_inverse,
+                              return_counts,
+                              axis,
+                              dtype,
+                              is_sorted,
+                              out,
+                              indices,
+                              index,
+                              counts);
 }
 
 template <typename T, typename Context>
@@ -57,7 +58,7 @@ void UniqueRawKernel(const Context& context,
                      bool is_sorted,
                      DenseTensor* out,
                      DenseTensor* indices,
-                     DenseTensor* inverse,
+                     DenseTensor* index,
                      DenseTensor* counts) {
   if (dtype == phi::DataType::INT32) {
     PADDLE_ENFORCE_LE(
@@ -70,7 +71,9 @@ void UniqueRawKernel(const Context& context,
             x.numel()));
   }
   if (!is_sorted) {
-    phi::VisitDataType(dtype, phi::funcs::UniqueOpFunctor<T>(out, inverse, &x));
+    phi::VisitDataType(
+        dtype,
+        phi::funcs::UniqueOpFunctor<Context, T>(context, out, index, &x));
     return;
   }
 
@@ -85,7 +88,7 @@ void UniqueRawKernel(const Context& context,
                                                             x,
                                                             out,
                                                             indices,
-                                                            inverse,
+                                                            index,
                                                             counts,
                                                             return_index,
                                                             return_inverse,
@@ -98,7 +101,7 @@ void UniqueRawKernel(const Context& context,
                                                  x,
                                                  out,
                                                  indices,
-                                                 inverse,
+                                                 index,
                                                  counts,
                                                  axis_value,
                                                  return_index,

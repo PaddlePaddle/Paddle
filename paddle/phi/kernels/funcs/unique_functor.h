@@ -21,23 +21,25 @@
 namespace phi {
 namespace funcs {
 
-template <typename InT>
+template <typename Context, typename InT>
 struct UniqueOpFunctor {
+  const Context& context_;
   DenseTensor* out_;
   DenseTensor* index_;
   const DenseTensor* in_;
   DenseTensor* count_;
 
-  UniqueOpFunctor(DenseTensor* out,
+  UniqueOpFunctor(const Context& context,
+                  DenseTensor* out,
                   DenseTensor* index,
                   const DenseTensor* in,
                   DenseTensor* count = nullptr)
-      : out_(out), index_(index), in_(in), count_(count) {}
+      : context_(context), out_(out), index_(index), in_(in), count_(count) {}
 
   template <typename IndexT>
   void apply() const {
     auto* in_data = in_->data<InT>();
-    auto* index_data = index_->mutable_data<IndexT>(phi::CPUPlace());
+    auto* index_data = context_.template Alloc<IndexT>(index_);
 
     int64_t j = 0;
 
@@ -68,7 +70,7 @@ struct UniqueOpFunctor {
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
       count_->Resize(phi::make_ddim({static_cast<int64_t>(uniq.size())}));
-      IndexT* count_data = count_->mutable_data<IndexT>(phi::CPUPlace());
+      IndexT* count_data = context_.template Alloc<IndexT>(count_);
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
@@ -102,7 +104,7 @@ struct UniqueOpFunctor {
     }
 
     out_->Resize(phi::make_ddim({static_cast<int64_t>(uniq.size())}));
-    auto out_data = out_->mutable_data<InT>(phi::CPUPlace());
+    auto* out_data = context_.template Alloc<InT>(out_);
     std::memcpy(out_data, uniq.data(), uniq.size() * sizeof(InT));
   }
 };
@@ -134,7 +136,7 @@ static void UniqueFlattendTensor(const Context& context,
                                  const DenseTensor& in,
                                  DenseTensor* out,
                                  DenseTensor* indices,
-                                 DenseTensor* inverse,
+                                 DenseTensor* index,
                                  DenseTensor* count,
                                  bool return_index,
                                  bool return_inverse,
@@ -142,7 +144,7 @@ static void UniqueFlattendTensor(const Context& context,
   const InT* in_data = in.data<InT>();
   std::set<InT> unique(in_data, in_data + in.numel());
   out->Resize(phi::make_ddim({static_cast<int64_t>(unique.size())}));
-  auto out_data = out->mutable_data<InT>(context.GetPlace());
+  auto* out_data = context.template Alloc<InT>(out);
   std::copy(unique.begin(), unique.end(), out_data);
 
   if (return_index) {
@@ -160,8 +162,8 @@ static void UniqueFlattendTensor(const Context& context,
   }
 
   if (return_inverse) {
-    inverse->Resize(phi::make_ddim({in.numel()}));
-    auto inverse_data = context.template Alloc<IndexT>(inverse);
+    index->Resize(phi::make_ddim({in.numel()}));
+    auto inverse_data = context.template Alloc<IndexT>(index);
     std::unordered_map<InT, IndexT> inverse_map;
     inverse_map.reserve(out->numel());
     for (int64_t i = 0; i < out->numel(); ++i) {
@@ -229,7 +231,7 @@ static void UniqueDim(const Context& context,
                       const DenseTensor& in,
                       DenseTensor* out,
                       DenseTensor* indices,
-                      DenseTensor* inverse,
+                      DenseTensor* index,
                       DenseTensor* count,
                       bool return_index,
                       bool return_inverse,
@@ -314,7 +316,7 @@ static void UniqueDim(const Context& context,
       out_trans.dims().size(), context, out_trans, out, permute);
 
   if (return_inverse) {
-    paddle::framework::TensorFromVector(inverse_vec, context, inverse);
+    paddle::framework::TensorFromVector(inverse_vec, context, index);
   }
 
   if (return_counts) {
@@ -332,7 +334,7 @@ struct UniqueFlattendTensorFunctor {
   const DenseTensor& in_;
   DenseTensor* out_;
   DenseTensor* indices_;
-  DenseTensor* inverse_;
+  DenseTensor* index_;
   DenseTensor* count_;
   const bool return_index_;
   const bool return_inverse_;
@@ -342,7 +344,7 @@ struct UniqueFlattendTensorFunctor {
                               const DenseTensor& in,
                               DenseTensor* out,
                               DenseTensor* indices,
-                              DenseTensor* inverse,
+                              DenseTensor* index,
                               DenseTensor* count,
                               bool return_index,
                               bool return_inverse,
@@ -351,7 +353,7 @@ struct UniqueFlattendTensorFunctor {
         in_(in),
         out_(out),
         indices_(indices),
-        inverse_(inverse),
+        index_(index),
         count_(count),
         return_index_(return_index),
         return_inverse_(return_inverse),
@@ -363,7 +365,7 @@ struct UniqueFlattendTensorFunctor {
                                                in_,
                                                out_,
                                                indices_,
-                                               inverse_,
+                                               index_,
                                                count_,
                                                return_index_,
                                                return_inverse_,
@@ -377,7 +379,7 @@ struct UniqueDimFunctor {
   const DenseTensor& in_;
   DenseTensor* out_;
   DenseTensor* indices_;
-  DenseTensor* inverse_;
+  DenseTensor* index_;
   DenseTensor* count_;
   const int axis_;
   const bool return_index_;
@@ -388,7 +390,7 @@ struct UniqueDimFunctor {
                    const DenseTensor& in,
                    DenseTensor* out,
                    DenseTensor* indices,
-                   DenseTensor* inverse,
+                   DenseTensor* index,
                    DenseTensor* count,
                    const int axis,
                    bool return_index,
@@ -398,7 +400,7 @@ struct UniqueDimFunctor {
         in_(in),
         out_(out),
         indices_(indices),
-        inverse_(inverse),
+        index_(index),
         count_(count),
         axis_(axis),
         return_index_(return_index),
@@ -411,7 +413,7 @@ struct UniqueDimFunctor {
                                     in_,
                                     out_,
                                     indices_,
-                                    inverse_,
+                                    index_,
                                     count_,
                                     return_index_,
                                     return_inverse_,
