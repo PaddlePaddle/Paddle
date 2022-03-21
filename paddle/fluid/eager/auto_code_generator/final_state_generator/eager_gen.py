@@ -760,6 +760,7 @@ def GenerateNodeCreationCodes(
         if name in forward_attrs_name_set:
             set_attributes = f"        grad_node->SetAttribute{name}({name});"
         else:
+            assert default_val_attr is not None, f"{name}should have default value"
             set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
