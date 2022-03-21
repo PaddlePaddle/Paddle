@@ -967,7 +967,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     return sum(tmp_tensor, axis, dtype, keepdim, name)
 
 
-def nanmean(x,axis=None,keepdim=None,name=None):
+def nanmean(x, axis=None, keepdim=False, name=None):
     r"""
     Compute the arithmetic mean along the specified axis, ignoring NaNs.
 
