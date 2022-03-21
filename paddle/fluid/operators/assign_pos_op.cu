@@ -31,11 +31,12 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void AssignPos(T* cum_count, const T* gate, T* out, int64_t limit) {
+__global__ void AssignPos(T* cum_count, const T* numbers, T* out,
+                          int64_t limit) {
   CUDA_KERNEL_LOOP(i, limit) {
-    int gate_idx = gate[i];
-    if (gate_idx > -1) {
-      int p = platform::CudaAtomicAdd(cum_count + gate_idx, -1);
+    int number_idx = numbers[i];
+    if (number_idx > -1) {
+      int p = platform::CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }
@@ -46,47 +47,41 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
-    // expert orderingly.
+    // counter orderingly.
     auto cum_count = context.Input<LoDTensor>(
-        "cum_count");  // (num_expert * world_size) int32 | int64
-    auto gate =
+        "cum_count");  // (counter number) int32 | int64
+    auto numbers =
         context.Input<LoDTensor>("X");  // (batch_size * seq_len, topk) int32
-    auto eff_gates_len =
-        context.Input<LoDTensor>("eff_gates_len");  // (sum(cum_count))
-    auto out = context.Output<LoDTensor>("Out");    // (cum_count) value ranges
-                                                    // from 0 to batch_size *
-                                                    // seq_len * topk
+    auto eff_num_len =
+        context.Input<LoDTensor>("eff_num_len");  // (sum(cum_count))
+    auto out = context.Output<LoDTensor>("Out");  // (cum_count) value ranges
+                                                  // from 0 to batch_size *
+                                                  // seq_len * topk
     auto place = context.GetPlace();
-    auto numel = gate->numel();
+    auto numel = numbers->numel();
     T* cum_data = const_cast<T*>(cum_count->data<T>());
     auto cum_size = cum_count->numel();
 
-    framework::Tensor cpu_eff_gates_len;
-    int64_t cpu_eff_gates_len_data = 0;
-    if (platform::is_cpu_place(eff_gates_len->place())) {
-      cpu_eff_gates_len_data = eff_gates_len->data<T>()[0];
+    framework::Tensor cpu_eff_num_len;
+    int64_t cpu_eff_num_len_data = 0;
+    if (platform::is_cpu_place(eff_num_len->place())) {
+      cpu_eff_num_len_data = eff_num_len->data<T>()[0];
     } else {
-      framework::TensorCopySync(*eff_gates_len, platform::CPUPlace(),
-                                &cpu_eff_gates_len);
-      cpu_eff_gates_len_data = cpu_eff_gates_len.data<T>()[0];
+      framework::TensorCopySync(*eff_num_len, platform::CPUPlace(),
+                                &cpu_eff_num_len);
+      cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
     }
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
-
-    framework::DDim out_dims = framework::make_ddim({cpu_eff_gates_len_data});
+    framework::DDim out_dims = phi::make_ddim({cpu_eff_num_len_data});
     auto out_data = out->mutable_data<T>(out_dims, place);
 
-    const T* gate_data = gate->data<T>();
+    const T* num_data = numbers->data<T>();
 
     int blocks = NumBlocks(numel);
     int threads = kNumCUDAThreads;
 
-    if (FLAGS_avoid_op_randomness) {
-      VLOG(2) << "single thread in assignpos op";
-      blocks = 1;
-      threads = 1;
-    }
-    AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(cum_data, gate_data,
+    AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(cum_data, num_data,
                                                            out_data, numel);
   }
 };
