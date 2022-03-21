@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 namespace paddle {
@@ -52,8 +53,8 @@ std::size_t CountLeadingZeros(uint64_t val) {
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  return pool.Get(phi::TransToPhiPlace(backend));
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  return pool.GetMutable(phi::TransToPhiPlace(backend));
 }
 
 DataType ParseDataType(DataType dtype) { return dtype; }
