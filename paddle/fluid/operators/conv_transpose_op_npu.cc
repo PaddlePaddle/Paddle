@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -55,8 +59,8 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
-                             in_data_dims, stride, ksize);
+    phi::UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
+                                  in_data_dims, stride, ksize);
 
     // construct NPU attr
     std::vector<int> strides(4, 1);
@@ -137,8 +141,8 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter_dims, 2, filter_dims.size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                                  in_data_dims, strides, ksize);
 
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
