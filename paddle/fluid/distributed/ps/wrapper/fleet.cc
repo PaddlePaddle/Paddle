@@ -30,6 +30,32 @@ bool FleetWrapper::is_initialized_ = false;
 
 std::shared_ptr<paddle::distributed::PSCore> FleetWrapper::pserver_ptr_ = NULL;
 
+void FleetWrapper::Stop() { StopServer(); }
+
+void FleetWrapper::Load(WrapperContext& context) {
+  auto table_id = context.table_id;
+  if (table_id >= 0 && context.meta != "") {
+    LoadSparseOnServer(context.path, context.meta, context.table_id);
+    return;
+  }
+  if (table_id < 0) {  // laod all
+    LoadModel(context.path, context.mode);
+  } else {  // load one table
+    LoadModelOneTable(table_id, context.path, context.mode);
+  }
+  return;
+}
+
+void FleetWrapper::Save(WrapperContext& context) {
+  auto table_id = context.table_id;
+  if (table_id < 0) {
+    SaveModel(context.path, context.mode);
+  } else {
+    SaveModelOneTable(table_id, context.path, context.mode);
+  }
+  return;
+}
+
 void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
                                           int connect_timeout_ms,
                                           int max_retry) {

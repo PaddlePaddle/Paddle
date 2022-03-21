@@ -83,7 +83,7 @@ def DenseTensor : Infrt_Type<"DenseTensor"> {
   );
 }
 
-def DenseTensorMap :  Infrt_Type<"DenseTensorMap"> {
+def DenseHostTensorMap :  Infrt_Type<"DenseHostTensorMap"> {
   let summary = "infrt dense tensor map";
   let description = [{dense_tensor map}];
   let parameters = (ins);
