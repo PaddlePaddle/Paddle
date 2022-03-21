@@ -608,7 +608,7 @@ REGISTER_OP_NPU_KERNEL(conv2d_grad, ops::NPUConvGradOpKernel<float>,
                        ops::NPUConvGradOpKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(conv3d, ops::NPUConv3dKernel<float>,
-                       ops::NPUConvOpKernel<plat::float16>);
+                       ops::NPUConv3dKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(conv3d_grad, ops::NPUConv3dGradKernel<float>,
-                       ops::NPUConvGradOpKernel<plat::float16>);
+                       ops::NPUConv3dGradKernel<plat::float16>);
