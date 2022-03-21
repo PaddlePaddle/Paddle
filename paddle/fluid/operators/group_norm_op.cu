@@ -153,8 +153,8 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
 }
 
 template <typename T>
-__device__ __forceinline__ void ReduceAddMeanAndVar(T* mean, T* var, T x_mean,
-                                                    T x_var) {
+__device__ __forceinline__ void ReduceMeanAndVar(T* mean, T* var, T x_mean,
+                                                 T x_var, int size) {
   const int nc = blockIdx.x;
   x_mean = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
       x_mean, kps::AddFunctor<T>());
@@ -162,8 +162,8 @@ __device__ __forceinline__ void ReduceAddMeanAndVar(T* mean, T* var, T x_mean,
       x_var, kps::AddFunctor<T>());
   __syncthreads();
   if (threadIdx.x == 0) {
-    mean[nc] = static_cast<T>(x_mean);
-    var[nc] = static_cast<T>(x_var);
+    mean[nc] = static_cast<T>(x_mean / size);
+    var[nc] = static_cast<T>(x_var / size);
   }
 }
 
@@ -177,9 +177,7 @@ __global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
     x_mean += val;
     x_var += val * val;
   }
-  x_mean = x_mean / size;
-  x_var = x_var / size;
-  ReduceAddMeanAndVar<T>(mean, var, x_mean, x_var);
+  ReduceMeanAndVar<T>(mean, var, x_mean, x_var, size);
 }
 
 template <typename T, typename AccT, int VecSize>
@@ -193,9 +191,7 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
   phi::Array<const T*, 1> ins;
   ins[0] = x;
   ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
-  x_mean = x_mean / size;
-  x_var = x_var / size;
-  ReduceAddMeanAndVar<AccT>(mean, var, x_mean, x_var);
+  ReduceMeanAndVar<AccT>(mean, var, x_mean, x_var, size);
 }
 
 template <typename T, int flags>
@@ -437,7 +433,7 @@ __global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
   ins[1] = dy;
   ThreadReduce<T, AccT, VecSize, 2>(ins, imsize, input_offset, &db_sum,
                                     &ds_sum);
-  ReduceAddMeanAndVar<AccT>(db, ds, db_sum, ds_sum);
+  ReduceMeanAndVar<AccT>(db, ds, db_sum, ds_sum, 1);
 }
 
 template <typename T>
@@ -451,7 +447,7 @@ __global__ void ScalarGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
     ds_sum += dy[index] * x[index];
     db_sum += dy[index];
   }
-  ReduceAddMeanAndVar<T>(db, ds, db_sum, ds_sum);
+  ReduceMeanAndVar<T>(db, ds, db_sum, ds_sum, 1);
 }
 
 template <typename T>
