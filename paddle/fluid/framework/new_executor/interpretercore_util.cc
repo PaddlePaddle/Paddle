@@ -62,7 +62,7 @@ void AsyncWorkQueue::PrepareAtomicDeps(
 }
 
 void AsyncWorkQueue::PrepareAtomicVarRef(
-    qgi const std::vector<VariableMetaInfo>& vec_meta_info) {
+    const std::vector<VariableMetaInfo>& vec_meta_info) {
   VLOG(4) << "PrepareAtomicVarRef";
   auto p = std::make_shared<
       std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
