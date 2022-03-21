@@ -28,7 +28,8 @@ from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
-from paddle.distributed.fleet.base.fleet_base import _grad_scalar
+
+_grad_scalar = None
 
 
 class TensorHookRemoveHelper(object):
