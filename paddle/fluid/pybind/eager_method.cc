@@ -625,16 +625,22 @@ static PyObject* tensor_register_grad_hook(TensorObject* self, PyObject* args,
   int64_t hook_id;
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
+
+    auto autograd_meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
+
+    if (autograd_meta && !autograd_meta->StopGradient()) {
+      if (!autograd_meta->GetMutableGradNode()) {
+        VLOG(6) << "Detected NULL grad_node, Leaf tensor should have had "
+                   "grad_node with type: GradNodeAccumulation.";
+        autograd_meta->SetGradNode(
+            std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+      }
+    }
+
     std::shared_ptr<egr::GradNodeBase> grad_node =
         egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node,"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation."));
     auto rank_info =
         egr::EagerUtils::unsafe_autograd_meta(self->tensor)->OutRankInfo();
-
     PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
 
     auto accumulation_grad_node =
