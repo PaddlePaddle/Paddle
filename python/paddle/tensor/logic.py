@@ -462,7 +462,7 @@ def is_tensor(x):
             print(check)  #False
             
     """
-    return isinstance(x, Tensor)
+    return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):

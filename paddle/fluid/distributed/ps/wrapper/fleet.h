@@ -25,6 +25,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
+#include "paddle/fluid/distributed/ps/wrapper/ps_wrapper.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/io/shell.h"
@@ -54,7 +55,7 @@ using framework::Variable;
 
 using RpcCtxMap = std::unordered_map<std::string, CommContext>;
 
-class FleetWrapper {
+class FleetWrapper : public PSWrapper {
  public:
   virtual ~FleetWrapper() {}
   FleetWrapper() {
@@ -68,7 +69,13 @@ class FleetWrapper {
     // pserver request max retry
     client2client_max_retry_ = 3;
   }
+  virtual int32_t Initialize(InitContext& context) { return 0; }
 
+  virtual void Stop() override;
+
+  virtual void Load(WrapperContext& context) override;
+
+  virtual void Save(WrapperContext& context) override;
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);

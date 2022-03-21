@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-# Situation 1: repeat_times is a list (without tensor)
+#Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
