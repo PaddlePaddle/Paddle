@@ -1,4 +1,4 @@
-{% from "operator_utils.c.j2" import op_maker, operator, register_op_with_components %}
+{% from "operator_utils.c.j2" import backward_op_maker, operator, register_op_with_components %}
 {% if api is base_api%}
 // filename: {{api["name"]}}_op.cc
 #include <string>
@@ -14,7 +14,7 @@
 namespace paddle {
 namespace operators {
 
-{{op_maker(api)}}
+{{backward_op_maker(api)}}
 
 {{operator(api)}}
 }  // namespace operators

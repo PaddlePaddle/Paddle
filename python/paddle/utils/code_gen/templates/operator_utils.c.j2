@@ -27,7 +27,7 @@ TODO: Documentation of {{api_name}} op.
   {% set name = input["name"] %}
   {% set typename = input["typename"] %}
   {% set is_vec = typename.endswith("[]") %}
-AddInput("{{name| to_opmaker_name}}", "({{typename}}), input {{i}} of {{op_name}} op.")
+AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} op.")
   {%- if is_vec +%}
     .AsDuplicable()
   {%- endif %}
@@ -40,7 +40,7 @@ AddInput("{{name| to_opmaker_name}}", "({{typename}}), input {{i}} of {{op_name}
   {% set name = output["name"] %}
   {% set typename = output["typename"] %}
   {% set is_vec = typename.endswith("[]") %}
-AddOutput("{{name | to_opmaker_name}}", "({{typename}}), output {{i}} of {{op_name}} op.")
+AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name}} op.")
   {%- if is_vec +%}
     .AsDuplicable()
   {%- endif %}
@@ -70,9 +70,11 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "attribute {{i}} for {{op_na
   {% set typename = attr["typename"] %}
   {% set enum_types = ["DataType", "DataLayout", "Backend"] %}
   {% if typename in enum_types %}
-experimental::{{default_value}}
+static_cast<int>(experimental::{{default_value}})
+  {%- elif typename == "str" %}{# warp string #}
+"{{default_value}}"
   {%- else %}
-default_value
+{{default_value}}
   {%- endif %}
 {%- endmacro %}
 
@@ -102,7 +104,7 @@ PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}
 paddle::SmallVector<std::string> inputs {
 {%- for input in inputs %}
 {%- if input["name"] in kernel_args %}
-"{{input["name"] | to_opmaker_name}}"{{", " if not loop.last}}
+{{input["name"] | to_opmaker_name}}{{", " if not loop.last}}
 {%- endif %}
 {%- endfor %}
 }
@@ -133,7 +135,7 @@ attrs.emplace_back("{{name}}")
 {% macro get_output_list(outputs, kernel_args) %}{# inline #}
 paddle::SmallVector<std::string> outputs {
 {%- for output in outputs %}
-"{{output["name"] | to_opmaker_name}}"{{", " if not loop.last}}
+{{output["name"] | to_opmaker_name}}{{", " if not loop.last}}
 {%- endfor %}
 }
 {%- endmacro %}
@@ -146,13 +148,13 @@ class {{api["name"] | to_pascal_case}}Op : public framework::OperatorWithKernel 
 };
 
 {# infershape functor #}
-DECLARE_INFER_SHAPE_FUNCTOR(api["name"], {{api["name"] | to_pascal_case}}InferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR({{api["name"]}}, {{api["name"] | to_pascal_case}}InferShapeFunctor,
                             PD_INFER_META(phi::{{api["infer_meta"]["func"]}}));
 {# inplace inferer #}
 {% if api["inplace"] is not none %}
 {% for source, target in api["inplace"].items() %}
 DECLARE_INPLACE_OP_INFERER({{api["name"] | to_pascal_case}}InplaceInferer,
-                           {"{{source | to_opmaker_name}}", "{{target | to_opmaker_name}}"});
+                           {{source | to_opmaker_name}}, {{target | to_opmaker_name}});
 {% endfor %}
 {% endif %}
 {% endmacro%}
@@ -160,7 +162,7 @@ DECLARE_INPLACE_OP_INFERER({{api["name"] | to_pascal_case}}InplaceInferer,
 {% macro register_op_with_components(api) %}
 namespace ops = paddle::operators;
 {% set name = api["name"] %}
-{% if api["backward"] is not none %}
+{% if "backward" in api and api["backward"] is not none %}
 {% set backward_name = api["backward"] %}
 REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_pascal_case}}OpMaker,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
@@ -171,3 +173,51 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_p
                   ops::{{name | to_pascal_case}}InferShapeFunctor);
 {% endif %}
 {% endmacro %}
+
+
+{# --------------------------------------- op maker ---------------------------------------------- #}
+{% macro backward_op_maker(api) %}
+  {% set name = api["name"] %}
+  {% set forward_input_names = api["forward"]["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_names = api["forward"]["outputs"] | map(attribute="name") | list %}
+template <typename T>
+class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("{{name}}");
+
+  {% for input in api["inputs"] %}
+    gard_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_from_forward(input["name"], forward_input_names, forward_output_names)}});
+  {% endfor %}
+
+  {% for output in api["outputs"] %}
+    gard_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_from_forward(output["name"], forward_input_names, forward_output_names)}});
+  {% endfor %}
+
+  {% for attr in api["attrs"] %}
+    grad_op->SetAttr("{{attr["name"]}}", this->GetAttr("{{attr["name"]}}"));
+  {% endfor %}
+  }
+};
+{% endmacro %}
+
+
+{% macro extract_from_forward(name, input_names, output_names) %}
+  {% if not name.endswith("_grad") %}
+    {% if name in input_names %}
+Input("{{name | to_pascal_case}}")
+    {%- elif name in output_names %}
+Output("{{name | to_pascal_case}}")
+    {%- endif %}
+  {% else %}
+    {% set fw_name = name.rstrip("_grad") %}
+    {% if fw_name in input_names %}
+InputGrad("{{name | to_pascal_case}}")
+    {%- elif fw_name in output_names %}
+OutputGrad("{{name | to_pascal_case}}")
+    {%- endif %}
+  {%- endif %}
+{%- endmacro %}

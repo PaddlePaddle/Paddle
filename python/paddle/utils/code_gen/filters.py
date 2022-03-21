@@ -1,12 +1,26 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import List, Dict
 from type_mapping import (input_types_map, optional_input_types_map,
                           attr_types_map, opmaker_attr_types_map,
                           output_type_map)
-from type_mapping import (dense_input_types_map,
-                          dense_optional_input_types_map,
+from type_mapping import (dense_input_types_map, dense_optional_input_types_map,
                           dense_output_types_map, sr_input_types_map,
                           sr_optional_input_types_map, sr_output_types_map,
                           phi_attr_types_map)
+
 
 def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
     named_dict = {}
@@ -63,13 +77,15 @@ def to_sr_output_type(s):
     "Convert types in yaml to selected rows type in phi"
     return sr_output_types_map[s]
 
+
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("")'.format(s.rstrip("_grad").capitalize())
+        return 'GradVarName("{}")'.format(s.rstrip("_grad").capitalize())
     else:
-        return to_pascal_case(s)
-    
+        return '"{}"'.format(to_pascal_case(s))
+
+
 def to_pascal_case(s):
     words = s.split("_")
     return "".join([word.capitalize() for word in words])

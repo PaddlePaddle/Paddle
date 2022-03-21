@@ -172,11 +172,13 @@ namespace experimental {
 """)
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path,
+def generate_api(api_yaml_paths, header_file_path, source_file_path,
                  dygraph_header_file_path, dygraph_source_file_path):
 
-    with open(api_yaml_path, 'r') as f:
-        apis = yaml.load(f, Loader=yaml.FullLoader)
+    apis = []
+    for api_yaml_path in api_yaml_paths:
+        with open(api_yaml_path, 'r') as f:
+            apis.extend(yaml.load(f, Loader=yaml.FullLoader))
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
     dygraph_header_file = open(dygraph_header_file_path, 'w')
@@ -232,9 +234,13 @@ def main():
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ API files')
     parser.add_argument(
-        '--api_yaml_path',
+        '--api_yaml_paths',
         help='path to api yaml file',
-        default='python/paddle/utils/code_gen/api.yaml')
+        nargs="+",
+        default=[
+            'python/paddle/utils/code_gen/api.yaml',
+            'python/paddle/utils/code_gen/new_api.yaml'
+        ])
 
     parser.add_argument(
         '--api_header_path',
@@ -258,13 +264,13 @@ def main():
 
     options = parser.parse_args()
 
-    api_yaml_path = options.api_yaml_path
+    api_yaml_paths = options.api_yaml_paths
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
     dygraph_header_file_path = options.dygraph_api_header_path
     dygraph_source_file_path = options.dygraph_api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path,
+    generate_api(api_yaml_paths, header_file_path, source_file_path,
                  dygraph_header_file_path, dygraph_source_file_path)
 
 

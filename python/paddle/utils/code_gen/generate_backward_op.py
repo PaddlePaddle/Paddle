@@ -41,7 +41,7 @@ def main(api_yaml_path, gen_op_dir):
 
     gen_op_dir = Path(gen_op_dir)
     gen_op_dir.mkdir(exist_ok=True)
-    template = env.get_template('op.c.j2')
+    template = env.get_template('backward_op.c.j2')
     for api in apis:
         with open(gen_op_dir / "{}_op.cc".format(api["name"]), "wt") as f:
             msg = template.render(api=api)

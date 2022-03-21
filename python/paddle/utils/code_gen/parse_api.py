@@ -1,31 +1,51 @@
-from parse_utils import parse_api_entry
-import yaml
-import json
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-def main():
-    with open("/Users/chenfeiyu/projects/Paddle/python/paddle/utils/code_gen/api.yaml", "rt") as f:
-        apis = yaml.safe_load(f)
-        apis = [parse_api_entry(api) for api in apis]
-    
-    with open("api.parsed.yaml", "wt") as f:
+import argparse
+from pathlib import Path
+
+import yaml
+
+from parse_utils import parse_api_entry
+
+
+def main(api_yaml_path, output_path, backward):
+    with open(api_yaml_path, "rt") as f:
+        apis = [
+            parse_api_entry(api, "backward_api" if backward else "api")
+            for api in yaml.safe_load(f)
+        ]
+
+    with open(output_path, "wt") as f:
         yaml.safe_dump(apis, f, default_flow_style=None, sort_keys=False)
-        
-    # with open("api.parsed.jsonl", "wt") as f:
-    #     for api in apis:
-    #         f.write(json.dumps(api))
-    #         f.write("\n")
-            
-    with open("/Users/chenfeiyu/projects/Paddle/python/paddle/utils/code_gen/backward.yaml", "rt") as f:
-        apis = yaml.safe_load(f)
-        apis = [parse_api_entry(api, "backward_api") for api in apis]
-    
-    with open("backward.parsed.yaml", "wt") as f:
-        yaml.safe_dump(apis, f, default_flow_style=None, sort_keys=False)
-        
-    # with open("backward.parsed.jsonl", "wt") as f:
-    #     for api in apis:
-    #         f.write(json.dumps(api))
-    #         f.write("\n")
-        
+
+
 if __name__ == "__main__":
-    main()
+    current_dir = Path(__file__).parent
+    parser = argparse.ArgumentParser(
+        description="Parse api yaml into canonical format.")
+    parser.add_argument(
+        '--api_yaml_path',
+        type=str,
+        default=str(current_dir / "new_api.yaml"),
+        help="api yaml file.")
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        default=str(current_dir / "new_api.parsed.yaml"),
+        help="path to save parsed yaml file.")
+    parser.add_argument("--backward", action="store_true", default=False)
+
+    args = parser.parse_args()
+    main(args.api_yaml_path, args.output_path, args.backward)

@@ -102,6 +102,30 @@ endif()
 
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel)
 
+# code gen
+set(parse_api_script ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parse_api.py)
+set(gen_op_script ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/generate_op.py)
+
+# parse forward new api api
+set(new_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/new_api.yaml)
+set(new_api_parsed_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/new_api.parsed.yaml)
+add_custom_command(
+  OUTPUT ${new_api_parsed_yaml_file}
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
+  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_script} 
+      --api_yaml_path ${new_api_yaml_file} 
+      --ouput_path ${new_api_parsed_yaml_file}.tmp
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${new_api_parsed_yaml_file}.tmp ${new_api_parsed_yaml_file}
+  COMMENT "copy_if_different ==== ${new_api_parsed_yaml_file}.tmp ${new_api_parsed_yaml_file}"
+  DEPENDS ${new_api_yaml_file} ${parse_api_script}
+  VERBATIM)
+
+# file(${new_api_parsed_yaml_file} new_ops REGEX "- name:")
+# message(${new_ops})
+
+# operator generation
+
+
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 

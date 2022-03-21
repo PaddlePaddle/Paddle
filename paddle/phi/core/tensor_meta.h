@@ -25,7 +25,6 @@ limitations under the License. */
 
 namespace phi {
 
-using DDim = phi::DDim;
 using LoD = std::vector<std::vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.

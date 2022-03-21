@@ -516,6 +516,41 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void DiagBlockInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
+  PADDLE_ENFORCE_GE(x.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The size of input meta vector should be greater"
+                        "than 0."));
+  int num_rows = 0;
+  int num_cols = 0;
+  bool unknown_rows = false;
+  bool unknown_cols = false;
+  for (const MetaTensor* item : x) {
+    PADDLE_ENFORCE_EQ(
+        item->dims().size(),
+        2,
+        phi::errors::InvalidArgument("all inputs should be of rank-2."));
+    if (!unknown_rows && item->dims()[0] > 0) {
+      num_rows += item->dims()[0];
+    } else {
+      num_rows = -1;
+      unknown_rows = true;
+    }
+    if (!unknown_cols && item->dims()[1] > 0) {
+      num_cols += item->dims()[1];
+    } else {
+      num_cols = -1;
+      unknown_cols = true;
+    }
+  }
+  phi::DDim out_dim{num_rows, num_cols};
+  out->set_dims(out_dim);
+  out->set_dtype(x.at(0)->dtype());
+  out->set_layout(x.at(0)->layout());
+  out->share_lod(*x.at(0));
+}
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
