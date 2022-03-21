@@ -5610,9 +5610,12 @@ def transpose(x, perm, name=None):
             # [3L, 2L, 4L]
 
     """
-    if _non_static_mode():
-        out, _ = _C_ops.transpose2(x, 'axis', perm)
-        return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_transpose(x, perm)
+    else:
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.transpose2(x, 'axis', perm)
+            return out
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
@@ -8568,8 +8571,11 @@ def gather_nd(input, index, name=None):
             output = fluid.layers.gather_nd(x, index)
 
     """
-    if _non_static_mode():
-        return _C_ops.gather_nd(input, index)
+    if in_dygraph_mode():
+        return _C_ops.final_state_gather_nd(input, index)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.gather_nd(input, index)
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'], 'gather_np')
@@ -8744,9 +8750,12 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = fluid.layers.scatter_nd_add(ref, index, updates)
     """
 
-    if _non_static_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(ref, index, updates)
+    if in_dygraph_mode():
+        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
+    else:
+        if _in_legacy_dygraph():
+            op = getattr(_C_ops, 'scatter_nd_add')
+            return op(ref, index, updates)
 
     if ref.dtype != updates.dtype:
         raise ValueError("ref and updates must have same data type.")
@@ -15358,22 +15367,26 @@ def gather_tree(ids, parents):
             # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
 
     """
-    if _non_static_mode():
-        return _C_ops.gather_tree(ids, parents)
+    if in_dygraph_mode():
+        return _C_ops.final_state_gather_tree(ids, parents)
     else:
-        helper = LayerHelper('gather_tree', **locals())
-        check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
-        check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
-                                 'gather_tree')
-        out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+        if _in_legacy_dygraph():
+            return _C_ops.gather_tree(ids, parents)
+        else:
+            helper = LayerHelper('gather_tree', **locals())
+            check_variable_and_dtype(ids, 'ids', ['int32', 'int64'],
+                                     'gather_tree')
+            check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
+                                     'gather_tree')
+            out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
-        helper.append_op(
-            type="gather_tree",
-            inputs={"Ids": ids,
-                    "Parents": parents},
-            outputs={"Out": out})
+            helper.append_op(
+                type="gather_tree",
+                inputs={"Ids": ids,
+                        "Parents": parents},
+                outputs={"Out": out})
 
-        return out
+            return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.uniform")

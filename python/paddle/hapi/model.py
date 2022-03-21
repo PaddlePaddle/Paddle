@@ -68,8 +68,9 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(var, (Variable, fluid.core.VarBase)), "not a variable"
-    if isinstance(var, fluid.core.VarBase):
+    assert isinstance(var, (Variable, fluid.core.VarBase,
+                            fluid.core.eager.Tensor)), "not a variable"
+    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
         return var.numpy()
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
