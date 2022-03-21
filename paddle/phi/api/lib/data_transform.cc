@@ -180,6 +180,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
+  VLOG(6) << tensor_in->dtype() << "\t" << target_args_def.dtype;
   if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
       (!NeedTransformPlace(
            tensor_in->place(), target_args_def.backend, transform_flag) &&
