@@ -38,6 +38,13 @@ class GradNodePyLayer : public GradNodeBase {
       std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
       bool create_graph = false) override;
 
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+
+  bool IsTensorWrappersCleared() override {
+    VLOG(6) << "Do nothing here now";
+    return false;
+  }
+
   std::string name() {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
