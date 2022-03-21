@@ -30,9 +30,20 @@ final_state_name_mapping = {
         "y": "Y",
         "out": "Out",
     },
+    # "elementwise_add": {
+    #     "final_op_name": "final_state_add",
+    #     "x": "X",
+    #     "y": "Y",
+    # },
     "trunc": {
         "final_op_name": "final_state_trunc",
         "x": "X",
+        "out": "Out",
+    },
+    "pool2d": {
+        "final_op_name": "final_state_pool2d",
+        "x": "X",
+        "kernel_size": "ksize",
         "out": "Out",
     },
     "abs": {
