@@ -17,6 +17,15 @@ limitations under the License. */
 #include <cmath>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
+#ifdef __xpu__
+#include <memory>
+#include <string>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
 namespace paddle {
 namespace operators {
 

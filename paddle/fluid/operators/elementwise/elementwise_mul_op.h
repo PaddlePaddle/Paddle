@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/math_kernel.h"
+// #include "paddle/phi/kernels/math_kernel.h"
 
 #include "paddle/phi/kernels/elementwise_kernel.h"
 
@@ -129,7 +129,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       auto pt_x = paddle::experimental::MakePhiDenseTensor(*x_lod);
       auto pt_y = paddle::experimental::MakePhiDenseTensor(*y_lod);
       auto pt_z = paddle::experimental::MakePhiDenseTensor(*z_lod);
-#ifdef(__NVCC__)
+#ifdef __NVCC__ 
       phi::MultiplyRawKernel<T>(static_cast<const phi::GPUContext&>(dev_ctx),
                                 *pt_x.get(), *pt_y.get(), axis, pt_z.get());
 #else
