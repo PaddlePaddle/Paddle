@@ -16,7 +16,7 @@ from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -262,6 +262,9 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
 
 
 setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
+
+if core._in_eager_mode():
+    setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
 
 @dygraph_only
@@ -889,12 +892,20 @@ def stack(x, axis=0, name=None):
             x1 = paddle.to_tensor([[1.0, 2.0]])
             x2 = paddle.to_tensor([[3.0, 4.0]])
             x3 = paddle.to_tensor([[5.0, 6.0]])
+	    
             out = paddle.stack([x1, x2, x3], axis=0)
             print(out.shape)  # [3, 1, 2]
             print(out)
             # [[[1., 2.]],
             #  [[3., 4.]],
             #  [[5., 6.]]]
+	    
+	    out = paddle.stack([x1, x2, x3], axis=-2)
+	    print(out.shape)  # [1, 3, 2]
+	    print(out)
+	    # [[[1., 2.],
+	    #   [3., 4.],
+	    #   [5., 6.]]]
     """
     return layers.stack(x, axis, name)
 
@@ -1567,6 +1578,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_scatter(x, index, updates, overwrite)
         return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
     check_variable_and_dtype(
