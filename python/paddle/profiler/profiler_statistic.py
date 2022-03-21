@@ -36,12 +36,19 @@ class SortedKeys(Enum):
     Sorted keys for printing summary table.
 
     CPUTotal: Sorted by CPU total time.
+
     CPUAvg: Sorted by CPU average time.
+
     CPUMax: Sorted by CPU max time.
+
     CPUMin: Sorted by CPU min time.
+
     GPUTotal: Sorted by GPU total time.
+
     GPUAvg: Sorted by GPU average time.
+
     GPUMax: Sorted by GPU max time.
+
     GPUMin: Sorted by GPU min time.
     """
     CPUTotal = 0

@@ -36,22 +36,22 @@ class RecordEvent(ContextDecorator):
         name(str): Name of the record event
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        import paddle.profiler as profiler
-        # method1: using context manager
-        with profiler.RecordEvent("record_add"):
+            import paddle
+            import paddle.profiler as profiler
+            # method1: using context manager
+            with profiler.RecordEvent("record_add"):
+                data1 = paddle.randn(shape=[3])
+                data2 = paddle.randn(shape=[3])
+                result = data1 + data2
+            # method2: call begin() and end()
+            record_event = profiler.RecordEvent("record_add")
+            record_event.begin()
             data1 = paddle.randn(shape=[3])
             data2 = paddle.randn(shape=[3])
             result = data1 + data2
-        # method2: call begin() and end()
-        record_event = profiler.RecordEvent("record_add")
-        record_event.begin()
-        data1 = paddle.randn(shape=[3])
-        data2 = paddle.randn(shape=[3])
-        result = data1 + data2
-        record_event.end()
+            record_event.end()
 
     Note:
         RecordEvent will take effect only when profiler is on and at the state of RECORD.
