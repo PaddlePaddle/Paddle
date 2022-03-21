@@ -624,4 +624,43 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   scores->set_dtype(length.dtype());
 }
 
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes) {
+  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
+                                   std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
+
+  reindex_src->set_dims({-1});
+  reindex_src->set_dtype(neighbors.dtype());
+  reindex_dst->set_dims({-1});
+  reindex_dst->set_dtype(neighbors.dtype());
+  out_nodes->set_dims({-1});
+  out_nodes->set_dtype(x.dtype());
+}
+
 }  // namespace phi

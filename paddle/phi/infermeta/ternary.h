@@ -112,4 +112,11 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
 
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes);
+
 }  // namespace phi
