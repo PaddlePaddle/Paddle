@@ -16,14 +16,15 @@
 
 import numpy as np
 
-from ...fluid import get_flags
-from ...fluid import core
+from paddle import get_flags
 from ...device import get_cudnn_version
 from .. import Layer
 from ..initializer import Normal
 from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
+from ...device import is_compiled_with_cuda
+from ...device import is_compiled_with_rocm
 
 __all__ = []
 
@@ -138,7 +139,7 @@ class _ConvNd(Layer):
 
         cudnn_version = get_cudnn_version()
 
-        self._use_cudnn = True if (core.is_compiled_with_cuda() and
+        self._use_cudnn = True if (is_compiled_with_cuda() and
                                    cudnn_version is not None) else False
 
         self._op_type = "conv" + str(dims) + 'd'
@@ -146,13 +147,13 @@ class _ConvNd(Layer):
                                           in_channels != 1 and
                                           out_channels % in_channels == 0):
             self._op_type = 'depthwise_conv2d'
-            if core.is_compiled_with_rocm():
+            if is_compiled_with_rocm():
                 self._use_cudnn = True
             else:
                 self._use_cudnn = False
 
-        if (core.is_compiled_with_cuda() and get_flags(
-                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+        if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")[
+                "FLAGS_conv2d_disable_cudnn"]):
             self._use_cudnn = False
 
     def extra_repr(self):
@@ -161,7 +162,7 @@ class _ConvNd(Layer):
             main_str += ', stride={_stride}'
         if self._padding != 0:
             main_str += ', padding={_padding}'
-        if self._padding_mode is not 'zeros':
+        if self._padding_mode != 'zeros':
             main_str += ', padding_mode={_padding_mode}'
         if self.output_padding != 0:
             main_str += ', output_padding={output_padding}'

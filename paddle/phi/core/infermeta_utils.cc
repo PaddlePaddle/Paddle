@@ -67,13 +67,21 @@ const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
   return *inputs_.at(idx);
 }
 
-std::vector<MetaTensor> InferMetaContext::InputsBetween(size_t start,
-                                                        size_t end) const {
-  std::vector<MetaTensor> result;
+paddle::optional<const phi::MetaTensor&> InferMetaContext::OptionalInputAt(
+    size_t idx) const {
+  const auto& input = inputs_.at(idx);
+  return input ? paddle::optional<const phi::MetaTensor&>{static_cast<
+                     const phi::MetaTensor&>(*input)}
+               : paddle::optional<const phi::MetaTensor&>{paddle::none};
+}
+
+std::vector<MetaTensor*> InferMetaContext::InputsBetween(size_t start,
+                                                         size_t end) const {
+  std::vector<MetaTensor*> result;
   result.reserve(end - start);
 
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(*inputs_.at(i));
+    result.push_back(inputs_.at(i).get());
   }
 
   return result;
@@ -83,12 +91,12 @@ MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }
 
-std::vector<MetaTensor> InferMetaContext::MutableOutputBetween(size_t start,
-                                                               size_t end) {
-  std::vector<MetaTensor> result;
+std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
+                                                                size_t end) {
+  std::vector<MetaTensor*> result;
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(*outputs_.at(i));
+    result.emplace_back(outputs_.at(i).get());
   }
   return result;
 }

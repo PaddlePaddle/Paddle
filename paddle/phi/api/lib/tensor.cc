@@ -19,13 +19,14 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/include/manual_api.h"
 #include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -34,7 +35,7 @@ limitations under the License. */
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor computation into an independent library, which we call
- * [Tensor Operation Library, pten], so we extract or rewrite the original
+ * [Tensor Operation Library, phi], so we extract or rewrite the original
  * Kernels.
  *
  * In the future, the training library, inference library and custom operators
@@ -47,6 +48,7 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
@@ -112,8 +114,8 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "touching underlying data, this requires the total size of "
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
-    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->set_meta(
-        phi::DenseTensorMeta(dtype(), phi::make_ddim(shape)));
+    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->Resize(
+        phi::make_ddim(shape));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));
@@ -132,6 +134,12 @@ bool Tensor::is_dense_tensor() const {
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
 }
+bool Tensor::is_sparse_coo_tensor() const {
+  return phi::SparseCooTensor::classof(impl_.get());
+}
+bool Tensor::is_sparse_csr_tensor() const {
+  return phi::SparseCsrTensor::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
@@ -143,7 +151,12 @@ PlaceType Tensor::place() const {
 }
 
 paddle::platform::Place Tensor::inner_place() const {
-  return ConvertExtPlaceToInnerPlace(place());
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::PermissionDenied(
+          "Null pointer error, the impl_ of Tensor should not be "
+          "Null when calling Tensor::inner_place()."));
+  return impl_->place();
 }
 
 bool Tensor::is_cpu() const {
@@ -287,10 +300,14 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
-std::shared_ptr<phi::TensorBase> Tensor::impl() const { return impl_; }
+const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
+}
+
+void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
+  impl_ = std::move(impl);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -299,72 +316,7 @@ gpuStream_t Tensor::stream() const {
 }
 #endif
 
-/* Part 5: Data Transform methods */
-
-template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argument instead. "
-                  "reason: copying a Tensor to another device does not need "
-                  "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
-}
-
-template PADDLE_API Tensor
-Tensor::copy_to<float>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<double>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<float>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<double>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<phi::dtype::float16>(const PlaceType &target_place) const;
-
-Tensor Tensor::copy_to(Backend backend, bool blocking) const {
-  return experimental::copy_to(*this, backend, blocking);
-}
-
-void Tensor::copy_(const Tensor &src, bool blocking) {
-  if (!src.is_initialized()) {
-    return;
-  }
-  VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
-  if (defined()) {
-    PADDLE_ENFORCE_EQ(dtype(),
-                      src.dtype(),
-                      platform::errors::PreconditionNotMet(
-                          "Tensor %s has different data type with Tensor %s, "
-                          "Tensor Copy cannot be performed!",
-                          name(),
-                          src.name()));
-    PADDLE_ENFORCE_EQ(impl()->type_info().id(),
-                      src.impl()->type_info().id(),
-                      platform::errors::PreconditionNotMet(
-                          "Tensor %s has different type with Tensor %s, Tensor "
-                          "Copy cannot be performed!",
-                          name(),
-                          src.name()));
-  }
-  auto copy_tensor =
-      src.copy_to(phi::TransToPtenBackend(src.inner_place()), blocking);
-  set_impl(copy_tensor.impl());
-}
-
-/* Part 6: Status utils methods */
+/* Part 5: Status utils methods */
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
@@ -376,7 +328,7 @@ bool Tensor::is_initialized() const {
 
 void Tensor::reset() { impl_.reset(); }
 
-/* Part 7: Operator overloading */
+/* Part 6: Operator overloading */
 
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
@@ -401,6 +353,37 @@ AbstractAutogradMeta *Tensor::get_autograd_meta() const {
 void Tensor::set_autograd_meta(
     std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
   autograd_meta_ = std::move(autograd_meta);
+}
+
+void Tensor::bump_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: before bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+    inplace_version_counter.Bump();
+    VLOG(3) << "yoki: after bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "bump_inplace_version is only supported on DenseTensor now."));
+  }
+}
+
+uint32_t Tensor::current_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: print version: "
+            << inplace_version_counter.CurrentVersion();
+    return inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "current_inplace_version is only supported on DenseTensor now."));
+  }
+  return 0;
 }
 
 }  // namespace experimental

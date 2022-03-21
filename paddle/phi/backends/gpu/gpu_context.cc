@@ -1,4 +1,5 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(pten): remove fluid header.
+// TODO(phi): remove fluid header.
 #include "paddle/fluid/platform/enforce.h"
 
 namespace phi {
@@ -171,6 +172,7 @@ struct GPUContext::Impl {
     InitStream();
     InitEigenDevice();
     InitBlasHandle();
+    InitBlasLtHandle();
     InitDNNHandle();
     InitSolverHandle();
     InitSparseHandle();
@@ -183,6 +185,7 @@ struct GPUContext::Impl {
     InitGpuProperties();
     InitStream();
     InitBlasHandle();
+    InitBlasLtHandle();
     InitDNNHandle();
     InitSolverHandle();
     InitSparseHandle();
@@ -212,6 +215,7 @@ struct GPUContext::Impl {
     }
 #endif
     DestroyInternalBlasHandle();
+    DestroyInternalBlasLtHandle();
     DestoryInternalStream();
   }
 
@@ -417,6 +421,25 @@ struct GPUContext::Impl {
   }
 
   void SetBlasHandle(blasHandle_t blas) { blas_handle_ = blas; }
+
+  void InitBlasLtHandle() {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    phi::dynload::cublasLtCreate(&blaslt_handle_);
+#endif
+  }
+
+  void DestroyInternalBlasLtHandle() {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    phi::dynload::cublasLtDestroy(blaslt_handle_);
+#endif
+  }
+
+  void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
+
+  blasLtHandle_t GetBlasLtHandle() const {
+    PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
+    return blaslt_handle_;
+  }
 
   void InitDNNHandle() {
     if (phi::dynload::HasCUDNN()) {
@@ -631,10 +654,17 @@ struct GPUContext::Impl {
   }
 
   void AddStreamCallback(const std::function<void()>& callback) const {
-    // TODO(wilber): Do we need ThreadPool?
-    auto* func = new std::function<void()>([this, callback] {
+    // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
+    // launch too
+    // many threads and result in thread oversubscription.
+    auto* callback_func = new std::function<void()>(std::move(callback));
+    auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
-      last_future_ = std::async(std::launch::deferred, [&]() { callback(); });
+      VLOG(4) << "Stream callback";
+      last_future_ = std::async(std::launch::async, [callback_func]() {
+        std::unique_ptr<std::function<void()>> releaser(callback_func);
+        (*callback_func)();
+      });
     });
 
 #ifdef PADDLE_WITH_HIP
@@ -679,6 +709,7 @@ struct GPUContext::Impl {
   blasHandle_t blas_handle_{nullptr};
   blasHandle_t blas_tensor_core_handle_{nullptr};
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
+  blasLtHandle_t blaslt_handle_{nullptr};
   dnnHandle_t dnn_handle_{nullptr};
   solverHandle_t solver_handle_{nullptr};
   sparseHandle_t sparse_handle_{nullptr};
@@ -710,6 +741,10 @@ struct GPUContext::Impl {
 
 GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
 
+GPUContext::GPUContext(GPUContext&&) = default;
+
+GPUContext& GPUContext::operator=(GPUContext&&) = default;
+
 GPUContext::GPUContext(const GPUPlace& place)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
 
@@ -723,6 +758,10 @@ dnnHandle_t GPUContext::cudnn_handle() const { return impl_->GetDnnHandle(); }
 
 blasHandle_t GPUContext::cublas_handle() const {
   return impl_->GetBlasHandle();
+}
+
+blasLtHandle_t GPUContext::cublaslt_handle() const {
+  return impl_->GetBlasLtHandle();
 }
 
 solverHandle_t GPUContext::cusolver_dn_handle() const {
@@ -813,6 +852,10 @@ void GPUContext::SetEigenDevice(Eigen::GpuDevice* device) {
 
 void GPUContext::SetBlasHandle(blasHandle_t blas) {
   impl_->SetBlasHandle(blas);
+}
+
+void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
+  impl_->SetBlasLtHandle(blaslt);
 }
 
 void GPUContext::SetDnnHandle(dnnHandle_t handle) {

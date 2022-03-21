@@ -31,3 +31,21 @@ PD_REGISTER_KERNEL(conj,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(real,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RealKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+
+PD_REGISTER_KERNEL(imag,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ImagKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

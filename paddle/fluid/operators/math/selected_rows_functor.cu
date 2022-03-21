@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -161,9 +162,10 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.CUDAData(context.GetPlace()), out_data,
+        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), out_data,
         in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
@@ -198,8 +200,9 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
+    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     if (in1_rows.size()) {
-      in2_rows.Extend(in1_rows.begin(), in1_rows.end());
+      mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
     }
 
     auto in1_place = input1.place();
@@ -274,9 +277,10 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
+    paddle::framework::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddToTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.CUDAData(context.GetPlace()), in2_data,
+        in1_data, mixv_in1_rows.CUDAData(context.GetPlace()), in2_data,
         in1_row_numel);
   }
 };
@@ -356,10 +360,13 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     dim3 threads(block_size, 1);
     dim3 grid1(input_rows.size(), 1);
 
+    paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
+    paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
     MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
-        input_data, input_rows.CUDAData(context.GetPlace()), out_data,
-        out.mutable_rows()->CUDAMutableData(context.GetPlace()),
-        out.rows().size(), input_width);
+        input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
+        mix_vector_out.CUDAMutableData(context.GetPlace()), out.rows().size(),
+        input_width);
+    mix_vector_out.CopyToCPU();
   }
 
   void operator()(const platform::CUDADeviceContext& context,
@@ -423,10 +430,13 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
       auto& input_rows = input->rows();
       dim3 grid1(input_rows.size(), 1);
 
+      paddle::framework::MixVector<int64_t> mix_vector_input(&input_rows);
+      paddle::framework::MixVector<int64_t> mix_vector_out(out.mutable_rows());
       MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
-          input_data, input_rows.CUDAData(context.GetPlace()), out_data,
-          out.mutable_rows()->CUDAMutableData(context.GetPlace()),
-          out.rows().size(), input_width);
+          input_data, mix_vector_input.CUDAData(context.GetPlace()), out_data,
+          mix_vector_out.CUDAMutableData(context.GetPlace()), out.rows().size(),
+          input_width);
+      mix_vector_out.CopyToCPU();
     }
   }
 };
@@ -436,6 +446,7 @@ template struct MergeAdd<platform::CUDADeviceContext, double>;
 template struct MergeAdd<platform::CUDADeviceContext, int>;
 template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
+template struct MergeAdd<platform::CUDADeviceContext, platform::bfloat16>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::complex<float>>;
 template struct MergeAdd<platform::CUDADeviceContext,
                          platform::complex<double>>;

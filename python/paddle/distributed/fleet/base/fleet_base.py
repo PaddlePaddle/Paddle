@@ -1430,6 +1430,22 @@ class Fleet(object):
 
         # cache original feed forward program
         self.origin_main_program = loss.block.program
+        # add distributed attr
+        if not hasattr(self.origin_main_program, "distributed_info_"):
+            setattr(self.origin_main_program, "distributed_info_", dict())
+            self.origin_main_program.distributed_info_[
+                "dp_degree"] = self._user_defined_strategy.sharding_configs[
+                    "dp_degree"]
+            self.origin_main_program.distributed_info_[
+                "mp_degree"] = self._user_defined_strategy.sharding_configs[
+                    "mp_degree"]
+            self.origin_main_program.distributed_info_[
+                "pp_degree"] = self._user_defined_strategy.sharding_configs[
+                    "pp_degree"]
+            self.origin_main_program.distributed_info_[
+                "sharding_degree"] = self._user_defined_strategy.sharding_configs[
+                    "sharding_degree"]
+
         context["origin_main_program"] = self.origin_main_program
         context["loss"] = loss
         if startup_program == None:

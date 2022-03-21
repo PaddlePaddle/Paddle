@@ -23,6 +23,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
+paddle.enable_static()
+
 
 class TestAccuracyOp(OpTest):
     def setUp(self):
@@ -132,5 +134,4 @@ class TestAccuracyAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

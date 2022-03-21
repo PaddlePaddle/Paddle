@@ -75,8 +75,15 @@ PURE_FP16_BLACK_LIST = {
     'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
 }
 
-BF16_WHITE_LIST = {'conv2d'}
+BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = {' '}
+
+_g_amp_state_ = None
+
+
+def amp_state():
+    global _g_amp_state_
+    return _g_amp_state_
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -161,7 +168,7 @@ def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
-            if (layer._dtype is 'float16') or isinstance(
+            if (layer._dtype == 'float16') or isinstance(
                     layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm)):
@@ -240,6 +247,11 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
+    amp_state = locals()
+    global _g_amp_state_
+    original_state = _g_amp_state_
+    _g_amp_state_ = amp_state
+
     # check amp_level: O0-O2
     level = level.upper()
     if not (level in ['O0', 'O1', 'O2']):
@@ -259,17 +271,27 @@ def amp_guard(enable=True,
             "current_tracer is None, maybe it is not in imperative mode.")
 
     # check device_type:
-    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16.
+    # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, mlu for float16, npu for float16.
     # Maybe we will support cpu for bfloat16.
     if enable and not (tracer._expected_place.is_gpu_place() or
-                       tracer._expected_place.is_xpu_place()):
+                       tracer._expected_place.is_xpu_place() or
+                       tracer._expected_place.is_mlu_place() or
+                       tracer._expected_place.is_npu_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, and NPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
+        enable = False
+    # For npu:
+    if tracer._expected_place.is_npu_place() and (dtype == 'bfloat16'):
+        warnings.warn('NPUPlace only support float16 amp.')
         enable = False
     # For xpu:
     if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
         warnings.warn('XPUPlace only support float16 amp.')
+        enable = False
+    # For mlu:
+    if tracer._expected_place.is_mlu_place() and (dtype == 'bfloat16'):
+        warnings.warn('MLUPlace only support float16 amp.')
         enable = False
     # For gpu float16: Compute Capability should >= 7.
     # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
@@ -349,6 +371,7 @@ def amp_guard(enable=True,
         yield
     finally:
         if tracer:
+            _g_amp_state_ = original_state
             tracer._amp_level = original_amp_level
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
@@ -398,9 +421,9 @@ def amp_decorate(models,
         import paddle
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+        optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimizer, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -413,7 +436,7 @@ def amp_decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 

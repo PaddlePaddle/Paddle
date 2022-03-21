@@ -51,7 +51,7 @@ struct KernelKeySet {
   DataType dtype{DataType::UNDEFINED};
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
-  phi::KernelKey GetHigestPriorityKernelKey() {
+  phi::KernelKey GetHighestPriorityKernelKey() {
     return phi::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
                                                         backend_set.bitset())),
                           layout,

@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
@@ -33,7 +33,7 @@ void AddGradFunc(const CPUContext& dev_ctx,
                  DenseTensor* dy,
                  int axis = -1) {
   if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-    elementwise_add_grad<T>(dev_ctx, x, y, out, dout, dx, dy);
+    ElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy);
   } else {
     ElemwiseExplicitGradCompute<T, IdentityGrad<T>, IdentityGrad<T>>(
         dev_ctx,
@@ -68,15 +68,7 @@ void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          int axis,
                          DenseTensor* ddout) {
-  phi::AddDoubleGradImpl<T>(dev_ctx,
-                            y,
-                            ddx,
-                            ddy,
-                            dout,
-                            axis,
-                            ddout,
-                            ElementwiseCompute<funcs::AddFunctor<T>, T>,
-                            ElementwiseCompute<funcs::InverseAddFunctor<T>, T>);
+  phi::AddDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 template <typename T, typename Context>
@@ -101,7 +93,7 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dy) {
   // skip out
   auto* out = &dout;
-  elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
+  ElementwiseSubGrad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
 }
 
 template <typename T, typename Context>
@@ -112,15 +104,35 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               int axis,
                               DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(
-      dev_ctx,
-      y,
-      ddx,
-      ddy,
-      dout,
-      axis,
-      ddout,
-      ElementwiseCompute<funcs::SubtractFunctor<T>, T>);
+  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+}
+
+template <typename T, typename Context>
+void DivideGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& out,
+                      const DenseTensor& dout,
+                      int axis,
+                      DenseTensor* dx,
+                      DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivGradDY<T>>(
+      dev_ctx, x, y, out, dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+}
+
+template <typename T, typename Context>
+void MultiplyGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  auto* out = &dout;  // out is not necessary
+  phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+      dev_ctx, x, y, *out, dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
 }  // namespace phi
@@ -170,6 +182,7 @@ PD_REGISTER_KERNEL(subtract_grad,
                    int16_t,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -182,5 +195,84 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    int16_t,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(divide_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DivideGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(divide_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DivideDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyTripleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(elementwise_fmax_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseFMaxGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(elementwise_fmin_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseFMinGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

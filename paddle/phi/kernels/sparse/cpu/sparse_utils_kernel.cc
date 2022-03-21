@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 
 namespace phi {
 namespace sparse {
@@ -41,7 +41,7 @@ inline int64_t GetNonZeroNum(const DenseTensor& dense,
   PADDLE_ENFORCE_GE(
       dims.size(),
       sparse_dim,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "sparse_dim(%d) should be less than or equal to dense.dim(%d)",
           sparse_dim,
           dims.size()));
@@ -71,7 +71,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   int64_t non_zero_num = GetNonZeroNum<T>(x, sparse_dim);
 
   const auto place = dev_ctx.GetPlace();
-  const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
+  const auto values_dims =
+      phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
   DenseTensorMeta indices_meta(DataType::INT64,
                                {sparse_dim, static_cast<int64_t>(non_zero_num)},
                                DataLayout::NCHW);
@@ -161,7 +162,7 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
   if (non_zero_num <= 0) return;

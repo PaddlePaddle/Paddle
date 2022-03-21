@@ -19,13 +19,15 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/include/tensor.h"
+
 namespace paddle {
 namespace experimental {
+
+void ThrowTensorConvertError(int);
 
 template <typename T>
 class ScalarBase {
  public:
-  bool FromTensor() const { return is_from_tensor_; }
   // Constructor support implicit
   ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
@@ -105,11 +107,7 @@ class ScalarBase {
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
     is_from_tensor_ = true;
-    PD_CHECK(
-        tensor.numel() == 1,
-        "The Scalar only supports Tensor with 1 element, but now Tensor has `",
-        tensor.numel(),
-        "` element.");
+    ThrowTensorConvertError(tensor.numel());
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
@@ -156,6 +154,12 @@ class ScalarBase {
   ScalarBase(const ScalarBase<OtherT>& other) {
     CopyScalar(other, this);
   }
+
+  // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose a
+  // interface.
+  bool FromTensor() const { return is_from_tensor_; }
+
+  void SetFromTensor(bool from_tensor) { is_from_tensor_ = from_tensor; }
 
   template <typename RT>
   inline RT to() const {

@@ -98,6 +98,12 @@ Node *matmul_handler(Graph *graph, Node *node) {
   if (x_rank == 1) {
     perm = std::vector<int64_t>{0};
   } else if (x_rank == 2) {
+    if (!transpose_x && !transpose_y && is_float_equal(alpha, 1.0f)) {
+      return CreateBaseOp(
+          graph, node, "popart_matmul",
+          {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+          node->outputs);
+    }
     return CreateGemm(graph, node,
                       {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
                       node->outputs, transpose_x, transpose_y, alpha);

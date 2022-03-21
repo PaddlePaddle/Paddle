@@ -33,36 +33,36 @@ static void ScaleDeviceDispatch(const phi::DenseTensor& dense_tensor,
                                 phi::DenseTensor* dense_out) {
   switch (dense_tensor.dtype()) {
     case phi::DataType::FLOAT64: {
-      phi::ScaleKernel<double, typename paddle::framework::ConvertToPtenContext<
+      phi::ScaleKernel<double, typename paddle::framework::ConvertToPhiContext<
                                    DeviceContext>::TYPE>(
-          static_cast<const typename paddle::framework::ConvertToPtenContext<
+          static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
           bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     case phi::DataType::FLOAT32: {
-      phi::ScaleKernel<float, typename paddle::framework::ConvertToPtenContext<
+      phi::ScaleKernel<float, typename paddle::framework::ConvertToPhiContext<
                                   DeviceContext>::TYPE>(
-          static_cast<const typename paddle::framework::ConvertToPtenContext<
+          static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
           bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     case phi::DataType::INT64: {
-      phi::ScaleKernel<int64_t, typename paddle::framework::
-                                    ConvertToPtenContext<DeviceContext>::TYPE>(
-          static_cast<const typename paddle::framework::ConvertToPtenContext<
+      phi::ScaleKernel<int64_t, typename paddle::framework::ConvertToPhiContext<
+                                    DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
           bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
       break;
     }
     case phi::DataType::INT32: {
-      phi::ScaleKernel<int32_t, typename paddle::framework::
-                                    ConvertToPtenContext<DeviceContext>::TYPE>(
-          static_cast<const typename paddle::framework::ConvertToPtenContext<
+      phi::ScaleKernel<int32_t, typename paddle::framework::ConvertToPhiContext<
+                                    DeviceContext>::TYPE>(
+          static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
           bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
@@ -145,8 +145,8 @@ void GradNodeScale::SetTensorWrappers_X(
 void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeScale::
-operator()(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+           bool create_graph) {
   // 1. Check Output Size
   PADDLE_ENFORCE(
       ((grads.size() == 1) && (grads[0].size() == 1)),
