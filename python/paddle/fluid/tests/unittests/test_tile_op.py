@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-# Situation 1: repeat_times is a list (without tensor)
+#Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
@@ -248,4 +248,5 @@ class TestTileAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

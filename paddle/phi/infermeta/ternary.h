@@ -84,6 +84,15 @@ void RoiAlignInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void RoiPoolInferMeta(const MetaTensor& x,
+                      const MetaTensor& boxes,
+                      paddle::optional<const MetaTensor&> boxes_num,
+                      int pooled_height,
+                      int pooled_width,
+                      float spatial_scale,
+                      MetaTensor* out,
+                      MetaTensor* arg_max);
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,

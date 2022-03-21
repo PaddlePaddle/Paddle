@@ -17,6 +17,7 @@
 #include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
+#include "paddle/infrt/tensor/phi/tensor_map.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
@@ -40,6 +41,19 @@ namespace phi {
 void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<float>> values);
 void PrintDenseTensor(::phi::DenseTensor* dense_tensor);
+
+infrt::phi::DenseTensorMap LoadParams(
+    host_context::Attribute<std::string> path);
+
+::phi::DenseTensor TensorMapGetTensor(
+    const ::infrt::phi::DenseTensorMap& map,
+    host_context::Attribute<std::string> name);
+
+::infrt::phi::DenseTensorMap LoadCombinedParams(
+    host_context::Attribute<std::string> model_path,
+    host_context::Attribute<std::string> params_path);
+
+int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
 
 }  // namespace phi
 }  // namespace kernel
