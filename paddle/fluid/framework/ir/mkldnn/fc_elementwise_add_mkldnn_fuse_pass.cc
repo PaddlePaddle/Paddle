@@ -36,11 +36,6 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .End()
       .AddInput("Bias")
       .IsTensor()
-      .IsOptional()
-      .End()
-      .AddInput("ResidualData")
-      .IsTensor()
-      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()
@@ -74,14 +69,15 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
     const GraphWithStats& graph_with_stats) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-
-  patterns::FCResidual fc_pattern{pattern, name_scope};
-  auto fc_output = fc_pattern();
+  patterns::FCMKLDNN fc_pattern{pattern, name_scope};
+  auto fc_output = fc_pattern(
+      gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
+          "fc", "Input"),
+      true);
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(
-      fc_output,
-      pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
+      fc_output, pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
       "elementwise_add");
   fc_output->AsIntermediate();
 
@@ -89,10 +85,10 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_output, fc_output, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_output, output, fc_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
                               elementwise_pattern);
@@ -143,23 +139,26 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsY(
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
 
-  patterns::FCResidual fc_pattern{pattern, name_scope};
-  auto fc_output = fc_pattern();
+  patterns::FCMKLDNN fc_pattern{pattern, name_scope};
+  auto fc_output = fc_pattern(
+      gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
+          "fc", "Input"),
+      true);
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(
-      pattern->NewNode(elementwise_pattern.elementwise_x_repr()),
-      fc_output, "elementwise_add");
+      pattern->NewNode(elementwise_pattern.elementwise_x_repr()), fc_output,
+      "elementwise_add");
   fc_output->AsIntermediate();
 
   int found_fc_as_y_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_output, fc_output, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_output, output, fc_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
                               elementwise_pattern);
@@ -171,7 +170,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsY(
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
 
     if (!IsReachable(g, elementwise_x, fc_output)) return;
-    
+
     if (HasFusedActivation(fc_op)) return;
 
     if (!IsCompat(subgraph, g)) {
@@ -210,11 +209,18 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
 
-  patterns::FCResidual fc_x_pattern{pattern, name_scope};
-  auto fc_x_output = fc_x_pattern();
+  patterns::FCMKLDNN fc_x_pattern{pattern, name_scope};
 
-  patterns::FCResidual fc_y_pattern{pattern, name_scope};
-  auto fc_y_output = fc_y_pattern();
+  auto fc_x_output = fc_x_pattern(
+      gpd.mutable_pattern()->NewNode("fc_x")->AsInput()->assert_is_op_input(
+          "fc", "Input"),
+      true);
+
+  patterns::FCMKLDNN fc_y_pattern{pattern, name_scope};
+  auto fc_y_output = fc_y_pattern(
+      gpd.mutable_pattern()->NewNode("fc_y")->AsInput()->assert_is_op_input(
+          "fc", "Input"),
+      true);
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(fc_x_output, fc_y_output, "elementwise_add");
@@ -225,15 +231,15 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(fc_x_op, fc_op, fc_x_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_x_input, fc_input, fc_x_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_x_weights, fc_weights, fc_x_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_x_output, fc_output, fc_x_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_x_op, fc, fc_x_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_x_input, input, fc_x_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_x_weights, weights, fc_x_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_x_output, output, fc_x_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(fc_y_op, fc_op, fc_y_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_y_input, fc_input, fc_y_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_y_weights, fc_weights, fc_y_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_y_output, fc_output, fc_y_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_y_op, fc, fc_y_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_y_input, input, fc_y_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_y_weights, weights, fc_y_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_y_output, output, fc_y_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
                               elementwise_pattern);
