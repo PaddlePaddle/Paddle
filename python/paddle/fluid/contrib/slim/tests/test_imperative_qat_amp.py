@@ -173,49 +173,55 @@ class TestImperativeQatAmp(unittest.TestCase):
         return acc_top1
 
     def test_ptq(self):
-        start_time = time.time()
+        def func_isinstance():
+            start_time = time.time()
 
-        self.set_vars()
+            self.set_vars()
 
-        params_path = self.download_model(self.lenet_url, self.lenet_md5,
-                                          "lenet")
-        params_path += "/lenet_pretrained/lenet.pdparams"
+            params_path = self.download_model(self.lenet_url, self.lenet_md5,
+                                              "lenet")
+            params_path += "/lenet_pretrained/lenet.pdparams"
 
-        with fluid.dygraph.guard():
-            model = ImperativeLenet()
-            model_state_dict = paddle.load(params_path)
-            model.set_state_dict(model_state_dict)
+            with fluid.dygraph.guard():
+                model = ImperativeLenet()
+                model_state_dict = paddle.load(params_path)
+                model.set_state_dict(model_state_dict)
 
-            _logger.info("Test fp32 model")
-            fp32_acc_top1 = self.model_test(model, self.test_batch_num,
-                                            self.test_batch_size)
+                _logger.info("Test fp32 model")
+                fp32_acc_top1 = self.model_test(model, self.test_batch_num,
+                                                self.test_batch_size)
 
-            self.qat.quantize(model)
+                self.qat.quantize(model)
 
-            use_amp = True
-            self.model_train(model, self.train_batch_num, self.train_batch_size,
-                             use_amp)
+                use_amp = True
+                self.model_train(model, self.train_batch_num,
+                                 self.train_batch_size, use_amp)
 
-            _logger.info("Test int8 model")
-            int8_acc_top1 = self.model_test(model, self.test_batch_num,
-                                            self.test_batch_size, use_amp)
+                _logger.info("Test int8 model")
+                int8_acc_top1 = self.model_test(model, self.test_batch_num,
+                                                self.test_batch_size, use_amp)
 
-            _logger.info('fp32_acc_top1: %f, int8_acc_top1: %f' %
-                         (fp32_acc_top1, int8_acc_top1))
-            self.assertTrue(
-                int8_acc_top1 > fp32_acc_top1 - 0.01,
-                msg='fp32_acc_top1: %f, int8_acc_top1: %f' %
-                (fp32_acc_top1, int8_acc_top1))
+                _logger.info('fp32_acc_top1: %f, int8_acc_top1: %f' %
+                             (fp32_acc_top1, int8_acc_top1))
+                self.assertTrue(
+                    int8_acc_top1 > fp32_acc_top1 - 0.01,
+                    msg='fp32_acc_top1: %f, int8_acc_top1: %f' %
+                    (fp32_acc_top1, int8_acc_top1))
 
-        input_spec = [
-            paddle.static.InputSpec(
-                shape=[None, 1, 28, 28], dtype='float32')
-        ]
-        paddle.jit.save(layer=model, path=self.save_path, input_spec=input_spec)
-        print('Quantized model saved in {%s}' % self.save_path)
+            input_spec = [
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ]
+            paddle.jit.save(
+                layer=model, path=self.save_path, input_spec=input_spec)
+            print('Quantized model saved in {%s}' % self.save_path)
 
-        end_time = time.time()
-        print("total time: %ss" % (end_time - start_time))
+            end_time = time.time()
+            print("total time: %ss" % (end_time - start_time))
+
+        func_isinstance()
+        with _test_eager_guard():
+            func_isinstance()
 
 
 if __name__ == '__main__':
