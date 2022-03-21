@@ -42,7 +42,7 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
+    def get_model(self, main_prog, startup_program, col_type):
         ring_id = 0
         rootid = 1
         with fluid.program_guard(main_prog, startup_program):
@@ -69,4 +69,4 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveBroadcast, "broadcast", 0)
+    runtime_main(TestCollectiveBroadcast)
