@@ -37,7 +37,15 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-namespace framework = paddle::framework;
+
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
+
+using namespace paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
 namespace memory = paddle::memory;
@@ -68,33 +76,39 @@ void testSampleRate() {
   std::vector<int64_t> ids;
   int start = 0;
   pthread_rwlock_t rwlock;
-  int fixed_sample_size = 100, sample_size = 100;
+  pthread_rwlock_init(&rwlock, NULL);
+  int fixed_key_size = 100, sample_size = 100;
   {
     ::paddle::distributed::GraphParameter table_proto;
     table_proto.set_gpups_mode(false);
-    table_proto.set_gpups_mode_shard_num(127);
+    table_proto.set_shard_num(127);
     table_proto.set_task_pool_size(24);
-
+    std::cerr << "initializing begin";
     distributed::GraphTable graph_table;
     graph_table.initialize(table_proto);
-    prepare_file(edge_file_name, edges);
+    std::cerr << "initializing done";
+    // prepare_file(edge_file_name, edges);
     graph_table.load(std::string(edge_file_name), std::string("e>"));
-    int actual_size = -1;
+    int sample_actual_size = -1;
     int step = 4, cur = 0;
-    while (actual_size != 0) {
+    while (sample_actual_size != 0) {
       std::unique_ptr<char[]> buffer;
-      graph_table.pull_graph_list(cur, step, buffer, actual_size, false, 1);
-      if (actual_size == 0) break;
+      graph_table.pull_graph_list(cur, step, buffer, sample_actual_size, false,
+                                  1);
+      if (sample_actual_size == 0) break;
       char *buff = buffer.get();
-      for (int i = 0; i < actual_size; i++) {
-        ids.push_back((int64_t *)(buff + i * sizeof(int64_t)));
+      for (int i = 0; i < sample_actual_size; i++) {
+        ids.push_back(*(int64_t *)(buff + i * sizeof(int64_t)));
         int swap_pos = rand() % ids.size();
-        swap(ids[swap_pos], ids[(int)ids.size() - 1]);
+        std::swap(ids[swap_pos], ids[(int)ids.size() - 1]);
       }
-      cur += actual_size;
+      cur += sample_actual_size;
     }
+    std::cerr << "load ids done" << std::endl;
     std::vector<int64_t> sample_id[10], actual_size[10], sample_neighbors[10];
-    auto func = [](int i) {
+    auto func = [&rwlock, &graph_table, &ids, &sample_id, &actual_size,
+                 &sample_neighbors, &start, &fixed_key_size,
+                 &sample_size](int i) {
       while (true) {
         int s, sn;
         bool exit = false;
@@ -102,7 +116,7 @@ void testSampleRate() {
         if (start < ids.size()) {
           s = start;
           sn = ids.size() - start;
-          sn = min(sn, fixed_sample_size);
+          sn = min(sn, fixed_key_size);
           start += sn;
         } else {
           exit = true;
@@ -111,9 +125,9 @@ void testSampleRate() {
         if (exit) break;
         std::vector<std::shared_ptr<char>> buffers(sn);
         std::vector<int> ac(sn);
-        graph_table.random_sample_neighbors(ids.begin() + start, sample_size,
-                                            bufffers, ac, false);
-        for (int j = start; j < start + sn; j++) {
+        graph_table.random_sample_neighbors(ids.data() + s, sample_size,
+                                            buffers, ac, false);
+        for (int j = s; j < s + sn; j++) {
           sample_id[i].push_back(ids[j]);
           actual_size[i].push_back(ac[j]);
           for (int k = 0; k < ac[j]; k++) {
@@ -122,14 +136,17 @@ void testSampleRate() {
           }
         }
       }
+      VLOG(0) << "func " << i << " returns ";
     };
     auto start1 = std::chrono::steady_clock::now();
     std::thread thr[10];
     for (int i = 0; i < 10; i++) {
-      thr[i] = std::thread(i);
+      thr[i] = std::thread(func, i);
     }
     for (int i = 0; i < 10; i++) thr[i].join();
     auto end1 = std::chrono::steady_clock::now();
+    auto tt =
+        std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
     std::cerr << "total time cost without cache is " << tt.count() << " us"
               << std::endl;
   }
@@ -153,22 +170,32 @@ void testSampleRate() {
   // }
   // ASSERT_EQ(3, res[1].node_size);
 
+  const int gpu_num = 8;
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.set_gpups_mode(true);
-  table_proto.set_gpups_mode_shard_num(127);
-  table_proto.set_gpu_num(3);
+  table_proto.set_shard_num(127);
+  table_proto.set_gpu_num(gpu_num);
   table_proto.set_gpups_graph_sample_class("BasicBfsGraphSampler");
   table_proto.set_gpups_graph_sample_args("10000000,10000000,1,1");
-  prepare_file(edge_file_name, edges);
+  // prepare_file(edge_file_name, edges);
+  std::vector<int> dev_ids;
+  for (int i = 0; i < gpu_num; i++) {
+    dev_ids.push_back(i);
+  }
+  std::shared_ptr<HeterPsResource> resource =
+      std::make_shared<HeterPsResource>(dev_ids);
+  resource->enable_p2p();
+  GpuPsGraphTable g(resource);
   g.init_cpu_table(table_proto);
   g.load(std::string(edge_file_name), std::string("e>"));
   void *key;
   cudaMalloc((void **)&key, ids.size() * sizeof(int64_t));
   cudaMemcpy(key, ids.data(), ids.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
-  std::vector<NeighborSampleResult *> res[8];
+  std::vector<NeighborSampleResult *> res[gpu_num];
   start = 0;
-  auto func = [](int i) {
+  auto func = [&rwlock, &g, &res, &start, &fixed_key_size, &sample_size,
+               &gpu_num, &ids, &key](int i) {
     while (true) {
       int s, sn;
       bool exit = false;
@@ -176,25 +203,27 @@ void testSampleRate() {
       if (start < ids.size()) {
         s = start;
         sn = ids.size() - start;
-        sn = min(sn, fixed_sample_size);
+        sn = min(sn, fixed_key_size);
         start += sn;
       } else {
         exit = true;
       }
       pthread_rwlock_unlock(&rwlock);
       if (exit) break;
-      auto r = graph_table.graph_neighbor_sample(i, (int64_t *)(key + s),
-                                                 fixed_sample_size, sn);
+      auto r =
+          g.graph_neighbor_sample(i, (int64_t *)(key + s), sample_size, sn);
       res[i].push_back(r);
     }
   };
   auto start1 = std::chrono::steady_clock::now();
-  std::thread thr[8];
-  for (int i = 0; i < 8; i++) {
-    thr[i] = std::thread(i);
+  std::thread thr[gpu_num];
+  for (int i = 0; i < gpu_num; i++) {
+    thr[i] = std::thread(func, i);
   }
-  for (int i = 0; i < 8; i++) thr[i].join();
+  for (int i = 0; i < gpu_num; i++) thr[i].join();
   auto end1 = std::chrono::steady_clock::now();
+  auto tt =
+      std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
   std::cerr << "total time cost without cache is " << tt.count() << " us"
             << std::endl;
 

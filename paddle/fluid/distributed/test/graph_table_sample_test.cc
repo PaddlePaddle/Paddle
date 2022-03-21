@@ -86,7 +86,7 @@ void testGraphSample() {
 #ifdef PADDLE_WITH_HETERPS
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.set_gpups_mode(true);
-  table_proto.set_gpups_mode_shard_num(127);
+  table_proto.set_shard_num(127);
   table_proto.set_gpu_num(2);
 
   distributed::GraphTable graph_table, graph_table1;
@@ -113,7 +113,7 @@ void testGraphSample() {
 
   ::paddle::distributed::GraphParameter table_proto1;
   table_proto1.set_gpups_mode(true);
-  table_proto1.set_gpups_mode_shard_num(127);
+  table_proto1.set_shard_num(127);
   table_proto1.set_gpu_num(2);
   table_proto1.set_gpups_graph_sample_class("BasicBfsGraphSampler");
   table_proto1.set_gpups_graph_sample_args("5,5,1,1");

@@ -1092,11 +1092,6 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
 #ifdef PADDLE_WITH_HETERPS
   if (graph.gpups_mode()) {
     gpups_mode = true;
-    if (shard_num == 0) {
-      shard_num = graph.gpups_mode_shard_num();
-      server_num = 1;
-      _shard_idx = 0;
-    }
     auto *sampler =
         CREATE_PSCORE_CLASS(GraphSampler, graph.gpups_graph_sample_class());
     auto slices =
@@ -1107,6 +1102,11 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
     graph_sampler.reset(sampler);
   }
 #endif
+  if (shard_num == 0) {
+    server_num = 1;
+    _shard_idx = 0;
+    shard_num = graph.shard_num();
+  }
   task_pool_size_ = graph.task_pool_size();
   use_cache = graph.use_cache();
   if (use_cache) {

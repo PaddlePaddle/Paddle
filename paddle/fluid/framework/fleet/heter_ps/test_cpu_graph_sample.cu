@@ -71,7 +71,7 @@ TEST(TEST_FLEET, graph_sample) {
   */
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.set_gpups_mode(true);
-  table_proto.set_gpups_mode_shard_num(127);
+  table_proto.set_shard_num(127);
   table_proto.set_gpu_num(3);
   table_proto.set_gpups_graph_sample_class("BasicBfsGraphSampler");
   table_proto.set_gpups_graph_sample_args("5,5,1,1");

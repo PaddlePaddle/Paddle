@@ -225,7 +225,7 @@ message GraphParameter {
   optional GraphFeature graph_feature = 8;
   optional string table_name = 9 [ default = "" ];
   optional string table_type = 10 [ default = "" ];
-  optional int32 gpups_mode_shard_num = 11 [ default = 127 ];
+  optional int32 shard_num = 11 [ default = 127 ];
   optional int32 gpu_num = 12 [ default = 1 ];
 }
 
