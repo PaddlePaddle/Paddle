@@ -1146,6 +1146,8 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_cross(x, y, axis)
         if axis is not None:
             return _C_ops.cross(x, y, 'dim', axis)
         else:
@@ -1494,6 +1496,8 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_mv(x, vec)
         out = _C_ops.mv(x, vec)
         return out
 
