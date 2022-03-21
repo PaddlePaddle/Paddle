@@ -788,7 +788,7 @@
 #   backward : label_smooth_grad
 #   optional : prior_dist
 
-# linspace ???? start stop number，应该是sclar？
+# linspace ???? start stop number sclar？ not match with kernel
 # - api : linspace
 #   args : (Tensor start, Tensor stop, Tensor number, DataType dtype=DataType::FLOAT32)
 #   output : Tensor
@@ -798,7 +798,7 @@
 #     func : linspace
 
 
-# log_loss
+# log_loss  // something wrong with test
 - api : log_loss
   args : (Tensor input, Tensor label, float epsilon)
   output : Tensor
