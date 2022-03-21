@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <functional>
 #include "glog/logging.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 template <typename T, int VecSize>
 __global__ void VecSum(T *x, T *y, int N) {
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   int idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 #else
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -40,7 +41,7 @@ __global__ void VecSum(T *x, T *y, int N) {
 
 template <int Vecsize, int Threads, size_t Blocks>
 void Algo(float *d_in, float *d_out, size_t N) {
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   hipLaunchKernelGGL(HIP_KERNEL_NAME(VecSum<float, Vecsize>),
                      dim3(Blocks),
                      dim3(Threads),
@@ -59,7 +60,7 @@ TEST(GpuTimer, Sum) {
   float *d_in1, *d_in2;
   size_t N = 1 << 20;
   size_t size = sizeof(float) * N;
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   hipMalloc(reinterpret_cast<void **>(&d_in1), size);
   hipMalloc(reinterpret_cast<void **>(&d_in2), size);
 #else
@@ -74,7 +75,7 @@ TEST(GpuTimer, Sum) {
     in2[i] = 2.0f;
   }
 
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);
   hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);
 #else
@@ -98,7 +99,7 @@ TEST(GpuTimer, Sum) {
     VLOG(3) << "alog: " << j << " cost: " << timer.ElapsedTime() << "ms";
   }
 
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   hipMemcpy(out, d_in2, size, hipMemcpyDeviceToHost);
 #else
   cudaMemcpy(out, d_in2, size, cudaMemcpyDeviceToHost);
@@ -106,7 +107,7 @@ TEST(GpuTimer, Sum) {
   free(in1);
   free(in2);
   free(out);
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   hipFree(d_in1);
   hipFree(d_in2);
 #else
