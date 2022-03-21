@@ -36,7 +36,7 @@ void AllCloseKernel(const Context& dev_ctx,
     rtol_v = rtol.to<float>();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Input (Rtol) type must be double, but get %s.", rtol.dtype()));
+        "Input (Rtol) type must be double or float, but get %s.", rtol.dtype()));
   }
   if (atol.dtype() == DataType::FLOAT64) {
     atol_v = atol.to<double>();
@@ -44,8 +44,9 @@ void AllCloseKernel(const Context& dev_ctx,
     atol_v = atol.to<float>();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Input (Rtol) type must be double, but get %s.", atol.dtype()));
+        "Input (Atol) type must be double or float, but get %s.", atol.dtype()));
   }
+  VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
   auto* in_a = x.data<T>();
   auto* in_b = y.data<T>();
   auto* out_data = dev_ctx.template Alloc<bool>(out);

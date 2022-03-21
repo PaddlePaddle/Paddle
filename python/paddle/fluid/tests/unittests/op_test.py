@@ -725,9 +725,21 @@ class OpTest(unittest.TestCase):
             def to_defaults_list(params, defaults):
                 return [defaults[p] for p in params if p in defaults]
 
-            # NOTE(xiongkun): why don't use input arguments dicts ? 
-            # Because we don't know the python api name of each arguments.
-            # using parse_arg_and_kwargs, we can get the all api information we need.
+            def parse_attri_value(name, op_inputs, op_attrs):
+                """ parse true value from inputs and attrs, if there is no name passed by OpTest, return Empty
+                    1. if the name in op_attrs, use the op_attrs[name]
+                    2. if the name in op_inputs, convert the op_inputs to [type of default value]
+                    3. if the name not in op_attrs ans op_inputs, return Empty. (this will use the default value from python api)
+                """
+                if name in op_proto_attrs:
+                    return op_proto_attrs[name] 
+                elif name in op_inputs: 
+                    assert op_inputs[name].__len__() == 1, "currently don't support multi-input in attribute."
+                    # why don't use numpy().item() : if the Tensor is float64, we will change it to python.float32, where we loss accuracy: [allclose_op]
+                    return op_inputs[name][0]
+                else: 
+                    return Empty()
+
             api_params, api_defaults = [
                 filter_by_name(item) for item in parse_arg_and_kwargs(api)
             ]
@@ -738,7 +750,7 @@ class OpTest(unittest.TestCase):
                 len(api_params) == len(inputs_and_attrs)
             ), "inputs and attrs length must equals to python api length. (May be output is in argument list?)"
             input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
-                op_proto_attrs[name] if name in op_proto_attrs else Empty()
+                parse_attri_value(name, op_proto_ins, op_proto_attrs)
                 for name in attrs_sig
             ]
             results = []

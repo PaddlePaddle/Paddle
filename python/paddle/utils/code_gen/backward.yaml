@@ -90,3 +90,13 @@
 #     func : MatmulTripleGradInferMeta
 #   kernel :
 #     func : matmul_triple_grad
+
+- backward_api : cumprod_grad
+  forward : cumprod (Tensor x, int dim) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cumprod_grad            

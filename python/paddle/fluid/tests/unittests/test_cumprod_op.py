@@ -73,6 +73,7 @@ class TestCumprod(OpTest):
         self.init_params()
         self.init_dtype()
         self.op_type = "cumprod"
+        self.python_api = paddle.cumprod
         self.inputs = {'X': None}
         self.outputs = {'Out': None}
         self.attrs = {'dim': None}

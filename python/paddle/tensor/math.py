@@ -2631,6 +2631,8 @@ def cumprod(x, dim=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_cumprod(x, dim)
         return _C_ops.cumprod(x, 'dim', dim)
 
     check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')

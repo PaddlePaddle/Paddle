@@ -798,7 +798,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
 
-  } else if (type_name == "paddle.Tensor") {
+  } else if (type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);

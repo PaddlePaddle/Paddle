@@ -283,3 +283,14 @@
     param: [x, y]
   kernel : 
     func : allclose
+
+- api : cumprod
+  args : (Tensor x,  int dim)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : cumprod
+  backward : cumprod_grad
+
