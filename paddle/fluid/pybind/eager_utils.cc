@@ -64,6 +64,8 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::npy_api::NPY_INT64_;
     case phi::DataType::FLOAT16:
       return pybind11::detail::NPY_FLOAT16_;
+    case phi::DataType::BFLOAT16:
+      return pybind11::detail::NPY_UINT16_;
     case phi::DataType::FLOAT32:
       return pybind11::detail::npy_api::NPY_FLOAT_;
     case phi::DataType::FLOAT64:
@@ -417,6 +419,8 @@ PyObject* ToPyObject(bool value) {
 
 PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
 
+PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
+
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }
@@ -439,6 +443,20 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
   }
+  return obj;
+}
+
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+  // For inplace op, directly return the input PyObject of the inplace tensor.
+  // [Parameter]
+  // value: Useless parameter.
+  // value_idx: Useless parameter.
+  // args: Input PyObject.
+  // arg_idx: Index of inplace PyObject in input args. Used to find the input
+  // inplace PyObject.
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  Py_INCREF(obj);
   return obj;
 }
 
@@ -492,20 +510,26 @@ PyObject* ToPyObject(const std::vector<double>& value) {
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value) {
+PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+                     bool return_py_none_if_not_initialize) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
-    PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-    if (obj) {
-      auto v = reinterpret_cast<TensorObject*>(obj);
-      new (&(v->tensor)) paddle::experimental::Tensor();
-      v->tensor = value[i];
+    if (!value[i].initialized() && return_py_none_if_not_initialize) {
+      Py_INCREF(Py_None);
+      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), Py_None);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "tp_alloc return null, can not new a PyObject."));
+      PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+      if (obj) {
+        auto v = reinterpret_cast<TensorObject*>(obj);
+        new (&(v->tensor)) paddle::experimental::Tensor();
+        v->tensor = value[i];
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "tp_alloc return null, can not new a PyObject."));
+      }
+      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
     }
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
   }
 
   return result;

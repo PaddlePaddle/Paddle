@@ -14,6 +14,7 @@
 
 import numpy as np
 import os
+from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
@@ -73,6 +74,7 @@ class ReduceOp:
     MAX = 1
     MIN = 2
     PROD = 3
+    AVG = 4
 
 
 class Task(object):
@@ -97,13 +99,10 @@ class Group():
     """
 
     def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
-        self.rank = rank  # group rank
+        self.rank = rank
         self.nranks = rank_num
         self.id = id
         self.ranks = ranks
-        assert len(ranks) == rank_num, (
-            "Number of ranks ({}--len:{}) must be "
-            "equal to rank_num ({}).".format(ranks, len(ranks), rank_num))
         self.pg = pg
         self.name = name
 
@@ -170,9 +169,9 @@ def _get_global_group():
 
 def _get_group_map_by_name():
     global _group_map_by_name
-    if _default_group_name not in _group_map_by_name:
-        raise RuntimeError("Call paddle.distributed.init_parallel_env first "
-                           "to initialize the distributed environment.")
+    assert _default_group_name in _group_map_by_name, (
+        "Call paddle.distributed.init_parallel_env first "
+        "to initialize the distributed environment.")
     return _group_map_by_name
 
 
@@ -218,9 +217,7 @@ def get_group(id=0):
 
 def _new_process_group_impl(backend, store, rank, world_size, group_name,
                             pg_options):
-    if backend == "gloo":
-        gloo_store = core.GlooStore(store)
-
+    pg = None
     if backend == "gloo":
         pg = core.ProcessGroupGloo(gloo_store, rank, world_size)
     elif backend == "nccl":

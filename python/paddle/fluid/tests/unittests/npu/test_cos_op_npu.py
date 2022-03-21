@@ -51,8 +51,6 @@ class TestCos(OpTest):
         self.check_output_with_place(self.place, atol=1e-7)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 

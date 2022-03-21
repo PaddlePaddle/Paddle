@@ -1274,6 +1274,8 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_addmm( input, x, y, alpha, beta)
         out = _C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
         return out
 
@@ -3266,6 +3268,8 @@ def atan2(x, y, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_atan2( x, y)
         return _C_ops.atan2(x, y)
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
