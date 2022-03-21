@@ -2918,6 +2918,40 @@ function build_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
 }
 
+function check_coverage_build() {
+    if [ ! "${buildSize}" ];then
+        echo "build size not found"
+        exit 1
+    fi
+
+    if [ ${WITH_COVERAGE} != "ON" ];then
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+        exit 1
+    fi
+
+    rm -f build_size
+    curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    dev_coverage_build_size=`cat build_size`
+
+    diff_coverage_build_size=`echo $(($buildSize - $dev_coverage_build_size))`
+
+    set +x
+    if [ ${diff_coverage_build_size} -gt 3 ]; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G."
+           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -3044,6 +3078,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
