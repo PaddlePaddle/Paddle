@@ -69,8 +69,8 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
       if (op_desc->HasAttr("max_range")) {
         const float max_range =
             BOOST_GET_CONST(float, op_desc->GetAttr("max_range"));
-        weight_thresholds->insert(
-            std::make_pair(x_var_name, {127 * 127 / max_range}));
+        std::vector<float> thresholds = {127 * 127 / max_range};
+        weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
       } else {
         auto scale_name = op_desc->Input("Scales")[0];
         auto* var = scope->FindVar(scale_name);
@@ -125,11 +125,13 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
       }
 
       if (!var_quant_scales->count(x_var_name)) {
-        var_quant_scales->insert(std::make_pair(x_var_name, {scale}));
+        std::vector<float> scale_v = {scale};
+        var_quant_scales->insert(std::make_pair(x_var_name, scale_v));
       }
 
       if (!var_quant_scales->count(out_var_name)) {
-        var_quant_scales->insert(std::make_pair(out_var_name, {scale}));
+        std::vector<float> scale_v = {scale};
+        var_quant_scales->insert(std::make_pair(out_var_name, scale_v));
       }
     }
   }
@@ -150,12 +152,13 @@ void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
           BOOST_GET_CONST(float, op_desc->GetAttr("out_threshold"));
       if (attr_scale == 0.0) continue;
       float scale = 1.0 / attr_scale;
+      std::vector<float> scale_v = {scale};
 
       auto var_name_map = op_desc->Outputs();
       for (auto iter = var_name_map.begin(); iter != var_name_map.end();
            ++iter) {
         for (auto var_name : iter->second) {
-          var_quant_scales->insert(std::make_pair(var_name, {scale}));
+          var_quant_scales->insert(std::make_pair(var_name, scale_v));
         }
       }
     }
@@ -199,6 +202,7 @@ void QuantDequantMkldnnFusePass::CollectFakeQuantizeOps(
   std::string output_act_name = fake_quant_out->Var()->Name();
   auto outlinks = fake_quant_out->outputs;
   for (auto* next_node : outlinks) {
+    if (!next_node->IsOp()) continue;
     next_node->Op()->RenameInput(output_act_name, input_act_name);
     IR_NODE_LINK_TO(fake_quant_in, next_node);
   }
@@ -259,9 +263,8 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
     if (!op_node->IsOp()) continue;
 
     if (fake_quantize_types.count(op_node->Name())) {
-      CollectFakeQuantizeOps(graph, op_node, &nodes2rm)
+      CollectFakeQuantizeOps(graph, op_node, &nodes2rm);
     } else if (fake_dequantize_types.count(op_node->Name())) {
-      collect_fake_dequantize(graph, op_node, nodes2rm);
       CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
     } else if (fake_quantize_dequantize_types.count(op_node->Name())) {
       CollectFakeDequantizeOps(graph, op_node, &nodes2rm);
@@ -435,12 +438,12 @@ void QuantDequantMkldnnFusePass::DequantizeWeights(
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
       if (IsInt8Weight(op_node, scope, "Filter")) {
         DequantizeOpWeights(op_node, scope, "Filter", "Output",
-                            &weight_thresholds);
+                            weight_thresholds);
       }
     } else if (op_node->Name() == "mul" || op_node->Name() == "matmul" ||
                op_node->Name() == "matmul_v2") {
       if (IsInt8Weight(op_node, scope, "Y")) {
-        DequantizeOpWeights(op_node, scope, "Y", "Out", &weight_thresholds);
+        DequantizeOpWeights(op_node, scope, "Y", "Out", weight_thresholds);
       }
     }
   }
