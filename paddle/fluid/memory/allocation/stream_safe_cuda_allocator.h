@@ -66,6 +66,7 @@ class StreamSafeCUDAAllocator
   ~StreamSafeCUDAAllocator();
 
   bool IsAllocThreadSafe() const override;
+  const gpuStream_t &GetDefaultStream() const;
   void SetDefaultStream(const gpuStream_t &stream);
 
  protected:

@@ -154,6 +154,10 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
+const gpuStream_t& StreamSafeCUDAAllocator::GetDefaultStream() const {
+  return default_stream_;
+}
+
 void StreamSafeCUDAAllocator::SetDefaultStream(const gpuStream_t& stream) {
   default_stream_ = stream;
 }

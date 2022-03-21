@@ -159,11 +159,6 @@ inline void EmplaceDeviceContext(
               cuda_ctx,
               platform::errors::InvalidArgument(
                   "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
-          // NOTE(Ruibiao): Do not pass a stream parameter to
-          // AllocatorFacade::GetAllocator when initializing context, because it
-          // may require the default stream from DeviceContextPool. If you have
-          // to do so, please add an extra parameter
-          // "force_change_default_stream = true".
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
@@ -520,11 +515,10 @@ CUDAContext::~CUDAContext() {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
   phi::GPUContext::PartialInitWithoutAllocator();
   cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
-  workspace_.reset(new phi::DnnWorkspaceHandle(
-      memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(place, phi::GPUContext::stream(),
-                        /* force_change_default_stream = */ true)
-          .get()));
+  auto& instance = memory::allocation::AllocatorFacade::Instance();
+  instance.SetDefaultStream(place, phi::GPUContext::stream());
+  workspace_.reset(
+      new phi::DnnWorkspaceHandle(instance.GetAllocator(place).get()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
