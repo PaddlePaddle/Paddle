@@ -127,7 +127,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor):
+        elif isinstance(data, (paddle.Tensor, core.eager.Tensor)):
             data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
