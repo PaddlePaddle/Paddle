@@ -91,19 +91,6 @@ def _keep_fp32_output(op, out_name):
     return False
 
 
-# def _keep_fp32_input_backward(op, in_name):
-#     op_type = op.type
-#     if op_type in ['layer_norm_grad']:
-#         return in_name not in {'X', 'Y@GRAD'}
-#     return False
-
-# def _keep_fp32_output(op, out_name):
-#     op_type = op.type
-#     if op_type in ['layer_norm_grad']:
-#         return out_name != 'X@GRAD'
-#     return False
-
-
 class FP16State(object):
     def __init__(self, program, amp_list, dist_context, use_fp16_guard):
         self.program = program
@@ -189,7 +176,7 @@ class FP16State(object):
         for op in block.ops:
             op_id = op.desc.id()
             if is_forward_op(op):
-                # FIXME (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
+                # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
                 if self._is_fp16_op(op_id) == True or op.type == "cast":
                     for in_name in op.input_names:
                         if _keep_fp32_input(op, in_name):
@@ -203,7 +190,7 @@ class FP16State(object):
                         for out_var_name in op.output(out_name):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
-                # FIXME (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
+                # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
                 elif self._is_fp16_op(op_id) == False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
@@ -219,7 +206,7 @@ class FP16State(object):
                         for out_var_name in op.output(out_name):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
-                # FIXME (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
+                # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
                 elif self._is_fp16_op(op_id) == False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
@@ -304,7 +291,6 @@ class FP16State(object):
                     if cast_var is None or cast_var.dtype != dst_dtype:
                         # NOTE we make the cast op and var's dist attr as the op that consume the
                         # cast var instead of the op which generates the var
-
                         # refine op's dist_attr
                         ref_mesh = in_var_dist_attr.process_mesh
                         ref_mapping = in_var_dist_attr.dims_mapping
@@ -334,15 +320,6 @@ class FP16State(object):
                     consume_op_attr.set_input_dist_attr(cast_name,
                                                         in_var_dist_attr)
 
-        # for out_name in op.output_names:
-        #     if _keep_fp32_output(op, out_name):
-        #         continue
-        #     for out_var_name in op.output(out_name):
-        #         out_var = block.var(out_var_name)
-        #         if out_var.type not in _valid_types:
-        #             continue
-
-        #         assert out_var.dtype == dst_dtype
         if op.has_attr('out_dtype') and op.attr('out_dtype') != -1:
             assert op.attr('out_dtype') == dst_dtype
 
@@ -512,9 +489,10 @@ class FP16Pass(AMPPass):
             set(self.get_attr("custom_black_list")), None)
 
         # TODO support multiple blocks
-        fp16_state = FP16State(main_program, amp_list, self.dist_context,
-                               self.get_attr("use_fp16_guard"))
-        is_train = fp16_state._build_state()
+        with paddle.static.program_guard(main_program, startup_program):
+            fp16_state = FP16State(main_program, amp_list, self.dist_context,
+                                   self.get_attr("use_fp16_guard"))
+            is_train = fp16_state._build_state()
 
         if is_train:
             with paddle.static.program_guard(main_program, startup_program):
@@ -567,12 +545,11 @@ class FP16Pass(AMPPass):
                         if fp16_grads:
                             self._update_loss_scaling(fp16_grads, found_inf)
 
-            # FIXME(JZ-LIANG) modify optimizer
+            # NOTE(JZ-LIANG) modify optimizer
             base_opt = self.get_attr("base_opt")
-            base_opt.multi_precision = True
+            base_opt._multi_precision = True
             if isinstance(base_opt, (paddle.fluid.optimizer.Adam,
                                      paddle.optimizer.AdamW)):
-
                 # with main_program._optimized_guard([]):
                 #     found_inf = paddle.tensor.creation._memcpy(
                 #         found_inf, paddle.CPUPlace())
