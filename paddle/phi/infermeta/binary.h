@@ -29,6 +29,8 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
@@ -67,6 +69,33 @@ void CompareInferMeta(const MetaTensor& x,
                       int axis,
                       MetaTensor* out);
 
+void ConvInferMeta(const MetaTensor& input,
+                   const MetaTensor& filter,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::string& paddding_algorithm,
+                   int groups,
+                   const std::vector<int>& dilations,
+                   const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
+void ConvTransposeInferMeta(const MetaTensor& x,
+                            const MetaTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::vector<int>& output_padding,
+                            const std::vector<int>& output_size,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -88,6 +117,11 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              int axis,
                              MetaTensor* out);
 
+void ExpandAsInferMeta(const MetaTensor& x,
+                       paddle::optional<const MetaTensor&> y,
+                       const std::vector<int>& target_shape,
+                       MetaTensor* out);
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
@@ -101,6 +135,11 @@ void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
 
+void GridSampleBaseInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void HuberLossInferMeta(const MetaTensor& input_meta,
                         const MetaTensor& label_meta,
                         float delta,
@@ -113,11 +152,22 @@ void IndexSampleInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaConfig config = MetaConfig());
 
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output);
+
+void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void MaskedSelectInferMeta(const MetaTensor& x,
+                           const MetaTensor& mask,
+                           MetaTensor* out);
 
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
@@ -126,6 +176,19 @@ void MatmulInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
+void PReluInferMeta(const MetaTensor& x,
+                    const MetaTensor& alpha,
+                    const std::string& mode,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config);
+
+void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
+                           const MetaTensor& value,
+                           bool out_int32,
+                           bool right,
+                           MetaTensor* out);
 
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
@@ -147,6 +210,20 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
+
+void YoloBoxInferMeta(const MetaTensor& x,
+                      const MetaTensor& img_size,
+                      const std::vector<int>& anchors,
+                      int class_num,
+                      float conf_thresh,
+                      int downsample_ratio,
+                      bool clip_bbox,
+                      float scale_x_y,
+                      bool iou_aware,
+                      float iou_aware_factor,
+                      MetaTensor* boxes,
+                      MetaTensor* scores,
+                      MetaConfig config = MetaConfig());
 
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,

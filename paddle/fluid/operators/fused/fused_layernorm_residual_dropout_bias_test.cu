@@ -198,7 +198,6 @@ struct TestFusedLayernormResidualDropoutBias {
             residual_vec[i * cols + j] + out2[i * cols + j];
       }
     }
-
     LayerNorm<T>(scale_vec, layernorm_bias_vec, correct_out, &correct_means,
                  &correct_vars, &correct_layernorm_out, epsilon, rows, cols,
                  *ctx);

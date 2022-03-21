@@ -34,15 +34,36 @@ Node *logical_not_handler(Graph *graph, Node *node) {
                       {GetOutputVarNode("Out", node)}, {});
 }
 
+Node *logical_or_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_logical_or",
+                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+                      {GetOutputVarNode("Out", node)}, {});
+}
+
+Node *logical_and_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_logical_and",
+                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+                      {GetOutputVarNode("Out", node)}, {});
+}
+
 Node *greater_than_handler(Graph *graph, Node *node) {
   return CreateBaseOp(graph, node, "popart_greater",
                       {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
                       {GetOutputVarNode("Out", node)}, {});
 }
 
+Node *less_than_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_less",
+                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+                      {GetOutputVarNode("Out", node)}, {});
+}
+
 REGISTER_HANDLER(equal, equal_handler);
 REGISTER_HANDLER(logical_not, logical_not_handler);
+REGISTER_HANDLER(logical_or, logical_or_handler);
+REGISTER_HANDLER(logical_and, logical_and_handler);
 REGISTER_HANDLER(greater_than, greater_than_handler);
+REGISTER_HANDLER(less_than, less_than_handler);
 
 }  // namespace
 }  // namespace ipu
