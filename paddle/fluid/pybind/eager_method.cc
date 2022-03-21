@@ -38,9 +38,9 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "pybind11/detail/internals.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "pybind11/detail/internals.h"
 
 namespace paddle {
 namespace pybind {
@@ -230,9 +230,8 @@ static PyObject* tensor_method__is_initialized(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method__dense_tensor_is_initialized(TensorObject* self,
-                                                            PyObject* args,
-                                                            PyObject* kwargs) {
+static PyObject* tensor_method__is_dense_tensor_hold_allocation(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
   auto dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
@@ -1073,8 +1072,9 @@ PyMethodDef variable_methods[] = {
     {"_is_initialized",
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_dense_tensor_is_initialized",
-     (PyCFunction)(void (*)(void))tensor_method__dense_tensor_is_initialized,
+    {"_is_dense_tensor_hold_allocation",
+     (PyCFunction)(
+         void (*)(void))tensor_method__is_dense_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_copy_to", (PyCFunction)(void (*)(void))tensor_method__copy_to,
      METH_VARARGS | METH_KEYWORDS, NULL},
