@@ -31,6 +31,7 @@ from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed.passes import new_pass, PassManager, PassContext
 import paddle.distributed.fleet as fleet
 from dist_pass_test_base import DistPassTestBase
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 
 logging.getLogger().setLevel(logging.INFO)
 paddle.enable_static()
@@ -111,6 +112,7 @@ class TestGradientMergePass(DistPassTestBase):
     def init(self):
         self._params_grads = None
         self._config = {"k_steps": 4, "avg": True}
+        self._config["dist_context"] = DistributedContext()
 
     def apply_passes(self, main_prog, startup_prog):
         self._config["params_grads"] = self._params_grads
