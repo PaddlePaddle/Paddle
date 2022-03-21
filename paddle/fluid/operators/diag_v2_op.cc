@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -58,15 +56,56 @@ class DiagV2OpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class DiagV2GradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "X", "X", "DiagV2Grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "DiagV2Grad");
+
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+  }
+};
+
+template <typename T>
+class DiagV2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("diag_v2_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagGradV2NoNeedBufferVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(diag_v2, DiagInferShapeFunctor,
-                            PT_INFER_META(phi::DiagInferMeta));
 
-REGISTER_OPERATOR(
-    diag_v2, ops::DiagV2Op, ops::DiagV2OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    DiagInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(diag_v2, DiagInferShapeFunctor,
+                            PD_INFER_META(phi::DiagInferMeta));
+
+REGISTER_OPERATOR(diag_v2, ops::DiagV2Op, ops::DiagV2OpMaker,
+                  ops::DiagV2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::DiagV2GradOpMaker<paddle::imperative::OpBase>,
+                  DiagInferShapeFunctor);
+
+REGISTER_OPERATOR(diag_v2_grad, ops::DiagV2GradOp,
+                  ops::DiagGradV2NoNeedBufferVarsInferer);

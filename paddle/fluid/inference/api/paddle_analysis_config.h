@@ -253,6 +253,19 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
+  ///
+  /// \brief Enable GPU fp16 precision computation, in experimental state.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void Exp_EnableUseGpuFp16(std::unordered_set<std::string> op_list = {});
+  ///
+  /// \brief A boolean state telling whether the GPU fp16 precision is turned
+  /// on.
+  ///
+  /// \return bool Whether the GPU fp16 precision is turned on.
+  ///
+  bool gpu_fp16_enabled() const { return use_gpu_fp16_; }
 
   ///
   /// \brief Turn on XPU.
@@ -319,6 +332,18 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
+  /// \brief Turn on ONNXRuntime.
+  ///
+  void EnableONNXRuntime();
+  ///
+  /// \brief Turn off ONNXRuntime.
+  ///
+  void DisableONNXRuntime();
+  ///
+  /// \brief Turn on ONNXRuntime Optimization.
+  ///
+  void EnableORTOptimization();
+  ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
   /// \return bool Whether the GPU is turned on.
@@ -341,6 +366,19 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the IPU is turned on.
   ///
   bool use_ipu() const { return use_ipu_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime is turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime is turned on.
+  ///
+  bool use_onnxruntime() const { return use_onnxruntime_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime Optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime Optimization is turned on.
+  ///
+  bool ort_optimization_enabled() const { return enable_ort_optimization_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -840,12 +878,19 @@ struct PD_INFER_DECL AnalysisConfig {
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool thread_local_stream_{false};
+  bool use_gpu_fp16_{false};
+  std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
+      "conv2d_fusion", "conv2d", "roll", "strided_slice"};
 
   bool use_cudnn_{false};
 
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // ONNXRuntime related
+  bool use_onnxruntime_{false};
+  bool enable_ort_optimization_{false};
 
   // Padding related
   bool use_fc_padding_{true};

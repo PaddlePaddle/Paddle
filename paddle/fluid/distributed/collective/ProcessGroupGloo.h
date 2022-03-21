@@ -52,8 +52,7 @@ class ProcessGroupGloo : public ProcessGroup {
 
   class GlooStore : public ::gloo::rendezvous::Store {
    public:
-    explicit GlooStore(
-        const std::shared_ptr<paddle::distributed::TCPStore>& store)
+    explicit GlooStore(const std::shared_ptr<paddle::distributed::Store>& store)
         : _store(store) {}
 
     ~GlooStore() = default;
@@ -87,7 +86,7 @@ class ProcessGroupGloo : public ProcessGroup {
     }
 
    protected:
-    std::shared_ptr<paddle::distributed::TCPStore> _store;
+    std::shared_ptr<paddle::distributed::Store> _store;
   };
 
   class GlooOptions {
@@ -100,9 +99,9 @@ class ProcessGroupGloo : public ProcessGroup {
     std::shared_ptr<::gloo::transport::Device> device;
   };
 
-  explicit ProcessGroupGloo(const std::shared_ptr<GlooStore>& store, int rank,
-                            int world_size,
-                            std::shared_ptr<GlooOptions> options);
+  explicit ProcessGroupGloo(
+      const std::shared_ptr<paddle::distributed::Store>& store, int rank,
+      int world_size, std::shared_ptr<GlooOptions> options);
 
   ~ProcessGroupGloo() = default;
 
@@ -113,6 +112,20 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<Tensor>& inputs,
       const AllreduceOptions& opts = AllreduceOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<Tensor>& in_tensors,
+      std::vector<Tensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
+                                              std::vector<Tensor>& out_tensors,
+                                              const ScatterOptions&) override;
 
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }
@@ -131,7 +144,7 @@ class ProcessGroupGloo : public ProcessGroup {
  protected:
   uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> _context;
-  std::shared_ptr<GlooStore> _store;
+  std::shared_ptr<::gloo::rendezvous::Store> _store;
 };
 
 }  // namespace distributed

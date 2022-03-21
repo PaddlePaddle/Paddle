@@ -356,7 +356,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
-      filter_grad->mutable_data<T>(ctx.GetPlace());
+      filter_grad->mutable_data<float>(ctx.GetPlace());
       std::vector<int> filter_shape_vec = phi::vectorize<int>(filter->dims());
 
       const auto& runner = NpuOpRunner(

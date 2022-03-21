@@ -32,17 +32,21 @@ function update_pd_ops() {
    # compile and install paddle
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
-   cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j8 paddle_python print_pten_kernels
+   cmake .. -DWITH_PYTHON=ON -DWITH_MKL=OFF -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
+   make -j8 paddle_python print_pten_kernels kernel_signature_generator
    cd ${PADDLE_ROOT}/build
    ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
+   ./paddle/fluid/pybind/kernel_signature_generator > ../tools/infrt/kernel_signature.json
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
    python3 -m pip install  *whl
    # update pd_ops.td
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
-   python3 generate_phi_kernel_dialect.py ./kernels.json
+   python3 generate_phi_kernel_dialect.py
+   # generate test model
+   cd ${PADDLE_ROOT}
+   python3 paddle/infrt/tests/model/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
 }
 
 function init() {

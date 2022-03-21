@@ -72,7 +72,7 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  if (meta) {
+  if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
     Py_INCREF(Py_None);
@@ -96,7 +96,7 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
                      "Detected NULL grad"
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
-  grad->copy_(src, true);
+  grad->copy_(src, self->tensor.inner_place(), true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }

@@ -31,6 +31,10 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 paddle::experimental::Tensor hook_function(
@@ -128,7 +132,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 4.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
@@ -195,7 +199,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
         leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }

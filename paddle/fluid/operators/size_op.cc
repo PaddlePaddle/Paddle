@@ -44,8 +44,8 @@ Return the number of elements in the input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(size, SizeInferShapeFunctor,
-                            PT_INFER_META(phi::SizeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(size, SizeInferShapeFunctor,
+                            PD_INFER_META(phi::SizeInferMeta));
 REGISTER_OPERATOR(
     size, ops::SizeOp, ops::SizeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
