@@ -189,3 +189,8 @@ class TestElementwiseFmin2Op(OpTest):
         """test_check_grad_ingore_y"""
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

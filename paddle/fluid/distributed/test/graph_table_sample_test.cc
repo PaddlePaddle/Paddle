@@ -130,6 +130,12 @@ void testGraphSample() {
   graph_table1.start_graph_sampling();
   fut1.get();
   graph_table1.end_graph_sampling();
+  // distributed::BasicBfsGraphSampler *sampler1 =
+  //     (distributed::BasicBfsGraphSampler *)graph_table1.get_graph_sampler();
+  //     sampler1->start_graph_sampling();
+  //     std::this_thread::sleep_for (std::chrono::seconds(1));
+  // std::vector<paddle::framework::GpuPsCommGraph> res1;// =
+  // sampler1->fetch_sample_res();
   ASSERT_EQ(2, res1.size());
   // odd id:96 48 122 112
   for (int i = 0; i < (int)res1[0].node_size; i++) {

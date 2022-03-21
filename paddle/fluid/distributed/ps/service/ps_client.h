@@ -26,6 +26,7 @@
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
@@ -59,6 +60,41 @@ class PSClientClosure : public google::protobuf::Closure {
   std::vector<std::shared_ptr<std::promise<int32_t>>> _promises;
 };
 
+struct LoadSaveContext {
+  int table_id;
+  std::string epoch;
+  std::string mode;
+};
+
+enum TrainingMode { Async = 0, Sync = 1, Geo = 3 };
+
+enum TrainingPhase { Init = 0, Train = 1, Save = 2 };
+
+// enum ValueType {
+//   Sparse = 0,
+//   Dense = 1
+// };
+
+struct PushContext {
+  const uint64_t *keys;
+  const float **push_values;
+  const Region *push_dense_values;
+};
+
+struct RequestContext {
+  int table;
+  TrainingMode training_mode;    // 1 for async, 2 for geo, 3 for sync
+  TrainingPhase training_phase;  // 1 for init, 2 for train
+  ValueType value_type;          // 1 for sparse, 2 for dense
+  void *keys;
+  void **sparse_values;  // for sparse values
+  Region *dense_values;  // for dense values
+  PushContext push_context;
+  size_t num;
+  bool is_training;
+  void *callback;
+};
+
 class PSClient {
  public:
   PSClient() {}
@@ -86,12 +122,17 @@ class PSClient {
   // 指定table数据load
   virtual std::future<int32_t> load(uint32_t table_id, const std::string &epoch,
                                     const std::string &mode) = 0;
+  // context配置load选项
+  virtual std::future<int32_t> Load(const LoadSaveContext &load_context) = 0;
+
   // 全量table数据save  value_accessor根据mode，可能有不同的save条件
   virtual std::future<int32_t> save(const std::string &epoch,
                                     const std::string &mode) = 0;
   // 指定table数据save  value_accessor根据mode，可能有不同的save条件
   virtual std::future<int32_t> save(uint32_t table_id, const std::string &epoch,
                                     const std::string &mode) = 0;
+
+  virtual std::future<int32_t> Save(const LoadSaveContext &save_context) = 0;
 
   // 清空table数据
   virtual std::future<int32_t> clear() = 0;
@@ -107,6 +148,8 @@ class PSClient {
   virtual std::future<int32_t> pull_dense(Region *regions, size_t region_num,
                                           size_t table_id) = 0;  // 保留
 
+  virtual std::future<int32_t> Push(RequestContext &push_context) = 0;
+
   // firstly push dense param for parameter server
   // this is neccessary because dense weight initialized in trainer on cold
   // start
@@ -117,6 +160,9 @@ class PSClient {
   virtual std::future<int32_t> push_dense(const Region *regions,
                                           size_t region_num,
                                           size_t table_id) = 0;
+
+  virtual std::future<int32_t> Pull(RequestContext &pull_context) = 0;
+
   // 使用keys进行pull请求，结果填充values
   // keys和values的个数均为num个，每个value占用select_size空间
   // future结束前keys和values缓冲区不能再次使用
