@@ -22,10 +22,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP(cinn_launch);
 USE_OP(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+#ifdef PADDLE_WITH_CUDA
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle::operators {
 
@@ -50,7 +56,7 @@ TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
   auto cinn_instruction_run_op = paddle::framework::OpRegistry::CreateOp(
       "cinn_instruction_run", {{"X", {"x", "y"}}},
       {{"Out", {test_op_out_name}}},
-      {{"cached_index", 0}, {"instruction_index", 1}});
+      {{"cached_index", 0}, {"instruction_index", 0}});
   auto elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
       "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
       {{"Out", {add_op_out_name}}}, {{}});

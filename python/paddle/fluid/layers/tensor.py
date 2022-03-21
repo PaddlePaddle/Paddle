@@ -663,7 +663,9 @@ def assign(input, output=None):
             })
 
     if is_inplace and in_dygraph_mode():
-        output._bump_inplace_version()
+        # TODO(jiabin): Remove this when we support inplace
+        if not core._in_eager_mode():
+            output._bump_inplace_version()
 
     return output
 

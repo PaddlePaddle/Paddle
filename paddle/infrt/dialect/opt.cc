@@ -14,7 +14,7 @@
 
 #include <mlir/Support/MlirOptMain.h>
 #include <mlir/Transforms/Passes.h>
-#include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/init_dialects.h"
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;

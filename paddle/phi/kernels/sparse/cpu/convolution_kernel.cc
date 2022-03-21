@@ -12,13 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
-#include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
 namespace sparse {
@@ -36,6 +33,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
+                  const bool subm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook) {
   // update padding and dilation
@@ -46,25 +44,36 @@ void Conv3dKernel(const Context& dev_ctx,
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   DDim out_dims = {1, 1, 1, 1, 1};
-  GetOutShape(x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
+  std::vector<int> kernel_sizes(kernel_dims.size());
+  for (int i = 0; i < kernel_dims.size(); i++) {
+    kernel_sizes[i] = kernel_dims[i];
+  }
+
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  // DenseTensor rulebook = phi::Empty<int, Context>(dev_ctx);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
 
   ProductRuleBook<T, Context>(dev_ctx,
                               x,
-                              kernel,
-                              paddings,
+                              kernel_sizes,
+                              subm_paddings,
                               dilations,
-                              strides,
+                              subm_strides,
                               out_dims,
+                              subm,
                               rulebook,
                               &counter_per_kernel);
 
@@ -83,8 +92,6 @@ void Conv3dKernel(const Context& dev_ctx,
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
       phi::Empty(dev_ctx, std::move(out_features_meta));
-  dev_ctx.Alloc(&in_features, x.dtype(), sizeof(T) * in_features.numel());
-  dev_ctx.Alloc(&out_features, x.dtype(), sizeof(T) * out_features.numel());
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
 
@@ -130,9 +137,6 @@ void Conv3dKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  dev_ctx.Alloc(out->mutable_non_zero_elements(),
-                out->mutable_non_zero_elements()->dtype(),
-                sizeof(T) * in_features.numel());
   T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
   memset(out_values_ptr, 0, sizeof(T) * out->nnz() * out_channels);
   Scatter<T>(out_features_ptr,

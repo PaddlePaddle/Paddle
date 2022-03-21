@@ -24,12 +24,13 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full_like, CPU, ALL_LAYOUT);
+
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
 TEST(GradTensorHolder, Constructor) {
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder = GradTensorHolder({slot_meta});
   GradTensorHolder grad_tensor_holder2 = GradTensorHolder(grad_tensor_holder);
 
@@ -70,8 +71,7 @@ TEST(GradTensorHolder, Interfaces) {
   paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
   // Constructor empty GradTensorHolder
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
 
@@ -136,8 +136,7 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   paddle::experimental::Tensor t2(sr2);
 
   // Constructor empty GradTensorHolder
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
 

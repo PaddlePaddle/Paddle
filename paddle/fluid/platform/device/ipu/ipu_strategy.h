@@ -24,6 +24,11 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
+struct RuntimeOptions {
+  // enable the eval mode in training by switching optimizers.
+  bool enable_eval = false;
+};
+
 class IpuStrategy {
  public:
   IpuStrategy();
@@ -32,19 +37,24 @@ class IpuStrategy {
   // training flag, true for training
   bool is_training = true;
 
-  // save the onnx model lowered by paddle program description
-  bool save_init_onnx = false;
-
-  // save the trained model
-  bool save_onnx_checkpoint = false;
-
   // average sharding, debugging used
   bool need_avg_shard = false;
 
   // flag for fp16, true for pure fp16
   bool enable_fp16 = false;
 
-  // Number ipus total needed, replica * ipu_per_replica
+  // enable transfer cast Op target from fp32 to fp16 in fp16 mode
+  bool transfer_cast_op = true;
+
+  // The mode of Adam/Lamb optimizer
+  // false: The standard Adam/Lamb optimizer
+  // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
+  bool use_no_bias_optimizer = false;
+
+  // enable distributed computing for POD128 or POD256
+  bool enable_distribution = false;
+
+  // Number ipus total needed, local_replica * ipu_per_replica
   int num_ipus = 1;
 
   // batches per step
@@ -53,8 +63,8 @@ class IpuStrategy {
   // micro batch-size
   int micro_batch_size = 1;
 
-  // save paddle model per n steps
-  int save_per_n_step = 1;
+  // random seed
+  std::uint64_t random_seed = std::numeric_limits<std::uint64_t>::max();
 
   // TODO(alleng) remove this param
   // available memory proportion, 0.0f for disable
@@ -66,6 +76,29 @@ class IpuStrategy {
 
   // defaultMaxWeightNorm for adam optimizer
   float max_weight_norm = 65504.0f;
+
+  // file path for dumping compiled model in onnx format
+  std::string onnx_dump_path;
+
+  // Data type to use for tensor that stores first-order momentum optimizer
+  // state. FLOAT or FLOAT16
+  std::string accl1_type = "FLOAT";
+
+  // Data type to use for tensor that stores second-order momentum optimizer
+  // state. FLOAT or FLOAT16
+  std::string accl2_type = "FLOAT";
+
+  // Data type to use for tensor that stores third-order momentum optimizer
+  // state. FLOAT or FLOAT16
+  std::string accl3_type = "FLOAT";
+
+  // WeightDecayMode for setting the optimizer
+  // if set, it will override other settings
+  // value must be one of "decay" or "l2_regularization" or not set
+  std::string weight_decay_mode = "";
+
+  // Runtime Options
+  RuntimeOptions runtime_options;
 
   // popart session option
   popart::SessionOptions popart_options;
@@ -86,6 +119,8 @@ class IpuStrategy {
                               const std::string &value);
   void SetTensorLocation(const std::string &tensor, const std::string &option,
                          std::uint64_t value);
+  void SetAccumulateOuterFragmentSettings(const std::uint64_t &schedule,
+                                          const std::vector<int> &values);
   void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
                    const std::string &domain, int version);
 

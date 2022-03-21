@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
-                                   const ScalarArray& shape,
+                                   const std::vector<int>& shape,
                                    float mean,
                                    float std,
                                    int seed,

@@ -132,35 +132,49 @@ class TestDepthwiseConvNPU(OpTest):
         self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.dilations[0] == 1 and self.dilations[1] == 1:
-            self.check_grad_with_place(
-                self.place, {'Input', 'Filter'},
-                'Output',
-                max_relative_error=0.03,
-                numeric_place=paddle.CPUPlace())
+            if self.dtype == np.float16:
+                self.check_grad_with_place(
+                    self.place, {'Input', 'Filter'},
+                    'Output',
+                    max_relative_error=0.9)
+            else:
+                self.check_grad_with_place(
+                    self.place, {'Input', 'Filter'},
+                    'Output',
+                    max_relative_error=0.03,
+                    numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, ['Input'],
-            'Output',
-            no_grad_set=set(['Filter']),
-            max_relative_error=0.03,
-            numeric_place=paddle.CPUPlace())
-
-    def test_check_grad_no_input(self):
-        if self.dtype == np.float16:
-            return
-        if self.dilations[0] == 1 and self.dilations[1] == 1:
             self.check_grad_with_place(
-                self.place, ['Filter'],
+                self.place, ['Input'],
                 'Output',
-                no_grad_set=set(['Input']),
+                no_grad_set=set(['Filter']),
+                max_relative_error=0.9)
+        else:
+            self.check_grad_with_place(
+                self.place, ['Input'],
+                'Output',
+                no_grad_set=set(['Filter']),
                 max_relative_error=0.03,
                 numeric_place=paddle.CPUPlace())
+
+    def test_check_grad_no_input(self):
+        if self.dilations[0] == 1 and self.dilations[1] == 1:
+            if self.dtype == np.float16:
+                self.check_grad_with_place(
+                    self.place, ['Filter'],
+                    'Output',
+                    no_grad_set=set(['Input']),
+                    max_relative_error=0.9)
+            else:
+                self.check_grad_with_place(
+                    self.place, ['Filter'],
+                    'Output',
+                    no_grad_set=set(['Input']),
+                    max_relative_error=0.03,
+                    numeric_place=paddle.CPUPlace())
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -267,32 +281,46 @@ class TestDepthwiseConvNPU_Padding(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, {'Input', 'Filter'},
-            'Output',
-            max_relative_error=0.03,
-            numeric_place=paddle.CPUPlace())
+            self.check_grad_with_place(
+                self.place, {'Input', 'Filter'},
+                'Output',
+                max_relative_error=1.2)
+        else:
+            self.check_grad_with_place(
+                self.place, {'Input', 'Filter'},
+                'Output',
+                max_relative_error=0.03,
+                numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, ['Input'],
-            'Output',
-            max_relative_error=0.03,
-            no_grad_set=set(['Filter']),
-            numeric_place=paddle.CPUPlace())
+            self.check_grad_with_place(
+                self.place, ['Input'],
+                'Output',
+                max_relative_error=0.7,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad_with_place(
+                self.place, ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+                numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(
-            self.place, ['Filter'],
-            'Output',
-            max_relative_error=0.03,
-            no_grad_set=set(['Input']),
-            numeric_place=paddle.CPUPlace())
+            self.check_grad_with_place(
+                self.place, ['Filter'],
+                'Output',
+                max_relative_error=0.8,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad_with_place(
+                self.place, ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+                numeric_place=paddle.CPUPlace())
 
     def init_data_format(self):
         self.data_format = "NCHW"

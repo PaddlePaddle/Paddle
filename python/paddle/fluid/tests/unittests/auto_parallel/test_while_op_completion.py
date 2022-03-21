@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,6 @@ import paddle
 import numpy as np
 import paddle.nn as nn
 import paddle.utils as utils
-import paddle.fluid as fluid
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.distributed.auto_parallel as auto
@@ -81,67 +80,51 @@ class MLPLayer(nn.Layer):
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
             bias_attr=None)
 
-    def forward(self, input, pm):
-
-        # auto.shard_tensor(
-        #     self.norm.weight,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
-        # auto.shard_tensor(
-        #     self.norm.bias,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
+    def forward(self, input):
+        out = self.norm(input)
         auto.shard_tensor(
             self.linear0.weight,
             dist_attr={
-                "process_mesh": _g_process_mesh[pm],
+                "process_mesh": _g_process_mesh[0],
                 "dims_mapping": [-1, 0]
             })
-        # auto.shard_tensor(
-        #     self.linear0.bias,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [0]})
+        out = self.linear0(out)
+        out = F.gelu(out, approximate=True)
         auto.shard_tensor(
             self.linear1.weight,
             dist_attr={
-                "process_mesh": _g_process_mesh[pm],
+                "process_mesh": _g_process_mesh[1],
                 "dims_mapping": [0, -1]
             })
-        # auto.shard_tensor(
-        #     self.linear1.bias,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
-
-        out = self.norm(input)
-        # auto.shard_tensor(
-        #     out,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
-        out = self.linear0(out)
-        # auto.shard_tensor(
-        #     out,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, 0]
-        #     })
-        out = F.gelu(out, approximate=True)
-        # auto.shard_tensor(
-        #     out,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, 0]
-        #     })
         out = self.linear1(out)
-        # auto.shard_tensor(
-        #     out,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
 
         return out
+
+
+def loop_cond(i, loop_len, input_array):
+    return i < loop_len
+
+
+def loop_body(i, loop_len, input_array):
+    pre_input = paddle.tensor.array_read(array=input_array, i=i)
+    mlp_while0 = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02)
+
+    mlp_while1 = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02)
+
+    output = mlp_while0(pre_input)
+    cur_pred = mlp_while1(output)
+    # 更新循环条件
+    i = paddle.increment(x=i, value=1)
+    paddle.tensor.array_write(cur_pred, array=input_array, i=i)
+    return i, loop_len, input_array
 
 
 def get_program():
@@ -151,22 +134,12 @@ def get_program():
 
     train_program = static.Program()
     start_program = static.Program()
-    with fluid.program_guard(train_program, start_program):
+    with static.program_guard(train_program, start_program):
 
         # 循环计数器
-        i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-        # auto.shard_tensor(
-        #     i,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
-
+        i = paddle.full(shape=[1], fill_value=0, dtype='int64')
         # 循环次数
-        loop_len = fluid.layers.fill_constant(
-            shape=[1], dtype='int64', value=epoch_num)
-        # auto.shard_tensor(
-        #     loop_len,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
+        loop_len = paddle.full(shape=[1], fill_value=epoch_num, dtype='int64')
 
         # input
         input = static.data(
@@ -182,262 +155,54 @@ def get_program():
         dataloader.set_batch_generator(
             batch_generator_creator(), places=paddle.static.cuda_places())
         # data dist_attr
-        # auto.shard_tensor(
-        #     input,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh[0],
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
-        # auto.shard_tensor(
-        #     label,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh[0],
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
+        auto.shard_tensor(
+            input,
+            dist_attr={
+                "process_mesh": _g_process_mesh[0],
+                "dims_mapping": [-1, -1, -1]
+            })
+        auto.shard_tensor(
+            label,
+            dist_attr={
+                "process_mesh": _g_process_mesh[0],
+                "dims_mapping": [-1, -1, -1]
+            })
 
         mlp_start = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
             dropout_ratio=0.1,
             initializer_range=0.02)
-        pred = mlp_start(input, 0)
+        pred = mlp_start(input)
 
-        input_array = fluid.layers.array_write(pred, i)
-        # auto.shard_tensor(
-        #     input_array,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
-
-        cond = fluid.layers.less_than(x=i, y=loop_len)
-        # auto.shard_tensor(
-        #     cond,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
-
-        while_op = fluid.layers.While(cond=cond)
-        with while_op.block():
-            pre_input = fluid.layers.array_read(array=input_array, i=i)
-            # auto.shard_tensor(
-            #     pre_input,
-            #     dist_attr={
-            #         "process_mesh": _g_process_mesh,
-            #         "dims_mapping": [-1, -1, -1]
-            #     })
-
-            mlp_while0 = MLPLayer(
-                hidden_size=hidden_size,
-                intermediate_size=4 * hidden_size,
-                dropout_ratio=0.1,
-                initializer_range=0.02)
-
-            mlp_while1 = MLPLayer(
-                hidden_size=hidden_size,
-                intermediate_size=4 * hidden_size,
-                dropout_ratio=0.1,
-                initializer_range=0.02)
-
-            output = mlp_while0(pre_input, 0)
-
-            cur_pred = mlp_while1(output, 1)
-
-            # 更新循环条件
-            i = fluid.layers.increment(x=i, value=1, in_place=True)
-            fluid.layers.array_write(cur_pred, array=input_array, i=i)
-            fluid.layers.less_than(x=i, y=loop_len, cond=cond)
-
-        end_pred = fluid.layers.array_read(array=input_array, i=i)
-        # auto.shard_tensor(
-        #     end_pred,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
+        input_array = paddle.tensor.array_write(pred, i)
+        i, loop_len, input_array = static.nn.while_loop(
+            cond=loop_cond,
+            body=loop_body,
+            loop_vars=[i, loop_len, input_array])
+        end_pred = paddle.tensor.array_read(array=input_array, i=i)
 
         mlp_end = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
             dropout_ratio=0.1,
             initializer_range=0.02)
-        pred = mlp_end(end_pred, 1)
+        pred = mlp_end(end_pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
-        # auto.shard_tensor(
-        #     error_cost,
-        #     dist_attr={
-        #         "process_mesh": _g_process_mesh,
-        #         "dims_mapping": [-1, -1, -1]
-        #     })
-
         loss = paddle.mean(error_cost)
-        # auto.shard_tensor(
-        #     loss,
-        #     dist_attr={"process_mesh": _g_process_mesh,
-        #                "dims_mapping": [-1]})
 
     return train_program, start_program, dataloader, i, loss
 
 
-def completion(train_program, start_program, dist_context):
-    blocks = train_program.blocks
-    # completion tensors
-    for block in blocks:
-        for op in block.ops:
-            if op.type == "layer_norm":
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    if tensor_dist_attr:
-                        continue
-                    tensor_dist_attr = TensorDistributedAttribute()
-                    tensor_dist_attr.process_mesh = _g_process_mesh
-                    tensor_dist_attr.dims_mapping = [-1]
-                    dist_context.set_tensor_dist_attr_for_program(
-                        out_var, tensor_dist_attr)
-
-            elif op.type == "elementwise_sub":
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    tensor_dist_attr = TensorDistributedAttribute()
-                    tensor_dist_attr.process_mesh = _g_process_mesh
-                    tensor_dist_attr.dims_mapping = [-1, -1, -1]
-                    dist_context.set_tensor_dist_attr_for_program(
-                        out_var, tensor_dist_attr)
-
-            elif op.type == "matmul_v2":
-                col = False
-                for in_name in op.input_arg_names:
-                    if ".w_" not in in_name:
-                        continue
-                    if in_name not in block.vars:
-                        in_var = blocks[0].vars[in_name]
-                    else:
-                        in_var = block.vars[in_name]
-                    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        in_var)
-                    assert tensor_dist_attr is not None
-                    if tensor_dist_attr.dims_mapping == [-1, 0]:
-                        col = True
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    if tensor_dist_attr:
-                        continue
-                    tensor_dist_attr = TensorDistributedAttribute()
-                    tensor_dist_attr.process_mesh = _g_process_mesh
-                    if col:
-                        tensor_dist_attr.dims_mapping = [-1, -1, 0]
-                    else:
-                        tensor_dist_attr.dims_mapping = [-1, -1, -1]
-                    dist_context.set_tensor_dist_attr_for_program(
-                        out_var, tensor_dist_attr)
-            elif op.type == "while":
-                out_name = op.desc.output("StepScopes")[0]
-                out_var = block.vars[out_name]
-                tensor_dist_attr = TensorDistributedAttribute()
-                tensor_dist_attr.process_mesh = _g_process_mesh
-                tensor_dist_attr.dims_mapping = [-1]
-                dist_context.set_tensor_dist_attr_for_program(out_var,
-                                                              tensor_dist_attr)
-
-    # completion ops
-    for block in blocks:
-        for op in block.ops:
-            op_dist_attr = OperatorDistributedAttribute()
-            op_dist_attr.process_mesh = _g_process_mesh
-            if op.type == "create_by_read" or op.type == "create_double_buffer_reader":
-                for in_name in op.input_arg_names:
-                    op_dist_attr.set_input_dims_mapping(in_name, [])
-                for out_name in op.output_arg_names:
-                    op_dist_attr.set_output_dims_mapping(out_name, [])
-            elif op.type == "read":
-                for in_name in op.input_arg_names:
-                    op_dist_attr.set_output_dims_mapping(in_name, [])
-                for out_name in op.output_arg_names:
-                    out_var = block.vars[out_name]
-                    out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
-            elif op.type == "while":
-                for in_name in op.input_arg_names:
-                    in_var = block.vars[in_name]
-                    in_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        in_var)
-                    op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
-                for out_name in op.output_arg_names:
-                    if out_name == op.desc.output("StepScopes")[0]:
-                        op_dist_attr.set_output_dims_mapping(out_name, [])
-                    else:
-                        out_var = block.vars[out_name]
-                        out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                            out_var)
-                        op_dist_attr.set_output_dist_attr(out_name,
-                                                          out_dist_attr)
-            else:
-                for in_name in op.input_arg_names:
-                    if in_name == "lod_tensor_blocking_queue_0":
-                        continue
-                    if in_name not in block.vars:
-                        in_var = blocks[0].vars[in_name]
-                    else:
-                        in_var = block.vars[in_name]
-                    in_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        in_var)
-                    op_dist_attr.set_input_dist_attr(in_name, in_dist_attr)
-                for out_name in op.output_arg_names:
-                    if out_name not in block.vars:
-                        out_var = blocks[0].vars[out_name]
-                    else:
-                        out_var = block.vars[out_name]
-                    out_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                        out_var)
-                    op_dist_attr.set_output_dist_attr(out_name, out_dist_attr)
-
-            if op.type == "matmul_v2":
-                op_dist_attr.impl_type = "matmul_v2"
-                for in_name in op_dist_attr.inputs_dist_attrs.keys():
-                    in_dist_attr = op_dist_attr.inputs_dist_attrs[in_name]
-                    if ".w_" in in_name and in_dist_attr.dims_mapping[-1] == 0:
-                        op_dist_attr.impl_idx = 0
-                    else:
-                        op_dist_attr.impl_idx = 1
-            else:
-                op_dist_attr.impl_type = "default"
-                op_dist_attr.impl_idx = 0
-
-            dist_context.set_op_dist_attr_for_program(op, op_dist_attr)
-            make_data_unshard(train_program, start_program, dist_context)
-
-    return train_program, start_program
-
-
-# def partition(train_program, start_program, dist_context):
-
-#     # optimizer = paddle.optimizer.SGD(learning_rate=0.00001)
-#     rank = paddle.distributed.get_rank()
-#     partitioner = Partitioner(dist_context, rank)
-#     dist_main_prog, dist_startup_prog, _ = partitioner.partition(
-#         train_program, start_program, [])
-
-#     return dist_main_prog, dist_startup_prog
-
-
 class TestMLP(unittest.TestCase):
     def test_completer(self):
-
         train_program, start_program, dataloader, i, loss = get_program()
-        # dist_context = get_default_distributed_context()
         dist_context = DistributedContext()
-        # train_program, start_program = completion(train_program, start_program,
-        #                                           dist_context)
-        # print_program_with_dist_attr(train_program)
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
             train_program)
-        # print_program_with_dist_attr(train_program, dist_context)
+        # print_program_with_dist_attr(complete_train_program, dist_context)
 
 
 if __name__ == "__main__":
