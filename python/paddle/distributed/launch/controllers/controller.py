@@ -16,9 +16,9 @@ import sys
 import os
 import signal
 
-from paddle.distributed.run.job import Job
-from paddle.distributed.run.job import Pod
-from paddle.distributed.run.job import Container
+from paddle.distributed.launch.job.job import Job
+from paddle.distributed.launch.job.pod import Pod
+from paddle.distributed.launch.job.container import Container
 
 from .master import Master
 
@@ -39,38 +39,43 @@ class ControllerBase(object):
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
 
-        self.job = Job(np=self.ctx.args.np,
+        self.job = Job(nnodes=self.ctx.args.nnodes,
                        mode=self.ctx.args.mode,
-                       id=self.ctx.args.id)
+                       jid=self.ctx.args.job_id)
         self.pod = Pod()
 
         self.join_server = None
+
+    def deploy_pod(self):
+
+        assert len(self.pod.containers) > 0, "No container in the pod"
+
+        self.ctx.logger.info("Run {}".format(self.pod))
+        self.ctx.logger.debug(self.pod.containers[0])
+
+        self.ctx.status.run()
+        self.pod.deploy()
 
     def run(self):
         self.build_job()
         self.build_pod()
 
-        if len(self.pod.containers) < 1:
-            self.ctx.logger.error("No container in the pod {}".format(self.pod))
-            return
-
-        self.ctx.logger.info("Run {}".format(self.pod))
-        self.ctx.logger.debug(self.pod.containers[0])
-
-        self.pod.deploy()
+        self.deploy_pod()
 
         self.watch()
 
     def watch(self) -> bool:
+        self.ctx.logger.info("Watching {}".format(self.pod))
+
         status = self.pod.watch()
 
         if status == self.ctx.status.COMPLETED:
             self.ctx.logger.info("Pod {}".format(status))
         elif status == self.ctx.status.FAILED:
+            fc = self.pod.failed_container()
             self.ctx.logger.info("Pod {}".format(status))
-            self.ctx.logger.error("Container failed !!!\n{}".format(
-                self.pod.failed_container()))
-            self.pod.tail()
+            self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+            fc[0].tail()
             self.pod.stop()
 
     def stop(self, sigint=None):
