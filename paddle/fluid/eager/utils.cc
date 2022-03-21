@@ -122,9 +122,10 @@ paddle::experimental::Tensor* EagerUtils::mutable_grad(
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
-    if (dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
-      VLOG(6) << "Warning: Reseting GradNodeAccumulation for leaf tensor is "
-                 "detected";
+    if (autograd_meta->GradNode()) {
+      VLOG(7) << "Should not set grad node twice, original node is:"
+              << autograd_meta->GradNode()->name()
+              << "current is: " << grad_node->name();
     }
     autograd_meta->SetGradNode(grad_node);
   }
@@ -132,11 +133,11 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
-  if (dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
-    VLOG(6)
-        << "Warning: Reseting GradNodeAccumulation for leaf tensor is detected";
+  if (autograd_meta->GradNode()) {
+    VLOG(7) << "Should not set grad node twice, original node is:"
+            << autograd_meta->GradNode()->name()
+            << "current is: " << grad_node->name();
   }
-
   autograd_meta->SetGradNode(grad_node);
 }
 
@@ -209,6 +210,27 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
         new EagerVariable(egr::Controller::Instance().GenerateUniqueName()));
   }
   return res;
+}
+
+void EagerUtils::ModifyInplaceInput(
+    const std::shared_ptr<EagerVariable>& inplace_variable,
+    paddle::experimental::Tensor* inplace_tensor) {
+  // Only modify the meta information of the inplace tensor, because
+  // EagerVariable cannot modify Tensor's meta information after inplace
+  // op (such as ``reshape``) is executed.
+  PADDLE_ENFORCE_NOT_NULL(inplace_tensor,
+                          paddle::platform::errors::Fatal(
+                              "Inplace Tensor is null and cannot be modified. "
+                              "We are tring to Modify Inplace Input from its "
+                              "shared_ptr, this error may indicate the inplace "
+                              " input is nullptr"));
+  if (phi::DenseTensor::classof(inplace_variable->GetTensorBase().get())) {
+    phi::DenseTensor* variable_dense_tensor =
+        static_cast<phi::DenseTensor*>(inplace_variable->GetTensorBase().get());
+    phi::DenseTensor* tensor_dense_tensor =
+        static_cast<phi::DenseTensor*>(inplace_tensor->impl().get());
+    tensor_dense_tensor->set_meta(variable_dense_tensor->meta());
+  }
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(

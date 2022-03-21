@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
@@ -29,10 +30,10 @@ namespace platform = paddle::platform;
 namespace op = paddle::operators;
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(conv2d);
-USE_OP(conv2d_grad);
-USE_OP_DEVICE_KERNEL(conv2d, CUDNN);
-USE_OP_DEVICE_KERNEL(conv2d_grad, CUDNN);
+USE_OP_ITSELF(conv2d);
+USE_OP_ITSELF(conv2d_grad);
+PD_DECLARE_KERNEL(conv2d, GPUDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(conv2d_grad, GPUDNN, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
@@ -404,8 +405,18 @@ TEST(CudnnNormConvFp16, K1S1) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3, true);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3, true));
+  }
 }
 
 // test for fp16, kernel = 3, output_channels = input_channels
@@ -420,8 +431,18 @@ TEST(CudnnNormConvFp16, K3S1) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3, true);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3, true));
+  }
 }
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
@@ -436,8 +457,18 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3, true);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3, true));
+  }
 }
 
 // test for fp16, kernel = 1, stride = 2, output_channels = input_channels * 4

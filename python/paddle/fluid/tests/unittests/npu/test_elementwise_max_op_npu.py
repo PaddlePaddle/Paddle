@@ -116,19 +116,13 @@ class TestElementwiseMaxOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['X'], 'Out', no_grad_set=set("Y"))
 
@@ -213,15 +207,11 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
         self.out = np.maximum(self.x, self.y.reshape(1, 1, 100))
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
         _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['Y'],
@@ -230,8 +220,6 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
             user_defined_grads=[dy])
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
         dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X'],

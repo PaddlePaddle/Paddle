@@ -17,6 +17,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <unordered_set>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -129,6 +130,12 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 
 const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
 
+// These operators will skip automatical code generatrion and
+// need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
+std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
+const char* CUSTOM_HANDWRITE_OP_FUNC_FILE =
+  "#include \"paddle/fluid/pybind/custom_handwrite_op_funcs.h\"\n";
+
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
                               const std::string& in_name) {
@@ -155,17 +162,22 @@ static inline std::string TempName(const std::string& name) {
 
 std::string GenerateOpFunctionsBody(
     const paddle::framework::proto::OpProto* op_proto, std::string func_name,
-    bool use_inplace_strategy = false,
     std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
-  std::string call_api_str = "auto out = " + op_type + "_dygraph_function(";
+  std::string call_api_str = "";
   std::string ins_initializer_with_null = "";
   std::string py_arg = "";
   int arg_idx = 0;
   int input_args_num = 0;
   std::string ins_cast_str = "";
   std::string view_strategy_str = "";
+  if (!inplace_map.empty()) {
+    // change call_api_str for inplace op
+    call_api_str = "auto out = " + op_type + "__dygraph_function(";
+  } else {
+    call_api_str = "auto out = " + op_type + "_dygraph_function(";
+  }
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -281,8 +293,31 @@ std::string GenerateOpFunctionsBody(
         HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
-
-  return_str = "return ToPyObject(out);";
+  if (!inplace_map.empty()) {
+    // For inplace op, Use the input PyObject directly.
+    for (auto& inplace_pair : inplace_map) {
+      // Find index of inplace tensor, and directly use input PyObject.
+      std::string inplace_arg_name = inplace_pair.second;
+      std::string inplace_return_name = inplace_pair.first;
+      const char* RETURN_INPLACE_TENSOR_TEMPLATE =
+          "ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "\"%s\", \"%s\");\n"
+          "    ssize_t return_id = "
+          "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
+          "    return ToPyObject(out, return_id, args, arg_id);";
+      return_str = paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
+                                           op_type, inplace_arg_name, op_type,
+                                           inplace_return_name);
+      // only support one inplace_var in temporary.
+      PADDLE_ENFORCE_EQ(
+          inplace_map.size(), 1,
+          paddle::platform::errors::InvalidArgument(
+              "size of inplace_map must be 1, but got %d", inplace_map.size()));
+      break;
+    }
+  } else {
+    return_str = "return ToPyObject(out);";
+  }
 
   std::string function_args = "";
   if (input_args == "") {
@@ -355,7 +390,7 @@ GenerateOpFunctions() {
 
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-
+  bool append_custom_head_file = false;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -363,7 +398,12 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
-    // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+    // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
+    if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
+      append_custom_head_file = true;
+      continue;
+    }
+    // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     // if the phi lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
@@ -371,7 +411,8 @@ GenerateOpFunctions() {
       continue;
     }
     std::string func_name = "eager_api_" + op_type;
-    std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
+    std::string op_function_str =
+        GenerateOpFunctionsBody(op_proto, func_name, {});
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(
@@ -379,6 +420,43 @@ GenerateOpFunctions() {
 
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
+
+    // NOTE(pangyoki): Inplace Strategy.
+    // In this case, output will reuse input varbase.
+    // Dygraph mode needs to be aligned with the in-place strategy in static
+    // mode, and the mapping relationships between output and input that have
+    // been defined in static mode should be used in dygraph mode.
+    // Find which ops need to use Inplace strategy in static mode, and get the
+    // mapping relationship between Inplace output and input.
+    auto& infer_inplace =
+        paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+    std::map<std::string, std::string> inplace_map;
+    // `sum` op has duplicate input. Don't consider adding inplace strategy
+    // for `sum` in temporary.
+    if (op_type != "sum" && infer_inplace) {
+      // Inplace OP: op_type_.
+      // The inplace OP needs a new implementation method.
+      auto in_to_outs = infer_inplace(true);
+      for (auto& inplace_pair : in_to_outs) {
+        inplace_map[inplace_pair.second] = inplace_pair.first;
+      }
+
+      std::string inplace_op_type = op_type + "_";
+      std::string inplace_func_name = "eager_api_" + inplace_op_type;
+      std::string inplace_op_function_str =
+          GenerateOpFunctionsBody(op_proto, inplace_func_name, inplace_map);
+
+      // generate pybind item
+      auto inplace_bind_function_str =
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
+                                  inplace_func_name, inplace_op_type);
+
+      op_function_list.emplace_back(std::move(inplace_op_function_str));
+      bind_function_list.emplace_back(std::move(inplace_bind_function_str));
+    }
+  }
+  if (append_custom_head_file) {
+    op_function_list.emplace_back(CUSTOM_HANDWRITE_OP_FUNC_FILE);
   }
   return std::make_tuple(op_function_list, bind_function_list);
 }
@@ -446,6 +524,11 @@ int main(int argc, char* argv[]) {
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
       << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerFinalStateMethods) < "
+         "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"

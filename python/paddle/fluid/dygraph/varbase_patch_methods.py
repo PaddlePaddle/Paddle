@@ -28,6 +28,7 @@ from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
+from paddle import _C_ops
 
 
 class TensorHookRemoveHelper(object):
@@ -94,7 +95,7 @@ def monkey_patch_varbase():
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T']
-        if isinstance(self, ParamBase):
+        if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
         else:
             attr_names = []
@@ -111,7 +112,7 @@ def monkey_patch_varbase():
 
         attr_kwargs.update(kwargs)
 
-        if to_parameter or isinstance(self, ParamBase):
+        if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):
             del attr_kwargs['persistable']
             # NOTE(Aurelius84): All parameters should be placed into global block.
             attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
@@ -311,7 +312,7 @@ def monkey_patch_varbase():
 
         """
         if core._in_eager_mode():
-            if not self.grad._is_initialized():
+            if self.grad is None:
                 return None
             # TODO(wanghuancoder) support SELECTED_ROWS
             return self.grad.numpy()
@@ -782,7 +783,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        return _C_ops_.assign(self)
+        return _C_ops.assign(self)
 
     @framework.dygraph_only
     def value(self):
