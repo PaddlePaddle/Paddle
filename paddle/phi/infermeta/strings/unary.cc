@@ -22,7 +22,7 @@ namespace strings {
 void UnchangedInferMeta(const StringTensorMeta& x_meta, MetaTensor* out) {
   out->set_dims(x_meta.dims);
   out->set_dtype(DataType::PSTRING);
-  out->set_layout(DataLayout::ALL_LAYOUT);
+  out->set_layout(DataLayout::PSTRING_UNION);
 }
 
 void CreateLikeInferMeta(const MetaTensor& x, MetaTensor* out) {

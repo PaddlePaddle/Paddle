@@ -29,7 +29,7 @@ enum class DataLayout {
   MKLDNN,
   SPARSE_COO,
   SPARSE_CSR,
-  PSTRING,
+  PSTRING_UNION,
   NUM_DATA_LAYOUTS,
   // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_LAYOUT = UNDEFINED,

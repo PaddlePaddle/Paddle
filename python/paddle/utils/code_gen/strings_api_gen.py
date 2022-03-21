@@ -204,7 +204,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 
         kernel_key_item_init = """
   Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::PSTRING;
+  DataLayout kernel_layout = DataLayout::PSTRING_UNION;
   DataType kernel_data_type = DataType::PSTRING;
 """
         # Check the tensor options

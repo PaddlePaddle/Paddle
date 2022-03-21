@@ -85,7 +85,9 @@ class StringTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return DataLayout::PSTRING; }
+  DataLayout layout() const noexcept override {
+    return DataLayout::PSTRING_UNION;
+  }
 
   void set_meta(const StringTensorMeta& meta);
 
