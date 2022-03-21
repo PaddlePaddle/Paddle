@@ -269,8 +269,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                     for i in range(len(data)):
                         data[i] = data[i]._move_to_list()
                     data = [
-                        _restore_batch(d, s) for d, s in
-                        zip(data, self._structure_infos[:len(self._places)])
+                        _restore_batch(d, s)
+                        for d, s in zip(data, self._structure_infos[:len(
+                            self._places)])
                     ]
                     self._structure_infos = self._structure_infos[len(
                         self._places):]
@@ -733,8 +734,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     for i in range(len(data)):
                         data[i] = data[i]._move_to_list()
                     data = [
-                        _restore_batch(d, s) for d, s in
-                        zip(data, self._structure_infos[:len(self._places)])
+                        _restore_batch(d, s)
+                        for d, s in zip(data, self._structure_infos[:len(
+                            self._places)])
                     ]
                     self._structure_infos = self._structure_infos[len(
                         self._places):]
