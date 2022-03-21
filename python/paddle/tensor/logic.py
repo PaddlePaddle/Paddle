@@ -17,6 +17,7 @@ from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..static import Variable
 from ..framework import VarBase as Tensor
+from ..framework import _in_eager_mode
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  # noqa: F401
@@ -123,6 +124,8 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
                                str(atol), 'equal_nan', equal_nan)

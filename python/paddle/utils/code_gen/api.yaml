@@ -274,3 +274,12 @@
   kernel :
     func : diagonal
   backward : diagonal_grad
+
+- api : allclose
+  args : (Tensor x, Tensor y, Scalar rtol, Scalar atol, bool equal_nan)
+  output : Tensor(out)
+  infer_meta : 
+    func : AllValueCompareInferMeta
+    param: [x, y]
+  kernel : 
+    func : allclose
