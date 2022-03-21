@@ -549,33 +549,33 @@
 
 
 
-# # bitwise_and
-# - api : bitwise_and
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : BitwiseInferMeta
-#   kernel :
-#     func : bitwise_and
+# bitwise_and
+- api : bitwise_and
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_and
 
-# # bitwise_or
-# - api : bitwise_or
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : BitwiseInferMeta
-#   kernel :
-#     func : bitwise_or
+# bitwise_or
+- api : bitwise_or
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_or
 
 
-# # bitwise_xor
-# - api : bitwise_xor
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : BitwiseInferMeta
-#   kernel :
-#     func : bitwise_xor
+# bitwise_xor
+- api : bitwise_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_xor
 
 # bitwise_not
 - api : bitwise_not
