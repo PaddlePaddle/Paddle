@@ -56,6 +56,19 @@ int32_t PsLocalClient::initialize() {
   return done();
 }
 
+std::future<int32_t> PsLocalClient::Load(const LoadSaveContext& load_context) {
+  if (load_context.table_id < 0) {
+    for (auto& it : _table_map) {
+      load(it.first, load_context.epoch, load_context.mode);
+    }
+    return done();
+  } else {
+    auto* table_ptr = table(load_context.table_id);
+    table_ptr->load(load_context.epoch, load_context.mode);
+    return done();
+  }
+}
+
 ::std::future<int32_t> PsLocalClient::save(const std::string& epoch,
                                            const std::string& mode) {
   // TODO
@@ -72,6 +85,21 @@ int32_t PsLocalClient::initialize() {
   table_ptr->flush();
   table_ptr->save(epoch, mode);
   return done();
+}
+
+::std::future<int32_t> PsLocalClient::Save(
+    const LoadSaveContext& save_context) {
+  if (save_context.table_id < 0) {
+    for (auto& it : _table_map) {
+      save(it.first, save_context.epoch, save_context.mode);
+    }
+    return done();
+  } else {
+    auto* table_ptr = table(save_context.table_id);
+    table_ptr->flush();
+    table_ptr->save(save_context.epoch, save_context.mode);
+    return done();
+  }
 }
 
 ::std::future<int32_t> PsLocalClient::clear() {
@@ -91,6 +119,51 @@ int32_t PsLocalClient::initialize() {
 ::std::future<int32_t> PsLocalClient::stop_server() {
   // no need
   return done();
+}
+
+::std::future<int32_t> PsLocalClient::Pull(RequestContext& pull_context) {
+  if (pull_context.value_type == Dense) {  // pull dense
+    Region* dense_region = reinterpret_cast<Region*>(pull_context.dense_values);
+    pull_dense(dense_region, pull_context.num, pull_context.table);
+  } else {  // pull sparse
+    uint64_t* keys = reinterpret_cast<uint64_t*>(pull_context.keys);
+    char** select_values = reinterpret_cast<char**>(pull_context.sparse_values);
+    size_t table_id = pull_context.table;
+    size_t num = pull_context.num;
+    pull_sparse_ptr(select_values, table_id, keys, num);
+  }
+}
+
+::std::future<int32_t> PsLocalClient::Push(RequestContext& push_context) {
+  if (push_context.value_type == Dense) {  // push dense
+    if (push_context.training_phase == Init) {
+      const Region* regions = push_context.push_context.push_dense_values;
+      size_t region_num = push_context.num;
+      push_dense_param(regions, region_num, push_context.table);
+    } else {
+      if (push_context.training_mode == Geo) {  // geo
+        float* total_send_data =
+            reinterpret_cast<float*>(push_context.dense_values);
+        size_t total_send_data_size = push_context.num;
+        push_dense_raw_gradient(push_context.table, total_send_data,
+                                total_send_data_size, push_context.callback);
+      } else {  // async and sync
+        const Region* regions = push_context.push_context.push_dense_values;
+        size_t region_num = push_context.num;
+        push_dense(regions, region_num, push_context.table);
+      }
+    }
+  } else {  // push sparse
+    if (push_context.training_mode == Async) {
+      const uint64_t* keys = push_context.push_context.keys;
+      const float** update_values = push_context.push_context.push_values;
+      size_t table_id = push_context.table;
+      size_t num = push_context.num;
+      push_sparse(table_id, keys, update_values, num);
+    } else {
+      // TODO
+    }
+  }
 }
 
 ::std::future<int32_t> PsLocalClient::pull_dense(Region* regions,
