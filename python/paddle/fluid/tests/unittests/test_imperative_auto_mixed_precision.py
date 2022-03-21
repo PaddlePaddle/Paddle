@@ -1126,6 +1126,35 @@ class TestLayerNormFp16(unittest.TestCase):
                 self.assertTrue(out.dtype == fluid.core.VarDesc.VarType.FP16)
 
 
+class TestAmpForViewOp(unittest.TestCase):
+    r''' View op of reshape, squeeze, unsqueeze, flatten_contiguous_range will skip amp.
+    '''
+
+    def test_reshape_op(self):
+        if fluid.is_compiled_with_cuda():
+            with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+                x_1 = paddle.rand([2, 4, 6], dtype="float32")
+                with paddle.amp.auto_cast(level="O1", dtype="float16"):
+                    out_1 = paddle.reshape(x_1, [-1, 0, 3, 2])
+
+                x_2 = paddle.rand([2, 4, 6], dtype="float32")
+                with paddle.amp.auto_cast(level="O2", dtype="float16"):
+                    out_2 = paddle.reshape(x_2, [-1, 0, 3, 2])
+
+                x_3 = paddle.rand([2, 4, 6], dtype="float32")
+                with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+                    out_3 = paddle.reshape(x_3, [-1, 0, 3, 2])
+
+                x_4 = paddle.rand([2, 4, 6], dtype="float32")
+                with paddle.amp.auto_cast(level="O2", dtype="bfloat16"):
+                    out_4 = paddle.reshape(x_4, [-1, 0, 3, 2])
+
+                self.assertTrue(out_1.dtype == fluid.core.VarDesc.VarType.FP32)
+                self.assertTrue(out_2.dtype == fluid.core.VarDesc.VarType.FP32)
+                self.assertTrue(out_3.dtype == fluid.core.VarDesc.VarType.FP32)
+                self.assertTrue(out_4.dtype == fluid.core.VarDesc.VarType.FP32)
+
+
 class TestBf16(unittest.TestCase):
     '''
     test amp for BF16 

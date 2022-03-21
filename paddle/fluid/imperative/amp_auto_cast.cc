@@ -316,6 +316,10 @@ template <typename VarType>
 NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
+  if (op_type == "reshape2" || op_type == "unsqueeze2" ||
+      op_type == "squeeze2" || op_type == "flatten_contiguous_range") {
+    return new_ins;
+  }
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
@@ -395,6 +399,10 @@ template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
+  if (op_type == "reshape2" || op_type == "unsqueeze2" ||
+      op_type == "squeeze2" || op_type == "flatten_contiguous_range") {
+    return new_ins;
+  }
   auto dst_type = framework::proto::VarType::FP16;
   if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
       AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
@@ -440,6 +448,10 @@ template <typename VarType>
 NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
+  if (op_type == "reshape2" || op_type == "unsqueeze2" ||
+      op_type == "squeeze2" || op_type == "flatten_contiguous_range") {
+    return new_ins;
+  }
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
@@ -490,6 +502,10 @@ template <typename VarType>
 NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
+  if (op_type == "reshape2" || op_type == "unsqueeze2" ||
+      op_type == "squeeze2" || op_type == "flatten_contiguous_range") {
+    return new_ins;
+  }
   auto dst_type = framework::proto::VarType::BF16;
   if (AmpOperators::Instance().GetMutableUnsupportedBf16Ops()->count(op_type) ||
       AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
