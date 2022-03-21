@@ -39,7 +39,7 @@ namespace framework {
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
-
+#ifdef PADDLE_WITH_PSLIB
 void PSGPUWrapper::InitAfsApi(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf) {
     int ret = afs_handler_.init(fs_name.c_str(), fs_user.c_str(), pass_wd.c_str(), conf.c_str());
     if (ret != 0) {
@@ -47,7 +47,7 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name, const std::string& fs_
     }
     use_afs_api_ = 1;
 }
-
+#endif
 void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;

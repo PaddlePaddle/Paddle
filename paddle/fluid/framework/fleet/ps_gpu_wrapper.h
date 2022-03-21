@@ -64,8 +64,6 @@ class PSGPUWrapper {
     sleep_seconds_before_fail_exit_ = 300;
   }
 
-  void InitAfsApi(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf);
-
   void PullSparse(const paddle::platform::Place& place, const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -310,12 +308,18 @@ class PSGPUWrapper {
   
   int UseAfsApi() { return use_afs_api_; }
 
+#ifdef PADDLE_WITH_PSLIB
   std::shared_ptr<paddle::ps::AfsReader> OpenReader(const std::string& filename) { return afs_handler_.open_reader(filename); }
+
+  void InitAfsApi(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf);
+#endif
  
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
+#ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
+#endif
   std::unordered_map<
       uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;

@@ -556,7 +556,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
   char* buf = (char*)malloc(buf_len + 10);
