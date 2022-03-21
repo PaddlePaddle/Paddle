@@ -1,4 +1,6 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+../ paddle / phi / kernels / cpu /
+    logsumexp_grad_kernel
+        .cc  // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
+#include "paddle/phi/kernels/logsumexp_kernel.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    reduce_all,
-    ops::ReduceCudaKernel<bool, kps::LogicalAndFunctor, kps::IdentityFunctor>);
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/diagonal.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+
+#include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
+
+    PD_REGISTER_KERNEL(
+        logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {
+}

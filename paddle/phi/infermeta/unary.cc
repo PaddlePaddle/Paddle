@@ -553,6 +553,91 @@ void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(DataType::BOOL);
 }
 
+void LogsumexpInferMeta(const MetaTensor& input,
+                        const std::vector<int64_t>& axis,
+                        bool keepdim,
+                        bool reduce_all,
+                        MetaTensor* out) {
+  auto x_dims = input.dims();
+  auto x_rank = x_dims.size();
+  std::vector<int64_t> formated_axis = axis;
+  PADDLE_ENFORCE_LE(x_rank,
+                    4,
+                    errors::InvalidArgument(
+                        "The input tensor X's dimensions of logsumexp "
+                        "should be less or equal than 4. But received X's "
+                        "dimensions = %d, X's shape = [%s].",
+                        x_rank,
+                        x_dims));
+  PADDLE_ENFORCE_GT(
+      axis.size(),
+      0,
+      errors::InvalidArgument(
+          "The size of axis of logsumexp "
+          "should be greater than 0. But received the size of axis "
+          "of logsumexp is %d.",
+          axis.size()));
+
+  for (size_t i = 0; i < axis.size(); i++) {
+    PADDLE_ENFORCE_LT(axis[i],
+                      x_rank,
+                      errors::InvalidArgument(
+                          "axis[%d] should be in the "
+                          "range [-D, D), where D is the dimensions of X and "
+                          "D is %d. But received axis[%d] = %d.",
+                          i,
+                          x_rank,
+                          i,
+                          axis[i]));
+    PADDLE_ENFORCE_GE(axis[i],
+                      -x_rank,
+                      errors::InvalidArgument(
+                          "axis[%d] should be in the "
+                          "range [-D, D), where D is the dimensions of X and "
+                          "D is %d. But received axis[%d] = %d.",
+                          i,
+                          x_rank,
+                          i,
+                          axis[i]));
+    if (axis[i] < 0) {
+      formated_axis[i] += x_rank;
+    }
+  }
+
+  auto dims_vector = vectorize(x_dims);
+  if (reduce_all) {
+    if (keepdim)
+      out->set_dims(phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
+    else
+      out->set_dims({1});
+  } else {
+    auto dims_vector = vectorize(x_dims);
+    if (keepdim) {
+      for (size_t i = 0; i < formated_axis.size(); ++i) {
+        dims_vector[formated_axis[i]] = 1;
+      }
+    } else {
+      const int kDelFlag = -1;
+      for (size_t i = 0; i < formated_axis.size(); ++i) {
+        dims_vector[formated_axis[i]] = kDelFlag;
+      }
+      dims_vector.erase(
+          std::remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
+          dims_vector.end());
+    }
+    if (!keepdim && dims_vector.size() == 0) {
+      dims_vector.push_back(1);
+    }
+    auto out_dims = phi::make_ddim(dims_vector);
+    out->set_dims(out_dims);
+    if (formated_axis.size() > 0 && formated_axis[0] != 0) {
+      // Only pass LoD when not reducing on the first dim.
+      out->share_lod(input);
+    }
+  }
+  out->set_dtype(input.dtype());
+}
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
