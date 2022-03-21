@@ -192,9 +192,7 @@ def source_include(header_file_path):
 
 
 def api_register():
-    return """
-PD_REGISTER_API(Test);
-"""
+    return ""
 
 
 def api_namespace():
