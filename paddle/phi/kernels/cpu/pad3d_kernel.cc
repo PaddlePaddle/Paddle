@@ -575,5 +575,13 @@ void Pad3dKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d, CPU, ALL_LAYOUT, phi::Pad3dKernel, float, double, int, int64_t, phi::dtype::complex<float>, phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(pad3d,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
