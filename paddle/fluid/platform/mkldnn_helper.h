@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -102,7 +103,8 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
 
   switch (from) {
     case framework::DataLayout::kMKLDNN:
-      if (to == framework::DataLayout::kNHWC) {
+      if ((to == framework::DataLayout::kNHWC) ||
+          (to == framework::DataLayout::kNDHWC)) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
@@ -111,6 +113,7 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
       }
       break;
     case framework::DataLayout::kNHWC:
+    case framework::DataLayout::kNDHWC:
       if (to == framework::DataLayout::kMKLDNN) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
