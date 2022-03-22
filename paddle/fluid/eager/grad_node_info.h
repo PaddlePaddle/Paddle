@@ -257,12 +257,22 @@ class Edge {
   }
 
   // Currently we use grad_node_ to identify if a edge is initialized.
-  bool IsInitialized() const { return grad_node_.get(); }
+  bool IsInitialized() const {
+    if (!grad_node_) {
+      return false;
+    } else {
+      if (!(grad_node_.get())) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  }
 
  private:
   size_t in_slot_id_;
   size_t in_rank_;
-  std::shared_ptr<GradNodeBase> grad_node_;
+  std::shared_ptr<GradNodeBase> grad_node_{nullptr};
 };
 
 }  // namespace egr
