@@ -65,6 +65,8 @@ class AucKernel : public framework::OpKernel<T> {
               (slide_steps > 0 ? 1 : 0)) *
                  sizeof(int64_t));
     }
+
+    // when calculate global_auc && is fake data, just do nothing
     if (slide_steps == 0 && is_fake_data) {
       return;
     }

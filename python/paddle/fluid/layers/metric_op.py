@@ -111,11 +111,11 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
 def auc(input,
         label,
-        ins_tag_weight=None,
         curve='ROC',
         num_thresholds=2**12 - 1,
         topk=1,
-        slide_steps=1):
+        slide_steps=1,
+        ins_tag_weight=None):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -145,7 +145,9 @@ def auc(input,
                              the roc curve. Default 200.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-
+        ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
+                         data. 1 means real data, 0 means fake data. 
+                         A LoDTensor or Tensor with type float32,float64.
 
     Returns:
         Variable: A tuple representing the current AUC.
@@ -161,6 +163,7 @@ def auc(input,
 
             data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
             label = fluid.data(name="label", shape=[-1], dtype="int")
+            ins_tag_weight = fluid.data(name="ins_tag_weight", shape=[-1], dtype="float32")
             fc_out = fluid.layers.fc(input=data, size=2)
             predict = fluid.layers.softmax(input=fc_out)
             result=fluid.layers.auc(input=predict, label=label)
@@ -171,7 +174,8 @@ def auc(input,
             exe.run(fluid.default_startup_program())
             x = np.random.rand(3,32,32).astype("float32")
             y = np.array([1,0,1])
-            output= exe.run(feed={"input": x,"label": y},
+            z = np.array([1,1,1]) #this means real data
+            output= exe.run(feed={"input": x,"label": y, "ins_tag_weight": z},
                              fetch_list=[result[0]])
             print(output)
             #[array([0.5])]
@@ -181,11 +185,6 @@ def auc(input,
     if ins_tag_weight is None:
         ins_tag_weight = tensor.fill_constant_batch_size_like(
             input=label, shape=[-1, 1], dtype="float32", value=1.0)
-        #ins_tag_weight = helper.create_global_variable(
-        #    dtype='float', shape=label.shape)
-        #helper.set_variable_initializer(
-        #    ins_tag_weight, Constant(
-        #        value=1.0, force_cpu=False))
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
