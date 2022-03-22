@@ -14,7 +14,26 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace phi {}  // namespace phi
+namespace phi {
+
+KernelSignature SoftmaxWithCrossEntropyGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("cross_entropy_with_softmax_grad",
+                         {"Label", "Softmax", GradVarName("Loss")},
+                         {"soft_label",
+                          "use_softmax",
+                          "numeric_stable_mode",
+                          "ignore_index",
+                          "axis"},
+                         {GradVarName("Logits")});
+}
+
+}  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(softmax_with_cross_entropy,
                              cross_entropy_with_softmax);
+PD_REGISTER_BASE_KERNEL_NAME(softmax_with_cross_entropy_grad,
+                             cross_entropy_with_softmax_grad);
+
+PD_REGISTER_ARG_MAPPING_FN(softmax_with_cross_entropy_grad,
+                           phi::SoftmaxWithCrossEntropyGradOpArgumentMapping);
