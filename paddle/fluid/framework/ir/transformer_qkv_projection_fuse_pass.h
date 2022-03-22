@@ -74,6 +74,7 @@ struct TansformerQKVProjectionPattern : public PatternBase {
 
 class TansformerQKVProjectionFusePass : public FusePassBase {
  public:
+  TansformerQKVProjectionFusePass();
   virtual ~TansformerQKVProjectionFusePass() {}
 
  protected:

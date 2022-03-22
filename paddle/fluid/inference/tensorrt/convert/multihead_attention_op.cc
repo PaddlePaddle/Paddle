@@ -28,14 +28,31 @@ class MultiheadAttentionOpConverter : public OpConverter {
            "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    auto* input_q =
-        engine_->GetITensor(op_desc.Input("Input")[0]);  // B, S, N, H
-    auto* input_k = engine_->GetITensor(op_desc.Input("Input")[1]);
-    auto* input_v = engine_->GetITensor(op_desc.Input("Input")[2]);
+    auto* input_q = engine_->GetITensor(op_desc.Input("Q")[0]);  // B, S, N, H
+    auto* input_k = engine_->GetITensor(op_desc.Input("K")[0]);
+    auto* input_v = engine_->GetITensor(op_desc.Input("V")[0]);
 
+    VLOG(3) << "input q:";
+    auto dims = input_q->getDimensions();
+    VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+            << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+            << dims.d[4];
+
+    VLOG(3) << "input k:";
+    dims = input_k->getDimensions();
+    VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+            << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+            << dims.d[4];
+
+    VLOG(3) << "input v:";
+    dims = input_v->getDimensions();
+    VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+            << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+            << dims.d[4];
+
+    VLOG(3) << "step1";
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     int head_number = BOOST_GET_CONST(int, op_desc.GetAttr("head_number"));
-    int head_size = hidden_out / head_number;
 
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
@@ -46,22 +63,39 @@ class MultiheadAttentionOpConverter : public OpConverter {
         // Declare inputs
         std::vector<nvinfer1::ITensor*> itensors(
             {input_q, input_k, input_v});  // B, S, N, H
+        VLOG(3) << "step2";
         auto* concat_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
                                  itensors.size());  // B, S, 3*N, H
         concat_layer->setAxis(2);
 
+        VLOG(3) << "concat output:";
+        dims = concat_layer->getOutput(0)->getDimensions();
+        VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+                << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+                << dims.d[4];
+
+        VLOG(3) << "step3";
         auto* shuffle_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, concat_layer->getOutput(0));
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
+        VLOG(3) << "step4";
         nvinfer1::Dims shape_dim;
         shape_dim.nbDims = 5;
         shape_dim.d[0] = 0;
         shape_dim.d[1] = 0;
-        shape_dim.d[2] = 3;
-        shape_dim.d[3] = head_number;
-        shape_dim.d[4] = concat_layer->getOutput(0)->getDimensions().d[4];
+        shape_dim.d[2] = 0;
+        shape_dim.d[3] = 1;
+        shape_dim.d[4] = 1;
+        int head_size = input_q->getDimensions().d[2] / head_number;
         shuffle_layer->setReshapeDimensions(shape_dim);
 
+        VLOG(3) << "reshape output:";
+        dims = shuffle_layer->getOutput(0)->getDimensions();
+        VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+                << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+                << dims.d[4];
+
+        VLOG(3) << "step5";
         auto* input_bias_qk =
             engine_->GetITensor(op_desc.Input("BiasQK").front());
 
@@ -77,9 +111,12 @@ class MultiheadAttentionOpConverter : public OpConverter {
         if (enable_int8) {
           with_fp16 = 1;
         }
+        VLOG(3) << "head_number: " << head_number
+                << "; head_size: " << head_size;
         plugin::DynamicPluginTensorRT* plugin =
-            new plugin::QkvToContextPluginDynamic(hidden_in, head_number,
-                                                  head_size, scale, with_fp16);
+            new plugin::QkvToContextPluginDynamic(head_number * head_size,
+                                                  head_number, head_size, scale,
+                                                  with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
       }
     } else {
@@ -98,4 +135,4 @@ class MultiheadAttentionOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(attention, MultiheadAttentionOpConverter);
+REGISTER_TRT_OP_CONVERTER(multihead_attention, MultiheadAttentionOpConverter);

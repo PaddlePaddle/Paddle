@@ -190,8 +190,22 @@ class FcOpConverter : public OpConverter {
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
+
+        VLOG(3) << "before output reshpe:";
+        auto dims = fc_layer_float->getOutput(0)->getDimensions();
+        VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+                << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+                << dims.d[4];
+
         auto* fc_after_reshape_float = reshape_after_fc(
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
+
+        VLOG(3) << "after output reshpe:";
+        dims = fc_after_reshape_float->getOutput(0)->getDimensions();
+        VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+                << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+                << dims.d[4];
+
         if (activation_type == "relu") {
           fc_after_reshape_float->setName(
               ("float_reshape_after_fc: Shuffle (Output: " + output_name + ")")
@@ -305,9 +319,23 @@ class FcOpConverter : public OpConverter {
               "converter expects x_dim.nbDims > x_num_col_dims, but "
               "x_dim.nbDims : %d, x_num_col_dims : %d.",
               x_dim.nbDims, x_num_col_dims));
+
+      VLOG(3) << "before input reshpe:";
+      VLOG(3) << "nbDims: " << x_dim.nbDims << "; dims: " << x_dim.d[0] << ","
+              << x_dim.d[1] << "," << x_dim.d[2] << "," << x_dim.d[3] << ","
+              << x_dim.d[4];
+
       auto* reshape_before_fc_layer =
           reshape_before_fc(X, x_dim, x_num_col_dims, output_name);
+
       auto* reshape_itensor = reshape_before_fc_layer->getOutput(0);
+
+      VLOG(3) << "after input reshpe:";
+      auto dims = reshape_itensor->getDimensions();
+      VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ","
+              << dims.d[1] << "," << dims.d[2] << "," << dims.d[3] << ","
+              << dims.d[4];
+
       if (enable_int8) {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }

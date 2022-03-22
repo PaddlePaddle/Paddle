@@ -43,14 +43,10 @@ static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
 }
 
 PDNode* SelfAttentionPattern::operator()() {
-  auto* input0 = pattern->NewNode(input0_repr());
-  input0->assert_is_op_input("mul");
-
   // First path with scale
-
-  auto* intput_q = pattern->NewNode(input_q_repr())
-                       .AsIntermediate()
-                       ->assert_is_op_input("reshape2");
+  auto* input_q = pattern->NewNode(input_q_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("reshape2");
 
   auto* reshape2_0 =
       pattern->NewNode(reshape2_0_repr())->assert_is_op("reshape2");
@@ -110,8 +106,8 @@ PDNode* SelfAttentionPattern::operator()() {
 
   // Second path to matmul
 
-  auto* input_k = pattern->NewNode(intput_k_repr())
-                      .AsIntermediate()
+  auto* input_k = pattern->NewNode(input_k_repr())
+                      ->AsInput()
                       ->assert_is_op_input("reshape2");
 
   auto* reshape2_1 =
@@ -130,9 +126,9 @@ PDNode* SelfAttentionPattern::operator()() {
 
   // Third path to matmul
 
-  auto* input_v = eltadd2_out_var = pattern->NewNode(eltadd2_out_repr())
-                                        ->AsIntermediate()
-                                        ->assert_is_op_input("reshape2");
+  auto* input_v = pattern->NewNode(input_v_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("reshape2");
 
   auto* reshape2_2 =
       pattern->NewNode(reshape2_2_repr())->assert_is_op("reshape2");
@@ -171,7 +167,7 @@ PDNode* SelfAttentionPattern::operator()() {
   reshape2_qkv->LinksFrom({transpose2_qkv_out_var})
       .LinksTo({reshape2_qkv_out_var});
 
-  return transpose2_2_out_var;
+  return reshape2_qkv_out_var;
 }
 }  // namespace patterns
 
@@ -311,7 +307,7 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
         BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
     OpDesc attention_op_desc(reshape2->Op()->Block());
-    attention_op_desc.SetType("attention");
+    attention_op_desc.SetType("multihead_attention");
 
     attention_op_desc.SetInput("Q", {input_q->Name()});  // B * S * N * H
     attention_op_desc.SetInput("K", {input_k->Name()});  // B * S * N * H
@@ -406,17 +402,7 @@ int SelfAttentionFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
                               multihead_pattern);
 
-    // If weights or biases in qkv's fc are shared by multiple self_attention
-    // patterns, we do not support this kind of fusion, this pass will not take
-    // effect.
-    bool is_fc_params_shared =
-        mul0_w->outputs.size() > 1 || mul1_w->outputs.size() > 1 ||
-        mul2_w->outputs.size() > 1 || eltadd0_b->outputs.size() > 1 ||
-        eltadd1_b->outputs.size() > 1 || eltadd2_b->outputs.size() > 1;
-    if (is_fc_params_shared) {
-      return;
-    }
-    fuse_creater(input_q, intput_k, input_v, eltadd_qk_b, reshape2_0,
+    fuse_creater(input_q, input_k, input_v, eltadd_qk_b, reshape2_0,
                  reshape2_qkv_out, scale, scale_out, softmax_qk, matmul_qk,
                  reshape2_qkv);
 

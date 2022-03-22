@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "/root/github/Paddle/paddle/phi/core/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -110,6 +111,16 @@ PDNode* TansformerQKVProjectionPattern::operator()() {
   eltadd2_out_var = pattern->NewNode(eltadd2_out_repr())
                         ->assert_is_op_output("elementwise_add");
 
+  // Q path
+  mul0->LinksFrom({input0, mul0_w_var}).LinksTo({mul0_out_var});
+  eltadd0->LinksFrom({mul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
+
+  // K path
+  mul1->LinksFrom({input0, mul1_w_var}).LinksTo({mul1_out_var});
+  eltadd1->LinksFrom({mul1_out_var, eltadd1_b_var}).LinksTo({eltadd1_out_var});
+  // V  path
+  mul2->LinksFrom({input0, mul2_w_var}).LinksTo({mul2_out_var});
+  eltadd2->LinksFrom({mul2_out_var, eltadd2_b_var}).LinksTo({eltadd2_out_var});
   return eltadd2_out_var;
 }
 
@@ -198,16 +209,16 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        framework::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = framework::make_ddim({3, bq_tensor->dims()[0]});
+        phi::make_ddim({wq_tensor->dims()[0], 3 * wq_tensor->dims()[1]});
+    auto combined_bias_dims = phi::make_ddim({3 * bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();
-    combined_w_desc->SetShape({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    combined_w_desc->SetShape({wq_tensor->dims()[0], 3 * wq_tensor->dims()[1]});
     combined_w_desc->SetPersistable(true);
 
     auto* combined_bias_desc = eltadd0_b->Var();
-    combined_bias_desc->SetShape({3, bq_tensor->dims()[0]});
+    combined_bias_desc->SetShape({3 * bq_tensor->dims()[0]});
     combined_bias_desc->SetPersistable(true);
 
     framework::LoDTensor tmp_combined_w_tensor;
@@ -216,7 +227,7 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
         tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
-    int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+    int dims_h = combined_w_dims[0], dims_w = wq_tensor->dims()[1];
     // Combine the three fc weights together.
     for (int i = 0; i < dims_h; i++) {
       for (int j = 0; j < 3; j++) {
@@ -260,18 +271,23 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     // Define fused QKV op
     OpDesc fused_qkv_op_desc(mul0->Op()->Block());
     fused_qkv_op_desc.SetType("fc");
-
+    fused_qkv_op_desc.SetAttr("x_num_col_dims", 2);
     fused_qkv_op_desc.SetInput("Input", {input0->Name()});
     fused_qkv_op_desc.SetInput("W", {mul0_w->Name()});
     fused_qkv_op_desc.SetInput("Bias", {eltadd0_b->Name()});
 
     fused_qkv_op_desc.SetOutput("Out", {mul0_out->Name()});
+    auto* mul0_out_desc = mul0_out->Var();
+    auto input_shape = input0->Var()->GetShape();
+    mul0_out_desc->SetShape(
+        {input_shape[0], input_shape[1],
+         3 * combined_w_dims[2]});  // [batch_size, seq_length, 3, hidden_out]
 
     auto* mul0_op_desc = mul0->Op();
     auto* mul1_op_desc = mul1->Op();
     auto* mul2_op_desc = mul2->Op();
     if (mul0_op_desc->HasAttr("enable_int8")) {
-      multihead_op_desc.SetAttr("enable_int8",
+      fused_qkv_op_desc.SetAttr("enable_int8",
                                 mul0_op_desc->GetAttr("enable_int8"));
       // all mul op has same input.
       fused_qkv_op_desc.SetAttr("Input_scale",
@@ -307,13 +323,19 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     split_op_desc.SetType("split");
 
     split_op_desc.SetInput(
-        "X", {mul0_out->Name()});  // [batch_size, seq_length, 3, hidden_out]
+        "X", {mul0_out->Name()});  // [batch_size, seq_length, 3 * hidden_out]
     split_op_desc.SetOutput(
         "Out", {eltadd0_out->Name(), eltadd1_out->Name(),
                 eltadd2_out->Name()});  // [batch_size, seq_length, hidden_out]
     split_op_desc.SetAttr("axis", 2);
     split_op_desc.SetAttr("num", 3);
     split_op_desc.SetAttr("squeeze", true);
+
+    split_op_desc.Block()
+        ->FindVar(mul0_out->Name())
+        ->SetShape(mul0_out_desc->GetShape());
+    auto shape = split_op_desc.Block()->FindVar(mul0_out->Name())->GetShape();
+    VLOG(3) << "shape of split: " << shape.size();
 
     auto* fused_qkv = graph->CreateOpNode(&fused_qkv_op_desc);
     auto* split = graph->CreateOpNode(&split_op_desc);
@@ -387,7 +409,9 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
     std::unordered_set<const Node*> marked_nodes({
         // input0
         // mul0_w, keep it for storing combined weights
-        mul1_w, mul2_w, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out,
+        mul1_w, mul2_w, mul0, mul1, mul2,
+        // mul0_out,
+        mul1_out, mul2_out,
         // eltadd0_b, keep it for storing combined bias
         eltadd1_b, eltadd2_b, eltadd0, eltadd1, eltadd2,
         // eltadd0_out,
@@ -407,9 +431,8 @@ void TansformerQKVProjectionFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope,
-      platform::errors::Fatal(
-          "During the multiheadMatmul pass, The scope should not be null."));
+      scope, platform::errors::Fatal("During the TransformerQKVProjectionFUse "
+                                     "pass, The scope should not be null."));
 
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
@@ -422,7 +445,7 @@ void TansformerQKVProjectionFusePass::ApplyImpl(Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(transfomer_qkv_projection_fuse_pass,
+REGISTER_PASS(transformer_qkv_projection_fuse_pass,
               paddle::framework::ir::TansformerQKVProjectionFusePass);
 REGISTER_PASS_CAPABILITY(transfomer_qkv_projection_fuse_pass)
     .AddCombination(

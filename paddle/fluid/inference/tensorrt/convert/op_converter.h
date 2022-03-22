@@ -142,7 +142,10 @@ class OpConverter {
                                             op_desc.Type()));
 
     it->SetEngine(engine);
+    VLOG(3) << "convert op: " << op_desc.Type();
     (*it)(op, scope, test_mode);
+
+    VLOG(3) << "finish convert op: " << op_desc.Type();
 
     size_t output_num = op_desc.OutputNames().size();
     if (output_num == 1) {  // The number of output is 1

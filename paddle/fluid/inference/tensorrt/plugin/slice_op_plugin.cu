@@ -321,6 +321,16 @@ int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   auto num_dims = input_dims.nbDims;
   size_t out_num = ProductDim(out_dims);
 
+  VLOG(3) << "SlicePluginDynamic::enqueue input: ";
+  for (size_t i = 0; i < input_dims.nbDims; i++) {
+    VLOG(3) << "dims: " << input_dims.d[i];
+  }
+
+  VLOG(3) << "SlicePluginDynamic::enqueue output: ";
+  for (size_t i = 0; i < out_dims.nbDims; i++) {
+    VLOG(3) << "dims: " << out_dims.d[i];
+  }
+
   std::vector<int> seg_offsets;
   std::vector<int> offsets;
   std::vector<int> extends;

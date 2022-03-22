@@ -113,6 +113,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+      "multihead_attention",
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
@@ -172,6 +173,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+      "multihead_attention",
+      "reshape2",
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
@@ -834,6 +837,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       auto x_var_name = desc.Input("X")[0];
+      VLOG(3) << "x_var_name: " << x_var_name;
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       size_t output_num = desc.Output("Out").size();
@@ -871,6 +875,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             VLOG(3) << "Invalid number to split. Tensor split does not result"
                        " in an equal division of dimensions. Axis dim = "
                     << in_axis_dim << " num = " << num << "!= 0";
+            VLOG(3) << "axis: " << axis << ";";
+            for (size_t i = 0; i < x_shape.size(); ++i) {
+              VLOG(3) << "x_shape: " << x_shape[i];
+            }
             return false;
           }
           size_t out_axis_dim = in_axis_dim / num;

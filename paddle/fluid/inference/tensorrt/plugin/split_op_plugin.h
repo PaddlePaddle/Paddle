@@ -45,7 +45,8 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   }
 
   nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override {
-    SplitPlugin* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
+    SplitPlugin* ptr =
+        new SplitPlugin(axis_, output_length_, with_fp16_, squeeze_);
     ptr->setPluginNamespace(this->getPluginNamespace());
     ptr->shareData(this);
     return ptr;
@@ -96,8 +97,8 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   int inner_cols_;
   int axis_shape_;
   bool same_shape_;
-  bool squeeze_;
   std::vector<int> output_length_;
+  bool squeeze_;
   std::vector<int> segment_offsets_;
   thrust::device_vector<int> d_segment_offsets_;
   thrust::device_vector<float*> d_output_ptrs_;
@@ -214,8 +215,8 @@ class SplitPluginDynamic : public DynamicPluginTensorRT {
 
  private:
   int axis_;
-  bool squeeze_;
   std::vector<int> output_length_;
+  bool squeeze_;
 };
 
 class SplitPluginDynamicCreator : public nvinfer1::IPluginCreator {

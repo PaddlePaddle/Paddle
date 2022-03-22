@@ -78,77 +78,76 @@ class TransformerQKVProjectionOpConverter : public OpConverter {
     };
     tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
 
-    nvinfer1::ILayer* layer = nullptr;
+    //    nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
 
-    if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss()) {
-      } else {
-        PADDLE_ENFORCE_EQ(
-            input->getDimensions().nbDims, 3,
-            platform::errors::InvalidArgument(
-                "The Input dim of the TransformerQKVProjection should be 3, "
-                "but it's (%d) now.",
-                input->getDimensions().nbDims));
-        // transpose weight_data from m * n to  n * m
+    if (engine_->with_dynamic_shape() && !engine_->use_oss()) {
+      PADDLE_ENFORCE_EQ(
+          input->getDimensions().nbDims, 3,
+          platform::errors::InvalidArgument(
+              "The Input dim of the TransformerQKVProjection should be 3, "
+              "but it's (%d) now.",
+              input->getDimensions().nbDims));
+      // transpose weight_data from m * n to  n * m
 
-        TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                      static_cast<void*>(weight_data),
-                                      static_cast<size_t>(weight_t->numel())};
-        weight.dims.assign({n, m});
+      TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+                                    static_cast<void*>(weight_data),
+                                    static_cast<size_t>(weight_t->numel())};
+      weight.dims.assign({n, m});
 
-        TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
-                                    static_cast<void*>(bias_data),
-                                    static_cast<size_t>(bias_t->numel())};
+      TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
+                                  static_cast<void*>(bias_data),
+                                  static_cast<size_t>(bias_t->numel())};
 
-        // add shuffle before fc
-        nvinfer1::Dims reshape_before_fc_dim;
-        reshape_before_fc_dim.nbDims = 5;
-        reshape_before_fc_dim.d[0] = 0;
-        reshape_before_fc_dim.d[1] = 0;
-        reshape_before_fc_dim.d[2] = 0;
-        reshape_before_fc_dim.d[3] = 1;
-        reshape_before_fc_dim.d[4] = 1;
-        auto* reshape_before_fc_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-        if (enable_int8) {
-          engine_->SetTensorDynamicRange(reshape_before_fc_layer->getOutput(0),
-                                         in_scale);
-        }
-        reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
-        reshape_before_fc_layer->setName(
-            ("shuffle_before_transformer_qkv_projection(Output: " +
-             output_name + ")")
-                .c_str());
-
-        // add layer fc
-        nvinfer1::ILayer* fc_layer = nullptr;
-        if (enable_int8) {
-          nvinfer1::DimsHW nv_ksize(1, 1);
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Convolution, *reshape_before_fc_layer->getOutput(0), n,
-              nv_ksize, weight.get(), bias.get());
-        } else {
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
-              n, weight.get(), bias.get());
-        }
-
-        if (enable_int8) {
-          PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("fc_out_threshold"), true,
-              platform::errors::InvalidArgument(
-                  "must have out threshold in multihead layers in int8 mode"));
-          float out_scale =
-              BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
-          engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
-        }
-        fc_layer->setName(
-            ("transformer_qkv_projection_fc(Output: " + output_name + ")")
-                .c_str());
-
-        auto* fc_out = fc_layer->getOutput(0);
+      // add shuffle before fc
+      nvinfer1::Dims reshape_before_fc_dim;
+      reshape_before_fc_dim.nbDims = 5;
+      reshape_before_fc_dim.d[0] = 0;
+      reshape_before_fc_dim.d[1] = 0;
+      reshape_before_fc_dim.d[2] = 0;
+      reshape_before_fc_dim.d[3] = 1;
+      reshape_before_fc_dim.d[4] = 1;
+      auto* reshape_before_fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      if (enable_int8) {
+        engine_->SetTensorDynamicRange(reshape_before_fc_layer->getOutput(0),
+                                       in_scale);
       }
+      reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+      reshape_before_fc_layer->setName(
+          ("shuffle_before_transformer_qkv_projection(Output: " + output_name +
+           ")")
+              .c_str());
+
+      // add layer fc
+      nvinfer1::ILayer* fc_layer = nullptr;
+      if (enable_int8) {
+        nvinfer1::DimsHW nv_ksize(1, 1);
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution,
+                                        *reshape_before_fc_layer->getOutput(0),
+                                        n, nv_ksize, weight.get(), bias.get());
+      } else {
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
+                                        *reshape_before_fc_layer->getOutput(0),
+                                        n, weight.get(), bias.get());
+      }
+
+      if (enable_int8) {
+        PADDLE_ENFORCE_EQ(
+            op_desc.HasAttr("fc_out_threshold"), true,
+            platform::errors::InvalidArgument(
+                "must have out threshold in multihead layers in int8 mode"));
+        float out_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+        engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+      }
+      fc_layer->setName(
+          ("transformer_qkv_projection_fc(Output: " + output_name + ")")
+              .c_str());
+
+      RreplenishLayerAndOutput(fc_layer, "transformer_qkv_projection",
+                               {output_name}, test_mode);
+
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
@@ -156,8 +155,6 @@ class TransformerQKVProjectionOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(fc_layer, "transformer_qkv_projection",
-                             {output_name}, test_mode);
   }
 };
 

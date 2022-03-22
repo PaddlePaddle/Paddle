@@ -42,6 +42,10 @@ class ConcatOpConverter : public OpConverter {
     std::vector<nvinfer1::ITensor*> itensors;
     for (auto& input_name : op_desc.Input("X")) {
       itensors.push_back(engine_->GetITensor(input_name));
+      VLOG(3) << "concat inputs:";
+      auto dims = engine_->GetITensor(input_name)->getDimensions();
+      VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ", "
+              << dims.d[1] << ", " << dims.d[2] << ", " << dims.d[3];
     }
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis == -1) {

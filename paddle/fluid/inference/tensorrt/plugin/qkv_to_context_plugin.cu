@@ -172,6 +172,11 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   ret.d[0] = inputs[0].d[0];
   ret.d[1] = inputs[0].d[1];
   ret.d[2] = expr_builder.constant(head_size_ * head_number_);
+
+  VLOG(3) << "QkvToContextPluginDynamic::getOutputDimensions ret.nbDims: "
+          << ret.nbDims << "; dims: " << ret.d[0] << ", " << ret.d[1] << ", "
+          << ret.d[2] << ", " << ret.d[3];
+
   return ret;
 }
 
@@ -258,6 +263,12 @@ int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
     void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
+
+  VLOG(3) << "QkvToContextPluginDynamic::enqueue input: ";
+  for (size_t i = 0; i < input_dims.nbDims; i++) {
+    VLOG(3) << "dims: " << input_dims.d[i];
+  }
+
   int input_num = ProductDim(input_dims);
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];

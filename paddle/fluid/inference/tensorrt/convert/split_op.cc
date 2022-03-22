@@ -31,18 +31,23 @@ class SplitOpConverter : public OpConverter {
     auto input_dims = input->getDimensions();
     size_t input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
-
+    VLOG(3) << "inpiut nbDims: " << input_dims.nbDims
+            << "; dims: " << input_dims.d[0] << ", " << input_dims.d[1] << ", "
+            << input_dims.d[2] << ", " << input_dims.d[3];
     // Get Attrs
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     bool squeeze = BOOST_GET_CONST(bool, op_desc.GetAttr("squeeze"));
 
-    std::vector<int> output_lengths =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
+    std::vector<int> output_lengths;
+    if (op_desc.HasAttr("sections")) {
+      output_lengths =
+          BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
+    }
     int num = 0;
     if (op_desc.HasAttr("num")) {
       num = BOOST_GET_CONST(int, op_desc.GetAttr("num"));
     }
-
+    VLOG(3) << "num: " << num;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
       axis += (axis < 0) ? input_dims.nbDims : 0;
@@ -71,6 +76,13 @@ class SplitOpConverter : public OpConverter {
       plugin::SplitPlugin* plugin =
           new plugin::SplitPlugin(axis, output_lengths, with_fp16, squeeze);
       layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
+    }
+
+    VLOG(3) << "split outputs: ";
+    for (size_t i = 0; i < output_num; i++) {
+      auto dims = layer->getOutput(i)->getDimensions();
+      VLOG(3) << "nbDims: " << dims.nbDims << "; dims: " << dims.d[0] << ", "
+              << dims.d[1] << ", " << dims.d[2] << ", " << dims.d[3];
     }
 
     std::string layer_name = "split (Output: ";

@@ -191,8 +191,11 @@ nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
 
   nvinfer1::DimsExprs output_dims = inputs[0];
   output_dims.d[axis_] = expr_builder.constant(output_length_.at(output_index));
-
-  if (squeeze && output_length_.at(output_index) == 1) {
+  VLOG(3) << "output_index: " << output_index;
+  VLOG(3) << "output_dims nbDims: " << output_dims.nbDims;
+  VLOG(3) << "output_dims.d[axis_]: "
+          << output_dims.d[axis_]->getConstantValue() << "; axis_:" << axis_;
+  if (squeeze_ && output_length_.at(output_index) == 1) {
     output_dims.nbDims = output_dims.nbDims - 1;
     for (int i = axis_; i < output_dims.nbDims; i++) {
       output_dims.d[i] = output_dims.d[i + 1];
@@ -251,6 +254,10 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     outer_rows *= input_dims.d[i];
   }
 
+  VLOG(2) << "SplitPluginDynamic input dims:";
+  for (size_t i = 0; i < input_dims.nbDims; i++) {
+    VLOG(2) << "dims: " << input_dims.d[i];
+  }
   for (int i = axis_ + 1; i < input_dims.nbDims; i++) {
     inner_cols *= input_dims.d[i];
   }
