@@ -220,8 +220,12 @@ std::unordered_set<std::string> ExtractNoNeedBufferFeeds(
   // 1. Find op with NoNeedBufferVarsInferer defined and collect its input nodes
   std::unordered_map<Node*, GraphNodeSet> op_node2no_need_buffer_nodes;
   for (auto* op_node : cluster) {
-    auto& inferer =
-        OpInfoMap::Instance().Get(op_node->Name()).NoNeedBufferVarsInferer();
+    const auto* op = OpInfoMap::Instance().GetNullable(op_node->Name());
+    // If op not registered in Paddle, skip
+    if (!op) {
+      continue;
+    }
+    auto& inferer = op->NoNeedBufferVarsInferer();
     if (!inferer) {
       continue;
     }
@@ -300,10 +304,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 
   GraphNodeMap old_var2new_var;
   for (auto* var : cluster_internals) {
-    PADDLE_ENFORCE_NOT_NULL(var->Var(),
-                            platform::errors::PreconditionNotMet(
-                                "The var desc of the node in cluster_internals "
-                                "shouldn't be null."));
+    if (!var->Var()) {
+      // skip control var
+      continue;
+    }
     auto* sub_node = subgraph->CreateVarNode(var->Var());
     old_var2new_var[var] = sub_node;
   }
@@ -327,6 +331,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   // out-graph.
   for (auto* op : cluster) {
     for (auto* var : op->inputs) {
+      if (!var->Var()) {
+        // skip control var
+        continue;
+      }
       // one output var maybe an input of the cluster
       if (cluster_internals.count(var) ||
           (cluster_outputs.count(var) && old_var2new_var.count(var))) {
@@ -346,6 +354,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
       }
     }
     for (auto* var : op->outputs) {
+      if (!var->Var()) {
+        // skip control var
+        continue;
+      }
       if (cluster_internals.count(var)) {
         IR_NODE_LINK_TO(old_op2new_op.at(op), old_var2new_var.at(var));
       } else if (cluster_outputs.count(var) && var->Var() != nullptr) {
