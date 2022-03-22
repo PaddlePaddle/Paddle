@@ -56,6 +56,16 @@
   kernel :
     func : abs_grad
 
+- backward_api : relu_grad
+  forward : relu (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu_grad
+
 - backward_api : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -275,3 +285,16 @@
     param : [x, vec]
   kernel :
     func : mv_grad
+
+
+
+#  =================================== sep0
+
+
+#  =================================== sep1
+
+
+#  =================================== sep2
+
+
+#  =================================== sep3
