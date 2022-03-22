@@ -16,30 +16,24 @@ import yaml
 import re
 import argparse
 import os
+from codegen_utils import core_ops_returns_info, core_ops_args_info, core_ops_args_type_info
+from codegen_utils import yaml_types_mapping
+from codegen_utils import ReadFwdFile, ReadBwdFile
+from codegen_utils import FindGradName, FindForwardName, GetSavedName, GetGradNodeName
+from codegen_utils import IsPlainTensorType, IsVectorTensorType
+from codegen_utils import GetConstReference, RemoveConstAndReference
+from codegen_utils import GetDygraphForwardFunctionName, GetIntermediateAPIFunctionName
+from codegen_utils import GetAutoGradMetaName, GetAutoGradMetaVectorName
+from codegen_utils import RemoveSpecialSymbolsInName, RecoverBaseNameOfInplaceFunction
+from codegen_utils import GetInplacedFunctionName
+from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromBackward
+from codegen_utils import ParseYamlForward, ParseYamlBackward
+from codegen_utils import FunctionGeneratorBase, YamlGeneratorBase
+
 
 ###########
 ## Utils ##
 ###########
-# For API dispatch used at python-level
-# { op_name : [arg_name, ...] }
-core_ops_returns_info = {}
-core_ops_args_info = {}
-core_ops_args_type_info = {}
-
-yaml_types_mapping = {
-    'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
-    'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
-    'str' : 'std::string', \
-    'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
-    'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
-    'Tensor' : 'Tensor',
-    'Tensor[]' : 'std::vector<Tensor>',
-    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
-    'Scalar' : 'paddle::experimental::Scalar',
-    'ScalarArray' : 'paddle::experimental::ScalarArray'
-}
-
-
 def ParseArguments():
     parser = argparse.ArgumentParser(
         description='Eager Code Generator Args Parser')
@@ -52,239 +46,6 @@ def ParseArguments():
 
     args = parser.parse_args()
     return args
-
-
-##################################
-###  Generic Helper Functions  ###
-##################################
-def FindGradName(string):
-    return string + "_grad"
-
-
-def FindForwardName(string):
-    if not string.endswith("_grad"):
-        return None
-    return string[:-5]
-
-
-def IsPlainTensorType(string):
-    plain_tensor_types = ['Tensor&', 'Tensor', 'const Tensor&', 'const Tensor']
-    if string in plain_tensor_types:
-        return True
-    return False
-
-
-def IsVectorTensorType(string):
-    vector_tensor_types = [
-        'std::vector<std::vector<Tensor>>', 'std::vector<Tensor>'
-    ]
-    if string in vector_tensor_types:
-        return True
-    return False
-
-
-def GetSavedName(string):
-    return string + "_"
-
-
-def GetConstReference(string):
-    ret = string
-    if not string.startswith("const "):
-        ret = "const " + string
-    if not string.endswith("&"):
-        ret += "&"
-    return ret
-
-
-def RemoveConstAndReference(string):
-    ret = string
-    if string.startswith("const "):
-        ret = ret[6:]
-    if string.endswith("&"):
-        ret = ret[:-1]
-
-    return ret
-
-
-def GetGradNodeName(string):
-    return f"FinalGradNode{string}"
-
-
-def GetDygraphForwardFunctionName(string):
-    return f"{string}_final_state_dygraph_function"
-
-
-def GetIntermediateAPIFunctionName(string):
-    return string + "_intermediate"
-
-
-def GetAutoGradMetaName(string):
-    return f"{string}_autograd_meta"
-
-
-def GetAutoGradMetaVectorName(string):
-    return f"{string}_autograd_meta_vec"
-
-
-def RemoveSpecialSymbolsInName(string):
-    # Remove any name after '@'
-    ret = string.split("@")[0]
-    return ret
-
-
-def RecoverBaseNameOfInplaceFunction(function_name):
-    return function_name[:-1]
-
-
-def GetInplacedFunctionName(function_name):
-    return function_name + "_"
-
-
-#############################
-###  File Reader Helpers  ###
-#############################
-def ReadFwdFile(filepath):
-    f = open(filepath, 'r')
-    contents = yaml.load(f, Loader=yaml.FullLoader)
-    f.close()
-    return contents
-
-
-def ReadBwdFile(filepath):
-    f = open(filepath, 'r')
-    contents = yaml.load(f, Loader=yaml.FullLoader)
-    ret = {}
-    for content in contents:
-        if 'backward_api' in content.keys():
-            api_name = content['backward_api']
-        else:
-            assert False
-
-        ret[api_name] = content
-    f.close()
-    return ret
-
-
-######################
-###  Yaml Parsers  ###
-######################
-
-
-def ParseYamlArgs(string):
-    # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
-
-    # inputs_list = [ [arg_name, arg_type, orig_position], ...]
-    inputs_list = []
-    # attrs_list = [ [arg_name, arg_type, default_value, orig_position], ...]
-    attrs_list = []
-
-    args = [x.strip() for x in string.strip().split(",")]
-    atype = r'((const )?\S+) '
-    aname = r'(.*)'
-    pattern = f'{atype}{aname}'
-    for i in range(len(args)):
-        arg = args[i]
-        m = re.search(pattern, arg)
-        arg_type = m.group(1).strip()
-        arg_name = m.group(3).split("=")[0].strip()
-        default_value = m.group(3).split("=")[1].strip() if len(
-            m.group(3).split("=")) > 1 else None
-
-        assert arg_type in yaml_types_mapping.keys(
-        ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
-        arg_type = yaml_types_mapping[arg_type]
-
-        arg_name = RemoveSpecialSymbolsInName(arg_name)
-        if "Tensor" in arg_type:
-            assert default_value is None
-            inputs_list.append([arg_name, arg_type, i])
-        else:
-            attrs_list.append([arg_name, arg_type, default_value, i])
-
-    return inputs_list, attrs_list
-
-
-def ParseYamlReturns(string):
-    # Example0: Tensor(out), Tensor(out1)
-    # Example1: Tensor, Tensor
-    # Example2: Tensor[](out), Tensor
-
-    # list = [ [ret_name, ret_type, orig_position], ...]
-    returns_list = []
-
-    returns = [x.strip() for x in string.strip().split(",")]
-
-    for i in range(len(returns)):
-        ret = returns[i]
-
-        ret_name = ""
-        if "(" in ret and ")" in ret:
-            # Remove trailing ')'
-            ret = ret[:-1]
-            ret_type = ret.split("(")[0].strip()
-            ret_name = ret.split("(")[1].strip()
-        else:
-            ret_type = ret.strip()
-
-        assert ret_type in yaml_types_mapping.keys(
-        ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
-        ret_type = yaml_types_mapping[ret_type]
-
-        assert "Tensor" in ret_type
-        ret_name = RemoveSpecialSymbolsInName(ret_name)
-        returns_list.append([ret_name, ret_type, i])
-
-    return returns_list
-
-
-def ParseYamlForwardFromBackward(string):
-    # Example: matmul (const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y) -> Tensor(out)
-
-    fname = r'(.*?)'
-    wspace = r'\s*'
-    fargs = r'(.*?)'
-    frets = r'(.*)'
-    pattern = f'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
-
-    m = re.search(pattern, string)
-    function_name = m.group(1)
-    function_args = m.group(2)
-    function_returns = m.group(3)
-
-    forward_inputs_list, forward_attrs_list = ParseYamlArgs(function_args)
-    forward_returns_list = ParseYamlReturns(function_returns)
-
-    return forward_inputs_list, forward_attrs_list, forward_returns_list
-
-
-def ParseYamlForward(args_str, returns_str):
-    # args Example: (const Tensor& x, const Tensor& y, bool transpose_x = false, bool transpose_y = false)
-    # returns Example: Tensor, Tensor
-
-    fargs = r'(.*?)'
-    wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
-    args_str = re.search(args_pattern, args_str).group(1)
-
-    inputs_list, attrs_list = ParseYamlArgs(args_str)
-    returns_list = ParseYamlReturns(returns_str)
-
-    return inputs_list, attrs_list, returns_list
-
-
-def ParseYamlBackward(args_str, returns_str):
-    # args Example: (const Tensor& x, const Tensor& y, const Tensor& out_grad, bool transpose_x=false, bool transpose_y=false)
-    # returns Example: Tensor(x_grad), Tensor(y_grad)
-
-    fargs = r'(.*?)'
-    wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
-    args_str = re.search(args_pattern, args_str).group(1)
-
-    inputs_list, attrs_list = ParseYamlArgs(args_str)
-    returns_list = ParseYamlReturns(returns_str)
-
-    return inputs_list, attrs_list, returns_list
 
 
 ########################
@@ -575,16 +336,28 @@ def GenerateCoreOpInfoDefinition():
 #####################
 ## Generator Class ##
 #####################
-class DygraphSingleFunctionGenerator:
+class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
     def __init__(self, forward_api_contents, grad_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
+        # Members from Parent:
+        #self.namespace
+        #self.forward_api_contents
+        #self.forward_api_name
+        #self.orig_forward_inputs_list
+        #self.orig_forward_attrs_list
+        #self.orig_forward_returns_list
+        #self.forward_inputs_position_map
+        #self.forward_outputs_position_map
+        #self.optional_inputs
+        #self.no_need_buffers
+        #self.intermediate_outputs   
+        #self.inplace_map
+        FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
+
         self.grad_api_contents = grad_api_contents
-        self.namespace = namespace
 
         # Raw Contents
         self.backward_forward_str = ""
-
-        self.forward_api_name = ""
         self.backward_api_name = ""
 
         self.forward_attrs_list = [
@@ -601,12 +374,6 @@ class DygraphSingleFunctionGenerator:
         self.backward_returns_list = [
         ]  #[ [ret_name, ret_type, orig_position], ...]
 
-        # Processed Forward Data
-        self.forward_inputs_position_map = {
-        }  #{ "name" : [type, fwd_position] }
-        self.forward_outputs_position_map = {
-        }  #{ "name" : [type, fwd_position] }
-
         # SlotNameMatched Backward Data
         self.backward_forward_inputs_map = {
         }  #{ "name" : [type, is_fwd_input, orig_position] ...}
@@ -614,12 +381,6 @@ class DygraphSingleFunctionGenerator:
         }  #{ "name" : [type, fwd_position, orig_position] ...}
         self.backward_grad_outputs_map = {
         }  #{ "name" : [type, fwd_position, orig_position] ...}
-
-        # Special Op Attributes
-        self.optional_inputs = []  #[name, ...]
-        self.no_need_buffers = []  #[name, ...]
-        self.intermediate_outputs = []  #[name, ...]    
-        self.inplace_map = {}  #{name : name, ...}
 
         # Generated Results
         self.forward_definition_str = ""
@@ -725,54 +486,6 @@ class DygraphSingleFunctionGenerator:
             if ret_name in intermediate_outputs:
                 assert pos in intermediate_positions
 
-    def ParseInplaceInfo(self):
-        forward_api_contents = self.forward_api_contents
-        if 'inplace' not in forward_api_contents.keys(): return
-
-        # inplace_map_str: "(x -> out0), (y -> out2)"
-        inplace_map_str = forward_api_contents['inplace']
-        for pair in inplace_map_str.split(","):
-            pair = pair.strip()
-            if pair.startswith("("):
-                pair = pair[1:]
-
-            if pair.endswith(")"):
-                pair = pair[:-1]
-
-            key = pair.split("->")[0].strip()
-            val = pair.split("->")[1].strip()
-            self.inplace_map[key] = val
-
-    def ParseNoNeedBuffer(self):
-        forward_api_contents = self.forward_api_contents
-
-        if 'no_need_buffer' in forward_api_contents.keys():
-            no_need_buffer_str = forward_api_contents['no_need_buffer']
-            for name in no_need_buffer_str.split(","):
-                name = name.strip()
-                name = RemoveSpecialSymbolsInName(name)
-                self.no_need_buffers.append(name.strip())
-
-    def ParseDispensable(self):
-        forward_api_contents = self.forward_api_contents
-
-        if 'optional' in forward_api_contents.keys():
-            optional_inputs_str = forward_api_contents['optional']
-            for name in optional_inputs_str.split(","):
-                name = name.strip()
-                name = RemoveSpecialSymbolsInName(name)
-                self.optional_inputs.append(name)
-
-    def ParseIntermediate(self):
-        forward_api_contents = self.forward_api_contents
-
-        if 'intermediate' in forward_api_contents.keys():
-            intermediate_str = forward_api_contents['intermediate']
-            for name in intermediate_str.split(","):
-                name = name.strip()
-                name = RemoveSpecialSymbolsInName(name)
-                self.intermediate_outputs.append(name)
-
     def CollectBackwardInfo(self):
         grad_api_contents = self.grad_api_contents
 
@@ -794,6 +507,7 @@ class DygraphSingleFunctionGenerator:
 
     def CollectForwardInfoFromForwardContents(self):
         forward_api_contents = self.forward_api_contents
+
         self.forward_api_name = forward_api_contents['api']
         forward_args_str = forward_api_contents['args']
         forward_returns_str = forward_api_contents['output']
@@ -807,32 +521,6 @@ class DygraphSingleFunctionGenerator:
               self.orig_forward_attrs_list)
         print("Parsed Original Forward Returns List: ",
               self.orig_forward_returns_list)
-
-    def DetermineForwardPositionMap(self):
-        forward_inputs_list = self.forward_inputs_list
-        forward_returns_list = self.forward_returns_list
-
-        for i in range(len(forward_inputs_list)):
-            forward_input = forward_inputs_list[i]
-            input_name = forward_input[0]
-            input_type = forward_input[1]
-            input_pos = forward_input[2]
-
-            self.forward_inputs_position_map[
-                input_name] = [input_type, input_pos]
-
-        for i in range(len(forward_returns_list)):
-            forward_return = forward_returns_list[i]
-            return_name = forward_return[0]
-            return_type = forward_return[1]
-            return_pos = forward_return[2]
-
-            self.forward_outputs_position_map[
-                return_name] = [return_type, return_pos]
-        print("Generated Forward Input Position Map: ",
-              self.forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              self.forward_outputs_position_map)
 
     def SlotNameMatching(self):
         backward_inputs_list = self.backward_inputs_list
@@ -1138,6 +826,7 @@ class DygraphSingleFunctionGenerator:
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
+        inplace_map = self.inplace_map
 
         # Get Input AutoGradMeta
         inputs_autograd_meta_list = []
@@ -1357,7 +1046,7 @@ class DygraphSingleFunctionGenerator:
         self.CollectForwardInfoFromBackwardContents()
 
         # Initialize orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list
-        self.CollectForwardInfoFromForwardContents()
+        self.CollectOriginalForwardInfo()
 
         # Forwards Validation Check
         self.ForwardsValidationCheck()
@@ -1366,7 +1055,8 @@ class DygraphSingleFunctionGenerator:
         ## Process Parsed Contents ##
         #############################
         # Initialize forward_inputs_position_map, forward_outputs_position_map
-        self.DetermineForwardPositionMap()
+        self.DetermineForwardPositionMap(self.forward_inputs_list,
+                                         self.forward_returns_list)
 
         # Initialize forward_inputs_position_map, forward_outputs_position_map
         self.SlotNameMatching()
@@ -1386,13 +1076,15 @@ class DygraphSingleFunctionGenerator:
         self.GenerateInplacedForwardDygraphFunctions()
 
 
-class DygraphYamlGenerator:
+class DygraphYamlGenerator(YamlGeneratorBase):
     def __init__(self, api_yaml_path, backward_yaml_path):
-        self.namespace = ""
-        self.api_yaml_path = api_yaml_path
-        self.backward_yaml_path = backward_yaml_path
+        # Parent members: 
+        # self.namespace
+        # self.api_yaml_path
+        # self.forward_api_list
+        YamlGeneratorBase.__init__(self, api_yaml_path)
 
-        self.forward_api_list = []
+        self.backward_yaml_path = backward_yaml_path
         self.grad_api_dict = {}
 
         self.forward_definition_str = ""
@@ -1401,10 +1093,9 @@ class DygraphYamlGenerator:
         self.node_definition_str = ""
 
     def ParseYamlContents(self):
-        api_yaml_path = self.api_yaml_path
-        backward_yaml_path = self.backward_yaml_path
+        self.ParseForwardYamlContents()
 
-        self.forward_api_list = ReadFwdFile(api_yaml_path)
+        backward_yaml_path = self.backward_yaml_path
         self.grad_api_dict = ReadBwdFile(backward_yaml_path)
 
     def GetBackwardAPIContents(self, forward_api_contents):
@@ -1417,11 +1108,6 @@ class DygraphYamlGenerator:
         backward_api_contents = grad_api_dict[backward_api_name]
 
         return backward_api_contents
-
-    def InferNameSpace(self):
-        api_yaml_path = self.api_yaml_path
-        if "sparse" in api_yaml_path:
-            self.namespace = "sparse::"
 
     def GenerateCode(self):
         forward_api_list = self.forward_api_list
