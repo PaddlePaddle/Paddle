@@ -74,7 +74,7 @@ TEST(TEST_FLEET, graph_sample) {
   table_proto.set_shard_num(127);
   table_proto.set_gpu_num(3);
   table_proto.set_gpups_graph_sample_class("BasicBfsGraphSampler");
-  table_proto.set_gpups_graph_sample_args("5,5,1,1");
+  table_proto.set_gpups_graph_sample_args("100,5,5,1,1");
   prepare_file(edge_file_name, edges);
   g.init_cpu_table(table_proto);
   g.load(std::string(edge_file_name), std::string("e>"));

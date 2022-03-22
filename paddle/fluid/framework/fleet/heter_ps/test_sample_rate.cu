@@ -52,7 +52,8 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 std::string input_file;
-int fixed_key_size = 100, sample_size = 100, bfs_sample_nodes_in_each_shard = 1,
+int fixed_key_size = 100, sample_size = 100,
+    bfs_sample_nodes_in_each_shard = 10000, init_search_size = 1,
     bfs_sample_edges = 20;
 std::vector<std::string> edges = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
@@ -169,8 +170,8 @@ void testSampleRate() {
   table_proto.set_shard_num(127);
   table_proto.set_gpu_num(gpu_num);
   table_proto.set_gpups_graph_sample_class("BasicBfsGraphSampler");
-  table_proto.set_gpups_graph_sample_args(
-      std::to_string(bfs_sample_nodes_in_each_shard) + ",10000000,1,1");
+  table_proto.set_gpups_graph_sample_args(std::to_string(init_search_size) +
+                                          ",100000000,10000000,1,1");
   std::vector<int> dev_ids;
   for (int i = 0; i < gpu_num; i++) {
     dev_ids.push_back(i);
@@ -197,12 +198,17 @@ void testSampleRate() {
   }
   for (int i = 0; i < (int)query_node_res->actual_sample_size; i++) {
     auto x = gpu_node_res[i];
-    // ASSERT_EQ(cpu_node_set.find(x) != cpu_node_set.end(), true);
+    ASSERT_EQ(cpu_node_set.find(x) != cpu_node_set.end(), true);
     gpu_node_set.insert(x);
   }
   VLOG(0) << " cpu_node_size = " << cpu_node_set.size();
   VLOG(0) << " gpu_node_size = " << gpu_node_set.size();
   ASSERT_EQ(cpu_node_set.size(), gpu_node_set.size());
+  for (int i = 0; i < 20; i++) {
+    int st = ids.size() / 20 * i;
+    auto q = g.query_node_list(0, st, ids.size() / 20);
+    VLOG(0) << " the " << i << "th iteration size = " << q->actual_sample_size;
+  }
 // NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
 
 /*
@@ -268,8 +274,7 @@ int main(int argc, char *argv[]) {
     sample_size = std::stoi(argv[3]);
   }
   VLOG(0) << "sample_size neighbor_size is " << sample_size;
-  if (argc > 4) bfs_sample_nodes_in_each_shard = std::stoi(argv[4]);
-  VLOG(0) << " bfs_sample_nodes_in_each_shard "
-          << bfs_sample_nodes_in_each_shard;
+  if (argc > 4) init_search_size = std::stoi(argv[4]);
+  VLOG(0) << " init_search_size " << init_search_size;
   testSampleRate();
 }
