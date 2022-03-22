@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "/Paddle/Paddle/paddle/phi/kernels/gpu/cast_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_grad_kernel.h"
+#include "paddle/phi/kernels/gpu/cast_impl.h"
 
 namespace phi {
 
