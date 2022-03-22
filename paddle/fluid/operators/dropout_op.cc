@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,17 +26,6 @@ using framework::Tensor;
 class DropoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Dropout");
-
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", x_dims);
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
-      ctx->SetOutputDim("Mask", x_dims);
-    }
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -173,7 +164,11 @@ class DropoutGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(dropout, DropoutInferShapeFunctor,
+                            PD_INFER_META(phi::DropoutInferMeta));
+
 REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
-                  ops::DropoutGradOpMaker<paddle::imperative::OpBase>);
+                  ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
+                  DropoutInferShapeFunctor);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);

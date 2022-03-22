@@ -282,6 +282,12 @@ packages=['paddle',
           'paddle.distribution',
           'paddle.distributed.sharding',
           'paddle.distributed.fleet',
+          'paddle.distributed.launch',
+          'paddle.distributed.launch.context',
+          'paddle.distributed.launch.controllers',
+          'paddle.distributed.launch.job',
+          'paddle.distributed.launch.plugins',
+          'paddle.distributed.launch.utils',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
@@ -300,6 +306,7 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
+          'paddle.distributed.auto_parallel.tuner',
           'paddle.distributed.passes',
           'paddle.framework',
           'paddle.jit',
@@ -726,7 +733,7 @@ with redirect_stdout():
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.distributed.fleet.launch:launch'
+                'fleetrun = paddle.distributed.launch.__main__:launch'
             ]
         },
         classifiers=[
