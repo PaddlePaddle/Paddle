@@ -24,6 +24,7 @@ from ..framework import Variable, in_dygraph_mode, _varbase_creator
 from .. import core
 from ..param_attr import ParamAttr
 from . import nn
+from . import tensor
 from ..data_feeder import check_variable_and_dtype
 
 __all__ = ['accuracy', 'auc']
@@ -178,16 +179,18 @@ def auc(input,
     helper = LayerHelper("auc", **locals())
 
     if ins_tag_weight is None:
-        ins_tag_weight = helper.create_global_variable(
-            dtype='float', shape=label.shape)
-        helper.set_variable_initializer(
-            ins_tag_weight, Constant(
-                value=1.0, force_cpu=False))
+        ins_tag_weight = tensor.fill_constant_batch_size_like(
+            input=label, shape=[-1, 1], dtype="float32", value=1.0)
+        #ins_tag_weight = helper.create_global_variable(
+        #    dtype='float', shape=label.shape)
+        #helper.set_variable_initializer(
+        #    ins_tag_weight, Constant(
+        #        value=1.0, force_cpu=False))
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
-    check_variable_and_dtype(label, 'ins_tag_weight', ['float32', 'float64'],
-                             'auc')
+    check_variable_and_dtype(ins_tag_weight, 'ins_tag_weight',
+                             ['float32', 'float64'], 'auc')
     auc_out = helper.create_variable_for_type_inference(dtype="float64")
     batch_auc_out = helper.create_variable_for_type_inference(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
