@@ -91,7 +91,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
         parser.getContext(), shape, elementType, lod_level);
   }
   if (keyword == "dense_tensor_map") {
-    return DenseTensorMapType::get(parser.getContext());
+    return DenseHostTensorMapType::get(parser.getContext());
   }
   if (keyword == "dense_tensor") {
     // parse DenseTensor, for example: !i=Infrt.tensor<X86, CUDA, F32>
@@ -138,9 +138,10 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
         parser.getContext(), *targetType, *precisionType, *layoutType);
   }
 
-  if (keyword == "dense_tensor_map") {
-    return DenseTensorMapType::get(parser.getContext());
+  if (keyword == "tensor_list") {
+    return infrt::DenseTensorListType::get(parser.getContext());
   }
+
   // Todo: parse other type
   return mlir::Type();
 }
@@ -161,7 +162,7 @@ void InfrtDialect::printType(::mlir::Type type,
        << lod_tensor_type.getLod_level() << ">";
     return;
   }
-  if (type.isa<infrt::DenseTensorMapType>()) {
+  if (type.isa<infrt::DenseHostTensorMapType>()) {
     os << "dense_tensor_map";
     return;
   }
@@ -175,12 +176,10 @@ void InfrtDialect::printType(::mlir::Type type,
     return;
   }
 
-  // print DenseTensorType, for example: !infrt.dense_tensor<CPU, FP32, NCHW>
-  if (type.isa<DenseTensorMapType>()) {
-    os << "dense_tensor_map";
+  if (type.isa<infrt::DenseTensorListType>()) {
+    os << "tensor_list";
     return;
   }
-
   llvm_unreachable("unknown infrt type.");
 }
 

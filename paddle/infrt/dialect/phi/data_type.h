@@ -23,16 +23,16 @@
 
 namespace infrt {
 
-phi::Backend ConvertTargetToPhi(TargetType target);
-TargetType ConvertTargetFromPhi(phi::Backend backend);
+::phi::Backend ConvertTargetToPhi(TargetType target);
+TargetType ConvertTargetFromPhi(::phi::Backend backend);
 
-phi::DataType ConvertPrecisionToPhi(PrecisionType precision);
-PrecisionType ConvertPrecisionFromPhi(phi::DataType datatype);
+::phi::DataType ConvertPrecisionToPhi(PrecisionType precision);
+PrecisionType ConvertPrecisionFromPhi(::phi::DataType datatype);
 
-phi::DataLayout ConvertLayoutToPhi(LayoutType layout);
-LayoutType ConvertLayoutFromPhi(phi::DataLayout layout);
+::phi::DataLayout ConvertLayoutToPhi(LayoutType layout);
+LayoutType ConvertLayoutFromPhi(::phi::DataLayout layout);
 
-phi::KernelKey ConvertPlaceToPhi(const Place& place);
-Place ConvertPlaceFromPhi(phi::TensorArgDef tensor_arg);
+::phi::KernelKey ConvertPlaceToPhi(const Place& place);
+Place ConvertPlaceFromPhi(::phi::TensorArgDef tensor_arg);
 
 }  // namespace infrt

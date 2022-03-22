@@ -96,7 +96,7 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
                      "Detected NULL grad"
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
-  grad->copy_(src, true);
+  grad->copy_(src, self->tensor.inner_place(), true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
