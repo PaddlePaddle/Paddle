@@ -1,4 +1,4 @@
-//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cast_grad_kernel.h"
 #include "paddle/phi/kernels/cpu/cast_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,21 +20,21 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CastKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                DataType out_dtype,
-                DenseTensor* out) {
-  PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                       CastKernelImpl<T, data_t>(dev_ctx, x, out);
+void CastGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out_grad,
+                    DenseTensor* x_grad) {
+  PD_VISIT_ALL_TYPES(x.dtype(), "CastKernelImpl", ([&] {
+                       CastKernelImpl<T, data_t>(dev_ctx, out_grad, x_grad);
                      }));
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(cast,
+PD_REGISTER_KERNEL(cast_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::CastKernel,
+                   phi::CastGradKernel,
                    float,
                    double,
                    int,

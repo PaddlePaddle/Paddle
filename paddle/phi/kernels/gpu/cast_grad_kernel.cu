@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,27 +14,27 @@
 
 #include "/Paddle/Paddle/paddle/phi/kernels/gpu/cast_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cast_grad_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void CastKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                DataType out_dtype,
-                DenseTensor* out) {
-  PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
-                       CastCUDAKernelImpl<T, data_t>(dev_ctx, x, out);
+void CastGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out_grad,
+                    DenseTensor* x_grad) {
+  PD_VISIT_ALL_TYPES(x.dtype(), "CastCUDAKernelImpl", ([&] {
+                       CastCUDAKernelImpl<T, data_t>(dev_ctx, out_grad, x_grad);
                      }));
 }
 
 }  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
-  PD_REGISTER_KERNEL(cast,                              \
+  PD_REGISTER_KERNEL(cast_grad,                         \
                      GPU,                               \
                      ALL_LAYOUT,                        \
-                     phi::CastKernel,                   \
+                     phi::CastGradKernel,               \
                      float,                             \
                      double,                            \
                      int,                               \
@@ -50,4 +50,4 @@ void CastKernel(const Context& dev_ctx,
         paddle::experimental::DataType::UNDEFINED);     \
   }
 
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, phi::dtype::bfloat16)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast_grad, phi::dtype::bfloat16)
