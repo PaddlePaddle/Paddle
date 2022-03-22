@@ -30,6 +30,11 @@ final_state_name_mapping = {
         "y": "Y",
         "out": "Out",
     },
+    # "elementwise_add": {
+    #     "final_op_name": "final_state_add",
+    #     "x": "X",
+    #     "y": "Y",
+    # },
     "trunc": {
         "final_op_name": "final_state_trunc",
         "x": "X",
@@ -264,7 +269,6 @@ class Tracer(core.Tracer):
         if framework._in_eager_mode():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
-
             if type in final_state_name_mapping.keys():
                 final_state_type = final_state_name_mapping[type][
                     "final_op_name"]

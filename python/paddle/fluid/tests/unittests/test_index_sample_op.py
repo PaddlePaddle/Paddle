@@ -24,6 +24,7 @@ from op_test import OpTest
 class TestIndexSampleOp(OpTest):
     def setUp(self):
         self.op_type = "index_sample"
+        self.python_api = paddle.index_sample
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         indexnp = np.random.randint(
@@ -39,10 +40,10 @@ class TestIndexSampleOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
     def config(self):
         """

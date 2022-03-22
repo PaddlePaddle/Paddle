@@ -13,7 +13,7 @@ IF(WITH_IPU)
     "ipu_device.cc"
   )
 
-  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart-only graph graph_helper)
+  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart-only graph graph_helper popdist)
   cc_library(ipu_info SRCS ${IPU_INFO_SRC} DEPS popart-only enforce)
   add_library(paddle_ipu SHARED ${PADDLE_IPU_SRC})
   add_dependencies(paddle_ipu ipu_backend)

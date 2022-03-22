@@ -395,7 +395,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   platform::CUDADeviceGuard gpuGuard;
   for (auto& place : places) {
     gpuGuard.SetDeviceIndex(place.GetDeviceId());
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::Backend::GPU);
+    auto dt = full({1}, 0, phi::DataType::FLOAT32, phi::GPUPlace());
     barrierTensors.push_back(dt);
   }
   auto task = ProcessGroupNCCL::AllReduce(barrierTensors);
@@ -417,7 +417,7 @@ void CheckTensorsInDifferentDevices(const std::vector<Tensor>& tensors,
   std::set<Place> used_devices;
 
   for (const auto& t : tensors) {
-    PADDLE_ENFORCE_EQ(t.is_cuda() && t.is_dense_tensor(), true,
+    PADDLE_ENFORCE_EQ(t.is_gpu() && t.is_dense_tensor(), true,
                       platform::errors::InvalidArgument(
                           "Tensors must be CUDA and dense tensor."));
 

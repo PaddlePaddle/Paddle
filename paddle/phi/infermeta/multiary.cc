@@ -305,9 +305,46 @@ void BatchNormInferMeta(const MetaTensor& x,
   y->set_dims(x_dims);
   mean_out->set_dims({C});
   variance_out->set_dims({C});
-  saved_mean->set_dims({C});
-  saved_variance->set_dims({C});
+  if (saved_mean) {
+    saved_mean->set_dims({C});
+  }
+  if (saved_variance) {
+    saved_variance->set_dims({C});
+  }
   y->share_lod(x);
+}
+
+void BatchNormInferInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             const MetaTensor& mean,
+                             const MetaTensor& variance,
+                             float momentum,
+                             float epsilon,
+                             const std::string& data_layout,
+                             MetaTensor* y,
+                             MetaTensor* mean_out,
+                             MetaTensor* variance_out,
+                             MetaConfig config) {
+  BatchNormInferMeta(x,
+                     scale,
+                     bias,
+                     mean,
+                     variance,
+                     momentum,
+                     epsilon,
+                     data_layout,
+                     /*is_test=*/true,
+                     /*use_global_stats=*/false,
+                     /*trainable_statistics=*/false,
+                     /*fuse_with_relu=*/false,
+                     y,
+                     mean_out,
+                     variance_out,
+                     /*saved_mean=*/nullptr,
+                     /*saved_variance=*/nullptr,
+                     /*reserve_space=*/nullptr,
+                     config);
 }
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,
@@ -744,3 +781,4 @@ void GraphReindexInferMeta(const MetaTensor& x,
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
+PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
