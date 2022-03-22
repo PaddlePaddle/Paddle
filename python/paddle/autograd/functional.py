@@ -362,33 +362,40 @@ class _Jacobian(object):
         raise NotImplementedError
 
     @property
-    def _row_axis(self):
+    def _lazy_axis(self):
         raise NotImplementedError
+
+    def _lazy_indexes(self, indexes):
+        idx = indexes[self._lazy_axis]
+        return (idx, ) if isinstance(
+            idx, int) else tuple(range(idx.start, idx.stop, idx.step))
 
     def _flatten(self, xs):
         raise NotImplementedError
 
-    def _stack(self, values):
-        raise NotImplementedError
+    def _shifted_indexes(self, indexes, offset=0):
+        idx = indexes[self._lazy_axis]
+        idx = 0 if isinstance(idx, int) else slice(0, offset, 1)
+        return indexes[:self._lazy_axis] + (idx,
+                                            ) + indexes[self._lazy_axis + 1:]
 
     def __getitem__(self, indexes):
-        row_index = _multi_index(indexes, self.shape)[self._row_axis]
-        if isinstance(row_index, int):
-            rows = (row_index, )
-        else:
-            rows = sorted(
-                tuple(range(row_index.start, row_index.stop, row_index.step)))
-        values = []
-        for row in rows:
-            value = self._cache.get(row)
-            if value is None:
-                value = self._evaluate(row)
-                self._cache[row] = value
-            values.append(value)
-        return self._stack(values)[indexes]
+        indexes = _multi_index(indexes, self.shape)
+        lazy_indexes = self._lazy_indexes(indexes)
+        part_jac = paddle.stack(
+            [self._cached_evaluate(i) for i in lazy_indexes],
+            axis=self._lazy_axis)
+        return part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
 
-    def _evaluate(self, row):
-        """Lazy evaluation at one row."""
+    def _cached_evaluate(self, k):
+        v = self._cache.get(k)
+        if v is None:
+            v = self._evaluate(k)
+            self._cache[k] = v
+        return v
+
+    def _evaluate(self, index):
+        """Evaluate one slice at along lazy axis."""
         raise NotImplementedError
 
 
@@ -406,14 +413,11 @@ class _JacobianNoBatch(_Jacobian):
         return (self._flatten_ys.shape[0], self._flatten_xs.shape[0])
 
     @property
-    def _row_axis(self):
+    def _lazy_axis(self):
         return 0
 
     def _flatten(self, xs):
         return paddle.concat(tuple(x.reshape((-1, )) for x in xs))
-
-    def _stack(self, rows):
-        return paddle.stack(rows)
 
     def _evaluate(self, row_index):
         return self._flatten(_grad(
@@ -436,15 +440,12 @@ class _JacobianBatchLast(_Jacobian):
                 self._flatten_xs.shape[1])
 
     @property
-    def _row_axis(self):
+    def _lazy_axis(self):
         return 0
 
     def _flatten(self, xs):
         return paddle.concat(
             tuple(x.reshape((-1, x.shape[-1])) for x in _as_tensors(xs)), 0)
-
-    def _stack(self, rows):
-        return paddle.stack(rows, 0)
 
     def _evaluate(self, row):
         return self._flatten(_grad(self._flatten_ys[row, :], self._xs))
@@ -465,15 +466,12 @@ class _JacobianBatchFirst(_Jacobian):
                 self._flatten_xs.shape[1])
 
     @property
-    def _row_axis(self):
+    def _lazy_axis(self):
         return 1
 
     def _flatten(self, xs):
         return paddle.concat(
             tuple(x.reshape((x.shape[0], -1)) for x in _as_tensors(xs)), 1)
-
-    def _stack(self, rows):
-        return paddle.stack(rows, 1)
 
     def _evaluate(self, row_index):
         return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
@@ -521,23 +519,23 @@ def _multi_index(indexes, shape):
             positive_indexes.append(index + shape[i] if index < 0 else index)
         else:
             raise TypeError(f'Not supported index type {index}.')
-    return positive_indexes
+    return tuple(positive_indexes)
 
 
 class Hessian(object):
-    def __init__(self, func, xs, is_batched=False, batched_last=False):
-        def _jacobian(xs):
-            return Jacobian(
-                func, xs, is_batched=is_batched, batched_last=batched_last)
+    def __init__(self, func, xs, is_batched=False):
+        def _jac_func(xs):
+            jac = Jacobian(func, xs, is_batched=is_batched)
+            return jac[:, 0, :] if is_batched else jac[0, :]
 
-        self.symbolic = Jacobian(
-            f_x, xs, is_batched=is_batched, batched_last=batched_last)
+        self.symbolic = Jacobian(_jac_func, xs, is_batched=is_batched)
 
     def __getitem__(self, indexes):
         return self.symbolic[indexes]
 
+    @property
     def shape(self):
-        return self.symbolic.shape()
+        return self.symbolic.shape
 
 
 def _as_tensors(xs):
