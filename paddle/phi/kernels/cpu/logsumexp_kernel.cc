@@ -1,6 +1,4 @@
-../ paddle / phi / kernels / cpu /
-    logsumexp_grad_kernel
-        .cc  // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +22,5 @@
 
 #include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
 
-    PD_REGISTER_KERNEL(
-        logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {
-}
+PD_REGISTER_KERNEL(
+    logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {}
