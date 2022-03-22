@@ -48,6 +48,7 @@ PD_REGISTER_KERNEL(slice,
                    phi::dtype::complex<double>,
                    phi::dtype::bfloat16) {}
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(slice_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -75,3 +76,4 @@ PD_REGISTER_KERNEL(slice,
                    phi::dtype::complex<double>,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+#endif
