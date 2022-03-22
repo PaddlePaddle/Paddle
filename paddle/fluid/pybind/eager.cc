@@ -132,8 +132,7 @@ void InitTensorWithTensor(TensorObject* self,
     self->tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    self->tensor.set_impl(
-        src.copy_to(phi::TransToPhiBackend(place), true).impl());
+    self->tensor.set_impl(src.copy_to(place, true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   if (src.get_autograd_meta()) {
@@ -156,8 +155,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
   } else {
     auto temp =
         paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
-    self->tensor.set_impl(
-        temp.copy_to(phi::TransToPhiBackend(place), true).impl());
+    self->tensor.set_impl(temp.copy_to(place, true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
