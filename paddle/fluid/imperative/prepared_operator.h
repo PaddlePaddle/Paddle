@@ -272,6 +272,14 @@ void BuildDygraphPhiKernelContext(
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
+      } else if (input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<
+                            const std::vector<const phi::DenseTensor*>&>))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
       } else {
         PADDLE_THROW(phi::errors::NotFound(
             "Can not find input variable '%s' for %s OP, please check whether "
@@ -545,6 +553,9 @@ void BuildDygraphPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         kernel_ctx->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<float>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

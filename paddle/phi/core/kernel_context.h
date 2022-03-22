@@ -98,6 +98,24 @@ class KernelContext {
   }
 
   template <typename TensorType>
+  paddle::optional<const std::vector<const TensorType*>&> OptionalInputsBetween(
+      size_t start, size_t end) {
+    const auto& first = inputs_.at(start);
+
+    if (first) {
+      std::vector<const TensorType*> v;
+      for (size_t i = start; i < end; ++i) {
+        auto* t = static_cast<const TensorType*>(inputs_.at(i));
+        v.emplace_back(t);
+      }
+      return paddle::optional<const std::vector<const TensorType*>&>(v);
+    } else {
+      return paddle::optional<const std::vector<const TensorType*>&>{
+          paddle::none};
+    }
+  }
+
+  template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx));
   }

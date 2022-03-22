@@ -2098,7 +2098,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  typeid(paddle::optional<const phi::DenseTensor&>)) ||
          input_defs[i].type_index ==
              std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
+                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<
+                        const std::vector<const phi::DenseTensor*>&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2360,6 +2364,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<float>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
