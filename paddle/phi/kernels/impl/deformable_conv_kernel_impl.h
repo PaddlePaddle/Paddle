@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
@@ -27,7 +28,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& offset,
                           const DenseTensor& filter,
-                          const DenseTensor& mask,
+                          paddle::optional<const DenseTensor&> mask,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
                           const std::vector<int>& dilations,
@@ -75,21 +76,23 @@ void DeformableConvKernel(const Context& dev_ctx,
 
   int input_dim = x.numel() / x.dims()[0];
   int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask.numel() / mask.dims()[0];
-
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   const T* input_ptr = x.data<T>();
   const T* offset_ptr = offset.data<T>();
-  const T* mask_ptr = mask.data<T>();
+  const T* mask_ptr = mask ? mask->data<T>() : nullptr;
   T* col_buffer_ptr = col_buffer.data<T>();
 
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+
   for (int i = 0; i < batch_size / im2col_step; ++i) {
+    const T* temp_mask_ptr =
+        mask_ptr ? mask_ptr + i * im2col_step * input_mask_dim : nullptr;
     funcs::ModulatedDeformableIm2col(
         dev_ctx,
         input_ptr + i * im2col_step * input_dim,
         offset_ptr + i * im2col_step * input_offset_dim,
-        mask_ptr + i * im2col_step * input_mask_dim,
+        temp_mask_ptr,
         input_shape_vec,
         col_buffer_shape_vec,
         filter_shape_vec,

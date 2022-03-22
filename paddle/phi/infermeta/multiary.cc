@@ -505,7 +505,7 @@ inline int ConvOutputSize(
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,
-                             const MetaTensor& mask,
+                             paddle::optional<const MetaTensor&> mask,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
                              const std::vector<int>& dilations,
@@ -517,7 +517,6 @@ void DeformableConvInferMeta(const MetaTensor& x,
   auto in_dims = x.dims();
   auto offset_dims = offset.dims();
   auto filter_dims = filter.dims();
-  auto mask_dims = mask.dims();
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
@@ -650,35 +649,39 @@ void DeformableConvInferMeta(const MetaTensor& x,
             "[%d]: [%d]",
             offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
             deformable_groups));
-    PADDLE_ENFORCE_EQ(output_shape[2],
-                      mask_dims[2],
-                      phi::errors::InvalidArgument(
-                          "output height must equal to mask map height. The "
-                          "difference is [%d] vs [%d]",
-                          output_shape[2],
-                          mask_dims[2]));
-    PADDLE_ENFORCE_EQ(output_shape[3],
-                      mask_dims[3],
-                      phi::errors::InvalidArgument(
-                          "output width must equal to mask map width. The "
-                          "difference is [%d] vs [%d]",
-                          output_shape[3],
-                          mask_dims[3]));
 
-    PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]),
-                      0U,
-                      phi::errors::InvalidArgument(
-                          "mask filter must divide deformable group size. "
-                          "But received [%d]: [%d]",
-                          mask_dims[1],
-                          filter_dims[2] * filter_dims[3]));
-    PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
-                      deformable_groups,
-                      phi::errors::InvalidArgument(
-                          "mask filter must divide deformable group size. "
-                          "But received [%d]: [%d]",
-                          mask_dims[1] / (filter_dims[2] * filter_dims[3]),
-                          deformable_groups));
+    if (mask) {
+      auto mask_dims = mask->dims();
+      PADDLE_ENFORCE_EQ(output_shape[2],
+                        mask_dims[2],
+                        phi::errors::InvalidArgument(
+                            "output height must equal to mask map height. The "
+                            "difference is [%d] vs [%d]",
+                            output_shape[2],
+                            mask_dims[2]));
+      PADDLE_ENFORCE_EQ(output_shape[3],
+                        mask_dims[3],
+                        phi::errors::InvalidArgument(
+                            "output width must equal to mask map width. The "
+                            "difference is [%d] vs [%d]",
+                            output_shape[3],
+                            mask_dims[3]));
+
+      PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]),
+                        0U,
+                        phi::errors::InvalidArgument(
+                            "mask filter must divide deformable group size. "
+                            "But received [%d]: [%d]",
+                            mask_dims[1],
+                            filter_dims[2] * filter_dims[3]));
+      PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        phi::errors::InvalidArgument(
+                            "mask filter must divide deformable group size. "
+                            "But received [%d]: [%d]",
+                            mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                            deformable_groups));
+    }
   }
 
   out->set_dims(phi::make_ddim(output_shape));

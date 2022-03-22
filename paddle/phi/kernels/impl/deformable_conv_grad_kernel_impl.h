@@ -163,7 +163,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& offset,
                               const DenseTensor& filter,
-                              const DenseTensor& mask,
+                              paddle::optional<const DenseTensor&> mask,
                               const DenseTensor& out_grad,
                               const std::vector<int>& strides,
                               const std::vector<int>& paddings,
@@ -219,7 +219,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
 
   int input_dim = x.numel() / x.dims()[0];
   int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask.numel() / mask.dims()[0];
+  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   if (filter_grad) {
     Full<T>(dev_ctx,
@@ -233,11 +233,14 @@ void DeformableConvGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dx, static_cast<T>(0));
   }
 
-  if (offset_grad && mask_grad) {
+  if (offset_grad) {
     dev_ctx.template Alloc<T>(offset_grad);
-    dev_ctx.template Alloc<T>(mask_grad);
     set_zero(dev_ctx, offset_grad, static_cast<T>(0));
-    set_zero(dev_ctx, mask_grad, static_cast<T>(0));
+
+    if (mask_grad) {
+      dev_ctx.template Alloc<T>(mask_grad);
+      set_zero(dev_ctx, mask_grad, static_cast<T>(0));
+    }
   }
 
   for (int i = 0; i < batch_size / im2col_step; ++i) {
@@ -264,17 +267,20 @@ void DeformableConvGradKernel(const Context& dev_ctx,
     T* col_buffer_ptr = col_buffer.data<T>();
     const T* input_ptr = x.data<T>();
     const T* offset_ptr = offset.data<T>();
-    const T* mask_ptr = mask.data<T>();
-    if (mask_grad && offset_grad) {
+    const T* mask_data_ptr =
+        mask ? mask->data<T>() + i * im2col_step * input_mask_dim : nullptr;
+    if (offset_grad) {
       T* offset_grad_ptr = offset_grad->data<T>();
-      T* mask_grad_ptr = mask_grad->data<T>();
+      T* mask_grad_data_ptr =
+          mask_grad ? mask_grad->data<T>() + i * im2col_step * input_mask_dim
+                    : nullptr;
       // get grad of offset and mask
       ModulatedDeformableCol2imCoord(
           dev_ctx,
           col_buffer_ptr,
           input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
-          mask_ptr + i * im2col_step * input_mask_dim,
+          mask_data_ptr,
           input_shape_vec,
           col_buffer_shape_vec,
           filter_shape_vec,
@@ -283,7 +289,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           dilations,
           deformable_groups,
           offset_grad_ptr + i * im2col_step * input_offset_dim,
-          mask_grad_ptr + i * im2col_step * input_mask_dim);
+          mask_grad_data_ptr);
     }
     if (dx) {
       T* dx_ptr = dx->data<T>();
@@ -291,7 +297,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
       ModulatedDeformableCol2im(dev_ctx,
                                 col_buffer_ptr,
                                 offset_ptr + i * im2col_step * input_offset_dim,
-                                mask_ptr + i * im2col_step * input_mask_dim,
+                                mask_data_ptr,
                                 input_shape_vec,
                                 col_buffer_shape_vec,
                                 filter_shape_vec,
@@ -307,7 +313,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         dev_ctx,
         input_ptr + i * im2col_step * input_dim,
         offset_ptr + i * im2col_step * input_offset_dim,
-        mask_ptr + i * im2col_step * input_mask_dim,
+        mask_data_ptr,
         input_shape_vec,
         col_buffer_shape_vec,
         filter_shape_vec,

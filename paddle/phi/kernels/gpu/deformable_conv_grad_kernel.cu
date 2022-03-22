@@ -73,9 +73,6 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                (b * deformable_group + deformable_group_index) *
                                    2 * kernel_h * kernel_w * height_col *
                                    width_col;
-    const T* data_mask_ptr = data_mask +
-                             (b * deformable_group + deformable_group_index) *
-                                 kernel_h * kernel_w * height_col * width_col;
     const int data_offset_h_ptr =
         ((2 * (i * kernel_w + j)) * height_col + h_out) * width_col + w_out;
     const int data_offset_w_ptr =
@@ -84,11 +81,17 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
         ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
     const T offset_h = data_offset_ptr[data_offset_h_ptr];
     const T offset_w = data_offset_ptr[data_offset_w_ptr];
-    const T mask = data_mask_ptr[data_mask_hw_ptr];
     const T cur_inv_h_data = h_in + i * dilation_h + offset_h;
     const T cur_inv_w_data = w_in + j * dilation_w + offset_w;
 
-    const T cur_top_grad = data_col[thread] * mask;
+    T cur_top_grad = data_col[thread];
+    if (data_mask) {
+      const T* data_mask_ptr = data_mask +
+                               (b * deformable_group + deformable_group_index) *
+                                   kernel_h * kernel_w * height_col * width_col;
+      const T mask = data_mask_ptr[data_mask_hw_ptr];
+      cur_top_grad *= mask;
+    }
     const int cur_h = static_cast<int>(cur_inv_h_data);
     const int cur_w = static_cast<int>(cur_inv_w_data);
     for (int dy = -2; dy <= 2; dy++) {
@@ -205,9 +208,12 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
                                (b * deformable_group + deformable_group_index) *
                                    2 * kernel_h * kernel_w * height_col *
                                    width_col;
-    const T* data_mask_ptr = data_mask +
-                             (b * deformable_group + deformable_group_index) *
-                                 kernel_h * kernel_w * height_col * width_col;
+    const T* data_mask_ptr =
+        data_mask
+            ? data_mask +
+                  (b * deformable_group + deformable_group_index) * kernel_h *
+                      kernel_w * height_col * width_col
+            : nullptr;
 
     const int offset_c = c - deformable_group_index * 2 * kernel_h * kernel_w;
 
@@ -229,11 +235,8 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       const int data_offset_w_ptr =
           (((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col +
            w_out);
-      const int data_mask_hw_ptr =
-          (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
       const T offset_h = data_offset_ptr[data_offset_h_ptr];
       const T offset_w = data_offset_ptr[data_offset_w_ptr];
-      const T mask = data_mask_ptr[data_mask_hw_ptr];
       T inv_h = h_in + i * dilation_h + offset_h;
       T inv_w = w_in + j * dilation_w + offset_w;
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
@@ -255,11 +258,18 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
                                   data_im_ptr + cnt * height * width,
                                   width,
                                   bp_dir);
-      val += weight * data_col_ptr[col_pos] * mask;
+      if (data_mask_ptr) {
+        const int data_mask_hw_ptr =
+            (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
+        const T mask = data_mask_ptr[data_mask_hw_ptr];
+        val += weight * data_col_ptr[col_pos] * mask;
+      } else {
+        val += weight * data_col_ptr[col_pos];
+      }
       cnt += 1;
     }
     grad_offset[i] = val;
-    if (offset_c % 2 == 0)
+    if (grad_mask && offset_c % 2 == 0)
       grad_mask[(((b * deformable_group + deformable_group_index) * kernel_h *
                       kernel_w +
                   offset_c / 2) *

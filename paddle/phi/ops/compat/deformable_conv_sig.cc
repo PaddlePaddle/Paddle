@@ -48,7 +48,15 @@ KernelSignature DeformableConvGradOpArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(deformable_conv_v1, deformable_conv);
+PD_REGISTER_BASE_KERNEL_NAME(deformable_conv_v1_grad, deformable_conv_grad);
+
 PD_REGISTER_ARG_MAPPING_FN(deformable_conv,
                            phi::DeformableConvOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(deformable_conv_grad,
+                           phi::DeformableConvGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(deformable_conv_v1,
+                           phi::DeformableConvOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(deformable_conv_v1_grad,
                            phi::DeformableConvGradOpArgumentMapping);
