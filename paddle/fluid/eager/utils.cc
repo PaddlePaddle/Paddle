@@ -408,10 +408,9 @@ void EagerUtils::FillZeroForEmptyGradInputs(
 
         const auto& tensor_meta = grad_in_meta.GetTensorMeta();
         phi::Place place = grad_in_meta.GetPlace();
-        paddle::experimental::Backend backend = phi::TransToPhiBackend(place);
 
         auto tensor_with_zero = paddle::experimental::full(
-            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype, backend);
+            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype, place);
         grad.set_impl(tensor_with_zero.impl());
       }
     }
