@@ -1467,6 +1467,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   bool ParseOneInstance(const std::string& line, SlotRecord* rec);
   virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
   virtual void AssignFeedVar(const Scope& scope);
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   void BuildSlotBatchGPU(const int ins_num);
   void FillSlotValueOffset(const int ins_num, const int used_slot_num,
                            size_t* slot_value_offsets,
@@ -1482,6 +1483,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const int* float_ins_lens, const int float_slot_size,
                      const UsedSlotGpuType* used_slots);
   float sample_rate_ = 1.0f;
+#endif
   int use_slot_size_ = 0;
   int float_use_slot_size_ = 0;
   int uint64_use_slot_size_ = 0;

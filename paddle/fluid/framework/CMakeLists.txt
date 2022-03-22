@@ -293,7 +293,7 @@ if(WITH_DISTRIBUTE)
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-    ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc data_feed.cu
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell 
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer
@@ -314,7 +314,7 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc heter_pipeline_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-            downpour_worker.cc downpour_worker_opt.cc
+            downpour_worker.cc downpour_worker_opt.cc data_feed.cu
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             index_sampler index_wrapper sampler index_dataset_proto
@@ -336,7 +336,7 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-            ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc data_feed.cu
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method
@@ -356,7 +356,7 @@ elseif(WITH_PSLIB)
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc data_feed.cu
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -366,7 +366,7 @@ else()
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc data_feed.cu
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
