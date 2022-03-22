@@ -22,6 +22,16 @@
 namespace phi {
 namespace funcs {
 
+template <typename T>
+HOSTDEVICE inline T cubic_convolution1(T x, T A) {
+  return ((A + 2) * x - (A + 3)) * x * x + 1;
+}
+
+template <typename T>
+HOSTDEVICE inline T cubic_convolution2(T x, T A) {
+  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+}
+
 inline void ExtractNCDWH(const DDim& dims,
                          const DataLayout& data_layout,
                          int* N,
