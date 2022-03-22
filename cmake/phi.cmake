@@ -236,7 +236,6 @@ function(kernel_library TARGET)
     endif()
     if (${kps_srcs_len} GREATER 0)
         # only when WITH_XPU_KP, the kps_srcs_len can be > 0
-        message(STATUS "the phi kps_srcs = " ${kps_srcs})
         xpu_library(${TARGET}_kps SRCS ${kps_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
         list(APPEND base_device_kernels ${TARGET}_kps)
     endif()
