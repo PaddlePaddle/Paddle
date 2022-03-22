@@ -1240,6 +1240,33 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
+void ReverseInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axis,
+                      MetaTensor* out) {
+  PADDLE_ENFORCE_NE(axis.empty(),
+                    true,
+                    phi::errors::InvalidArgument("'axis' can not be empty."));
+  const auto& x_dims = x.dims();
+  for (int a : axis) {
+    PADDLE_ENFORCE_LT(a,
+                      x_dims.size(),
+                      phi::errors::OutOfRange(
+                          "The axis must be less than input tensor's rank. "
+                          "but got %d >= %d",
+                          a,
+                          x_dims.size()));
+    PADDLE_ENFORCE_GE(
+        a,
+        -x_dims.size(),
+        phi::errors::OutOfRange(
+            "The axis must be greater than the negative number of "
+            "input tensor's rank, but got %d < %d",
+            a,
+            -x_dims.size()));
+  }
+  out->share_meta(x);
+}
+
 void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
                    const std::vector<int64_t>& axis,

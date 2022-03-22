@@ -29,6 +29,7 @@ class TestDigammaOp(OpTest):
         paddle.enable_static()
 
         self.op_type = 'digamma'
+        self.python_api = paddle.digamma
         self.init_dtype_type()
         shape = (5, 32)
         data = np.random.random(shape).astype(self.dtype) + 1
