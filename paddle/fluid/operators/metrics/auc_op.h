@@ -43,8 +43,6 @@ class AucKernel : public framework::OpKernel<T> {
     auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
     auto *auc_value = auc_tensor->mutable_data<double>(ctx.GetPlace());
-    auto *ins_tag_weight_value =
-        ins_tag_weight->mutable_data<float>(ctx.GetPlace());
 
     // Just for pass UT, since UT's input & output connot be set same var
     auto *stat_pos_in_tensor = ctx.Input<Tensor>("StatPos");
@@ -64,7 +62,7 @@ class AucKernel : public framework::OpKernel<T> {
                  sizeof(int64_t));
     }
     statAuc(label, predict, num_thresholds, slide_steps, origin_stat_pos,
-            origin_stat_neg, ins_tag_weight_value);
+            origin_stat_neg, ins_tag_weight);
 
     int sum_offset = slide_steps * (num_thresholds + 1);
     calcAuc(origin_stat_pos + sum_offset, origin_stat_neg + sum_offset,
@@ -85,11 +83,12 @@ class AucKernel : public framework::OpKernel<T> {
                              const framework::Tensor *predict,
                              const int num_thresholds, const int slide_steps,
                              int64_t *origin_stat_pos, int64_t *origin_stat_neg,
-                             float *ins_tag_weight_value) {
+                             const framework::Tensor *ins_tag_weight) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
     const auto *label_data = label->data<int64_t>();
+    const auto *ins_tag_weight_value = ins_tag_weight->data<float>();
     const int bucket_length = num_thresholds + 1;
     if (slide_steps == 0) {
       for (size_t i = 0; i < batch_size; i++) {
@@ -145,7 +144,7 @@ class AucKernel : public framework::OpKernel<T> {
                             "The predict data must gather or equal 0."));
 
       uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-      if (label_data[i] > 0 ins_tag_weight_value[i] > 0.0) {
+      if (label_data[i] > 0 && ins_tag_weight_value[i] > 0.0) {
         origin_stat_pos[cur_step_begin + binIdx] += 1;
       } else if (label_data[i] == 0 && ins_tag_weight_value[i] > 0.0) {
         origin_stat_neg[cur_step_begin + binIdx] += 1;
