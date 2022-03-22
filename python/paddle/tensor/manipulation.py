@@ -1409,6 +1409,8 @@ def gather(x, index, axis=None, name=None):
         axis = 0
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather(x, index, axis)
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 

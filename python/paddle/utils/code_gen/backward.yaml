@@ -296,5 +296,34 @@
 
 #  =================================== sep2
 
+- backward_api : elementwise_fmax_grad
+  forward : elementwise_fmax(Tensor x, Tensor y, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta : 
+    func : GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel : 
+    func : elementwise_fmax_grad
+
+- backward_api : elementwise_fmin_grad
+  forward : elementwise_fmin(Tensor x, Tensor y, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta : 
+    func : GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel : 
+    func : elementwise_fmin_grad
+
+#- backward_api : gather_grad
+  #forward : gather(Tensor x, Tensor index, Scalar axis) -> Tensor(out)
+  #args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis, bool overwrite=false)
+  #output : Tensor(x_grad)
+  #infer_meta : 
+    #func : GeneralUnaryGradInferMeta
+    #param: [x]
+  #kernel : 
+    #func : gather_grad
 
 #  =================================== sep3

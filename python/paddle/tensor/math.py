@@ -695,6 +695,8 @@ def fmax(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_elementwise_fmax(x, y, axis)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -756,6 +758,8 @@ def fmin(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_elementwise_fmin(x, y, axis)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
