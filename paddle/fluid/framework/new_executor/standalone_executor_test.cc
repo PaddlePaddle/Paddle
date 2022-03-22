@@ -17,7 +17,7 @@
 #include <iostream>
 #include <string>
 
-#include "gperftools/profiler.h"
+// #include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -125,7 +125,7 @@ TEST(StandaloneExecutor, run) {
   exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
 
-  ProfilerStart("new_executor.prof");
+  // ProfilerStart("new_executor.prof");
 
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
@@ -135,7 +135,7 @@ TEST(StandaloneExecutor, run) {
     exec.Run({}, {}, {});
   }
 
-  ProfilerStop();
+  // ProfilerStop();
 
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
