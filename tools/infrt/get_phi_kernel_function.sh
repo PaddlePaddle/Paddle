@@ -45,11 +45,11 @@ grep PD_REGISTER_INFER_META_FN ${temp_path}/generate.cc  \
 #step 3:get ir's attr_name.
 ir_attr_name_info_file=`mktemp`
 # phi_cpu attr
-all_ir_name=`grep -Eo "PDTCPU_Kernel<.*\"" paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td | awk -v FS="<" '{gsub(/\"/,"");print $2}'`
+all_ir_name=`grep -Eo "PDTCPU_Kernel<.*\"" ${PADDLE_ROOT}/paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td | awk -v FS="<" '{gsub(/\"/,"");print $2}'`
 for ir in $all_ir_name
 do
-  attr_name=`grep "<\"$ir" -A 3 paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td  | grep -Eo "Attr:.*)" \
-  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BoolAttr/,""); \
+  attr_name=`grep "<\"$ir" -A 3 ${PADDLE_ROOT}/paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td  | grep -Eo "Attr:.*)" \
+  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BOOLAttr/,""); \
   gsub(/SI1Attr/,"");gsub(/SI8Attr/,"");gsub(/SI16Attr/,"");gsub(/SI32Attr/,"");gsub(/SI64Attr/,""); \
   gsub(/UI1Attr/,"");gsub(/UI8Attr/,"");gsub(/I16Attr/,"");gsub(/I32Attr/,"");gsub(/I64Attr/,""); \
   gsub(/I1Attr/,"");gsub(/I8Attr/,"");gsub(/UI16Attr/,"");gsub(/UI32Attr/,"");gsub(/UI64Attr/,""); \
@@ -58,11 +58,11 @@ do
   echo phi_cpu.$ir $attr_name >> $ir_attr_name_info_file
 done
 # phi_gpu attr
-all_ir_name=`grep -Eo "PDTGPU_Kernel<.*\"" paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td | awk -v FS="<" '{gsub(/\"/,"");print $2}'`
+all_ir_name=`grep -Eo "PDTGPU_Kernel<.*\"" ${PADDLE_ROOT}/paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td | awk -v FS="<" '{gsub(/\"/,"");print $2}'`
 for ir in $all_ir_name
 do
-  attr_name=`grep "<\"$ir" -A 3 paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td  | grep -Eo "Attr:.*)" \
-  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BoolAttr/,""); \
+  attr_name=`grep "<\"$ir" -A 3 ${PADDLE_ROOT}/paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td  | grep -Eo "Attr:.*)" \
+  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BOOLAttr/,""); \
   gsub(/SI1Attr/,"");gsub(/SI8Attr/,"");gsub(/SI16Attr/,"");gsub(/SI32Attr/,"");gsub(/SI64Attr/,""); \
   gsub(/UI1Attr/,"");gsub(/UI8Attr/,"");gsub(/I16Attr/,"");gsub(/I32Attr/,"");gsub(/I64Attr/,""); \
   gsub(/I1Attr/,"");gsub(/I8Attr/,"");gsub(/UI16Attr/,"");gsub(/UI32Attr/,"");gsub(/UI64Attr/,""); \

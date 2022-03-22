@@ -58,7 +58,7 @@ def get_api_yaml_info(file_path):
 def get_kernel_info(file_path):
     f = open(file_path, "r")
     cont = f.readlines()
-    return [l.strip() for l in cont]
+    return [l.strip() for l in cont if l.strip() != ""]
 
 
 def get_attr_info(file_path):
