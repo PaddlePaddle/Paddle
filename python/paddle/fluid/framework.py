@@ -316,7 +316,8 @@ def _dygraph_not_support_(func):
 
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
-        assert in_dygraph_mode(
+        assert (
+            in_dygraph_mode() or _in_eager_mode()
         ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
         return func(*args, **kwargs)
 
@@ -2544,7 +2545,7 @@ class Operator(object):
                     warnings.warn("The Op(%s) is not support to set device." %
                                   type)
                 if 'force_cpu' in op_attrs:
-                    if (type is 'less_than' and op_attrs['force_cpu'] != None
+                    if (type == 'less_than' and op_attrs['force_cpu'] != None
                         ) or op_attrs['force_cpu'] != False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "

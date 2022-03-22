@@ -51,6 +51,10 @@ class TestVarBase(unittest.TestCase):
                     np.array_equal(x.numpy(), np.array([1.2], 'float16')))
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP16)
 
+                # set_default_dtype take effect on int
+                x = paddle.to_tensor(1, place=place)
+                self.assertTrue(x.dtype, core.VarDesc.VarType.INT64)
+
                 # set_default_dtype take effect on float
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
                 self.assertTrue(
@@ -1357,4 +1361,5 @@ class TestVarBaseCopyGradientFrom(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

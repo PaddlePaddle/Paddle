@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -69,9 +70,25 @@ BufferedReader::BufferedReader(
     stream_ = platform::NpuStreamResourcePool::Instance().New(dev_idx);
   }
 #endif
+
+#ifdef PADDLE_WITH_MLU
+  if (platform::is_mlu_place(place_)) {
+    int dev_idx = place_.device;
+    compute_stream_ =
+        ((platform::MLUDeviceContext *)(platform::DeviceContextPool::Instance()
+                                            .Get(place_)))
+            ->stream();
+    events_.resize(buffer_size);
+    for (auto &event : events_) {
+      event = platform::MluEventResourcePool::Instance().New(dev_idx);
+    }
+    stream_ = platform::MluStreamResourcePool::Instance().New(dev_idx);
+  }
+#endif
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
   npu_buffer_.resize(buffer_size);
+  mlu_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
 }
 
@@ -115,7 +132,9 @@ void BufferedReader::ReadAsync(size_t i) {
         platform::CUDAPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event(
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1);
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
         // cuda lib into device, it will cost hundreds of MB of GPU memory.
@@ -170,7 +189,9 @@ void BufferedReader::ReadAsync(size_t i) {
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #endif
 
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event(
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1);
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
           auto cpu_ptr = cpu[i].data();
@@ -229,7 +250,9 @@ void BufferedReader::ReadAsync(size_t i) {
       platform::NPUEventRecord(events_[i].get(), compute_stream_);
       platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
 
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
@@ -247,6 +270,56 @@ void BufferedReader::ReadAsync(size_t i) {
         npu[i].set_lod(cpu[i].lod());
       }
       platform::NPUStreamSync(stream_.get());
+    }
+#endif
+
+#ifdef PADDLE_WITH_MLU
+    if (platform::is_mlu_place(place_)) {
+      TensorVec &mlu = mlu_buffer_[i];
+      if (mlu.empty()) {
+        mlu.resize(cpu.size());
+      } else {
+        PADDLE_ENFORCE_EQ(
+            mlu.size(), cpu.size(),
+            platform::errors::InvalidArgument(
+                "Input tensor number on MLU and CPU devices are not matched. "
+                "The number on MLU is %d, on CPU is %d",
+                mlu.size(), cpu.size()));
+      }
+
+      std::vector<void *> mlu_ptrs;
+      mlu_ptrs.reserve(cpu.size());
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        mlu[i].Resize(cpu[i].dims());
+        mlu[i].set_layout(cpu[i].layout());
+        mlu_ptrs.emplace_back(mlu[i].mutable_data(place_, cpu[i].type()));
+      }
+
+      platform::SetMLUDeviceId(place_.device);
+      PADDLE_ENFORCE_MLU_SUCCESS(
+          cnPlaceNotifier(events_[i].get(), compute_stream_));
+      PADDLE_ENFORCE_MLU_SUCCESS(cnWaitNotifier(events_[i].get()));
+
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1);
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        auto cpu_place = cpu[i].place();
+        auto cpu_ptr = cpu[i].data();
+        auto mlu_ptr = mlu_ptrs[i];
+        auto size =
+            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
+        if ((platform::is_mlu_place(cpu_place))) {
+          memory::Copy(place_, mlu_ptr, cpu_place, cpu_ptr, size,
+                       stream_.get());
+        } else {
+          memory::Copy(place_, mlu_ptr, cpu_place, cpu_ptr, size,
+                       stream_.get());
+          platform::MLUStreamSync(stream_.get());
+        }
+        mlu[i].set_lod(cpu[i].lod());
+      }
+      platform::MLUStreamSync(stream_.get());
     }
 #endif
     return i;
@@ -284,6 +357,8 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     *out = std::move(cuda_buffer_[i]);
   } else if (platform::is_npu_place(place_)) {
     *out = std::move(npu_buffer_[i]);
+  } else if (platform::is_mlu_place(place_)) {
+    *out = std::move(mlu_buffer_[i]);
   } else {
     *out = std::move(cpu_buffer_[i]);
   }

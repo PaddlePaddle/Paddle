@@ -38,111 +38,6 @@ void DTDialect::initialize() {
 #include "paddle/infrt/dialect/dense_tensor.cpp.inc"
       >();
 }
-
-llvm::Optional<TargetType> GetTargetType(mlir::StringRef key) {
-  if (key.equals_insensitive("x86"))
-    return TargetType::X86;
-  else if (key.equals_insensitive("cuda"))
-    return TargetType::CUDA;
-  else
-    return llvm::None;
-}
-
-llvm::Optional<LayoutType> GetLayoutType(mlir::StringRef key) {
-  if (key.equals_insensitive("nchw"))
-    return LayoutType::NCHW;
-  else if (key.equals_insensitive("nhwc"))
-    return LayoutType::NHWC;
-  else
-    return llvm::None;
-}
-
-llvm::Optional<PrecisionType> GetPrecisionType(mlir::StringRef key) {
-  if (key.equals_insensitive("i32"))
-    return PrecisionType::I32;
-  else if (key.equals_insensitive("f32"))
-    return PrecisionType::F32;
-  else
-    return llvm::None;
-}
-
-TensorType TensorType::get(mlir::MLIRContext *ctx,
-                           TargetType target,
-                           LayoutType layout,
-                           PrecisionType precision) {
-  return Base::get(ctx, target, layout, precision);
-}
-
-TargetType TensorType::target() { return getImpl()->target_; }
-
-LayoutType TensorType::layout() { return getImpl()->layout_; }
-
-PrecisionType TensorType::precision() { return getImpl()->precision_; }
-
-mlir::raw_ostream &operator<<(mlir::raw_ostream &os, TensorType tensorType) {
-  os << "TensorType<" << tensorType.target() << ", " << tensorType.layout()
-     << ", " << tensorType.precision() << ">";
-  return os;
-}
-
-TensorMapType TensorMapType::get() {
-  return Base::get(::infrt::Global::getMLIRContext());
-}
-
-TensorMapType TensorMapType::get(mlir::MLIRContext *context) {
-  return Base::get(context);
-}
-
-StringType StringType::get() {
-  return Base::get(::infrt::Global::getMLIRContext());
-}
-
-StringType StringType::get(mlir::MLIRContext *context) {
-  return Base::get(context);
-}
-
-mlir::raw_ostream &operator<<(mlir::raw_ostream &os, TargetType type) {
-  switch (type) {
-    case (TargetType::X86):
-      os << "X86";
-      break;
-    case (TargetType::CUDA):
-      os << "CUDA";
-      break;
-    default:
-      os << "Unsupported";
-  }
-  return os;
-}
-
-mlir::raw_ostream &operator<<(mlir::raw_ostream &os, LayoutType type) {
-  switch (type) {
-    case (LayoutType::NCHW):
-      os << "NCHW";
-      break;
-    case (LayoutType::NHWC):
-      os << "NHWC";
-      break;
-    default:
-      os << "Unsupported";
-  }
-  return os;
-}
-
-mlir::raw_ostream &operator<<(mlir::raw_ostream &os, PrecisionType type) {
-  switch (type) {
-    case (PrecisionType::I32):
-      os << "I32";
-      break;
-    case (PrecisionType::F32):
-      os << "F32";
-      break;
-    default:
-      os << "Unsupported";
-  }
-  return os;
-}
-
 static mlir::Type getTensorType(mlir::MLIRContext *context) {
   auto t_dialect = mlir::Identifier::get("t", context);
   return mlir::OpaqueType::get(t_dialect, "tensor");
@@ -165,7 +60,7 @@ static mlir::ParseResult parseCreateUninitTensorOp(
 
   if (parser.parseArrow()) return mlir::failure();
   if (parser.parseType(outputRawTypes[0])) return mlir::failure();
-  if (!outputRawTypes[0].isa<TensorType>())
+  if (!outputRawTypes[0].isa<DenseTensorType>())
     return parser.emitError(loc, "invalid kind of type specified");
   result.addTypes(outputTypes);
   return mlir::success();

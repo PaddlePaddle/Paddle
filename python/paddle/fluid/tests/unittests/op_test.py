@@ -29,6 +29,7 @@ from copy import copy
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
 from paddle.fluid.framework import _in_eager_mode
 from paddle.fluid.framework import _test_eager_guard
@@ -49,6 +50,7 @@ from paddle.fluid.tests.unittests.white_list import (
     no_check_set_white_list,
     op_threshold_white_list,
     no_grad_set_white_list, )
+from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -168,8 +170,10 @@ def get_numeric_gradient(place,
         elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
-            return struct.unpack('<f', struct.pack('<I', numpy_tensor[i]
-                                                   << 16))[0]
+            return struct.unpack('<f',
+                                 struct.pack('<I',
+                                             np.uint32(numpy_tensor[i])
+                                             << np.uint32(16)))[0]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -272,7 +276,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
 def convert_uint16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
-        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        lambda x: struct.unpack('<f', struct.pack('<I', np.uint32(x) << np.uint32(16)))[0],
         otypes=[np.float32])(in_list.flat)
     return np.reshape(out, in_list.shape)
 
@@ -378,7 +382,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, 'output_dtype') and
             self.output_dtype == np.uint16) or (
                 hasattr(self, 'mkldnn_data_type') and
-                getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
                     hasattr(self, 'attrs') and
                     'mkldnn_data_type' in self.attrs and
                     self.attrs['mkldnn_data_type'] == 'bfloat16')
@@ -393,6 +397,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, "attrs") and "use_xpu" in self.attrs and
             self.attrs["use_xpu"] == True)
 
+    # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
             return isinstance(input, (np.ndarray, np.generic))
@@ -480,7 +485,12 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         inputs = append_input_output(block, op_proto, self.inputs, True,
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
@@ -604,8 +614,12 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
+
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
+                    if _in_eager_mode():
+                        v.retain_grads()
+
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp)
@@ -616,7 +630,6 @@ class OpTest(unittest.TestCase):
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     persistable=False,
                     stop_gradient=False)
-
             return v
 
         # prepare variable for input or output
@@ -669,6 +682,155 @@ class OpTest(unittest.TestCase):
         else:
             return var_dict
 
+    def _check_api_outs_by_dygraph_outs(self, api_outs, dygraph_outs, place):
+        """ for quick verify, here we take a simplest strategy:
+                1. we only check variable in api_outs.
+                2. we simply check the numpy (tensor) .
+                3. we set atol and rtol as 1e-5, because they are unrelated to dtype.
+        """
+        for name in api_outs:
+            np_api = np.array(api_outs[name])
+            np_dyg = np.array(dygraph_outs[name])
+            self.assertTrue(
+                np.allclose(
+                    np_api, np_dyg, equal_nan=False),
+                "Output (" + name + ") has diff at " + str(place) + "\nExpect "
+                + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
+                self.__class__.__name__)
+
+    def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
+        """ set egr_inps and egr_oups = None if you want to create it by yourself.
+        """
+
+        def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
+                                         kernel_sig):
+            """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
+            """
+
+            class Empty:
+                pass
+
+            def is_empty(a):
+                return isinstance(a, Empty)
+
+            def get_default(idx, all_params_number, defaults):
+                related_idx = idx - all_params_number + len(defaults)
+                assert related_idx >= 0, "%d-th arguments don't have default value" % idx
+                return defaults[related_idx]
+
+            def filter_by_name(x):
+                names = set(['name', 'out', 'output'])
+                if isinstance(x, list): return [i for i in x if i not in names]
+                if isinstance(x, dict):
+                    return {k: v for k, v in x.items() if k not in names}
+                assert False, "Only support list or dict."
+
+            def to_defaults_list(params, defaults):
+                return [defaults[p] for p in params if p in defaults]
+
+            # NOTE(xiongkun): why don't use input arguments dicts ? 
+            # Because we don't know the python api name of each arguments.
+            # using parse_arg_and_kwargs, we can get the all api information we need.
+            api_params, api_defaults = [
+                filter_by_name(item) for item in parse_arg_and_kwargs(api)
+            ]
+            api_defaults = to_defaults_list(api_params, api_defaults)
+            inputs_sig, attrs_sig, outputs_sig = kernel_sig
+            inputs_and_attrs = inputs_sig + attrs_sig
+            assert (
+                len(api_params) == len(inputs_and_attrs)
+            ), "inputs and attrs length must equals to python api length. (May be output is in argument list?)"
+            input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
+                op_proto_attrs[name] if name in op_proto_attrs else Empty()
+                for name in attrs_sig
+            ]
+            results = []
+            for idx, arg in enumerate(input_arguments):
+                if is_empty(arg):
+                    results.append(
+                        get_default(idx, len(input_arguments), api_defaults))
+                else:
+                    results.append(arg)
+            return results
+
+        def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
+            if not isinstance(ret_tuple, (tuple, list)):
+                ret_tuple = [ret_tuple]
+            if len(output_sig) == len(ret_tuple):
+                # [assumption]: we assume {"Out": [Tensor]}
+                return {a: [b] for a, b in zip(output_sig, ret_tuple)}
+            else:
+                # [assumption]: return multi-Tensor in a single output. such as paddle.split()
+                assert len(
+                    output_sig
+                ) == 1, "Don't support multi-output with multi-tensor output."
+                return {output_sig[0]: ret_tuple}
+
+        def assumption_assert_and_transform(args, inp_num):
+            """
+            transform inputs by the following rules:
+                1. [Tensor] -> Tensor
+                2. [Tensor, Tensor, ...] -> list of Tensors
+
+            only support "X" is list of Tensor, currently don't support other structure like dict.
+            """
+            for inp in args[:inp_num]:
+                assert isinstance(
+                    inp, list
+                ), "currently only support `X` is [Tensor], don't support other structure."
+            args = [
+                inp[0] if len(inp) == 1 else inp for inp in args[:inp_num]
+            ] + args[inp_num:]
+            return args
+
+        def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
+                                  attrs_outputs):
+            try:
+                kernel_sig = _dygraph_tracer()._get_kernel_signature(
+                    self.op_type, eager_tensor_inputs, eager_tensor_outputs,
+                    attrs_outputs)
+            except RuntimeError as re:
+                """ we think the kernel_sig is missing.
+                """
+                kernel_sig = None
+            return kernel_sig
+
+        def cal_python_api(python_api, args, kernel_sig):
+            inputs_sig, attrs_sig, outputs_sig = kernel_sig
+            args = assumption_assert_and_transform(args, len(inputs_sig))
+            ret_tuple = python_api(*args)
+            return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+
+        with fluid.dygraph.base.guard(place=place):
+            block = fluid.default_main_program().global_block()
+            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+            # prepare input variable
+            eager_tensor_inputs = egr_inps if egr_inps else self.append_input_output_for_dygraph(
+                op_proto, self.inputs, True, False, block)
+            # prepare output variable
+            eager_tensor_outputs = egr_oups if egr_oups else self.append_input_output_for_dygraph(
+                op_proto, self.outputs, False, False, block)
+
+            # prepare attrbutes
+            attrs_outputs = {}
+            if hasattr(self, "attrs"):
+                for attrs_name in self.attrs:
+                    if self.attrs[attrs_name] is not None:
+                        attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
+            kernel_sig = _get_kernel_signature(
+                eager_tensor_inputs, eager_tensor_outputs, attrs_outputs)
+            if not kernel_sig:
+                return None
+            assert hasattr(
+                self, "python_api"
+            ), "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_eager = True" % self.op_type
+            args = prepare_python_api_arguments(
+                self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig)
+            """ we directly return the cal_python_api value because the value is already tensor. 
+            """
+            return cal_python_api(self.python_api, args, kernel_sig)
+
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
         with fluid.dygraph.base.guard(place=place):
@@ -679,7 +841,6 @@ class OpTest(unittest.TestCase):
             # prepare input variable
             inputs = self.append_input_output_for_dygraph(op_proto, self.inputs,
                                                           True, False, block)
-
             # prepare output variable
             outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
@@ -690,6 +851,7 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
@@ -1131,7 +1293,7 @@ class OpTest(unittest.TestCase):
                 else:
                     atol = 2
             else:
-                atol = 1e-2
+                atol = 1e-1
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
@@ -1141,10 +1303,16 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
+
         if check_eager:
+            # we only check end2end api when check_eager=True
             with _test_eager_guard():
-                eager_dygraph_outs = self._calc_dygraph_output(
-                    place, no_check_set=no_check_set)
+                eager_dygraph_outs = self._calc_python_api_output(place)
+                if eager_dygraph_outs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    eager_dygraph_outs = self._calc_dygraph_output(
+                        place, no_check_set=no_check_set)
+
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
@@ -1677,7 +1845,7 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
-                no_grad_set)
+                no_grad_set, False)
             fp32_grads = []
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
@@ -1693,7 +1861,7 @@ class OpTest(unittest.TestCase):
             with _test_eager_guard():
                 eager_dygraph_grad = self._get_dygraph_grad(
                     inputs_to_check, place, output_names,
-                    user_defined_grad_outputs, no_grad_set)
+                    user_defined_grad_outputs, no_grad_set, check_eager)
                 fp32_grads = []
                 for grad in eager_dygraph_grad:
                     if grad.dtype == np.uint16:
@@ -1719,7 +1887,8 @@ class OpTest(unittest.TestCase):
                           place,
                           output_names,
                           user_defined_grad_outputs=None,
-                          no_grad_set=None):
+                          no_grad_set=None,
+                          check_eager=False):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1739,11 +1908,17 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
-            block.append_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=attrs_outputs if hasattr(self, "attrs") else None)
+
+            if check_eager:
+                outputs = self._calc_python_api_output(place, inputs, outputs)
+
+            # if outputs is None, kernel sig is empty or other error is happens.
+            if not check_eager or outputs is None:
+                block.append_op(
+                    type=self.op_type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(outputs,
@@ -1815,7 +1990,9 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
+
                 loss.backward()
+
                 fetch_list_grad = []
                 for inputs_to_check_name in inputs_to_check:
                     a = inputs_grad_dict[inputs_to_check_name].gradient()

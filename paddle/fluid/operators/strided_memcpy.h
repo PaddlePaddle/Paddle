@@ -109,6 +109,11 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
       auto& npu_ctx = reinterpret_cast<const platform::NPUDeviceContext&>(ctx);
       memory::Copy(npu_place, dst + i * dst_after, npu_place,
                    src + i * src_after, sizeof(T) * size, npu_ctx.stream());
+#elif defined(PADDLE_WITH_MLU)
+      auto& mlu_place = place;
+      auto& mlu_ctx = reinterpret_cast<const platform::MLUDeviceContext&>(ctx);
+      memory::Copy(mlu_place, dst + i * dst_after, mlu_place,
+                   src + i * src_after, sizeof(T) * size, mlu_ctx.stream());
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Paddle is not compiled with GPU."));

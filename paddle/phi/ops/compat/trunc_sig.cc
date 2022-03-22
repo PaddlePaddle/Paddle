@@ -27,5 +27,5 @@ KernelSignature TruncGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(trunc, phi::TruncOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(trunc_grad, phi::TruncGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trunc, phi::TruncOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trunc_grad, phi::TruncGradOpArgumentMapping);

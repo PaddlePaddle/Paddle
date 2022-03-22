@@ -257,73 +257,12 @@ class ReduceKernel : public framework::OpKernel<T> {
     std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
 
     // call new kernel
-    phi::Reduce<typename framework::ConvertToPtenContext<DeviceContext>::TYPE,
-                T, Functor>(
-        static_cast<const typename framework::ConvertToPtenContext<
+    phi::Reduce<typename framework::ConvertToPhiContext<DeviceContext>::TYPE, T,
+                Functor>(
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *input, reduce_all, tmp_dims, keep_dim,
-        framework::TransToPtenDataType(cast_out_dtype), output);
-  }
-};
-template <typename DeviceContext, typename OutT, typename Functor>
-class BoolReduceKernel : public framework::OpKernel<OutT> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<OutT>(context.GetPlace());
-
-    auto dims = context.Attr<std::vector<int>>("dim");
-    bool keep_dim = context.Attr<bool>("keep_dim");
-
-    // The dims has full dim, set the reduce_all is True
-    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
-    std::set<int> dims_set(dims.begin(), dims.end());
-    bool full_dim = true;
-    for (auto i = 0; i < input_dim_size; i++) {
-      if (dims_set.find(i) == dims_set.end()) {
-        full_dim = false;
-        break;
-      }
-    }
-    reduce_all = (reduce_all || full_dim);
-
-    if (reduce_all) {
-      // Flatten and reduce 1-D tensor
-      auto x = EigenVector<OutT>::Flatten(*input);
-      auto out = EigenScalar<OutT>::From(*output);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      auto reduce_dim = Eigen::array<int, 1>({{0}});
-      Functor functor;
-      functor(place, &x, &out, reduce_dim);
-    } else {
-      int ndim = input->dims().size();
-      int rdim = dims.size();
-      // comments for accelerating compiling temporarily.
-      if (ndim > 6) {
-        HandleLargeDim<DeviceContext, OutT, Functor>(context, input, output,
-                                                     dims, keep_dim);
-      } else {
-        HANDLE_DIM(6, 5);
-        HANDLE_DIM(6, 4);
-        HANDLE_DIM(6, 3);
-        HANDLE_DIM(6, 2);
-        HANDLE_DIM(6, 1);
-        HANDLE_DIM(5, 4);
-        HANDLE_DIM(5, 3);
-        HANDLE_DIM(5, 2);
-        HANDLE_DIM(5, 1);
-        HANDLE_DIM(4, 3);
-        HANDLE_DIM(4, 2);
-        HANDLE_DIM(4, 1);
-        HANDLE_DIM(3, 2);
-        HANDLE_DIM(3, 1);
-        HANDLE_DIM(2, 1);
-        HANDLE_DIM(1, 1);
-      }
-    }
+        framework::TransToPhiDataType(cast_out_dtype), output);
   }
 };
 
@@ -541,11 +480,12 @@ class ReduceOp : public framework::OperatorWithKernel {
 #endif
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
-                            platform::is_npu_place(ctx.GetPlace()),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "float16 can only be used on GPU or NPU place"));
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(ctx.GetPlace()) ||
+              platform::is_npu_place(ctx.GetPlace()) ||
+              platform::is_mlu_place(ctx.GetPlace()),
+          true, platform::errors::InvalidArgument(
+                    "float16 can only be used on GPU or NPU or MLU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -683,7 +623,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     const Tensor* input = context.Input<Tensor>("X");
     Tensor* output = context.Output<Tensor>("Out");
     auto out_dtype = context.Attr<int>("out_dtype");
-    auto pt_out_dtype = paddle::framework::TransToPtenDataType(
+    auto pt_out_dtype = paddle::framework::TransToPhiDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
@@ -713,7 +653,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto out_dtype = context.Attr<int>("in_dtype");
-    auto pt_out_dtype = framework::TransToPtenDataType(
+    auto pt_out_dtype = framework::TransToPhiDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
     // get reduce_dim and reduce_num for reduce_mean_grad
     int dim_size = in_x->dims().size();
@@ -734,8 +674,8 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     } else {
       d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
     }
-    auto pt_d_out = paddle::experimental::MakePtenDenseTensor(new_d_out);
-    auto pt_d_x = paddle::experimental::MakePtenDenseTensor(*d_x);
+    auto pt_d_out = paddle::experimental::MakePhiDenseTensor(new_d_out);
+    auto pt_d_x = paddle::experimental::MakePhiDenseTensor(*d_x);
     if (out_dtype <= 0) {
       pt_out_dtype = d_out->dtype();
     }

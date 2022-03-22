@@ -31,25 +31,25 @@ class DenseTensorUtils {
     size_t bytes = tensor.numel() * SizeOf(tensor.dtype());
     PADDLE_ENFORCE_GE(tensor.capacity(),
                       bytes,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The memory size %d should be enough to meet the "
                           "volume required by metadata %d.",
                           tensor.capacity(),
                           bytes));
-    PADDLE_ENFORCE_GE(begin_idx,
-                      0,
-                      paddle::platform::errors::OutOfRange(
-                          "The start row index must be greater than 0."
-                          "But received the start index is d%.",
-                          begin_idx));
-    PADDLE_ENFORCE_LE(end_idx,
-                      tensor.dims()[0],
-                      paddle::platform::errors::OutOfRange(
-                          "The end row index is out of bound."));
+    PADDLE_ENFORCE_GE(
+        begin_idx,
+        0,
+        phi::errors::OutOfRange("The start row index must be greater than 0."
+                                "But received the start index is d%.",
+                                begin_idx));
+    PADDLE_ENFORCE_LE(
+        end_idx,
+        tensor.dims()[0],
+        phi::errors::OutOfRange("The end row index is out of bound."));
     PADDLE_ENFORCE_LT(
         begin_idx,
         end_idx,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The start row index must be less than the end row index."
             "But received the start index = %d, the end index = %d.",
             begin_idx,

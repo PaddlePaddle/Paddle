@@ -33,6 +33,16 @@
 #include "gperftools/profiler.h"
 #endif
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
+
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
@@ -64,6 +74,47 @@ TEST(Benchmark, EagerScaleCPU) {
       double elapsed_time_ms =
           std::chrono::duration<double, std::milli>(t_end - t_start).count();
 
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
+}
+
+TEST(Benchmark, EagerMatmulCPU) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
+
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
+    paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
+    paddle::experimental::Tensor X = CreateTensorWithValue(
+        ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 1.0, true);
+    RetainGradForTensor(X);
+
+    paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
+    paddle::experimental::Tensor Y = CreateTensorWithValue(
+        ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 2.0, true);
+    RetainGradForTensor(Y);
+
+    if (mode == "Accuracy") {
+      benchmark_eager_matmul(X, Y, true /* accuracy_check */);
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
+      ProfilerStart("eager_matmul_cpu.out");
+#endif
+      benchmark_eager_matmul(X, Y);
+
+#ifdef WITH_GPERFTOOLS
+      ProfilerStop();
+#endif
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
@@ -176,4 +227,4 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
 USE_OP_ITSELF(scale);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
-USE_OP(reduce_sum);
+USE_OP_ITSELF(reduce_sum);

@@ -69,6 +69,8 @@ REGISTER_OP_CUDA_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext,
                               paddle::platform::float16>,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::bfloat16>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int>,
@@ -77,26 +79,10 @@ REGISTER_OP_CUDA_KERNEL(
     elementwise_max_grad,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
                                   paddle::platform::float16>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::bfloat16>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
                                   int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_fmax,
-    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext,
-                               paddle::platform::float16>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_fmax_grad,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext,
-                                   paddle::platform::float16>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>);

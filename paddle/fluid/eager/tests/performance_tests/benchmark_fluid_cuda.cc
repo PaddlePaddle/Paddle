@@ -34,7 +34,17 @@
 #include "gperftools/profiler.h"
 #endif
 
+#include "paddle/phi/core/kernel_registry.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace imperative {
@@ -247,8 +257,8 @@ TEST(Benchmark, FluidMLPCUDA) {
 
 USE_OP_ITSELF(scale);
 USE_OP_ITSELF(matmul_v2);
-USE_OP(reduce_sum);
-USE_OP(reduce_sum_grad);
+USE_OP_ITSELF(reduce_sum);
+USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

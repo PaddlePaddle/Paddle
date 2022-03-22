@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, compiler, program_guard
 from paddle.fluid.op import Operator
 
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 
 class ElementwiseMulOp(OpTest):
@@ -81,6 +81,39 @@ class ElementwiseMulOp(OpTest):
 
     def init_axis(self):
         pass
+
+
+class TestBF16ElementwiseMulOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.dtype = np.uint16
+
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.out = np.multiply(self.x, self.y)
+
+        self.axis = -1
+
+        self.inputs = {
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.x)),
+            'Y':
+            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.y))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(

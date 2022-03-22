@@ -12,12 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/index_sample_op.h"
 #include <vector>
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 namespace paddle {
 namespace operators {
 class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -42,44 +44,6 @@ class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
 class IndexSampleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Inputs(Input) of FindByIndex should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      platform::errors::InvalidArgument(
-                          "Inputs(Index) of FindByIndex should not be null."));
-
-    auto input_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(
-        input_dims.size(), 2,
-        platform::errors::InvalidArgument(
-            "Inputs(X) shape of IndexSample op should be 2-D, but "
-            "got X's shape = [%s], please check X shape.",
-            input_dims));
-
-    auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE_EQ(
-        input_dims.size(), 2,
-        platform::errors::InvalidArgument(
-            "Inputs(Index) shape of IndexSample op should be 2-D, but "
-            "got Index's shape [%s] , please check index shape.",
-            input_dims));
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(input_dims[0], index_dims[0],
-                        platform::errors::InvalidArgument(
-                            "Inputs(X)'s value of dimension 0 must same with "
-                            "Inputs(Index)'s value of dimension 0, but "
-                            "got %d of Inputs(X), and got %d of Inputs(Index), "
-                            "please check Inputs shape.",
-                            input_dims[0], index_dims[0]));
-    }
-    ctx->SetOutputDim("Out", index_dims);
-    auto type = ctx->GetInputsVarType("Index")[0];
-    if (type == framework::proto::VarType::LOD_TENSOR) {
-      ctx->ShareLoD("Index", /*->*/ "Out");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -136,20 +100,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSampleGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(index_sample, IndexSampleInferShapeFunctor,
+                            PD_INFER_META(phi::IndexSampleInferMeta));
 REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
                   ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
-                  ops::IndexSampleGradMaker<paddle::imperative::OpBase>);
+                  ops::IndexSampleGradMaker<paddle::imperative::OpBase>,
+                  IndexSampleInferShapeFunctor);
 REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
                   ops::IndexSampleGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    index_sample,
-    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    index_sample_grad,
-    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

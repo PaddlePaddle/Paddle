@@ -41,9 +41,9 @@ class DotKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(x->place());
 
     // call new kernel
-    phi::DotKernel<T, typename paddle::framework::ConvertToPtenContext<
+    phi::DotKernel<T, typename paddle::framework::ConvertToPhiContext<
                           DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x, *y, out);
   }
@@ -66,7 +66,7 @@ class DotGradKernel : public framework::OpKernel<T> {
 
     // call new kernel
     phi::DotGradKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *tensor_x, *tensor_y, *tensor_dout, tensor_dx, tensor_dy);
   }

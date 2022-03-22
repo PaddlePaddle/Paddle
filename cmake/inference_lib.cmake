@@ -114,6 +114,24 @@ function(copy_part_of_thrid_party TARGET DST)
         endif()
     endif()
 
+    if (WITH_ONNXRUNTIME)
+        set(dst_dir "${DST}/third_party/install/onnxruntime")
+        copy(${TARGET}
+                SRCS ${ONNXRUNTIME_INC_DIR} ${ONNXRUNTIME_LIB_DIR}
+                DSTS ${dst_dir} ${dst_dir})
+
+        set(dst_dir "${DST}/third_party/install/paddle2onnx")
+        if(WIN32)
+            copy(${TARGET}
+                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_SHARED_LIB} ${PADDLE2ONNX_LIB}
+                DSTS ${dst_dir}/include ${dst_dir}/lib ${dst_dir}/lib)
+        else()
+            copy(${TARGET}
+                SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB}
+                DSTS ${dst_dir}/include ${dst_dir}/lib)
+        endif()
+    endif()
+
     set(dst_dir "${DST}/third_party/install/gflags")
     copy(${TARGET}
             SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
@@ -224,7 +242,7 @@ copy(inference_lib_dist
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
-# copy api headers for pten & custom op
+# copy api headers for phi & custom op
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext/)
@@ -244,11 +262,11 @@ copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/extension.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 
-# the header file of pten is copied to the experimental directory,
-# the include path of pten needs to be changed to adapt to inference api path
+# the header file of phi is copied to the experimental directory,
+# the include path of phi needs to be changed to adapt to inference api path
 add_custom_command(TARGET inference_lib_dist POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/pten_header.cmake"
-        COMMENT "Change pten header include path to adapt to inference api path")
+        COMMAND ${CMAKE_COMMAND} -P "${PADDLE_SOURCE_DIR}/cmake/phi_header.cmake"
+        COMMENT "Change phi header include path to adapt to inference api path")
 
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING

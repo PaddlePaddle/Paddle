@@ -50,6 +50,8 @@ struct CompilerResources {
   using OptimizerFn =
       std::function<std::unique_ptr<popart::Optimizer>(float lr)>;
   OptimizerFn optimizer_fn;
+  // The eval mode of optimizer in training
+  std::unique_ptr<popart::Optimizer> eval_optimizer;
 
  public:
   popart::Optimizer *Optimizer() { return optimizer.get(); }
@@ -68,34 +70,29 @@ struct CompilerResources {
   std::unique_ptr<popart::Optimizer> optimizer;
 };
 
+// helper for lowering graph
+struct GraphHelper {
+  explicit GraphHelper(const Graph *);
+
+  const Graph *graph;
+  std::map<std::string, Node *> vars_name_map;
+  std::map<int, Node *> nodes_id_map;
+  std::vector<Node *> sorted_ops;
+  std::vector<int> sorted_vars_id;
+};
+
 class Compiler {
  public:
   Compiler();
   ~Compiler();
 
-  void RegisterOpFunc();
-  void Prepare();
-  void LowerBody(const Graph *graph);
-  void InitInputs(Graph *graph, const std::vector<std::string> &feed_list);
+  void Prepare(const Graph *graph);
+  void InitInputs(const std::vector<std::string> &feed_list);
   void InitOutputs(const std::vector<std::string> &fetch_list);
-  void LowerConstants(const Graph *graph, const Scope *scope);
-  void LowerWeights(const Graph *graph, const Scope *scope);
-  void LowerOptimier(const Graph *graph, const Scope *scope);
-
-  void InsertTensors(const std::vector<std::string> &output_names,
-                     const std::vector<std::string> &tensor_ids);
-  void InsertTensors(const std::vector<std::string> &output_names,
-                     const std::string &tensor_id);
-  void SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
-                        const OpDesc *op_desc);
-  void SetIpuIndexStage(const std::string &tensor_id, const OpDesc *op_desc);
-  void SetAMPAttributes(const std::vector<std::string> &tensor_ids,
-                        const OpDesc *op_desc);
-  void SetAMPAttributes(const std::string &tensor_id, const OpDesc *op_desc);
-  void SetSerializeAttributes(const std::vector<std::string> &tensor_ids,
-                              const OpDesc *op_desc);
-  void SetSerializeAttributes(const std::string &tensor_id,
-                              const OpDesc *op_desc);
+  void LowerConstants(const Scope *scope);
+  void LowerWeights(const Scope *scope);
+  void LowerBody();
+  void LowerOptimizer(const Scope *scope);
 
   void SetIpuStrategy(const IpuStrategy &strategy) {
     ipu_strategy_ = &strategy;
@@ -112,23 +109,47 @@ class Compiler {
   void SaveModelProtoNoCheck(const std::string &path);
 
  private:
+  void RegisterOpFunc();
   std::vector<std::string> GetOpInputs(const OpDesc *op);
   const std::vector<std::string> &GetOpOutputs(const OpDesc *op);
+  const std::string GetNameScope(const OpDesc *op);
   popart::DebugContext BuildDebugContext(const OpDesc *op);
+
+  void InsertTensors(const std::vector<std::string> &output_names,
+                     const std::vector<std::string> &tensor_ids);
+  void InsertTensors(const std::vector<std::string> &output_names,
+                     const std::string &tensor_id);
+  void SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
+                        const OpDesc *op_desc);
+  void SetIpuIndexStage(const std::string &tensor_id, const OpDesc *op_desc);
+  void SetAMPAttributes(const std::vector<std::string> &tensor_ids,
+                        const OpDesc *op_desc);
+  void SetAMPAttributes(const std::string &tensor_id, const OpDesc *op_desc);
+  void SetSerializeAttributes(const std::vector<std::string> &tensor_ids,
+                              const OpDesc *op_desc);
+  void SetSerializeAttributes(const std::string &tensor_id,
+                              const OpDesc *op_desc);
+  void PushNameScope(const OpDesc *op);
+  void PopNameScope(const OpDesc *op);
 
  private:
   std::unique_ptr<popart::Builder> builder_;
   std::unique_ptr<CompilerResources> resources_;
+  std::unique_ptr<GraphHelper> graph_helper_;
 
   using OpFunc = std::function<void(OpDesc *op_desc)>;
   std::unordered_map<std::string, OpFunc> name_function_;
 
-  // feed_list_ & fetch_list save paddle tensor id
-  std::vector<std::string> feed_list_;
-  std::vector<std::string> fetch_list_;
-
   const IpuStrategy *ipu_strategy_ = nullptr;
   std::map<std::string, IpuCustomOpIdentifier> custom_ops_;
+
+  // Used to choose the way to set amp for Ops
+  // If anyone op has the attr sAvailMemAttribute, the
+  // available_memory_proportion from ipu_strategy
+  // will be ignored and the Ops are set by their own sAvailMemAttribute. Else,
+  // all relevant Ops will be set by
+  // the available_memory_proportion from ipu_strategy.
+  bool set_amp_for_all_ = true;
 };
 
 }  // namespace ipu

@@ -50,9 +50,9 @@ class EagerScaleTestCase(unittest.TestCase):
             data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-            self.assertFalse(data_eager.grad._is_initialized())
+            self.assertIsNone(data_eager.grad)
             out_eager.backward(grad_eager, False)
-            self.assertTrue(data_eager.grad._is_initialized())
+            self.assertIsNotNone(data_eager.grad)
             self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
 
     def test_retain_grad_and_run_backward_raises(self):
@@ -72,7 +72,7 @@ class EagerScaleTestCase(unittest.TestCase):
             data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-            self.assertFalse(data_eager.grad._is_initialized())
+            self.assertIsNone(data_eager.grad)
             with self.assertRaisesRegexp(
                     AssertionError,
                     "The type of grad_tensor must be paddle.Tensor"):
@@ -632,13 +632,17 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             tensor2.persistable = True
             tensor2.stop_gradient = False
             if core.is_compiled_with_cuda():
-                tensor3 = tensor2._copy_to(True, core.CUDAPlace(0))
+                tensor3 = tensor2._copy_to(core.CUDAPlace(0), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_gpu_place())
+                tensor4 = paddle.to_tensor([1, 2, 3], place='gpu_pinned')
+                tensor5 = tensor4._copy_to(core.CUDAPlace(0), True)
+                self.assertTrue(
+                    np.array_equal(tensor4.numpy(), tensor5.numpy()))
             else:
-                tensor3 = tensor2._copy_to(True, core.CPUPlace())
+                tensor3 = tensor2._copy_to(core.CPUPlace(), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)
@@ -771,13 +775,13 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             self.assertTrue(np.array_equal(egr_tensor.numpy(), ori_arr))
             ori_place = egr_tensor.place
 
-            new_arr = np.random.rand(4, 4, 16, 32).astype('float32')
+            new_arr = np.random.rand(4, 16, 16, 32).astype('float32')
             self.assertFalse(np.array_equal(egr_tensor.numpy(), new_arr))
 
-            egr_tensor._set_value(new_arr)
+            egr_tensor.set_value(new_arr)
             self.assertEqual(egr_tensor.stop_gradient, True)
             self.assertTrue(egr_tensor.place._equals(ori_place))
-            self.assertEqual(egr_tensor.shape, [4, 4, 16, 32])
+            self.assertEqual(egr_tensor.shape, [4, 16, 16, 32])
             self.assertTrue(np.array_equal(egr_tensor.numpy(), new_arr))
 
 
@@ -880,7 +884,7 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
             new_weight = np.ones([1, 3]).astype('float32')
             self.assertFalse(np.array_equal(linear.weight.numpy(), new_weight))
 
-            linear.weight._set_value(new_weight)
+            linear.weight.set_value(new_weight)
             self.assertTrue(np.array_equal(linear.weight.numpy(), new_weight))
             self.assertTrue(linear.weight.place._equals(ori_place))
 

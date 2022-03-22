@@ -26,9 +26,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void NormGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& x,
                     const DenseTensor& norm,
+                    const DenseTensor& out_grad,
                     int axis,
                     float epsilon,
                     bool is_test,
@@ -83,5 +83,5 @@ void NormGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     norm_grad, CPU, ALL_LAYOUT, phi::NormGradKernel, float, double) {}

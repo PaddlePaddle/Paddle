@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include "paddle/phi/kernels/batch_norm_grad_kernel.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -202,8 +204,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 template <typename DeviceContext, typename T>
-class InplaceABNKernel
-    : public paddle::operators::BatchNormKernel<DeviceContext, T> {
+class InplaceABNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
@@ -213,7 +214,33 @@ class InplaceABNKernel
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    BatchNormKernel<DeviceContext, T>::Compute(ctx);
+
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* mean = ctx.Input<Tensor>("Mean");
+    auto* variance = ctx.Input<Tensor>("Variance");
+
+    auto momentum = ctx.Attr<float>("momentum");
+    auto epsilon = ctx.Attr<float>("epsilon");
+    auto data_layout = ctx.Attr<std::string>("data_layout");
+    auto is_test = ctx.Attr<bool>("is_test");
+    auto use_global_stats = ctx.Attr<bool>("use_global_stats");
+    auto trainable_statistics = ctx.Attr<bool>("trainable_statistics");
+    auto fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
+
+    auto* mean_out = ctx.Output<Tensor>("MeanOut");
+    auto* variance_out = ctx.Output<Tensor>("VarianceOut");
+    auto* saved_mean = ctx.Output<Tensor>("SavedMean");
+    auto* saved_variance = ctx.Output<Tensor>("SavedVariance");
+    auto* reserve_space = ctx.Output<Tensor>("ReserveSpace");
+
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    phi::BatchNormKernel<T>(
+        static_cast<const typename framework::ConvertToPhiContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, *scale, *bias, *mean, *variance, momentum, epsilon, data_layout,
+        is_test, use_global_stats, trainable_statistics, fuse_with_relu, y,
+        mean_out, variance_out, saved_mean, saved_variance, reserve_space);
 
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
@@ -222,8 +249,7 @@ class InplaceABNKernel
 };
 
 template <typename DeviceContext, typename T>
-class InplaceABNGradKernel
-    : public paddle::operators::BatchNormGradKernel<DeviceContext, T> {
+class InplaceABNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* y = ctx.Input<Tensor>("Y");
@@ -244,7 +270,52 @@ class InplaceABNGradKernel
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
-    BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+    // BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+
+    auto* scale = ctx.Input<Tensor>("Scale");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* saved_mean = ctx.Input<Tensor>("SavedMean");
+    auto* saved_variance = ctx.Input<Tensor>("SavedVariance");
+
+    auto momentum = ctx.Attr<float>("momentum");
+    auto epsilon = ctx.Attr<float>("epsilon");
+    auto data_layout = ctx.Attr<std::string>("data_layout");
+    auto is_test = ctx.Attr<bool>("is_test");
+    auto use_global_stats = ctx.Attr<bool>("use_global_stats");
+    auto trainable_statistics = ctx.Attr<bool>("trainable_statistics");
+    auto fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
+
+    auto* scale_grad = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto* bias_grad = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    auto* reserve_space = ctx.Input<Tensor>("ReserveSpace");
+    auto* mean = ctx.Input<Tensor>("ReserveSpace");
+    auto* variance = ctx.Input<Tensor>("ReserveSpace");
+
+    paddle::optional<const Tensor&> space_opt = paddle::none;
+    paddle::optional<const Tensor&> mean_opt = paddle::none;
+    paddle::optional<const Tensor&> variance_opt = paddle::none;
+
+    if (reserve_space != nullptr) {
+      space_opt = *reserve_space;
+    }
+
+    if (mean != nullptr) {
+      mean_opt = *mean;
+    }
+
+    if (variance != nullptr) {
+      variance_opt = *variance;
+    }
+
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    phi::BatchNormGradRawKernel<T>(
+        static_cast<const typename framework::ConvertToPhiContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
+        mean_opt, variance_opt, momentum, epsilon, data_layout, is_test,
+        use_global_stats, trainable_statistics, fuse_with_relu, true, d_x,
+        scale_grad, bias_grad);
   }
 };
 
@@ -252,6 +323,7 @@ class InplaceABNGradKernel
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,

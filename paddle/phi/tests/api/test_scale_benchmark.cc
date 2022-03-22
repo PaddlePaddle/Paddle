@@ -19,15 +19,18 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/tests/api/scale_api.h"
 #include "paddle/phi/tests/core/timer.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace tests {
 
 TEST(API, scale) {
   auto x = experimental::full(
-      {3, 4}, 1.0, experimental::DataType::FLOAT32, experimental::Backend::CPU);
+      {3, 4}, 1.0, experimental::DataType::FLOAT32, experimental::CPUPlace());
 
   const size_t cycles = 300;
   phi::tests::Timer timer;

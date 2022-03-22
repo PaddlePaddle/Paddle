@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
@@ -40,16 +40,25 @@ class TestElementwiseAddOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
+    def check_eager(self):
+        return False
+        #return (self.use_mkldnn == False and self.axis == -1)
+
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output(
+            check_dygraph=(self.use_mkldnn == False),
+            check_eager=self.check_eager())
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X', 'Y'], 'Out', check_dygraph=(self.use_mkldnn == False))
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(self.use_mkldnn == False),
+            check_eager=self.check_eager())
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -59,7 +68,8 @@ class TestElementwiseAddOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(self.use_mkldnn == False))
+            check_dygraph=(self.use_mkldnn == False),
+            check_eager=self.check_eager())
 
     def test_check_grad_ingore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -69,7 +79,8 @@ class TestElementwiseAddOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(self.use_mkldnn == False))
+            check_dygraph=(self.use_mkldnn == False),
+            check_eager=self.check_eager())
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -96,6 +107,48 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             if core.is_float16_supported(place):
                 self.check_output_with_place(
                     place, atol=1e-3, check_dygraph=(self.use_mkldnn == False))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+class TestBF16ElementwiseAddOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.dtype = np.uint16
+
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.out = np.add(self.x, self.y)
+
+        self.axis = -1
+
+        self.inputs = {
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.x)),
+            'Y':
+            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.y))
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_eager=False)
+
+    def test_check_grad_ingore_x(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', no_grad_set=set("X"), check_eager=False)
+
+    def test_check_grad_ingore_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', no_grad_set=set('Y'), check_eager=False)
 
 
 @skip_check_grad_ci(
@@ -546,7 +599,7 @@ class TestComplexElementwiseAddOp(OpTest):
         self.grad_y = self.grad_out
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
