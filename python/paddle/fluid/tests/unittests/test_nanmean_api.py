@@ -44,7 +44,6 @@ class TestNanmeanAPI(unittest.TestCase):
             axis = np.arange(len(self.x_shape)).tolist()
             out4 = paddle.nanmean(x, axis)
             out5 = paddle.nanmean(x, tuple(axis))
-
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x},
                           fetch_list=[out1, out2, out3, out4, out5])
