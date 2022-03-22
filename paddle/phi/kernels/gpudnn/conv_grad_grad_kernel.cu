@@ -259,34 +259,34 @@ void ConvCudnnGradGradKernel(
 
   auto handle = ctx.cudnn_handle();
 
-  auto args1 = paddle::operators::ConvArgs(&transformed_ddX,
-                                           W,
-                                           &transformed_ddO_channel,
-                                           strides,
-                                           padding_common,
-                                           dilations,
-                                           dtype);
-  auto args2 = paddle::operators::ConvArgs(&transformed_X,
-                                           ddW,
-                                           &transformed_ddO_channel,
-                                           strides,
-                                           padding_common,
-                                           dilations,
-                                           dtype);
-  auto args3 = paddle::operators::ConvArgs(&transformed_ddX,
-                                           dW,
-                                           &transformed_dO_channel,
-                                           strides,
-                                           padding_common,
-                                           dilations,
-                                           dtype);
-  auto args4 = paddle::operators::ConvArgs(&transformed_dX,
-                                           ddW,
-                                           &transformed_dO_channel,
-                                           strides,
-                                           padding_common,
-                                           dilations,
-                                           dtype);
+  paddle::operators::ConvArgs args1{&transformed_ddX,
+                                    W,
+                                    &transformed_ddO_channel,
+                                    strides,
+                                    padding_common,
+                                    dilations,
+                                    dtype};
+  paddle::operators::ConvArgs args2{&transformed_X,
+                                    ddW,
+                                    &transformed_ddO_channel,
+                                    strides,
+                                    padding_common,
+                                    dilations,
+                                    dtype};
+  paddle::operators::ConvArgs args3{&transformed_ddX,
+                                    dW,
+                                    &transformed_dO_channel,
+                                    strides,
+                                    padding_common,
+                                    dilations,
+                                    dtype};
+  paddle::operators::ConvArgs args4{&transformed_dX,
+                                    ddW,
+                                    &transformed_dO_channel,
+                                    strides,
+                                    padding_common,
+                                    dilations,
+                                    dtype};
 
 #ifdef PADDLE_WITH_HIP
   paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result1;

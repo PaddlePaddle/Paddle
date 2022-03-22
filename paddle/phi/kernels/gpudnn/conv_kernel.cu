@@ -210,13 +210,13 @@ void ConvCudnnKernel(const Context& ctx,
   const T* filter_data = transformed_filter_channel.data<T>();
 
   // ------------------- cudnn descriptors ---------------------
-  auto args = paddle::operators::ConvArgs(&transformed_input,
-                                          &transformed_filter_channel,
-                                          &transformed_output,
-                                          strides,
-                                          padding_common,
-                                          dilations,
-                                          dtype);
+  paddle::operators::ConvArgs args{&transformed_input,
+                                   &transformed_filter_channel,
+                                   &transformed_output,
+                                   strides,
+                                   padding_common,
+                                   dilations,
+                                   dtype};
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -307,18 +307,18 @@ void ConvCudnnKernel(const Context& ctx,
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> algo_result;
+  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result;
   using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
-  algo_result.algo = search::Find<T>(
+  fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> algo_result;
+  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  algo_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  VLOG(3) << "fwd algo: " << algo_result.algo << ", time " << algo_result.time;
-  workspace_size = search::GetWorkspaceSize(args, algo_result.algo);
+  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  VLOG(3) << "fwd algo: " << fwd_result.algo << ", time " << fwd_result.time;
+  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
@@ -327,7 +327,7 @@ void ConvCudnnKernel(const Context& ctx,
   // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
     // FWD_ALGO_IMPLICIT_GEMM manually.
   if (groups > 1) {
-    algo_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
   }
 #endif
 
@@ -351,7 +351,7 @@ void ConvCudnnKernel(const Context& ctx,
                 args.wdesc.desc(),
                 filter_data,
                 args.cdesc.desc(),
-                algo_result.algo,
+                fwd_result.algo,
                 &beta,
                 args.odesc.desc(),
                 output_data,
@@ -372,7 +372,7 @@ void ConvCudnnKernel(const Context& ctx,
                   args.wdesc.desc(),
                   filter_data + i * group_offset_filter,
                   args.cdesc.desc(),
-                  algo_result.algo,
+                  fwd_result.algo,
                   workspace_ptr,
                   workspace_size,
                   &beta,
