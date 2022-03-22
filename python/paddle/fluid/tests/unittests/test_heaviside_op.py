@@ -16,11 +16,12 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 
 
-class ApiHeavisideTest(unittest.TestCase):
+class ApiHeavisideTest(OpTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -111,3 +112,15 @@ class ApiHeavisideTest(unittest.TestCase):
         res = paddle.heaviside(b, c)
         res = res.numpy()
         self.assertTrue(np.allclose(res, self.np_expected4))
+
+    def test_grad(self):
+        paddle.enable_static()
+        self.op_type = "elementwise_heaviside"
+        x = np.random.rand(10, 15).astype("float64")
+        y = np.random.rand(10, 15).astype("float64")
+        self.inputs = {"X": x, "Y": y}
+        self.outputs = {"Out": np.heaviside(x, y)}
+        self.check_grad(["X", "Y"], "Out")
+
+if __name__ == "__main__":
+    unittest.main()
