@@ -108,6 +108,8 @@ std::string TensorFormatter::Format(const framework::LoDTensor& print_tensor,
     FormatData<int64_t>(print_tensor, log_stream);
   } else if (framework::IsType<const bool>(dtype)) {
     FormatData<bool>(print_tensor, log_stream);
+  } else if (framework::IsType<const phi::dtype::float16>(dtype)) {
+    FormatData<phi::dtype::float16>(print_tensor, log_stream);
   } else {
     log_stream << "  - data: unprintable type: " << dtype.name() << std::endl;
   }
@@ -154,6 +156,8 @@ template void TensorFormatter::FormatData<double>(
 template void TensorFormatter::FormatData<int>(
     const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<int64_t>(
+    const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
+template void TensorFormatter::FormatData<phi::dtype::float16>(
     const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
 
 }  // namespace operators

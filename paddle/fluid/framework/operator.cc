@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/dump_tensor.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
@@ -57,6 +58,7 @@ class DenseTensor;
 
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(dump_tensor);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
@@ -1357,6 +1359,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
 #endif
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+  }
+
+  if (FLAGS_dump_tensor) {
+    framework::details::DumpTensor(*this, exec_scope, place);
   }
 
   if (FLAGS_check_nan_inf) {

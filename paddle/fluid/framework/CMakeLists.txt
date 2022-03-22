@@ -201,11 +201,11 @@ ENDIF()
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    phi phi_utils kernel_factory infershape_utils op_utils)
+    phi phi_utils kernel_factory infershape_utils op_utils dump_tensor)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    phi phi_utils kernel_factory infershape_utils op_utils)
+    phi phi_utils kernel_factory infershape_utils op_utils dump_tensor)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)

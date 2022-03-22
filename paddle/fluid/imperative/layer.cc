@@ -31,6 +31,8 @@
 #endif
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(check_nan_inf);
+DECLARE_bool(dump_tensor);
 namespace paddle {
 namespace imperative {
 
@@ -499,6 +501,11 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
+
+  if (FLAGS_dump_tensor || FLAGS_check_nan_inf) {
+    LOG(INFO) << LayerDebugString(op.Type(), ins, outs);
+  }
+
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =

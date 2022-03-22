@@ -61,6 +61,17 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
+/**
+ * Operator related FLAG
+ * Name: FLAGS_dump_tensor
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Save all tensors inputs and outputs to txt files
+ */
+PADDLE_DEFINE_EXPORTED_bool(dump_tensor, false,
+                            "whether to dump tensors to files");
+
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \

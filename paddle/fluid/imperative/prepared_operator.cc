@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/dump_tensor.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -30,6 +31,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(dump_tensor);
 DECLARE_bool(benchmark);
 DECLARE_bool(run_kp_kernel);
 
@@ -377,6 +379,11 @@ static void PreparedOpRunImpl(
                                           attrs, default_attrs));
   }
 
+  if (FLAGS_dump_tensor) {
+    framework::details::DumpTensorInDygraph<VarType>(op.Type(), ins, outs,
+                                                     dev_ctx->GetPlace());
+  }
+
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
         op.Type(), outs, dev_ctx->GetPlace());
@@ -438,6 +445,18 @@ static void PreparedOpRunPtImpl(
                                           &pt_kernel_context);
 
     pt_kernel(&pt_kernel_context);
+  }
+
+  if (FLAGS_dump_tensor) {
+    VLOG(4) << "Operator(" << op.Type() << "): DumpTensorInDygraph";
+    framework::details::DumpTensorInDygraph<VarType>(op.Type(), ins, outs,
+                                                     dev_ctx->GetPlace());
+  }
+
+  if (FLAGS_check_nan_inf) {
+    VLOG(4) << "Operator(" << op.Type() << "): CheckOpHasNanOrInfInDygraph";
+    framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
+        op.Type(), outs, dev_ctx->GetPlace());
   }
 
   if (FLAGS_benchmark) {
