@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,10 +23,9 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 # NOTE(pangyoki): Tensor View Strategy.
-# Refer to `op_function_generator.py`.
-# For view op, a new output varbase will be created, and this varbase will
-# reuse the input varbase's allocation.
-# View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
+# For view op, a new output Tensor will be created, and this output will
+# reuse the input Tensor's allocation.
+# View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
     def setUp(self):
         self.init_shape()
