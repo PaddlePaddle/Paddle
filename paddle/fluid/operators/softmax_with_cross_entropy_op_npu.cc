@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/softmax.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
