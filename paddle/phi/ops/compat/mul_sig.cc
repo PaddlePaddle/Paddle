@@ -14,6 +14,28 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace phi {}  // namespace phi
+namespace phi {
+
+KernelSignature MulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("matmul_with_flatten_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {"x_num_col_dims", "y_num_col_dims"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+KernelSignature MulDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("matmul_with_flatten_double_grad",
+                         {"X", "Y", "DOut", "DDX", "DDY"},
+                         {"x_num_col_dims", "y_num_col_dims"},
+                         {"DX", "DY", "DDOut"});
+}
+
+}  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(mul, matmul_with_flatten);
+PD_REGISTER_BASE_KERNEL_NAME(mul_grad, matmul_with_flatten_grad);
+PD_REGISTER_BASE_KERNEL_NAME(mul_grad_grad, matmul_with_flatten_double_grad);
+
+PD_REGISTER_ARG_MAPPING_FN(mul_grad, phi::MulGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(mul_grad_grad, phi::MulDoubleGradOpArgumentMapping);

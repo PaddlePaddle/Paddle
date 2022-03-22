@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mul_op.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -26,6 +26,9 @@ namespace operators {
 
 using framework::OpKernelType;
 using framework::Tensor;
+
+constexpr int kMULMKLDNNINT8 = 1;
+constexpr int kMULMKLDNNFP32 = 2;
 
 class MulOp : public framework::OperatorWithKernel {
  public:
@@ -354,12 +357,3 @@ REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
                   ops::MulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    mul_grad_grad,
-    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
