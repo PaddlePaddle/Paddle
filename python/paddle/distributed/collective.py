@@ -190,10 +190,6 @@ def _new_ring_id():
     return len(_get_group_map()) + max(_get_global_env().nrings, 9)
 
 
-def _new_group_name_id():
-    return len(_get_group_map_by_name()) + max(_get_global_env().nrings, 9)
-
-
 def get_group(id=0):
     """
 
@@ -206,7 +202,6 @@ def get_group(id=0):
         Group: the group instance.
 
     Examples:
-
         .. code-block:: python
 
             ...
@@ -223,7 +218,7 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
                             pg_options):
     pg = None
     if backend == "gloo":
-        pg = core.ProcessGroupGloo(gloo_store, rank, world_size)
+        pg = core.ProcessGroupGloo(store, rank, world_size)
     elif backend == "nccl":
         pg = core.ProcessGroupNCCL(store, rank, world_size)
     elif backend == "hccl":
@@ -234,111 +229,158 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
 
 def new_group(ranks=None, backend=None):
     """
-    Create a new process group.
+
+    Creates a new distributed communication group.
 
     Args:
-        ranks (list, optional): list of ranks for the new group. If None is given, 
-            all processes is used. Default: None.
-        backend (str, optional): the name of the backend used to initialize
-            the distributed environment. Default: the one for init_parallel_env.
+        ranks (list): The global ranks of group members.
+        backend (str): The backend used to create group, only nccl is supported now.
+
+    Returns:
+        Group: The group instance.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
-            paddle.distributed.init_parallel_env()
-            paddle.distributed.new_group([0, 1])
 
-            # how to start
-            # python paddle.distributed.run --gpus="0,1" train.py
+            paddle.distributed.init_parallel_env()
+            tindata = paddle.randn(shape=[2, 3])
+            gp = paddle.distributed.new_group([2,4,6])
+            paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
 
     """
-    global _default_group_name
-    if group_name is None:
-        group_name = _default_group_name + str(_new_group_name_id())
-    if group_name == _default_group_name:
-        raise ValueError("group_name must be specified and it cannot be '{}' "
-                         "which is used for the default process group created "
-                         "by init_parallel_env.".format(_default_group_name))
-    global_group = _get_default_group()
-    global_rank = default_group.rank
-    global_ranks = default_group.ranks
-    if ranks is None:
-        ranks = global_ranks
-    assert len(ranks) <= len(global_ranks), (
-        "Size of new group must be less than or "
-        "equal to that of the default global group.")
-    size = len(ranks)
-    assert size > 1, "A group must have at least two memebers."
-    ranks = sorted(ranks)
-    if global_rank in ranks:
-        rank = ranks.index(global_rank)
-        pg = _new_process_group_impl(backend, _default_store, rank, size,
-                                     group_name, pg_options)
+    global _group_map
+    if core._in_eager_mode():
+        global _default_group_name
+        gid = _new_ring_id()
+        group_name = _default_group_name + str(gid)
+        global_group = _get_default_group()
+        global_rank = global_group.rank
+        global_ranks = global_group.ranks
+        if ranks is None:
+            ranks = global_ranks
+        assert len(ranks) <= len(global_ranks), (
+            "Size of new group must be less than or "
+            "equal to that of the default global group.")
+        size = len(ranks)
+        assert size > 1, "A group must have at least two memebers."
+        ranks = sorted(ranks)
+        if global_rank in ranks:
+            rank = ranks.index(global_rank)
+            pg = _new_process_group_impl(backend, _default_store, rank, size,
+                                         group_name, pg_options)
+        else:
+            rank = -1
+            pg = None
+        group = Group(rank, size, id=gid, ranks=ranks, pg=pg, name=group_name)
+        _group_map_by_name[group_name] = group
+        _group_map[gid] = group
+
+        return group
+
+    if not backend:
+        backend = 'nccl'
+    assert backend == 'nccl', ("backend other than nccl is not supported yet")
+
+    genv = _get_global_env()
+    global_rank = genv.rank
+
+    ring_id = _new_ring_id()
+
+    if global_rank not in ranks:
+        gp = Group(-1, -1, ring_id, ranks)
+        _group_map[ring_id] = gp
     else:
-        rank = -1
-        pg = None
-    group = Group(
-        rank,
-        size,
-        id=_new_group_name_id(),
-        ranks=ranks,
-        pg=pg,
-        name=group_name)
-    _group_map_by_name[group_name] = group
+        ranks = sorted(ranks)
+        group_rank = ranks.index(global_rank)
+        group_size = len(ranks)
+        gp = Group(group_rank, group_size, ring_id, ranks)
+        _group_map[ring_id] = gp
 
-    return group
+        if group_size >= 2:
+            strategy = core.ParallelStrategy()
+            strategy.nranks = group_size
+            strategy.local_rank = group_rank
+            strategy.trainer_endpoints = [
+                genv.trainer_endpoints[i] for i in ranks
+            ]
+            strategy.current_endpoint = genv.current_endpoint
+            strategy.nrings = 1
+
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(genv.device_id)
+                core.NCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_npu():
+                place = core.NPUPlace(genv.device_id)
+                core.HCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
+            elif core.is_compiled_with_mlu():
+                place = core.MLUPlace(genv.device_id)
+                core.CNCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
+            else:
+                assert False, ("no cuda device found")
+        else:
+            return gp
+
+    # TODO(shenliang03): This is a temporary solution to solve the problem of 
+    # hang caused by cross-creation of new_group
+    tmp = paddle.to_tensor(
+        [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [0], dtype="int32", value="1")
+    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+    paddle.distributed.wait(tmp)
+    return gp
 
 
-def barrier(group=None, async_op=False):
+def barrier(group=None):
     """
 
     Barrier among all participators in the group.
 
     Args:
         group (Group): The group instance return by new_group or None for global default group.
-        async_op (bool): Whether this op should be async or not. Default: False.
 
     Returns:
-        Async work handle if async_op is True or None otherwise.
+        None.
 
     Examples:
         .. code-block:: python
 
             import paddle
+            from paddle.distributed import init_parallel_env
 
-            paddle.distributed.init_process_group(0, 1)
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
             paddle.distributed.barrier()
-
     """
     if group is not None and not group.is_member():
         return
 
-    group = _get_default_group() if group is None else group
-    if in_dygraph_mode():
-        if async_op:
-            task = group.process_group.barrier()
-        else:
-            task.wait()
-            task = None
-        return task
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+        task = group.process_group.barrier()
+        task.wait()
+        return
 
-    ring_id = group.id
-    op_type = "barrier"
+    ring_id = 0 if group is None else group.id
+
     temp = fill_constant([1], dtype="int32", value="1")
+    if in_dygraph_mode():
+        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
+
+    op_type = "barrier"
+
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
         attrs={'ring_id': ring_id})
-    if async_op:
-        task = Task(temp, group, use_calc_stream=True)
-    else:
-        wait(temp, group, use_calc_stream=True)
-        task = None
-    return task
 
 
 def wait(tensor, group=None, use_calc_stream=True):
@@ -456,14 +498,25 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     if not isinstance(src, int):
         raise ValueError("src should be int.")
 
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+        gsrc = group.get_group_rank(src)
+        assert gsrc >= 0, ("src rank out of group, need global rank")
+        task = group.process_group.broadcast(tensor, gsrc)
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
+
+    ring_id = ring_id = 0 if group is None else group.id
     gsrc = group.get_group_rank(src)
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if in_dygraph_mode():
-        task = group.process_group.broadcast(tensor, gsrc)
-        return task
+        return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
+                                  'use_calc_stream', use_calc_stream, 'ring_id',
+                                  ring_id)
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -480,8 +533,6 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
             'use_calc_stream': False if async_op else True,
             'ring_id': ring_id,
         })
-    task = Task(tensor, group, use_calc_stream=use_calc_stream)
-    return task
 
 
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
@@ -531,22 +582,39 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
-        raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
-                         "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
-    if op == ReduceOp.SUM:
-        op_type = core.ReduceOp.SUM
-    elif op == ReduceOp.MAX:
-        op_type = core.ReduceOp.MAX
-    elif op == ReduceOp.MIN:
-        op_type = core.ReduceOp.MIN
-    elif op == ReduceOp.PROD:
-        op_type = core.ReduceOp.PRODUCT
+    if core._in_eager_mode() and in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            op_type = core.ReduceOp.SUM
+        elif op == ReduceOp.MAX:
+            op_type = core.ReduceOp.MAX
+        elif op == ReduceOp.MIN:
+            op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
+        group = _get_default_group() if group is None else group
+        task = group.process_group.allreduce(tensor, op_type)
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
+
+    ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        task = group.allreduce(tensor, reduce_type)
-        return task
+        if op == ReduceOp.SUM:
+            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id)
+        elif op == ReduceOp.MAX:
+            return _C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id)
+        elif op == ReduceOp.MIN:
+            return _C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id)
+        elif op == ReduceOp.PROD:
+            return _C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', ring_id)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
 
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -566,12 +634,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': False if async_op else True
-        })
-    task = Task(tensor, group, use_calc_stream=use_calc_stream)
-    return task
+        attrs={'ring_id': ring_id,
+               'use_calc_stream': use_calc_stream})
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
@@ -620,20 +684,48 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
-    if not isinstance(dst, int):
-        raise ValueError("dst should be int.")
+    if core._in_eager_mode() and in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            op_type = core.ReduceOp.SUM
+        elif op == ReduceOp.MAX:
+            op_type = core.ReduceOp.MAX
+        elif op == ReduceOp.MIN:
+            op_type = core.ReduceOp.MIN
+        elif op == ReduceOp.PROD:
+            op_type = core.ReduceOp.PRODUCT
+        group = _get_default_group() if group is None else group
+        gdst = group.get_group_rank(dst)
+        assert gdst >= 0, ("dst rank out of group, need global rank")
+        task = group.process_group.reduce(tensor, gdst, op_type)
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
 
-    gdst = group.get_group_rank(dst)
+    ring_id = 0 if group is None else group.id
+    dst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, ("dst rank out of group, need global rank")
 
-    if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
-        raise ValueError("The op for reduce must be one of educeOp.PROD, "
-                         "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
     if in_dygraph_mode():
-        task = group.reduce(tensor, gdst, reduce_type)
-        return task
+        if op == ReduceOp.SUM:
+            return _C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'root_id', gdst)
+        elif op == ReduceOp.MAX:
+            return _C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'root_id', gdst)
+        elif op == ReduceOp.MIN:
+            return _C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'root_id', gdst)
+        elif op == ReduceOp.PROD:
+            return _C_ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
+                                        use_calc_stream, 'ring_id', ring_id,
+                                        'root_id', gdst)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
 
     op_type = 'c_reduce'
     check_variable_and_dtype(
@@ -656,12 +748,9 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         outputs={'Out': [tensor]},
         attrs={
             'ring_id': ring_id,
-            'use_calc_stream': False if async_op else True,
+            'use_calc_stream': use_calc_stream,
             'root_id': gdst,
         })
-
-    task = Task(tensor, group, use_calc_stream=use_calc_stream)
-    return task
 
 
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
@@ -716,15 +805,23 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
-    nranks = group.nranks
-
-    if in_dygraph_mode():
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
         out = paddle.concat(tensor_list)
         wait(out, group, use_calc_stream=True)
         task = group.all_gather(tensor, out)
-        task.wait()
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
+
+    ring_id = 0 if group is None else group.id
+    nranks = _get_global_group().nranks if group is None else group.nranks
+
+    if in_dygraph_mode():
+        out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                                 'ring_id', ring_id, 'nranks', nranks)
     else:
         op_type = 'c_allgather'
         helper = LayerHelper(op_type, **locals())
@@ -746,14 +843,11 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             outputs={'Out': [out]},
             attrs={
                 'ring_id': ring_id,
-                'use_calc_stream': False if async_op else True,
+                'use_calc_stream': use_calc_stream,
                 'nranks': nranks
             })
-        task = Task(temp, group, use_calc_stream=use_calc_stream)
-        task.wait()
 
     tensor_list.extend(paddle.split(out, nranks, 0))
-    return task
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
@@ -807,16 +901,20 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
-
     if not isinstance(src, int):
         raise ValueError("src should be int.")
 
-    gsrc = group.get_group_rank(src)
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+        gsrc = group.get_group_rank(src)
+        rank = group.rank
+        nranks = group.nranks
+    else:
+        ring_id = 0 if group is None else group.id
+        gsrc = src if group is None else group.get_group_rank(src)
+        rank = _get_global_group().rank if group is None else group.rank
+        nranks = _get_global_group().nranks if group is None else group.nranks
     assert gsrc >= 0, ("src rank out of group, need global rank")
-    rank = group.rank
-    nranks = group.nranks
 
     if rank != gsrc:
         tensor_list = []
@@ -824,9 +922,18 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
     wait(temp, group, use_calc_stream=True)
-    if in_dygraph_mode():
+    if core._in_eager_mode() and in_dygraph_mode():
         task = group.scatter(temp, tensor, gsrc)
-        return task
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
+
+    if in_dygraph_mode():
+        return _C_ops.c_scatter(temp, tensor, 'use_calc_stream',
+                                use_calc_stream, 'ring_id', ring_id, 'nranks',
+                                nranks, 'root', gsrc)
     op_type = 'c_scatter'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -842,8 +949,6 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             'use_calc_stream': use_calc_stream,
             'nranks': nranks,
         })
-    task = Task(temp, group, use_calc_stream=False)
-    return task
 
 
 def _c_identity(tensor, group=None):
@@ -860,8 +965,7 @@ def _c_identity(tensor, group=None):
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
         return _C_ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
@@ -883,6 +987,7 @@ def _c_identity(tensor, group=None):
             'use_calc_stream': True,
             'use_model_parallel': True,
         })
+    return out
 
 
 def _c_concat(tensor, group=None):
@@ -1600,14 +1705,27 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+    else:
+        ring_id = 0 if group is None else group.id
+
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
     wait(temp, group, use_calc_stream=True)
-    if in_dygraph_mode():
+    if core._in_eager_mode() and in_dygraph_mode():
         out = paddle.empty_like(temp, temp.dtype)
+        wait(temp, group, use_calc_stream=True)
         task = group.alltoall(temp, out)
+        task.wait()
+        assert use_calc_stream, ("For alltoall, only use_calc_stream=True "
+                                 "is supported.")
+        out_tensor_list.extend(paddle.split(out, nranks, 0))
+        wait(temp, group, use_calc_stream=True)
+
+    if in_dygraph_mode():
+        out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id)
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
@@ -1636,10 +1754,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                 'ring_id': ring_id,
                 'use_calc_stream': use_calc_stream,
             })
-        task = Task(temp, group, use_calc_stream=use_calc_stream)
-    task.wait()
     out_tensor_list.extend(paddle.split(out, nranks, 0))
-    return task
 
 
 def send(tensor, dst=0, group=None, use_calc_stream=True):
@@ -1674,13 +1789,21 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+        task = group.send(tensor, dst)
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
+
+    ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
-        task = group.send(tensor, dst)
-        return task
-
+        return _C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id, 'peer', dst)
     op_type = 'send_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1695,8 +1818,6 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
             'peer': dst,
             'use_calc_stream': use_calc_stream,
         })
-    task = Task(tensor, group, use_calc_stream=use_calc_stream)
-    return task
 
 
 def recv(tensor, src=0, group=None, use_calc_stream=True):
@@ -1731,12 +1852,22 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+
+    if core._in_eager_mode() and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+        task = group.recv(tensor, src)
+        if use_calc_stream:
+            task.wait()
+            return None
+        else:
+            return task
+
+    ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
-        task = group.recv(tensor, src)
-        return task
+        return _C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id, 'peer', src, 'dtype',
+                              tensor.dtype, 'out_shape', tensor.shape)
     op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1752,5 +1883,3 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
             'dtype': tensor.dtype,
             'use_calc_stream': use_calc_stream,
         })
-    task = Task(tensor, group, use_calc_stream=use_calc_stream)
-    return task

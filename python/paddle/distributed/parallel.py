@@ -201,7 +201,7 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
-    if backend in _valid_backend_list:
+    if backend in _valid_backend_list and core._in_eager_mode():
         assert _default_group_name not in _group_map_by_name, (
             "The global distributed process group has been initialized.")
         _default_backend = backend
@@ -237,12 +237,15 @@ def init_parallel_env():
             ranks=ranks,
             pg=pg,
             name=_default_group_name)
+        _group_map_by_name[_default_group_name] = group
+        _group_map[0] = group
 
     else:
         node_num = set(
             [i.split(":")[0] for i in parallel_env.trainer_endpoints])
         # 3: init gloo context (step 1: httpsever start)
-        if backend == "heter":
+        init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
+        if is_cpu_only or init_gloo or backend == "heter":
             ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
             manager = Manager()
             # glboal dict to store status
