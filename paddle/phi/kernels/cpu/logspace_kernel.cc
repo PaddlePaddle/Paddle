@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cmath>
 #include "paddle/phi/kernels/logspace_kernel.h"
+#include <cmath>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
@@ -52,11 +52,11 @@ void LogspaceKernel(const Context& ctx,
     int half_num = num / 2;
     for (int i = 0; i < num; ++i) {
       if (i < half_num) {
-        out_data[i] = static_cast<T>(std::pow(
-          base_data, start_data + step * i));
+        out_data[i] =
+            static_cast<T>(std::pow(base_data, start_data + step * i));
       } else {
-        out_data[i] = static_cast<T>(std::pow(
-          base_data, stop_data - step * (num - i - 1)));
+        out_data[i] = static_cast<T>(
+            std::pow(base_data, stop_data - step * (num - i - 1)));
       }
     }
   } else {

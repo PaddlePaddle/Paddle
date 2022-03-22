@@ -1618,8 +1618,8 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
     if in_dygraph_mode():
-        return _C_ops.logspace(tensor_start, tensor_stop, tensor_num, tensor_base, 'dtype',
-                               dtype)
+        return _C_ops.logspace(tensor_start, tensor_stop, tensor_num,
+                               tensor_base, 'dtype', dtype)
 
     helper = LayerHelper("logspace", **locals())
 
@@ -1638,10 +1638,10 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
                     ['float32', 'float64', 'int32', 'int64'], 'logspace')
     else:
         check_type(stop, 'stop', (int, float), 'logspace')
-    
+
     if isinstance(num, Variable):
         check_dtype(num.dtype, 'num', ['int32'], 'logspace')
-    
+
     if isinstance(base, Variable):
         check_dtype(base.dtype, 'base',
                     ['float32', 'float64', 'int32', 'int64'], 'logspace')
@@ -1665,10 +1665,12 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
     helper.append_op(
         type='logspace',
-        inputs={'Start': tensor_start,
-                'Stop': tensor_stop,
-                'Num': tensor_num,
-                'Base': tensor_base},
+        inputs={
+            'Start': tensor_start,
+            'Stop': tensor_stop,
+            'Num': tensor_num,
+            'Base': tensor_base
+        },
         attrs={'dtype': dtype},
         outputs={'Out': [out]})
     if isinstance(num, int):
