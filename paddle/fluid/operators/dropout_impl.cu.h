@@ -39,39 +39,34 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/functors.h"
 namespace paddle {
 namespace operators {
-template <typename T>
-struct DstValGenerator {
+template <typename T1, typename T2 = T1, typename OutT = T1>
+struct DstMaskGenerator {
   const float dropout_prob_;
   const bool is_upscale_in_train_;
-  HOSTDEVICE inline DstValGenerator(const float dropout_prob,
-                                    const bool is_upscale_in_train)
-      : dropout_prob_(dropout_prob),
-        is_upscale_in_train_(is_upscale_in_train) {}
-
-  HOSTDEVICE inline T operator()(const T src_val, const T rand) const {
-    using MT = typename details::MPTypeTrait<T>::Type;
-    MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
-    if (static_cast<float>(rand) < dropout_prob_) {
-      return static_cast<T>(0);
-    } else {
-      return is_upscale_in_train_
-                 ? static_cast<T>(static_cast<MT>(src_val) * factor)
-                 : src_val;
-    }
+  using MT = typename details::MPTypeTrait<T1>::Type;
+  MT factor;
+  HOSTDEVICE inline DstMaskGenerator(const float dropout_prob,
+                                     const bool is_upscale_in_train)
+      : dropout_prob_(dropout_prob), is_upscale_in_train_(is_upscale_in_train) {
+    factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
   }
-};
 
-template <typename T>
-struct MaskValGenerator {
-  const float dropout_prob_;
-  HOSTDEVICE inline MaskValGenerator(const float dropout_prob)
-      : dropout_prob_(dropout_prob) {}
-
-  HOSTDEVICE inline T operator()(const T rand) const {
-    if (static_cast<float>(rand) < dropout_prob_) {
-      return static_cast<T>(0);
-    } else {
-      return static_cast<T>(1);
+  HOSTDEVICE inline void operator()(OutT* dst, const T1* src_val,
+                                    const T2* rand, int num) const {
+    static constexpr int kCount =
+        phi::funcs::uniform_distribution<T2>::kReturnsCount;
+// 0 ~ kCount -1 is dist , kCount ~ 2 * kCount - 1 is mask
+#pragma unroll
+    for (int i = 0; i < kCount; i++) {
+      if (rand[i] < dropout_prob_) {
+        dst[i] = static_cast<T1>(0);
+        dst[i + kCount] = dst[i];
+      } else {
+        dst[i] = is_upscale_in_train_
+                     ? static_cast<T1>(static_cast<MT>(src_val[i]) * factor)
+                     : static_cast<T1>(src_val[i]);
+        dst[i + kCount] = static_cast<T1>(1);
+      }
     }
   }
 };
@@ -81,11 +76,11 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const float dropout_prob,
                                           const T* src, MaskType* mask, T* dst,
                                           bool is_upscale_in_train,
-                                          uint64_t increment) {
+                                          uint64_t increment,
+                                          size_t main_offset) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
-      phi::funcs::uniform_distribution<T>::kReturnsCount;
-  size_t main_offset = n / (BLOCK_NUM_X * kCount) * (BLOCK_NUM_X * kCount);
+      phi::funcs::uniform_distribution<float>::kReturnsCount;
   size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
 #ifdef PADDLE_WITH_HIP
   hiprandStatePhilox4_32_10_t state;
@@ -96,41 +91,43 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   curand_init(seed, idx + THREAD_ID_X, increment, &state);
   using SType = curandStatePhilox4_32_10_t;
 #endif
-  T src_val[kCount];
-  T rands[kCount];
-  T dst_result[kCount];
+  T dst_mask[kCount * 2];  // 0 ~ kCount -1 : dst;kCount ~ 2 * kCount - 1: mask
+  float rands[kCount];
   MaskType mask_result[kCount];
-  using Rand = phi::funcs::uniform_distribution<T>;
-
+  using Rand = phi::funcs::uniform_distribution<float>;
+  using Cast = kps::IdentityFunctor<T>;
   int deal_size = BLOCK_NUM_X * kCount;
-  auto dst_functor = DstValGenerator<T>(dropout_prob, is_upscale_in_train);
-  auto mask_functor = MaskValGenerator<T>(dropout_prob);
+  auto dst_functor =
+      DstMaskGenerator<T, float>(dropout_prob, is_upscale_in_train);
   size_t fix = idx * kCount;
   for (; fix < main_offset; fix += stride) {
-    kps::ReadData<T, kCount, 1, 1, false>(&src_val[0], src + fix, deal_size);
-    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(&rands[0], Rand(),
-                                                      &state);
-    kps::ElementwiseBinary<T, T, kCount, 1, 1, DstValGenerator<T>>(
-        &dst_result[0], &src_val[0], &rands[0], dst_functor);
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator<T>>(
-        &mask_result[0], &src_val[0], mask_functor);
+    kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
+                                                          &state);
+    // dst
+    kps::OperatorTernary<T, float, T, DstMaskGenerator<T, float>>(
+        &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
+    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_mask[0], deal_size);
+    // mask
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+        &mask_result[0], &dst_mask[kCount], Cast());
     kps::WriteData<MaskType, kCount, 1, 1, false>(mask + fix, &mask_result[0],
                                                   deal_size);
-    kps::WriteData<T, kCount, 1, 1, false>(dst + fix, &dst_result[0],
-                                           deal_size);
   }
   int remainder = n - fix;
-  if (remainder) {
-    kps::ReadData<T, kCount, 1, 1, true>(&src_val[0], src + fix, remainder);
-    kps::ElementwiseRandom<SType, T, kCount, 1, Rand>(&rands[0], Rand(),
-                                                      &state);
-    kps::ElementwiseBinary<T, T, kCount, 1, 1, DstValGenerator<T>>(
-        &dst_result[0], &src_val[0], &rands[0], dst_functor);
-    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, MaskValGenerator<T>>(
-        &mask_result[0], &src_val[0], mask_functor);
+  if (remainder > 0) {
+    kps::ReadData<T, kCount, 1, 1, true>(&dst_mask[0], src + fix, remainder);
+    kps::ElementwiseRandom<SType, float, kCount, 1, Rand>(&rands[0], Rand(),
+                                                          &state);
+    // dst
+    kps::OperatorTernary<T, float, T, DstMaskGenerator<T, float>>(
+        &dst_mask[0], &dst_mask[0], &rands[0], dst_functor, kCount);
+    kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_mask[0], remainder);
+    // mask
+    kps::ElementwiseUnary<T, MaskType, kCount, 1, 1, Cast>(
+        &mask_result[0], &dst_mask[kCount], Cast());
     kps::WriteData<MaskType, kCount, 1, 1, true>(mask + fix, &mask_result[0],
                                                  remainder);
-    kps::WriteData<T, kCount, 1, 1, true>(dst + fix, &dst_result[0], remainder);
   }
 }
 
@@ -177,18 +174,21 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
     uint64_t seed_data;
     uint64_t increment;
     // VectorizedRandomGenerator use curand_uniform4, so we only support
-    // vec_size is 4;
-    constexpr int vec_size = phi::funcs::uniform_distribution<T>::kReturnsCount;
+    // kVecSize is 4;
+    constexpr int kVecSize =
+        phi::funcs::uniform_distribution<float>::kReturnsCount;
     auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
     auto offset =
-        ((x_numel - 1) / (gpu_config.GetThreadNum() * vec_size) + 1) * vec_size;
+        ((x_numel - 1) / (gpu_config.GetThreadNum() * kVecSize) + 1) * kVecSize;
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
+    size_t main_offset = size / (gpu_config.GetBlockSize() * kVecSize) *
+                         (gpu_config.GetBlockSize() * kVecSize);
     VectorizedRandomGenerator<T, uint8_t><<<
         gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream>>>(
         size, seed_data, dropout_prob, x_data, mask_data, y_data,
-        upscale_in_train, increment);
+        upscale_in_train, increment, main_offset);
   } else {
     if (upscale_in_train) {
 // todo: can y share with data with x directly?
