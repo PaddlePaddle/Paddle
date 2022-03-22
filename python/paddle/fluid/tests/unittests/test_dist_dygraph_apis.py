@@ -12,38 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
-import os
-import paddle
-import paddle.nn as nn
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class SimpleNet(nn.Layer):
-    def __init__(self, in_size, out_size):
-        super(SimpleNet, self).__init__()
-        self.linear = nn.Linear(in_size, out_size)
-        self.softmax = nn.Softmax(axis=-1)
-
-    def forward(self, input):
-        y = self.linear(input)
-        pred = self.softmax(y)
-        return pred
-
-
-class TestDygraphFleetApis(unittest.TestCase):
-    def setUp(self):
-        os.environ["PADDLE_TRAINER_ID"] = "1"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
-
-    def test_pipeline_optimizer(self):
-        import paddle.distributed.fleet as fleet
-        strategy = fleet.DistributedStrategy()
-        strategy.amp = True
-        strategy.recompute = True
-        fleet.init(is_collective=True, strategy=strategy)
-        net = SimpleNet(8, 8)
-        net = dist.fleet.distributed_model(net)
+class TestDygraphFleetApi(TestMultipleGpus):
+    def test_dygraph_fleet_api(self):
+        self.run_mnist_2gpu('dygraph_fleet_api.py')
 
 
 if __name__ == "__main__":

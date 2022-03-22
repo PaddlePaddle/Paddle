@@ -68,6 +68,7 @@ message AMPConfig {
   repeated string custom_black_varnames = 9;
   optional bool use_pure_fp16 = 10 [ default = false ];
   optional bool use_fp16_guard = 11 [ default = true ];
+  optional string amp_level = 12 [ default = "O1" ];
 }
 
 message LocalSGDConfig {

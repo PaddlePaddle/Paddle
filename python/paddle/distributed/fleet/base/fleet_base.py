@@ -47,6 +47,7 @@ _grad_scalar = None
 
 class RecomputeModelWrapper(paddle.nn.Layer):
     def __init__(self, model, segments=1, preserve_rng_state=True):
+        super(RecomputeModelWrapper, self).__init__()
         assert isinstance(model, paddle.nn.Sequential), (
             "The model passed to RecomputeModelWrapper must be of type "
             "paddle.nn.Sequential.")
@@ -1006,10 +1007,10 @@ class Fleet(object):
             decr_every_n_nan_or_inf = strategy.amp_configs[
                 'decr_every_n_nan_or_inf']
             use_dynamic_loss_scaling = strategy.amp_configs[
-                'use_dynamic_loss_scalling']
+                'use_dynamic_loss_scaling']
 
             global _grad_scalar
-            _grad_scalar = paddle.amp.GradScalar(
+            _grad_scalar = paddle.amp.GradScaler(
                 init_loss_scaling=init_loss_scaling,
                 incr_ratio=incr_ratio,
                 decr_ratio=decr_ratio,
