@@ -234,6 +234,8 @@ macro(xpu_add_library TARGET_NAME)
             VERBATIM
             ) 
         
+        message(STATUS "Build KPS file xpu_target=" ${xpu_target})
+        message(STATUS "Build KPS file cc_kernel_lists=" ${cc_kernel_lists})
         add_library(${xpu_target} STATIC ${cc_kernel_lists})
         add_dependencies(${xpu_target} ${xpu_target}_src)
         target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lib${xpu_target}_xpu.a)
