@@ -103,8 +103,8 @@ class TestSparseEmbedding(TestParallelDyGraphRunnerBase):
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True)
 
-        optimizer = fluid.optimizer.SGD(learning_rate=0.001,
-                                        parameter_list=model.parameters())
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
 
         return model, train_reader, optimizer
 

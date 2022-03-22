@@ -349,6 +349,139 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
       CommType::ALLREDUCE);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduceSparse(
+    std::vector<Tensor>& tensors) {
+  return Collective(
+      tensors, tensors,
+      [&](const Tensor& input, Tensor& output, ncclComm_t comm,
+          const gpuStream_t& stream) {
+        PADDLE_ENFORCE_EQ(input.is_selected_rows(), true,
+                          platform::errors::InvalidArgument(
+                              "Input Tensor should be SelectedRows."));
+
+        auto src = std::dynamic_pointer_cast<phi::SelectedRows>(input.impl());
+        auto dst = std::dynamic_pointer_cast<phi::SelectedRows>(output.impl());
+
+        const auto& src_tensor = src->value();
+        const auto& place = src_tensor.place();
+
+        PADDLE_ENFORCE_EQ(
+            platform::is_gpu_place(place), true,
+            platform::errors::Unimplemented(
+                "Dygraph mode does not support multi-CPU training yet."));
+
+        auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
+        auto nccl_dtype = platform::ToNCCLDataType(dtype);
+        auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place));
+
+        const auto& src_rows = src->rows();
+        framework::Vector<int64_t> rows_num_vector(size_);
+        rows_num_vector[rank_] = static_cast<int64_t>(src_rows.size());
+
+        // CUDAMutableData use CalStream
+        paddle::framework::MixVector<int64_t> mixv_rows_num_vector(
+            &rows_num_vector);
+        auto* gpu_rows_num_ptr = mixv_rows_num_vector.CUDAMutableData(place);
+        dev_ctx->Wait();
+
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
+            gpu_rows_num_ptr + rank_, gpu_rows_num_ptr, 1, ncclInt64, comm,
+            stream));
+
+        platform::GpuStreamSync(stream);
+
+        mixv_rows_num_vector.CopyToCPU();
+        const auto* cpu_rows_num_ptr = rows_num_vector.data();
+        auto rows_num =
+            std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
+                            static_cast<int64_t>(0));
+        dst->set_height(src->height());
+
+        VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
+                << ", total rows number: " << rows_num
+                << ", height: " << src->height();
+
+        auto* dst_rows = dst->mutable_rows();
+        dst_rows->resize(rows_num);
+        paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+        auto* dst_rows_ptr = mixv_dst_rows.CUDAMutableData(place);
+        paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
+        const auto* src_rows_ptr = mixv_src_rows.CUDAData(place);
+
+        VLOG(3) << "==== debug 1 ====";
+
+        auto* dst_tensor = dst->mutable_value();
+        auto dims = src_tensor.dims();
+        dims[0] = rows_num;
+        auto feature_size = phi::product(dims) / dims[0];
+        dst_tensor->Resize(dims);
+        auto* dst_tensor_ptr =
+            dst_tensor->mutable_data(place, src_tensor.dtype());
+        const auto* src_tensor_ptr = src_tensor.data();
+
+        VLOG(3) << "==== debug 2 ====";
+
+        auto sizeof_dtype = framework::SizeOfType(dtype);
+        int64_t row_offset = 0;
+
+        dev_ctx->Wait();
+
+        VLOG(3) << "==== debug 3 ====";
+
+        if (std::all_of(
+                cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
+                [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
+          // During sparse communication, the number of each card is same.
+          // allgather is used to speed up the allreduce by replacing broadcast.
+
+          VLOG(3) << "==== debug 4 ====";
+
+          auto row_sendcount = cpu_rows_num_ptr[0];
+          VLOG(3)
+              << "allgather replaces broadcast to speed up in sparse allreduce";
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
+              src_rows_ptr, dst_rows_ptr, row_sendcount, ncclInt64, comm,
+              stream));
+          auto value_sendcount = cpu_rows_num_ptr[0] * feature_size;
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
+              src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype, comm,
+              stream));
+        } else {
+          VLOG(3) << "==== debug 5 ====";
+
+          for (int i = 0; i < size_; ++i) {
+            if (cpu_rows_num_ptr[i] > 0) {
+              // 2. Broadcast the rows of SelectedRows
+              PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+                  src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
+                  ncclInt64, i, comm, stream));
+              // 3. Broadcast the tensor data of SelectedRows
+              auto* dst_tensor_ptr_i =
+                  reinterpret_cast<uint8_t*>(dst_tensor_ptr) +
+                  row_offset * feature_size * sizeof_dtype;
+              PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+                  src_tensor_ptr, dst_tensor_ptr_i,
+                  cpu_rows_num_ptr[i] * feature_size, nccl_dtype, i, comm,
+                  stream));
+              row_offset += cpu_rows_num_ptr[i];
+            }
+          }
+        }
+
+        VLOG(3) << "==== debug 6 ====";
+
+        platform::GpuStreamSync(stream);
+
+        mixv_dst_rows.CopyToCPU();
+        VLOG(3) << "Original SelectedRows rows: "
+                << string::join_strings(src_rows, ',');
+        VLOG(3) << "Result SelectedRows rows: "
+                << string::join_strings(*dst_rows, ',');
+      },
+      CommType::ALLREDUCE_SPARSE);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     std::vector<Tensor>& tensors, const BroadcastOptions& opts) {
   PADDLE_ENFORCE_EQ(

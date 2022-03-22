@@ -47,6 +47,8 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 class EagerGroup {
  public:
   Tensor dense_contents_;
+  Tensor sparse_contents_;
+  bool is_sparse_ = false;
 
   // for concat kernel
   std::vector<phi::DenseTensor> dense_tensors_;

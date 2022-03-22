@@ -360,6 +360,7 @@ void EagerReducer::InitializeGroups(
         is_sparse_gradient_[tensor_indices_.front()]) {
       // process the sparse gradient. one sparse, one group
       group.dtype_ = first_var.dtype();
+      group.is_sparse_ = true;
     } else {
       // process the dense gradient.
       InitializeDenseGroups(tensor_indices_, &group);
@@ -390,6 +391,12 @@ void EagerReducer::InitializeDenseGroups(
     auto tensor_index = tensor_indices_[index];
     auto &tensor = tensors_[tensor_index];
     auto &tensor_name = tensor.name();
+
+    PADDLE_ENFORCE_EQ(is_sparse_gradient_[tensor_index], false,
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s's GRAD must be Tensor, but received "
+                          "GRAD is SelectedRows",
+                          tensor_name));
 
     PADDLE_ENFORCE_EQ(tensor.is_initialized(), true,
                       platform::errors::PreconditionNotMet(
@@ -480,6 +487,7 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](EagerGroup &group) {
     group.pending_ = group.tensor_indices_.size();
+    group.sparse_contents_ = Tensor();
   });
 
   // reinitialize vars_marked_ready_ for next iteration
@@ -608,33 +616,69 @@ void EagerReducer::MarkVarReady(const size_t var_index,
   auto &group_tensor = group.dense_tensors_[inside_group_index];
   const auto length = group.length_[inside_group_index];
 
-  if (is_used_var) {
-    auto *autograd_meta = tensors_[var_index].get_autograd_meta();
-    auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
-    group_tensor
-        .ShareDataWith(
-            *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
-        .Resize({grad_tensor.numel()});
-  } else {
-    // TODO(shenliang03): maybe save the memory by avoiding tensor construction
-    if (!group_tensor.initialized()) {
-      group_tensor.Resize({static_cast<int64_t>(length)});
-      group_tensor.mutable_data(inner_place_, group.dtype_);
-    }
-    if (HasGrad(var_index)) {
-      VLOG(3) << "Tensor[" << tensors_[var_index].name() << "] has grad";
-      auto grad_tensor = egr::EagerUtils::mutable_grad(tensors_[var_index]);
+  if (!group.is_sparse_) {
+    if (is_used_var) {
+      auto *autograd_meta = tensors_[var_index].get_autograd_meta();
+      auto &grad_tensor =
+          static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
       group_tensor
           .ShareDataWith(*(
-              std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor->impl())))
-          .Resize({length});
+              std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
+          .Resize({grad_tensor.numel()});
     } else {
-      VLOG(3) << "Tensor[" << tensors_[var_index].name()
-              << "] doesn't have grad";
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
-      group_tensor.Resize({static_cast<int64_t>(length)});
-      phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
+      // TODO(shenliang03): maybe save the memory by avoiding tensor
+      // construction
+      if (!group_tensor.initialized()) {
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.mutable_data(inner_place_, group.dtype_);
+      }
+      if (HasGrad(var_index)) {
+        VLOG(3) << "Tensor[" << tensors_[var_index].name() << "] has grad";
+        auto grad_tensor = egr::EagerUtils::mutable_grad(tensors_[var_index]);
+        group_tensor
+            .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
+                grad_tensor->impl())))
+            .Resize({length});
+      } else {
+        VLOG(3) << "Tensor[" << tensors_[var_index].name()
+                << "] doesn't have grad";
+        auto *dev_ctx =
+            platform::DeviceContextPool::Instance().Get(inner_place_);
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
+      }
     }
+  } else {
+    auto *autograd_meta = tensors_[var_index].get_autograd_meta();
+    auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+
+    // process sparse group
+    PADDLE_ENFORCE_EQ(
+        HasGrad(var_index), true,
+        platform::errors::PreconditionNotMet(
+            "The sparse parameter[%d][%s] should have gradient. "
+            "Currently, DataParallel does not support sparse "
+            "parameters without generating gradients during training. "
+            "For example, if is_sparese=True is used in Embedding, "
+            "the current step of this parameter cannot generate gradient "
+            "because of stop_gradient/detatch, where error will occur.",
+            var_index, tensors_[var_index].name()));
+
+    // need to check tensor type
+    PADDLE_ENFORCE_EQ(
+        grad_tensor.is_selected_rows(), true,
+        platform::errors::PreconditionNotMet(
+            "The sparse parameter[%d][%s] must have a selectedrows gradient. "
+            "Before forward pass, the parameter type is inferred to be "
+            "SelectedRows, but after backward pass, its actual type becomes "
+            "LodTensor. It is currently not supported by DataParallel. "
+            "For example, if sparse embedding is used, and the weight of "
+            "embedding is shared with subsequent dense parameters, then "
+            "the parameter gradient of the embedding will be converted "
+            "to dense parameters.",
+            var_index, tensors_[var_index].name()));
+
+    group.sparse_contents_ = grad_tensor;
   }
 
   if (--group.pending_ == 0) {
@@ -725,6 +769,11 @@ void EagerReducer::ProcessUnusedDenseVars() {
       const auto inside_group_index = var_locator.inside_group_index;
       auto &src_tensor = group.dense_tensors_[inside_group_index];
 
+      // sparse no need to check and no support find_unused_parameters
+      if (group.is_sparse_) {
+        continue;
+      }
+
       Tensor grad_value(std::make_shared<phi::DenseTensor>(src_tensor));
 
       auto dest_var_base = tensors_[var_index];
@@ -743,7 +792,9 @@ void EagerReducer::FinalizeBackward() {
   }
 
   for (auto &group : groups_) {
-    group.SplitTensors(inner_place_);
+    if (!group.is_sparse_) {
+      group.SplitTensors(inner_place_);
+    }
   }
 
   if (find_unused_vars_each_step_) {
@@ -762,20 +813,31 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
 
-  VLOG(3) << "group [" << curr_group_index << "] start fused_allreduce.";
+  if (group->is_sparse_) {
+    VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
-  // concat tensors
-  group->ConcatTensors(inner_place_);
+    // div nranks
+    paddle::experimental::scale_(group->sparse_contents_, 1.0 / nranks_, 0.0,
+                                 false);
+    // all_reduce
+    std::vector<Tensor> reduce_tensors = {group->sparse_contents_};
+    group->task = process_group_->AllReduceSparse(reduce_tensors);
+  } else {
+    VLOG(3) << "group [" << curr_group_index << "] start fused_allreduce.";
 
-  // div nranks
-  paddle::experimental::scale_(group->dense_contents_, 1.0 / nranks_, 0.0,
-                               false);
+    // concat tensors
+    group->ConcatTensors(inner_place_);
 
-  // all_reduce
-  std::vector<Tensor> reduce_tensors = {group->dense_contents_};
-  group->task = process_group_->AllReduce(reduce_tensors, opts);
+    // div nranks
+    paddle::experimental::scale_(group->dense_contents_, 1.0 / nranks_, 0.0,
+                                 false);
 
-  // split in FinalizeBackward()
+    // all_reduce
+    std::vector<Tensor> reduce_tensors = {group->dense_contents_};
+    group->task = process_group_->AllReduce(reduce_tensors, opts);
+
+    // split in FinalizeBackward()
+  }
 }
 
 std::ostream &operator<<(std::ostream &out, const EagerGroup &group) {
