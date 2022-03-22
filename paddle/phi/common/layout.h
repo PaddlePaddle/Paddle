@@ -27,6 +27,7 @@ enum class DataLayout {
   NHWC,
   NCHW,
   NCDHW,
+  NDHWC,
   MKLDNN,
   SPARSE_COO,
   SPARSE_CSR,
@@ -46,6 +47,7 @@ enum class DataLayout {
   kNHWC = NHWC,
   kNCHW = NCHW,
   kNCDHW = NCDHW,
+  kNDHWC = NDHWC,
   kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
   kNDHWC = NDHWC,
   kNCDHW = NCDHW,
@@ -70,6 +72,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::kNCHW;
   } else if (s == "NCDHW") {
     return DataLayout::kNCDHW;
+  } else if (s == "NDHWC") {
+    return DataLayout::kNDHWC;
   } else if (s == "ANYLAYOUT") {
     return DataLayout::kAnyLayout;
   } else if (s == "MKLDNNLAYOUT") {
@@ -95,6 +99,8 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       return "NCHW";
     case DataLayout::kNCDHW:
       return "NCDHW";
+    case DataLayout::kNDHWC:
+      return "NDHWC";
     case DataLayout::kAnyLayout:
       return "Undefined(AnyLayout)";
     case DataLayout::kMKLDNN:
