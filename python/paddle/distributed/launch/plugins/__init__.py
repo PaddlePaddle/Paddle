@@ -30,15 +30,26 @@ def process_args(ctx):
     argdev = ctx.args.devices
     if argdev:
         ctx.node.device.labels = argdev.split(',')
-        ctx.node.device.count = len(ctx.node.device.labels)
         ctx.logger.debug('Device reset by args {}'.format(argdev))
 
 
 def collective_compatible(ctx):
     if 'PADDLE_TRAINER_ENDPOINTS' in ctx.envs:
-        ctx.master = ctx.envs['PADDLE_TRAINER_ENDPOINTS'].split(',')[0]
+        eps = ctx.envs['PADDLE_TRAINER_ENDPOINTS'].split(',')
+        hosts = set([h.split(':')[0] for h in eps])
+        ctx.args.master = eps[0] if ':' in eps[0] else '{}:6768'.format(eps[0])
+        ctx.args.nnodes = len(hosts)
+        ctx.logger.info('args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(
+            eps))
+    '''
     if 'DISTRIBUTED_TRAINER_ENDPOINTS' in ctx.envs:
-        ctx.master = ctx.envs['DISTRIBUTED_TRAINER_ENDPOINTS'].split(',')[0]
+        eps = ctx.envs['DISTRIBUTED_TRAINER_ENDPOINTS'].split(',')
+        hosts = set([h.split(':')[0] for h in eps])
+        ctx.args.master = eps[0]
+        ctx.args.nnodes = len(hosts)
+        ctx.logger.info(
+            'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps))
+    '''
 
 
 def rewrite_host_ip(ctx):
