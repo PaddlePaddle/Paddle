@@ -56,6 +56,9 @@ class TestCastOpFp16ToFp32(OpTest):
     def test_check_output(self):
         self.check_output(atol=1e-3)
 
+    def test_grad(self):
+        self.check_grad(['X'], ['Out'], numeric_grad_delta=1)
+
 
 class TestCastOpFp32ToFp16(OpTest):
     def setUp(self):
@@ -67,6 +70,8 @@ class TestCastOpFp32ToFp16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP16)
         }
         self.op_type = 'cast'
+        # NOTE: Operator (mean) does not have kernel for cpu fp16. 
+        self.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -82,6 +87,7 @@ class TestCastOpBf16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
+        self.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output()
@@ -97,6 +103,7 @@ class TestCastOpFp32ToBf16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.BF16)
         }
         self.op_type = 'cast'
+        self.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output()
