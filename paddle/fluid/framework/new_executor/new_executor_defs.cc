@@ -692,6 +692,8 @@ phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
 
+WorkQueueType Instruction::QueueType() const { return op_func_node_.qtype_; }
+
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
   PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(

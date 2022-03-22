@@ -55,31 +55,7 @@ using AtomicVectorSizeT =
 
 class AsyncWorkQueue {
  public:
-  AsyncWorkQueue(size_t host_num_threads, size_t deivce_num_threads,
-                 EventsWaiter* waiter)
-      : host_num_thread_(host_num_threads) {
-    std::vector<WorkQueueOptions> group_options;
-    // for execute host Kernel
-    group_options.emplace_back(/*name*/ "HostTasks",
-                               /*num_threads*/ host_num_threads,
-                               /*allow_spinning*/ true,
-                               /*track_task*/ false,
-                               /*detached*/ true,
-                               /*events_waiter*/ waiter);
-    // for launch device Kernel
-    group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
-                               /*num_threads*/ deivce_num_threads,
-                               /*allow_spinning*/ true,
-                               /*track_task*/ false,
-                               /*detached*/ true,
-                               /*events_waiter*/ waiter);
-    // for prepare deps and others
-    group_options.emplace_back(/*name*/ "Prepare",
-                               /*num_threads*/ 1,
-                               /*allow_spinning*/ true,
-                               /*track_task*/ false,
-                               /*detached*/ true,
-                               /*events_waiter*/ waiter);
+  explicit AsyncWorkQueue(const std::vector<WorkQueueOptions>& group_options) {
     queue_group_ = CreateWorkQueueGroup(group_options);
   }
 
@@ -88,7 +64,7 @@ class AsyncWorkQueue {
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
-  void AddTask(const OpFuncType& op_func_type, std::function<void()> fn);
+  void AddTask(const WorkQueueType& op_func_type, std::function<void()> fn);
 
   void Cancel() { queue_group_->Cancel(); }
 
@@ -100,7 +76,6 @@ class AsyncWorkQueue {
   }
 
  private:
-  size_t host_num_thread_;
   std::unique_ptr<WorkQueueGroup> queue_group_;
   AtomicVectorSizeT atomic_deps_;
   AtomicVectorSizeT atomic_var_ref_;

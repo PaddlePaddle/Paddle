@@ -121,6 +121,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
   new_op_func_node.type_ = OpFuncType::kQueueSync;
+  new_op_func_node.qtype_ = WorkQueueType::kHostOpRun;
   new_op_func_node.dev_ctx_ = dev_ctx;
   new_op_func_node.operator_base_ = op;
   VLOG(3) << "Run " << op_type << " done.";

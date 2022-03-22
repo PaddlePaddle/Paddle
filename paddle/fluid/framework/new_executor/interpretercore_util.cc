@@ -29,16 +29,15 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
-                             std::function<void()> fn) {
+void AsyncWorkQueue::AddTask(const WorkQueueType& t, std::function<void()> fn) {
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
   if (FLAGS_new_executor_sequential_run) {
     VLOG(4) << "FLAGS_new_executor_sequential_run:"
             << FLAGS_new_executor_sequential_run;
-    queue_group_->AddTask(static_cast<size_t>(OpFuncType::kQueueAsync),
+    queue_group_->AddTask(static_cast<size_t>(WorkQueueType::kDeviceOpRun),
                           std::move(fn));
   } else {
-    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
+    queue_group_->AddTask(static_cast<size_t>(t), std::move(fn));
   }
 }
 
@@ -50,7 +49,7 @@ void AsyncWorkQueue::PrepareAtomicDeps(
   auto p = std::make_shared<
       std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
   atomic_deps_ = p->get_future();
-  queue_group_->AddTask(2, [&dependecy_count, p] {
+  AddTask(WorkQueueType::kGC, [&dependecy_count, p] {
     auto* op_deps =
         new std::vector<std::atomic<size_t>>(dependecy_count.size());
     for (size_t i = 0; i < dependecy_count.size(); ++i) {
@@ -67,7 +66,7 @@ void AsyncWorkQueue::PrepareAtomicVarRef(
   auto p = std::make_shared<
       std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
   atomic_var_ref_ = p->get_future();
-  queue_group_->AddTask(2, [&vec_meta_info, p] {
+  AddTask(WorkQueueType::kGC, [&vec_meta_info, p] {
     auto* var_ref = new std::vector<std::atomic<size_t>>(vec_meta_info.size());
     for (size_t i = 0; i < vec_meta_info.size(); ++i) {
       (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
@@ -270,8 +269,10 @@ void deal_operator_base(const platform::Place& place,
   op_func_node->operator_base_ = op_base;
   if (platform::is_gpu_place(place)) {
     op_func_node->type_ = OpFuncType::kQueueAsync;
+    op_func_node->qtype_ = WorkQueueType::kDeviceOpRun;
   } else if (platform::is_cpu_place(place)) {
     op_func_node->type_ = OpFuncType::kQueueSync;
+    op_func_node->qtype_ = WorkQueueType::kHostOpRun;
   } else {
     PADDLE_THROW(
         platform::errors::Fatal("Unsupported current place %s", place));
@@ -397,8 +398,10 @@ void build_op_func_list(const platform::Place& place,
 
       if (platform::is_gpu_place(expected_kernel_key.place_)) {
         op_func_node.type_ = OpFuncType::kQueueAsync;
+        op_func_node.qtype_ = WorkQueueType::kDeviceOpRun;
       } else if (platform::is_cpu_place(expected_kernel_key.place_)) {
         op_func_node.type_ = OpFuncType::kQueueSync;
+        op_func_node.qtype_ = WorkQueueType::kHostOpRun;
       } else {
         PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
                                              expected_kernel_key.place_));

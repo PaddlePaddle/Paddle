@@ -111,6 +111,14 @@ int EventsWaiter::Clear() {
   return 0;
 }
 
+// do Clear -> clear_callback -> Wait
+std::string EventsWaiter::ClearAndWaitEvent(
+    std::function<void()> clear_callback) {
+  Clear();
+  clear_callback();
+  return WaitEvent();
+}
+
 void EventsWaiter::TriggerEvent(const EventId& id) {
   VLOG(10) << "Try to trigger event id:" << id;
   std::string* trigger_event = new std::string;

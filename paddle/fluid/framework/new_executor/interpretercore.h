@@ -114,7 +114,10 @@ class InterpreterCore {
   std::vector<std::vector<size_t>> input_var2op_info_;
 
   StreamAnalyzer stream_analyzer_;
-  EventsWaiter main_thread_blocker_;
+
+  EventsWaiter main_thread_waiter_;
+  EventsWaiter gc_waiter_;
+
   std::unique_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};

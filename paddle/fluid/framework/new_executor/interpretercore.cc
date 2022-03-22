@@ -55,8 +55,31 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       global_scope_(global_scope),
       stream_analyzer_(place) {
   is_build_ = false;
-  async_work_queue_.reset(new interpreter::AsyncWorkQueue(
-      kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
+
+  std::vector<WorkQueueOptions> group_options;
+  // for execute host Kernel
+  group_options.emplace_back(/*name*/ std::string("HostOpRun"),
+                             /*num_threads*/ kHostNumThreads,
+                             /*allow_spinning*/ true,
+                             /*track_task*/ false,
+                             /*detached*/ true,
+                             /*events_waiter*/ &main_thread_waiter_);
+  // for launch device Kernel
+  group_options.emplace_back(/*name*/ std::string("HostOpRun"),
+                             /*num_threads*/ kDeviceNumThreads,
+                             /*allow_spinning*/ true,
+                             /*track_task*/ false,
+                             /*detached*/ true,
+                             /*events_waiter*/ &main_thread_waiter_);
+  // for gc and prepare deps
+  group_options.emplace_back(/*name*/ std::string("HostOpRun"),
+                             /*num_threads*/ 1,
+                             /*allow_spinning*/ true,
+                             /*track_task*/ true,
+                             /*detached*/ true,
+                             /*events_waiter*/ &gc_waiter_);
+
+  async_work_queue_.reset(new interpreter::AsyncWorkQueue(group_options));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (IsInterpretercoreFastGCEnabled()) {
@@ -68,8 +91,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   gc_ = std::make_unique<InterpreterCoreEventGarbageCollector>();
 #endif
 
-  exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
-  completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
+  exception_notifier_ = main_thread_waiter_.RegisterEvent(kExceptionCaught);
+  completion_notifier_ = main_thread_waiter_.RegisterEvent(kTaskCompletion);
 
   create_local_scope_ = FLAGS_new_executor_use_local_scope;
   if (FLAGS_new_executor_use_local_scope) {
@@ -478,15 +501,15 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_->AddTask(vec_instr.at(i).KernelType(), [
+      async_work_queue_->AddTask(vec_instr.at(i).QueueType(), [
         this, i, atomic_deps = atomic_deps.get(),
         atomic_var_ref = atomic_var_ref.get()
       ] { RunInstructionAsync(i, atomic_deps, atomic_var_ref); });
     }
   }
 
-  auto event_name = main_thread_blocker_.WaitEvent();
-  VLOG(1) << "event_name: " << event_name;
+  auto event_name = main_thread_waiter_.WaitEvent();
+  VLOG(1) << "main thread event_name: " << event_name;
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
@@ -496,11 +519,18 @@ void InterpreterCore::ExecuteInstructionList(
       async_work_queue_->Cancel();
     }
     PADDLE_ENFORCE_EQ(
-        main_thread_blocker_.Clear(), 0,
+        main_thread_waiter_.Clear(), 0,
         platform::errors::PreconditionNotMet(
             "main_thread_blocker_.Clear() return -1, clear failed"));
     exception_holder_.ReThrow();
   }
+  auto gc_event_name = gc_waiter_.ClearAndWaitEvent([this]() {
+    async_work_queue_->AddTask(WorkQueueType::kGC, []() {
+      // empty task
+      VLOG(4) << "Empty task for gc queue";
+    });
+  });
+  VLOG(1) << "gc event_name: " << gc_event_name;
 }
 
 void InterpreterCore::RunNextInstructions(
@@ -521,7 +551,7 @@ void InterpreterCore::RunNextInstructions(
     for (auto next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
+            vec_instruction_[next_id].QueueType(),
             [this, next_id, atomic_deps, atomic_var_ref]() {
               RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
             });
@@ -543,7 +573,7 @@ void InterpreterCore::RunNextInstructions(
     for (auto next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
+            vec_instruction_[next_id].QueueType(),
             [this, next_id, atomic_deps, atomic_var_ref] {
               RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
             });
@@ -561,7 +591,7 @@ void InterpreterCore::RunNextInstructions(
         }
         // move rest ops into other threads
         async_work_queue_->AddTask(
-            vec_instruction_[next_id].KernelType(),
+            vec_instruction_[next_id].QueueType(),
             [this, next_id, atomic_deps, atomic_var_ref] {
               RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
             });
@@ -595,10 +625,13 @@ void InterpreterCore::RunInstructionAsync(
     try {
       RunInstruction(instr_node);
 
+      async_work_queue_->AddTask(WorkQueueType::kGC,
+                                 [this, &instr_node, atomic_var_ref]() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      RecordStreamForGC(instr_node);
+                                   RecordStreamForGC(instr_node);
 #endif
-      CheckGC(instr_node, atomic_var_ref);
+                                   CheckGC(instr_node, atomic_var_ref);
+                                 });
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));

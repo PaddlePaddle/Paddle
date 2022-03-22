@@ -83,6 +83,9 @@ class EventsWaiter {
   //      0 : succ.
   int Clear();
 
+  // do Clear -> clear_callback -> Wait
+  std::string ClearAndWaitEvent(std::function<void()> clear_callback);
+
  private:
   friend EventNotifier;
 

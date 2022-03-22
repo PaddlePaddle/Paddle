@@ -288,6 +288,14 @@ enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
   kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
 };
+
+enum class WorkQueueType {
+  kHostOpRun = 0,    // for CPU kernel, block host
+  kDeviceOpRun = 1,  // for GPU Kernel or d2h, h2d, send, recv, broadcast
+  kGC =
+      2,  // for gc, (and prepare atomic deps which has only 2 tasks each step)
+};
+
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
@@ -304,6 +312,7 @@ struct OpFuncNode {
   phi::Kernel* pt_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
+  WorkQueueType qtype_;
 };
 
 class Instruction {
@@ -324,6 +333,8 @@ class Instruction {
   phi::Kernel* PhiKernel() const;
 
   OpFuncType KernelType() const;
+
+  WorkQueueType QueueType() const;
 
   OperatorBase* OpBase() const;
 
