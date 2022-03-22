@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include <string>
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/channel_shuffle_kernel.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -53,3 +55,19 @@ void ChannelShuffleKernel(const Context& ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(channel_shuffle,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ChannelShuffleKernel,
+                   float,
+                   double) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(channel_shuffle,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ChannelShuffleKernel,
+                   float,
+                   double) {}
+#endif
