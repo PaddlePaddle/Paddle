@@ -20,9 +20,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
 #include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
-
-    PD_REGISTER_KERNEL(
-        logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {
+    PD_REGISTER_KERNEL(logsumexp_grad,
+                       CPU,
+                       ALL_LAYOUT,
+                       phi::LogsumexpGradKernel,
+                       float,
+                       double) {
 }
+
+PD_REGISTER_KERNEL(
+    logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {}
