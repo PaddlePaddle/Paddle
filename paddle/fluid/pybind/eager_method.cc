@@ -36,6 +36,8 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace paddle {
 namespace pybind {
@@ -173,7 +175,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);
 
-  if (self->tensor.is_cpu()) {
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     platform::CPUPlace place;
@@ -182,7 +184,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
                                     pybind11::detail::array_proxy(array)->data),
                          place, dense_tensor->data(), sizeof_dtype * numel);
 #if defined(PADDLE_WITH_CUDA)
-  } else if (self->tensor.is_cuda()) {
+  } else if (self->tensor.is_gpu()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
 
@@ -216,8 +218,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
-  auto cp_tensor =
-      self->tensor.copy_to(phi::TransToPhiBackend(place), blocking);
+  auto cp_tensor = self->tensor.copy_to(place, blocking);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -229,8 +230,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
 static PyObject* tensor_method_cpu(TensorObject* self, PyObject* args,
                                    PyObject* kwargs) {
   EAGER_TRY
-  auto cp_tensor =
-      self->tensor.copy_to(phi::TransToPhiBackend(phi::CPUPlace()), true);
+  auto cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -718,6 +718,98 @@ static PyObject* set_grad_type(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_sparse_coo_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SparseCooTensor"));
+  auto sparse_coo_tensor =
+      std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
+  paddle::experimental::Tensor tensor(std::make_shared<phi::DenseTensor>(
+      sparse_coo_tensor->non_zero_indices()));
+  return ToPyObject(tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(
+      self->tensor.is_sparse_coo_tensor() ||
+          self->tensor.is_sparse_csr_tensor(),
+      paddle::platform::errors::Fatal("this method is only effective for "
+                                      "SparseCooTensor or SparseCsrTensor"));
+  if (self->tensor.is_sparse_coo_tensor()) {
+    auto sparse_coo_tensor =
+        std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
+    paddle::experimental::Tensor tensor(std::make_shared<phi::DenseTensor>(
+        sparse_coo_tensor->non_zero_elements()));
+    return ToPyObject(tensor);
+  } else {
+    auto sparse_csr_tensor =
+        std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
+    paddle::experimental::Tensor tensor(std::make_shared<phi::DenseTensor>(
+        sparse_csr_tensor->non_zero_elements()));
+    return ToPyObject(tensor);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_sparse_csr_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SparseCsrTensor"));
+  auto sparse_csr_tensor =
+      std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
+  paddle::experimental::Tensor tensor(
+      std::make_shared<phi::DenseTensor>(sparse_csr_tensor->non_zero_crows()));
+  return ToPyObject(tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
+                                                 PyObject* args,
+                                                 PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_sparse_csr_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SparseCsrTensor"));
+  auto sparse_csr_tensor =
+      std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
+  paddle::experimental::Tensor tensor(
+      std::make_shared<phi::DenseTensor>(sparse_csr_tensor->non_zero_cols()));
+  return ToPyObject(tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_is_sparse(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(self->tensor.is_sparse_coo_tensor() ||
+                    self->tensor.is_sparse_csr_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_is_sparse_coo(TensorObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(self->tensor.is_sparse_coo_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_is_sparse_csr(TensorObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(self->tensor.is_sparse_csr_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
@@ -775,6 +867,26 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_grad_type", (PyCFunction)(void (*)(void))set_grad_type,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    /***the method of sparse tensor****/
+    {"non_zero_indices",
+     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"non_zero_elements",
+     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_elements,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"non_zero_crows",
+     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_crows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"non_zero_cols",
+     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_cols,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"is_sparse", (PyCFunction)(void (*)(void))tensor_method_is_sparse,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"is_sparse_coo", (PyCFunction)(void (*)(void))tensor_method_is_sparse_coo,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"is_sparse_csr", (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};

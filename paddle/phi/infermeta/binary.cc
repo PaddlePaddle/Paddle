@@ -17,9 +17,13 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+
+#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace phi {
 namespace detail {
@@ -308,6 +312,351 @@ void CompareAllInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dims(make_ddim({1}));
   out->set_dtype(DataType::BOOL);
+}
+
+void ConvInferMeta(const MetaTensor& input,
+                   const MetaTensor& filter,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings_t,
+                   const std::string& padding_algorithm,
+                   int groups,
+                   const std::vector<int>& dilations_t,
+                   const std::string& data_format,
+                   bool use_addto,
+                   int workspace_size_MB,
+                   bool exhaustive_search,
+                   MetaTensor* out,
+                   MetaConfig config) {
+  std::vector<int> paddings = paddings_t;
+  std::vector<int> dilations = dilations_t;
+  auto in_dims = input.dims();
+  auto filter_dims = filter.dims();
+  int dilation_size = dilations.size();
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
+  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+                            (data_format == "NHWC" || data_format == "NDHWC");
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4 || in_dims.size() == 5,
+      true,
+      phi::errors::InvalidArgument(
+          "The input of Op(Conv) should be a 4-D or 5-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(Conv) should be equal. But received: the input's shape is [%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = in_dims.size() - stride_size;
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      strides.size() + 2U,
+      phi::errors::InvalidArgument(
+          "The difference of input's dimension and Attr(strides)'s "
+          "length must be euqal to 2 for Op(Conv). "
+          "But received: input's dimension is %d, input's shape is [%s]; "
+          "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
+          "difference of input's dimention and Attr(strides)'s length = %u.",
+          in_dims.size(),
+          in_dims,
+          strides.size(),
+          phi::make_ddim(strides),
+          in_sub_stride_size));
+
+  const auto input_channels =
+      channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(Conv). But received: the input's channels is %d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d, the data_format is %s. "
+          "The error may come from wrong data_format setting.",
+          input_channels,
+          in_dims,
+          filter_dims[1],
+          filter_dims,
+          groups,
+          data_format));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
+          filter_dims[0],
+          filter_dims,
+          groups));
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_GT(
+        filter_dims[0],
+        0,
+        phi::errors::InvalidArgument(
+            "the size of filter at axis 0 should be greater than 0"));
+  }
+
+  DDim in_data_dims;
+  if (channel_last) {
+    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+  } else {
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+  }
+
+  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(
+      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+
+  std::vector<int64_t> output_shape({in_dims[0]});
+  if (!channel_last) {
+    output_shape.push_back(filter_dims[0]);
+  }
+  for (int i = 0; i < in_data_dims.size(); ++i) {
+    if ((!config.is_runtime) &&
+        (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
+      output_shape.push_back(-1);
+    } else {
+      const int dkernel = dilations[i] * (filter_data_dims[i] - 1) + 1;
+      int output_size =
+          (in_data_dims[i] + paddings[2 * i] + paddings[2 * i + 1] - dkernel) /
+              strides[i] +
+          1;
+      output_shape.push_back(output_size);
+    }
+  }
+  if (channel_last) {
+    output_shape.push_back(filter_dims[0]);
+  }
+
+  out->set_dims(make_ddim(output_shape));
+  out->set_dtype(input.dtype());
+}
+
+void ConvTransposeInferMeta(const MetaTensor& x,
+                            const MetaTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::vector<int>& output_padding,
+                            const std::vector<int>& output_size,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  auto x_dims = x.dims();
+  auto filter_dims = filter.dims();
+
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
+
+  const DataLayout data_layout =
+      config.is_run_mkldnn_kernel
+          ? DataLayout::kNCHW
+          : paddle::framework::StringToDataLayout(data_format);
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() == 4 || x_dims.size() == 5,
+      true,
+      errors::InvalidArgument("Input of Op(conv_transpose) should be 4-D or "
+                              "5-D Tensor. But received: %u-D Tensor, "
+                              "the shape of input is [%s]",
+                              x_dims.size(),
+                              x_dims));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      filter_dims.size(),
+      errors::InvalidArgument(
+          "The input's dimension size and filter's dimension size of "
+          "Op (conv_transpose) should be equal. But received: the shape of "
+          "input is [%s], the dimension size of input is [%d], the shape "
+          "of filter is [%s],  the dimension size of filter is [%d]. ",
+          x_dims,
+          x_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0,
+        errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = x_dims.size() - stride_size;
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() - strides.size(),
+      2U,
+      errors::InvalidArgument(
+          "The input's dimension size minus Attr(stride)'s size must "
+          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "input's dimension size is [%d], the shape of input "
+          "is [%s], the Attr(stride)'s size is [%d].",
+          in_sub_stride_size,
+          x_dims.size(),
+          x_dims,
+          strides.size()));
+  if (output_size.size())
+    PADDLE_ENFORCE_EQ(
+        output_size.size(),
+        strides.size(),
+        errors::InvalidArgument(
+            "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+  if (output_padding.size())
+    PADDLE_ENFORCE_EQ(
+        output_padding.size(),
+        strides.size(),
+        errors::InvalidArgument(
+            "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+
+  const int64_t C =
+      (data_layout != DataLayout::kNHWC ? x_dims[1]
+                                        : x_dims[x_dims.size() - 1]);
+  PADDLE_ENFORCE_EQ(
+      C,
+      filter_dims[0],
+      errors::InvalidArgument(
+          "The number of input channels should be equal to filter channels "
+          "for Op(conv_transpose). But received: the input's channels is "
+          "[%d], the shape of input is [%s], the filter's channels is [%d], "
+          "the shape of filter is [%s]. The data_format is %s."
+          "The error may come from wrong data_format setting.",
+          C,
+          x_dims,
+          filter_dims[0],
+          filter_dims,
+          data_format));
+
+  DDim x_data_dims;
+  if (data_layout != DataLayout::kNHWC) {
+    x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  } else {
+    x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  }
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  UpdatePaddingAndDilation(
+      &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
+
+  std::vector<int64_t> output_shape({x_dims[0]});
+  if (data_layout != DataLayout::kNHWC) {
+    output_shape.push_back(filter_dims[1] * groups);
+  }
+  const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
+  for (size_t i = 0; i < strides.size(); ++i) {
+    auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
+    auto infer_shape = (config.is_runtime || x_dims[i + offset] > 0)
+                           ? (x_dims[i + offset] - 1) * strides[i] -
+                                 paddings_[2 * i] - paddings_[2 * i + 1] +
+                                 filter_extent
+                           : -1;
+    if (output_size.size()) {
+      if (config.is_runtime) {
+        PADDLE_ENFORCE_GE(
+            output_size[i],
+            infer_shape,
+            errors::InvalidArgument(
+                "output_size of Op(ConvTransposeOp) should not be "
+                "less than the infered output size. But received output_size = "
+                "[%s], whose dim %d is less than the infered output size [%s]",
+                make_ddim(output_size).to_str(),
+                i,
+                infer_shape));
+        PADDLE_ENFORCE_LT(
+            output_size[i],
+            infer_shape + strides[i],
+            errors::InvalidArgument(
+                "output_size of Op(ConvTransposeOp) should be less "
+                "than infered size + stride. But received output_size = [%s], "
+                "whose dim %d is not less than the infered output size (%d) + "
+                "stride (%d) = %d",
+                make_ddim(output_size).to_str(),
+                i,
+                infer_shape,
+                strides[i],
+                infer_shape + strides[i]));
+      }
+      output_shape.push_back(output_size[i]);
+    } else if (output_padding.size()) {
+      if (config.is_runtime) {
+        PADDLE_ENFORCE_GE(
+            output_padding[i],
+            0,
+            errors::InvalidArgument(
+                "output_padding of Op(ConvTransposeOp) should not be "
+                "less than the 0. But received output_padding = "
+                "[%s], whose dim %d is less than 0",
+                make_ddim(output_padding).to_str(),
+                i));
+        PADDLE_ENFORCE_LT(
+            output_padding[i],
+            std::max(strides[i], dilations_[i]),
+            errors::InvalidArgument(
+                "output_padding of Op(ConvTransposeOp) should be less "
+                "than either stride or dilation. But received output_size = "
+                "[%s], "
+                "whose dim %d is not less than either stride (%d)  or "
+                "dilation (%d)",
+                make_ddim(output_size).to_str(),
+                i,
+                strides[i],
+                dilations_[i]));
+      }
+      output_shape.push_back((infer_shape + output_padding[i]));
+    } else {
+      output_shape.push_back(infer_shape);
+    }
+  }
+  if (data_layout == DataLayout::kNHWC) {
+    output_shape.push_back(filter_dims[1] * groups);
+  }
+
+  out->set_dims(make_ddim(output_shape));
+  out->set_dtype(x.dtype());
 }
 
 void CrossInferMeta(const MetaTensor& x,
@@ -815,6 +1164,13 @@ void LogLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void MaskedSelectInferMeta(const MetaTensor& x,
+                           const MetaTensor& mask,
+                           MetaTensor* out) {
+  out->set_dims({-1});  // can not infer
+  out->set_dtype(x.dtype());
+}
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
@@ -1188,6 +1544,118 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void YoloBoxInferMeta(const MetaTensor& x,
+                      const MetaTensor& img_size,
+                      const std::vector<int>& anchors,
+                      int class_num,
+                      float conf_thresh,
+                      int downsample_ratio,
+                      bool clip_bbox,
+                      float scale_x_y,
+                      bool iou_aware,
+                      float iou_aware_factor,
+                      MetaTensor* boxes,
+                      MetaTensor* scores,
+                      MetaConfig config) {
+  auto dim_x = x.dims();
+  auto dim_imgsize = img_size.dims();
+  int anchor_num = anchors.size() / 2;
+
+  PADDLE_ENFORCE_EQ(
+      dim_x.size(),
+      4,
+      phi::errors::InvalidArgument("Input(X) should be a 4-D tensor."
+                                   "But received X dimension(%s)",
+                                   dim_x.size()));
+  if (iou_aware) {
+    PADDLE_ENFORCE_EQ(
+        dim_x[1],
+        anchor_num * (6 + class_num),
+        phi::errors::InvalidArgument(
+            "Input(X) dim[1] should be equal to (anchor_mask_number * (6 "
+            "+ class_num)) while iou_aware is true."
+            "But received dim[1](%s) != (anchor_mask_number * "
+            "(6+class_num)(%s).",
+            dim_x[1],
+            anchor_num * (6 + class_num)));
+    PADDLE_ENFORCE_GE(
+        iou_aware_factor,
+        0,
+        phi::errors::InvalidArgument(
+            "Attr(iou_aware_factor) should greater than or equal to 0."
+            "But received iou_aware_factor (%s)",
+            iou_aware_factor));
+    PADDLE_ENFORCE_LE(
+        iou_aware_factor,
+        1,
+        phi::errors::InvalidArgument(
+            "Attr(iou_aware_factor) should less than or equal to 1."
+            "But received iou_aware_factor (%s)",
+            iou_aware_factor));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dim_x[1],
+        anchor_num * (5 + class_num),
+        phi::errors::InvalidArgument(
+            "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+            "+ class_num))."
+            "But received dim[1](%s) != (anchor_mask_number * "
+            "(5+class_num)(%s).",
+            dim_x[1],
+            anchor_num * (5 + class_num)));
+  }
+  PADDLE_ENFORCE_EQ(
+      dim_imgsize.size(),
+      2,
+      phi::errors::InvalidArgument("Input(ImgSize) should be a 2-D tensor."
+                                   "But received Imgsize size(%s)",
+                                   dim_imgsize.size()));
+  if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        dim_imgsize[0],
+        dim_x[0],
+        phi::errors::InvalidArgument(
+            "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
+  }
+  PADDLE_ENFORCE_EQ(
+      dim_imgsize[1],
+      2,
+      phi::errors::InvalidArgument("Input(ImgSize) dim[1] should be 2."
+                                   "But received imgsize dim[1](%s).",
+                                   dim_imgsize[1]));
+  PADDLE_ENFORCE_GT(anchors.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(anchors) length should be greater than 0."
+                        "But received anchors length(%s).",
+                        anchors.size()));
+  PADDLE_ENFORCE_EQ(anchors.size() % 2,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(anchors) length should be even integer."
+                        "But received anchors length (%s)",
+                        anchors.size()));
+  PADDLE_ENFORCE_GT(class_num,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(class_num) should be an integer greater than 0."
+                        "But received class_num (%s)",
+                        class_num));
+
+  int box_num;
+  if ((dim_x[2] > 0 && dim_x[3] > 0) || config.is_runtime) {
+    box_num = dim_x[2] * dim_x[3] * anchor_num;
+  } else {
+    box_num = -1;
+  }
+  std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
+  boxes->set_dims(phi::make_ddim(dim_boxes));
+  boxes->set_dtype(x.dtype());
+
+  std::vector<int64_t> dim_scores({dim_x[0], box_num, class_num});
+  scores->set_dims(phi::make_ddim(dim_scores));
+}
+
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
@@ -1201,3 +1669,4 @@ void ValueCompareInferMeta(const MetaTensor& x,
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
+PD_REGISTER_INFER_META_FN(conv2d, phi::ConvInferMeta);
