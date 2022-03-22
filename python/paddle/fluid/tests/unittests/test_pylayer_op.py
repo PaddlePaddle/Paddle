@@ -406,6 +406,32 @@ class TestPyLayer(unittest.TestCase):
             z.backward()
             self.assertTrue(data.grad is not None)
 
+    def test_pylayer_inplace_and_leaf_exception(self):
+        class cus_pylayer_op(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x
+
+            @staticmethod
+            def backward(ctx, dy):
+                return dy
+
+        class Layer(paddle.nn.Layer):
+            def __init__(self):
+                super(Layer, self).__init__()
+
+            def forward(self, data):
+                z = cus_pylayer_op.apply(data)
+                return z.mean()
+
+        for i in range(2):
+            data = paddle.ones([2, 3], dtype="float64") / (i + 1)
+            data.stop_gradient = False
+            layer = Layer()
+
+            with self.assertRaises(ValueError):
+                z = layer(data)
+
     def test_backward_in_backward(self):
         class cus_tanh(PyLayer):
             @staticmethod

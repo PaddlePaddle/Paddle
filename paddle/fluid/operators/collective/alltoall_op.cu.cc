@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -31,7 +31,8 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int send_numel = x->numel();
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
@@ -62,15 +63,15 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     auto recv_buf = out->mutable_data<T>(out_dims, place);
     size_t offset = 0;
     send_numel /= nranks;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
     for (auto i = 0; i < nranks; ++i) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
           send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
       offset += send_numel;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));

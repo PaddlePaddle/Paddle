@@ -14,10 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Scope;
 
 void DeviceWorker::SetRootScope(Scope* root_scope) { root_scope_ = root_scope; }
@@ -55,11 +60,13 @@ std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end) {
 
 std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end) {
   std::string out_val;
-  if (tensor->type() == proto::VarType::FP32) {
+  if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
     out_val = PrintLodTensorType<float>(tensor, start, end);
-  } else if (tensor->type() == proto::VarType::INT64) {
+  } else if (framework::TransToProtoVarType(tensor->dtype()) ==
+             proto::VarType::INT64) {
     out_val = PrintLodTensorIntType(tensor, start, end);
-  } else if (tensor->type() == proto::VarType::FP64) {
+  } else if (framework::TransToProtoVarType(tensor->dtype()) ==
+             proto::VarType::FP64) {
     out_val = PrintLodTensorType<double>(tensor, start, end);
   } else {
     out_val = "unsupported type";

@@ -40,7 +40,7 @@ _fp16_guard_pattern = "__use_fp16__"
 
 def _rename_arg(op, old_name, new_name):
     """
-    If an op has old_name input and output, rename these input 
+    If an op has old_name input and output, rename these input
     args new_name.
 
     Args:
@@ -80,24 +80,51 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
+_keep_layer_norm_scale_bias_to_fp32_flag = True
+
+
+def _keep_layer_norm_scale_bias_to_fp32(*args):
+    global _keep_layer_norm_scale_bias_to_fp32_flag
+    if len(args) == 0:
+        return _keep_layer_norm_scale_bias_to_fp32_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _keep_layer_norm_scale_bias_to_fp32_flag
+        _keep_layer_norm_scale_bias_to_fp32_flag = args[0]
+        return old_value
+
+
 def _keep_fp32_input(op, in_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'layer_norm']:
+    if op_type == 'batch_norm':
         # Scale, Bias, Mean, Variance should be float32.
+        return in_name != 'X'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
     if op_type == 'resnet_unit':
         return in_name not in {'X', 'FilterX', 'Z', 'FilterZ'}
+    if op_type in ['fused_attention', 'fused_feedforward']:
+        return in_name in {
+            'LnScale', 'LnBias', 'Ln2Scale', 'Ln2Bias', "Ln1Scale", "Ln1Bias"
+        }
     return False
 
 
 def _keep_fp32_output(op, out_name):
     op_type = op.type
-    if op_type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+    if op_type in ['batch_norm', 'fused_bn_add_activation']:
+        return out_name != 'Y'
+    if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return out_name != 'Y'
     if op_type == 'resnet_unit':
         return out_name not in {'Y', 'ConvX', 'ConvZ'}
+    if op_type in ['fused_attention', 'fused_feedforward']:
+        return out_name in {
+            'LnMean', 'LnVariance', 'Ln2Mean', 'Ln2Variance', 'Ln1Mean',
+            'Ln1Variance'
+        }
     return False
 
 
@@ -256,16 +283,16 @@ def find_true_post_op(ops, cur_op, var_name, search_all=False):
         ops (list): A list of ops.
         cur_op (Operator): Current operator which has var_name variable.
         var_name (string): Variable name.
-        search_all (bool): The type of operator search. Use if \"cur_op\" is not in the \"ops\" set. 
+        search_all (bool): The type of operator search. Use if \"cur_op\" is not in the \"ops\" set.
     """
     post_op = []
     if search_all:
         """
-        \"cur_op\" do not have to be in list of \"ops\". E.g. \"cur_op\" can come 
-        from startup_prog block and \"ops\" list from main_prog block. 
-        By setting idx to -1, we'll start looking for post-ops from the top of the list. 
-        If search_all is False, assume that \"cur_op\" is in \"ops\" list, 
-        so to reduce the time of search we can start iterating from \"cur_op\" idx. 
+        \"cur_op\" do not have to be in list of \"ops\". E.g. \"cur_op\" can come
+        from startup_prog block and \"ops\" list from main_prog block.
+        By setting idx to -1, we'll start looking for post-ops from the top of the list.
+        If search_all is False, assume that \"cur_op\" is in \"ops\" list,
+        so to reduce the time of search we can start iterating from \"cur_op\" idx.
         """
         idx = -1
     else:
@@ -517,19 +544,19 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
 
 def rewrite_program(main_prog, amp_lists):
     """
-    Traverse all ops in current block and insert cast op according to 
+    Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
 
     1. When an op belongs to the black list, add it to black set
     2. When an op belongs to the white list, add it to white set
-    3. When an op belongs to the gray list. If one 
-       of its inputs is the output of black set op or black list op, 
-       add it to black set. If all of its previous ops are not black 
-       op and one of its inputs is the output of white set op or 
+    3. When an op belongs to the gray list. If one
+       of its inputs is the output of black set op or black list op,
+       add it to black set. If all of its previous ops are not black
+       op and one of its inputs is the output of white set op or
        white list op, add it to white set.
     4. When an op isn't in the lists, add it to black op set.
-    5. Add necessary cast ops to make sure that black set op will be 
-       computed in fp32 mode, while white set op will be computed in 
+    5. Add necessary cast ops to make sure that black set op will be
+       computed in fp32 mode, while white set op will be computed in
        fp16 mode.
 
     Args:

@@ -18,9 +18,22 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+
 namespace paddle2cinn {
 
-constexpr char kCinnLaunchOp[] = "CinnLaunchOp";
+constexpr char kCinnLaunchOp[] = "cinn_launch";
+constexpr char kInputVars[] = "InputVars";
+constexpr char kNoNeedBufferFeeds[] = "NoNeedBufferFeeds";
+constexpr char kInternalVars[] = "InternalVars";
+constexpr char kOutputVars[] = "OutputVars";
+constexpr char kMemOptVarInfoFromMainGraph[] =
+    "mem_opt_var_info_from_main_graph";
+using Name2VarInfoMap =
+    std::unordered_map<std::string,
+                       std::shared_ptr<framework::ir::MemOptVarInfo>>;
 
 // A pass named BuildCinnPass, the function of this pass is:
 //
@@ -39,12 +52,13 @@ constexpr char kCinnLaunchOp[] = "CinnLaunchOp";
 // Firstly, both op nodes should be compile supported.
 // Secondly, there should be a direct path between the two op nodes through a
 // var node.
-// Thirdly, there should be no extral path between the two op nodes through
+// Thirdly, there should be no extra path between the two op nodes through
 // unsupported op nodes.
 // Lastly, if op nodes a and b can be divied into a cluster, op nodes b and c
-// can be devided into a cluster, a and c can also be devided into a cluster.
-// The implementation of cluster detection is enclosured in class
-// SubGraphDetector.
+// can be divided into a cluster, a and c can also be divided into a cluster.
+// The implementation of cluster detection is encapsulated in the
+// SubGraphDetector
+// class.
 //
 // b) How to deal with the links between the var nodes in global graph and the
 // op nodes in a cluster?

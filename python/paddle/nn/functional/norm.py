@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define normalization api  
+# TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
 from ..initializer import Constant
 from ...framework import ParamAttr
-from ...fluid import core, dygraph_utils
+from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -35,7 +35,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     .. math::
 
         y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
-    
+
     .. math::
         \lvert \lvert x \rvert \rvert_p = \left( \sum_i {\lvert x_i \rvert^p}  \right)^{1/p}
 
@@ -45,7 +45,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2
-        axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension. 
+        axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -78,7 +78,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             # [[0.         0.24253564 0.37139067]
             # [1.         0.97014254 0.9284767 ]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, 'axis', axis, 'porder',
                             float(p), 'keepdim', True, 'epsilon', epsilon)
@@ -104,7 +104,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     helper.append_op(
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
-    paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
+    eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
     return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
@@ -123,13 +123,13 @@ def batch_norm(x,
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     nn.functional.batch_norm is uesd for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
-    
+
     Parameters:
         x(Tesnor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
         weight(Tensor): The weight tensor of batch_norm, can not be None.
-        bias(Tensor): The bias tensor of batch_norm can not be None. 
+        bias(Tensor): The bias tensor of batch_norm can not be None.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
@@ -180,7 +180,7 @@ def batch_norm(x,
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         # for dygraph need tuple
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
@@ -217,7 +217,7 @@ def batch_norm(x,
 
     helper = LayerHelper('batch_norm', **locals())
 
-    param_dtype = x.dtype if x.dtype is not 'float16' else 'float32'
+    param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
     saved_mean = helper.create_variable_for_type_inference(
         dtype=param_dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
@@ -252,7 +252,7 @@ def layer_norm(x,
                name=None):
     """
     see more detail in paddle.nn.LayerNorm
-    
+
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
         normalized_shape(int|list|tuple): Input shape from an expected input of
@@ -277,7 +277,7 @@ def layer_norm(x,
 
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.to_tensor(x_data)
           layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
@@ -301,7 +301,7 @@ def layer_norm(x,
                          str_normalized_shape[
                              1:] + ', but got input shape ' + str(input_shape))
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
                                           'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
@@ -378,14 +378,14 @@ def instance_norm(x,
 
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.to_tensor(x_data)
           instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
                                          "momentum", momentum, "data_format",
                                          data_format)
@@ -474,7 +474,7 @@ def local_response_norm(x,
             y = paddle.nn.functional.local_response_norm(x, size=5)
             print(y.shape)  # [3, 3, 112, 112]
         """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(

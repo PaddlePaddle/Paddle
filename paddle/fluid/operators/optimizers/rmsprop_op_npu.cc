@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/rmsprop_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -50,15 +50,15 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         const Tensor *rho_tensor = nullptr;
         const Tensor *momentum_tensor = nullptr;
         const Tensor *epsilon_tensor = nullptr;
-        Tensor rho_tmp(framework::proto::VarType::FP32);
+        Tensor rho_tmp(experimental::DataType::FLOAT32);
         rho_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&rho_tmp, rho);
         rho_tensor = &rho_tmp;
-        Tensor momentum_tmp(framework::proto::VarType::FP32);
+        Tensor momentum_tmp(experimental::DataType::FLOAT32);
         momentum_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&momentum_tmp, momentum);
         momentum_tensor = &momentum_tmp;
-        Tensor epsilon_tmp(framework::proto::VarType::FP32);
+        Tensor epsilon_tmp(experimental::DataType::FLOAT32);
         epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
         epsilon_tensor = &epsilon_tmp;

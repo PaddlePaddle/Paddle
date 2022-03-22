@@ -16,8 +16,9 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -70,11 +71,12 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
 
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
     int send_numel = numel / num;
     int offset = send_numel * id;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
         x->data<T>() + offset, send_numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " send " << send_numel
             << " from offset[" << offset << "] to " << peer;

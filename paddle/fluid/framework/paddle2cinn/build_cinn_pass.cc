@@ -14,45 +14,33 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 
+#include <algorithm>
+#include <iterator>
 #include <memory>
+#include <regex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
+#include "cinn/frontend/op_mapper_registry.h"
+#include "cinn/frontend/op_mappers/use_op_mappers.h"
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-// #include "cinn/frontend/op_mapper_registry.h"
-// #include "cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
-// TODO(jiangcheng05): just for local compile, remove after
-// paddle and CINN have been binded
-// The APIs are the same as CINN:
-// https://github.com/PaddlePaddle/CINN/blob/develop/cinn/utils/registry.h
-namespace cinn {
-namespace frontend {
-class OpMapperRegistry {
- public:
-  static OpMapperRegistry* Global() {
-    static OpMapperRegistry inst;
-    return &inst;
-  }
-
-  inline const OpMapperRegistry* Find(const std::string& name) {
-    std::unordered_set<std::string> fmap_ = {"mul", "add", "relu", "sigmoid",
-                                             "softmax"};
-    auto p = fmap_.find(name);
-    if (p != fmap_.end()) {
-      return this;
-    } else {
-      return nullptr;
-    }
-  }
-};
-
-}  // namespace frontend
-}  // namespace cinn
+DECLARE_string(allow_cinn_ops);
+DECLARE_string(deny_cinn_ops);
 
 namespace paddle {
 namespace framework {
@@ -63,13 +51,100 @@ using framework::ir::Node;
 
 using GraphNodeVec = std::vector<Node*>;
 using GraphNodeSet = std::unordered_set<Node*>;
+using GraphNodeMap = std::unordered_map<Node*, Node*>;
+
+namespace {
+// The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
+// & FLAGS_deny_cinn_ops.
+constexpr char kDelim[] = ";";
+
+const std::unordered_map<std::string, std::unordered_set<std::string>>
+    kDenyParamMap = {{"batch_norm", {"ReserveSpace"}},
+                     {"batch_norm_grad", {"ReserveSpace"}}};
+
+std::unordered_set<std::string> GetDenyVarNames(const GraphNodeSet& cluster) {
+  std::unordered_set<std::string> deny_var_set;
+
+  auto get_debug_info = [](const std::unordered_set<std::string>& var_names) {
+    std::string debug_info = "[";
+    for (auto& var : var_names) {
+      debug_info.append(var);
+      debug_info.append(", ");
+    }
+    debug_info.append("]");
+    return debug_info;
+  };
+
+  for (auto* op : cluster) {
+    if (kDenyParamMap.count(op->Name())) {
+      const auto* desc = op->Op();
+      PADDLE_ENFORCE_NE(desc, nullptr,
+                        platform::errors::PreconditionNotMet(
+                            "The Op %s's OpDesc should not be NULL, which has "
+                            "a parameter in kDenyParamMap.",
+                            op->Name().c_str()));
+
+      auto deny_param_names = kDenyParamMap.at(op->Name());
+      VLOG(4) << "We found deny param " << get_debug_info(deny_param_names)
+              << " in op [" << op->Name() << "].";
+
+      for (const auto& param_name : deny_param_names) {
+        if (desc->Inputs().count(param_name)) {
+          const auto& arg_names = desc->Input(param_name);
+          for (const auto& arg_name : arg_names) {
+            deny_var_set.insert(arg_name);
+            VLOG(4) << "deny param [" << param_name << "]'s argument name"
+                    << " is [" << arg_name << "].";
+          }
+        }
+
+        if (desc->HasOutput(param_name)) {
+          const auto& arg_names = desc->Output(param_name);
+          for (const auto& arg_name : arg_names) {
+            deny_var_set.insert(arg_name);
+            VLOG(4) << "deny param [" << param_name << "]'s argument name"
+                    << " is [" << arg_name << "].";
+          }
+        }
+      }
+    }
+  }
+
+  VLOG(4) << "All deny var names are " << get_debug_info(deny_var_set);
+
+  return deny_var_set;
+}
+
+std::unordered_set<std::string> StringSplit(const std::string& str,
+                                            const std::string& delim) {
+  std::regex reg(delim);
+  std::unordered_set<std::string> elems{
+      std::sregex_token_iterator(str.begin(), str.end(), reg, -1),
+      std::sregex_token_iterator()};
+  elems.erase("");
+  return elems;
+}
+
+int ExtractOpRole(const GraphNodeSet& cluster) {
+  std::unordered_set<int> op_roles;
+  std::string attr_name = OpProtoAndCheckerMaker::OpRoleAttrName();
+  for (auto* n : cluster) {
+    if (n->Op() && n->Op()->HasAttr(attr_name)) {
+      op_roles.insert(BOOST_GET_CONST(int, n->Op()->GetAttr(attr_name)));
+    }
+  }
+  if (op_roles.size() == 1U) {
+    return *(op_roles.begin());
+  } else {
+    return static_cast<int>(OpRole::kNotSpecified);
+  }
+}
 
 // Deal with subgraph's feed input var node:
 // create a new input var node and it's feed op node
-void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
-                     const GraphNodeSet& cluster,
-                     const std::unordered_map<Node*, Node*>& old_op2new_op,
-                     Graph* graph) {
+void AddFeedOpAndVar(const GraphNodeSet& feed_vars, const GraphNodeSet& cluster,
+                     const GraphNodeMap& old_op2new_op,
+                     const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : feed_vars) {
     // create feed op
     OpDesc desc;
@@ -77,21 +152,20 @@ void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
     desc.SetOutput("Out", {old_var->Name()});
     auto op = graph->CreateOpNode(&desc);
 
-    // create new feed var node (SSAGraph)
-    auto var = graph->CreateVarNode(old_var->Var());
+    // get new feed var node
+    auto* var = old_var2new_var.at(old_var);
+    VLOG(4) << "Add Feed Op before: " << var->Name();
 
     // link feed op and feed var
-    op->outputs = {var};
-    var->inputs = {op};
+    IR_NODE_LINK_TO(op, var);
 
     // link feed var to cluster op
     for (auto* old_op : old_var->outputs) {
       if (cluster.count(old_op)) {
-        var->outputs.emplace_back(old_op2new_op.at(old_op));
-        old_op2new_op.at(old_op)->inputs.emplace_back(var);
+        IR_NODE_LINK_TO(var, old_op2new_op.at(old_op));
       }
       // Do not need relink old op or old var here, they will be
-      // fixed in RemoveLinkFromCluster, here we just deal with
+      // fixed in RemoveSubGraphFromGraph, here we just deal with
       // new subgraph's node.
     }
   }
@@ -100,17 +174,16 @@ void AddFeedOpAndVar(const std::unordered_set<Node*>& feed_vars,
 // Deal with subgraph's parameter var node:
 // create a new input var node, it's data will get by scope,
 // so it don't need feed op
-void AddParamVar(const std::unordered_set<Node*>& param_vars,
-                 const GraphNodeSet& cluster,
-                 const std::unordered_map<Node*, Node*>& old_op2new_op,
-                 Graph* graph) {
+void AddParamVar(const GraphNodeSet& param_vars, const GraphNodeSet& cluster,
+                 const GraphNodeMap& old_op2new_op,
+                 const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : param_vars) {
-    auto var = graph->CreateVarNode(old_var->Var());
+    auto* var = old_var2new_var.at(old_var);
+    VLOG(4) << "Add Param Var Node: " << var->Name();
 
     for (auto* old_op : old_var->outputs) {
       if (cluster.count(old_op)) {
-        var->outputs.emplace_back(old_op2new_op.at(old_op));
-        old_op2new_op.at(old_op)->inputs.emplace_back(var);
+        IR_NODE_LINK_TO(var, old_op2new_op.at(old_op));
       }
     }
   }
@@ -118,53 +191,147 @@ void AddParamVar(const std::unordered_set<Node*>& param_vars,
 
 // Deal with subgraph's outputs var node:
 // create a new output var node and it's fetch op
-void AddOutputVar(const std::unordered_set<Node*>& output_vars,
-                  const GraphNodeSet& cluster,
-                  const std::unordered_map<Node*, Node*>& old_op2new_op,
-                  Graph* graph) {
+void AddOutputVar(const GraphNodeSet& output_vars, const GraphNodeSet& cluster,
+                  const GraphNodeMap& old_op2new_op,
+                  const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : output_vars) {
-    auto var = graph->CreateVarNode(old_var->Var());
+    // create fetch op
+    OpDesc desc;
+    desc.SetType("fetch");
+    desc.SetInput("X", {old_var->Name()});
+    auto op = graph->CreateOpNode(&desc);
+
+    auto* var = old_var2new_var.at(old_var);
+    VLOG(4) << "Add Output Var Node: " << var->Name();
+
+    // link fetch op and fetch var
+    IR_NODE_LINK_TO(var, op);
 
     for (auto* old_op : old_var->inputs) {
       if (cluster.count(old_op)) {
-        var->inputs.emplace_back(old_op2new_op.at(old_op));
-        old_op2new_op.at(old_op)->outputs.emplace_back(var);
+        IR_NODE_LINK_TO(old_op2new_op.at(old_op), var);
       }
     }
   }
+}
+
+std::unordered_set<std::string> ExtractNoNeedBufferFeeds(
+    const GraphNodeSet& cluster, const GraphNodeSet& cluster_inputs) {
+  // 1. Find op with NoNeedBufferVarsInferer defined and collect its input nodes
+  std::unordered_map<Node*, GraphNodeSet> op_node2no_need_buffer_nodes;
+  for (auto* op_node : cluster) {
+    auto& inferer =
+        OpInfoMap::Instance().Get(op_node->Name()).NoNeedBufferVarsInferer();
+    if (!inferer) {
+      continue;
+    }
+    auto* op_desc = op_node->Op();
+    PADDLE_ENFORCE_NOT_NULL(
+        op_desc, platform::errors::PreconditionNotMet(
+                     "The op desc of node in cluster shouldn't be null."));
+    auto inferred_params =
+        inferer(op_desc->Inputs(), op_desc->Inputs(), op_desc->GetAttrMap());
+    std::unordered_set<std::string> inferred_args;
+    std::for_each(inferred_params.begin(), inferred_params.end(),
+                  [&op_desc, &inferred_args](const std::string& param) {
+                    const auto& args = op_desc->Input(param);
+                    inferred_args.insert(args.begin(), args.end());
+                  });
+    auto& no_need_buffer_nodes = op_node2no_need_buffer_nodes[op_node];
+    for (auto* input_node : op_node->inputs) {
+      if (input_node->Var() && inferred_args.count(input_node->Name())) {
+        VLOG(4) << "Input node(" << input_node->Name() << ") of op("
+                << op_node->Name() << ") is no_need_buffer";
+        no_need_buffer_nodes.insert(input_node);
+      }
+    }
+  }
+
+  // 2. Extract no_need_buffer nodes from cluster_inputs by checking
+  // all of their outputs are op nodes with NoNeedBufferVarsInferer
+  // and they used as no_need_buffer inputs.
+  auto check_all_used_as_no_need_buffer_fn =
+      [&op_node2no_need_buffer_nodes](Node* var_node) -> bool {
+    for (auto* output_node : var_node->outputs) {
+      auto it = op_node2no_need_buffer_nodes.find(output_node);
+      if (it == op_node2no_need_buffer_nodes.end()) {
+        VLOG(4) << "Var node(" << var_node->Name() << ")'s output node("
+                << output_node->Name()
+                << ") doesn't have NoNeedBufferVarsInferer";
+        return false;
+      }
+      if (it->second.count(var_node) == 0) {
+        VLOG(4) << "Var node("
+                << ") is not used as no_need_buffer inputs";
+        return false;
+      }
+    }
+    return true;
+  };
+  std::unordered_set<std::string> result;
+  for (const auto& op2inputs_pair : op_node2no_need_buffer_nodes) {
+    for (auto* input_node : op2inputs_pair.second) {
+      if (cluster_inputs.count(input_node) &&
+          check_all_used_as_no_need_buffer_fn(input_node)) {
+        VLOG(4) << "Input node(" << input_node->Name()
+                << ") is declared as no_need_buffer cluster_inputs";
+        result.insert(input_node->Name());
+      }
+    }
+  }
+  return result;
 }
 
 // Create new subgraph with and op nodes are cluster nodes, and all
 // var node are from internal nodes
 std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
                                          const GraphNodeSet& cluster_internals,
-                                         const GraphNodeSet& cluster_inputs) {
+                                         const GraphNodeSet& cluster_inputs,
+                                         const GraphNodeSet& cluster_outputs) {
   // Graph's constructor must has one parameter, and in our code,
   // the ProgramDesc is useless, so here we pass a temporary object.
-  auto sub_graph = std::make_unique<Graph>(framework::ProgramDesc());
+  auto subgraph = std::make_unique<Graph>(framework::ProgramDesc());
 
-  std::unordered_map<Node*, Node*> old_op2new_op;
+  GraphNodeMap old_op2new_op;
   for (auto* op : cluster) {
-    auto sub_node = sub_graph->CreateOpNode(op->Op());
+    auto sub_node = subgraph->CreateOpNode(op->Op());
     old_op2new_op[op] = sub_node;
   }
 
-  std::unordered_map<Node*, Node*> old_var2new_var;
+  GraphNodeMap old_var2new_var;
   for (auto* var : cluster_internals) {
-    auto sub_node = sub_graph->CreateVarNode(var->Var());
+    PADDLE_ENFORCE_NOT_NULL(var->Var(),
+                            platform::errors::PreconditionNotMet(
+                                "The var desc of the node in cluster_internals "
+                                "shouldn't be null."));
+    auto* sub_node = subgraph->CreateVarNode(var->Var());
     old_var2new_var[var] = sub_node;
   }
+  for (auto* var : cluster_inputs) {
+    if (var->Var()) {
+      auto* sub_node = subgraph->CreateVarNode(var->Var());
+      old_var2new_var[var] = sub_node;
+    }
+  }
+  for (auto* var : cluster_outputs) {
+    if (var->Var()) {
+      auto* sub_node = subgraph->CreateVarNode(var->Var());
+      old_var2new_var[var] = sub_node;
+    }
+  }
 
-  std::unordered_set<Node*> need_feed_vars;
+  GraphNodeSet need_feed_vars;
   std::unordered_set<Node *> param_vars, output_vars;
   // the subgraph is independently, so here we only need link
   // to the node in new subgraph, and discard the link to
   // out-graph.
   for (auto* op : cluster) {
     for (auto* var : op->inputs) {
-      if (cluster_internals.count(var)) {
-        old_op2new_op[op]->inputs.emplace_back(old_var2new_var[var]);
-      } else if (cluster_inputs.count(var)) {
+      // one output var maybe an input of the cluster
+      if (cluster_internals.count(var) ||
+          (cluster_outputs.count(var) && old_var2new_var.count(var))) {
+        IR_NODE_LINK_TO(old_var2new_var.at(var), old_op2new_op.at(op));
+      } else if (cluster_inputs.count(var) && var->Var() != nullptr) {
         if (var->Var()->IsParameter()) {
           // Parameters have been preserved in scope, compared to feed var,
           // param just need add new var and don't need add feed op.
@@ -180,8 +347,8 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
     for (auto* var : op->outputs) {
       if (cluster_internals.count(var)) {
-        old_op2new_op[op]->outputs.emplace_back(old_var2new_var[var]);
-      } else {
+        IR_NODE_LINK_TO(old_op2new_op.at(op), old_var2new_var.at(var));
+      } else if (cluster_outputs.count(var) && var->Var() != nullptr) {
         // Create new output var node to guarantee the independency of
         // subgraph. In other words, the subgraph has no connection with
         // other graph, even the input graph.
@@ -190,24 +357,44 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
   }
 
-  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, sub_graph.get());
-  AddParamVar(param_vars, cluster, old_op2new_op, sub_graph.get());
-  AddOutputVar(output_vars, cluster, old_op2new_op, sub_graph.get());
-
-  for (auto* var : cluster_internals) {
-    for (auto* op : var->inputs) {
-      if (cluster.count(op)) {
-        old_var2new_var[var]->inputs.emplace_back(old_op2new_op[op]);
+  AddFeedOpAndVar(need_feed_vars, cluster, old_op2new_op, old_var2new_var,
+                  subgraph.get());
+  AddParamVar(param_vars, cluster, old_op2new_op, old_var2new_var,
+              subgraph.get());
+  AddOutputVar(output_vars, cluster, old_op2new_op, old_var2new_var,
+               subgraph.get());
+  // Save lists of input variables, internal variables and output variables
+  // of the cluster as attributes of the subgraph for convenience.
+  auto collect_names_fn = [](
+      const GraphNodeSet& nodes,
+      const std::unordered_set<std::string>& ignore_names) {
+    auto result = std::make_unique<std::vector<std::string>>();
+    for (auto* node : nodes) {
+      if (!node->Var() || ignore_names.count(node->Name())) {
+        continue;
       }
+      result->emplace_back(node->Name());
     }
-    for (auto* op : var->outputs) {
-      if (cluster.count(op)) {
-        old_var2new_var[var]->outputs.emplace_back(old_op2new_op[op]);
-      }
-    }
-  }
-
-  return sub_graph;
+    return result;
+  };
+  subgraph->Set<std::vector<std::string>>(
+      kInternalVars, collect_names_fn(cluster_internals, {}).release());
+  subgraph->Set<std::vector<std::string>>(
+      kOutputVars, collect_names_fn(cluster_outputs, {}).release());
+  // Divide input variables into two parts: one is common and will be used
+  // in execution, the other may be empty and it is those variables whose
+  // buffer are not needed and only be used in graph symbolization
+  auto no_need_buffer_feeds = std::make_unique<std::unordered_set<std::string>>(
+      ExtractNoNeedBufferFeeds(cluster, cluster_inputs));
+  subgraph->Set<std::vector<std::string>>(
+      kInputVars,
+      collect_names_fn(cluster_inputs, *no_need_buffer_feeds).release());
+  subgraph->Set<std::unordered_set<std::string>>(
+      kNoNeedBufferFeeds, no_need_buffer_feeds.release());
+  // initialize empty map for kMemOptVarInfoFromMainGraph attribute,
+  // it will be filled on the share_mem_opt_info_to_subgraph pass
+  subgraph->GetOrInit<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
+  return subgraph;
 }
 
 // This interface is used to classify all variables involved in a cluster into
@@ -218,17 +405,24 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 // out-graph should not using this node at all.
 // cluster_inputs & cluster_outputs & cluster_internals == NULL
 // cluster_outputs | cluster_internals == all graph op's outputs node
-void AnalyseClusterVariables(const GraphNodeSet& cluster,
-                             GraphNodeSet* cluster_inputs,
-                             GraphNodeSet* cluster_outputs,
-                             GraphNodeSet* cluster_internals) {
+void AnalyseClusterVariables(
+    const GraphNodeSet& cluster,
+    const std::unordered_set<std::string>& deny_var_set,
+    GraphNodeSet* cluster_inputs, GraphNodeSet* cluster_outputs,
+    GraphNodeSet* cluster_internals) {
   // collecting all input and output of op
   for (auto* op_node : cluster) {
+    const auto& op_name = op_node->Name();
     for (auto* input_var_node : op_node->inputs) {
-      cluster_inputs->insert(input_var_node);
+      if (!deny_var_set.count(input_var_node->Name())) {
+        // ignore deny var node
+        cluster_inputs->insert(input_var_node);
+      }
     }
     for (auto* output_var_node : op_node->outputs) {
-      cluster_outputs->insert(output_var_node);
+      if (!deny_var_set.count(output_var_node->Name())) {
+        cluster_outputs->insert(output_var_node);
+      }
     }
   }
   // remove output node from cluster_inputs,
@@ -256,97 +450,77 @@ void AnalyseClusterVariables(const GraphNodeSet& cluster,
   }
 }
 
-Node* AddSpecialOpToGraph(Graph* graph, const GraphNodeSet& cluster_inputs,
-                          const GraphNodeSet& cluster_outputs) {
-  // add special cinn op
-  framework::OpDesc special_op_desc;
-  special_op_desc.SetType(kCinnLaunchOp);
-  auto* special_op_node = graph->CreateOpNode(&special_op_desc);
-  special_op_node->inputs.assign(cluster_inputs.begin(), cluster_inputs.end());
-  special_op_node->outputs.assign(cluster_outputs.begin(),
-                                  cluster_outputs.end());
-  return special_op_node;
-}
-
-void AddLinkToSpecialOp(Node* special_op_node,
-                        const GraphNodeSet& cluster_inputs,
-                        const GraphNodeSet& cluster_outputs) {
-  // add new link from cluster_inputs to special_op_node
+void AddLinkToCinnOp(const GraphNodeSet& cluster_inputs,
+                     const GraphNodeSet& cluster_outputs, Node* cinn_op_node) {
+  // add new link from cluster_inputs to cinn_op_node
   for (auto* var_node : cluster_inputs) {
-    var_node->outputs.push_back(special_op_node);
+    IR_NODE_LINK_TO(var_node, cinn_op_node);
   }
 
-  // add new link from special_op_node to cluster_outputs
+  // add new link from cinn_op_node to cluster_outputs
   for (auto* var_node : cluster_outputs) {
-    var_node->inputs.push_back(special_op_node);
+    IR_NODE_LINK_TO(cinn_op_node, var_node);
   }
 }
 
-void RemoveLinkFromCluster(const GraphNodeSet& cluster,
-                           const GraphNodeSet& cluster_inputs,
-                           const GraphNodeSet& cluster_outputs) {
-  // remove all nodes in cluster
-  auto get_preserved_ops = [&cluster](const GraphNodeVec& ops) {
-    GraphNodeVec nodes;
-    for (auto* op_node : ops) {
-      if (cluster.find(op_node) == cluster.end()) {
-        nodes.emplace_back(op_node);
-      }
-    }
-    return nodes;
-  };
+void AddCinnOpToGraph(const GraphNodeSet& cluster,
+                      const GraphNodeSet& cluster_inputs,
+                      const GraphNodeSet& cluster_outputs,
+                      const std::string& compilation_key,
+                      const std::unordered_set<std::string>& deny_var_set,
+                      Graph* graph) {
+  // Add the cinn launch op
+  framework::OpDesc cinn_op_desc;
+  cinn_op_desc.SetType(kCinnLaunchOp);
 
-  // removing useless link from cluster_inputs to cluster
-  for (auto* var_node : cluster_inputs) {
-    auto preserved_ops = get_preserved_ops(var_node->outputs);
-    var_node->outputs.assign(preserved_ops.begin(), preserved_ops.end());
-    // According to SSA form, a var node must not be any two op's output,
-    // and the cluster_inputs var nodes is defined as an out-graph op's
-    // output, so the cluster_inputs var nodes are not any subgraph op's
-    // output. Do not reassign input list here.
-  }
+  const auto& subgraph =
+      CinnCompiler::GetInstance()->FindGraph(compilation_key);
+  const auto& no_need_buffer_feeds =
+      subgraph.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
 
-  // removing useless link from cluster to cluster_outputs
-  for (auto* var_node : cluster_outputs) {
-    auto preserved_ops = get_preserved_ops(var_node->inputs);
-    var_node->inputs.assign(preserved_ops.begin(), preserved_ops.end());
+  cinn_op_desc.SetInput(operators::kX,
+                        subgraph.Get<std::vector<std::string>>(kInputVars));
+  cinn_op_desc.SetInput(operators::kNoNeedBufferX,
+                        std::vector<std::string>(no_need_buffer_feeds.begin(),
+                                                 no_need_buffer_feeds.end()));
+  cinn_op_desc.SetOutput(operators::kOutputs,
+                         subgraph.Get<std::vector<std::string>>(kOutputVars));
+  cinn_op_desc.SetAttr(operators::kCompilationKey, compilation_key);
+  cinn_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                       ExtractOpRole(cluster));
+  cinn_op_desc.Flush();
+  auto* cinn_op_node = graph->CreateOpNode(&cinn_op_desc);
+  // Add new links from or to the the cinn launch op node
+  AddLinkToCinnOp(cluster_inputs, cluster_outputs, cinn_op_node);
 
-    // Note that cluster_outputs var node maybe some subgraph op's input,
-    // here we need remove them.
-    preserved_ops = get_preserved_ops(var_node->outputs);
-    var_node->outputs.assign(preserved_ops.begin(), preserved_ops.end());
-  }
+  VLOG(4) << "Add op [" << kCinnLaunchOp << "] into graph.";
 }
 
 // Removing cluster node and internals node from Graph
 void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
                              const GraphNodeSet& cluster_internals,
                              Graph* graph) {
-  for (auto* op_node : cluster) {
-    graph->RemoveNode(op_node);
-  }
-  for (auto* var_node : cluster_internals) {
-    graph->RemoveNode(var_node);
-  }
+  const std::unordered_set<const Node*> const_cluster{cluster.cbegin(),
+                                                      cluster.cend()};
+  const std::unordered_set<const Node*> const_internals{
+      cluster_internals.cbegin(), cluster_internals.cend()};
+  ir::GraphSafeRemoveNodes(graph, const_cluster);
+  ir::GraphSafeRemoveNodes(graph, const_internals);
 }
 
-// Replacing Cinn subgraph to a special op node, whose op_type is
+// Replacing Cinn subgraph to a cinn op node, whose op_type is
 // kCinnLaunchOp, and inputs ares cluster_inputs and outputs are
 // cluster_outputs.
-// Meanwhile, move all links of cluster to the special op.
-void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
-                                      const GraphNodeSet& cluster_inputs,
-                                      const GraphNodeSet& cluster_outputs,
-                                      const GraphNodeSet& cluster_internals,
-                                      Graph* graph) {
-  // First, add the special op node whose name is "kCinnLaunchOp" into graph
-  auto special_op_node =
-      AddSpecialOpToGraph(graph, cluster_inputs, cluster_outputs);
-  // Second, remove all graph's links which are from or to cluster nodes
-  RemoveLinkFromCluster(cluster, cluster_inputs, cluster_outputs);
-  // Third, add new links from or to the the special op node
-  AddLinkToSpecialOp(special_op_node, cluster_inputs, cluster_outputs);
-  // Finally, remove the cinn sub graph from graph
+// Meanwhile, move all links of cluster to the cinn op.
+void ReplaceSubGraphWithCinnOpNode(
+    const GraphNodeSet& cluster, const GraphNodeSet& cluster_inputs,
+    const GraphNodeSet& cluster_outputs, const GraphNodeSet& cluster_internals,
+    const std::string& compilation_key,
+    const std::unordered_set<std::string>& deny_var_set, Graph* graph) {
+  // Add the cinn op node whose name is "kCinnLaunchOp" into graph
+  AddCinnOpToGraph(cluster, cluster_inputs, cluster_outputs, compilation_key,
+                   deny_var_set, graph);
+  // Remove the cinn subgraph from graph
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
@@ -354,38 +528,74 @@ void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
 // to check whether the op node supported by CINN.
-void SearchAllSubgraphs(Graph* graph,
-                        std::vector<std::unique_ptr<Graph>>* cinn_subgraphs) {
-  auto teller = [](const Node* node) {
-    return ::cinn::frontend::OpMapperRegistry::Global()->Find(node->Name()) !=
-           nullptr;
+void SearchAllSubgraphs(Graph* graph) {
+  auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
+  auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
+  auto teller = [&allow_ops, &deny_ops](const Node* node) {
+    bool registered = ::cinn::frontend::OpMapperRegistry::Global()->Find(
+                          node->Name()) != nullptr;
+    // if the op type is registered in CINN and allow_ops is not empty, return
+    // true only when it is in allow_ops
+    if (allow_ops.size()) {
+      return registered && allow_ops.count(node->Name());
+    }
+    // if the op type is registered in CINN and deny_ops is not empty, return
+    // true only when it is not in deny_ops
+    if (deny_ops.size()) {
+      return registered && !deny_ops.count(node->Name());
+    }
+    // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
+    // return true only when it is registered in CINN
+    return registered;
   };
+  VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
+  VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters =
       framework::ir::SubgraphDetector(graph, teller)();
 
-  cinn_subgraphs->clear();
+  auto cluster_debug_info = [](const GraphNodeSet& cluster) {
+    std::string res = "(";
+    for (auto* node : cluster) {
+      res.append(node->Name());
+      res.append(", ");
+    }
+    res.append(")");
+    return res;
+  };
+
+  auto* cinn_compiler = CinnCompiler::GetInstance();
   for (const auto& node_vec : clusters) {
-    // classify var node to inputs, outputs, and internals.
+    // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
 
+    auto deny_var_set = GetDenyVarNames(cluster_set);
+
     GraphNodeSet cluster_inputs, cluster_outputs, cluster_internals;
-    AnalyseClusterVariables(cluster_set, &cluster_inputs, &cluster_outputs,
-                            &cluster_internals);
+    AnalyseClusterVariables(cluster_set, deny_var_set, &cluster_inputs,
+                            &cluster_outputs, &cluster_internals);
 
-    cinn_subgraphs->emplace_back(
-        CreateNewSubGraph(cluster_set, cluster_internals, cluster_inputs));
+    VLOG(4) << "Cluster Ops: " << cluster_debug_info(cluster_set);
+    VLOG(4) << "Cluster input vars: " << cluster_debug_info(cluster_inputs);
+    VLOG(4) << "Cluster output vars: " << cluster_debug_info(cluster_outputs);
+    VLOG(4) << "Cluster internal vars: "
+            << cluster_debug_info(cluster_internals);
 
-    // replacing subgraph to a new special op node
-    ReplaceSubGraphWithSpecialOpNode(cluster_set, cluster_inputs,
-                                     cluster_outputs, cluster_internals, graph);
+    // Create a new subgraph according to the found cluster and
+    // save it in CinnCompiler
+    std::string compilation_key = cinn_compiler->AddGraph(CreateNewSubGraph(
+        cluster_set, cluster_internals, cluster_inputs, cluster_outputs));
+    VLOG(4) << "Compilation Key:\n"
+            << cinn_compiler->ReadableKey(compilation_key);
+
+    // Replace the found cluster to a new cinn op node
+    ReplaceSubGraphWithCinnOpNode(cluster_set, cluster_inputs, cluster_outputs,
+                                  cluster_internals, compilation_key,
+                                  deny_var_set, graph);
   }
 }
+}  // namespace
 
-void BuildCinnPass::ApplyImpl(Graph* graph) const {
-  auto& cinn_subgraphs =
-      Get<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs");
-  SearchAllSubgraphs(graph, &cinn_subgraphs);
-}
+void BuildCinnPass::ApplyImpl(Graph* graph) const { SearchAllSubgraphs(graph); }
 
 }  // namespace paddle2cinn
 }  // namespace framework

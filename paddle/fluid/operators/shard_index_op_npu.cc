@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/shard_index_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -67,7 +67,7 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     tmp.mutable_data<T>(framework::DDim({1}), place);
     FillNpuTensorWithConstant(&tmp, shard_size);
 
-    Tensor condition(framework::proto::VarType::BOOL);
+    Tensor condition(experimental::DataType::BOOL);
     condition.mutable_data<bool>(in->dims(), place);
 
     Tensor tmp2(in->type());

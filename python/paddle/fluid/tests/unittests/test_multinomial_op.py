@@ -141,6 +141,14 @@ class TestMultinomialApi(unittest.TestCase):
             "replacement is False. categories can't be sampled repeatedly")
         paddle.enable_static()
 
+    def test_dygraph4(self):
+        paddle.disable_static()
+        logits = -1 * paddle.ones([2800])
+        # Categorical.sample API will call multinomial op with replacement=True
+        cat = paddle.distribution.Categorical(logits.exp())
+        cat.sample([1])
+        paddle.enable_static()
+
     def test_static(self):
         paddle.enable_static()
         startup_program = fluid.Program()

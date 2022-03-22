@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
@@ -32,6 +33,10 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                 for index in range(len(ksize)):
                     if ksize[index] <= paddings[index]:
                         return False
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if program_config.ops[0].attrs['pooling_type'] == 'avg':
+                return False
         return True
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -46,16 +51,16 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-        for strides in [[1, 1], [2, 2], [1, 2]]:
-            for paddings in [[0, 2], [0, 3], [0, 1, 2, 3]]:
+        for strides in [[1, 1], [1, 2], [2, 2]]:
+            for paddings in [[0, 2], [0, 3]]:
                 for pooling_type in ['max', 'avg']:
                     for padding_algotithm in ['EXPLICIT', 'SAME', 'VAILD']:
                         for ksize in [[2, 3], [3, 3]]:
                             for data_format in ['NCHW']:
                                 for global_pooling in [True, False]:
-                                    for exclusive in [True, False]:
+                                    for exclusive in [False, True]:
                                         for adaptive in [True, False]:
-                                            for ceil_mode in [True, False]:
+                                            for ceil_mode in [False, True]:
 
                                                 dics = [{
                                                     "pooling_type":
@@ -140,22 +145,19 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(program_config.ops[0].attrs['paddings']) == 4:
-                return True
-            return False
-
-        self.add_skip_case(teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-                           "4-dims paddings are not support for trt now.")
-
-        def teller2(program_config, predictor_config):
-            if program_config.ops[0].attrs['global_pooling'] == True:
+        def teller(program_config, predictor_config):
+            if program_config.ops[0].attrs['pooling_type'] == 'avg' and \
+               program_config.ops[0].attrs['global_pooling'] == False and \
+               program_config.ops[0].attrs['exclusive'] == True and \
+               program_config.ops[0].attrs['adaptive'] == False and \
+               program_config.ops[0].attrs['ceil_mode'] == True:
                 return True
             return False
 
         self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "It is not support that global_pooling is true for trt now.")
+            teller, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The results of some cases are Nan, but the results of TensorRT and GPU are the same."
+        )
 
     def test(self):
         self.add_skip_trt_case()

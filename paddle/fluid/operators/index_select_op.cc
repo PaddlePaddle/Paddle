@@ -13,7 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/index_select_op.h"
+
 #include <memory>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,52 +28,6 @@ using framework::Tensor;
 class IndexSelectOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of IndexSelectOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Index) of IndexSelectOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of IndexSelectOp should not be null."));
-
-    auto input_dim = ctx->GetInputDim("X");
-    auto index_dim = ctx->GetInputDim("Index");
-    auto dim = ctx->Attrs().Get<int>("dim");
-
-    PADDLE_ENFORCE_EQ(
-        dim < input_dim.size() && dim >= (0 - input_dim.size()), true,
-        platform::errors::OutOfRange(
-            "Attr(dim) is out of range, It's expected "
-            "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-            input_dim.size(), input_dim.size() - 1, dim));
-
-    PADDLE_ENFORCE_EQ(
-        index_dim.size() == 1 || (index_dim.size() == 2 && index_dim[1] == 1),
-        true, platform::errors::InvalidArgument(
-                  "The 'shape' of Input(Index) must be 1-D tensor. "
-                  "But received: the 'shape' of Input(Index) is [%s], "
-                  "the dimension of Input(Index) is [%d].",
-                  index_dim, index_dim.size()));
-
-    PADDLE_ENFORCE_EQ(index_dim[0] != 0, true,
-                      platform::errors::InvalidArgument(
-                          "The length of Input(Index) can't be 0."));
-
-    auto output_dim = framework::vectorize(input_dim);
-    if (dim < 0) {
-      dim += input_dim.size();
-    }
-    output_dim[dim] = index_dim[0];
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dim));
-    auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::LOD_TENSOR) {
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -148,20 +107,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSelectGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(index_select, IndexSelectInferShapeFunctor,
+                            PD_INFER_META(phi::IndexSelectInferMeta));
 REGISTER_OPERATOR(index_select, ops::IndexSelectOp, ops::IndexSelectOpMaker,
                   ops::IndexSelectGradMaker<paddle::framework::OpDesc>,
-                  ops::IndexSelectGradMaker<paddle::imperative::OpBase>);
+                  ops::IndexSelectGradMaker<paddle::imperative::OpBase>,
+                  IndexSelectInferShapeFunctor);
 REGISTER_OPERATOR(index_select_grad, ops::IndexSelectGradOp,
                   ops::IndexSelectGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    index_select,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    index_select_grad,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

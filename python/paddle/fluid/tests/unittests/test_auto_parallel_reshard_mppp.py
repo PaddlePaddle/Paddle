@@ -22,17 +22,19 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.context import DistributedContext
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 _global_parallel_strategy = "mp_pp"
-ROOT_MESH = auto.ProcessMesh([[0, 1], [2, 3]])
-_global_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]], parent=ROOT_MESH)
-PP_MESH_0 = auto.ProcessMesh([0, 1], parent=ROOT_MESH)
-PP_MESH_1 = auto.ProcessMesh([2, 3], parent=ROOT_MESH)
+_global_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]])
+PP_MESH_0 = auto.ProcessMesh([0, 1])
+PP_MESH_1 = auto.ProcessMesh([2, 3])
 
 
 class MLPLayer(nn.Layer):
@@ -64,10 +66,21 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         auto.shard_tensor(
-            self.word_embeddings.weight, PP_MESH_0, dim_mapping=[0, -1])
-        auto.shard_tensor(self.linear0.weight, PP_MESH_0, dim_mapping=[-1, 0])
-        auto.shard_tensor(self.linear1.weight, PP_MESH_1, dim_mapping=[0, -1])
-        auto.shard_tensor(self.linear2.weight, PP_MESH_1, dim_mapping=[0, -1])
+            self.word_embeddings.weight,
+            dist_attr={"process_mesh": PP_MESH_0,
+                       "dims_mapping": [0, -1]})
+        auto.shard_tensor(
+            self.linear0.weight,
+            dist_attr={"process_mesh": PP_MESH_0,
+                       "dims_mapping": [-1, 0]})
+        auto.shard_tensor(
+            self.linear1.weight,
+            dist_attr={"process_mesh": PP_MESH_1,
+                       "dims_mapping": [0, -1]})
+        auto.shard_tensor(
+            self.linear2.weight,
+            dist_attr={"process_mesh": PP_MESH_1,
+                       "dims_mapping": [0, -1]})
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
         gelu_out = F.gelu(out, approximate=True)
@@ -88,8 +101,13 @@ def mlp_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32')
 
-        auto.shard_tensor(input, PP_MESH_0, dim_mapping=[-1])
-        auto.shard_tensor(label, PP_MESH_1, dim_mapping=[-1, -1])
+        auto.shard_tensor(
+            input, dist_attr={"process_mesh": PP_MESH_0,
+                              "dims_mapping": [-1]})
+        auto.shard_tensor(
+            label,
+            dist_attr={"process_mesh": PP_MESH_1,
+                       "dims_mapping": [-1, -1]})
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -105,27 +123,36 @@ def mlp_forward(train_program, start_program):
 
 def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     global _global_process_mesh
-    dist_context.set_process_mesh(_global_process_mesh)
+    dist_context.process_mesh = _global_process_mesh
     loss, train_program, startup_program = mlp_forward(train_program,
                                                        startup_program)
 
-    # auto completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
+    fleet._user_defined_strategy = fleet.DistributedStrategy()
+    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    parallelizer = AutoParallelizer(fleet)
+    parallelizer._dist_context = dist_context
 
-    dist_strategy = fleet.DistributedStrategy()
-    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    # serial forward & backward completion
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
+    params_grads = parallelizer._generate_backward(
+        complete_train_program,
+        startup_program,
+        loss,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None)
+
     # logical partition
-    auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-        complete_train_program, startup_program)
-    dist_params_grads = partitioner.apply_backward(
-        loss, complete_train_program, startup_program, auto_parallel_main_prog,
-        auto_parallel_startup_prog)
-    optimizer = paddle.fluid.optimizer.AdamOptimizer()
-    opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                         auto_parallel_main_prog,
-                                         auto_parallel_startup_prog)
-    return auto_parallel_main_prog, auto_parallel_startup_prog
+    partitioner = Partitioner(dist_context, rank_id)
+    auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads = partitioner.partition(
+        complete_train_program, startup_program, params_grads)
+
+    partitioned_optimize_ops = parallelizer._apply_optimize(
+        auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
+    return auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads
 
 
 def check_send_recv_result(dist_main_prog, rank_id):
@@ -184,9 +211,10 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 2
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
@@ -198,31 +226,56 @@ class TestMLPReshard(unittest.TestCase):
     def test_allgather(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        process_mesh = auto.ProcessMesh(mesh=[0, 3], parent=ROOT_MESH)
+        process_mesh = auto.ProcessMesh(mesh=[0, 3])
         with static.program_guard(train_program, startup_program):
             x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
-            x = auto.shard_tensor(x, process_mesh, dim_mapping=[0, -1])
+            x = auto.shard_tensor(
+                x,
+                dist_attr={
+                    "process_mesh": process_mesh,
+                    "dims_mapping": [0, -1]
+                })
 
             w = paddle.static.data(name="w", shape=[4, 4], dtype='float32')
-            w = auto.shard_tensor(w, process_mesh, dim_mapping=[-1, -1])
+            w = auto.shard_tensor(
+                w,
+                dist_attr={
+                    "process_mesh": process_mesh,
+                    "dims_mapping": [-1, -1]
+                })
 
-            y = paddle.distributed.shard_op(paddle.matmul, process_mesh, {
-                x.name: [-1, -1],
-                w.name: [-1, -1]
-            }, **{"x": x,
-                  "y": w})[0]
+            # y = paddle.distributed.shard_op(paddle.matmul, process_mesh, {
+            #     x.name: [-1, -1],
+            #     w.name: [-1, -1]
+            # }, **{"x": x,
+            #       "y": w})[0]
+
+            y = paddle.distributed.shard_op(
+                paddle.matmul,
+                dist_attr={
+                    "process_mesh": process_mesh,
+                    x: {
+                        "dims_mapping": [-1, -1]
+                    },
+                    w: {
+                        "dims_mapping": [-1, -1]
+                    }
+                })(x, w)[0]
 
         rank_id = 0
         dist_context = DistributedContext()
         dist_strategy = fleet.DistributedStrategy()
-        partitioner = Partitioner(dist_strategy, dist_context, rank_id)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
-            complete_train_program, startup_program)
-        reshard(auto_parallel_main_prog, startup_program, rank_id, dist_context)
+        partitioner = Partitioner(dist_context, rank_id)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
+        partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads = partitioner.partition(
+            complete_train_program, startup_program, [])
+        reshard(partitioned_main_prog, partitioned_startup_prog, rank_id,
+                dist_context, partitioned_params_grads)
         # the x should not be slice
-        self.assertTrue(check_allgather(auto_parallel_main_prog))
+        self.assertTrue(check_allgather(partitioned_main_prog))
 
 
 if __name__ == "__main__":

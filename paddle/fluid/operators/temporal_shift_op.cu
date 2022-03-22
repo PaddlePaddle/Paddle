@@ -10,8 +10,8 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -165,9 +165,9 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     const int c1 = static_cast<int>(c * shift_ratio);
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
-    framework::DDim out_dims = (data_layout == DataLayout::kNCHW
-                                    ? framework::make_ddim({nt, c, h, w})
-                                    : framework::make_ddim({nt, h, w, c}));
+    framework::DDim out_dims =
+        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
+                                          : phi::make_ddim({nt, h, w, c}));
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(out_dims, ctx.GetPlace());
 
@@ -218,9 +218,9 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     const int c1 = static_cast<int>(c * shift_ratio);
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
-    framework::DDim in_grad_dims = (data_layout == DataLayout::kNCHW
-                                        ? framework::make_ddim({nt, c, h, w})
-                                        : framework::make_ddim({nt, h, w, c}));
+    framework::DDim in_grad_dims =
+        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
+                                          : phi::make_ddim({nt, h, w, c}));
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data =
         input_grad->mutable_data<T>(in_grad_dims, ctx.GetPlace());

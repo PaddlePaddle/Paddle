@@ -100,9 +100,14 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
     // String is converted into wstring failedly.
     return;
   }
-
-  std::wstring dest_text;
-  for (auto ch : unicode_text) {
+  std::wstring cache_text = L"";
+  auto PushCacheText = [&]() {
+    if (cache_text != L"") {
+      res->emplace_back(cache_text);
+      cache_text = L"";
+    }
+  };
+  for (auto& ch : unicode_text) {
     if (ch == 0 || ch == 0xfffd || IsControl(ch)) {
       continue;
     }
@@ -110,25 +115,24 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
       ch = do_lower_case(ch);
     }
     if (IsChineseChar(ch) || IsPunctuation(ch)) {
-      dest_text += ' ';
-      dest_text += ch;
-      dest_text += ' ';
+      PushCacheText();
+      res->emplace_back(std::wstring{ch});
     } else if (IsWhiteSpace(ch)) {
-      dest_text += ' ';
+      PushCacheText();
     } else {
-      dest_text += ch;
+      cache_text += ch;
     }
   }
-  boost::split(*res, dest_text, boost::is_any_of(kStripChars));
+  PushCacheText();
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    framework::Vocab* vocab, const wstring& unk_token /* = L"[UNK]"*/,
+    const framework::Vocab* vocab, const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
       unk_token_(unk_token),
       max_input_chars_per_word_(max_input_chars_per_word) {
-  unk_token_id_ = (*vocab_)[unk_token_];
+  unk_token_id_ = vocab_->at(unk_token_);
 }
 
 void WordPieceTokenizer::Tokenize(const wstring& text,
@@ -178,7 +182,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   }
 }
 
-BertTokenizer::BertTokenizer(framework::Vocab* vocab,
+BertTokenizer::BertTokenizer(const framework::Vocab* vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
@@ -196,11 +200,11 @@ BertTokenizer::BertTokenizer(framework::Vocab* vocab,
       vocab_(vocab),
       basic_tokenizer_(do_lower_case_),
       word_piece_tokenizer_(vocab_, unk_token) {
-  unk_token_id_ = (*vocab_)[unk_token_];
-  pad_token_id_ = (*vocab_)[pad_token_];
-  cls_token_id_ = (*vocab_)[cls_token_];
-  mask_token_id_ = (*vocab_)[mask_token_];
-  sep_token_id_ = (*vocab_)[sep_token_];
+  unk_token_id_ = vocab_->at(unk_token_);
+  pad_token_id_ = vocab_->at(pad_token_);
+  cls_token_id_ = vocab_->at(cls_token_);
+  mask_token_id_ = vocab_->at(mask_token_);
+  sep_token_id_ = vocab_->at(sep_token_);
 
   all_special_tokens_ = vector<wstring>(
       {unk_token_, pad_token_, cls_token_, mask_token_, sep_token_});

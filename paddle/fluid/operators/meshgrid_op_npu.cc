@@ -10,10 +10,10 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
 #include "paddle/fluid/operators/meshgrid_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -53,12 +53,12 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
       std::vector<int64_t> view_shape(size, 1);
       view_shape[i] = shape[i];
 
-      framework::DDim out_dims_reshape = framework::make_ddim(view_shape);
-      framework::Tensor reshape_ins_tensor(ins[i]->type());
+      framework::DDim out_dims_reshape = phi::make_ddim(view_shape);
+      framework::Tensor reshape_ins_tensor(ins[i]->dtype());
       reshape_ins_tensor.ShareDataWith(*ins[i]);
       reshape_ins_tensor.Resize(out_dims_reshape);
 
-      framework::DDim out_dims = framework::make_ddim(shape);
+      framework::DDim out_dims = phi::make_ddim(shape);
       outs[i]->Resize(out_dims);
       outs[i]->mutable_data<T>(context.GetPlace());
 

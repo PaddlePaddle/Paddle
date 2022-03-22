@@ -888,6 +888,56 @@ class TestIhfftnException(unittest.TestCase):
                 pass
 
 
+@place(DEVICES)
+@parameterize((TEST_CASE_NAME, 'x', 'axes', 'dtype'), [
+    ('test_1d', np.random.randn(10), (0, ), 'float64'),
+    ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+    ('test_2d_with_all_axes', np.random.randn(10, 10), None, 'float64'),
+    ('test_2d_odd_with_all_axes',
+     np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128'),
+])
+class TestFftShift(unittest.TestCase):
+    def test_fftshift(self):
+        """Test fftshift with norm condition
+        """
+        paddle.enable_static()
+        mp, sp = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(mp, sp):
+            input = paddle.static.data('input', x.shape, dtype=x.dtype)
+            output = paddle.fft.fftshift(input, axes)
+
+        exe = paddle.static.Executor(place)
+        exe.run(sp)
+        [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
+        yield output
+        paddle.disable_static()
+
+
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes'),
+    [('test_1d', np.random.randn(10), (0, ),
+      'float64'), ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+     ('test_2d_with_all_axes', np.random.randn(10, 10), None, 'float64'),
+     ('test_2d_odd_with_all_axes',
+      np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128')])
+class TestIfftShift(unittest.TestCase):
+    def test_ifftshift(self):
+        """Test ifftshift with norm condition
+        """
+        paddle.enable_static()
+        mp, sp = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(mp, sp):
+            input = paddle.static.data('input', x.shape, dtype=x.dtype)
+            output = paddle.fft.ifftshift(input, axes)
+
+        exe = paddle.static.Executor(place)
+        exe.run(sp)
+        [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
+        yield output
+        paddle.disable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
 

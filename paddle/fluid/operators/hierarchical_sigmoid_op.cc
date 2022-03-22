@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/hierarchical_sigmoid_op.h"
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/multiary.h"
+
 namespace paddle {
 namespace operators {
 
@@ -60,31 +64,6 @@ namespace operators {
 class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "hsigmoid");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "hsigmoid");
-    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "hsigmoid");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "hsigmoid");
-    OP_INOUT_CHECK(ctx->HasOutput("PreOut"), "Output", "PreOut", "hsigmoid");
-
-    auto with_prefetch = ctx->Attrs().Get<bool>("remote_prefetch");
-    if (with_prefetch) {
-      OP_INOUT_CHECK(ctx->HasOutput("W_Out"), "Output", "W_Out", "hsigmoid");
-    }
-    const int64_t input_dims = ctx->GetInputDim("X")[0];
-    const int64_t label_dims = ctx->GetInputDim("Label")[0];
-    PADDLE_ENFORCE_EQ(input_dims, label_dims,
-                      platform::errors::InvalidArgument(
-                          "The first dimension of "
-                          "input and label is expected to be the same. "
-                          "But received input's first dimension is %d; "
-                          "label's first dimension is %d.",
-                          input_dims, label_dims));
-
-    std::vector<int64_t> output_shape({input_dims, 1});
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -272,22 +251,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    hierarchical_sigmoid, ops::HierarchicalSigmoidOp,
-    ops::HierarchicalSigmoidOpMaker<int>,
-    ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
-    ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
+DECLARE_INFER_SHAPE_FUNCTOR(hierarchical_sigmoid,
+                            HierarchicalSigmoidInferShapeFunctor,
+                            PD_INFER_META(phi::HierarchicalSigmoidInferMeta));
+REGISTER_OPERATOR(hierarchical_sigmoid, ops::HierarchicalSigmoidOp,
+                  ops::HierarchicalSigmoidOpMaker<int>,
+                  ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
+                  ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>,
+                  HierarchicalSigmoidInferShapeFunctor);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
                   ops::HierarchicalSigmoidGradOpGradVarTypeInference,
                   ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    hierarchical_sigmoid,
-    ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
-REGISTER_OP_CPU_KERNEL(
-    hierarchical_sigmoid_grad,
-    ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
-                                         float>,
-    ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
-                                         double>);

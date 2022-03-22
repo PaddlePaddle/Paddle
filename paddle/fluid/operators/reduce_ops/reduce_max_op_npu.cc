@@ -10,10 +10,10 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -36,12 +36,12 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
-    auto cast_out_dtype = x->type();
+    auto cast_out_dtype = framework::TransToProtoVarType(x->dtype());
     if (out_dtype != -1) {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       if (cast_out_dtype == framework::proto::VarType::FP32) {
         out->mutable_data<float>(place);
       } else if (cast_out_dtype == framework::proto::VarType::FP16) {
@@ -73,20 +73,34 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
       attr_input = {{"axes", dim_vec}, {"keep_dims", keep_dim}};
     }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    const auto& dev_ctx =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>();
+    if (framework::TransToProtoVarType(x->dtype()) ==
+        framework::proto::VarType::INT64) {
+      auto op_func = [](const std::vector<Tensor>& inputs,
+                        const std::vector<Tensor>& outputs,
+                        const NPUAttributeMap& attrs,
+                        const platform::NPUDeviceContext& dev_ctx) {
+        const auto& runner =
+            NpuOpRunner("ReduceMaxD", {inputs[0]}, {outputs[0]}, attrs);
+        runner.Run(dev_ctx.stream());
+      };
 
-    const auto& runner =
-        NpuOpRunner("ReduceMaxD", {*x}, {cast_out}, attr_input);
-    runner.Run(stream);
+      NpuOpRunner::TypeAdapter({*x}, {cast_out}, attr_input, dev_ctx, op_func,
+                               {framework::proto::VarType::INT32},
+                               {framework::proto::VarType::INT32});
+    } else {
+      const auto& runner =
+          NpuOpRunner("ReduceMaxD", {*x}, {cast_out}, attr_input);
+      runner.Run(dev_ctx.stream());
+    }
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
-      runner_cast.Run(stream);
+      runner_cast.Run(dev_ctx.stream());
     }
   }
 };
@@ -98,4 +112,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
     reduce_max, ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, float>,
-    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, plat::float16>);
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int64_t>,
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int>);

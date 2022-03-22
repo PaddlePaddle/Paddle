@@ -18,10 +18,26 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "pybind11/pybind11.h"
 
+#define EAGER_TRY try {
+#define EAGER_CATCH_AND_THROW_RETURN_NULL             \
+  }                                                   \
+  catch (...) {                                       \
+    ThrowExceptionToPython(std::current_exception()); \
+    return nullptr;                                   \
+  }
+
+#define EAGER_CATCH_AND_THROW_RETURN_ZERO             \
+  }                                                   \
+  catch (...) {                                       \
+    ThrowExceptionToPython(std::current_exception()); \
+    return 0;                                         \
+  }
+
 namespace paddle {
 namespace pybind {
 
 void BindException(pybind11::module* m);
+void ThrowExceptionToPython(std::exception_ptr p);
 
 }  // namespace pybind
 }  // namespace paddle

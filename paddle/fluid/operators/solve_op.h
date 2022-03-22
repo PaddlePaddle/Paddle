@@ -20,13 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
 
 #define MAX_RANK_SUPPORTED 6
@@ -39,24 +39,15 @@ using framework::To32BitIndex;
 
 constexpr int kMULMKLDNNINT8 = 1;
 
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  template <typename U>
-  HOSTDEVICE inline U operator()(const U& x) const {
-    return x;
-  }
-};
-
 template <typename DeviceContext, typename T>
-void ReduceSumForSolveGrad(const Tensor* input, Tensor* output,
-                           const std::vector<int>& reduce_dims, bool keep_dim,
-                           const paddle::framework::ExecutionContext& ctx) {
+void ReduceSumForSolve(const Tensor* input, Tensor* output,
+                       const std::vector<int>& reduce_dims, bool keep_dim,
+                       const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
-  TensorReduce<T, T, cub::Sum, IdentityFunctor>(*input, output, reduce_dims,
-                                                static_cast<T>(0), cub::Sum(),
-                                                IdentityFunctor(), stream);
+  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      ctx.cuda_device_context(), *input, output, kps::IdentityFunctor<T>(),
+      reduce_dims, stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, keep_dim, false, ctx)
@@ -70,8 +61,8 @@ static inline bool is_vector_rhs(const Tensor& input, const Tensor& other) {
   auto y_dim = other.dims();
   auto x_dim_size = x_dim.size();
   auto y_dim_size = y_dim.size();
-  std::vector<int64_t> x_dims_vec = paddle::framework::vectorize(x_dim);
-  std::vector<int64_t> y_dims_vec = paddle::framework::vectorize(y_dim);
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dim);
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dim);
 
   std::vector<int64_t>::const_iterator f = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l = x_dims_vec.end() - 1;
@@ -128,7 +119,7 @@ static framework::DDim GetOutputShapeUnsqueeze(
     }
   }
 
-  return framework::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 // operation like squeeze(-1)
@@ -157,112 +148,72 @@ static void to_unsqueeze(const framework::ExecutionContext& context,
   out->Resize(out_dims);
 }
 
-template <typename Container>
-Container infer_size_impl(std::vector<int64_t> a, std::vector<int64_t> b) {
-  size_t dimsA = a.size();
-  size_t dimsB = b.size();
-  size_t ndim = dimsA > dimsB ? dimsA : dimsB;
-  Container expandedSizes(ndim);
+// Prepared for the broadcast operation
+static std::vector<int64_t> get_broadcast_batch_portion(
+    std::vector<int64_t> x, std::vector<int64_t> y) {
+  size_t size_x = x.size();
+  size_t size_y = y.size();
+  size_t size = std::max(size_x, size_y);
+  std::vector<int64_t> batchPortion(size);
 
-  for (ptrdiff_t i = (ptrdiff_t)ndim - 1; i >= 0; --i) {
-    ptrdiff_t offset = ndim - 1 - i;
-    ptrdiff_t dimA = dimsA - 1 - offset;
-    ptrdiff_t dimB = dimsB - 1 - offset;
-    int64_t sizeA = (dimA >= 0) ? a[dimA] : 1;
-    int64_t sizeB = (dimB >= 0) ? b[dimB] : 1;
+  ptrdiff_t i = (ptrdiff_t)size - 1;
+  for (; i >= 0; --i) {
+    ptrdiff_t offset = size - i - 1;
+    ptrdiff_t dim_x = size_x - offset - 1;
+    ptrdiff_t dim_y = size_y - offset - 1;
+    int64_t x_size = (dim_x >= 0) ? x[dim_x] : 1;
+    int64_t y_size = (dim_y >= 0) ? y[dim_y] : 1;
 
     PADDLE_ENFORCE_EQ(
-        (sizeA == sizeB || sizeA == 1 || sizeB == 1), true,
+        (x_size == y_size || x_size == 1 || y_size == 1), true,
         platform::errors::PreconditionNotMet(
-            "The size of tensor a (%d) must match the size of tensor b "
+            "The size of tensor x (%d) must match the size of tensor y "
             "(%d) at non-singleton dimension %d.",
-            sizeA, sizeB, i));
+            x_size, y_size, i));
 
-    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
+    batchPortion[i] = x_size != 1 ? x_size : y_size;
   }
-  return expandedSizes;
+  return batchPortion;
 }
 
-// infer size for broadcast operation
-static std::vector<int64_t> infer_size(std::vector<int64_t> a,
-                                       std::vector<int64_t> b) {
-  return infer_size_impl<std::vector<int64_t>>(a, b);
-}
-
-// necessary check before expand operation
-static void expand_check(const Tensor& arg1,
-                         std::vector<int64_t> expand_shape) {
-  auto rank = arg1.dims().size();
-  PADDLE_ENFORCE_GE(
-      rank, 1, platform::errors::InvalidArgument(
-                   "The rank of the input 'X' for expand must be positive, "
-                   "but the value received is %d.",
-                   rank));
-  PADDLE_ENFORCE_LE(
-      rank, MAX_RANK_SUPPORTED,
-      platform::errors::InvalidArgument(
-          "The rank of the input 'X' for expand must be less than "
-          "or equal to %d, but the value received is %d.",
-          MAX_RANK_SUPPORTED, rank));
-  auto shape_size = static_cast<int>(expand_shape.size());
-  PADDLE_ENFORCE_GE(
-      shape_size, rank,
-      platform::errors::InvalidArgument(
-          "The number (%d) of elements of 'shape' for expand must be "
-          "greater than or equal to the rank (%d) of the input 'X'.",
-          shape_size, rank));
-  PADDLE_ENFORCE_LE(
-      shape_size, MAX_RANK_SUPPORTED,
-      platform::errors::InvalidArgument(
-          "The number (%d) of elements of 'shape' for expand must be "
-          "less than or equal to %d.",
-          shape_size, MAX_RANK_SUPPORTED));
-}
-
-// broadcast the batch dimensions of arg1 and arg2.
+// broadcast the batch dimensions of tensor x and tensor y.
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
-_broadcast_batch_dims(const Tensor& arg1, const Tensor& arg2) {
-  std::vector<int64_t> arg1_dims_vec =
-      paddle::framework::vectorize(arg1.dims());
-  std::vector<int64_t> arg2_dims_vec =
-      paddle::framework::vectorize(arg2.dims());
+get_broadcast_dims(const Tensor& x, const Tensor& y) {
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
 
-  std::vector<int64_t>::const_iterator f1 = arg1_dims_vec.begin();
-  std::vector<int64_t>::const_iterator l1 = arg1_dims_vec.end() - 2;
-  std::vector<int64_t> arg1_dims_vec_cut(f1, l1);
+  std::vector<int64_t>::const_iterator f1 = x_dims_vec.begin();
+  std::vector<int64_t>::const_iterator l1 = x_dims_vec.end() - 2;
+  std::vector<int64_t> x_dims_vec_cut(f1, l1);
 
-  std::vector<int64_t>::const_iterator f2 = arg2_dims_vec.begin();
-  std::vector<int64_t>::const_iterator l2 = arg2_dims_vec.end() - 2;
-  std::vector<int64_t> arg2_dims_vec_cut(f2, l2);
+  std::vector<int64_t>::const_iterator f2 = y_dims_vec.begin();
+  std::vector<int64_t>::const_iterator l2 = y_dims_vec.end() - 2;
+  std::vector<int64_t> y_dims_vec_cut(f2, l2);
 
   std::vector<int64_t> expand_batch_portion =
-      infer_size(arg1_dims_vec_cut, arg2_dims_vec_cut);
+      get_broadcast_batch_portion(x_dims_vec_cut, y_dims_vec_cut);
 
-  std::vector<int64_t> arg1_expand_size({expand_batch_portion});
-  arg1_expand_size.insert(
-      arg1_expand_size.end(),
-      {arg1_dims_vec[static_cast<int>(arg1_dims_vec.size()) - 2],
-       arg1_dims_vec[static_cast<int>(arg1_dims_vec.size()) - 1]});
+  std::vector<int64_t> x_expand_size({expand_batch_portion});
+  x_expand_size.insert(x_expand_size.end(),
+                       {x_dims_vec[static_cast<int>(x_dims_vec.size()) - 2],
+                        x_dims_vec[static_cast<int>(x_dims_vec.size()) - 1]});
 
-  std::vector<int64_t> arg2_expand_size({expand_batch_portion});
-  arg2_expand_size.insert(
-      arg2_expand_size.end(),
-      {arg2_dims_vec[static_cast<int>(arg2_dims_vec.size()) - 2],
-       arg2_dims_vec[static_cast<int>(arg2_dims_vec.size()) - 1]});
+  std::vector<int64_t> y_expand_size({expand_batch_portion});
+  y_expand_size.insert(y_expand_size.end(),
+                       {y_dims_vec[static_cast<int>(y_dims_vec.size()) - 2],
+                        y_dims_vec[static_cast<int>(y_dims_vec.size()) - 1]});
 
-  return std::make_tuple(arg1_expand_size, arg2_expand_size);
+  return std::make_tuple(x_expand_size, y_expand_size);
 }
 
 template <int Rank, typename T, typename DeviceContext>
-void tensor_expand(const framework::ExecutionContext& context,
-                   const Tensor& arg1, Tensor* out0,
-                   std::vector<int64_t> expand_size) {
-  auto in_dims = arg1.dims();
-  auto expand_shape = expand_size;
-  auto vec_in_dims = framework::vectorize<int>(in_dims);
+void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
+                 const std::vector<int64_t>& expand_shape) {
+  auto vec_in_dims = phi::vectorize<int>(in.dims());
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
+
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
         expand_shape[i], 0,
@@ -303,18 +254,17 @@ void tensor_expand(const framework::ExecutionContext& context,
     bcast_dims[i] = repeat_times[i];
   }
 
-  framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+  framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
   framework::DDim out_dims(new_in_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];
   }
 
-  out0->Resize(out_dims);
-  auto x = EigenTensor<T, Rank>::From(arg1, new_in_dims);
-  out0->mutable_data<T>(context.GetPlace());
-  auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  out->Resize(out_dims);
+  out->mutable_data<T>(context.GetPlace());
+  auto x = EigenTensor<T, Rank>::From(in, new_in_dims);
+  auto y = EigenTensor<T, Rank>::From(*out, out_dims);
+  auto& place = *context.eigen_device();
   // use 32-bit index to speed up
   bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
   if (use_32bit_index) {
@@ -323,6 +273,41 @@ void tensor_expand(const framework::ExecutionContext& context,
   } else {
     EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
                                                                  bcast_dims);
+  }
+}
+
+template <typename T, typename DeviceContext>
+void TensorExpand(const DeviceContext& context, const Tensor& in, Tensor* out,
+                  const std::vector<int64_t>& expand_shape) {
+  // necessary check before expand operation
+  PADDLE_ENFORCE_GE(expand_shape.size(), in.dims().size(),
+                    platform::errors::InvalidArgument(
+                        "The size of 'expand_shape' (%d) should >= the input "
+                        "Tensor's rank (%d).",
+                        expand_shape.size(), in.dims().size()));
+  PADDLE_ENFORCE_LE(expand_shape.size(), MAX_RANK_SUPPORTED,
+                    platform::errors::InvalidArgument(
+                        "The size of 'expand_shape' (%d) should be <= %d",
+                        expand_shape.size(), MAX_RANK_SUPPORTED));
+  switch (expand_shape.size()) {
+    case 1:
+      expand_impl<1, T, DeviceContext>(context, in, out, expand_shape);
+      break;
+    case 2:
+      expand_impl<2, T, DeviceContext>(context, in, out, expand_shape);
+      break;
+    case 3:
+      expand_impl<3, T, DeviceContext>(context, in, out, expand_shape);
+      break;
+    case 4:
+      expand_impl<4, T, DeviceContext>(context, in, out, expand_shape);
+      break;
+    case 5:
+      expand_impl<5, T, DeviceContext>(context, in, out, expand_shape);
+      break;
+    case 6:
+      expand_impl<6, T, DeviceContext>(context, in, out, expand_shape);
+      break;
   }
 }
 
@@ -342,11 +327,11 @@ static void linalg_solve(const framework::ExecutionContext& context,
 
   Tensor tmp_y;
   if (is_vector) {
-    tmp_y.mutable_data(context.GetPlace(), y->type());
+    tmp_y.mutable_data(context.GetPlace(), y->dtype());
     to_unsqueeze(context, *y, &tmp_y);
   } else {
     tmp_y.Resize(y->dims());
-    tmp_y.mutable_data(context.GetPlace(), y->type());
+    tmp_y.mutable_data(context.GetPlace(), y->dtype());
     framework::TensorCopy(
         *y, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), &tmp_y);
@@ -354,7 +339,7 @@ static void linalg_solve(const framework::ExecutionContext& context,
 
   Tensor tmp_x;
   tmp_x.Resize(x->dims());
-  tmp_x.mutable_data(context.GetPlace(), x->type());
+  tmp_x.mutable_data(context.GetPlace(), x->dtype());
   framework::TensorCopy(
       *x, context.GetPlace(),
       context.template device_context<platform::DeviceContext>(), &tmp_x);
@@ -362,71 +347,13 @@ static void linalg_solve(const framework::ExecutionContext& context,
   std::vector<int64_t> x_broadcast_dims;
   std::vector<int64_t> y_broadcast_dims;
   std::tie(x_broadcast_dims, y_broadcast_dims) =
-      _broadcast_batch_dims(tmp_x, tmp_y);
-
-  expand_check(tmp_x, x_broadcast_dims);
-  expand_check(tmp_y, y_broadcast_dims);
+      get_broadcast_dims(tmp_x, tmp_y);
 
   Tensor tmp_x_bc;
+  TensorExpand<T, DeviceContext>(dev_ctx, tmp_x, &tmp_x_bc, x_broadcast_dims);
+
   Tensor tmp_y_bc;
-  auto tmp_x_rank = tmp_x.dims().size();
-  auto tmp_y_rank = tmp_y.dims().size();
-
-  auto rank_0 = std::max(tmp_x_rank, static_cast<int>(x_broadcast_dims.size()));
-  switch (rank_0) {
-    case 1:
-      tensor_expand<1, T, DeviceContext>(context, tmp_x, &tmp_x_bc,
-                                         x_broadcast_dims);
-      break;
-    case 2:
-      tensor_expand<2, T, DeviceContext>(context, tmp_x, &tmp_x_bc,
-                                         x_broadcast_dims);
-      break;
-    case 3:
-      tensor_expand<3, T, DeviceContext>(context, tmp_x, &tmp_x_bc,
-                                         x_broadcast_dims);
-      break;
-    case 4:
-      tensor_expand<4, T, DeviceContext>(context, tmp_x, &tmp_x_bc,
-                                         x_broadcast_dims);
-      break;
-    case 5:
-      tensor_expand<5, T, DeviceContext>(context, tmp_x, &tmp_x_bc,
-                                         x_broadcast_dims);
-      break;
-    case 6:
-      tensor_expand<6, T, DeviceContext>(context, tmp_x, &tmp_x_bc,
-                                         x_broadcast_dims);
-      break;
-  }
-
-  auto rank_1 = std::max(tmp_y_rank, static_cast<int>(y_broadcast_dims.size()));
-  switch (rank_1) {
-    case 1:
-      tensor_expand<1, T, DeviceContext>(context, tmp_y, &tmp_y_bc,
-                                         y_broadcast_dims);
-      break;
-    case 2:
-      tensor_expand<2, T, DeviceContext>(context, tmp_y, &tmp_y_bc,
-                                         y_broadcast_dims);
-      break;
-    case 3:
-      tensor_expand<3, T, DeviceContext>(context, tmp_y, &tmp_y_bc,
-                                         y_broadcast_dims);
-      break;
-    case 4:
-      tensor_expand<4, T, DeviceContext>(context, tmp_y, &tmp_y_bc,
-                                         y_broadcast_dims);
-      break;
-    case 5:
-      tensor_expand<5, T, DeviceContext>(context, tmp_y, &tmp_y_bc,
-                                         y_broadcast_dims);
-      break;
-    case 6:
-      tensor_expand<6, T, DeviceContext>(context, tmp_y, &tmp_y_bc,
-                                         y_broadcast_dims);
-      break;
-  }
+  TensorExpand<T, DeviceContext>(dev_ctx, tmp_y, &tmp_y_bc, y_broadcast_dims);
 
   auto x_dim = x->dims();
   auto y_dim = y->dims();
@@ -499,7 +426,7 @@ static std::vector<int> getNewAxis(const int b_rank) {
 
 // for Resize
 static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
-  std::vector<int64_t> b_dims_vec = paddle::framework::vectorize(b_dims);
+  std::vector<int64_t> b_dims_vec = phi::vectorize(b_dims);
   int size = b_dims_vec.size();
   if (size >= 2) {
     // swap the last 2 elements in b_dims_vec
@@ -546,11 +473,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
 
     Tensor tmp_y;
     if (is_vector) {
-      tmp_y.mutable_data(ctx.GetPlace(), y->type());
+      tmp_y.mutable_data(ctx.GetPlace(), y->dtype());
       to_unsqueeze(ctx, *y, &tmp_y);
     } else {
       tmp_y.Resize(y->dims());
-      tmp_y.mutable_data(ctx.GetPlace(), y->type());
+      tmp_y.mutable_data(ctx.GetPlace(), y->dtype());
       framework::TensorCopy(
           *y, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &tmp_y);
@@ -558,7 +485,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
 
     Tensor tmp_x;
     tmp_x.Resize(input->dims());
-    tmp_x.mutable_data(ctx.GetPlace(), input->type());
+    tmp_x.mutable_data(ctx.GetPlace(), input->dtype());
     framework::TensorCopy(
         *input, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), &tmp_x);
@@ -566,23 +493,23 @@ class SolveGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> x_broadcast_dims;
     std::vector<int64_t> y_broadcast_dims;
     std::tie(x_broadcast_dims, y_broadcast_dims) =
-        _broadcast_batch_dims(tmp_x, tmp_y);
+        get_broadcast_dims(tmp_x, tmp_y);
 
     // tmp_dx
     Tensor tmp_dx;
-    tmp_dx.Resize(framework::make_ddim(x_broadcast_dims));
+    tmp_dx.Resize(phi::make_ddim(x_broadcast_dims));
     tmp_dx.mutable_data<T>(ctx.GetPlace());
 
     // tmp_dy
     Tensor tmp_dy;
-    tmp_dy.Resize(framework::make_ddim(y_broadcast_dims));
+    tmp_dy.Resize(phi::make_ddim(y_broadcast_dims));
     tmp_dy.mutable_data<T>(ctx.GetPlace());
 
-    Tensor tmp_input(input->type());
+    Tensor tmp_input(input->dtype());
     const auto& new_dims_vec = getNewDimsVec(input->dims());
-    tmp_input.Resize(framework::make_ddim(new_dims_vec));
+    tmp_input.Resize(phi::make_ddim(new_dims_vec));
     tmp_input.mutable_data<T>(ctx.GetPlace());
-    math::TransposeNormal<DeviceContext, T> trans;
+    phi::funcs::TransposeNormal<DeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(input->dims().size());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, *input, &tmp_input, new_axis);
@@ -596,29 +523,33 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       // to get dx
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
       if (input->dims().size() == 2 && y->dims().size() == 2) {
-        auto mat_dim_a1 = math::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-        auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
+        auto mat_dim_a1 =
+            phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+        auto mat_dim_b1 =
+            phi::funcs::CreateMatrixDescriptor(out->dims(), 0, true);
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       } else if (is_vector_rhs(*input, *y)) {
         Tensor tmp_dy_;
-        tmp_dy_.mutable_data(ctx.GetPlace(), y->type());
+        tmp_dy_.mutable_data(ctx.GetPlace(), y->dtype());
         to_unsqueeze(ctx, tmp_dy, &tmp_dy_);
 
         Tensor tmp_out_;
-        tmp_out_.mutable_data(ctx.GetPlace(), out->type());
+        tmp_out_.mutable_data(ctx.GetPlace(), out->dtype());
         to_unsqueeze(ctx, *out, &tmp_out_);
 
         auto mat_dim_a1 =
-            math::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
+            phi::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
         auto mat_dim_b1 =
-            math::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
+            phi::funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
         blas.MatMul(tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx,
                     T(0));
       } else {
-        auto mat_dim_a1 = math::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
-        auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
+        auto mat_dim_a1 =
+            phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
+        auto mat_dim_b1 =
+            phi::funcs::CreateMatrixDescriptor(out->dims(), 0, true);
         blas.MatMul(tmp_dy, mat_dim_a1, *out, mat_dim_b1, T(-1), &tmp_dx, T(0));
       }
     }
@@ -626,7 +557,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (y->dims() != tmp_dy.dims()) {
       Tensor dy_help;
       dy_help.Resize(tmp_dy.dims());
-      dy_help.mutable_data(ctx.GetPlace(), tmp_dy.type());
+      dy_help.mutable_data(ctx.GetPlace(), tmp_dy.dtype());
       framework::TensorCopy(
           tmp_dy, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &dy_help);
@@ -666,8 +597,8 @@ class SolveGradKernel : public framework::OpKernel<T> {
           if (dy_help.dims().size() != dy->dims().size()) {
             keep_dim = false;
           }
-          ReduceSumForSolveGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
-                                                  keep_dim, ctx);
+          ReduceSumForSolve<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
+                                              keep_dim, ctx);
         }
         dy->Resize(y->dims());
       }
@@ -680,7 +611,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (input->dims() != tmp_dx.dims()) {
       Tensor dx_help;
       dx_help.Resize(tmp_dx.dims());
-      dx_help.mutable_data(ctx.GetPlace(), tmp_dx.type());
+      dx_help.mutable_data(ctx.GetPlace(), tmp_dx.dtype());
       framework::TensorCopy(
           tmp_dx, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &dx_help);
@@ -716,8 +647,8 @@ class SolveGradKernel : public framework::OpKernel<T> {
           if (dx_help.dims().size() != dx->dims().size()) {
             keep_dim = false;
           }
-          ReduceSumForSolveGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
-                                                  keep_dim, ctx);
+          ReduceSumForSolve<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
+                                              keep_dim, ctx);
         }
         dx->Resize(input->dims());
       }

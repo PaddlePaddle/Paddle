@@ -115,17 +115,16 @@ message TableParameter {
   optional CommonAccessorParameter common = 6;
   optional TableType type = 7;
   optional bool compress_in_save = 8 [ default = false ];
+  optional GraphParameter graph_parameter = 9;
 }
 
 message TableAccessorParameter {
   optional string accessor_class = 1;
-  //  optional SparseSGDRuleParameter sparse_sgd_param = 2;
   optional uint32 fea_dim = 4 [ default = 11 ];
   optional uint32 embedx_dim = 5 [ default = 8 ];
   optional uint32 embedx_threshold = 6 [ default = 10 ];
   optional CtrAccessorParameter ctr_accessor_param = 7;
   repeated TableAccessorSaveParameter table_accessor_save_param = 8;
-  //  optional SparseCommonSGDRuleParameter sparse_commonsgd_param = 9;
   optional SparseCommonSGDRuleParameter embed_sgd_param = 10;
   optional SparseCommonSGDRuleParameter embedx_sgd_param = 11;
 }
@@ -174,6 +173,8 @@ message CommonAccessorParameter {
   optional string entry = 7;
   optional int32 trainer_num = 8;
   optional bool sync = 9;
+  optional uint32 table_num = 10;
+  optional uint32 table_dim = 11;
 }
 
 message TableAccessorSaveParameter {
@@ -181,13 +182,6 @@ message TableAccessorSaveParameter {
   optional string converter = 2;
   optional string deconverter = 3;
 }
-
-// message SparseSGDRuleParameter {
-//    optional double learning_rate = 1 [default = 0.05];
-//    optional double initial_g2sum = 2 [default = 3.0];
-//    optional double initial_range = 3 [default = 0.0001];
-//    repeated float weight_bounds = 4;
-//}
 
 message SparseCommonSGDRuleParameter {
   optional string name = 1;
@@ -217,4 +211,26 @@ message SparseAdamSGDParameter { // SparseAdamSGDRule
   optional double beta2_decay_rate = 4 [ default = 0.999 ];
   optional double ada_epsilon = 5 [ default = 1e-08 ];
   repeated float weight_bounds = 6;
+}
+
+message GraphParameter {
+  optional int32 task_pool_size = 1 [ default = 24 ];
+  optional bool gpups_mode = 2 [ default = false ];
+  optional string gpups_graph_sample_class = 3
+      [ default = "CompleteGraphSampler" ];
+  optional string gpups_graph_sample_args = 4 [ default = "" ];
+  optional bool use_cache = 5 [ default = true ];
+  optional float cache_ratio = 6 [ default = 0.3 ];
+  optional int32 cache_ttl = 7 [ default = 5 ];
+  optional GraphFeature graph_feature = 8;
+  optional string table_name = 9 [ default = "" ];
+  optional string table_type = 10 [ default = "" ];
+  optional int32 gpups_mode_shard_num = 11 [ default = 127 ];
+  optional int32 gpu_num = 12 [ default = 1 ];
+}
+
+message GraphFeature {
+  repeated string name = 1;
+  repeated string dtype = 2;
+  repeated int32 shape = 3;
 }

@@ -109,15 +109,19 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    if (out_grad_var == nullptr) {
+    // NOTE(xiongkun03): In standalone executor, after each run, the
+    // var.tensor.holder will be delete instead of variable. So we need exam the
+    // IsInitialized().
+    if (out_grad_var == nullptr ||
+        !out_grad_var->Get<framework::LoDTensor>().IsInitialized()) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
       auto in_var_name = Input("X");
       auto *in_var = scope.FindVar(in_var_name);
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["dtype"] = in_var_tensor.type();
-      attrs["shape"] = framework::vectorize<int>(in_var_tensor.dims());
+      attrs["dtype"] = framework::TransToProtoVarType(in_var_tensor.dtype());
+      attrs["shape"] = phi::vectorize<int>(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(

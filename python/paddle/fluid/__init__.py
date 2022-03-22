@@ -69,8 +69,9 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
+
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace, CustomPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -93,7 +94,7 @@ from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
-from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer
+from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, HeterPipelineTrainer, MultiTrainer, HeterXpuTrainer
 from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
@@ -129,6 +130,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'CUDAPlace',
         'CUDAPinnedPlace',
         'NPUPlace',
+        'IPUPlace',
+        'MLUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -194,6 +197,11 @@ def __bootstrap__():
     if os.name == 'nt':
         remove_flag_if_exists('cpu_deterministic')
 
+    if core.is_compiled_with_ipu():
+        # Currently we request all ipu available for training and testing
+        #   finer control of pod of IPUs will be added later
+        read_env_flags += []
+
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     # Note(zhouwei25): sys may not have argv in some cases, 
     # Such as: use Python/C API to call Python from C++
@@ -218,3 +226,7 @@ if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+# NOTE(Aganlengzi): clean up KernelFactory in advance manually.
+atexit.register(core.clear_kernel_factory)
+# NOTE(wangran16): clean up DeviceManger in advance manually.
+atexit.register(core.clear_device_manager)

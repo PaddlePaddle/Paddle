@@ -433,8 +433,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG
@@ -545,6 +546,8 @@ PADDLE_DEFINE_EXPORTED_double(
  */
 PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
+PADDLE_DEFINE_EXPORTED_bool(use_curand, false, "Random OP use CURAND");
+
 /**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
@@ -652,6 +655,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
                             "Disable cudnn in conv2d");
+
+PADDLE_DEFINE_EXPORTED_bool(use_fast_math, false,
+                            "Whether to use fast math GPU functions.");
 #endif
 
 /**
@@ -662,8 +668,9 @@ PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn, false,
  * Example:
  * Note: Get host by name time.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
                              "The maximum time for get host by name time");
 #endif
@@ -682,6 +689,18 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * KP kernel related FLAG
+ * Name: FLAGS_run_kp_kernel
+ * Since Version: 2.3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in the
+ * Op.
+ * Note:
+ */
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, false,
+                            "It controls whether to run PaddlePaddle using KP");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_allreduce_record_one_event
  * Since Version: 2.2.0
@@ -698,6 +717,7 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
                             "events. Currently, only fuse allreduce supports "
                             "this. Otherwise, the precision may be wrong.");
 
+#ifdef PADDLE_WITH_CINN
 /*
  * CINN related FLAG
  * Name: FLAGS_use_cinn
@@ -708,6 +728,30 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
 PADDLE_DEFINE_EXPORTED_bool(
     use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_allow_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_allow_cinn_ops="mul;relu" would only cover `mul` and `relu`
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops, "",
+                              "It controls the cinn op subset to be used, "
+                              "which has the highest priority.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_deny_cinn_ops="mul;relu" would block `mul` and `relu` two ops
+ * when using CINN
+ */
+PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
+                              "It controls the cinn op subset to be not used.");
+#endif
+
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
@@ -717,3 +761,15 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: nccl_blocking_wait
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: nccl blocking wait.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif
