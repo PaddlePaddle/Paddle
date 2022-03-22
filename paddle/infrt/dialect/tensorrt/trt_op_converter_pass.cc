@@ -20,6 +20,28 @@
 namespace infrt {
 namespace trt {
 
+#ifdef INFRT_WITH_TRT
+
+#define STRING_TO_ENUM(enum_string) #enum_string
+#include <NvInfer.h>
+
+::mlir::IntegerAttr createNvinferEnumAttr(::mlir::PatternRewriter &rewriter,
+                                          int enum_value) {
+  return rewriter.getSI32IntegerAttr(enum_value);
+}
+
+#else  // INFRT_WITH_TRT
+
+#define STRING_TO_ENUM(enum_string) "#enum_string"
+
+::mlir::IntegerAttr createNvinferEnumAttr(::mlir::PatternRewriter &rewriter,
+                                          std::string enum_string) {
+  (void)enum_string;
+  return rewriter.getSI32IntegerAttr(-1);
+}
+
+#endif  // INFRT_WITH_TRT
+
 #include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
 struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
