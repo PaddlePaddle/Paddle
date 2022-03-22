@@ -284,7 +284,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
   // For oneDNN tensor we need to rotate shape 
   // so we create temporay tensor to share everything 
   // with "tensor" and rotate its shape
-  auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> DDim& dims {
+  auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> phi::DDim& dims {
     paddle::framework::Tensor dummy;
     dummy.ShareDataWith(tensor);
     return dummy.dims();
