@@ -20,12 +20,13 @@ import os
 import copy
 import numpy as np
 import paddle
+from paddle.fluid.framework import dygraph_only, in_dygraph_mode
 from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
+from paddle.fluid import core
 from paddle.fluid.contrib.sparsity.supported_layer_list import supported_layers_and_prune_func_map
 from paddle.fluid.contrib.sparsity.supported_layer_list import _default_pruning
-from paddle.fluid import core
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -35,19 +36,50 @@ __all__ = [
 ]
 
 
-def set_excluded_layers(main_program, param_names):
+def set_excluded_layers(param_names, main_program=None):
     r"""
     Set parameter name of layers which would not be pruned as sparse weights.
 
     Args:
+        param_names (list of string): A list contains names of parameters.
         main_program (Program, optional): Program with model definition and its parameters.
-        param_names (list): A list contains names of parameters.
+                                          If None is given, then it would be set as `paddle.static.default.default_main_program().
+                                          Default is None.
     Examples:
         .. code-block:: python
 
             import paddle
-            from paddle.static import sparsity
+            from paddle import sparsity
 
+            # Dynamic Graph
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.conv1 = paddle.nn.Conv2D(
+                        in_channels=3, out_channels=4, kernel_size=3, padding=2)
+                    self.linear1 = paddle.nn.Linear(4624, 32)
+                    self.linear2 = paddle.nn.Linear(32, 32)
+                    self.linear3 = paddle.nn.Linear(32, 10)
+
+                def forward(self, img):
+                    hidden = self.conv1(img)
+                    hidden = paddle.flatten(hidden, start_axis=1)
+                    hidden = self.linear1(hidden)
+                    hidden = self.linear2(hidden)
+                    prediction = self.linear3(hidden)
+                    return prediction
+
+            my_layer = MyLayer()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=my_layer.parameters())
+
+            # Need to set excluded layers before calling decorate
+            sparsity.set_excluded_layers(["linear_0"])
+
+            optimizer = sparsity.decorate(optimizer)
+
+
+            # Static Graph
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -63,7 +95,7 @@ def set_excluded_layers(main_program, param_names):
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
-                sparsity.set_excluded_layers(main_program, ["need_dense_fc"])
+                sparsity.set_excluded_layers(["need_dense_fc"], main_program)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 optimizer = paddle.static.amp.decorate(optimizer )
@@ -72,8 +104,10 @@ def set_excluded_layers(main_program, param_names):
                 optimizer = sparsity.decorate(optimizer)
                 optimizer.minimize(loss, startup_program)
     """
+    if main_program is None:
+        main_program = paddle.static.default_main_program()
     ASPHelper.set_excluded_layers(
-        main_program=main_program, param_names=param_names)
+        param_names=param_names, main_program=main_program)
 
 
 def reset_excluded_layers(main_program=None):
@@ -83,12 +117,44 @@ def reset_excluded_layers(main_program=None):
 
     Args:
         main_program (Program, optional): Program with model definition and its parameters.
+                                          If None is given, then this function would reset all excluded_layers.
+                                          Default is None.
         Examples:
         .. code-block:: python
 
             import paddle
-            from paddle.static import sparsity
+            from paddle import sparsity
 
+            # Dynamic Graph
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.conv1 = paddle.nn.Conv2D(
+                        in_channels=3, out_channels=4, kernel_size=3, padding=2)
+                    self.linear1 = paddle.nn.Linear(4624, 32)
+                    self.linear2 = paddle.nn.Linear(32, 32)
+                    self.linear3 = paddle.nn.Linear(32, 10)
+
+                def forward(self, img):
+                    hidden = self.conv1(img)
+                    hidden = paddle.flatten(hidden, start_axis=1)
+                    hidden = self.linear1(hidden)
+                    hidden = self.linear2(hidden)
+                    prediction = self.linear3(hidden)
+                    return prediction
+
+            my_layer = MyLayer()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=my_layer.parameters())
+
+            # Need to set excluded layers before calling decorate
+            sparsity.set_excluded_layers(["linear_0"])
+            sparsity.reset_excluded_layers()
+
+            optimizer = sparsity.decorate(optimizer)
+
+
+            # Static Graph
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -104,7 +170,7 @@ def reset_excluded_layers(main_program=None):
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
-                sparsity.set_excluded_layers(main_program, ["my_second_fc"])
+                sparsity.set_excluded_layers(["my_second_fc"], main_program)
                 # Now the weights of "my_second_fc" would not be included in Automatic SParsity's workflow.
 
             # Reset excluded_layers, all FC layers would be included into Automatic SParsity's workflow.
@@ -116,8 +182,10 @@ def reset_excluded_layers(main_program=None):
 
 def decorate(optimizer):
     r"""
-    Wrap the given optimizer as a OptimizerWithSparsityGuarantee, 
-    which would insert necessary ops for ASP workflows when calling minimize()
+    Wrap the given optimizer as a OptimizerWithSparsityGuarantee,
+    If runnig with dynamic graph mode. ASP would creates mask variables for supported parameters.
+    Else if in static graph mode, ASP would creates mask variables and inserts necessary ops 
+    when calling minimize()
 
     Args:
         optimizer (Optimizer): A Optimizer used for training.
@@ -127,12 +195,41 @@ def decorate(optimizer):
         .. code-block:: python
 
             import paddle
-            from paddle.static import sparsity
+            from paddle import sparsity
+
+            # Dynamic Graph
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.conv1 = paddle.nn.Conv2D(
+                        in_channels=3, out_channels=4, kernel_size=3, padding=2)
+                    self.linear1 = paddle.nn.Linear(4624, 32)
+                    self.linear2 = paddle.nn.Linear(32, 32)
+                    self.linear3 = paddle.nn.Linear(32, 10)
+
+                def forward(self, img):
+                    hidden = self.conv1(img)
+                    hidden = paddle.flatten(hidden, start_axis=1)
+                    hidden = self.linear1(hidden)
+                    hidden = self.linear2(hidden)
+                    prediction = self.linear3(hidden)
+                    return prediction
+
+            my_layer = MyLayer()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=my_layer.parameters())
+
+            # Need to set excluded layers before calling decorate
+            sparsity.set_excluded_layers(["linear_0"])
+            sparsity.reset_excluded_layers()
+
+            optimizer = sparsity.decorate(optimizer)
+
+            # Static Graph
+            paddle.enable_static()
 
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
-
-            paddle.enable_static()
 
             with paddle.static.program_guard(main_program, startup_program):
                 input_data = paddle.static.data(name='data', shape=[None, 128])
@@ -153,28 +250,21 @@ def decorate(optimizer):
     return ASPHelper.decorate(optimizer)
 
 
-def prune_model(main_program=None,
-                n=2,
-                m=4,
-                mask_algo='mask_1d',
-                with_mask=True):
+def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
     r"""
-    Pruning parameters of supported layers in :attr:`main_program` via 
+    Pruning parameters of supported layers in :attr:`model` via 
     specified mask generation function given by :attr:`mask_algo`. This 
     function supports both training and inference controlled by :attr:`with_mask`.
     If :attr:`with_mask` is True, it would also prune parameter related ASP mask Variables,
     else only prunes parameters.
 
-    *Note*: If parameters are supported and in FP16, please set :attr:`n`=2, :attr:`m`=4, 
-    if they in FP32, then :attr:`n`=1, :attr:`m`=2` to further enable Sparse Tensor Core acceleration.
-
-    *Note*: If calling this function with :attr:`with_mask`, it should call `OptimizerWithSparsityGuarantee.minimize` 
+    *Note*: (Static graph mode) If calling this function with :attr:`with_mask`, it should call `OptimizerWithSparsityGuarantee.minimize` 
     and initialization (`exe.run(startup_program`)) before (For successfully obtain mask Variable). 
     Typically set `with_mask` as true for training (have called `OptimizerWithSparsityGuarantee.minimize`) and false for 
     inference only. To obtain OptimizerWithSparsityGuarantee, please see `sparsity.decoreate()`.
 
     Args:
-        main_program (Program, optional): Program with model definition and its parameters. Default is `paddle.static.default_main_program()
+        model (Program|nn.Layer): Program with model definition and its parameters, or a object of `paddle.nn.Layer`.
         n (int): n of `n:m` sparse pattern.
         m (int): m of `n:m` sparse pattern.
         mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
@@ -186,8 +276,39 @@ def prune_model(main_program=None,
         .. code-block:: python
 
             import paddle
-            from paddle.static import sparsity
+            from paddle import sparsity
 
+            # Dynamic Graph
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.conv1 = paddle.nn.Conv2D(
+                        in_channels=3, out_channels=4, kernel_size=3, padding=2)
+                    self.linear1 = paddle.nn.Linear(4624, 32)
+                    self.linear2 = paddle.nn.Linear(32, 32)
+                    self.linear3 = paddle.nn.Linear(32, 10)
+
+                def forward(self, img):
+                    hidden = self.conv1(img)
+                    hidden = paddle.flatten(hidden, start_axis=1)
+                    hidden = self.linear1(hidden)
+                    hidden = self.linear2(hidden)
+                    prediction = self.linear3(hidden)
+                    return prediction
+
+            my_layer = MyLayer()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=my_layer.parameters())
+
+            # Need to set excluded layers before calling decorate
+            sparsity.set_excluded_layers(["linear_0"])
+            sparsity.reset_excluded_layers()
+
+            optimizer = sparsity.decorate(optimizer)
+            # Must call `sparsity.decorate` first before calling `sparsity.prune_model`
+            sparsity.prune_model(my_layer, mask_algo='mask_2d_best')
+
+            # Static Graph
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -203,7 +324,7 @@ def prune_model(main_program=None,
 
                 # Setup exluded layers out from ASP workflow.
                 # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
-                sparsity.set_excluded_layers(main_program, ["need_dense_fc"])
+                sparsity.set_excluded_layers(["need_dense_fc"], main_program)
 
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 optimizer = paddle.static.amp.decorate(optimizer )
@@ -221,15 +342,8 @@ def prune_model(main_program=None,
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
             sparsity.prune_model(main_program, mask_algo='mask_2d_best')
     """
-    if main_program is not None and hasattr(
-            main_program,
-            "distributed_info_") and main_program.distributed_info_[
-                "sharding_degree"] > 1 and paddle.fluid.is_compiled_with_cuda():
-        gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-        place = paddle.CUDAPlace(gpu_id)
-    else:
-        device = paddle.device.get_device()
-        place = paddle.set_device(device)
+    device = paddle.device.get_device()
+    place = paddle.set_device(device)
 
     MaskAlgo_mapping = {
         'mask_1d': sparsity.MaskAlgo.MASK_1D,
@@ -237,11 +351,26 @@ def prune_model(main_program=None,
         'mask_2d_best': sparsity.MaskAlgo.MASK_2D_BEST
     }
     assert (mask_algo in MaskAlgo_mapping), \
-           'The "mask_algo" should be one of ["mask_1d", "mask_2d_greedy", "mask_2d_best"]'
+        'The "mask_algo" should be one of ["mask_1d", "mask_2d_greedy", "mask_2d_best"]'
 
-    return ASPHelper.prune_model(
-        place=place,
-        main_program=main_program,
+    prune_func = None
+    if isinstance(model, paddle.nn.Layer):
+        prune_func = ASPHelper.prune_model_by_layer
+    elif isinstance(model, paddle.static.Program):
+        prune_func = ASPHelper.prune_model_by_program
+        if hasattr(model, "distributed_info_") and \
+           model.distributed_info_["sharding_degree"] > 1 and \
+           paddle.fluid.is_compiled_with_cuda():
+            gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+            place = paddle.CUDAPlace(gpu_id)
+    else:
+        raise TypeError(
+            "model should be paddle.nn.Layer or paddle.static.Program, but got {}".
+            format(type(model)))
+
+    return prune_func(
+        place,
+        model,
         n=n,
         m=m,
         mask_algo=MaskAlgo_mapping[mask_algo],
@@ -300,7 +429,7 @@ class ASPHelper(object):
     __asp_info = {}
 
     @classmethod
-    def set_excluded_layers(cls, main_program, param_names):
+    def set_excluded_layers(cls, param_names, main_program):
         r"""
         This is the implementation of `sparsity.set_excluded_layers`, for details please see explanation in `sparsity.set_excluded_layers`.
         """
@@ -313,8 +442,8 @@ class ASPHelper(object):
         This is the implementation of `sparsity.reset_excluded_layers`, for details please see explanation in `sparsity.reset_excluded_layers`.
         """
         if main_program is None:
-            for asp_info in cls.__asp_info:
-                asp_info.reset_excluded_layers()
+            for prog in cls.__asp_info:
+                cls.__asp_info[prog].reset_excluded_layers()
         else:
             cls._get_program_asp_info(main_program).reset_excluded_layers()
 
@@ -323,16 +452,21 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.decorate`, for details please see explanation in `sparsity.decorate`.
         """
+        if in_dygraph_mode():
+            main_prog = paddle.static.default_main_program()
+            startup_prog = paddle.static.default_startup_program()
+            ASPHelper._create_mask_variables(main_prog, startup_prog,
+                                             optimizer._parameter_list)
         return OptimizerWithSparsityGuarantee(optimizer)
 
     @classmethod
-    def prune_model(cls,
-                    place,
-                    main_program=None,
-                    n=2,
-                    m=4,
-                    mask_algo=sparsity.MaskAlgo.MASK_1D,
-                    with_mask=True):
+    def prune_model_by_program(cls,
+                               place,
+                               main_program=None,
+                               n=2,
+                               m=4,
+                               mask_algo=sparsity.MaskAlgo.MASK_1D,
+                               with_mask=True):
         r"""
         This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
         """
@@ -366,8 +500,56 @@ class ASPHelper(object):
                         np.array(weight_mask_tensor).dtype)
                     weight_mask_tensor.set(weight_sparse_mask, place)
                 asp_info.update_masks(param.name, weight_sparse_mask)
-
         return asp_info.masks.copy()
+
+    @classmethod
+    def prune_model_by_layer(cls,
+                             place,
+                             layer,
+                             n=2,
+                             m=4,
+                             mask_algo=sparsity.MaskAlgo.MASK_1D,
+                             with_mask=True):
+        r"""
+        This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
+        """
+        if in_dygraph_mode():
+            main_program = paddle.static.default_main_program()
+            asp_info = cls._get_program_asp_info(main_program)
+
+            for param in layer.parameters():
+                if ASPHelper._is_supported_layer(main_program, param.name):
+                    weight_nparray = param.numpy()
+
+                    prune_func = ASPHelper._get_prune_func_by_name(param.name)
+
+                    weight_pruned_nparray, weight_sparse_mask = \
+                        prune_func(weight_nparray, m, n, mask_algo, param.name)
+
+                    weight_pruned_nparray = weight_pruned_nparray.astype(
+                        weight_nparray.dtype)
+                    param.set_value(weight_pruned_nparray)
+
+                    if with_mask:
+                        weight_mask_param = asp_info.mask_vars.get(param.name,
+                                                                   None)
+                        assert weight_mask_param is not None, \
+                            'Cannot find {} variable, please call sparsity.decorate() to' \
+                            ' decorate your optimizer first!'.format(ASPHelper._get_mask_name(param.name))
+                        weight_mask_param.set_value(weight_sparse_mask)
+
+                    asp_info.update_masks(param.name, weight_sparse_mask)
+
+            return asp_info.masks.copy()
+        else:
+            for param in layer.parameters():
+                return ASPHelper.prune_model_by_program(
+                    place,
+                    param.block.program,
+                    n=n,
+                    m=m,
+                    mask_algo=mask_algo,
+                    with_mask=with_mask)
 
     @staticmethod
     def _get_mask_name(param_name):
@@ -393,13 +575,15 @@ class ASPHelper(object):
         """
         var_list = []
         for param in main_program.global_block().all_parameters():
-            if ASPHelper.MASK_APPENDDED_NAME not in param.name:
+            param_name_list = param.name.split('.')
+
+            if ASPHelper.MASK_APPENDDED_NAME not in param_name_list:
                 var_list.append(param)
         return var_list
 
     @classmethod
     def _get_program_asp_info(cls, main_program):
-        if not main_program in cls.__asp_info:
+        if main_program not in cls.__asp_info:
             cls.__asp_info[main_program] = ProgramASPInfo()
         return cls.__asp_info[main_program]
 
@@ -508,14 +692,37 @@ class ASPHelper(object):
 
         optimizer_ops, params_and_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-        cls._create_mask_variables(main_program, startup_program,
-                                   params_and_grads)
-        cls._insert_sparse_mask_ops(main_program, params_and_grads)
+
+        params_only = [pg[0] for pg in params_and_grads]
+        cls._create_mask_variables(main_program, startup_program, params_only)
+        cls._insert_sparse_mask_ops(main_program, params_only)
         return optimizer_ops, params_and_grads
 
     @classmethod
-    def _create_mask_variables(cls, main_program, startup_program,
-                               params_and_grads):
+    @dygraph_only
+    def _step(cls, optimizer):
+        r"""
+        This function is a decorator of `step` function in `Optimizer`.
+        There are three steps:
+
+        1. Call :attr:`optimizer`.step()
+        2. Mask parameters with sparse masks.
+
+        *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`. 
+        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph 
+        cannot be modified anymore.)
+
+        Args:
+            optimizer (Optimizer): A Optimizer used for training.
+        """
+        optimizer.step()
+        main_prog = paddle.static.default_main_program()
+        with paddle.fluid.dygraph.no_grad():
+            ASPHelper._insert_sparse_mask_ops(main_prog,
+                                              optimizer._parameter_list)
+
+    @classmethod
+    def _create_mask_variables(cls, main_program, startup_program, params):
         r"""
         Create sparse mask Tensors according to supported layers in :attr:`main_program`.
         This function is called in second step of `ASPHelper._minimize`
@@ -523,44 +730,41 @@ class ASPHelper(object):
         Args:
             main_program (Program): Program with model definition and its parameters.
             startup_program (Program): Program for initializing parameters.
-            params_and_grads (list): Variable pairs of parameters and their gradients.
+            params (list): Variable parameters.
         """
         asp_info = cls._get_program_asp_info(main_program)
         with program_guard(main_program, startup_program):
-            for param_and_grad in params_and_grads:
-                if ASPHelper._is_supported_layer(main_program,
-                                                 param_and_grad[0].name):
-                    mask_param = layers.create_parameter(
-                        name=ASPHelper._get_mask_name(param_and_grad[0].name),
-                        shape=param_and_grad[0].shape,
-                        dtype=param_and_grad[0].dtype,
-                        default_initializer=ConstantInitializer(value=1.0))
-                    mask_param.stop_gradient = True
-                    mask_param.trainable = False
-                    asp_info.update_mask_vars(param_and_grad[0].name,
-                                              mask_param)
+            for param in params:
+                if ASPHelper._is_supported_layer(main_program, param.name):
+                    if param.name not in asp_info.mask_vars:
+                        mask_param = layers.create_parameter(
+                            name=ASPHelper._get_mask_name(param.name),
+                            shape=param.shape,
+                            dtype=param.dtype,
+                            default_initializer=ConstantInitializer(value=1.0))
+                        mask_param.stop_gradient = True
+                        mask_param.trainable = False
+                        asp_info.update_mask_vars(param.name, mask_param)
 
     @classmethod
-    def _insert_sparse_mask_ops(cls, main_program, param_grads):
+    def _insert_sparse_mask_ops(cls, main_program, params):
         r"""
         Insert masking ops in the end of parameters update.
         This function is called in third step of `ASPHelper._minimize`
 
         Args:
             main_program (Program): Program with model definition and its parameters.
-            params_and_grads (list): Variable pairs of parameters and their gradients.
+            params (list): Variable parameters.
         """
         block = main_program.global_block()
         asp_info = cls._get_program_asp_info(main_program)
-        for param_grad in param_grads:
-            if param_grad[0].name in asp_info.mask_vars:
+        for param in params:
+            if param.name in asp_info.mask_vars:
                 block.append_op(
                     type='elementwise_mul',
-                    inputs={
-                        "X": param_grad[0],
-                        'Y': asp_info.mask_vars[param_grad[0].name]
-                    },
-                    outputs={'Out': param_grad[0]},
+                    inputs={"X": param,
+                            'Y': asp_info.mask_vars[param.name]},
+                    outputs={'Out': param},
                     attrs={
                         'axis': -1,
                         'use_mkldnn': False,
@@ -579,8 +783,9 @@ class OptimizerWithSparsityGuarantee(object):
 
     def __init__(self, optimizer):
         self._optimizer = optimizer
-        self._learning_rate = optimizer._learning_rate
-        self._learning_rate_map = optimizer._learning_rate_map
+
+    def __getattr__(self, item):
+        return getattr(self._optimizer, item)
 
     def minimize(self,
                  loss,
@@ -605,3 +810,55 @@ class OptimizerWithSparsityGuarantee(object):
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+    @dygraph_only
+    def step(self):
+        r"""
+        This function is a decorator of `step` function in `Optimizer`.
+        There are three steps:
+
+        1. Call :attr:`optimizer`.step()
+        2. Mask parameters with sparse masks.
+
+        *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`. 
+        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph 
+        cannot be modified anymore.)
+
+        Args:
+            optimizer (Optimizer): A Optimizer used for training.
+        """
+        ASPHelper._step(self._optimizer)
+
+    @dygraph_only
+    def state_dict(self):
+        r"""
+        This function is a decorator of `state_dict` function in `Optimizer`.
+
+        Returns:
+            state_dict(dict) : dict contains all the Tensor used by optimizer
+        """
+        state_dict = self._optimizer.state_dict()
+        asp_info = ASPHelper._get_program_asp_info(
+            paddle.static.default_main_program())
+        for param_name, var in asp_info.mask_vars.items():
+            state_dict.update({ASPHelper._get_mask_name(param_name): var})
+        return state_dict
+
+    @dygraph_only
+    def set_state_dict(self, state_dict):
+        r"""
+        This function is a decorator of `set_state_dict` function in `Optimizer`.
+        Args: 
+            state_dict(dict) : Dict contains all the Tensor needed by optimizer
+        Return:
+            None
+        """
+        asp_info = ASPHelper._get_program_asp_info(
+            paddle.static.default_main_program())
+        for param_name, var in asp_info.mask_vars.items():
+            param_mask_name = ASPHelper._get_mask_name(param_name)
+            assert param_mask_name in state_dict, \
+                "The {} is not found.".format(param_mask_name)
+            var.set_value(state_dict[param_mask_name])
+            asp_info.update_masks(param_name, var.numpy())
+        return self._optimizer.set_state_dict(state_dict)

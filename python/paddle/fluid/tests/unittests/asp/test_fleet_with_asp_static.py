@@ -1,5 +1,5 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,62 @@ else:
 paddle.enable_static()
 
 
-class TestFleetWithASP(unittest.TestCase):
+class TestFleetWithASPStatic(unittest.TestCase):
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
+        os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+
+    def net(self, main_prog, startup_prog):
+        with fluid.program_guard(main_prog, startup_prog):
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            avg_cost = paddle.mean(x=cost)
+
+            strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy.asp = True
+        return avg_cost, strategy, input_x, input_y
+
+    def test_with_asp(self):
+        fleet.init(is_collective=True)
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy, input_x, input_y = self.net(train_prog,
+                                                        startup_prog)
+
+        with fluid.program_guard(train_prog, startup_prog):
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy)
+            optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+
+        exe = fluid.Executor(place)
+        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe.run(startup_prog)
+
+        sparsity.prune_model(train_prog)
+
+        data = (np.random.randn(64, 32), np.random.randint(2, size=(64, 1)))
+        exe.run(train_prog, feed=feeder.feed([data]))
+
+        for param in train_prog.global_block().all_parameters():
+            if ASPHelper._is_supported_layer(train_prog, param.name):
+                mat = np.array(fluid.global_scope().find_var(param.name)
+                               .get_tensor())
+                self.assertTrue(
+                    paddle.fluid.contrib.sparsity.check_sparsity(
+                        mat.T, n=2, m=4))
+
+
+class TestFleetWithASPAMPStatic(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
