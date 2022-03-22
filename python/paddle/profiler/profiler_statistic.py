@@ -186,9 +186,9 @@ class TimeRangeSummary:
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns))
                 self.call_times[hostnode.type] += 1
-                if hostnode.type == TracerEventType.Operator and any(
-                    [name in hostnode.name for name in
-                     _CommunicationOpName]):  # special case, communication op
+                if hostnode.type == TracerEventType.Operator and any([
+                        name in hostnode.name for name in _CommunicationOpName
+                ]):  # special case, communication op
                     CPUTimeRange[TracerEventType.Communication].append(
                         (hostnode.start_ns, hostnode.end_ns))
                     self.call_times[TracerEventType.Communication] += 1
