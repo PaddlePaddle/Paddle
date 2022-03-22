@@ -79,7 +79,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
     def setUp(self):
         x = np.random.randint(0, 16, size=(1000, 2)).astype("int64")
         y = count(x, 16)
-        cum_count = np.cumsum(y)
+        cum_count = np.cumsum(y).astype(x.dtype)
         self.op_type = "assign_pos"
         self.inputs = {
             'X': x,
@@ -120,7 +120,7 @@ class TestAssignPosAPI(unittest.TestCase):
     def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
-        cum_count = paddle.to_tensor(self.cum_count)
+        cum_count = paddle.to_tensor(self.cum_count).astype(x.dtype)
 
         out = utils._assign_pos(x, cum_count)
         assert_allclose(out.numpy(), self.out, self.cum_count)
