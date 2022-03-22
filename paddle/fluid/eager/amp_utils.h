@@ -37,8 +37,8 @@ static inline paddle::experimental::DataType GetPromoteType(
       }
     }
   }
-  // NOTE(juncai): moving_average_abs_max_scale only consider the
-  // dtype of input(X)
+  // NOTE(juncai): moving_average_abs_max_scale only consider the dtype of
+  // input(X)
   if (api_name == "moving_average_abs_max_scale") {
     if (amp_tensors_vector[0][0].dtype() ==
         paddle::experimental::DataType::FLOAT16) {
@@ -166,10 +166,10 @@ std::vector<paddle::experimental::Tensor> AmpAutoCasts(
       paddle::framework::AttributeMap cast_attrs = {
           {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
           {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-      inputs_casted.push_back(
+      inputs_casted.emplace_back(
           std::move(cast_dygraph_function(input, cast_attrs)));
     } else {
-      inputs_casted.push_back(input);
+      inputs_casted.emplace_back(input);
     }
   }
   return inputs_casted;
@@ -198,7 +198,6 @@ paddle::experimental::Tensor AmpAutoCast(
       }
     }
   }
-
   if (NeedCast(input, dst_dtype)) {
     paddle::framework::AttributeMap cast_attrs = {
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
