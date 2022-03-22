@@ -37,10 +37,10 @@ class RequantMkldnnFusePass : public FusePassBase {
                            Tensor* tensor) const;
 
   void GetQuantInfo(ir::Graph* graph, Scope* scope,
-                    StringTensorPtrMap* weight_thresholds,
+                    StringTensorMap* weight_thresholds,
                     StringPairMap* var_quant_scales) const;
 
-  std::vector<float> GetScales(const Tensor& tensor, int axis) const;
+  std::vector<float> GetScales(Tensor* tensor, int axis) const;
 
   void ComputeVarScales(ir::Graph* graph, Scope* scope,
                         const std::unordered_set<std::string> ops,

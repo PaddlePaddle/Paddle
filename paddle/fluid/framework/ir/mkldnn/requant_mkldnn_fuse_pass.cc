@@ -72,11 +72,11 @@ void RequantMkldnnFusePass::GetQuantInfo(
   }
 }
 
-std::vector<float> RequantMkldnnFusePass::GetScales(const Tensor& tensor,
+std::vector<float> RequantMkldnnFusePass::GetScales(Tensor* tensor,
                                                     int axis) const {
   PADDLE_ENFORCE_LT(axis, 2, "The input axis is required to be less than 2.");
-  auto data = tensor.mutable_data<float>(platform::CPUPlace());
-  const auto dims = tensor.dims();
+  auto data = tensor->mutable_data<float>(platform::CPUPlace());
+  const auto dims = tensor->dims();
   PADDLE_ENFORCE_EQ(dims.size(), 2,
                     "The input tensor's rank is required to be 2.");
 
@@ -143,7 +143,7 @@ void RequantMkldnnFusePass::ComputeVarScales(
         tmp_data[i] = std::fabs(weight_data[i]);
       }
 
-      auto scales_v = GetScales(tmp_tensor, axis);
+      auto scales_v = GetScales(&tmp_tensor, axis);
       Tensor tensor;
       GetTensorFromVector(scales_v, &tensor);
       auto pair = std::make_pair(false, tensor);
