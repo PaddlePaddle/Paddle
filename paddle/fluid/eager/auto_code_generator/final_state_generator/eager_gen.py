@@ -797,7 +797,6 @@ def GenerateNodeCreationCodes(
 
     # SetAttributes
     set_attributes_list = []
-<<<<<<< HEAD
     forward_attrs_name_set = set()
     for name, _, _, _ in forward_attrs_list:
         forward_attrs_name_set.add(name)
@@ -807,10 +806,6 @@ def GenerateNodeCreationCodes(
             set_attributes = f"        grad_node->SetAttribute{name}({name});"
         else:
             set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
-=======
-    for name, _, _, _ in backward_attrs_list:
-        set_attributes = f"            grad_node->SetAttribute{name}({name});"
->>>>>>> d2aaa7512b527d376b715eb097918dce336b0d87
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
 
