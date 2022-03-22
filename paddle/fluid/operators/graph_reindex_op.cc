@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -39,12 +39,23 @@ class GraphReindexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The destination nodes of the input graph.");
     AddInput("Neighbors", "The neighbor nodes of the destination nodes `X`.");
     AddInput("Count", "The number of neighbor nodes of each destination node.");
-
+    // Note(daisiming): If using buffer hashtable, we must ensure the number of
+    // nodes of
+    //                  the input graph should be no larger than maximum(int32).
+    AddInput("HashTable_Value",
+             "One of the buffer tensor of hashtable for reindex");
+    AddInput("HashTable_Index",
+             "One of the buffer tensor of hashtable for reindex");
+    AddAttr<bool>("flag_buffer_hashtable",
+                  "Define whether using the buffer hashtable.")
+        .SetDefault(false);
     AddOutput("Reindex_Src",
               "The source node index of graph edges after reindex.");
     AddOutput("Reindex_Dst",
               "The destination node index of graph edges after reindex.");
     AddOutput("Out_Nodes", "The original index of graph nodes before reindex");
+    AddOutput("HashTable_Value_Out", "");
+    AddOutput("HashTable_Index_Out", "");
 
     AddComment(R"DOC(
 Graph Reindex operator.

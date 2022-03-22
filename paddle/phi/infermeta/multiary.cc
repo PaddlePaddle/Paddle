@@ -686,6 +686,61 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes,
+                           MetaTensor* hashtable_value_out,
+                           MetaTensor* hashtable_index_out) {
+  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
+                                   std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  VLOG(0) << "Into InferMeta";
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
+  if (flag_buffer_hashtable) {
+    VLOG(0) << "Enter hashtable shape check";
+    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
+    hashtable_value_out->set_dims(hashtable_value.dims());
+    hashtable_value_out->set_dtype(hashtable_value.dtype());
+    hashtable_index_out->set_dims(hashtable_index.dims());
+    hashtable_index_out->set_dtype(hashtable_index.dtype());
+  }
+  VLOG(0) << "Finish hashtable shape check";
+
+  reindex_src->set_dims({-1});
+  reindex_src->set_dtype(neighbors.dtype());
+  reindex_dst->set_dims({-1});
+  reindex_dst->set_dtype(neighbors.dtype());
+  out_nodes->set_dims({-1});
+  out_nodes->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);

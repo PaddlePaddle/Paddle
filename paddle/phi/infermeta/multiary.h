@@ -140,4 +140,16 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& y,
                     MetaTensor* out);
 
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes,
+                           MetaTensor* hashtable_value_out,
+                           MetaTensor* hashtable_index_out);
+
 }  // namespace phi

@@ -70,8 +70,12 @@ def graph_reindex(x, neighbors, count, name=None):
     """
 
     if in_dygraph_mode():
-        reindex_src, reindex_dst, out_nodes = \
-            _C_ops.graph_reindex(x, neighbors, count)
+        print("Enter python funcs: graph_reindex")
+        reindex_src, reindex_dst, out_nodes, _, _ = \
+            _C_ops.graph_reindex(x, neighbors, count,
+                                 paddle.to_tensor([]),
+                                 paddle.to_tensor([]),
+                                 "flag_buffer_hashtable", False)
         return reindex_src, reindex_dst, out_nodes
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
@@ -85,12 +89,17 @@ def graph_reindex(x, neighbors, count, name=None):
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="graph_reindex",
-        inputs={"X": x,
-                "Neighbors": neighbors,
-                "Count": count},
+        inputs={
+            "X": x,
+            "Neighbors": neighbors,
+            "Count": count,
+            "HashTable_Value": None,
+            "HashTable_Index": None
+        },
         outputs={
             "Reindex_Src": reindex_src,
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes
-        })
+        },
+        attrs={"flag_buffer_hashtable": False})
     return reindex_src, reindex_dst, out_nodes

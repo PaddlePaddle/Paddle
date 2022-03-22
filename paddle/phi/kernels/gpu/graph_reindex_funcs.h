@@ -89,6 +89,15 @@ __global__ void BuildHashTable(
 }
 
 template <typename T>
+__global__ void BuildHashTable(const T* items, int num_items, int* key_index) {
+  CUDA_KERNEL_LOOP(index, num_items) {
+    atomicMin(
+        reinterpret_cast<unsigned int*>(&key_index[items[index]]),  // NOLINT
+        static_cast<unsigned int>(index));                          // NOLINT
+  }
+}
+
+template <typename T>
 __global__ void GetItemIndexCount(const T* items,
                                   int* item_count,
                                   int num_items,
@@ -98,6 +107,18 @@ __global__ void GetItemIndexCount(const T* items,
   CUDA_KERNEL_LOOP(i, num_items) {
     int64_t pos = Search(items[i], keys, size);
     if (key_index[pos] == i) {
+      item_count[i] = 1;
+    }
+  }
+}
+
+template <typename T>
+__global__ void GetItemIndexCount(const T* items,
+                                  int* item_count,
+                                  int num_items,
+                                  int* key_index) {
+  CUDA_KERNEL_LOOP(i, num_items) {
+    if (key_index[items[i]] == i) {
       item_count[i] = 1;
     }
   }
@@ -122,6 +143,21 @@ __global__ void FillUniqueItems(const T* items,
 }
 
 template <typename T>
+__global__ void FillUniqueItems(const T* items,
+                                int num_items,
+                                T* unique_items,
+                                const int* item_count,
+                                int* values,
+                                int* key_index) {
+  CUDA_KERNEL_LOOP(i, num_items) {
+    if (key_index[items[i]] == i) {
+      values[items[i]] = item_count[i];
+      unique_items[item_count[i]] = items[i];
+    }
+  }
+}
+
+template <typename T>
 __global__ void ReindexSrcOutput(T* src_output,
                                  int num_items,
                                  int64_t size,
@@ -131,6 +167,13 @@ __global__ void ReindexSrcOutput(T* src_output,
     int64_t pos = Search(src_output[i], keys, size);
     src_output[i] = values[pos];
   }
+}
+
+template <typename T>
+__global__ void ReindexSrcOutput(T* src_output,
+                                 int num_items,
+                                 const int* values) {
+  CUDA_KERNEL_LOOP(i, num_items) { src_output[i] = values[src_output[i]]; }
 }
 
 template <typename T>
