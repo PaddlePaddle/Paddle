@@ -12,21 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/reverse_kernel.h"
 
-#include <string>
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/reverse_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void GraphSendRecvKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& src_index,
-                         const DenseTensor& dst_index,
-                         const std::string& pool_type,
-                         int64_t out_size,
-                         DenseTensor* out,
-                         DenseTensor* dst_count);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(reverse,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ReverseKernel,
+                   int,
+                   uint8_t,
+                   int64_t,
+                   bool,
+                   float,
+                   double) {}

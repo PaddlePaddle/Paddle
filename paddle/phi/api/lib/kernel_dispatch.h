@@ -33,7 +33,7 @@ namespace paddle {
 namespace experimental {
 
 namespace detail {
-BackendSet GetTensorBackendSet(const Tensor& t);
+BackendSet GetTensorBackendSet(const phi::TensorBase& t);
 std::size_t CountLeadingZeros(uint64_t val);
 }  // namespace detail
 
@@ -93,11 +93,13 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
-    key_set.backend_set = key_set.backend_set | detail::GetTensorBackendSet(x);
-    // TODO(chenweihang): selecte multi layout and dtype
-    key_set.layout = x.layout();
-    key_set.dtype = x.type();
-    dtype_set = dtype_set | DataTypeSet(x.dtype());
+    const phi::TensorBase& tensor = *x.impl();
+    key_set.backend_set =
+        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    // TODO(chenweihang): select multi layout and dtype
+    key_set.layout = tensor.layout();
+    key_set.dtype = tensor.dtype();
+    dtype_set = dtype_set | DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
@@ -105,11 +107,12 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 
   void operator()(const std::vector<Tensor>& x) {
+    const phi::TensorBase& tensor = *x.at(0).impl();
     key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(x[0]);
-    // TODO(chenweihang): selecte multi layout and dtype
-    key_set.layout = x[0].layout();
-    key_set.dtype = x[0].type();
+        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    // TODO(chenweihang): select multi layout and dtype
+    key_set.layout = tensor.layout();
+    key_set.dtype = tensor.dtype();
   }
 
   // skip other type args, these args don't used in kernel selection
@@ -154,7 +157,7 @@ DataType ParseDataType(const Tensor& tensor);
 DataType ParseDataType(const std::vector<Tensor>& tensors);
 DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
 
-Backend ParseBackend(Backend backend);
+Backend ParseBackend(const Place& place);
 Backend ParseBackend(const Tensor& tensor);
 template <typename T, typename... Args>
 Backend ParseBackend(T t, Args... args) {
@@ -163,7 +166,7 @@ Backend ParseBackend(T t, Args... args) {
   return static_cast<Backend>(64 -
                               detail::CountLeadingZeros(backend_set.bitset()));
 }
-Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor);
+Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
 DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);

@@ -14,20 +14,16 @@
 
 #pragma once
 
-#include <string>
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/utils/optional.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void GraphSendRecvGradKernel(const Context& ctx,
-                             const DenseTensor& out_grad,
-                             const DenseTensor& x,
-                             paddle::optional<const DenseTensor&> out,
-                             const DenseTensor& src_index,
-                             const DenseTensor& dst_index,
-                             paddle::optional<const DenseTensor&> dst_count,
-                             const std::string& pool_type,
-                             DenseTensor* x_grad);
+void SparseWeightEmbeddingKernel(const Context& ctx,
+                                 const DenseTensor& inputx,
+                                 const SelectedRows& weight,
+                                 int64_t padding_idx,
+                                 DenseTensor* out);
+
 }  // namespace phi

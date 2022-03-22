@@ -12,21 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <string>
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void GraphSendRecvKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& src_index,
-                         const DenseTensor& dst_index,
-                         const std::string& pool_type,
-                         int64_t out_size,
-                         DenseTensor* out,
-                         DenseTensor* dst_count);
+KernelSignature ReverseOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorVectorInput("X")) {
+    return KernelSignature("reverse_array", {"X"}, {"axis"}, {"Out"});
+  } else {
+    return KernelSignature("reverse", {"X"}, {"axis"}, {"Out"});
+  }
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(reverse, phi::ReverseOpArgumentMapping);
