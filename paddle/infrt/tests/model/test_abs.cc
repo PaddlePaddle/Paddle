@@ -72,7 +72,7 @@ TEST(ABS_MODEL, convert_and_execute) {
   context->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context->getOrLoadDialect<infrt::InfrtDialect>();
   context->getOrLoadDialect<infrt::dt::DTDialect>();
-  context->getOrLoadDialect<mlir::pd::PaddleDialect>();
+  context->getOrLoadDialect<infrt::pd::PaddleDialect>();
 
   context->getOrLoadDialect<infrt::phi::PHIDenseTensorDialect>();
   context->getOrLoadDialect<infrt::phi::PHICPUKernelDialect>();

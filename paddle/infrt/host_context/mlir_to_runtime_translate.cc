@@ -298,13 +298,20 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
     // add a naive implement.
     for (int i = 0, e = op->getNumOperands(); i < e; ++i) {
       auto operand = op->getOperand(i);
+      Value* arg_value{nullptr};
       if (operand.isa<mlir::BlockArgument>()) {
         mlir::BlockArgument arg = operand.dyn_cast<mlir::BlockArgument>();
-        Value* arg_value = GetValue(arg);
-        if (arg_value->is_type<phi::DenseTensor>()) {
-          impl_->runtime->FeedInArgs(
-              std::make_pair(std::to_string(i), ValueRef(arg_value)));
+        arg_value = GetValue(arg);
+      } else {
+        arg_value = GetValue(operand);
+        if (!arg_value) {
+          auto upstream_op = operand.getDefiningOp();
+          arg_value = GetOpResult(upstream_op);
         }
+      }
+      if (arg_value->is_type<phi::DenseTensor>()) {
+        impl_->runtime->FeedInArgs(
+            std::make_pair(std::to_string(i), ValueRef(arg_value)));
       }
     }
 #else
@@ -344,18 +351,26 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   auto attrs = op->getAttrs();
 
   // MLIR's underlying attr storage type is `Builtin_Dictionary`, and its
-  // elements
-  // are sorted by name. The following code adapts the order of function
-  // signatures
-  // of the phi operator library.
+  // elements are sorted by name. The following code adapts the order of
+  // function signatures of the phi operator library.
   llvm::SmallVector<Value*, 4> tmp;
   tmp.resize(attrs.size());
   const std::string& kernel_name = op->getName().getStringRef().str();
   const auto& attr_names = kernel_registry.GetAttrNameList(kernel_name);
-  if (attrs.size() && attr_names.empty()) {
-    LOG(WARNING) << "The kernel `" << kernel_name
-                 << "` has no specified attr order.";
+  if (attrs.size()) {
+    if (attr_names.empty()) {
+      LOG(WARNING) << "The kernel `" << kernel_name
+                   << "` has not been registered with "
+                      "`KernelRegistry::AddKernelWithAttrs()`.";
+    } else {
+      CHECK_EQ(attr_names.size(), attrs.size())
+          << "The number of kernel `" << kernel_name
+          << "` attributes specified by mlir (" << attrs.size()
+          << ") is inconsistent with the registration (" << attr_names.size()
+          << ").";
+    }
   }
+
   auto get_offset = [](const char* attr,
                        const std::vector<const char*>& names,
                        const std::string& kernel_name) -> int {
@@ -378,7 +393,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
     } else {
       offset = i;
     }
-    CHECK_NE(offset, -1);
+    CHECK_GT(offset, -1);
     if (auto v = EmitAttribute<int32_t>(attr.getValue())) {
       tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<int64_t>(attr.getValue())) {
