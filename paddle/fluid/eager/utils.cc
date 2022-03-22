@@ -212,6 +212,33 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
   return res;
 }
 
+void EagerUtils::HandleViewBetweenInputAndOutput(
+    const std::shared_ptr<EagerVariable>& input_var,
+    const std::shared_ptr<EagerVariable>& view_output_var) {
+  PADDLE_ENFORCE_EQ(
+      input_var->Var().IsInitialized(), true,
+      paddle::platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized!", input_var->name()));
+
+  if (phi::DenseTensor::classof(input_var->GetTensorBase().get())) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_var->GetTensorBase());
+    PADDLE_ENFORCE_EQ(
+        input_dense_tensor->IsInitialized(), true,
+        paddle::platform::errors::InvalidArgument(
+            "DenseTensor %s has not been initialized!", input_var->name()));
+
+    auto* view_output_tensor =
+        view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
+    view_output_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_tensor->ShareInplaceVersionCounterWith(*input_dense_tensor);
+
+    VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
+            << ") and Input Var(" << input_var->name()
+            << "), share allocation and inplace version.";
+  }
+}
+
 void EagerUtils::ModifyInplaceInput(
     const std::shared_ptr<EagerVariable>& inplace_variable,
     paddle::experimental::Tensor* inplace_tensor) {

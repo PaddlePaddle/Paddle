@@ -1586,9 +1586,31 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       }
     }
   }
-  generated_function_body += "\n";
 
   VLOG(6) << "Generated Outs Map";
+
+  // [Generation] Apply View Strategy (Tensor)
+  if (inplace_map.empty() && view_op_map.count(op_type)) {
+    const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT =
+        "  if (ins.count(\"%s\") && outs.count(\"%s\")) {\n"
+        "    egr::EagerUtils::HandleViewBetweenInputAndOutput(ins[\"%s\"][0], "
+        "outs[\"%s\"][0]);\n"
+        "  };\n";
+
+    std::string view_strategy_str = "";
+    std::string viwe_input_name = view_op_map[op_type].first;
+    std::string viwe_output_name = view_op_map[op_type].second;
+    view_strategy_str += paddle::string::Sprintf(
+        HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
+        viwe_input_name, viwe_output_name);
+
+    generated_function_body += view_strategy_str;
+    generated_function_body += "\n";
+
+    VLOG(6) << "Generated View Strategy (Share Buffer)";
+
+    generated_function_body += "\n";
+  }
 
   // [Generation] Get Attrs
   dygraph_function_args_str +=
