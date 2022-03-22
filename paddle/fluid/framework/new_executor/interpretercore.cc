@@ -524,6 +524,9 @@ void InterpreterCore::ExecuteInstructionList(
             "main_thread_blocker_.Clear() return -1, clear failed"));
     exception_holder_.ReThrow();
   }
+  // NOTE(zhiqiu): why add empty task here?
+  // In order to avoid the case that all gc tasks are finished before
+  // calling cacel and can wait no event.
   auto gc_event_name = gc_waiter_.ClearAndWaitEvent([this]() {
     async_work_queue_->AddTask(WorkQueueType::kGC, []() {
       // empty task
@@ -625,6 +628,7 @@ void InterpreterCore::RunInstructionAsync(
     try {
       RunInstruction(instr_node);
 
+      // perform gc async
       async_work_queue_->AddTask(WorkQueueType::kGC,
                                  [this, &instr_node, atomic_var_ref]() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
