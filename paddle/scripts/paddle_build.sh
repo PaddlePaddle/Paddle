@@ -774,7 +774,7 @@ set +x
         get_precision_ut_mac
         ut_actual_total_startTime_s=`date +%s`
         if [[ "$on_precision" == "0" ]];then
-            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 500 --output-on-failure -j $2 | tee $tmpfile
+            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         else
             ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
