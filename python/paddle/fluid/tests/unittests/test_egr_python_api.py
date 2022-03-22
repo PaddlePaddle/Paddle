@@ -650,6 +650,10 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                 self.assertEqual(tensor5.stop_gradient, False)
                 self.assertTrue(tensor5.place.is_cpu_place())
 
+                tensor10 = paddle.to_tensor([1, 2, 3], place='gpu_pinned')
+                tensor11 = tensor10._copy_to(core.CUDAPlace(0), True)
+                self.assertTrue(
+                    np.array_equal(tensor10.numpy(), tensor11.numpy()))
             else:
                 tensor3 = tensor2._copy_to(core.CPUPlace(), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
