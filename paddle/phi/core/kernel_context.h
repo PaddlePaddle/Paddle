@@ -102,17 +102,14 @@ class KernelContext {
       size_t start, size_t end) {
     const auto& first = inputs_.at(start);
 
+    std::vector<const TensorType*> v;
     if (first) {
-      std::vector<const TensorType*> v;
       for (size_t i = start; i < end; ++i) {
         auto* t = static_cast<const TensorType*>(inputs_.at(i));
         v.emplace_back(t);
       }
-      return paddle::optional<const std::vector<const TensorType*>&>(v);
-    } else {
-      return paddle::optional<const std::vector<const TensorType*>&>{
-          paddle::none};
     }
+    return paddle::optional<const std::vector<const TensorType*>&>(v);
   }
 
   template <typename TensorType>
