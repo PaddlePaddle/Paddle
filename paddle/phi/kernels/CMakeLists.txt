@@ -31,7 +31,7 @@ set(MANUAL_BUILD_KERNELS eigh_kernel gumbel_softmax_kernel gumbel_softmax_grad_k
     matrix_power_kernel matrix_power_grad_kernel maxout_kernel maxout_grad_kernel pool_kernel
     put_along_axis_kernel put_along_axis_grad_kernel segment_pool_kernel segment_pool_grad_kernel
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
-    triangular_solve_grad_kernel determinant_grad_kernel)
+    triangular_solve_grad_kernel determinant_grad_kernel cross_entropy_kernel)
 kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
 kernel_library(gumbel_softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(gumbel_softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
@@ -50,6 +50,7 @@ kernel_library(take_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_
 kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
 kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
 kernel_library(determinant_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
+kernel_library(cross_entropy_kernel DEPS ${COMMON_KERNEL_DEPS} softmax cross_entropy)
 
 # 4. auto parse and build kernel targets by cmake
 register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS ${COMMON_KERNEL_DEPS} ${COMMON_BAISC_KERNELS} )

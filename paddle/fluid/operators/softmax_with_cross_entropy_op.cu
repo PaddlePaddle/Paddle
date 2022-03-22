@@ -1351,8 +1351,8 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
         softmax_2d.ShareDataWith(*softmax).Resize({n, d});
         labels_2d.ShareDataWith(labels).Resize({n, labels.numel() / n});
         loss_2d.ShareDataWith(*loss).Resize({n, 1});
-        math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(),
-                                       &logits_2d, &softmax_2d);
+        math::SoftmaxCUDNNFunctor<T, platform::CUDADeviceContext>()(
+            context.cuda_device_context(), &logits_2d, &softmax_2d);
         math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
             context.cuda_device_context(), &loss_2d, &softmax_2d, &labels_2d,
             false, ignore_index, axis_dim);
