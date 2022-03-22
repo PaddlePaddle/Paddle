@@ -222,8 +222,8 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 ## Generator Classes ##
 #######################
 class PythonCSingleFunctionGenerator:
-    def __init__(self, fwd_api_contents, namespace):
-        self.fwd_api_contents = fwd_api_contents
+    def __init__(self, forward_api_contents, namespace):
+        self.forward_api_contents = forward_api_contents
         self.namespace = namespace
 
         # Raw Contents
@@ -249,28 +249,28 @@ class PythonCSingleFunctionGenerator:
         self.python_c_function_reg_str = ""
 
     def CollectRawContents(self):
-        fwd_api_contents = self.fwd_api_contents
+        forward_api_contents = self.forward_api_contents
 
-        assert 'api' in fwd_api_contents.keys(
-        ), "Unable to find \"api\" in fwd_api_contents keys"
-        assert 'args' in fwd_api_contents.keys(
-        ), "Unable to find \"args\" in fwd_api_contents keys"
-        assert 'output' in fwd_api_contents.keys(
-        ), "Unable to find \"output\" in fwd_api_contents keys"
+        assert 'api' in forward_api_contents.keys(
+        ), "Unable to find \"api\" in forward_api_contents keys"
+        assert 'args' in forward_api_contents.keys(
+        ), "Unable to find \"args\" in forward_api_contents keys"
+        assert 'output' in forward_api_contents.keys(
+        ), "Unable to find \"output\" in forward_api_contents keys"
 
-        self.forward_api_name = fwd_api_contents['api']
-        self.forward_args_str = fwd_api_contents['args']
-        self.forward_returns_str = fwd_api_contents['output']
+        self.forward_api_name = forward_api_contents['api']
+        self.forward_args_str = forward_api_contents['args']
+        self.forward_returns_str = forward_api_contents['output']
 
     def CollectIsForwardOnly(self):
-        fwd_api_contents = self.fwd_api_contents
-        self.is_forward_only = False if 'backward' in fwd_api_contents.keys(
+        forward_api_contents = self.forward_api_contents
+        self.is_forward_only = False if 'backward' in forward_api_contents.keys(
         ) else True
 
     def CollectOptionalInputs(self):
-        fwd_api_contents = self.fwd_api_contents
-        if 'optional' in fwd_api_contents.keys():
-            self.optional_inputs = ParseDispensable(fwd_api_contents[
+        forward_api_contents = self.forward_api_contents
+        if 'optional' in forward_api_contents.keys():
+            self.optional_inputs = ParseDispensable(forward_api_contents[
                 'optional'])
 
     def CollectForwardInOutAttr(self):
