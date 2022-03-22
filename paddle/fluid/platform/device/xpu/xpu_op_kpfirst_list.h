@@ -59,6 +59,27 @@ XPUOpMap& get_kp_ops() {
       {"swish", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"thresholded_relu",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      // bitwise logical & compare
+      {"bitwise_and", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"bitwise_or", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"bitwise_not", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"bitwise_xor", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
+      {"logical_and", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"logical_or", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"logical_not", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"logical_xor", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
+      {"less_than", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"less_equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"greater_than",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"greater_equal",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"not_equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"equal_all", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
   };
 
   return s_xpu_kp_kernels;
