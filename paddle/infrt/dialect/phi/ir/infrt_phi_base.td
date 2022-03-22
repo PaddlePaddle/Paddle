@@ -37,4 +37,8 @@ def Allocator : PHI_Type<"Allocator"> {
    let assemblyFormat = "`<` $target `>`";
  }
 
+def PD_DenseTensorMap : PHI_Type<"DenseTensorMap"> {
+  let mnemonic = "dense_tensor_map";
+}
+
 #endif

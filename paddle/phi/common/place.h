@@ -73,31 +73,23 @@ class Place {
 
   std::string DebugString() const;
 
+  struct Hash {
+    // Note: Now the number of bits we need does not exceed 32 bits, so there is
+    // no need to use 64 bits. If needed in the future, it can be expanded,
+    // but now we don’t over-design.
+    uint32_t operator()(const Place& place) const;
+  };
+
+  uint32_t HashValue() const { return Hash()(*this); }
+
   inline bool operator==(const Place& rhs) const {
-    if (alloc_type_ != rhs.GetType()) {
-      return false;
-    }
-    if (alloc_type_ == AllocationType::CPU ||
-        alloc_type_ == AllocationType::GPUPINNED ||
-        alloc_type_ == AllocationType::NPUPINNED) {
-      return true;
-    }
-    if (alloc_type_ == AllocationType::CUSTOM) {
-      return device_type_id_ == rhs.device_type_id_ &&
-             device == rhs.GetDeviceId();
-    }
-    return device == rhs.GetDeviceId();
+    return HashValue() == rhs.HashValue();
   }
-  inline bool operator!=(const Place& rhs) const { return !(*this == rhs); }
+  inline bool operator!=(const Place& rhs) const {
+    return HashValue() != rhs.HashValue();
+  }
   inline bool operator<(const Place& rhs) const {
-    if (alloc_type_ != rhs.GetType()) {
-      return static_cast<int>(alloc_type_) < static_cast<int>(rhs.GetType());
-    }
-    if (alloc_type_ == AllocationType::CUSTOM &&
-        device_type_id_ != rhs.device_type_id_) {
-      return device_type_id_ < rhs.device_type_id_;
-    }
-    return device < rhs.GetDeviceId();
+    return HashValue() < rhs.HashValue();
   }
 
  public:
@@ -206,3 +198,15 @@ class CustomPlace : public Place {
 std::ostream& operator<<(std::ostream&, const Place&);
 
 }  // namespace phi
+
+namespace paddle {
+namespace experimental {
+using AllocationType = phi::AllocationType;
+using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using GPUPlace = phi::GPUPlace;
+using GPUPinnedPlace = phi::GPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using NPUPlace = phi::NPUPlace;
+}  // namespace experimental
+}  // namespace paddle
