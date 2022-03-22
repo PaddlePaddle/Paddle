@@ -49,6 +49,12 @@ namespace phi {
 namespace funcs {
 using DDim = phi::DDim;
 
+template <typename T>
+void LimitGridDim(const GPUContext &ctx, T *grid_dim) {
+  auto max_grid_dim = ctx.GetCUDAMaxGridDimSize()[0];
+  if (*grid_dim > max_grid_dim) *grid_dim = max_grid_dim;
+}
+
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 void CommonGradBroadcastCPU(const DenseTensor &x,
                             const DenseTensor &y,
@@ -977,6 +983,10 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     // suppose perfoemance improves with h increased.
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
     int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+    auto gplace = phi::GPUPlace();
+    auto *ctx = static_cast<GPUContext *>(
+        paddle::platform::DeviceContextPool::Instance().Get(gplace));
+    LimitGridDim(*ctx, &grid_size);
     FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
   }
@@ -998,6 +1008,11 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
                                        T *dy) {
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   int gird_size = n;
+  int grid_size = n;
+  auto gplace = phi::GPUPlace();
+  auto *ctx = static_cast<GPUContext *>(
+      paddle::platform::DeviceContextPool::Instance().Get(gplace));
+  LimitGridDim(*ctx, &grid_size);
   ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, 0, stream>>>(
       x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
 }
@@ -1200,6 +1215,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        LimitGridDim(ctx, &grid_size);
         FastCommonGradBroadcastCUDAKernelHeight<<<grid_size,
                                                   block_size,
                                                   0,
@@ -1236,6 +1252,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        LimitGridDim(ctx, &grid_size);
         FastCommonGradBroadcastCUDAKernelHeight<<<grid_size,
                                                   block_size,
                                                   0,
@@ -1332,6 +1349,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
     int grid_size = pre * post;
+    LimitGridDim(ctx, &grid_size);
 
     FastCommonGradBroadcastAllCUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x_data,
@@ -1373,6 +1391,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                std::multiplies<int>());
       int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
       int grid_size = pre * post;
+      LimitGridDim(ctx, &grid_size);
       // we need to calc y offset with blockid, so do x_pre/y_pre to get left
       // size.
       if (k_pre != pre) k_pre = pre / k_pre;
@@ -1403,6 +1422,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                std::multiplies<int>());
       int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
       int grid_size = pre * post;
+      LimitGridDim(ctx, &grid_size);
       if (k_pre != pre) k_pre = pre / k_pre;
 
       FastCommonGradBroadcastOneCUDAKernel<<<grid_size,

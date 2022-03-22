@@ -309,7 +309,7 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   // get the parameters of reduceKernel
-  void Run() {
+  void Run(const paddle::platform::Place& place) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
@@ -321,6 +321,9 @@ struct ReduceConfig {
 
     // step4: set the block and grid for launch kernel
     SetBlockDim();
+
+    // step5: limit the grid to prevent thead overflow
+    LimitGridDim(place);
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -607,6 +610,15 @@ struct ReduceConfig {
 
     block = block_dim;
     grid = grid_dim;
+  }
+
+  void LimitGridDim(const paddle::platform::Place& place) {
+    auto* ctx = static_cast<paddle::platform::CUDADeviceContext*>(
+        paddle::platform::DeviceContextPool::Instance().Get(place));
+    std::array<int, 3> max_grid_dim = ctx->GetCUDAMaxGridDimSize();
+    grid.x = grid.x < max_grid_dim[0] ? grid.x : max_grid_dim[0];
+    grid.y = grid.y < max_grid_dim[1] ? grid.y : max_grid_dim[1];
+    grid.z = grid.z < max_grid_dim[2] ? grid.z : max_grid_dim[2];
   }
 
  public:
@@ -1044,7 +1056,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   auto x_dim = phi::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
-  config.Run();
+  config.Run(x.place());
   int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,

@@ -156,6 +156,8 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   int64_t grid = (n + block - 1) / block;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -240,6 +242,8 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * remain_numel;
   int64_t grid = (n + block - 1) / block;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_update,
@@ -252,4 +256,4 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

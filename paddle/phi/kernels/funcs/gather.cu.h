@@ -112,6 +112,8 @@ void GPUGather(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   int64_t grid = (n + block - 1) / block;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  if (grid > maxGridDimX) grid = maxGridDimX;
 
   GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_src, p_index, p_output, index_size, slice_size);
@@ -161,6 +163,8 @@ void GPUGatherNd(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * remain_numel;
   int64_t grid = (n + block - 1) / block;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  if (grid > maxGridDimX) grid = maxGridDimX;
 
   GatherNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_input,
                                                                   g_input_dims,
