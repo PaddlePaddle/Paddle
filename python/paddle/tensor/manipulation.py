@@ -37,6 +37,7 @@ from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
 from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
+from paddle.fluid.framework import _in_eager_mode
 
 __all__ = []
 
@@ -1844,6 +1845,8 @@ def expand_as(x, y, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_expand_as(x, y, y.shape)
         return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(

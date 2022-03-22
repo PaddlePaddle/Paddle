@@ -86,16 +86,6 @@
   kernel :
     func : abs_grad
 
-- backward_api : relu_grad
-  forward : relu (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu_grad
-
 - backward_api : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -544,7 +534,7 @@
 #   args : (Tensor x, Tensor out_grad, int[] target_shape)
 #   output : Tensor(x_grad)
 #   infer_meta :
-#     func : UnchangedGradInferMeta
+#     func : UnchangedInferMeta
 #     param : [x]
 #   kernel :
 #     func : expand_as_grad
@@ -569,15 +559,15 @@
 #   kernel :
 #     func : graph_send_recv_grad
 
-# - backward_api : label_smooth_grad
-#   forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
-#   args : (Tensor out_grad, float epsilon)
-#   output : Tensor(label_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [out_grad]
-#   kernel :
-#     func : label_smooth_grad
+- backward_api : label_smooth_grad
+  forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
+  args : (Tensor out_grad, float epsilon)
+  output : Tensor(label_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : label_smooth_grad
   
 - backward_api : log_loss_grad
   forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
@@ -682,16 +672,16 @@
 #   kernel :
 #     func : poisson_grad
 
-# - backward_api : psroi_pool_grad
-#   forward : psroi_pool (Tensor x, Tensor rois, Tensor rois_num, int pooled_weight, int pooled_width, int output_channels, float spatial_scale ) -> Tensor(out)
-#   args : (Tensor x, Tensor rois, Tensor rois_num, Tensor out_grad, int pooled_weight, int pooled_width, int output_channels, float spatial_scale)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : psroi_pool_grad
-#   optional : rois_num
+- backward_api : psroi_pool_grad
+  forward : psroi_pool (Tensor x, Tensor rois, Tensor rois_num, int pooled_weight, int pooled_width, int output_channels, float spatial_scale ) -> Tensor(out)
+  args : (Tensor x, Tensor rois, Tensor rois_num, Tensor out_grad, int pooled_weight, int pooled_width, int output_channels, float spatial_scale)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : psroi_pool_grad
+  optional : rois_num
 
 - backward_api : selu_grad
   forward : selu (Tensor x, float scale, float alpha) -> Tensor(out)

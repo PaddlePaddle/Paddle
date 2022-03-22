@@ -49,6 +49,7 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
+            print("@@@", api.api)
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
                     args.append(tensor_type_map[api.inputs['input_info'][

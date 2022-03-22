@@ -2673,6 +2673,8 @@ def isfinite(x, name=None):
             print(out)  # [False  True  True False  True False False]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_isfinite( x )
         return _C_ops.isfinite_v2(x)
     helper = LayerHelper("isfinite_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isfinite')
@@ -2701,6 +2703,8 @@ def isinf(x, name=None):
             print(out)  # [ True False False  True False False False]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_isinf( x )
         return _C_ops.isinf_v2(x)
     helper = LayerHelper("isinf_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf')
@@ -2729,6 +2733,8 @@ def isnan(x, name=None):
             print(out)  # [False False False False False  True  True]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_isnan( x )
         return _C_ops.isnan_v2(x)
     helper = LayerHelper("isnan_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan')

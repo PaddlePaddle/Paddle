@@ -781,7 +781,7 @@ def masked_select(x, mask, name=None):
     return out
 
 
-def topk(x, k, axis=-1, largest=True, sorted=True, name=None):
+def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
     This OP is used to find values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
@@ -839,6 +839,8 @@ def topk(x, k, axis=-1, largest=True, sorted=True, name=None):
     if paddle.in_dynamic_mode():
         k = k.numpy().item(0) if isinstance(k, Variable) else k
         if _in_eager_mode():
+            if axis == None:
+                axis = -1
             out, indices = _C_ops.final_state_top_k(x, k, axis, largest, sorted)
             return out, indices
         if axis is None:
