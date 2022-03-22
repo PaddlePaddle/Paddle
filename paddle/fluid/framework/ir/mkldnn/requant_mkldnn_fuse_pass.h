@@ -70,10 +70,17 @@ class RequantMkldnnFusePass : public FusePassBase {
   void ComputeWeightScales(ir::Graph* graph, Scope* scope,
                            StringPairMap* var_quant_scales) const;
 
-  //   void PropagateScales(
-  //       ir::Graph* graph, Scope* scope,
-  //      StringPairMap& var_quant_scales)  // NOLINT
-  //       const;
+  void UpdateScaleOpInScale(Node* op_node, const std::string& input_name,
+                            const std::string& output_name,
+                            StringPairMap* var_quant_scales) const;
+
+  std::unordered_set<std::string> UpdateScales(
+      ir::Graph* graph, StringPairMap* var_quant_scales,
+      const std::unordered_set<std::string> scale_immutable_ops) const;
+
+  void PropagateScales(
+      ir::Graph* graph, StringPairMap* var_quant_scales,
+      const std::unordered_set<std::string> scale_immutable_ops) const;
 };
 }  // namespace ir
 }  // namespace framework

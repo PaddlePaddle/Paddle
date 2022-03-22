@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/requant_mkldnn_fuse_pass.h"
 #include <float.h>
 #include <algorithm>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/mkldnn/requant_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -316,18 +317,93 @@ void RequantMkldnnFusePass::ComputeWeightScales(
   ComputeLstmWeightScales(graph, scope, "WeightX", "WeightH", var_quant_scales);
 }
 
-// void RequantMkldnnFusePass::PropagateScales() {
-//   auto update_scale_op_in_scale = [&](Node* node, StringPairMap
-//   var_quant_scales, std::string input, std::string output) {
-//     auto pair = var_quant_scales[output];
+void RequantMkldnnFusePass::UpdateScaleOpInScale(
+    Node* op_node, const std::string& input_name,
+    const std::string& output_name, StringPairMap* var_quant_scales) const {
+  auto iter = var_quant_scales->find(output_name);
+  if (iter != var_quant_scales->end()) {
+    auto pair = iter->second;
+    const auto tensor = pair.second;
 
-//   };
-// }
+    const auto scale = BOOST_GET_CONST(float, op_node->Op()->GetAttr("scale"));
+    Tensor tmp_tensor;
+    tmp_tensor.Resize(tensor.dims());
+    auto data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
+    for (int i = 0; i < tensor.numel(); i++) {
+      data[i] = data[i] * scale;
+    }
+
+    auto new_pair = std::make_pair(pair.first, tmp_tensor);
+    var_quant_scales->insert(std::make_pair(input_name, new_pair));
+  }
+}
+
+std::unordered_set<std::string> RequantMkldnnFusePass::UpdateScales(
+    ir::Graph* graph, StringPairMap* var_quant_scales,
+    const std::unordered_set<std::string> scale_immutable_ops) const {
+  std::unordered_set<std::string> waiting_for_scale{};
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp()) continue;
+
+    const auto op_name = op_node->Name();
+    if (scale_immutable_ops.count(op_name)) {
+      std::string input_name;
+      if (op_name == "slice") {
+        input_name = op_node->Op()->Input("Input")[0];
+      } else {
+        input_name = op_node->Op()->Input("X")[0];
+      }
+
+      const std::string output_name = op_node->Op()->Output("Out")[0];
+      auto in_iter = var_quant_scales->find(input_name);
+      auto out_iter = var_quant_scales->find(output_name);
+      if (in_iter == var_quant_scales->end() &&
+          out_iter == var_quant_scales->end()) {
+        waiting_for_scale.insert(input_name);
+        waiting_for_scale.insert(output_name);
+      } else if (in_iter != var_quant_scales->end()) {
+        out_iter->second = in_iter->second;
+      } else if (out_iter != var_quant_scales->end()) {
+        in_iter->second = out_iter->second;
+      }
+    } else if (op_name == "scale") {
+      const std::string output_name = op_node->Op()->Output("Out")[0];
+      auto out_iter = var_quant_scales->find(output_name);
+      if (out_iter != var_quant_scales->end()) {
+        const std::string input_name = op_node->Op()->Input("X")[0];
+        UpdateScaleOpInScale(op_node, input_name, output_name,
+                             var_quant_scales);
+      }
+    }
+  }
+  return waiting_for_scale;
+}
+
+void RequantMkldnnFusePass::PropagateScales(
+    ir::Graph* graph, StringPairMap* var_quant_scales,
+    const std::unordered_set<std::string> scale_immutable_ops) const {
+  auto waiting_for_scale =
+      UpdateScales(graph, var_quant_scales, scale_immutable_ops);
+  std::unordered_set<std::string> waiting_for_scale_prev{};
+  while (waiting_for_scale.size() != 0 &&
+         waiting_for_scale != waiting_for_scale_prev) {
+    waiting_for_scale_prev.clear();
+    waiting_for_scale_prev.insert(waiting_for_scale.begin(),
+                                  waiting_for_scale.end());
+    waiting_for_scale =
+        UpdateScales(graph, var_quant_scales, scale_immutable_ops);
+  }
+}
 
 void RequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle model to mkldnn quantized model.";
   const std::string pattern_name = "requant_mkldnn_fuse_pass";
   FusePassBase::Init(pattern_name, graph);
+
+  const std::unordered_set<std::string> scale_immutable_ops = {
+      "transpose2", "reshape2",       "pool2d",
+      "slice",      "nearest_interp", "nearest_interp_v2"};
 
   StringTensorMap weight_thresholds{};
   StringPairMap var_quant_scales{};
@@ -335,6 +411,7 @@ void RequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
   GetQuantInfo(graph, scope, &weight_thresholds, &var_quant_scales);
   ComputeWeightScales(graph, scope, &var_quant_scales);
+  PropagateScales(graph, &var_quant_scales, scale_immutable_ops);
 }
 
 }  // namespace ir
