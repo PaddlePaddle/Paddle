@@ -91,6 +91,15 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
+                if "use_no_bias_optimizer" in self.attrs.keys():
+                    ipu_strategy.set_options({
+                        "use_no_bias_optimizer":
+                        self.attrs["use_no_bias_optimizer"]
+                    })
+                if "accl1_type" in self.attrs.keys():
+                    ipu_strategy.set_options({
+                        "accl1_type": self.attrs["accl1_type"]
+                    })
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -141,6 +150,28 @@ class TestAdamCase2(TestBase):
         }
 
 
+@unittest.skip('cpu do not support AdamNoBias')
+class TestAdamNoBias(TestBase):
+    def set_attrs(self):
+        self.attrs = {
+            "optimizer": 'adam',
+            "weight_decay": 0.0,
+            "loss_scaling": 4.0,
+            "use_no_bias_optimizer": True,
+        }
+
+
+@unittest.skip('cpu do not support FLOAT16')
+class TestAdamCase3(TestBase):
+    def set_attrs(self):
+        self.attrs = {
+            "optimizer": 'adam',
+            "weight_decay": 0.0,
+            "loss_scaling": 4.0,
+            "accl1_type": "FLOAT16",
+        }
+
+
 @unittest.skip('seems cpu output wrong')
 class TestLambCase1(TestBase):
     def set_attrs(self):
@@ -158,6 +189,28 @@ class TestLamb(TestBase):
             "optimizer": 'lamb',
             "weight_decay": 0.1,
             "loss_scaling": 6.0,
+        }
+
+
+@unittest.skip('cpu do not support LambNoBias')
+class TestLambNoBias(TestBase):
+    def set_attrs(self):
+        self.attrs = {
+            "optimizer": 'lamb',
+            "weight_decay": 0.1,
+            "loss_scaling": 6.0,
+            "use_no_bias_optimizer": True
+        }
+
+
+@unittest.skip('cpu do not support FLOAT16')
+class TestLambCase2(TestBase):
+    def set_attrs(self):
+        self.attrs = {
+            "optimizer": 'lamb',
+            "weight_decay": 0.1,
+            "loss_scaling": 6.0,
+            "accl1_type": "FLOAT16"
         }
 
 

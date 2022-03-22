@@ -83,6 +83,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
                                        const DenseTensor& src_index,
                                        const DenseTensor& dst_index,
                                        const std::string& pool_type,
+                                       int64_t out_size,
                                        DenseTensor* out,
                                        DenseTensor* dst_count = nullptr) {
   const int& index_size = src_index.dims()[0];
@@ -91,7 +92,16 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
   T* p_output = out->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
-  for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
+  if (out_size <= 0) {
+    for (int i = 0; i < src_dims.size(); ++i) {
+      memset_size *= src_dims[i];
+    }
+  } else {
+    memset_size = out_size;
+    for (int i = 1; i < src_dims.size(); ++i) {
+      memset_size *= src_dims[i];
+    }
+  }
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(p_output, 0, memset_bytes);
 
@@ -129,15 +139,16 @@ void GraphSendRecvKernel(const Context& ctx,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
                          const std::string& pool_type,
+                         int64_t out_size,
                          DenseTensor* out,
                          DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendRecvOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, src_index, dst_index, pool_type, out, dst_count);
+        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
   } else if (index_type == phi::DataType::INT64) {
     GraphSendRecvOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, src_index, dst_index, pool_type, out, dst_count);
+        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
   }
 }
 
