@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 class TestLabelSmoothOp(OpTest):
@@ -72,4 +73,5 @@ class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

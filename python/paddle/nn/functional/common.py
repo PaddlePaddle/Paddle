@@ -1617,6 +1617,8 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_label_smooth(label, prior_dist, epsilon)
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],

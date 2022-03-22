@@ -16,6 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
@@ -119,8 +120,10 @@ def test(test_case, op_str, use_gpu=False):
         x_np, result_np = np_data_generator(**meta_data)
         static_result = run_static(x_np, meta_data['type'], op_str, use_gpu)
         dygraph_result = run_dygraph(x_np, op_str, use_gpu)
+        eager_result = run_eager(x_np, op_str, use_gpu)
         test_case.assertTrue((static_result == result_np).all())
         test_case.assertTrue((dygraph_result.numpy() == result_np).all())
+        test_case.assertTrue((eager_result.numpy() == result_np).all())
 
 
 class TestCPUNormal(unittest.TestCase):

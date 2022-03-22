@@ -789,8 +789,9 @@
     param : [label]
   kernel :
     func : label_smooth
+    optional : prior_dist
   # backward : label_smooth_grad
-  # optional : prior_dist
+  # 
 
 # linspace ???? start stop number
 # - api : linspace
