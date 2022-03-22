@@ -15,15 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 
 namespace paddle {
 namespace experimental {
 
-// TODO(chenweihang): Replace backend by place when place is ready
-Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking);
+Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
 std::vector<Tensor> split_impl(const Tensor& x,
                                const ScalarArray& num_or_sections,
