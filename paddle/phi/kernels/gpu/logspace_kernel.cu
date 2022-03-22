@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cmath>
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -30,17 +29,17 @@ __global__ void LogspaceKernelInner(
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
-      out[index] = static_cast<T>(std::pow(base, start + step * index));
+      out[index] = static_cast<T>(pow(base, start + step * index));
     } else {
       out[index] =
-          static_cast<T>(std::pow(base, stop - step * (size - index - 1)));
+          static_cast<T>(pow(base, stop - step * (size - index - 1)));
     }
   }
 }
 
 template <typename T>
 __global__ void LogspaceSpecialKernel(T start, T base, T* out) {
-  out[0] = static_cast<T>(std::pow(base, start));
+  out[0] = static_cast<T>(pow(base, start));
 }
 
 template <typename T, typename Context>
