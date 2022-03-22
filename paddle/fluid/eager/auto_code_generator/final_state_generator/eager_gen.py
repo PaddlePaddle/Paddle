@@ -147,6 +147,7 @@ FUNCTION_TEMPLATE = \
 """
     std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
         // Call grad_api function
+        VLOG(3) << \"Finally State Running: \" << \"{}\"; 
         auto grad_api_returns = {}::{}({});
         {}
     }}
@@ -704,8 +705,8 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         grad_api_namespace = f"paddle::experimental::{namespace}"
 
         self.node_definition_str = FUNCTION_TEMPLATE.format(
-            grad_node_name, grad_api_namespace, backward_api_name,
-            grad_api_args_str, returns_str)
+            grad_node_name, grad_node_name, grad_api_namespace,
+            backward_api_name, grad_api_args_str, returns_str)
 
         print("Generated Node Definition: ", self.node_definition_str)
 
