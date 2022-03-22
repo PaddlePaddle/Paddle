@@ -20,9 +20,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/conv_search_cache.h"
-#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {

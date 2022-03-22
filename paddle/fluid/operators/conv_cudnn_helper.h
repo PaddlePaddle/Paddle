@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/conv_base_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/kernel_metric_tools.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/kernel_metric_tools.h"
 
 namespace paddle {
 namespace operators {
