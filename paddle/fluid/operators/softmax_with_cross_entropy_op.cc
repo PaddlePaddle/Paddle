@@ -335,9 +335,7 @@ REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad,
                   ops::SoftmaxWithCrossEntropyGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
-                       ops::SoftmaxWithCrossEntropyKernel<float>,
-                       ops::SoftmaxWithCrossEntropyKernel<double>);
+
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
                        ops::SoftmaxWithCrossEntropyGradKernel<float>,
                        ops::SoftmaxWithCrossEntropyGradKernel<double>);

@@ -1465,19 +1465,11 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_HIP
-// MIOPEN do not support double
-REGISTER_OP_CUDA_KERNEL(
-    softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
-    ops::SoftmaxWithCrossEntropyCUDAKernel<paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     softmax_with_cross_entropy_grad,
     ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
     ops::SoftmaxWithCrossEntropyGradCUDAKernel<paddle::platform::float16>);
 #else
-REGISTER_OP_CUDA_KERNEL(
-    softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
-    ops::SoftmaxWithCrossEntropyCUDAKernel<paddle::platform::float16>,
-    ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
     softmax_with_cross_entropy_grad,
     ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
