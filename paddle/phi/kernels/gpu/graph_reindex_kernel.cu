@@ -255,7 +255,6 @@ void GraphReindexKernel(const Context& dev_ctx,
                         DenseTensor* out_nodes,
                         DenseTensor* hashtable_value_out,
                         DenseTensor* hashtable_index_out) {
-  VLOG(0) << "Enter GraphReindexKernel";
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
@@ -267,9 +266,7 @@ void GraphReindexKernel(const Context& dev_ctx,
   thrust::device_vector<T> unique_nodes;
   thrust::copy(neighbors_data, neighbors_data + num_edges, src_outputs.begin());
 
-  VLOG(0) << "Check hashtable_value.get_ptr()";
   if (flag_buffer_hashtable) {
-    VLOG(0) << "Enter check";
     // Here we directly use buffer tensor to act as a hash table.
     int* hashtable_value_data =
         hashtable_value_out->mutable_data<int>(dev_ctx.GetPlace());

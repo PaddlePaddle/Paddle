@@ -755,12 +755,10 @@ void GraphReindexInferMeta(const MetaTensor& x,
     }
   };
 
-  VLOG(0) << "Into InferMeta";
   GraphReindexShapeCheck(x.dims(), "X");
   GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
   GraphReindexShapeCheck(count.dims(), "Count");
   if (flag_buffer_hashtable) {
-    VLOG(0) << "Enter hashtable shape check";
     GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
     GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
     hashtable_value_out->set_dims(hashtable_value.dims());
@@ -768,7 +766,6 @@ void GraphReindexInferMeta(const MetaTensor& x,
     hashtable_index_out->set_dims(hashtable_index.dims());
     hashtable_index_out->set_dtype(hashtable_index.dtype());
   }
-  VLOG(0) << "Finish hashtable shape check";
 
   reindex_src->set_dims({-1});
   reindex_src->set_dtype(neighbors.dtype());
