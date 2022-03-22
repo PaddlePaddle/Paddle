@@ -43,7 +43,7 @@ void LaunchEigenPadding(
     for (size_t i = 0; i < D; i++) {
       paddings_32bit[i] = std::make_pair(paddings[i].first, paddings[i].second);
     }
-    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval32(
         place,
         To32BitIndex(d_in_t),
         To32BitIndex(d_out_t),

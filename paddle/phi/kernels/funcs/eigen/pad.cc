@@ -41,11 +41,11 @@ struct EigenPad<Eigen::DefaultDevice, T, Rank> {
     out.device(dev) = in.pad(padding, value);
   }
 
-  static void Eval(const Eigen::DefaultDevice& dev,
-                   OutType32BitIndex out,
-                   const InType32BitIndex& in,
-                   const Array32Bit& padding,
-                   const T value) {
+  static void Eval32(const Eigen::DefaultDevice& dev,
+                     OutType32BitIndex out,
+                     const InType32BitIndex& in,
+                     const Array32Bit& padding,
+                     const T value) {
     out.device(dev) = in.pad(padding, value);
   }
 };
