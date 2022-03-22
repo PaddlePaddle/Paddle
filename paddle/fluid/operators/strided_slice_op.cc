@@ -394,27 +394,3 @@ REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
                   ops::StridedSliceOpGradNoNeedBufferVarsInferer,
                   ops::StridedSliceGradOpVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(
-    strided_slice,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<float>>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    strided_slice_grad,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
-                                paddle::platform::complex<float>>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
-                                paddle::platform::complex<double>>);
