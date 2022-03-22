@@ -734,7 +734,9 @@ class OpTest(unittest.TestCase):
                     assert op_inputs[name].__len__(
                     ) == 1, "currently don't support multi-input in attribute."
                     # why don't use numpy().item() : if the Tensor is float64, we will change it to python.float32, where we loss accuracy: [allclose_op]
-                    return op_inputs[name][0]
+                    # why we reconstruct a tensor: because we want the tensor in cpu. 
+                    return paddle.to_tensor(
+                        op_inputs[name][0].numpy(), place='cpu')
                 else:
                     return Empty()
 
