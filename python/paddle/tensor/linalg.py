@@ -2997,23 +2997,25 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     return solution, residuals, rank, singular_values
 
 
-def corrcoef(x, rowvar=True, ddof=False, name=None):
+def corrcoef(x, rowvar=True, name=None):
     """
     Return Pearson product-moment correlation coefficients.
 
-    Please refer to the documentation for `cov` for more detail.  The
-    relationship between the correlation coefficient matrix, `R`, and the
-    covariance matrix, `C`, is
+    A correlation coefficient matrix indicate the ccorrelation of each pair variables in the input matrix.
+    For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the correlation coefficient matrix
+    element Rij is the correlation of xi and xj. The element Rii is the covariance of xi itself.
+
+    The relationship between the correlation coefficient matrix `R` and the
+    covariance matrix `C`, is
 
     .. math:: R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }
 
-    The values of `R` are between -1 and 1, inclusive.
+    The values of `R` are between -1 and 1.
 
     Parameters:
 
         x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
         rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True
-        ddof(Bool, optional): Has no effect, do not use.
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -3037,17 +3039,19 @@ def corrcoef(x, rowvar=True, ddof=False, name=None):
         '''
 
     """
+    if len(x.shape) > 2 or len(x.shape) < 1:
+        raise ValueError(
+            "Input(x) only support N-D (1<=N<=2) tensor in corrcoef, but received "
+            "length of Input(input) is %s." % len(x.shape))
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'corrcoef')
 
-    if ddof is not False:
-        warnings.warn('ddof have no effect and are deprecated',
-                      DeprecationWarning)
     c = cov(x, rowvar)
-    try:
-        d = paddle.diag(c)
-    except ValueError:
+    if (c.ndim == 0):
         # scalar covariance
         # nan if incorrect value (nan, inf, 0), 1 otherwise
         return c / c
+
+    d = paddle.diag(c)
 
     if paddle.is_complex(d):
         d = d.real()
