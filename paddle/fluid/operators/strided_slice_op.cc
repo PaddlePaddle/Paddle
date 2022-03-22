@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/slice_op.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
 namespace operators {
@@ -138,9 +139,9 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     // the parameter that we get from python front
     std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
     if (!tensor_input) {
-      StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
-                          decrease_axis, out_dims_vector.data(), axes.size(),
-                          true);
+      phi::funcs::StridedSliceOutDims(
+          starts, ends, strides, axes, infer_flags, in_dims, decrease_axis,
+          out_dims_vector.data(), axes.size(), true);
     }
     framework::DDim out_dims(phi::make_ddim(out_dims_vector));
     // generate new shape
