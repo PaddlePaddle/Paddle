@@ -80,6 +80,8 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The cinn_instruction_run Op's Output Tensor should not empty."));
 
+    VLOG(4) << "The tensor [" << ctx.OutputName(kOutputs) << "]'s dtype is "
+            << paddle::framework::DataType2String(tensor->dtype());
     auto output_type = paddle::framework::TransToProtoVarType(tensor->dtype());
     return framework::OpKernelType(output_type, ctx.device_context());
   }
