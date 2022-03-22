@@ -212,6 +212,73 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
   return res;
 }
 
+void EagerUtils::HandleViewBetweenEagerVariable(
+    const std::shared_ptr<EagerVariable>& input_var,
+    const std::shared_ptr<EagerVariable>& view_output_var) {
+  PADDLE_ENFORCE_EQ(
+      input_var->Var().IsInitialized(), true,
+      paddle::platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized!", input_var->name()));
+
+  if (phi::DenseTensor::classof(input_var->GetTensorBase().get())) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_var->GetTensorBase());
+    VLOG(3) << "yoki handle view 1: " << input_dense_tensor->yokiholder();
+    auto& inplace_version_counter3 =
+        input_dense_tensor->InplaceVersionCounter();
+    VLOG(3) << "yoki handle view 1.2: "
+            << inplace_version_counter3.CurrentVersion();
+    PADDLE_ENFORCE_EQ(
+        input_dense_tensor->IsInitialized(), true,
+        paddle::platform::errors::InvalidArgument(
+            "DenseTensor %s has not been initialized!", input_var->name()));
+
+    auto* view_output_tensor =
+        view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
+    VLOG(3) << "yoki handle view 2: " << input_dense_tensor->yokiholder();
+    VLOG(3) << "yoki handle view 3: " << (*input_dense_tensor).yokiholder();
+    view_output_tensor->ShareBufferWith(*input_dense_tensor);
+    auto& inplace_version_counter = input_dense_tensor->InplaceVersionCounter();
+    VLOG(3) << "yoki handle view 4: "
+            << inplace_version_counter.CurrentVersion();
+    view_output_tensor->ShareInplaceVersionCounterWith(*input_dense_tensor);
+    auto& inplace_version_counter2 =
+        view_output_tensor->InplaceVersionCounter();
+    VLOG(3) << "yoki handle view 5: "
+            << inplace_version_counter2.CurrentVersion();
+
+    VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
+            << ") and Input Var(" << input_var->name()
+            << "), share allocation and inplace version.";
+  }
+}
+
+void EagerUtils::HandleViewBetweenTensor(
+    const paddle::experimental::Tensor& input_tensor,
+    const paddle::experimental::Tensor& view_output_tensor) {
+  PADDLE_ENFORCE_NOT_NULL(
+      input_tensor.impl(),
+      paddle::platform::errors::Fatal(
+          "Input Tensor is null and cannot apply View strategy."));
+  PADDLE_ENFORCE_NOT_NULL(
+      view_output_tensor.impl(),
+      paddle::platform::errors::Fatal(
+          "Output Tensor is null and cannot apply View strategy."));
+  if (phi::DenseTensor::classof(input_tensor.impl().get())) {
+    phi::DenseTensor* input_dense_tensor =
+        static_cast<phi::DenseTensor*>(input_tensor.impl().get());
+    phi::DenseTensor* view_output_dense_tensor =
+        static_cast<phi::DenseTensor*>(view_output_tensor.impl().get());
+    view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_dense_tensor->ShareInplaceVersionCounterWith(
+        *input_dense_tensor);
+    VLOG(3) << "Perform View between Output Tensor("
+            << view_output_tensor.name() << ") and Input Tensor("
+            << input_tensor.name()
+            << "), share allocation and inplace version.";
+  }
+}
+
 void EagerUtils::ModifyInplaceInput(
     const std::shared_ptr<EagerVariable>& inplace_variable,
     paddle::experimental::Tensor* inplace_tensor) {

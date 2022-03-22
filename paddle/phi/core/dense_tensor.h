@@ -150,6 +150,8 @@ class DenseTensor : public TensorBase,
   /// \return The actual allocation size occupied by tensor.
   size_t capacity() const { return holder_->size(); }
 
+  std::shared_ptr<phi::Allocation> yokiholder() const { return holder_; }
+
   /// \brief Get the const data pointer value of type T.
   /// \return The const data pointer value of type T.
   template <typename T>

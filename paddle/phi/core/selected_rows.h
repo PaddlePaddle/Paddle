@@ -158,6 +158,8 @@ class SelectedRows : public TensorBase,
   /// return Whether the storage is allocated.
   bool initialized() const override { return impl_->initialized(); }
 
+  std::shared_ptr<phi::Allocation> yokiholder() const { return nullptr; }
+
  private:
   std::shared_ptr<phi::SelectedRowsImpl> impl_{nullptr};
 };

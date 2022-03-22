@@ -386,5 +386,17 @@ uint32_t Tensor::current_inplace_version() {
   return 0;
 }
 
+Tensor &Tensor::share_inplace_version_counter(const Tensor &x) {
+  if (is_dense_tensor() && x.is_dense_tensor()) {
+    auto dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
+    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+        ->ShareInplaceVersionCounterWith(*dense_tensor);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "share_inplace_version_counter is only supported on DenseTensor now."));
+  }
+  return *this;
+}
+
 }  // namespace experimental
 }  // namespace paddle

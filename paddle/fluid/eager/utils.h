@@ -158,6 +158,23 @@ class EagerUtils {
     }
   }
 
+  static void yokiPrintHolder(const paddle::experimental::Tensor& target) {
+    VLOG(3) << "yoki: enter";
+    if (target.impl() && phi::DenseTensor::classof(target.impl().get())) {
+      phi::DenseTensor* input_dense_tensor =
+          static_cast<phi::DenseTensor*>(target.impl().get());
+      VLOG(3) << "yoki: holder: " << input_dense_tensor->yokiholder();
+    }
+  }
+
+  // View Strategy
+  static void HandleViewBetweenEagerVariable(
+      const std::shared_ptr<EagerVariable>& input_var,
+      const std::shared_ptr<EagerVariable>& view_output_var);
+  static void HandleViewBetweenTensor(
+      const paddle::experimental::Tensor& input_tensor,
+      const paddle::experimental::Tensor& view_output_tensor);
+
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
       TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);

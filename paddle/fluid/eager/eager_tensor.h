@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+// #include "paddle/fluid/eager/utils.h"
 // Phi deps
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/api_declare.h"
@@ -50,11 +51,11 @@ class EagerVariable final {
 
   explicit EagerVariable(const paddle::experimental::Tensor& tensor)
       : name_(tensor.name()) {
+    // VLOG(3) << "yoki EagerVariable Construct tensor holder: " <<
+    // egr::EagerUtils::yokiPrintHolder(tensor);
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
         ConstructVariableFromTensor<phi::DenseTensor>(tensor);
-      } else if (tensor.is_selected_rows()) {
-        ConstructVariableFromTensor<phi::SelectedRows>(tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized egr::EagerVariable type, only "
@@ -72,8 +73,6 @@ class EagerVariable final {
       if (var_.IsType<paddle::framework::LoDTensor>() ||
           var_.IsType<paddle::framework::Tensor>()) {
         return SetImplWithLegacyTensor<phi::DenseTensor>();
-      } else if (var_.IsType<phi::SelectedRows>()) {
-        return SetImplWithLegacyTensor<phi::SelectedRows>();
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unable to fetch underlying tensor "
@@ -102,14 +101,36 @@ class EagerVariable final {
   std::shared_ptr<phi::TensorBase> SetImplWithLegacyTensor() {
     const auto& framework_tensor = var_.Get<VarType>();
     VLOG(8) << "Sync Var to tensor for: " << name();
-    return std::make_shared<VarType>(framework_tensor);
+    VLOG(3) << "yoki EagerVariable Construct tensor holder5: "
+            << framework_tensor.yokiholder();
+    // auto &inplace_version_counter = framework_tensor.InplaceVersionCounter();
+    // VLOG(3) << "yoki EagerVariable Construct tensor version5.2: " <<
+    // inplace_version_counter.CurrentVersion();
+    auto return_tensor = std::make_shared<VarType>(framework_tensor);
+    VLOG(3) << "yoki EagerVariable Construct tensor holder6: "
+            << return_tensor->yokiholder();
+    auto& inplace_version_counter2 = return_tensor->InplaceVersionCounter();
+    VLOG(3) << "yoki EagerVariable Construct tensor version6.1: "
+            << &inplace_version_counter2;
+    VLOG(3) << "yoki EagerVariable Construct tensor version6.2: "
+            << inplace_version_counter2.CurrentVersion();
+    return return_tensor;
   }
 
   template <typename VarType>
   void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
+    // VLOG(3) << "yoki EagerVariable Construct tensor holder2: " <<
+    // egr::EagerUtils::yokiPrintHolder(tensor);
     auto* framework_tensor = var_.GetMutable<VarType>();
     // Contruct framework::Tensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
+    VLOG(3) << "yoki EagerVariable Construct tensor holder3: "
+            << tensor_dense->yokiholder();
+    auto& inplace_version_counter = tensor_dense->InplaceVersionCounter();
+    VLOG(3) << "yoki EagerVariable Construct tensor version3.1: "
+            << &inplace_version_counter;
+    VLOG(3) << "yoki EagerVariable Construct tensor version3.2: "
+            << inplace_version_counter.CurrentVersion();
     PADDLE_ENFORCE_EQ(
         (tensor_dense.get() && tensor_dense), true,
         paddle::platform::errors::Fatal(
@@ -118,6 +139,13 @@ class EagerVariable final {
             "treat all kinds of tensor as what they are.",
             tensor.name()));
     *framework_tensor = *tensor_dense;
+    VLOG(3) << "yoki EagerVariable Construct tensor holder4: "
+            << framework_tensor->yokiholder();
+    auto& inplace_version_counter2 = framework_tensor->InplaceVersionCounter();
+    VLOG(3) << "yoki EagerVariable Construct tensor version4.1: "
+            << &inplace_version_counter2;
+    VLOG(3) << "yoki EagerVariable Construct tensor version4.2: "
+            << inplace_version_counter2.CurrentVersion();
   }
 
  private:

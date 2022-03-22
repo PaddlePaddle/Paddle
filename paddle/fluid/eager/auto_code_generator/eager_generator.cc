@@ -1586,9 +1586,31 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       }
     }
   }
-  generated_function_body += "\n";
 
   VLOG(6) << "Generated Outs Map";
+
+  // [Generation] Apply View Strategy (Tensor)
+  if (inplace_map.empty() && view_op_map.count(op_type)) {
+    const char* HANDLE_VIEW_BETWEEN_EAGERVARIABLE =
+        "  if (ins.count(\"%s\") && outs.count(\"%s\")) {\n"
+        "    egr::EagerUtils::HandleViewBetweenEagerVariable(ins[\"%s\"][0], "
+        "outs[\"%s\"][0]);\n"
+        "  };\n";
+
+    std::string view_strategy_str = "";
+    std::string viwe_input_name = view_op_map[op_type].first;
+    std::string viwe_output_name = view_op_map[op_type].second;
+    view_strategy_str += paddle::string::Sprintf(
+        HANDLE_VIEW_BETWEEN_EAGERVARIABLE, viwe_input_name, viwe_output_name,
+        viwe_input_name, viwe_output_name);
+
+    generated_function_body += view_strategy_str;
+    generated_function_body += "\n";
+
+    VLOG(6) << "Generated View Strategy (EagerVariable)";
+
+    generated_function_body += "\n";
+  }
 
   // [Generation] Get Attrs
   dygraph_function_args_str +=
@@ -1711,6 +1733,24 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   }
   trace_op_body_str += "\n";
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
+
+  // [Generation] Apply View Strategy (Tensor)
+  if (inplace_map.empty() && view_op_map.count(op_type)) {
+    const char* HANDLE_VIEW_BETWEEN_TENSOR =
+        "  egr::EagerUtils::HandleViewBetweenTensor(%s, %s);\n";
+
+    std::string view_strategy_str = "";
+    std::string viwe_input_name = view_op_map[op_type].first;
+    std::string viwe_output_name = view_op_map[op_type].second;
+    view_strategy_str += paddle::string::Sprintf(
+        HANDLE_VIEW_BETWEEN_TENSOR, viwe_input_name, viwe_output_name);
+
+    trace_op_body_str += view_strategy_str;
+    trace_op_body_str += "\n";
+
+    VLOG(6) << "Generated View Strategy (Tensor)";
+  }
+
   /* ------ END Generate TraceOp ----- */
 
   // [Generation] Handle core_ops_returns_info
@@ -1814,6 +1854,91 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   std::string dygraph_function_declaration_str = paddle::string::Sprintf(
       FWD_HEADER_TEMPLATE, function_proto_return_type_str, function_name,
       dygraph_function_args_str);
+
+  if (inplace_map.empty() && op_type == "reshape2") {
+    fwd_function_str = R"(
+std::tuple<paddle::experimental::Tensor,paddle::experimental::Tensor> reshape2_dygraph_function(const paddle::experimental::Tensor& X,const paddle::experimental::Tensor& Shape, const paddle::framework::AttributeMap& attr_map) {
+
+  paddle::platform::RecordEvent dygraph_entrance_record_event("reshape2 dygraph", paddle::platform::TracerEventType::Operator, 1);
+  VLOG(3) << "Running Eager Forward Op: reshape2";
+  // Dygraph Forward Pass
+
+  egr::EagerUtils::yokiPrintHolder(X);
+
+  std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins = { { "X", egr::EagerUtils::TrySyncToVars(X) } };
+
+  if(Shape.initialized()) ins["Shape"] = egr::EagerUtils::TrySyncToVars(Shape);
+  std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs = { { "Out", {std::make_shared<egr::EagerVariable>(egr::Controller::Instance().GenerateUniqueName())}},{ "XShape", {std::make_shared<egr::EagerVariable>(egr::Controller::Instance().GenerateUniqueName())}} };
+
+  if (ins.count("X") && outs.count("Out")) {
+    egr::EagerUtils::HandleViewBetweenEagerVariable(ins["X"][0], outs["Out"][0]);
+  };
+
+
+  // Prepare Autograd Meta 
+  egr::AutogradMeta* p_autograd_X = egr::EagerUtils::nullable_autograd_meta(X);
+  egr::AutogradMeta* p_autograd_Shape = egr::EagerUtils::nullable_autograd_meta(Shape);
+
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+
+  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(trace_backward, p_autograd_X, p_autograd_Shape);
+
+  paddle::framework::AttributeMap attrs = attr_map;
+  paddle::framework::AttributeMap default_attrs;
+  egr::Controller::Instance().GetCurrentTracer()->TraceOp("reshape2", ins, outs, attrs, 
+     egr::Controller::Instance().GetExpectedPlace(),
+     &default_attrs, true, {});
+
+  paddle::experimental::Tensor Out;
+  egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
+  paddle::experimental::Tensor XShape;
+  egr::EagerUtils::GetOutput(outs["XShape"][0], &XShape);
+
+  egr::EagerUtils::yokiPrintHolder(X);
+  egr::EagerUtils::yokiPrintHolder(Out);
+
+  //egr::EagerUtils::HandleViewBetweenTensor(X, Out);
+  //Out.share_inplace_version_counter(X);
+
+  egr::EagerUtils::yokiPrintHolder(X);
+  egr::EagerUtils::yokiPrintHolder(Out);
+
+  {
+    paddle::platform::RecordEvent node_creation_record_event("reshape2 node_creation", paddle::platform::TracerEventType::Operator, 1);
+    egr::AutogradMeta* p_autograd_Out = egr::EagerUtils::autograd_meta(&Out);
+    egr::AutogradMeta* p_autograd_XShape = egr::EagerUtils::autograd_meta(&XShape);
+    if(require_any_grad) {
+      VLOG(6) << " Construct Grad for reshape2 "; 
+      egr::EagerUtils::PassStopGradient(false, p_autograd_Out, p_autograd_XShape);
+      // Create GradOpNode
+      auto grad_node = std::make_shared<GradNodereshape2>(2, 2);
+
+      // Set Attributes
+      grad_node->SetAttrMap(std::move(attrs));
+      grad_node->SetDefaultAttrMap(std::move(default_attrs));
+
+      // Set Tensor Wrappers
+      grad_node->SetTensorWrapperXShape(XShape, false);
+
+      grad_node->SetGradOutMeta(X, 0);
+      if(p_autograd_X) grad_node->AddEdges(p_autograd_X, 0);
+      grad_node->SetGradOutMeta(Shape, 1);
+      if(p_autograd_Shape) grad_node->AddEdges(p_autograd_Shape, 1);
+      egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 0);
+      egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
+      grad_node->SetGradInMeta(Out, 0);
+      egr::EagerUtils::CheckAndRetainGrad(Out);
+      egr::EagerUtils::SetOutRankWithSlot(p_autograd_XShape, 1);
+      grad_node->SetGradInMeta(XShape, 1);
+
+    }
+  }
+
+  return std::make_tuple(Out,XShape);
+
+}
+)";
+  }
 
   return {fwd_function_str, dygraph_function_declaration_str};
 }
@@ -2032,7 +2157,15 @@ static std::string GenerateSingleOpBase(
   const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
-
+  if (fwd_op_type == "cast") {
+    // swtich in out dtype
+    const char* CAST_GRAD =
+        "  auto temp_type = %s[\"in_dtype\"];\n"
+        "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"
+        "  %s[\"out_dtype\"] = temp_type;\n";
+    grad_attrs_str += paddle::string::Sprintf(CAST_GRAD, attrs_name, attrs_name,
+                                              attrs_name, attrs_name);
+  }
   // Handle dynamic grad attributes
   grad_attrs_str += HandleDynamicGradAttributes(fwd_op_type, attrs_name);
   generated_grad_function_body += grad_attrs_str;

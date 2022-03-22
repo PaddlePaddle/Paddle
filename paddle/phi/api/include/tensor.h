@@ -511,6 +511,14 @@ class PADDLE_API Tensor final {
    */
   uint32_t current_inplace_version();
 
+  /**
+   * @brief Share inplace_version_counter
+   *
+   * @param x
+   * @return Tensor&
+   */
+  Tensor& share_inplace_version_counter(const Tensor& x);
+
   /* Part 10: Auto generated Tensor methods */
 
  private:

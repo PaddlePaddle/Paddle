@@ -177,9 +177,20 @@ inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+  VLOG(3) << "yoki sharebuffer 1";
+  VLOG(3) << "yoki sharebuffer 1.1 " << tensor.yokiholder();
+  VLOG(3) << "yoki sharebuffer 1.2 " << tensor.holder_;
   holder_ = tensor.holder_;
+  VLOG(3) << "yoki sharebuffer 2";
+  VLOG(3) << "yoki sharebuffer 2.1 " << tensor.meta().offset;
   meta_.offset = tensor.meta().offset;
-  meta_.dtype = tensor.dtype();
+  VLOG(3) << "yoki sharebuffer 3";
+  VLOG(3) << "yoki sharebuffer 3.1 " << tensor.meta().dtype;
+  VLOG(3) << "yoki sharebuffer 3.2 " << meta_.dtype;
+  // VLOG(3) << "yoki sharebuffer 3.3" << tensor.dtype();
+  // meta_.dtype = tensor.dtype();
+  meta_.dtype = tensor.meta().dtype;
+  VLOG(3) << "yoki sharebuffer 4";
 }
 
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
