@@ -63,7 +63,7 @@ class TestElementwiseModOp(XPUOpTest):
         pass
 
 
-################## TEST OP: BitwiseAnd ##################
+################## TEST operator % ##################
 class TestRemainderOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
