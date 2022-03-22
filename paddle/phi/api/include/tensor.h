@@ -225,6 +225,22 @@ class PADDLE_API Tensor final {
    */
   bool is_selected_rows() const;
 
+  /**
+   * @brief Determine whether tensor is SparseCooTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_sparse_coo_tensor() const;
+
+  /**
+   * @brief Determine whether tensor is SparseCsrTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_sparse_csr_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
@@ -253,12 +269,20 @@ class PADDLE_API Tensor final {
   bool is_cpu() const;
 
   /**
-   * @brief Determine whether the tensor device is CUDA
+   * @brief Determine whether the tensor device is GPU
    *
    * @return true
    * @return false
    */
-  bool is_cuda() const;
+  bool is_gpu() const;
+
+  /**
+   * @brief Determine whether the tensor device is GPU_PINNED
+   *
+   * @return true
+   * @return false
+   */
+  bool is_gpu_pinned() const;
 
   /* Part 4: Data Access methods */
 
@@ -481,7 +505,21 @@ class PADDLE_API Tensor final {
    */
   void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
 
-  /* Part 9: Auto generated Tensor methods */
+  /* Part 9: Inplace methods */
+
+  /**
+   * @brief Increase inplace version
+   */
+  void bump_inplace_version();
+
+  /**
+   * @brief Get current inplace version
+   *
+   * @return uint32_t
+   */
+  uint32_t current_inplace_version();
+
+  /* Part 10: Auto generated Tensor methods */
 
  private:
   /**

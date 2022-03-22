@@ -53,6 +53,19 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
       INFRT_KERNEL(infrt::kernel::phi::CreateGPUDenseTensor),
       {"dims", "lod", "layout", "precision"});
 #endif
+  registry->AddKernelWithAttrs("phi_dt.load_params",
+                               INFRT_KERNEL(infrt::kernel::phi::LoadParams),
+                               {"path"});
+  registry->AddKernelWithAttrs(
+      "phi_dt.load_combined_params",
+      INFRT_KERNEL(infrt::kernel::phi::LoadCombinedParams),
+      {"model_path", "params_path"});
+  registry->AddKernelWithAttrs(
+      "phi_dt.tensor_map_get_tensor",
+      INFRT_KERNEL(infrt::kernel::phi::TensorMapGetTensor),
+      {"name"});
+  registry->AddKernel("phi_dt.tensor_map_get_size",
+                      INFRT_KERNEL(infrt::kernel::phi::TensorMapGetSize));
 }
 
 }  // namespace kernel
