@@ -706,14 +706,15 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vecto
     auto hooked_grads = ApplyGradientHooks(grads);
     
     // Call grad_api function
+    VLOG(3) << \"Final State Running: \" << \"{}\"; 
     auto grad_api_returns = {}::{}({});
     {}
 }}
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, fill_zero_str, grad_api_namespace, bwd_api_name,
-        grad_api_args_str, returns_str)
+        grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
+        bwd_api_name, grad_api_args_str, returns_str)
 
     return node_definition_str
 
