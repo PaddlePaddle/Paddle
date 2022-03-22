@@ -23,6 +23,7 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace funcs {
@@ -107,7 +108,7 @@ static void StridedSliceOutDims(const std::vector<int64_t>& starts,
 static void StridedSliceFunctor(int64_t* starts,
                                 int64_t* ends,
                                 int64_t* strides,
-                                int* axes,
+                                const int* axes,
                                 int* reverse_axis,
                                 const DDim dims,
                                 const std::vector<int>& infer_flags,
@@ -176,7 +177,8 @@ static void StridedSliceFunctor(int64_t* starts,
 template <typename Context, typename T, size_t D>
 void StridedSliceCompute(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const std::vector<int>& axes const ScalarArray& starts,
+                         const std::vector<int>& axes,
+                         const ScalarArray& starts,
                          const ScalarArray& ends,
                          const ScalarArray& strides,
                          const std::vector<int>& infer_flags,
@@ -185,8 +187,8 @@ void StridedSliceCompute(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   DDim in_dims = x.dims();
 
-  auto& starts_ = starts.GetData();
-  auto& ends_ = ends.GetData();
+  auto starts_ = starts.GetData();
+  auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
   auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -226,9 +228,9 @@ void StridedSliceCompute(const Context& dev_ctx,
   }
   for (size_t axis = 0; axis < axes.size(); axis++) {
     int axis_index = axes[axis];
-    starts_indices[axis_index] = starts[axis];
-    ends_indices[axis_index] = ends[axis];
-    strides_indices[axis_index] = strides[axis];
+    starts_indices[axis_index] = starts_[axis];
+    ends_indices[axis_index] = ends_[axis];
+    strides_indices[axis_index] = strides_[axis];
     reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
   }
 
@@ -266,14 +268,13 @@ void StridedSliceCompute(const Context& dev_ctx,
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-  out->mutable_data<T>(context.GetPlace());
   auto in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(x);
   auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *out, out_dims);
   if (need_reverse) {
     DenseTensor tmp;
-    tmp->Resize(out_dims);
-    dev_ctx.template Alloc<T>(tmp);
+    tmp.Resize(out_dims);
+    dev_ctx.template Alloc<T>(&tmp);
 
     auto tmp_t =
         EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(tmp);
@@ -292,20 +293,19 @@ void StridedSliceCompute(const Context& dev_ctx,
 
 template <typename Context, typename T, size_t D>
 void StridedSliceCompute(const Context& dev_ctx,
-                         const vector<DenseTensor*>& x,
-                         const std::vector<int>& axes const ScalarArray& starts,
+                         const std::vector<const DenseTensor*>& x,
+                         const std::vector<int>& axes,
+                         const ScalarArray& starts,
                          const ScalarArray& ends,
                          const ScalarArray& strides,
                          const std::vector<int>& infer_flags,
                          const std::vector<int>& decrease_axis,
-                         vector<DenseTensor*> out) {
-  auto& place = *dev_ctx.eigen_device();
-
+                         std::vector<DenseTensor*> out) {
   const int64_t size = x.size();
   auto in_dims = phi::make_ddim({size});
 
-  auto& starts_ = starts.GetData();
-  auto& ends_ = ends.GetData();
+  auto starts_ = starts.GetData();
+  auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
   auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -345,9 +345,9 @@ void StridedSliceCompute(const Context& dev_ctx,
   }
   for (size_t axis = 0; axis < axes.size(); axis++) {
     int axis_index = axes[axis];
-    starts_indices[axis_index] = starts[axis];
-    ends_indices[axis_index] = ends[axis];
-    strides_indices[axis_index] = strides[axis];
+    starts_indices[axis_index] = starts_[axis];
+    ends_indices[axis_index] = ends_[axis];
+    strides_indices[axis_index] = strides_[axis];
     reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
   }
 
@@ -415,7 +415,7 @@ void StridedSliceCompute(const Context& dev_ctx,
           "dimension of Output should be 1, but received %d",
           out_dims_origin.size()));
 
-  out->resize(out_dims_origin[0]);
+  out.resize(out_dims_origin[0]);
   size_t const in_array_size = x.size();
   for (size_t i = 0; i < out.size(); i++) {
     size_t in_offset =
@@ -432,7 +432,7 @@ void StridedSliceCompute(const Context& dev_ctx,
         0,
         errors::PreconditionNotMet(
             "The input LoDTensorArray Input[%d] holds no memory.", in_offset));
-    auto* out_tensor = out_array.at(out_offset);
+    auto* out_tensor = out.at(out_offset);
 
     out_tensor->set_lod(in_tensor->lod());
     phi::Copy<Context>(
@@ -441,20 +441,20 @@ void StridedSliceCompute(const Context& dev_ctx,
 }
 
 template <typename Context, typename T, size_t D>
-void StridedSliceGradCompute(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& out_grad,
-    const std::vector<int>& axes const ScalarArray& starts,
-    const ScalarArray& ends,
-    const ScalarArray& strides,
-    const std::vector<int>& infer_flags,
-    const std::vector<int>& decrease_axis,
-    DenseTensor* x_grad) {
+void StridedSliceGradCompute(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& out_grad,
+                             const std::vector<int>& axes,
+                             const ScalarArray& starts,
+                             const ScalarArray& ends,
+                             const ScalarArray& strides,
+                             const std::vector<int>& infer_flags,
+                             const std::vector<int>& decrease_axis,
+                             DenseTensor* x_grad) {
   auto& place = *dev_ctx.eigen_device();
   DDim out_dims = out_grad.dims();
 
-  auto& starts_ = starts.GetData();
+  auto starts_ = starts.GetData();
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
@@ -463,7 +463,7 @@ void StridedSliceGradCompute(
   auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
 
   auto reverse_axis = Eigen::array<bool, D>();
-  std::vector<int> reverse_vector(starts.size(), 0);
+  std::vector<int> reverse_vector(starts_.size(), 0);
 
   StridedSliceFunctor(starts_.data(),
                       ends_.data(),
@@ -482,9 +482,9 @@ void StridedSliceGradCompute(
   }
   for (size_t axis = 0; axis < axes.size(); axis++) {
     int axis_index = axes[axis];
-    starts_indices[axis_index] = starts[axis];
-    ends_indices[axis_index] = ends[axis];
-    strides_indices[axis_index] = strides[axis];
+    starts_indices[axis_index] = starts_[axis];
+    ends_indices[axis_index] = ends_[axis];
+    strides_indices[axis_index] = strides_[axis];
     reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
   }
 
@@ -504,9 +504,8 @@ void StridedSliceGradCompute(
 
   auto in_t =
       EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(out_grad);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *x_grad, out_dims);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *x_grad, out_dims);
   if (need_reverse) {
     DenseTensor reverse_input;
     reverse_input.Resize(out_grad_dims);
@@ -526,27 +525,25 @@ void StridedSliceGradCompute(
 }
 
 template <typename Context, typename T, size_t D>
-void StridedSliceGradCompute(
-    const Context& dev_ctx,
-    const vector<DenseTensor*>& x,
-    const vector<DenseTensor*>& out_grad,
-    const std::vector<int>& axes const ScalarArray& starts,
-    const ScalarArray& ends,
-    const ScalarArray& strides,
-    const std::vector<int>& infer_flags,
-    const std::vector<int>& decrease_axis,
-    vector<DenseTensor*> x_grad) {
-  auto& place = *dev_ctx.eigen_device();
-
+void StridedSliceGradCompute(const Context& dev_ctx,
+                             const std::vector<const DenseTensor*>& x,
+                             const std::vector<const DenseTensor*>& out_grad,
+                             const std::vector<int>& axes,
+                             const ScalarArray& starts,
+                             const ScalarArray& ends,
+                             const ScalarArray& strides,
+                             const std::vector<int>& infer_flags,
+                             const std::vector<int>& decrease_axis,
+                             std::vector<DenseTensor*> x_grad) {
   // Note(weixin):Since the shape of `framework::GradVarName("Input")` of
   // StridedSliceGrad cannot be calculated by
   // `framework::GradVarName("Output")`, the dim of "Input" is used to
   // calculate the output shape. when set it to inplace OP, there may be
   // some problems.
-  const int64_t size = x->size();
+  const int64_t size = x.size();
   DDim out_dims = phi::make_ddim({size});
 
-  auto& starts_ = starts.GetData();
+  auto starts_ = starts.GetData();
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
@@ -555,7 +552,7 @@ void StridedSliceGradCompute(
   auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
 
   auto reverse_axis = Eigen::array<bool, D>();
-  std::vector<int> reverse_vector(starts.size(), 0);
+  std::vector<int> reverse_vector(starts_.size(), 0);
 
   StridedSliceFunctor(starts_.data(),
                       ends_.data(),
@@ -574,9 +571,9 @@ void StridedSliceGradCompute(
   }
   for (size_t axis = 0; axis < axes.size(); axis++) {
     int axis_index = axes[axis];
-    starts_indices[axis_index] = starts[axis];
-    ends_indices[axis_index] = ends[axis];
-    strides_indices[axis_index] = strides[axis];
+    starts_indices[axis_index] = starts_[axis];
+    ends_indices[axis_index] = ends_[axis];
+    strides_indices[axis_index] = strides_[axis];
     reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
   }
 
@@ -617,12 +614,12 @@ void StridedSliceGradCompute(
           "the dimension of output should be 1, but received %d.",
           out_dims.size()));
 
-  x_grad->resize(out_dims[0]);
+  x_grad.resize(out_dims[0]);
   auto const d_out_array_size = x_grad.size();
 
   for (size_t j = 0; j < d_out_array_size; j++) {
-    auto& dim = x.at(j).dims();
-    auto* d_out_tensor = &x_grad.at(j);
+    auto& dim = x.at(j)->dims();
+    auto* d_out_tensor = x_grad.at(j);
 
     int64_t sub = j - starts_indices[0];
 
@@ -634,7 +631,7 @@ void StridedSliceGradCompute(
 
     if ((sub % strides_indices[0] == 0) && (0 <= in_offset) &&
         (static_cast<size_t>(in_offset) < out_grad.size())) {
-      auto& in_tensor = out_grad.at(in_offset);
+      auto* in_tensor = out_grad.at(in_offset);
       PADDLE_ENFORCE_GT(
           in_tensor->memory_size(),
           0,

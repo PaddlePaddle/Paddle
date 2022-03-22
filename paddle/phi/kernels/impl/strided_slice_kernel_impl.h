@@ -30,17 +30,17 @@ void StridedSliceKernel(const Context& dev_ctx,
                         const std::vector<int>& decrease_axis,
                         DenseTensor* out) {
   int rank = x.dims().size();
-#define SLICE_CASE(Rank)                                 \
-  case 1:                                                \
-    StridedSliceCompute<Context, T, Rank>(dev_ctx,       \
-                                          x,             \
-                                          axes,          \
-                                          starts,        \
-                                          ends,          \
-                                          strides,       \
-                                          infer_flags,   \
-                                          decrease_axis, \
-                                          out);          \
+#define SLICE_CASE(Rank)                                        \
+  case Rank:                                                    \
+    funcs::StridedSliceCompute<Context, T, Rank>(dev_ctx,       \
+                                                 x,             \
+                                                 axes,          \
+                                                 starts,        \
+                                                 ends,          \
+                                                 strides,       \
+                                                 infer_flags,   \
+                                                 decrease_axis, \
+                                                 out);          \
     break;
 
   switch (rank) {
@@ -56,14 +56,14 @@ void StridedSliceKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void StridedSliceArrayKernel(const Context& dev_ctx,
-                             const vector<DenseTensor*>& x,
+                             const std::vector<const DenseTensor*>& x,
                              const std::vector<int>& axes,
                              const ScalarArray& starts,
                              const ScalarArray& ends,
                              const ScalarArray& strides,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
-                             vector<DenseTensor*> out) {
+                             std::vector<DenseTensor*> out) {
   funcs::StridedSliceCompute<Context, T, 1>(
       dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
 }

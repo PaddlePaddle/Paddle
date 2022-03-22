@@ -32,12 +32,12 @@ void StridedSliceKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void StridedSliceArrayKernel(const Context& dev_ctx,
-                             const vector<DenseTensor*>& x,
+                             const std::vector<const DenseTensor*>& x,
                              const std::vector<int>& axes,
                              const ScalarArray& starts,
                              const ScalarArray& ends,
                              const ScalarArray& strides,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
-                             vector<DenseTensor*> out);
+                             std::vector<DenseTensor*> out);
 }  // namespace phi
