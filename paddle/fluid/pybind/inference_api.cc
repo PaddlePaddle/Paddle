@@ -284,7 +284,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
   // For oneDNN tensor we need to rotate shape 
   // so we create temporay tensor to share everything 
   // with "tensor" and rotate its shape
-  auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> phi::DDim {
+  auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> std::vector<int> {
     auto dl = paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
     if (tensor.shape().size() < 3 && (dl == paddle::framework::DataLayout::kNCHW)|| (dl == paddle::framework::DataLayout::kNCDHW))
       return tensor.shape();
@@ -292,7 +292,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
     return tensor.shape();
   }; 
   
-  auto tensor_shape = tensor.layout() == paddle::DataLayout::kMKLDNN ? get_actual_shape(tensor) : tensor.shape();
+  auto tensor_shape = tensor.layout() == paddle::framework::DataLayout::kMKLDNN ? get_actual_shape(tensor) : tensor.shape();
 
   py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
   py::array array(dt, std::move(shape));
