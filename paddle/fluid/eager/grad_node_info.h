@@ -76,8 +76,12 @@ class GradSlotMeta {
     return *meta_.get();
   }
 
+  void SetPlace(const phi::Place& place) { place_ = place; }
+  const phi::Place& GetPlace() const { return place_; }
+
  private:
   bool stop_gradient_{false};
+  phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 

@@ -2254,7 +2254,9 @@ static std::string GenerateGradNodeCCContents(
       "\n}";
   std::string fill_zero_str = "";
   if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
-    fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads);\n";
+    fill_zero_str =
+        "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, "
+        "this->InputMeta());\n";
   }
   std::string grad_function_str =
       paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type,

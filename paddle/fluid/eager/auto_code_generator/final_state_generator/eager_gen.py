@@ -17,7 +17,7 @@ import re
 import argparse
 import os
 
-ops_to_fill_zero_for_empty_grads = set()
+ops_to_fill_zero_for_empty_grads = set(list("split"))
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -667,7 +667,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
 
     fill_zero_str = ""
     if fwd_api_name in ops_to_fill_zero_for_empty_grads:
-        fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads);\n"
+        fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
 
     if len(namespace) > 0:
         grad_api_namespace = f"paddle::experimental::{namespace}"
