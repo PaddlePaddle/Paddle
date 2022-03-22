@@ -1,5 +1,5 @@
 - api : empty
-  args : (ScalarArray shape, Backend place = Backend::CPU)
+  args : (ScalarArray shape, Place place=CPUPlace())
   output : Tensor(out@StringTensor)
   infer_meta :
     func : strings::CreateInferMeta
@@ -10,14 +10,13 @@
     backend : place
 
 - api : empty_like
-  args : (Tensor x, Backend place = Backend::UNDEFINED)
+  args : (Tensor x, Place place = {})
   output : Tensor(out@StringTensor)
   infer_meta :
     func : strings::CreateLikeInferMeta
     param : [x]
   kernel :
     func : strings_empty_like
-    backend : place
     param : [x]
     backend : place > x
 

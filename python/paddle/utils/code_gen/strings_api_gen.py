@@ -225,8 +225,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 assert len(
                     vars_list
                 ) == 2, f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Backend'), \
-                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Backend type."
+                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
+                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
                 kernel_select_code = kernel_select_code + f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
 """
