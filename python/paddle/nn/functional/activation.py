@@ -578,6 +578,8 @@ def relu_(x, name=None):
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
+    if _in_eager_mode():
+        return _C_ops.final_state_relu_(x)
     return _C_ops.relu_(x)
 
 

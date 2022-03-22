@@ -34,7 +34,7 @@ class PodSepc(object):
         #self.status: Status = None
 
         self._rank = -1
-        self._init_timeout = 120  # 2 min timeout for each init container
+        self._init_timeout = None
         self._restart = -1
         self._replicas = 0  # number of containers
         self._exit_code = 0
@@ -45,15 +45,15 @@ class Pod(PodSepc):
         super().__init__()
 
     def __str__(self):
-        return "Pod: {}, replicas {}, status {}".format(self.name,
-                                                        self.replicas,
-                                                        self.status())
+        return "Pod: {}, replicas {}, status {}".format(
+            self.name, self.replicas, self.status)
 
     def failed_container(self):
+        cs = []
         for c in self._containers:
-            if c.status() == Status.FAILED:
-                return c
-        return None
+            if c.status == Status.FAILED:
+                cs.append(c)
+        return cs
 
     @property
     def name(self):
@@ -65,7 +65,7 @@ class Pod(PodSepc):
 
     @replicas.setter
     def replicas(self, r):
-        self._replicas = r
+        self._replicas = max(r, 1)
 
     @property
     def rank(self):
@@ -98,13 +98,15 @@ class Pod(PodSepc):
     @property
     def exit_code(self):
         for c in self._containers:
-            if c.exit_code() != 0:
-                return c.exit_code()
+            if c.exit_code != 0:
+                return c.exit_code
         return 0
 
     def deploy(self):
+        # init container should stop before run containers
         for i in self._init_containers:
-            i.start(self._init_timeout)
+            i.start()
+            i.wait(self._init_timeout)
 
         for c in self._containers:
             c.start()
@@ -120,12 +122,16 @@ class Pod(PodSepc):
         for c in self._containers:
             c.wait(None)
 
+    @property
     def status(self):
         if self.is_failed():
             return Status.FAILED
 
         if self.is_completed():
             return Status.COMPLETED
+
+        if self.is_running():
+            return Status.RUNNING
 
         return Status.READY
 
@@ -135,31 +141,31 @@ class Pod(PodSepc):
 
     def is_failed(self):
         for c in self._containers:
-            if c.status() == Status.FAILED:
+            if c.status == Status.FAILED:
                 return True
         return False
 
     def is_completed(self):
         for c in self._containers:
-            if c.status() != Status.COMPLETED:
+            if c.status != Status.COMPLETED:
+                return False
+        return True
+
+    def is_running(self):
+        for c in self._containers:
+            if c.status != Status.RUNNING:
                 return False
         return True
 
     def logs(self, idx=None):
         if idx is None:
-            if self.failed_container():
-                self.failed_container().logs()
-            else:
-                self._containers[0].logs()
+            self._containers[0].logs()
         else:
             self._containers[idx].logs()
 
     def tail(self, idx=None):
         if idx is None:
-            if self.failed_container():
-                self.failed_container().tail()
-            else:
-                self._containers[0].tail()
+            self._containers[0].tail()
         else:
             self._containers[idx].tail()
 
@@ -175,10 +181,10 @@ class Pod(PodSepc):
         end = time.time() + timeout
         while timeout < 0 or time.time() < end:
             for c in self._containers:
-                if c.status() in any_list:
-                    return c.status()
+                if c.status in any_list:
+                    return c.status
 
-            s = [c.status() for c in self._containers]
+            s = [c.status for c in self._containers]
             if len(set(s)) == 1 and s[0] in all_list:
                 return s[0]
 

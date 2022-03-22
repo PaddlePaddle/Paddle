@@ -1735,12 +1735,12 @@ def tile(x, repeat_times, name=None):
 
     Args:
         x (Tensor): The input tensor, its data type should be bool, float32, float64, int32 or int64.
-        repeat_times (Tensor|tuple|list): The number of repeating times. If repeat_times is a list or tuple, all its elements
+        repeat_times (list|tuple|Tensor): The number of repeating times. If repeat_times is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. The data type is the same as ``x``.
+        N-D Tensor. The data type is the same as ``x``. The size of the i-th dimension is equal to ``x[i] * repeat_times[i]``.
 
     Examples:
         .. code-block:: python
@@ -1750,16 +1750,18 @@ def tile(x, repeat_times, name=None):
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.tile(data, repeat_times=[2, 1])
             np_out = out.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
+            # [[1, 2, 3]
+            #  [1, 2, 3]]
 
-            out = paddle.tile(data, repeat_times=[2, 2])
+            out = paddle.tile(data, repeat_times=(2, 2))
             np_out = out.numpy()
-            # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
+            # [[1, 2, 3, 1, 2, 3]
+            #  [1, 2, 3, 1, 2, 3]]
 
-            repeat_times = paddle.to_tensor([2, 1], dtype='int32')
+            repeat_times = paddle.to_tensor([1, 2], dtype='int32')
             out = paddle.tile(data, repeat_times=repeat_times)
             np_out = out.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
+            # [[1, 2, 3, 1, 2, 3]]
     """
     if paddle.in_dynamic_mode():
         if _in_eager_mode():
