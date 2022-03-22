@@ -2024,4 +2024,3 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
-PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

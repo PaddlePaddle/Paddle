@@ -273,6 +273,25 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
 class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FlattenContiguousRange");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FlattenContiguousRange");
+    const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
+    const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
+
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    CompatMetaTensor out(ctx->GetOutputVarPtrs("Out")[0], ctx->IsRuntime());
+    std::unique_ptr<CompatMetaTensor> xshape(nullptr);
+    if (ctx->HasOutput("XShape")) {
+      xshape = std::move(std::unique_ptr<CompatMetaTensor>(new CompatMetaTensor(
+          ctx->GetOutputVarPtrs("XShape")[0], ctx->IsRuntime())));
+    }
+    phi::FlattenWithXShapeInferMeta(x, start_axis, stop_axis, &out,
+                                    xshape.get());
+  }
 };
 
 class FlattenContiguousRangeOpMaker : public FlattenOpMaker {
@@ -385,16 +404,12 @@ REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
                   ops::FlattenGradInplaceInferer);
 
-DECLARE_INFER_SHAPE_FUNCTOR(flatten_contiguous_range,
-                            FlattenContiguousRangeInferShapeFunctor,
-                            PD_INFER_META(phi::FlattenWithXShapeInferMeta));
-
 REGISTER_OPERATOR(
     flatten_contiguous_range, ops::FlattenContiguousRangeOp,
     ops::FlattenContiguousRangeOpMaker,
     ops::FlattenContiguousRangeGradOpMaker<paddle::framework::OpDesc>,
     ops::FlattenContiguousRangeGradOpMaker<paddle::imperative::OpBase>,
-    ops::FlattenOpInplaceInferer, FlattenContiguousRangeInferShapeFunctor);
+    ops::FlattenOpInplaceInferer);
 REGISTER_OPERATOR(flatten_contiguous_range_grad,
                   ops::FlattenContiguousRangeGradOp,
                   ops::FlattenGradInplaceInferer);
