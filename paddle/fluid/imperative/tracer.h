@@ -28,6 +28,7 @@
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace paddle {
 namespace imperative {
@@ -153,6 +154,10 @@ class Tracer {
       return std::string("float32");
     }
   }
+
+  phi::KernelSignature GetExpectedKernelSignature(
+      const std::string& type, const NameTensorMap& ins,
+      const NameTensorMap& outs, framework::AttributeMap attrs) const;
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);

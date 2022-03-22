@@ -105,9 +105,11 @@ class AmpScaler(object):
                 "current_tracer is None, maybe it is not in imperative mode.")
 
         if enable and not (tracer._expected_place.is_gpu_place() or
-                           tracer._expected_place.is_xpu_place()):
+                           tracer._expected_place.is_xpu_place() or
+                           tracer._expected_place.is_mlu_place() or
+                           tracer._expected_place.is_npu_place()):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace and NPUPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place)
             enable = False
 
@@ -286,14 +288,28 @@ class AmpScaler(object):
                     ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
                            )
             ]
-        if len(param_grads_fp16):
-            _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                            param_grads_fp16,
-                                            self._temp_found_inf_fp16)
-        if len(param_grads_fp32):
-            _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                            param_grads_fp32,
-                                            self._temp_found_inf_fp32)
+        if core.is_compiled_with_npu():
+            float_status = _C_ops.alloc_float_status()
+            _C_ops.clear_float_status(float_status, float_status)
+
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                float_status, param_grads_fp16,
+                                                self._temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                float_status, param_grads_fp32,
+                                                self._temp_found_inf_fp32)
+        else:
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                param_grads_fp16,
+                                                self._temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                param_grads_fp32,
+                                                self._temp_found_inf_fp32)
+
         if len(param_grads_fp16) and len(param_grads_fp32):
             self._found_inf = self._temp_found_inf_fp16 or self._temp_found_inf_fp32
         elif len(param_grads_fp16):

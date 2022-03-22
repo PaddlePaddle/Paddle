@@ -20,6 +20,7 @@ import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
 import paddle.fluid as fluid
+import paddle
 
 
 def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
@@ -229,4 +230,5 @@ class BadInputTestCTCAlignr(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

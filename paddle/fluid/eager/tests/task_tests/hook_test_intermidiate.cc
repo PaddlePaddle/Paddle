@@ -27,6 +27,12 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 paddle::experimental::Tensor hook_function(
@@ -102,7 +108,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   }
 
   VLOG(6) << "Runing Backward";
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
   VLOG(6) << "Finish Backward";
 
   eager_test::CompareGradTensorWithValue<float>(
@@ -160,7 +166,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(
@@ -218,7 +224,7 @@ void test_matmul(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(
@@ -249,6 +255,6 @@ TEST(Hook_intermidiate, Matmul_v2) {
 }
 }  // namespace egr
 
-USE_OP(sigmoid);
+USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);

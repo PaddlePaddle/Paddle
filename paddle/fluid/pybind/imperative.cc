@@ -52,10 +52,13 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/compat/type_defs.h"
 
 namespace paddle {
 namespace pybind {
@@ -116,7 +119,11 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       return var;
     }
 
-    return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
+    auto res_varbase = PyObjectCast<std::shared_ptr<imperative::VarBase>>(res);
+    // Here the reference count of `res` is 2, so we decreases the reference
+    // count manually to avoid memory leaks
+    Py_DECREF(res);
+    return res_varbase->SharedVar();
   }
 
  private:
@@ -426,6 +433,28 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     auto var_vec = GetVarBaseListFromPyHandle(pair.second);
     if (!var_vec.empty()) {
       result.emplace(pair.first, std::move(var_vec));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      PyErr_Occurred(), nullptr,
+      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
+  return result;
+}
+
+paddle::imperative::NameTensorMap ConvertToNameTensorMap(
+    const PyNameVarBaseMap &map) {
+  paddle::imperative::NameTensorMap result;
+  for (auto &pair : map) {
+    auto var_vec = CastPyArg2VectorOfTensor(pair.second.ptr(), 0);
+    if (!var_vec.empty()) {
+      // change vector<Tensor> -> vector<shared_ptr<Tensor>>
+      std::vector<std::shared_ptr<egr::EagerVariable>> dst_var_vec;
+      for (auto &v : var_vec) {
+        dst_var_vec.emplace_back(
+            std::make_shared<egr::EagerVariable>(std::move(v)));
+      }
+      result.emplace(pair.first, std::move(dst_var_vec));
     }
   }
 
@@ -2072,6 +2101,26 @@ void BindImperative(py::module *m_ptr) {
              return std::make_tuple(
                  *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
                  *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+           })
+      .def("_get_kernel_signature",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs) {
+             // TODO(xiongkun): move this function outside of tracer.
+             auto ins_map = ConvertToNameTensorMap(ins);
+             auto outs_map = ConvertToNameTensorMap(outs);
+             {
+               auto to_vector = [](paddle::SmallVector<std::string> &vec) {
+                 return std::vector<std::string>(vec.begin(), vec.end());
+               };
+               auto ret = self.GetExpectedKernelSignature(type, ins_map,
+                                                          outs_map, attrs);
+               auto kernelsig_ins = to_vector(std::get<0>(ret.args));
+               auto kernelsig_attrs = to_vector(std::get<1>(ret.args));
+               auto kernelsig_outs = to_vector(std::get<2>(ret.args));
+               return std::make_tuple(kernelsig_ins, kernelsig_attrs,
+                                      kernelsig_outs);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,

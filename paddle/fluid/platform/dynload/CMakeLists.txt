@@ -46,8 +46,6 @@ if (WITH_MKLML)
     cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml phi_dynload_mklml)
 endif()
 
-cc_library(dynload_lapack SRCS lapack.cc DEPS dynamic_loader phi_dynload_lapack)
-add_dependencies(dynload_lapack extern_lapack)
 # TODO(TJ): add iomp, mkldnn?
 
 if (MKL_FOUND AND WITH_ONEMKL)
