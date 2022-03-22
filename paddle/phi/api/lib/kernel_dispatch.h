@@ -154,7 +154,7 @@ DataType ParseDataType(const Tensor& tensor);
 DataType ParseDataType(const std::vector<Tensor>& tensors);
 DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
 
-Backend ParseBackend(Backend backend);
+Backend ParseBackend(const Place& place);
 Backend ParseBackend(const Tensor& tensor);
 template <typename T, typename... Args>
 Backend ParseBackend(T t, Args... args) {
@@ -163,7 +163,7 @@ Backend ParseBackend(T t, Args... args) {
   return static_cast<Backend>(64 -
                               detail::CountLeadingZeros(backend_set.bitset()));
 }
-Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor);
+Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
 DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);
