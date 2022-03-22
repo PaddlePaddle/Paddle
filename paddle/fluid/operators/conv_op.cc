@@ -425,7 +425,7 @@ void Conv2DOpMaker::Make() {
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, default is False.")
-      .SetDefault(true)
+      .SetDefault(false)
       .AsExtra();
 
   AddComment(R"DOC(
@@ -586,7 +586,7 @@ void Conv3DOpMaker::Make() {
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, default is False.")
-      .SetDefault(true)
+      .SetDefault(false)
       .AsExtra();
   AddComment(R"DOC(
 Convolution3D Operator.
