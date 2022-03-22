@@ -99,7 +99,7 @@ class BaseAPI(object):
             'double': 'double',
             'bool': 'bool',
             'str': 'const std::string&',
-            'Backend': 'Backend',
+            'Place': 'Place',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
             'int64[]': 'const std::vector<int64_t>&',
@@ -118,7 +118,7 @@ class BaseAPI(object):
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
             'bool': 'paddle::optional<bool>',
-            'Backend': 'paddle::optional<Backend>',
+            'Place': 'paddle::optional<Place>',
             'DataLayout': 'paddle::optional<DataLayout>',
             'DataType': 'paddle::optional<DataType>',
             'int64[]': 'paddle::optional<std::vector<int64_t>>',
@@ -327,9 +327,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
         attr_layout_count = 0
         attr_data_type_count = 0
         for attr_name in attrs['names']:
-            if attrs['attr_info'][attr_name][0] == 'Backend':
+            if attrs['attr_info'][attr_name][0] == 'Place':
                 assert kernel['backend'] is not None, \
-                    f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                    f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
                 attr_backend_count = attr_backend_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataLayout':
                 assert kernel['layout'] is not None, \
@@ -348,8 +348,8 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 assert len(
                     vars_list
                 ) == 2, f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Backend'), \
-                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Backend type."
+                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
+                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
                 kernel_select_code = kernel_select_code + f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
 """
