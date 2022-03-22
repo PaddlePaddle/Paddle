@@ -26,7 +26,6 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/deformable_conv_func.h"
-#include "paddle/fluid/operators/deformable_conv_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -35,6 +34,15 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using CPUDeviceContext = platform::CPUDeviceContext;
+
+template <typename T>
+void FilterGradAddupCPUKernel(const int nthreads, const int n, const int height,
+                              const int width, const T* dweight_3d,
+                              T* filter_grad) {
+  for (int i = 0; i < nthreads; i++) {
+    filter_grad[i] = filter_grad[i] + dweight_3d[i];
+  }
+}
 
 template <typename T>
 void DeformableCol2imCPUKernel(
