@@ -21,12 +21,14 @@
 
 namespace paddle {
 namespace jit {
-namespace internal {
 class ClassType;
+
+namespace internal {
 
 class Object {
  public:
-  Object(std::shared_ptr<ClassType> type, size_t num_slot) : type_(type) {
+  Object(const std::shared_ptr<ClassType>& type, size_t num_slot)
+      : type_(type) {
     slots_.resize(num_slot);
   }
 

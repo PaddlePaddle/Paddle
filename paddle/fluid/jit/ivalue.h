@@ -26,6 +26,8 @@ namespace jit {
 
 using Tensor = paddle::experimental::Tensor;
 
+enum class Tag : int8_t { None = -1, Tensor, Bool, Int, Double };
+
 // TODO(dev): make it into inner union of IValue or Pimpl
 union Holder {
   union ConstValue {
@@ -35,7 +37,8 @@ union Holder {
     double as_double;
     bool as_bool;
     // TODO(dev): Should add a member to log device info.
-    // TODO(dev): Add a ptr to represent List<int64_t/double/bool>
+    // TODO(dev): Add a ptr to represent List<int64_t/double/bool> or tensor*
+    // as_intrusive_ptr*
   };
 
   ConstValue cv;
@@ -47,18 +50,24 @@ union Holder {
 
 class IValue {
  public:
-  IValue(const Holder& holder, bool is_tensor) : is_tensor_(is_tensor) {
+  IValue() = default;
+  ~IValue() {
     if (IsTensor()) {
+      holder_.as_tensor.~Tensor();
+    }
+  }
+
+  IValue(const Holder& holder, Tag tag) : tag_(tag) {
+    if (IsTensor()) {
+      new (&holder_.as_tensor) Tensor();
       holder_.as_tensor = holder.as_tensor;
     } else {
       holder_.cv = holder.cv;
     }
   }
 
-  ~IValue() {}
-
-  IValue(const IValue& rhs) {
-    if (rhs.is_tensor_) {
+  IValue(const IValue& rhs) : tag_(rhs.tag_) {
+    if (IsTensor()) {
       holder_.as_tensor = rhs.holder_.as_tensor;
     } else {
       holder_.cv = rhs.holder_.cv;
@@ -80,21 +89,30 @@ class IValue {
     return *this;
   }
 
-  explicit IValue(const Tensor& t) : is_tensor_(true) { holder_.as_tensor = t; }
-
-  explicit IValue(int val) : is_tensor_(false) { holder_.cv.as_int = val; }
-
-  explicit IValue(double val) : is_tensor_(false) {
+  explicit IValue(const Tensor& t) : tag_(Tag::Tensor) {
+    new (&holder_.as_tensor) Tensor();
+    holder_.as_tensor = t;
+    std::cout << holder_.as_tensor.defined() << std::endl;
+    std::cout << holder_.as_tensor.is_initialized() << std::endl;
+  }
+  explicit IValue(int val) : tag_(Tag::Int) { holder_.cv.as_int = val; }
+  explicit IValue(double val) : tag_(Tag::Double) {
     holder_.cv.as_double = val;
   }
+  explicit IValue(bool val) : tag_(Tag::Bool) { holder_.cv.as_bool = val; }
 
-  explicit IValue(bool val) : is_tensor_(false) { holder_.cv.as_bool = val; }
-
-  bool IsTensor() const { return is_tensor_; }
+  bool IsTensor() const { return tag_ == Tag::Tensor; }
+  bool IsBool() const { return tag_ == Tag::Bool; }
+  bool IsInt() const { return tag_ == Tag::Int; }
+  bool IsDouble() const { return tag_ == Tag::Double; }
 
   // Tensor AsTensor() &&;
   // Tensor& AsTensor() &;
-  const Tensor& AsTensor() const { return holder_.as_tensor; }
+  const Tensor& AsTensor() const {
+    std::cout << holder_.as_tensor.defined() << std::endl;
+    std::cout << holder_.as_tensor.is_initialized() << std::endl;
+    return holder_.as_tensor;
+  }
 
   int64_t AsInt() const { return holder_.cv.as_int; }
   double AsDouble() const { return holder_.cv.as_double; }
@@ -110,7 +128,7 @@ class IValue {
   // Inner data struct to represent both Tensor and Plain constant value;
   Holder holder_;
   // TODO(dev): Use Tag to distingwish Tensor/bool/int64_t/double
-  bool is_tensor_;
+  Tag tag_{Tag::None};
 };
 }  // namespace jit
 }  // namespace paddle

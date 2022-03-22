@@ -14,44 +14,36 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/fluid/jit/ivalue.h"
-#include "paddle/utils/none.h"
-#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace jit {
 
-class Argument {
+class Pickler {
  public:
-  Argument(const std::string& name, paddle::optional<IValue> default_val,
-           bool is_out = false)
-      : name_(name), default_val_(default_val), is_output_(is_out) {}
+  Pickler() = default;
+  ~Pickler() = default;
+
+  void PushIValue(const IValue& ivalue);
 
  private:
-  std::string name_;
-  paddle::optional<IValue> default_val_;
-  bool is_output_;
+  // dispather to save IValue
+  void PushIValueImpl(const IValue& ivalue) {
+    if (ivalue.IsTensor()) {
+      PushTensor(ivalue);
+    } else if (ivalue.IsDouble()) {
+      PushDouble(ivalue.AsDouble());
+    } else if (ivalue.IsInt()) {
+      PushInt(ivalue.AsInt());
+    } else if (ivalue.IsBool()) {
+      PushBool(ivalue.AsBool());
+    }
+  }
+
+  void PushTensor(const IValue& ivalue);
+  void PushDouble(double ivalue);
+  void PushInt(int ivalue);
+  void PushBool(bool ivalue);
 };
-
-class FunctionSchema {
- public:
-  FunctionSchema();
-
- private:
-  std::vector<Argument> input_args;
-  std::vector<Argument> output_args;
-};
-
-class Function {
- public:
-  Function();
-  ~Function() {}
-
- private:
-  FunctionSchema schema_;
-};
-
 }  // namespace jit
 }  // namespace paddle

@@ -26,15 +26,22 @@ class CompilationUnit;
 
 class ClassType {
  public:
+  ClassType(const std::vector<std::string>& names,
+            std::weak_ptr<CompilationUnit> cu)
+      : const_names_(names), compilation_unit_(cu) {}
+
   static std::shared_ptr<ClassType> Create(
-      const std::vector<std::string>& names, std::weak_ptr<CompilationUnit> cu);
+      const std::vector<std::string>& names,
+      std::weak_ptr<CompilationUnit> cu) {
+    return std::make_shared<ClassType>(names, cu);
+  }
 
-  const std::vector<Function*> Methods() const;
+  // const std::vector<Function*> Methods() const;
 
-  const IValue& GetAttribute(size_t slot) const;
-  const IValue& GetAttribute(const std::string& name) const;
+  // const IValue& GetAttribute(size_t slot) const;
+  // const IValue& GetAttribute(const std::string& name) const;
 
-  size_t AddAttribute(const std::string& name, IValue val);
+  // size_t AddAttribute(const std::string& name, IValue val);
 
  private:
   // TODO(dev): disingwish parameter and buffer

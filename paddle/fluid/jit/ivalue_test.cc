@@ -14,11 +14,15 @@
 
 #include "paddle/fluid/jit/ivalue.h"
 
+#include <cmath>
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+// #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace jit {
@@ -35,8 +39,7 @@ TEST(IValue, Basic) {
 
   double double_v = 0.1;
   IValue iv_d(double_v);
-  EXPECT_LT(iv_d.AsDouble() - double_v, eps);
-  EXPECT_LT(double_v - iv_d.AsDouble(), eps);
+  EXPECT_LT(std::abs(iv_d.AsDouble() - double_v), eps);
 
   bool bool_v = false;
   IValue iv_b(bool_v);
@@ -51,9 +54,12 @@ TEST(IValue, Basic) {
   cpu_ctx.Init();
   cpu_ctx.Alloc<float>(temp.get());
   Tensor t(temp);
-
   IValue iv_t(t);
-  auto inner_t = iv_t.AsTensor();
+  auto& inner_t = iv_t.AsTensor();
+
+  std::ostringstream ss;
+  DenseTensor* tt = dynamic_cast<DenseTensor*>(inner_t.impl().get());
+  framework::TensorToStream(ss, *tt, cpu_ctx);
   EXPECT_EQ(inner_t.numel(), 8);
 }
 
