@@ -285,12 +285,14 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
   // so we create temporay tensor to share everything 
   // with "tensor" and rotate its shape
   auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> phi::DDim {
-    paddle::framework::Tensor dummy;
-    dummy.ShareDataWith(tensor);
-    return dummy.dims();
+    auto dl = paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
+    if (tensor.shape().size() < 3 && (dl == paddle::DataLayout::kNCHW)|| (dl == paddle::DataLayout::kNCDHW))
+      return tensor.shape();
+
+    return tensor.shape();
   }; 
   
-  auto tensor_shape = tensor.layout() == paddle::DataLayout::kMKLDNN ? tensor.shape() : get_actual_shape(tensor);
+  auto tensor_shape = tensor.layout() == paddle::DataLayout::kMKLDNN ? get_actual_shape(tensor) : tensor.shape();
 
   py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
   py::array array(dt, std::move(shape));
