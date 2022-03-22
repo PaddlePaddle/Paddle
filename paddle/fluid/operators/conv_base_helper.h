@@ -40,8 +40,7 @@ using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 template <typename conv_t>
 struct SearchAlgorithm {};
 
-/* A type for contain the result of searchAlgorithm::Find(),
-   once openning the exhaustive search marco. */
+// As the container of searchAlgorithm::Find() result.
 template <typename Algo_t>
 struct AlgoResult {
   Algo_t algo = static_cast<Algo_t>(0);
@@ -49,6 +48,7 @@ struct AlgoResult {
   size_t workspace_size = -1;
 };
 
+// As the container of conv relevant descriptors.
 template <typename Handle_t, typename Data_t>
 struct ConvArgsBase {
   Handle_t handle;

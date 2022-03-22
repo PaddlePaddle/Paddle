@@ -15,8 +15,8 @@
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
 
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
-#include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 namespace {
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse.cpp.inc"  // NOLINT
 
@@ -27,8 +27,12 @@ struct InfrtOpFusePass
     : public mlir::PassWrapper<InfrtOpFusePass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "infrtOpFusePass"; }
+
+  llvm::StringRef getArgument() const override { return "infrt-op-fuse"; }
+
   void runOnFunction() override;
 };
+
 // Implementation of the InfrtOpFusePass.
 void InfrtOpFusePass::runOnFunction() {
   ::mlir::RewritePatternSet patterns(&getContext());
@@ -39,14 +43,18 @@ void InfrtOpFusePass::runOnFunction() {
   if (nullptr == terminator_op) return;
   for (auto operand : terminator_op->getOperands()) {
     auto *op1 = operand.getDefiningOp();
-    auto cvt_op = ::llvm::dyn_cast<::infrt::CvtTensorOp>(op1);
+    auto cvt_op = ::llvm::dyn_cast<::infrt::TensorCastOp>(op1);
     if (!cvt_op) continue;
     mlir::Value value = cvt_op.input();
     operand.replaceAllUsesWith(value);
     cvt_op.erase();
   }
 }
+
 }  // namespace
+
 std::unique_ptr<mlir::Pass> infrt::createInfrtOpFusePass() {
   return std::make_unique<InfrtOpFusePass>();
 }
+
+mlir::PassRegistration<InfrtOpFusePass> infrt_op_fuse_pass;

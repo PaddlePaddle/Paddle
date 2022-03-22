@@ -64,6 +64,55 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void ConvTransposeGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& dout,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& output_padding,
+                                const std::vector<int>& output_size,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format,
+                                MetaTensor* dx,
+                                MetaTensor* dfilter) {
+  GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
+}
+
+void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
+                                        const MetaTensor& filter,
+                                        const MetaTensor& dout,
+                                        const MetaTensor& ddx,
+                                        const MetaTensor& ddfilter,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        const std::vector<int>& output_padding,
+                                        const std::vector<int>& output_size,
+                                        const std::string& padding_algorithm,
+                                        int groups,
+                                        const std::vector<int>& dilations,
+                                        const std::string& data_format,
+                                        MetaTensor* dx,
+                                        MetaTensor* dfilter,
+                                        MetaTensor* ddout) {
+  GeneralBinaryGradInferMeta(x, filter, dx, dfilter);
+
+  if (ddout) {
+    ddout->share_meta(dout);
+  }
+}
+
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad) {
+  const auto& dtype = out_grad.dtype();
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(dtype);
+}
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
@@ -93,6 +142,12 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+}
+
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
@@ -102,17 +157,49 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
       dout.dims(),
       errors::InvalidArgument(
           "Input(Out) and its gradients should have the same shape."));
+
   dx->share_meta(dout);
 }
 
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad) {
-  const auto& dtype = out_grad.dtype();
-  x_grad->set_dims(x.dims());
-  x_grad->share_lod(x);
-  x_grad->set_dtype(dtype);
+void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& mask,
+                                   const MetaTensor& dout,
+                                   const std::vector<int>& kernel_size,
+                                   const std::vector<int>& strides,
+                                   const std::vector<int>& paddings,
+                                   bool global_pooling,
+                                   bool adaptive,
+                                   MetaTensor* dx) {
+  dx->share_meta(x);
+}
+
+void PoolGradInferMeta(const MetaTensor& x,
+                       const MetaTensor& out,
+                       const MetaTensor& dout,
+                       const std::vector<int>& kernel_size,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       bool ceil_mode,
+                       bool exclusive,
+                       const std::string& data_format,
+                       const std::string& pooling_type,
+                       bool global_pooling,
+                       bool adaptive,
+                       const std::string& padding_algorithm,
+                       MetaTensor* dx) {
+  dx->share_meta(x);
+}
+
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx) {
+  dx->share_meta(x);
 }
 
 void ScatterGradInferMeta(const MetaTensor& index,
