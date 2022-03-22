@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include <cmath>
-#include "paddle/phi/kernels/logspace_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/logspace_kernel.h"
 
 namespace phi {
 
@@ -32,7 +32,8 @@ __global__ void LogspaceKernelInner(
     if (index < size / 2) {
       out[index] = static_cast<T>(std::pow(base, start + step * index));
     } else {
-      out[index] = static_cast<T>(std::pow(base, stop - step * (size - index - 1)));
+      out[index] =
+          static_cast<T>(std::pow(base, stop - step * (size - index - 1)));
     }
   }
 }
@@ -86,7 +87,8 @@ void LogspaceKernel(const Context& ctx,
     LogspaceKernelInner<T><<<grid, block, 0, stream>>>(
         start_data, stop_data, step, base_data, num, out_data);
   } else {
-    LogspaceSpecialKernel<T><<<grid, block, 0, stream>>>(start_data, base_data, out_data);
+    LogspaceSpecialKernel<T><<<grid, block, 0, stream>>>(
+        start_data, base_data, out_data);
   }
 }
 
