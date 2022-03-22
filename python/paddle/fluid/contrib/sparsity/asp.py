@@ -49,7 +49,7 @@ def set_excluded_layers(param_names, main_program=None):
         .. code-block:: python
 
             import paddle
-            from paddle import sparsity
+            from paddle.static import sparsity
 
             # Dynamic Graph
             class MyLayer(paddle.nn.Layer):
@@ -123,7 +123,7 @@ def reset_excluded_layers(main_program=None):
         .. code-block:: python
 
             import paddle
-            from paddle import sparsity
+            from paddle.static import sparsity
 
             # Dynamic Graph
             class MyLayer(paddle.nn.Layer):
@@ -195,7 +195,7 @@ def decorate(optimizer):
         .. code-block:: python
 
             import paddle
-            from paddle import sparsity
+            from paddle.static import sparsity
 
             # Dynamic Graph
             class MyLayer(paddle.nn.Layer):
@@ -276,7 +276,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         .. code-block:: python
 
             import paddle
-            from paddle import sparsity
+            from paddle.static import sparsity
 
             # Dynamic Graph
             class MyLayer(paddle.nn.Layer):
