@@ -877,6 +877,77 @@ void PadInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void Pad3dInferMeta(const MetaTensor& x,
+                    const ScalarArray& paddings_scalar_array,
+                    const std::string& mode,
+                    float value,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_EQ(x_dim.size(),
+                    5,
+                    errors::InvalidArgument(
+                        "The size of Input(X)'s dimension should be equal to "
+                        "5, but received %d. ",
+                        x_dim.size()));
+
+  std::vector<int64_t> out_dims(x_dim.size());
+  out_dims[0] = x_dim[0];
+  if (paddings_scalar_array.FromTensor()) {
+    if (config.is_runtime) {
+      PADDLE_ENFORCE_EQ(
+          paddings_scalar_array.GetData().size(),
+          6,
+          errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
+                                  "[6], but received [%d].",
+                                  paddings_scalar_array.GetData().size()));
+    }
+    out_dims[1] = x_dim[1];
+    out_dims[2] = x_dim[2];
+    out_dims[3] = x_dim[3];
+  } else {
+    auto paddings = paddings_scalar_array.GetData();
+
+    PADDLE_ENFORCE_EQ(
+        paddings.size(),
+        6,
+        errors::InvalidArgument(
+            "Size of paddings should be equal to 6, but received %d.",
+            static_cast<int>(paddings.size())));
+    if (data_format == "NCDHW") {
+      out_dims[1] = x_dim[1];  // channel
+      out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
+                        ? x_dim[2]
+                        : (x_dim[2] + paddings[4] + paddings[5]);  // depth
+
+      out_dims[3] = ((!config.is_runtime) && (x_dim[3] < 0))
+                        ? x_dim[3]
+                        : (x_dim[3] + paddings[2] + paddings[3]);  // height
+
+      out_dims[4] = ((!config.is_runtime) && (x_dim[4] < 0))
+                        ? x_dim[4]
+                        : (x_dim[4] + paddings[0] + paddings[1]);  // width
+    } else {                                                       // NDHWC
+      out_dims[4] = x_dim[4];                                      // channel
+
+      out_dims[1] = ((!config.is_runtime) && (x_dim[1] < 0))
+                        ? x_dim[1]
+                        : (x_dim[1] + paddings[4] + paddings[5]);  // depth
+      out_dims[2] = ((!config.is_runtime) && (x_dim[2] < 0))
+                        ? x_dim[2]
+                        : (x_dim[2] + paddings[2] + paddings[3]);  // height
+      out_dims[3] = ((!config.is_runtime) && (x_dim[3] < 0))
+                        ? x_dim[3]
+                        : (x_dim[3] + paddings[0] + paddings[1]);  // width
+    }
+  }
+
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
@@ -1167,6 +1238,33 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
   ReshapeInferMeta(x, shape, out, config);
+}
+
+void ReverseInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axis,
+                      MetaTensor* out) {
+  PADDLE_ENFORCE_NE(axis.empty(),
+                    true,
+                    phi::errors::InvalidArgument("'axis' can not be empty."));
+  const auto& x_dims = x.dims();
+  for (int a : axis) {
+    PADDLE_ENFORCE_LT(a,
+                      x_dims.size(),
+                      phi::errors::OutOfRange(
+                          "The axis must be less than input tensor's rank. "
+                          "but got %d >= %d",
+                          a,
+                          x_dims.size()));
+    PADDLE_ENFORCE_GE(
+        a,
+        -x_dims.size(),
+        phi::errors::OutOfRange(
+            "The axis must be greater than the negative number of "
+            "input tensor's rank, but got %d < %d",
+            a,
+            -x_dims.size()));
+  }
+  out->share_meta(x);
 }
 
 void RollInferMeta(const MetaTensor& x,
