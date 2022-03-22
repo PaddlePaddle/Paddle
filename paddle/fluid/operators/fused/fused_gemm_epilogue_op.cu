@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -130,7 +131,10 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
     size_t workspace_size = 4 * 1024 * 1024;
-    const cublasLtMatmulAlgo_t* algo = nullptr;
+
+    cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+        lt_handle, workspace_size, operation_desc, y_desc, x_desc, out_desc);
+
     cudaStream_t stream = dev_ctx.stream();
     memory::allocation::AllocationPtr workspace =
         memory::Alloc(dev_ctx, workspace_size);
@@ -148,7 +152,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
         lt_handle, operation_desc, alpha, y->data<T>(), y_desc, x->data<T>(),
-        x_desc, beta, out_data, out_desc, out_data, out_desc, algo,
+        x_desc, beta, out_data, out_desc, out_data, out_desc, &algo,
         workspace->ptr(), workspace_size, stream));
   }
 
@@ -215,7 +219,6 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
     size_t workspace_size = 4 * 1024 * 1024;
-    const cublasLtMatmulAlgo_t* algo = nullptr;
     cudaStream_t stream = dev_ctx.stream();
 
     double alpha64 = 1.0, beta64 = 0.0;
@@ -275,12 +278,16 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       memory::allocation::AllocationPtr dx_workspace =
           memory::Alloc(dev_ctx, workspace_size);
 
+      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+          lt_handle, workspace_size, dx_operation_desc, y_desc, dout_desc,
+          dx_desc);
+
       dx->mutable_data<T>(ctx.GetPlace());
       auto* dx_data = dx->data<T>();
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
           lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
           dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
-          algo, dx_workspace->ptr(), workspace_size, stream));
+          &algo, dx_workspace->ptr(), workspace_size, stream));
     }
 
     if (dy) {
@@ -322,11 +329,15 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       memory::allocation::AllocationPtr dy_workspace =
           memory::Alloc(dev_ctx, workspace_size);
 
+      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+          lt_handle, workspace_size, dy_operation_desc, dout_desc, x_desc,
+          dy_desc);
+
       dy->mutable_data<T>(ctx.GetPlace());
       auto* dy_data = dy->data<T>();
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
           lt_handle, dy_operation_desc, alpha, dout->data<T>(), dout_desc,
-          x->data<T>(), x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, algo,
+          x->data<T>(), x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, &algo,
           dy_workspace->ptr(), workspace_size, stream));
     }
   }
