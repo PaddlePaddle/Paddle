@@ -612,7 +612,7 @@ def grad(outputs,
 
     if no_grad_vars is None:
         no_grad_vars = []
-    elif isinstance(no_grad_vars, core.VarBase):
+    elif isinstance(no_grad_vars, (core.VarBase, core.eager.Tensor)):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
@@ -718,13 +718,13 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             y.shape     # [3L, 2L]
 
     """
-    support_type = (list, tuple, np.ndarray, core.VarBase, framework.Variable,
-                    core.Tensor, core.LoDTensor)
+    support_type = (list, tuple, np.ndarray, core.eager.Tensor, core.VarBase,
+                    framework.Variable, core.Tensor, core.LoDTensor)
     if not isinstance(value, support_type):
         raise TypeError(
             "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value)))
-    if isinstance(value, (core.VarBase, framework.Variable)):
+    if isinstance(value, (core.eager.Tensor, core.VarBase, framework.Variable)):
         return value
     elif isinstance(value, (core.Tensor, core.LoDTensor)):
         return core.VarBase(value)

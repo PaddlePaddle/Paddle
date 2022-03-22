@@ -118,6 +118,7 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
 template <typename T, typename LabelT>
 __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
                                                      const T* loss_grad,
+                                                     const T* softmax,
                                                      const LabelT* labels,
                                                      const int64_t n,
                                                      const int64_t dim,
@@ -134,10 +135,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
     if (lbl == ignore_index) {
       logits_grad[idx] = static_cast<T>(0.0);
     } else if (lbl == idx_dim) {
-      logits_grad[idx] =
-          (logits_grad[idx] - static_cast<T>(1.0)) * loss_grad[ids];
+      logits_grad[idx] = (softmax[idx] - static_cast<T>(1.0)) * loss_grad[ids];
     } else {
-      logits_grad[idx] *= loss_grad[ids];
+      logits_grad[idx] = softmax[idx] * loss_grad[ids];
     }
   }
 }
@@ -161,10 +161,14 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   const T* loss_grad_data = loss_grad.data<T>();
   DenseTensor* logit_grad = logits_grad;
 
-  if (logit_grad != &softmax) {
+  T* logit_grad_data = nullptr;
+  bool copy_flag = (logit_grad != softmax && (!use_softmax || soft_label));
+  if (copy_flag) {
     phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
+    logit_grad_data = logit_grad->data<T>();
+  } else {
+    logit_grad_data = dev_ctx.template Alloc<T>(logit_grad);
   }
-  T* logit_grad_data = logit_grad->data<T>();
 
   const int rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
@@ -219,11 +223,13 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
     SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
         logit_grad_data, loss_grad_data, label_data, n, d, remain);
   } else {
+    const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
     int grid = (n * d + block - 1) / block;
     SoftmaxWithCrossEntropyGradHardLabel<T><<<grid, block, 0, stream>>>(
         logit_grad_data,
         loss_grad_data,
+        softmax_data,
         label_data,
         n,
         d / remain,

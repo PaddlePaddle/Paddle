@@ -44,7 +44,7 @@ void ConvKernel(const Context& dev_ctx,
   // The filter will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
-  output->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(output);
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -115,7 +115,7 @@ void ConvKernel(const Context& dev_ctx,
   if (is_expand) {
     // col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
     col.Resize(col_shape);
-    col.mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(&col);
     col_matrix.ShareDataWith(col);
     col_matrix.Resize(col_matrix_shape);
   }

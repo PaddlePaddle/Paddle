@@ -29,15 +29,16 @@ from paddle.fluid.framework import _test_eager_guard
 class TestWhereOp(OpTest):
     def setUp(self):
         self.op_type = 'where'
+        self.python_api = paddle.where
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
 
     def init_config(self):
         self.x = np.random.uniform((-3), 5, 100).astype('float64')
@@ -391,5 +392,6 @@ class TestWhereOpError(unittest.TestCase):
             self.test_value_error()
 
 
-if (__name__ == '__main__'):
+if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
