@@ -596,7 +596,7 @@ TEST(test_tracer, eager_tracer) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);
 USE_OP(mul_grad);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);

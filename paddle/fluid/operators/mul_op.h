@@ -28,39 +28,6 @@ constexpr int kMULMKLDNNINT8 = 1;
 constexpr int kMULMKLDNNFP32 = 2;
 
 template <typename DeviceContext, typename T>
-class MulKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* x = context.Input<Tensor>("X");
-    const Tensor* y = context.Input<Tensor>("Y");
-    Tensor* z = context.Output<Tensor>("Out");
-    const Tensor x_matrix =
-        x->dims().size() > 2
-            ? framework::ReshapeToMatrix(
-                  *x, context.template Attr<int>("x_num_col_dims"))
-            : *x;
-    const Tensor y_matrix =
-        y->dims().size() > 2
-            ? framework::ReshapeToMatrix(
-                  *y, context.template Attr<int>("y_num_col_dims"))
-            : *y;
-
-    z->mutable_data<T>(context.GetPlace());
-    auto z_dim = z->dims();
-    if (z_dim.size() != 2) {
-      z->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
-    }
-
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
-
-    blas.MatMul(x_matrix, y_matrix, z);
-    if (z_dim.size() != 2) {
-      z->Resize(z_dim);
-    }
-  }
-};
-
-template <typename DeviceContext, typename T>
 class MulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

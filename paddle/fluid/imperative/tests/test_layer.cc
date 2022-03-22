@@ -416,4 +416,4 @@ TEST(test_layer, test_eager) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);

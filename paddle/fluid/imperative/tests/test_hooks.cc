@@ -267,7 +267,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccmulated) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);
 USE_OP(mul_grad);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(elementwise_add_grad);
