@@ -97,4 +97,17 @@ def FakeKernelOp : PDT_Op<"fake_phi_kernel"> {
   let results = (outs DenseTensor:$output);
 }
 
+// TODO(wilber): Add a infrt_gpu dialect.
+def PDT_GpuMemCopyOp : PDT_Op<"memcpy.gpu", [NoSideEffect]> {
+  let summary = "phi_dt.gpu.memcpy";
+  let description = [{gpu memcpy d2h or h2d}];
+  // TODO(wilber): add context argument to support stream.
+  let arguments = (ins
+    DenseTensor:$input,
+    Context:$context,
+    BoolAttr:$d2h
+  );
+  let results = (outs DenseTensor:$output);
+}
+
 #endif

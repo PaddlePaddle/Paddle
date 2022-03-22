@@ -18,6 +18,7 @@
 #include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/infrt/tensor/phi/tensor_map.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
@@ -54,6 +55,12 @@ infrt::phi::DenseTensorMap LoadParams(
     host_context::Attribute<std::string> params_path);
 
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
+
+#ifdef INFRT_WITH_GPU
+::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
+                             const ::phi::GPUContext& context,
+                             bool d2h);
+#endif
 
 }  // namespace phi
 }  // namespace kernel

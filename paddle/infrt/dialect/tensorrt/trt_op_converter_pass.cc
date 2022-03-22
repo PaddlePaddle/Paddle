@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
+
+#include <glog/logging.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/Transforms/DialectConversion.h>
+
+#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
+#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 namespace trt {
@@ -41,34 +48,34 @@ struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
         ::llvm::SmallVector<mlir::Type, 4>(1, EngineType::get()),
         trt_inputs,
         true /*run_once*/);
-    ::mlir::Block *block = new ::mlir::Block;
-    block->getOperations().splice(block->begin(),
-                                  casted_op.getBody()->getOperations(),
-                                  casted_op.getBody()->begin(),
-                                  casted_op.getBody()->end());
-    create_engine_op.body().push_back(block);
+    auto &block = create_engine_op.body().emplaceBlock();
+    block.getOperations().splice(block.begin(),
+                                 casted_op.getBody()->getOperations(),
+                                 casted_op.getBody()->begin(),
+                                 casted_op.getBody()->end());
 
-    // trt.execute
-    // outputs
-    ::llvm::SmallVector<::mlir::Type, 4> execute_outputs_types;
-    for (auto v : casted_op.getODSResults(0)) {
-      execute_outputs_types.push_back(v.getType());
+    // trt.compute
+    ::llvm::SmallVector<::mlir::Value, 4> replace_values2;
+    auto ctx_op = rewriter.create<::infrt::phi::CreateGPUContextOp>(
+        ods_loc,
+        infrt::phi::ContextType::get(rewriter.getContext(),
+                                     infrt::TargetType::GPU));
+    auto compute_op = rewriter.create<EngineComputeOp>(
+        ods_loc,
+        ::infrt::DenseTensorListType::get(rewriter.getContext()),
+        create_engine_op.engine(),
+        ctx_op.output());
+    auto tensor_list_val = compute_op.outputs();
+    for (size_t i = 0; i < casted_op.getNumResults(); ++i) {
+      auto res = casted_op->getResult(i);
+      auto int_attr = mlir::IntegerAttr::get(
+          mlir::IntegerType::get(rewriter.getContext(), 32), i);
+      auto get_tensor_op = rewriter.create<::infrt::dt::TensorListGetTensorOp>(
+          ods_loc, res.getType(), tensor_list_val, int_attr);
+      replace_values2.push_back(get_tensor_op.output());
     }
-    // inputs
-    ::mlir::SmallVector<::mlir::Value, 4> execute_inputs(
-        create_engine_op.getODSResults(0));
-    for (auto v : inputs) {
-      execute_inputs.push_back(v);
-    }
-    auto execute_op = rewriter.create<ExecuteOp>(
-        ods_loc, execute_outputs_types, execute_inputs);
-
-    ::llvm::SmallVector<::mlir::Value, 4> replace_values;
-    for (auto v :
-         ::llvm::SmallVector<::mlir::Value, 4>{execute_op.getODSResults(0)}) {
-      replace_values.push_back(v);
-    }
-    rewriter.replaceOp(op, replace_values);
+    ctx_op->moveBefore(ctx_op->getBlock(), ctx_op->getBlock()->begin());
+    rewriter.replaceOp(op, replace_values2);
     return ::mlir::success();
   }
 };
@@ -82,6 +89,9 @@ void TRTOpConverterPass::runOnOperation() {
   // this lowering. In our case, we are lowering to TensorRTDialect from
   // PaddleDialect
   target.addLegalDialect<TensorRTDialect>();
+  target.addLegalDialect<::infrt::phi::PHIDialect>();
+  target.addLegalDialect<::infrt::dt::DTDialect>();
+  target.addLegalDialect<phi::PHIDenseTensorDialect>();
 
   // Now that the conversion target has been defined, we just need to provide
   // the set of patterns that will lower the TensorRT operations.
