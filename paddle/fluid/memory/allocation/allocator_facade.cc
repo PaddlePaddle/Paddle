@@ -1089,14 +1089,9 @@ const gpuStream_t& AllocatorFacade::GetStream(
 
 void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
                                        const gpuStream_t& stream) {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "'SetDefaultStream' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
-  GetPrivate()->SetDefaultStream(place, stream);
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    GetPrivate()->SetDefaultStream(place, stream);
+  }
 }
 
 #ifdef PADDLE_WITH_CUDA
