@@ -36,6 +36,7 @@ void AmplifierInterceptor::RunOps() {
   if ((step_ % run_per_steps_) == run_at_offset_) {
     ComputeInterceptor::RunOps();
   }
+  step_++;
 }
 
 void AmplifierInterceptor::SendDataReadyToDownStream() {

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,31 +13,21 @@
 // limitations under the License.
 
 #pragma once
-
-#include <utility>
-
-#include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
+#include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 
 namespace paddle {
 namespace distributed {
 
-class AmplifierInterceptor : public ComputeInterceptor {
+class SinkInterceptor : public Interceptor {
  public:
-  AmplifierInterceptor(int64_t interceptor_id, TaskNode* node);
+  SinkInterceptor(int64_t interceptor_id, TaskNode* node);
 
  private:
-  void RunOps() override;
-  void SendDataReadyToDownStream() override;
   void ReplyCompletedToUpStream() override;
-
-  int64_t run_per_steps_{1};
-  int64_t run_at_offset_{0};
+  void PrepareDeps() override;
+  void Run();
+  void Compute(const InterceptorMessage& msg);
   int64_t step_{0};
-
-  // one input produces multi times output
-  int64_t reply_up_per_steps_{1};
-  // one output need multi times input
-  int64_t send_down_per_steps_{1};
 };
 
 }  // namespace distributed

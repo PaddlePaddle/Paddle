@@ -2002,8 +2002,25 @@ class Executor(object):
             assert 'task_id_to_rank' in fleet_opt, "If you provide tasks to init fleet executor," \
                                                    " task_id_to_rank should also be provided."
             print('fleet executor will use user defined task nodes')
+            # Generate source task node
+            source = core.TaskNode(cur_rank, num_micro_batches, 1)
+            source.set_type("Source")
+            # Generate sink task node
+            sink = core.TaskNode(cur_rank, num_micro_batches, 1)
+            sink.set_type("Sink")
+            # Add up/down stream
+            first_node = fleet_opt['tasks'][0]
+            last_node = fleet_opt['tasks'][-1]
+            first_node.add_upstream_task(source.task_id(), 1)
+            source.add_downstream_task(first_node.task_id(), 1)
+            last_node.add_downstream_task(sink.task_id(), 1)
+            sink.add_upstream_task(last_node.task_id(), 1)
             tasks = [task.task_node() for task in fleet_opt['tasks']]
+            tasks.insert(0, source)
+            tasks.append(sink)
             task_id_to_rank = fleet_opt['task_id_to_rank']
+            task_id_to_rank[source.task_id()] = cur_rank
+            task_id_to_rank[sink.task_id()] = cur_rank
         else:
             scheduler = fleet_opt['scheduler']
             if scheduler == '1F1B':
@@ -2029,9 +2046,9 @@ class Executor(object):
             else:
                 raise "Fleet_executor only supports 1F1B and Origin scheduler, " \
                       "but received " + str(scheduler) + "."
-            # NOTE: have to hold these vars, otherwise will be destructed
-            fleet_opt['tasks'] = tasks
-            fleet_opt['task_id_to_rank'] = task_id_to_rank
+        # NOTE: have to hold these vars, otherwise will be destructed
+        fleet_opt['tasks'] = tasks
+        fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
         # NOTE: the last argument is used to force create some vars in root scope,

@@ -26,26 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-class StartInterceptor : public Interceptor {
- public:
-  StartInterceptor(int64_t interceptor_id, TaskNode* node)
-      : Interceptor(interceptor_id, node) {
-    RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
-  }
-
-  void NOP(const InterceptorMessage& msg) {
-    if (msg.message_type() == STOP) {
-      stop_ = true;
-      InterceptorMessage stop;
-      stop.set_message_type(STOP);
-      Send(1, stop);  // stop 1, compute
-      return;
-    }
-    std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
-              << std::endl;
-  }
-};
-
 TEST(ComputeInterceptor, Compute) {
   std::string carrier_id = "0";
   Carrier* carrier =
@@ -66,17 +46,16 @@ TEST(ComputeInterceptor, Compute) {
   node_b->AddDownstreamTask(2);
   node_c->AddUpstreamTask(1);
 
-  Interceptor* a =
-      carrier->SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
+  carrier->SetInterceptor(0, InterceptorFactory::Create("Source", 0, node_a));
   carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
+  carrier->SetInterceptor(2, InterceptorFactory::Create("Sink", 2, node_c));
 
+  // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
-  // test run three times
-  a->Send(1, msg);
-  a->Send(1, msg);
-  a->Send(1, msg);
+  msg.set_message_type(START);
+  msg.set_src_id(-1);
+  msg.set_dst_id(0);
+  carrier->EnqueueInterceptorMessage(msg);
 
   carrier->Wait();
   carrier->Release();

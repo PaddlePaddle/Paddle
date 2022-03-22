@@ -19,6 +19,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <queue>
 #include <thread>
 #include <vector>
 
@@ -83,16 +84,34 @@ class Interceptor {
   DISABLE_COPY_AND_ASSIGN(Interceptor);
 
  protected:
-  // interceptor id, handed from above layer
-  int64_t interceptor_id_;
-
-  // node need to be handled by this interceptor
-  TaskNode* node_;
-
-  // for stop
-  bool stop_{false};
+  // prepare in_readys_ and out_buffs_ for each interceptor
+  // only describe the dependence in current block
+  virtual void PrepareDeps() {}
+  // when receive data_is_ready, increase the value in in_readys_
+  void IncreaseReady(int64_t up_id);
+  // when receive data_is_useless, decrease the value in out_buffs_
+  void DecreaseBuff(int64_t down_id);
+  // check the input needed for run once is ready
+  bool IsInputReady();
+  // check whether there has available output buffer
+  bool CanWriteOutput();
+  // send data_is_ready to all downstreams
+  virtual void SendDataReadyToDownStream();
+  // send data_is_useless to all upstreams
+  virtual void ReplyCompletedToUpStream();
+  // Notify carrier to tear down
   void StopCarrier();
 
+  // interceptor id, handed from above layer
+  int64_t interceptor_id_;
+  // upstream_id-->(max_ready_size, ready_size)
+  std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
+  std::queue<int64_t> ready_scope_idxs_{};
+  // downstream_id-->(max_buffer_size, used_size)
+  std::map<int64_t, std::pair<int64_t, int64_t>> out_buffs_{};
+  int64_t scope_idx_{-1};
+  // node need to be handled by this interceptor
+  TaskNode* node_;
   // for runtime
   platform::Place place_;
   framework::Scope* root_scope_{nullptr};
@@ -102,6 +121,7 @@ class Interceptor {
 
   Carrier* carrier_;
   TaskLoop* loop_;
+  bool stop_{false};  // stop_ is only used by pingpang test case
 
  private:
   void LoopOnce();

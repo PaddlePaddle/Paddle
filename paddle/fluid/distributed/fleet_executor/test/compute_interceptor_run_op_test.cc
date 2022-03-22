@@ -69,7 +69,7 @@ TEST(ComputeInterceptor, Compute) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{0, 0}, {1, 0}});
+  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}});
 
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
@@ -78,23 +78,31 @@ TEST(ComputeInterceptor, Compute) {
   TaskNode* node_a =
       new TaskNode(0, ops, 0, 0, 2, 0);  // role, ops, rank, task_id
   TaskNode* node_b = new TaskNode(0, 0, 1, 2, 0);
+  TaskNode* src = new TaskNode(0, 0, 2, 2, 0);
+  TaskNode* sink = new TaskNode(0, 0, 3, 2, 0);
 
-  // a->b
+  // src->a->b->sink
+  src->AddDownstreamTask(0);
+  node_a->AddUpstreamTask(2);
   node_a->AddDownstreamTask(1);
   node_b->AddUpstreamTask(0);
+  sink->AddUpstreamTask(1);
+  node_b->AddDownstreamTask(3);
 
   auto* a = carrier->SetInterceptor(
       0, InterceptorFactory::Create("Compute", 0, node_a));
   carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
+  carrier->SetInterceptor(2, InterceptorFactory::Create("Source", 2, src));
+  carrier->SetInterceptor(3, InterceptorFactory::Create("Sink", 3, sink));
 
   a->SetPlace(place);
   a->SetMicroBatchScope(scopes);
 
   // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
+  msg.set_message_type(START);
   msg.set_src_id(-1);
-  msg.set_dst_id(0);
+  msg.set_dst_id(2);
   carrier->EnqueueInterceptorMessage(msg);
 
   carrier->Wait();

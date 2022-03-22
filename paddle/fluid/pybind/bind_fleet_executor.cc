@@ -161,6 +161,8 @@ void BindFleetExecutor(py::module* m) {
       .def(py::init<framework::ProgramDesc*, int64_t, int64_t, int64_t>())
       .def(py::init<int32_t, const std::vector<framework::OpDesc*>&, int64_t,
                     int64_t, int64_t, int64_t>())
+      .def(py::init<int32_t, int64_t, int64_t, int64_t, int64_t>())
+      .def(py::init<int64_t, int64_t, int64_t>())
       .def("task_id", &TaskNode::task_id)
       .def("add_upstream_task", &TaskNode::AddUpstreamTask)
       .def("add_downstream_task", &TaskNode::AddDownstreamTask)

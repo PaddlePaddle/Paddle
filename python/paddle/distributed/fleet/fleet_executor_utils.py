@@ -51,14 +51,18 @@ class TaskNode:
         assert (program is not None and self.previous == 'program') or \
                (ops is not None and self.previous == 'ops'), \
                "In one program, task node should be inited in the same way, all by ops or all by program."
-        if ops is not None:
+        if node_type == "Source" or node_type == "Sink":
+            self.node = core.TaskNode(-1, cur_rank,
+                                      int(task_id), max_run_times,
+                                      max_slot_times)
+        elif ops is not None:
             assert role is not None and task_id is not None, \
                 "If init task node with ops, should provide `role` and `task_id`."
             self.node = core.TaskNode(role, ops, cur_rank,
                                       int(task_id), max_run_times,
                                       max_slot_times)
-            print("Creating task node by ops. The role is:",
-                  self.role(), "and the id is:", self.task_id())
+            print("Creating task node by ops. The role is:", self.role(),
+                  "and the id is:", self.task_id())
         else:
             self.program = program
             self.node = core.TaskNode(program.desc, cur_rank, max_run_times,
@@ -196,7 +200,7 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
     coord_sys = CoordSys(dist_opt)
     coord = coord_sys.rank_to_coord(cur_rank)
     max_slot_times = int(max_run_times - coord['pp_idx'])
-    num_of_functionality = 4
+    num_of_functionality = 6
 
     lr_ops, fwd_ops, bwd_ops, opt_ops = [], [], [], []
     for op in program.block(0).ops:
@@ -216,6 +220,14 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
             ) + " isn't one of LRSched, Forward, Backward or Optimizer."
 
     # Create task nodes.
+    source_task_node = TaskNode(
+        cur_rank=cur_rank,
+        max_run_times=max_run_times,
+        max_slot_times=max_slot_times,
+        role=None,
+        ops=[],
+        task_id=int(cur_rank * num_of_functionality + 0),
+        node_type="Source")
     # The lr_sched and opt should be 'amplifier interceptor.
     # The fwd and bwd should be 'compute interceptor'.
     lr_task_node = TaskNode(
@@ -224,7 +236,7 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
         max_slot_times=max_slot_times,
         role=int(OpRole.Optimize.LRSched),
         ops=lr_ops,
-        task_id=int(cur_rank * num_of_functionality + 0),
+        task_id=int(cur_rank * num_of_functionality + 1),
         node_type="Amplifier")
     lr_task_node.set_run_pre_steps(max_run_times)
     fwd_task_node = TaskNode(
@@ -233,7 +245,7 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
         max_slot_times=max_slot_times,
         role=int(OpRole.Forward),
         ops=fwd_ops,
-        task_id=int(cur_rank * num_of_functionality + 1),
+        task_id=int(cur_rank * num_of_functionality + 2),
         node_type="Compute")
     bwd_task_node = TaskNode(
         cur_rank=cur_rank,
@@ -241,7 +253,7 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
         max_slot_times=max_slot_times,
         role=int(OpRole.Backward),
         ops=bwd_ops,
-        task_id=int(cur_rank * num_of_functionality + 2),
+        task_id=int(cur_rank * num_of_functionality + 3),
         node_type="Compute")
     opt_task_node = TaskNode(
         cur_rank=cur_rank,
@@ -249,18 +261,29 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
         max_slot_times=max_slot_times,
         role=int(OpRole.Optimize),
         ops=opt_ops,
-        task_id=int(cur_rank * num_of_functionality + 3),
+        task_id=int(cur_rank * num_of_functionality + 4),
         node_type="Amplifier")
     opt_task_node.set_run_pre_steps(max_run_times)
     opt_task_node.set_run_at_offset(max_run_times - 1)
-    task_nodes = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
+    sink_task_node = TaskNode(
+        cur_rank=cur_rank,
+        max_run_times=max_run_times,
+        max_slot_times=max_slot_times,
+        role=None,
+        ops=[],
+        task_id=int(cur_rank * num_of_functionality + 5),
+        node_type="Sink")
+    task_nodes = [
+        source_task_node, lr_task_node, fwd_task_node, bwd_task_node,
+        opt_task_node, sink_task_node
+    ]
 
     # Generated the dependency based on this graph:
-    # lr(1:m) -> forward -> backward -> (m:1)optimize
-    #               ↑          ↓
-    # lr(1:m) -> forward -> backward -> (m:1)optimize
-    #               ↑          ↓
-    # lr(1:m) -> forward -> backward -> (m:1)optimize
+    # source -> lr(1:m) -> forward -> backward -> (m:1)optimize -> sink
+    #                        ↑            ↓ 
+    # source -> lr(1:m) -> forward -> backward -> (m:1)optimize -> sink
+    #                        ↑            ↓ 
+    # source -> lr(1:m) -> forward -> backward -> (m:1)optimize -> sink
     upstream_coord, downstream_coord = coord.copy(), coord.copy()
     upstream_coord['pp_idx'] = upstream_coord['pp_idx'] - 1
     downstream_coord['pp_idx'] = downstream_coord['pp_idx'] + 1
@@ -279,10 +302,10 @@ def run1f1b(program, cur_rank, max_run_times, dist_opt, nrank):
         pp_buff_size = int(dist_opt['pp_degree'] - coord['pp_idx'])
         ups = []
         downs = []
-        if not is_lr_sched_op(task_role):
+        if i != 0:
             buf_size = pp_buff_size if is_backward_op(task_role) else 2
             ups.append((prev_id, buf_size))
-        if not is_optimizer_op(task_role):
+        if i != num_of_functionality - 1:
             buf_size = pp_buff_size if is_forward_op(task_role) else 2
             downs.append((next_id, buf_size))
         if is_forward_op(task_role):
@@ -318,9 +341,21 @@ def origin(program, cur_rank):
         task_id_to_rank (dict): a fake dict, since there is no upstream or downstream, this dict won't be used
     """
     print("fleet executor will use python side origin scheduler.")
+    source = core.TaskNode(cur_rank, 1, 1)
+    source.set_type("Source")
     task_node = TaskNode(
         program=program, cur_rank=cur_rank, max_run_times=1, max_slot_times=1)
     task_node.set_type("Compute")
+    sink = core.TaskNode(cur_rank, 1, 1)
+    sink.set_type("Sink")
     task_id = task_node.task_id()
-    task_id_to_rank = {task_id: cur_rank}
-    return [task_node.task_node()], task_id_to_rank
+    source.add_downstream_task(task_node.task_id(), 1)
+    task_node.add_upstream_task(source.task_id(), 1)
+    sink.add_upstream_task(task_node.task_id(), 1)
+    task_node.add_downstream_task(sink.task_id(), 1)
+    task_id_to_rank = {
+        source.task_id(): cur_rank,
+        task_id: cur_rank,
+        sink.task_id(): cur_rank
+    }
+    return [source, task_node.task_node(), sink], task_id_to_rank

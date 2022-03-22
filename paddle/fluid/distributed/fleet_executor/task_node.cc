@@ -21,6 +21,12 @@ namespace paddle {
 namespace distributed {
 namespace {
 using OperatorBase = TaskNode::OperatorBase;
+
+int64_t task_node_id_generator() {
+  static int64_t task_node_cnt = 0;
+  int task_id = task_node_cnt++;
+  return task_id;
+}
 }
 
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
@@ -34,8 +40,14 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
   // immediately, since the provided program may be updated later (with
   // high probability) by adding_feed_fetch_ops or by RuntimeGraph.
   // So, delay the init part to the Init() function.
-  static int64_t task_node_cnt = 0;
-  task_id_ = task_node_cnt++;
+  task_id_ = task_node_id_generator();
+}
+
+TaskNode::TaskNode(int64_t rank, int64_t max_run_times, int64_t max_slot_nums)
+    : rank_(rank),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  task_id_ = task_node_id_generator();
 }
 
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)

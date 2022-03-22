@@ -73,7 +73,7 @@ TEST(AmplifierInterceptor, Amplifier) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}});
+  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}});
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, ""}}, "");
 
@@ -85,10 +85,13 @@ TEST(AmplifierInterceptor, Amplifier) {
   TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
   TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
   TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps, 0);
+  TaskNode* src = new TaskNode(0, 0, 4, micro_steps, 0);
+  TaskNode* sink = new TaskNode(0, 0, 5, micro_steps, 0);
 
   // a->b->c->d
   // LR->F->B->U
-  LinkNodes({node_a, node_b, node_c, node_d}, {{{node_b, node_c}, 1}});
+  LinkNodes({src, node_a, node_b, node_c, node_d, sink},
+            {{{node_b, node_c}, 1}});
 
   node_a->SetRunPerSteps(micro_steps);
   node_d->SetRunPerSteps(micro_steps);
@@ -100,12 +103,13 @@ TEST(AmplifierInterceptor, Amplifier) {
   carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
   carrier->SetInterceptor(3,
                           InterceptorFactory::Create("Amplifier", 3, node_d));
-
+  carrier->SetInterceptor(4, InterceptorFactory::Create("Source", 4, src));
+  carrier->SetInterceptor(5, InterceptorFactory::Create("Sink", 5, sink));
   // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
+  msg.set_message_type(START);
   msg.set_src_id(-1);
-  msg.set_dst_id(0);
+  msg.set_dst_id(4);
   carrier->EnqueueInterceptorMessage(msg);
   carrier->Wait();
   carrier->Release();

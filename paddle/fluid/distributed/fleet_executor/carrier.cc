@@ -28,6 +28,8 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Source);
+USE_INTERCEPTOR(Sink);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 
@@ -155,7 +157,7 @@ void Carrier::Start() {
     // source node data_is_ready is send by carrier, so set src_id=-1
     start_msg.set_src_id(-1);
     start_msg.set_dst_id(id);
-    start_msg.set_message_type(DATA_IS_READY);
+    start_msg.set_message_type(START);
     Send(start_msg);
   }
   // TODO(wangxi): async step

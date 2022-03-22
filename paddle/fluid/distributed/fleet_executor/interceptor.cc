@@ -90,6 +90,111 @@ bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
   return carrier_->Send(msg);
 }
 
+void Interceptor::IncreaseReady(int64_t up_id) {
+  auto it = in_readys_.find(up_id);
+  PADDLE_ENFORCE_NE(it, in_readys_.end(),
+                    platform::errors::NotFound(
+                        "Cannot find upstream=%lld in in_readys.", up_id));
+
+  auto max_ready_size = it->second.first;
+  auto ready_size = it->second.second;
+  ready_size += 1;
+  PADDLE_ENFORCE_LE(ready_size, max_ready_size,
+                    platform::errors::OutOfRange(
+                        "upstream=%lld ready_size must <= max_ready_size, but "
+                        "now ready_size=%lld, max_ready_size=%lld",
+                        up_id, ready_size, max_ready_size));
+  it->second.second = ready_size;
+}
+
+void Interceptor::DecreaseBuff(int64_t down_id) {
+  auto it = out_buffs_.find(down_id);
+  PADDLE_ENFORCE_NE(it, out_buffs_.end(),
+                    platform::errors::NotFound(
+                        "Cannot find downstream=%lld in out_buffs.", down_id));
+  auto used_size = it->second.second;
+  used_size -= 1;
+  PADDLE_ENFORCE_GE(
+      used_size, 0,
+      platform::errors::OutOfRange(
+          "downstream=%lld used buff size must >= 0, but now equal %lld",
+          down_id, used_size));
+  it->second.second = used_size;
+}
+
+bool Interceptor::IsInputReady() {
+  for (auto& ins : in_readys_) {
+    auto ready_size = ins.second.second;
+    // not ready, return false
+    if (ready_size == 0) {
+      VLOG(3) << "Interceptor " << GetInterceptorId()
+              << "'s upstreams aren't all ready.";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Interceptor::CanWriteOutput() {
+  for (auto& outs : out_buffs_) {
+    auto max_buffer_size = outs.second.first;
+    auto used_size = outs.second.second;
+    // full, return false
+    if (used_size == max_buffer_size) {
+      VLOG(3) << "Interceptor " << GetInterceptorId()
+              << "'s out buffer is full.";
+      return false;
+    }
+  }
+  return true;
+}
+
+void Interceptor::SendDataReadyToDownStream() {
+  for (auto& outs : out_buffs_) {
+    auto down_id = outs.first;
+    auto max_buff_size = outs.second.first;
+    auto used_size = outs.second.second;
+    used_size += 1;
+    PADDLE_ENFORCE_LE(
+        used_size, max_buff_size,
+        platform::errors::OutOfRange("downstream=%lld used buff size must <= "
+                                     "max_buff_size, but now used_size=%lld, "
+                                     "max_buff_size=%lld",
+                                     down_id, used_size, max_buff_size));
+    outs.second.second = used_size;
+
+    InterceptorMessage ready_msg;
+    ready_msg.set_message_type(DATA_IS_READY);
+    ready_msg.set_scope_idx(scope_idx_);
+    VLOG(3) << "Interceptor " << interceptor_id_
+            << " Send data_is_ready msg to " << down_id << " scope index "
+            << scope_idx_;
+    Send(down_id, ready_msg);
+  }
+}
+
+void Interceptor::ReplyCompletedToUpStream() {
+  for (auto& ins : in_readys_) {
+    auto up_id = ins.first;
+    auto ready_size = ins.second.second;
+    ready_size -= 1;
+    PADDLE_ENFORCE_GE(
+        ready_size, 0,
+        platform::errors::OutOfRange(
+            "upstream=%lld ready_size must >= 0, but now got %lld", up_id,
+            ready_size));
+    ins.second.second = ready_size;
+
+    VLOG(3) << "Interceptor " << interceptor_id_
+            << " Reply data_is_useless msg to " << up_id;
+    if (up_id == -1) return;
+
+    InterceptorMessage reply_msg;
+    reply_msg.set_message_type(DATA_IS_USELESS);
+    Send(up_id, reply_msg);
+  }
+}
+
 static InterceptorFactory::CreateInterceptorMap& GetInterceptorMap() {
   static InterceptorFactory::CreateInterceptorMap interceptorMap;
   return interceptorMap;

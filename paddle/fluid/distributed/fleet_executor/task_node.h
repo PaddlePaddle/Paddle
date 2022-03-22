@@ -43,6 +43,7 @@ class TaskNode final {
   TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
            int64_t max_run_times, int64_t max_slot_nums);
   TaskNode(paddle::framework::ProgramDesc* program, int64_t rank);
+  TaskNode(int64_t rank, int64_t max_run_times, int64_t max_slot_nums);
   ~TaskNode() = default;
 
   void SetProgram(paddle::framework::ProgramDesc* program);
