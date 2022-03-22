@@ -49,7 +49,7 @@ all_ir_name=`grep -Eo "PDTCPU_Kernel<.*\"" ${PADDLE_ROOT}/paddle/infrt/dialect/p
 for ir in $all_ir_name
 do
   attr_name=`grep "<\"$ir" -A 3 ${PADDLE_ROOT}/paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td  | grep -Eo "Attr:.*)" \
-  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BOOLAttr/,""); \
+  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BoolAttr/,""); \
   gsub(/SI1Attr/,"");gsub(/SI8Attr/,"");gsub(/SI16Attr/,"");gsub(/SI32Attr/,"");gsub(/SI64Attr/,""); \
   gsub(/UI1Attr/,"");gsub(/UI8Attr/,"");gsub(/I16Attr/,"");gsub(/I32Attr/,"");gsub(/I64Attr/,""); \
   gsub(/I1Attr/,"");gsub(/I8Attr/,"");gsub(/UI16Attr/,"");gsub(/UI32Attr/,"");gsub(/UI64Attr/,""); \
@@ -62,7 +62,7 @@ all_ir_name=`grep -Eo "PDTGPU_Kernel<.*\"" ${PADDLE_ROOT}/paddle/infrt/dialect/p
 for ir in $all_ir_name
 do
   attr_name=`grep "<\"$ir" -A 3 ${PADDLE_ROOT}/paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td  | grep -Eo "Attr:.*)" \
-  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BOOLAttr/,""); \
+  | awk '{gsub(/F32Attr/,"");gsub(/F64Attr/,"");gsub(/StrAttr/,"");gsub(/BoolAttr/,""); \
   gsub(/SI1Attr/,"");gsub(/SI8Attr/,"");gsub(/SI16Attr/,"");gsub(/SI32Attr/,"");gsub(/SI64Attr/,""); \
   gsub(/UI1Attr/,"");gsub(/UI8Attr/,"");gsub(/I16Attr/,"");gsub(/I32Attr/,"");gsub(/I64Attr/,""); \
   gsub(/I1Attr/,"");gsub(/I8Attr/,"");gsub(/UI16Attr/,"");gsub(/UI32Attr/,"");gsub(/UI64Attr/,""); \
