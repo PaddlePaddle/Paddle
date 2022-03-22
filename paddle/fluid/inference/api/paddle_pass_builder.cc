@@ -345,9 +345,9 @@ void CpuPassStrategy::EnableMkldnnInt8() {
   if (!use_mkldnn_int8_) {
     passes_.clear();
     passes_.push_back("quant_dequant_mkldnn_fuse_pass");
+    passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");
-    passes_.push_back("seqpool_cvm_concat_fuse_pass");
     passes_.push_back("fc_lstm_fuse_pass");
     passes_.push_back("mul_lstm_fuse_pass");
     passes_.push_back("fc_gru_fuse_pass");
@@ -355,31 +355,53 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("multi_gru_fuse_pass");
     passes_.push_back("multi_gru_seq_fuse_pass");
     passes_.push_back("seq_concat_fc_fuse_pass");
+    passes_.push_back("gpu_cpu_squeeze2_matmul_fuse_pass");
+    passes_.push_back("gpu_cpu_reshape2_matmul_fuse_pass");
+    passes_.push_back("gpu_cpu_flatten2_matmul_fuse_pass");
+    passes_.push_back("matmul_v2_scale_fuse_pass");
     passes_.push_back("squared_mat_sub_fuse_pass");
     passes_.push_back("is_test_pass");
-    passes_.push_back("map_matmul_v2_to_mul_pass");
-    passes_.push_back("map_matmul_v2_to_matmul_pass");
-    passes_.push_back("map_matmul_to_mul_pass");
-    // 需要参数？
-    /// passes_.push_back("mkldnn_placement_pass");
+    passes_.push_back("gpu_cpu_map_matmul_v2_to_mul_pass");
+    passes_.push_back("gpu_cpu_map_matmul_v2_to_matmul_pass");
+    passes_.push_back("matmul_scale_fuse_pass");
+    passes_.push_back("gpu_cpu_map_matmul_to_mul_pass");
+    passes_.push_back("repeated_fc_relu_fuse_pass");
+    passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("depthwise_conv_mkldnn_pass");
     passes_.push_back("conv_bn_fuse_pass");
     passes_.push_back("conv_eltwiseadd_bn_fuse_pass");
     passes_.push_back("conv_transpose_bn_fuse_pass");
     passes_.push_back("conv_transpose_eltwiseadd_bn_fuse_pass");
     passes_.push_back("conv_bias_mkldnn_fuse_pass");
+    passes_.push_back("conv_transpose_bias_mkldnn_fuse_pass");
     passes_.push_back("conv_elementwise_add_mkldnn_fuse_pass");
+    passes_.push_back("conv_concat_relu_mkldnn_fuse_pass");
     passes_.push_back("conv_relu_mkldnn_fuse_pass");
+    passes_.push_back("conv_leaky_relu_mkldnn_fuse_pass");
     passes_.push_back("conv_relu6_mkldnn_fuse_pass");
-    // 需要参数？
+    passes_.push_back("conv_swish_mkldnn_fuse_pass");
+    passes_.push_back("conv_hard_swish_mkldnn_fuse_pass");
+    passes_.push_back("conv_mish_mkldnn_fuse_pass");
+    passes_.push_back("conv_hard_sigmoid_mkldnn_fuse_pass");
+    passes_.push_back("conv_gelu_mkldnn_fuse_pass");
+    // How to set input parameters？
     /// passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
-    // 要开吗？
+    // next pr will fix
     // passes_.push_back("fc_mkldnn_pass");
     // passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_fuse_pass");
     passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
+    passes_.push_back("batch_norm_act_fuse_pass");
+    passes_.push_back("softplus_activation_mkldnn_fuse_pass");
     passes_.push_back("requant_mkldnn_fuse_pass");
+    passes_.push_back("scale_matmul_fuse_pass");
+    passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
+    passes_.push_back("reshape_transpose_matmul_v2_mkldnn_fuse_pass");
+    // next pr will fix
+    // passes_.push_back("cpu_quantize_placement_pass");
+    // passes_.push_back("cpu_quantize_pass");
+    // passes_.push_back("cpu_quantize_squash_pass");
     passes_.push_back("runtime_context_cache_pass");
   }
   use_mkldnn_int8_ = true;
