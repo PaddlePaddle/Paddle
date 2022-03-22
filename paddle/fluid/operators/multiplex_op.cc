@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
@@ -131,8 +131,8 @@ class MultiplexGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(multiplex, MultiplexInferShapeFunctor,
-                            PT_INFER_META(phi::MultiplexInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(multiplex, MultiplexInferShapeFunctor,
+                            PD_INFER_META(phi::MultiplexInferMeta));
 
 REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
                   ops::MultiplexGradMaker<paddle::framework::OpDesc>,

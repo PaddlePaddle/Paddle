@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
-#include "paddle/fluid/framework/op_registry.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -90,8 +89,8 @@ class TrilTriuGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-DELCARE_INFER_SHAPE_FUNCTOR(tril_triu, TrilTriuInferShapeFunctor,
-                            PT_INFER_META(phi::TrilTriuInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(tril_triu, TrilTriuInferShapeFunctor,
+                            PD_INFER_META(phi::TrilTriuInferMeta));
 REGISTER_OPERATOR(tril_triu, ops::TrilTriuOp, ops::TrilTriuOpMaker,
                   ops::TrilTriuGradOpMaker<paddle::framework::OpDesc>,
                   ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>,

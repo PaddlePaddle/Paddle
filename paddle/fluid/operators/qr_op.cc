@@ -103,8 +103,8 @@ class QrGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(qr, QrInferShapeFunctor,
-                            PT_INFER_META(phi::QrInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(qr, QrInferShapeFunctor,
+                            PD_INFER_META(phi::QrInferMeta));
 
 REGISTER_OPERATOR(qr, ops::QrOp, ops::QrOpMaker,
                   ops::QrGradMaker<paddle::framework::OpDesc>,

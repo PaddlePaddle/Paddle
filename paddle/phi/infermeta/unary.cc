@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
-#include "paddle/phi/kernels/qr_kernel.h"
 
 namespace phi {
 
@@ -167,7 +167,7 @@ void QrInferMeta(const MetaTensor& x,
   int m = x_dims[x_rank - 2];
   int n = x_dims[x_rank - 1];
   int min_mn = std::min(m, n);
-  std::tie(compute_q, reduced_mode) = phi::ParseQrMode(mode);
+  std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
 
   if (compute_q) {
     int k = reduced_mode ? min_mn : m;
