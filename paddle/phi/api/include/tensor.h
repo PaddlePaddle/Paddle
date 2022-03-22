@@ -31,7 +31,6 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/phi/api/ext/dll_decl.h"
 #include "paddle/phi/api/ext/place.h"
-#include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
@@ -225,6 +224,22 @@ class PADDLE_API Tensor final {
    */
   bool is_selected_rows() const;
 
+  /**
+   * @brief Determine whether tensor is SparseCooTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_sparse_coo_tensor() const;
+
+  /**
+   * @brief Determine whether tensor is SparseCsrTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_sparse_csr_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
@@ -253,12 +268,20 @@ class PADDLE_API Tensor final {
   bool is_cpu() const;
 
   /**
-   * @brief Determine whether the tensor device is CUDA
+   * @brief Determine whether the tensor device is GPU
    *
    * @return true
    * @return false
    */
-  bool is_cuda() const;
+  bool is_gpu() const;
+
+  /**
+   * @brief Determine whether the tensor device is GPU_PINNED
+   *
+   * @return true
+   * @return false
+   */
+  bool is_gpu_pinned() const;
 
   /* Part 4: Data Access methods */
 
@@ -324,7 +347,7 @@ class PADDLE_API Tensor final {
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
-  std::shared_ptr<phi::TensorBase> impl() const;
+  const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
    * @brief Set the implemention of current Tensor.
@@ -332,6 +355,13 @@ class PADDLE_API Tensor final {
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
+
+  /**
+   * @brief Set the implemention of current Tensor.
+   *
+   * @param impl
+   */
+  void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
@@ -384,11 +414,11 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param backend, The target backend of which the tensor will copy to.
+   * @param place, The target place of which the tensor will copy to.
    * @param blocking, Should we copy this in sync way.
    * @return Tensor
    */
-  Tensor copy_to(Backend backend, bool blocking) const;
+  Tensor copy_to(Place place, bool blocking) const;
 
   /**
    * @brief Transfer the source Tensor to current Tensor.
@@ -397,7 +427,9 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return void
    */
-  void copy_(const Tensor& src, const bool blocking);
+  void copy_(const Tensor& src,
+             const phi::Place& target_place,
+             const bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
@@ -472,7 +504,21 @@ class PADDLE_API Tensor final {
    */
   void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
 
-  /* Part 9: Auto generated Tensor methods */
+  /* Part 9: Inplace methods */
+
+  /**
+   * @brief Increase inplace version
+   */
+  void bump_inplace_version();
+
+  /**
+   * @brief Get current inplace version
+   *
+   * @return uint32_t
+   */
+  uint32_t current_inplace_version();
+
+  /* Part 10: Auto generated Tensor methods */
 
  private:
   /**

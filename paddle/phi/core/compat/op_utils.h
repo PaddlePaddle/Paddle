@@ -47,11 +47,26 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "matmul_grad",
                                                            "matmul_grad_grad",
                                                            "mean",
+                                                           "mean_grad",
+                                                           "max",
+                                                           "max_grad",
+                                                           "min",
+                                                           "min_grad",
+                                                           "prod",
+                                                           "prod_grad",
+                                                           "any",
+                                                           "all",
                                                            "reshape",
                                                            "reshape_grad",
                                                            "expand",
+                                                           "expand_as",
                                                            "expand_grad",
-                                                           "sum"});
+                                                           "expand_as_grad",
+                                                           "sum",
+                                                           "one_hot",
+                                                           "sum_grad",
+                                                           "top_k",
+                                                           "top_k_grad"});
 
 class DefaultKernelSignatureMap {
  public:

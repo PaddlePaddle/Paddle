@@ -92,4 +92,20 @@ std::string GetGlobalDeviceType(size_t device_type_id) {
   return global_registered_device_type[device_type_id];
 }
 
+constexpr static int kAllocationTypeBitLength = 8;
+constexpr static int kDeviceTypeIDBitLength = 8;
+constexpr static int kDeviceIDBitLength = 8;
+
+uint32_t Place::Hash::operator()(const Place &place) const {
+  uint32_t hash_value = 0;
+  // |----31-24------|-----23-16------|-----15-08----|---7-0----|
+  // | For extension | AllocationType | DeviceTypeID | DeviceID |
+  hash_value |= (static_cast<uint8_t>(place.alloc_type_)
+                 << (kDeviceIDBitLength + kDeviceTypeIDBitLength));
+  hash_value |=
+      (static_cast<uint8_t>(place.device_type_id_) << kDeviceIDBitLength);
+  hash_value |= static_cast<uint8_t>(place.device);
+  return hash_value;
+}
+
 }  // namespace phi

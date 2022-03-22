@@ -23,8 +23,9 @@ namespace infrt {
 namespace host_context {
 
 struct KernelRegistry::Impl {
-  std::unordered_map<std::string, KernelImplementation> data;
-  std::unordered_map<std::string, llvm::SmallVector<std::string, 4>> attr_names;
+  std::unordered_map<std::string,
+                     std::pair<KernelImplementation, std::vector<const char *>>>
+      data;
 };
 
 KernelRegistry::KernelRegistry() : impl_(std::make_unique<Impl>()) {}
@@ -33,20 +34,29 @@ void KernelRegistry::AddKernel(const std::string &key,
                                KernelImplementation fn) {
   CHECK(!impl_->data.count(key)) << "kernel [" << key
                                  << "] is registered twice";
-  impl_->data.emplace(key, fn);
+  impl_->data.emplace(
+      key, std::make_pair(std::move(fn), std::vector<const char *>{}));
 }
 
-void KernelRegistry::AddKernelAttrNameList(
-    const std::string &key, const std::vector<std::string> &names) {
-  CHECK(!impl_->attr_names.count(key))
-      << "kernel [" << key << "] is registered twice in attribute names";
-  impl_->attr_names.emplace(
-      key, llvm::SmallVector<std::string, 4>(names.begin(), names.end()));
+const std::vector<const char *> &KernelRegistry::GetAttrNameList(
+    const std::string &key) const {
+  CHECK(impl_->data.count(key));
+  return impl_->data[key].second;
+}
+
+void KernelRegistry::AddKernelWithAttrs(
+    const std::string &key,
+    KernelImplementation fn,
+    std::vector<const char *> &&attr_order) {
+  CHECK(!impl_->data.count(key)) << "kernel [" << key
+                                 << "] is registered twice";
+  impl_->data.emplace(key,
+                      std::make_pair(std::move(fn), std::move(attr_order)));
 }
 
 KernelImplementation KernelRegistry::GetKernel(const std::string &key) const {
   auto it = impl_->data.find(key);
-  return it != impl_->data.end() ? it->second : KernelImplementation{};
+  return it != impl_->data.end() ? it->second.first : KernelImplementation{};
 }
 
 std::vector<std::string> KernelRegistry::GetKernelList() const {

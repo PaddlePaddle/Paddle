@@ -121,6 +121,20 @@ void DivideGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, out, dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 
+template <typename T, typename Context>
+void MultiplyGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  auto* out = &dout;  // out is not necessary
+  phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+      dev_ctx, x, y, *out, dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(add_grad,
@@ -193,8 +207,8 @@ PD_REGISTER_KERNEL(divide_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(divide_double_grad,
                    CPU,
@@ -204,5 +218,61 @@ PD_REGISTER_KERNEL(divide_double_grad,
                    double,
                    int,
                    int64_t,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyTripleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(elementwise_fmax_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseFMaxGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(elementwise_fmin_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseFMinGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

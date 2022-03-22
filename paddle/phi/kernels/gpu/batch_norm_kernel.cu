@@ -439,11 +439,11 @@ void BatchNormKernel(const Context &ctx,
     // Run training mode.
     // obtain running mean and running inv var, and there is no need
     // to initialize them.
-    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    ctx.template Alloc<BatchNormParamType<T>>(mean_out);
+    ctx.template Alloc<BatchNormParamType<T>>(variance_out);
 
-    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+    ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
@@ -460,10 +460,14 @@ void BatchNormKernel(const Context &ctx,
       void *reserve_space_ptr = nullptr;
       void *workspace_ptr = nullptr;
       DenseTensor workspace_tensor;
+      DenseTensor reserve_space_tensor;
       // Create reserve space and workspace for batch norm.
       // Create tensor for each batchnorm op, it will be used in the
       // backward. Thus this tensor shouldn't be temp.
       // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+      if (reserve_space == nullptr) {
+        reserve_space = &reserve_space_tensor;
+      }
       PADDLE_ENFORCE_NOT_NULL(
           reserve_space,
           phi::errors::NotFound(
@@ -493,10 +497,10 @@ void BatchNormKernel(const Context &ctx,
                   /*xDesc=*/data_desc_,
                   /*sizeInBytes=*/&reserve_space_size));
 
-      reserve_space_ptr = reserve_space->mutable_data(
-          ctx.GetPlace(), transformed_x.type(), reserve_space_size);
-      workspace_ptr = workspace_tensor.mutable_data(
-          ctx.GetPlace(), transformed_x.type(), workspace_size);
+      reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
+      reserve_space_ptr = ctx.template Alloc<T>(reserve_space);
+      workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
+      workspace_ptr = ctx.template Alloc<T>(&workspace_tensor);
       PADDLE_ENFORCE_GPU_SUCCESS(
           paddle::platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
               handle,
@@ -514,15 +518,11 @@ void BatchNormKernel(const Context &ctx,
               scale.template data<BatchNormParamType<T>>(),
               bias.template data<BatchNormParamType<T>>(),
               this_factor,
-              mean_out->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
-              variance_out->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
+              ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+              ctx.template Alloc<BatchNormParamType<T>>(variance_out),
               epsilon,
-              saved_mean->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
-              saved_variance->template mutable_data<BatchNormParamType<T>>(
-                  ctx.GetPlace()),
+              ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+              ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
               nullptr,
               workspace_ptr,
               workspace_size,
@@ -617,15 +617,11 @@ void BatchNormKernel(const Context &ctx,
                 scale.template data<BatchNormParamType<T>>(),
                 bias.template data<BatchNormParamType<T>>(),
                 this_factor,
-                mean_out->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
-                variance_out->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
+                ctx.template Alloc<BatchNormParamType<T>>(mean_out),
+                ctx.template Alloc<BatchNormParamType<T>>(variance_out),
                 epsilon,
-                saved_mean->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace()),
-                saved_variance->template mutable_data<BatchNormParamType<T>>(
-                    ctx.GetPlace())));
+                ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
+                ctx.template Alloc<BatchNormParamType<T>>(saved_variance)));
 #endif
       }
     }

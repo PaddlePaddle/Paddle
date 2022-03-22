@@ -280,7 +280,14 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.passes',
           'paddle.distribution',
+          'paddle.distributed.sharding',
           'paddle.distributed.fleet',
+          'paddle.distributed.launch',
+          'paddle.distributed.launch.context',
+          'paddle.distributed.launch.controllers',
+          'paddle.distributed.launch.job',
+          'paddle.distributed.launch.plugins',
+          'paddle.distributed.launch.utils',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
@@ -299,6 +306,7 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
+          'paddle.distributed.auto_parallel.tuner',
           'paddle.distributed.passes',
           'paddle.framework',
           'paddle.jit',
@@ -503,6 +511,18 @@ if '${WITH_MKLDNN}' == 'ON':
         package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1', 'libdnnl.so.2']
     else:
         package_data['paddle.libs']+=['mkldnn.dll']
+
+if '${WITH_ONNXRUNTIME}' == 'ON':
+    shutil.copy('${ONNXRUNTIME_SHARED_LIB}', libs_path)
+    if os.name == 'nt':
+        shutil.copy('${PADDLE2ONNX_SHARED_LIB}', libs_path)
+        package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
+    else:
+        shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
+        if sys.platform == 'darwin':
+            package_data['paddle.libs']+=['libpaddle2onnx.dylib', 'libonnxruntime.1.10.0.dylib']
+        else:
+            package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
 
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,
@@ -713,7 +733,7 @@ with redirect_stdout():
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.distributed.fleet.launch:launch'
+                'fleetrun = paddle.distributed.launch.__main__:launch'
             ]
         },
         classifiers=[

@@ -127,7 +127,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor):
+        elif isinstance(data, (paddle.Tensor, core.eager.Tensor)):
             data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -283,7 +283,7 @@ def ones_like(x, dtype=None, name=None):
     Args:
         x(Tensor): The input tensor which specifies shape and dtype. The
             dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+        dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
             Default is None.
@@ -358,7 +358,7 @@ def zeros_like(x, dtype=None, name=None):
     Args:
         x(Tensor): The input tensor which specifies shape and dtype. The
             dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+        dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
             Default is None.
@@ -974,6 +974,8 @@ def diag(x, offset=0, padding_value=0, name=None):
           # [4]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_diag(x, offset, padding_value)
         return _C_ops.diag_v2(x, "offset", offset, "padding_value",
                               padding_value)
 
