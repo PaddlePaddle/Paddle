@@ -240,7 +240,7 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
     }
   } else {
     if (flag_kwargs) {
-      if (kws_map["name"] == NULL) {
+      if ((kws_map["name"] == NULL) || (kws_map["name"] == Py_None)) {
         act_name =
             egr::Controller::Instance().GenerateUniqueName("generated_tensor");
       } else {

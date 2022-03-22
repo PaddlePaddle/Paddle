@@ -27,7 +27,8 @@ from paddle.tensor import cast
 from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from paddle.static import Variable
-from ..framework import core, _in_legacy_dygraph, in_dygraph_mode
+from ..framework import core
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -1274,24 +1275,25 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
 
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_addmm( input, x, y, alpha, beta)
-        out = _C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
-        return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_addmm( input, x, y, alpha, beta)
+    else:
+        if _in_legacy_dygraph():
+            out = _C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+            return out
+        else:
+            inputs = {'Input': input, "X": x, "Y": y}
+            attrs = {'Alpha': alpha, 'Beta': beta}
 
-    inputs = {'Input': input, "X": x, "Y": y}
-    attrs = {'Alpha': alpha, 'Beta': beta}
+            helper = LayerHelper("addmm", **locals())
+            check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'addmm')
+            check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+            check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper = LayerHelper("addmm", **locals())
-    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'addmm')
-    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
-    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
-    return out
+            helper.append_op(
+                type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+            return out
 
 def renorm(x, p, axis, max_norm):
     """
@@ -3270,20 +3272,21 @@ def atan2(x, y, name=None):
 
     """
 
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_atan2( x, y)
-        return _C_ops.atan2(x, y)
+    if in_dygraph_mode():
+        return _C_ops.final_state_atan2( x, y)
     else:
-        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
-        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+        if _in_legacy_dygraph():
+            return _C_ops.atan2(x, y)
+        else:
+            check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+            check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
 
-        helper = LayerHelper('atan2', **locals())
-        inputs = {'X1' : x, 'X2' : y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-                type='atan2', inputs=inputs, outputs={'Out': out})
-        return out
+            helper = LayerHelper('atan2', **locals())
+            inputs = {'X1' : x, 'X2' : y}
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                    type='atan2', inputs=inputs, outputs={'Out': out})
+            return out
 
 def logit(x, eps=None, name=None):
     r"""

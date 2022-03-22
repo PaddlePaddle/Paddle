@@ -40,7 +40,6 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
-from paddle import _C_ops
 
 __all__ = [
     'Program',
@@ -75,14 +74,14 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = True
+_in_eager_mode_ = False
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _already_patch_eager_tensor = False
+_already_patch_varbase = False
 _global_flags_ = core.globals()
-core._disable_eager_mode()
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to 
@@ -108,10 +107,12 @@ core._disable_eager_mode()
 
 
 def _enable_legacy_dygraph():
+    global _in_eager_mode_
     _in_eager_mode_ = False
 
 
 def _disable_legacy_dygraph():
+    global _in_eager_mode_
     _in_eager_mode_ = True
 
 
@@ -156,18 +157,24 @@ def _non_static_mode():
 @signature_safe_contextmanager
 def _test_eager_guard(tracer=None):
     _disable_legacy_dygraph()
+    from paddle import _C_ops
     _C_ops.switch_to_eager_ops()
     global _already_patch_eager_tensor
+    global _already_patch_varbase
+    from .dygraph.varbase_patch_methods import monkey_patch_varbase
+    from .dygraph import monkey_patch_math_varbase
     if not _already_patch_eager_tensor:
-        from .dygraph.varbase_patch_methods import monkey_patch_varbase
         monkey_patch_varbase()
-        from .dygraph import monkey_patch_math_varbase
         monkey_patch_math_varbase()
         _already_patch_eager_tensor = True
     try:
         yield
     finally:
         _enable_legacy_dygraph()
+        if not _already_patch_varbase:
+            monkey_patch_varbase()
+            monkey_patch_math_varbase()
+            _already_patch_varbase = True
         _C_ops.switch_to_core_ops()
 
 
@@ -1086,7 +1093,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if not _in_legacy_dygraph():
+    if _in_eager_mode_:
         eager_tensor = core.eager.Tensor(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [], name, type

@@ -14,10 +14,10 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer, _in_eager_mode
+from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
@@ -1145,26 +1145,27 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]
             #  [0. 0. 0.]]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_cross(x, y, axis)
-        if axis is not None:
-            return _C_ops.cross(x, y, 'dim', axis)
+    if in_dygraph_mode():
+        return _C_ops.final_state_cross(x, y, axis)
+    else:
+        if _in_legacy_dygraph():
+            if axis is not None:
+                return _C_ops.cross(x, y, 'dim', axis)
+            else:
+                return _C_ops.cross(x, y)
         else:
-            return _C_ops.cross(x, y)
+            helper = LayerHelper("cross", **locals())
+            out = helper.create_variable_for_type_inference(x.dtype)
+            attrs = dict()
+            attrs['dim'] = axis
 
-    helper = LayerHelper("cross", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    attrs = dict()
-    attrs['dim'] = axis
-
-    helper.append_op(
-        type='cross',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+            helper.append_op(
+                type='cross',
+                inputs={'X': x,
+                        'Y': y},
+                outputs={'Out': out},
+                attrs=attrs)
+            return out
 
 
 def cholesky(x, upper=False, name=None):
@@ -1491,35 +1492,38 @@ def mv(x, vec, name=None):
             vec = paddle.to_tensor(vec_data).astype("float64")
             out = paddle.mv(x, vec)
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_mv(x, vec)
-        out = _C_ops.mv(x, vec)
-        return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_mv(x, vec)
+    else:
+        if _in_legacy_dygraph():
+            out = _C_ops.mv(x, vec)
+            return out
+        else:
 
-    def __check_input(x, vec):
-        var_names = {'x': x, 'vec': vec}
-        for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'], 'mv')
-        x_shape = list(x.shape)
-        vec_shape = list(vec.shape)
-        if len(x_shape) != 2:
-            raise ValueError(
-                "x should be 2-dimensional. But received x's dimention: {}".
-                format(x_shape))
-        if len(vec_shape) != 1:
-            raise ValueError(
-                "vec should be 1-dimensional. But received vec's dimention: {}".
-                format(vec_shape))
+            def __check_input(x, vec):
+                var_names = {'x': x, 'vec': vec}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(val, name, ['float32', 'float64'],
+                                             'mv')
+                x_shape = list(x.shape)
+                vec_shape = list(vec.shape)
+                if len(x_shape) != 2:
+                    raise ValueError(
+                        "x should be 2-dimensional. But received x's dimention: {}".
+                        format(x_shape))
+                if len(vec_shape) != 1:
+                    raise ValueError(
+                        "vec should be 1-dimensional. But received vec's dimention: {}".
+                        format(vec_shape))
 
-    __check_input(x, vec)
+            __check_input(x, vec)
 
-    helper = LayerHelper('mv', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='mv', inputs={'X': x,
-                           'Vec': vec}, outputs={'Out': out})
-    return out
+            helper = LayerHelper('mv', **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='mv', inputs={'X': x,
+                                   'Vec': vec}, outputs={'Out': out})
+            return out
 
 
 def det(x, name=None):

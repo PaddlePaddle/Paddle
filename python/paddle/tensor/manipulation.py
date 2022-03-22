@@ -16,7 +16,8 @@ from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
-from ..framework import core, _in_eager_mode
+from ..framework import core
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -263,7 +264,7 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
 
 setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
-if core._in_eager_mode():
+if in_dygraph_mode():
     setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
 
@@ -1577,25 +1578,26 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [2., 2.],
             #  [1., 1.]]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_scatter(x, index, updates, overwrite)
-        return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
-
-    check_variable_and_dtype(
-        x, 'dtype', ['float32', 'float64', 'float16', 'int32', 'int64'],
-        'scatter')
-    check_type(overwrite, 'overwrite', bool, 'scatter')
-    helper = LayerHelper('scatter', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type="scatter",
-        inputs={"X": x,
-                "Ids": index,
-                "Updates": updates},
-        attrs={'overwrite': overwrite},
-        outputs={"Out": out})
-    return out
+    if in_dygraph_mode():
+        return _C_ops.final_state_scatter(x, index, updates, overwrite)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
+        else:
+            check_variable_and_dtype(
+                x, 'dtype',
+                ['float32', 'float64', 'float16', 'int32', 'int64'], 'scatter')
+            check_type(overwrite, 'overwrite', bool, 'scatter')
+            helper = LayerHelper('scatter', **locals())
+            out = helper.create_variable_for_type_inference(x.dtype)
+            helper.append_op(
+                type="scatter",
+                inputs={"X": x,
+                        "Ids": index,
+                        "Updates": updates},
+                attrs={'overwrite': overwrite},
+                outputs={"Out": out})
+            return out
 
 
 @inplace_apis_in_dygraph_only
