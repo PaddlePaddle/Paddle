@@ -1607,10 +1607,9 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += view_strategy_str;
     generated_function_body += "\n";
 
-    VLOG(6) << "Generated View Strategy (Share Buffer)";
-
-    generated_function_body += "\n";
+    VLOG(6) << "Generated View Strategy";
   }
+  generated_function_body += "\n";
 
   // [Generation] Get Attrs
   dygraph_function_args_str +=
