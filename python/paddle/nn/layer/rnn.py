@@ -1124,16 +1124,19 @@ class SimpleRNN(RNNBase):
     Using key word arguments to construct is recommended.
 
     Parameters:
-        input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
-        num_layers (int, optional): Number of layers. Defaults to 1.
+        input_size (int): The input size of :math:`x` for the first layer's cell.
+        hidden_size (int): The hidden size of :math:`h` for each layer's cell.
+        num_layers (int, optional): Number of recurrent layers. Defaults to 1.
         direction (str, optional): The direction of the network. It can be "forward"
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
-        time_major (bool, optional): Whether the first dimension of the input means the
-            time steps. Defaults to False.
-        dropout (float, optional): The droput probability. Dropout is applied to the 
-            input of each layer except for the first layer. Defaults to 0.
+        time_major (bool, optional): Whether the first dimension of the input 
+            means the time steps. If time_major is True, the shape of Tensor is 
+            [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
+            Defaults to False. `time_steps` means the length of input sequence.
+        dropout (float, optional): The droput probability. Dropout is applied 
+            to the input of each layer except for the first layer. The range of 
+            dropout from 0 to 1. Defaults to 0.
         activation (str, optional): The activation in each SimpleRNN cell. It can be 
             `tanh` or `relu`. Defaults to `tanh`.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
@@ -1242,16 +1245,19 @@ class LSTM(RNNBase):
     Using key word arguments to construct is recommended.
 
     Parameters:
-        input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
-        num_layers (int, optional): Number of layers. Defaults to 1.
+        input_size (int): The input size of :math:`x` for the first layer's cell.
+        hidden_size (int): The hidden size of :math:`h` for each layer's cell.
+        num_layers (int, optional): Number of recurrent layers. Defaults to 1.
         direction (str, optional): The direction of the network. It can be "forward"
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
-            means the time steps. Defaults to False.
+            means the time steps. If time_major is True, the shape of Tensor is 
+            [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
+            Defaults to False. `time_steps` means the length of input sequence.
         dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+            to the input of each layer except for the first layer. The range of 
+            dropout from 0 to 1. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
@@ -1349,16 +1355,19 @@ class GRU(RNNBase):
     Using key word arguments to construct is recommended.
 
     Parameters:
-        input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
-        num_layers (int, optional): Number of layers. Defaults to 1.
+        input_size (int): The input size of :math:`x` for the first layer's cell.
+        hidden_size (int): The hidden size of :math:`h` for each layer's cell.
+        num_layers (int, optional): Number of recurrent layers. Defaults to 1.
         direction (str, optional): The direction of the network. It can be "forward"
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
-            means the time steps. Defaults to False.
+            means the time steps. If time_major is True, the shape of Tensor is 
+            [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
+            Defaults to False. `time_steps` means the length of input sequence.
         dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+            to the input of each layer except for the first layer. The range of 
+            dropout from 0 to 1. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
