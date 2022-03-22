@@ -125,8 +125,6 @@ class SliceKernel : public framework::OpKernel<T> {
       return;
     }
   }
-
- private:
 };
 
 template <typename DeviceContext, typename T>

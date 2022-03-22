@@ -99,11 +99,10 @@ class TestSliceOp_decs_dim(OpTest):
         self.infer_flags = [1, 1, 1]
         self.out = self.input[1, 0:3, 2:4, :]
 
-    # def test_check_output(self):
-    #     self.check_output()
+    def test_check_output(self):
+        self.check_output()
 
     def test_check_grad_normal(self):
-        print(self.input.size)
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 

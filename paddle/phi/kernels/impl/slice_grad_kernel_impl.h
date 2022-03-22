@@ -191,7 +191,6 @@ void EigenPaddingCompute(
         // the third dimension do not need padding, set padding[2] zero
         reshaped_padding[2].first = reshaped_padding[2].second = 0;
 
-        LOG(ERROR) << "run here";
         LaunchEigenPadding<T, Context, 3>(context,
                                           d_input,
                                           reshaped_in_dims,
@@ -218,7 +217,7 @@ void SliceGradCompute(const Context& ctx,
                       DenseTensor* input_grad) {
   auto* d_out = &out_grad;
   auto* d_input = input_grad;
-  d_input->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(d_input);
 
   auto out_dims = d_out->dims();
   auto in_dims = d_input->dims();

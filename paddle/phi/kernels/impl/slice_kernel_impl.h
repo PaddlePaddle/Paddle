@@ -78,7 +78,7 @@ void SliceCompute(const Context& ctx,
   }
 
   out->Resize(slice_dims);
-  out->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(out);
 
   auto in_t = EigenTensor<T, D>::From(*in, in_dims);
   auto out_t = EigenTensor<T, D>::From(*out, slice_dims);
