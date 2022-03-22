@@ -8730,8 +8730,8 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_scatter_nd_add(ref, index, updates)
+        #if _in_eager_mode():
+        #return _C_ops.final_state_scatter_nd_add(ref, index, updates)
         op = getattr(_C_ops, 'scatter_nd_add')
         return op(ref, index, updates)
 
