@@ -386,7 +386,7 @@ def sync_params_buffers(model,
 
     for coalesced_var, _, _ in coalesced_vars:
         paddle.distributed.broadcast(
-            coalesced_var, src=src_rank, group=comm_group, async_op=False)
+            coalesced_var, src=src_rank, group=comm_group, use_calc_stream=True)
 
     for coalesced_var, origin_vars, var_shapes in coalesced_vars:
         var_len = [np.prod(v_shape) for v_shape in var_shapes]
