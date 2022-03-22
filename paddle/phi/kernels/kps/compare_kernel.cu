@@ -15,14 +15,18 @@
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
+#ifdef PADDLE_WITH_CUDA
 #include <thrust/fill.h>
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
+#endif
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/primitive/functor_primitives.h"
+// #include "paddle/phi/kernels/gpu/reduce.h"  // cuda or hip 
+#include "paddle/phi/kernels/funcs/reduce_function.h"  // __umulhi CUDA 
+
 
 namespace phi {
 
@@ -61,8 +65,9 @@ inline void CompareAllKernelImpl(const Context& ctx,
   bool* out_data = ctx.template Alloc<bool>(out);
 
   if (x.dims() != y.dims()) {
-    thrust::device_ptr<bool> out_dev_ptr(out_data);
-    thrust::fill(out_dev_ptr, out_dev_ptr + 1, false);
+    // thrust::device_ptr<bool> out_dev_ptr(out_data);
+    // thrust::fill(out_dev_ptr, out_dev_ptr + 1, false);
+    out_data[0] = false;
     return;
   }
 

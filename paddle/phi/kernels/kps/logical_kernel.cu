@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/logical_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -59,25 +60,7 @@ void LogicalNotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#define REGISTER_LOGICAL_CUDA_KERNEL(logical_and, func_type) \
-  PD_REGISTER_KERNEL(logical_and,                            \
-                     GPU,                                    \
-                     ALL_LAYOUT,                             \
-                     phi::Logical##func_type##Kernel,        \
-                     float,                                  \
-                     double,                                 \
-                     bool,                                   \
-                     int64_t,                                \
-                     int,                                    \
-                     int8_t,                                 \
-                     int16_t) {}
 
-REGISTER_LOGICAL_CUDA_KERNEL(logical_and, And)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_or, Or)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_not, Not)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, Xor)
-
-#ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(logical_and, XPU, ALL_LAYOUT, phi::LogicalAndKernel, float) {
 }
 PD_REGISTER_KERNEL(logical_Or, XPU, ALL_LAYOUT, phi::LogicalOrKernel, float) {}

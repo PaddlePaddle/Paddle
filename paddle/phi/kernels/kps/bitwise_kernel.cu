@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma message("XPU_KP outside")
 #include "paddle/phi/kernels/bitwise_kernel.h"
 
 // #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -54,51 +55,6 @@ void BitwiseNotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bitwise_and,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BitwiseAndKernel,
-                   bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(bitwise_or,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BitwiseOrKernel,
-                   bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(bitwise_xor,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BitwiseXorKernel,
-                   bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(bitwise_not,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BitwiseNotKernel,
-                   bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
-
-#pragma message("XPU_KP outside")
 asdkjhfgaskfl
 #ifdef PADDLE_WITH_XPU_KP
 #pragma message("XPU_KP inside")
