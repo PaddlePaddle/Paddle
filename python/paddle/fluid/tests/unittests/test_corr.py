@@ -20,8 +20,8 @@ import paddle
 import warnings
 
 
-def numpy_corr(np_arr, rowvar=True, ddof=0):
-    return np.corrcoef(np_arr, rowvar=rowvar, ddof=int(ddof))
+def numpy_corr(np_arr, rowvar=True):
+    return np.corrcoef(np_arr, rowvar=rowvar)
 
 
 class Corr_Test(unittest.TestCase):
@@ -42,8 +42,8 @@ class Corr_Test(unittest.TestCase):
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
-                corr = paddle.linalg.corrcoef(tensor, ddof=False)
-                np_corr = numpy_corr(np_arr, rowvar=True, ddof=0)
+                corr = paddle.linalg.corrcoef(tensor)
+                np_corr = numpy_corr(np_arr, rowvar=True)
                 self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
     def test_tensor_corr_rowvar(self):
@@ -61,28 +61,10 @@ class Corr_Test(unittest.TestCase):
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
-                corr = paddle.linalg.corrcoef(tensor, rowvar=False, ddof=False)
-                np_corr = numpy_corr(np_arr, rowvar=False, ddof=0)
+                corr = paddle.linalg.corrcoef(tensor, rowvar=False)
+                np_corr = numpy_corr(np_arr, rowvar=False)
                 self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
-    def test_tensor_corr_ddof(self):
-        typelist = ['float64']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-
-        for idx, p in enumerate(places):
-            if idx == 0:
-                paddle.set_device('cpu')
-            else:
-                paddle.set_device('gpu')
-
-            for dtype in typelist:
-                np_arr = np.random.rand(*self.shape).astype(dtype)
-                tensor = paddle.to_tensor(np_arr, place=p)
-                corr = paddle.linalg.corrcoef(tensor, ddof=True)
-                np_corr = numpy_corr(np_arr, rowvar=True, ddof=1)
-                self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
 
 class Corr_Test2(Corr_Test):
@@ -99,7 +81,7 @@ class Corr_Test3(unittest.TestCase):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
-            covrr = paddle.linalg.corrcoef(tensor, ddof=False)
+            covrr = paddle.linalg.corrcoef(tensor)
 
         self.assertRaises(ValueError, test_err)
 
@@ -112,7 +94,7 @@ class Corr_Test4(unittest.TestCase):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
-            corr = paddle.linalg.corrcoef(tensor, ddof=False)
+            corr = paddle.linalg.corrcoef(tensor)
 
         self.assertRaises(ValueError, test_err)
 
@@ -125,7 +107,7 @@ class Corr_Test5(unittest.TestCase):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
-            corr = paddle.linalg.corrcoef(tensor, ddof=False)
+            corr = paddle.linalg.corrcoef(tensor)
 
         self.assertRaises(ValueError, test_err)
 
