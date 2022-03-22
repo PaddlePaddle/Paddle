@@ -30,6 +30,7 @@ class TestNanmeanAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.x[0,:,:,:] = np.nan
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
@@ -61,10 +62,20 @@ class TestNanmeanAPI(unittest.TestCase):
                 axis = tuple(axis)
                 if len(axis) == 0:
                     axis = None
+
             out_ref = np.nanmean(x, axis, keepdims=keepdim)
-            self.assertEqual(
-                np.allclose(
-                    out.numpy(), out_ref, rtol=1e-04), True)
+            if np.isnan(out_ref).sum():
+                nan_mask = np.isnan(out_ref)
+                out_ref[nan_mask] = 0
+                out_np = out.numpy()
+                out_np[nan_mask] = 0
+                self.assertEqual(
+                    np.allclose(
+                        out_np, out_ref, rtol=1e-04), True)    
+            else:
+                self.assertEqual(
+                    np.allclose(
+                        out.numpy(), out_ref, rtol=1e-04), True)
 
         test_case(self.x)
         test_case(self.x, [])
