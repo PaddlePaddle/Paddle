@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from paddle.distributed.run.utils.process_context import ProcessContext
+from paddle.distributed.launch.utils.process_context import ProcessContext
 
 from .status import Status
 
 import os, copy, sys
-import time
 
 
 class Container(object):
@@ -78,6 +77,11 @@ class Container(object):
         kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
         self._env.update(kwargs)
 
+    def _valide_env(self):
+        for k, v in self._env.items():
+            assert isinstance(k, str) and isinstance(
+                v, str), 'env {}:{} must be str'.format(k, v)
+
     def _get_fd(self, pth):
         if not pth:
             return None
@@ -90,11 +94,11 @@ class Container(object):
         except:
             return None
 
-    def start(self, timeout=-1):
-        end = time.time() + timeout
-
+    def start(self):
         if self._proc and self._proc.alive():
             return True
+
+        self._valide_env()
 
         self._stdout = self._get_fd(self._out) or sys.stdout
         if self._out == self._err:
@@ -105,14 +109,6 @@ class Container(object):
         self._proc = ProcessContext(
             self._entrypoint, env=self._env, out=self._stdout, err=self._stderr)
         self._proc.start()
-
-        while timeout > 0 and time.time() < end:
-            if self._proc.alive():
-                time.sleep(0.1)
-                continue
-            if self._proc.exit_code() == 0:
-                return True
-            return False
 
     def terminate(self, force=False):
         if self._log_handler:
@@ -125,9 +121,11 @@ class Container(object):
     def wait(self, timeout=None):
         self._proc.wait(timeout)
 
+    @property
     def exit_code(self):
         return self._proc.exit_code() if self._proc else -1
 
+    @property
     def status(self):
         if not self._proc:
             return Status.UNINIT
@@ -141,9 +139,9 @@ class Container(object):
     def __str__(self):
         return 'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
             self._rank,
-            self.status(),
+            self.status,
             self._entrypoint,
-            self.exit_code(),
+            self.exit_code,
             self.errfile,
             self._env, )
 
