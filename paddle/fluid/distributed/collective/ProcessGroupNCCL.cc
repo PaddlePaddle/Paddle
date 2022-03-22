@@ -417,7 +417,7 @@ void CheckTensorsInDifferentDevices(const std::vector<Tensor>& tensors,
   std::set<Place> used_devices;
 
   for (const auto& t : tensors) {
-    PADDLE_ENFORCE_EQ(t.is_cuda() && t.is_dense_tensor(), true,
+    PADDLE_ENFORCE_EQ(t.is_gpu() && t.is_dense_tensor(), true,
                       platform::errors::InvalidArgument(
                           "Tensors must be CUDA and dense tensor."));
 

@@ -1155,8 +1155,8 @@ class Layer(object):
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase or type(
-                        value) == core.eager.Tensor:
+                if type(value) == core.VarBase or \
+                    type(value) == core.eager.Tensor:
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
