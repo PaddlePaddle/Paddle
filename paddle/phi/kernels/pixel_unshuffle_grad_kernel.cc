@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include <string>
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/kernels/pixel_unshuffle_grad_kernel.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -54,3 +56,19 @@ void PixelUnshuffleGradKernel(const Context& ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(pixel_unshuffle_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PixelUnshuffleGradKernel,
+                   float,
+                   double) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(pixel_unshuffle_grad, 
+                   GPU,
+                   ALL_LAYOUT, 
+                   phi::PixelUnshuffleGradKernel, 
+                   float, 
+                   double) {}
+#endif
