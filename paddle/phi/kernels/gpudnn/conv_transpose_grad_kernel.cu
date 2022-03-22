@@ -729,9 +729,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     args3.handle = handle;
     args3.idesc.set(transformed_dout, iwo_group);
     args3.wdesc.set(*dfilter, layout, iwo_group);
-
     args3.odesc.set(transformed_ddx_channel, iwo_group);
-
     args3.cdesc.set(dtype,
                     padding_common,
                     strides,
