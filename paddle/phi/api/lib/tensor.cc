@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -132,6 +134,12 @@ bool Tensor::is_dense_tensor() const {
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
 }
+bool Tensor::is_sparse_coo_tensor() const {
+  return phi::SparseCooTensor::classof(impl_.get());
+}
+bool Tensor::is_sparse_csr_tensor() const {
+  return phi::SparseCsrTensor::classof(impl_.get());
+}
 /* Part 3: Device and Backend methods */
 
 PlaceType Tensor::place() const {
@@ -155,8 +163,12 @@ bool Tensor::is_cpu() const {
   return paddle::platform::is_cpu_place(inner_place());
 }
 
-bool Tensor::is_cuda() const {
+bool Tensor::is_gpu() const {
   return paddle::platform::is_gpu_place(inner_place());
+}
+
+bool Tensor::is_gpu_pinned() const {
+  return paddle::platform::is_cuda_pinned_place(inner_place());
 }
 
 /* Part 4: Data Access methods */
@@ -345,6 +357,37 @@ AbstractAutogradMeta *Tensor::get_autograd_meta() const {
 void Tensor::set_autograd_meta(
     std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
   autograd_meta_ = std::move(autograd_meta);
+}
+
+void Tensor::bump_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: before bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+    inplace_version_counter.Bump();
+    VLOG(3) << "yoki: after bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "bump_inplace_version is only supported on DenseTensor now."));
+  }
+}
+
+uint32_t Tensor::current_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: print version: "
+            << inplace_version_counter.CurrentVersion();
+    return inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "current_inplace_version is only supported on DenseTensor now."));
+  }
+  return 0;
 }
 
 }  // namespace experimental

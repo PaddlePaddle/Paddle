@@ -51,6 +51,7 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
                             const std::string& pool_type,
+                            int64_t out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count);
 
@@ -83,6 +84,15 @@ void RoiAlignInferMeta(const MetaTensor& x,
                        bool aligned,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
+
+void RoiPoolInferMeta(const MetaTensor& x,
+                      const MetaTensor& boxes,
+                      paddle::optional<const MetaTensor&> boxes_num,
+                      int pooled_height,
+                      int pooled_width,
+                      float spatial_scale,
+                      MetaTensor* out,
+                      MetaTensor* arg_max);
 
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
