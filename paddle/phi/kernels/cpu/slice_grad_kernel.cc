@@ -17,16 +17,3 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-PD_REGISTER_KERNEL(slice_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SliceGradRawKernel,
-                   bool,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
