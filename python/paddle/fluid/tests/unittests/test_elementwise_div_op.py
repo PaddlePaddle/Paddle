@@ -42,7 +42,7 @@ class ElementwiseDivOp(OpTest):
         return (self.use_mkldnn == False and self.axis == -1)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
