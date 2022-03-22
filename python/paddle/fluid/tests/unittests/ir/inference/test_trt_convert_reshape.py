@@ -202,5 +202,87 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         self.run_test()
 
 
+class TrtConvertReshape2Test(TrtConvertReshapeTest):
+    def sample_program_configs(self):
+        def generate_input1(attrs: List[Dict[str, Any]]):
+            if self.dims == 4:
+                return np.ones([1, 2, 4, 6]).astype(np.float32)
+            elif self.dims == 3:
+                return np.ones([1, 8, 6]).astype(np.float32)
+            elif self.dims == 2:
+                return np.ones([1, 48]).astype(np.float32)
+            elif self.dims == 1:
+                return np.ones([48]).astype(np.float32)
+
+        def generate_weight1(attrs: List[Dict[str, Any]]):
+            return np.array([1, 48]).astype(np.int32)
+
+        def generate_shapeT1_data(attrs: List[Dict[str, Any]]):
+            return np.array([2]).astype(np.int32)
+
+        def generate_shapeT2_data(attrs: List[Dict[str, Any]]):
+            return np.array([24]).astype(np.int32)
+
+        for dims in [4, 3, 2, 1]:
+            for num_input in [0, 1, 2, 3]:
+                for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 1, 0, 12],
+                              [1, 0, 6], [1, -1, 12], [2, -1], [3, 16],
+                              [3, 4, 4], [48]]:
+                    dics = [{"shape": shape, }, {}]
+                    self.num_input = num_input
+                    self.dims = dims
+                    dics_intput = [{
+                        "X": ["reshape_input"],
+                        "Shape": ["shape_data"],
+                        "ShapeTensor": ["shapeT1_data", "shapeT2_data"],
+                    }, {
+                        "X": ["reshape_input"],
+                        "Shape": ["shape_data"],
+                    }, {
+                        "X": ["reshape_input"],
+                        "ShapeTensor": ["shapeT1_data", "shapeT2_data"],
+                    }, {
+                        "X": ["reshape_input"]
+                    }]
+
+                    dics_weight = [{
+                        "shape_data":
+                        TensorConfig(data_gen=partial(generate_weight1, dics)),
+                        "shapeT1_data": TensorConfig(data_gen=partial(
+                            generate_shapeT1_data, dics)),
+                        "shapeT2_data": TensorConfig(data_gen=partial(
+                            generate_shapeT2_data, dics))
+                    }, {
+                        "shape_data":
+                        TensorConfig(data_gen=partial(generate_weight1, dics))
+                    }, {
+                        "shapeT1_data": TensorConfig(data_gen=partial(
+                            generate_shapeT1_data, dics)),
+                        "shapeT2_data": TensorConfig(data_gen=partial(
+                            generate_shapeT2_data, dics))
+                    }, {}]
+
+                    ops_config = [{
+                        "op_type": "reshape2",
+                        "op_inputs": dics_intput[num_input],
+                        "op_outputs": {
+                            "Out": ["reshape_out"],
+                            "XShape": ["xshape"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights=dics_weight[num_input],
+                        inputs={
+                            "reshape_input": TensorConfig(data_gen=partial(
+                                generate_input1, dics))
+                        },
+                        outputs=["reshape_out"])
+
+                    yield program_config
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(nearest_interp_v2_op, test_swish) {
+TEST(nearest_interp_v2_op, main) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   TRTConvertValidation validator(10, parameters, scope, 1000);
