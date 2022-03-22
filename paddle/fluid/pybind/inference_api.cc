@@ -286,7 +286,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
   // with "tensor" and rotate its shape
   auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> phi::DDim {
     auto dl = paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
-    if (tensor.shape().size() < 3 && (dl == paddle::DataLayout::kNCHW)|| (dl == paddle::DataLayout::kNCDHW))
+    if (tensor.shape().size() < 3 && (dl == paddle::framework::DataLayout::kNCHW)|| (dl == paddle::framework::DataLayout::kNCDHW))
       return tensor.shape();
 
     return tensor.shape();
