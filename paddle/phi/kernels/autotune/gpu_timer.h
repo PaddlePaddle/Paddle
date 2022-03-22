@@ -48,8 +48,39 @@ class GpuTimer {
     hipEventDestroy(stop_);
 #else
     cudaEventDestroy(start_);
+    cudaEventDestroy(stop_);
+#endif
   }
-c private:
+
+  void Start(gpuStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+    hipEventRecord(start_, stream);
+#else
+    cudaEventRecord(start_, stream);
+#endif
+  }
+
+  void Stop(gpuStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+    hipEventRecord(stop_, stream);
+#else
+    cudaEventRecord(stop_, stream);
+#endif
+  }
+
+  float ElapsedTime() {
+    float milliseconds = 0;
+#ifdef PADDLE_WITH_HIP
+    hipEventSynchronize(stop_);
+    hipEventElapsedTime(&milliseconds, start_, stop_);
+#else
+    cudaEventSynchronize(stop_);
+    cudaEventElapsedTime(&milliseconds, start_, stop_);
+#endif
+    return milliseconds;
+  }
+
+ private:
   gpuEvent_t start_;
   gpuEvent_t stop_;
 };

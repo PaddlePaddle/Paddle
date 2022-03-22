@@ -21,12 +21,9 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-namespace autotune {
-
 inline void HashCombine(std::size_t* seed) {}
 
 // combine hash value
-// ref:
 // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
 template <typename T, typename... Rest>
 inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
@@ -35,20 +32,20 @@ inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
   HashCombine(seed, rest...);
 }
 
-}  // namespace autotune
-
 // custom specialization of std::hash can be injected in namespace std
 // ref: https://en.cppreference.com/w/cpp/utility/hash
+namespace std {
 template <typename T>
-struct std::hash<std::vector<T>> {
+struct hash<std::vector<T>> {
   std::size_t operator()(std::vector<T> const& vec) const noexcept {
     std::size_t seed = 0;
     for (auto val : vec) {
-      autotune::HashCombine(&seed, val);
+      HashCombine(&seed, val);
     }
     return seed;
   }
 };
+}  // namespace std
 
 namespace phi {
 
@@ -60,7 +57,7 @@ class AlgorithmsCache {
   template <typename... Args>
   size_t GetKey(Args&&... args) {
     size_t seed = 0;
-    autotune::HashCombine(&seed, std::forward<Args>(args)...);
+    HashCombine(&seed, std::forward<Args>(args)...);
     return seed;
   }
 
@@ -101,7 +98,7 @@ class AlgorithmsCache {
 /*
 class AutoTuneCache {
  public:
-  // AlgoType->KernelCache
+  // AlgoType->AlgorithmsCache
   AutoTuneCache& AutoTuneCache::Instance() {
   static AutoTuneCache g_auto_tune_map_;
   return g_auto_tune_map_;
