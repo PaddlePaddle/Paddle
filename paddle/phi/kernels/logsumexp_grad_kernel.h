@@ -1,6 +1,4 @@
-../ paddle / phi / kernels / impl /
-    logsumexp_kernel_impl
-        .h  // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,16 +16,16 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-    namespace phi {
+namespace phi {
 
-  template <typename T, typename Context>
-  void LogsumexpGradKernel(const Context& ctx,
-                           const DenseTensor& in,
-                           const DenseTensor& out,
-                           const DenseTensor& out_grad,
-                           const std::vector<int>& axis,
-                           bool keepdim,
-                           bool reduce_all,
-                           DenseTensor* in_grad);
+template <typename T, typename Context>
+void LogsumexpGradKernel(const Context& ctx,
+                         const DenseTensor& in,
+                         const DenseTensor& out,
+                         const DenseTensor& out_grad,
+                         const std::vector<int>& axis,
+                         bool keepdim,
+                         bool reduce_all,
+                         DenseTensor* in_grad);
 
 }  // namespace phi
