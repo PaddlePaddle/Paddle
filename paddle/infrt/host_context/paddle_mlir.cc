@@ -16,6 +16,7 @@
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
@@ -24,6 +25,8 @@ MLIRModelGenImpl::MLIRModelGenImpl()
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
   context_->getOrLoadDialect<infrt::pd::PaddleDialect>();
   context_->getOrLoadDialect<::infrt::InfrtDialect>();
+  context_->getOrLoadDialect<::infrt::phi::PHIDialect>();
+  context_->getOrLoadDialect<::infrt::phi::PHIDenseTensorDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
 
@@ -79,7 +82,7 @@ mlir::FuncOp MLIRModelGenImpl::UpdateModelModule(
 llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
     const infrt::paddle::framework_proto::ProgramDesc &program) {
   llvm::SmallVector<mlir::Type, 4> operandTypes;
-  operandTypes.push_back(infrt::DenseHostTensorMapType::get(context_));
+  operandTypes.push_back(infrt::phi::DenseTensorMapType::get(context_));
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() != "feed") continue;
     for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
@@ -180,7 +183,7 @@ void MLIRModelGenImpl::UpdateModelParams(
                            &precision_);
       mlir::Type type_ = infrt::DenseTensorType::get(
           context_, infrt::TargetType::CPU, precision_, infrt::LayoutType::ANY);
-      auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
+      auto op = builder_.create<::infrt::phi::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
           var_desc.name(), op.getOperation()->getResult(0)));

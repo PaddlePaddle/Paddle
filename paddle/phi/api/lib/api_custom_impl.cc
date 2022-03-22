@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -31,9 +32,10 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
+Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
+  kernel_key_set.backend_set =
+      kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
@@ -57,8 +59,7 @@ Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
                                     phi::DenseTensor*);
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(
-      *dev_ctx, *dense_x, phi::TransToPhiPlace(backend), blocking, kernel_out);
+  (*kernel_fn)(*dev_ctx, *dense_x, place, blocking, kernel_out);
 
   return out;
 }
