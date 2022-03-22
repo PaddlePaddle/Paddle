@@ -27,6 +27,7 @@ message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
+  optional int32 segments = 4 [ default = 1 ];
 }
 
 message ShardingConfig {
