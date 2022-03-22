@@ -30,12 +30,13 @@ def create_test_class(op_type, typename, callback):
             a = numpy.random.random(size=(10, 7)).astype(typename)
             b = numpy.random.random(size=(10, 7)).astype(typename)
             c = callback(a, b)
+            self.python_api = eval("paddle." + op_type)
             self.inputs = {'X': a, 'Y': b}
             self.outputs = {'Out': c}
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_eager=False)
 
         def test_errors(self):
             paddle.enable_static()
@@ -338,4 +339,5 @@ class TestCompareOpPlace(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
