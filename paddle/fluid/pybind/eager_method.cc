@@ -218,8 +218,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
-  auto cp_tensor =
-      self->tensor.copy_to(phi::TransToPhiBackend(place), blocking);
+  auto cp_tensor = self->tensor.copy_to(place, blocking);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -231,8 +230,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
 static PyObject* tensor_method_cpu(TensorObject* self, PyObject* args,
                                    PyObject* kwargs) {
   EAGER_TRY
-  auto cp_tensor =
-      self->tensor.copy_to(phi::TransToPhiBackend(phi::CPUPlace()), true);
+  auto cp_tensor = self->tensor.copy_to(phi::CPUPlace(), true);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(

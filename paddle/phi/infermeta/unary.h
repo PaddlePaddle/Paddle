@@ -198,6 +198,10 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+void ReverseInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axis,
+                      MetaTensor* out);
+
 void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
                    const std::vector<int64_t>& axis,

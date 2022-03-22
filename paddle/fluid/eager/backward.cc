@@ -612,7 +612,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     for (size_t i = 0; i < edges.size(); i++) {
       for (size_t j = 0; j < edges[i].size(); j++) {
         const Edge& edge = edges[i][j];
-
+        if (!edge.IsInitialized()) {
+          continue;
+        }
         auto edge_rank = edge.GetEdgeRankInfo();
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with

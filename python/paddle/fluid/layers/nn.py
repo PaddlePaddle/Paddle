@@ -8751,25 +8751,26 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.final_state_scatter_nd_add(ref, index, updates)
+        pass
+        # return _C_ops.final_state_scatter_nd_add(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
             return op(ref, index, updates)
+        else:
+            if ref.dtype != updates.dtype:
+                raise ValueError("ref and updates must have same data type.")
 
-    if ref.dtype != updates.dtype:
-        raise ValueError("ref and updates must have same data type.")
-
-    helper = LayerHelper('scatter_nd_add', **locals())
-    dtype = helper.input_dtype(input_param_name='ref')
-    output = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="scatter_nd_add",
-        inputs={"X": ref,
-                "Index": index,
-                "Updates": updates},
-        outputs={"Out": output})
-    return output
+            helper = LayerHelper('scatter_nd_add', **locals())
+            dtype = helper.input_dtype(input_param_name='ref')
+            output = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="scatter_nd_add",
+                inputs={"X": ref,
+                        "Index": index,
+                        "Updates": updates},
+                outputs={"Out": output})
+            return output
 
 
 def scatter_nd(index, updates, shape, name=None):

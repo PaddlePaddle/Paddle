@@ -837,7 +837,6 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         paddle.framework.random._manual_program_seed(102)
         with _test_eager_guard():
             res1 = self.func_fp16_initilaizer()
-        print("\n 111111111111: {}".format(in_dygraph_mode()))
         res2 = self.func_fp16_initilaizer()
 
         for i in range(len(res1)):

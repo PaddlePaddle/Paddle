@@ -116,6 +116,11 @@ def _disable_legacy_dygraph():
     _in_eager_mode_ = True
 
 
+def _in_eager_without_dygraph_check():
+    global _in_eager_mode_
+    return _in_eager_mode_
+
+
 def in_dygraph_mode():
     """
 

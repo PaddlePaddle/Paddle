@@ -29,6 +29,7 @@ paddle.enable_static()
 class TestTruncOp(OpTest):
     def setUp(self):
         self.op_type = "trunc"
+        self.python_api = paddle.trunc
         self.dtype = np.float64
         np.random.seed(2021)
         self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}

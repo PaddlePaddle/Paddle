@@ -244,6 +244,8 @@ def add(x, y, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        #if _in_eager_mode():
+        #return _C_ops.final_state_add(x, y)
         return _C_ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
