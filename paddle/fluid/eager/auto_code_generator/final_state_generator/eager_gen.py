@@ -607,6 +607,21 @@ class {} : public egr::GradNodeBase {{
     return node_declaration_str
 
 
+def GetMaxGradAlignForwadIndex(backward_grad_output_map):
+    # in some op, some input don't need compute grad
+    # example : scatter op
+    # forward : scatter (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
+    # args : (Tensor index, Tensor updates, Tensor out_grad)
+    # output : Tensor(x_grad), Tensor(updates_grad)
+    # in this case, GradNode should have 3 output, Not 2
+    # GradNode output number = max_grad_align_forward_index + 1
+    max_grad_align_forward_index = 0
+    for k, v in backward_grad_output_map.items():
+        if v[1] > max_grad_align_forward_index:
+            max_grad_align_forward_index = v[1]
+    return max_grad_align_forward_index
+
+
 def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
                            backward_grad_input_map, backward_grad_output_map,
                            backward_attrs_list):
@@ -641,11 +656,8 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     grad_api_args_str = ", ".join(grad_api_args)
 
     # Construct grad_api returns
-    max_pos = 0
-    for k, v in backward_grad_output_map.items():
-        if v[1] > max_pos:
-            max_pos = v[1]
-    num_bwd_outputs = max_pos + 1
+
+    num_bwd_outputs = GetMaxGradAlignForwadIndex(backward_grad_output_map) + 1
     returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({num_bwd_outputs});\n"
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_output_map.items():
@@ -749,11 +761,7 @@ def GenerateNodeCreationCodes(
 
     # Node Construction
     num_bwd_inputs = len(backward_grad_input_map.keys())
-    max_pos = 0
-    for k, v in backward_grad_output_map.items():
-        if v[1] > max_pos:
-            max_pos = v[1]
-    num_bwd_outputs = max_pos + 1
+    num_bwd_outputs = GetMaxGradAlignForwadIndex(backward_grad_output_map) + 1
     grad_node_name = GetGradNodeName(fwd_api_name)
     node_construction_str = f"        auto grad_node = std::make_shared<{grad_node_name}>({num_bwd_inputs}, {num_bwd_outputs});"
 
