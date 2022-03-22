@@ -14,6 +14,7 @@
 #pragma once
 
 #include <iostream>
+#include "paddle/phi/core/enforce.h"
 
 static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
                                        PyObject *kwargs) {
@@ -34,6 +35,16 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
+  } catch (paddle::platform::EnforceNotMet &exception) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    std::ostringstream sout;
+    sout << exception.what();
+    sout << "  [operator < run_program > error]";
+    exception.set_error_str(sout.str());
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
   } catch (...) {
     if (tstate) {
       PyEval_RestoreThread(tstate);

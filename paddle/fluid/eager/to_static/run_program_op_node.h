@@ -51,13 +51,12 @@ static std::vector<std::string> GetTensorsName(
 }
 
 static void CheckInputVarStatus(const Tensor &tensor) {
-  PADDLE_ENFORCE_EQ(
-      tensor.defined() && phi::DenseTensor::classof(tensor.impl().get()), true,
-      paddle::platform::errors::InvalidArgument(
-          "The input tensor %s of "
-          "RunProgram(Grad)Op holds "
-          "wrong type. Expect type is DenseTensor.",
-          tensor.name()));
+  PADDLE_ENFORCE_EQ(tensor.defined() && tensor.is_dense_tensor(), true,
+                    paddle::platform::errors::InvalidArgument(
+                        "The input tensor %s of "
+                        "RunProgram(Grad)Op holds "
+                        "wrong type. Expect type is DenseTensor.",
+                        tensor.name()));
 
   PADDLE_ENFORCE_EQ(tensor.initialized(), true,
                     paddle::platform::errors::InvalidArgument(
@@ -74,7 +73,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                     paddle::platform::errors::InvalidArgument(
                         "dst_tensor shall be defined."));
 
-  if (phi::DenseTensor::classof(dst_tensor.impl().get())) {
+  if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor), true,
                       paddle::platform::errors::InvalidArgument(
@@ -88,7 +87,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           name));
-  } else if (phi::SelectedRows::classof(dst_tensor.impl().get())) {
+  } else if (dst_tensor.is_selected_rows()) {
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
     PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor), true,
                       paddle::platform::errors::InvalidArgument(
@@ -159,9 +158,6 @@ static void ShareTensorsFromScope(
                                      name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
-    // TODO(dev): Determine Tensor type by scope.var
-    // auto tensor_base = tensors[i]->impl();
-    // if (phi::DenseTensor::classof(tensor_base.get())) {
     if (var->IsType<phi::DenseTensor>()) {
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
@@ -169,7 +165,6 @@ static void ShareTensorsFromScope(
       VLOG(2) << "share " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
-      // } else if (phi::SelectedRows::classof(tensor_base.get())) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
       auto *dst_tensor = const_cast<phi::SelectedRows *>(
           dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
@@ -450,9 +445,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     for (auto &t : x) {
       auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
       if (t_meta->StopGradient()) {
-        continue;
-      }
-      if (t.is_dense_tensor()) {
+        x_grad->emplace_back();
+      } else if (t.is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (t.is_selected_rows()) {
         x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
@@ -466,11 +460,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       std::vector<paddle::experimental::Tensor> *param_grad) {
     for (auto &t : param) {
       auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
-      if (t_meta->StopGradient()) {
-        continue;
-      }
       auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
-      if (t_grad.is_dense_tensor()) {
+      if (t_meta->StopGradient()) {
+        param_grad->emplace_back();
+      } else if (t_grad.is_dense_tensor()) {
         param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (t_grad.is_selected_rows()) {
         param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
