@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestHistogramOpAPI(unittest.TestCase):
@@ -56,6 +57,15 @@ class TestHistogramOpAPI(unittest.TestCase):
             self.assertTrue(
                 (actual.numpy() == expected).all(),
                 msg='histogram output is wrong, out =' + str(actual.numpy()))
+
+            with _test_eager_guard():
+                inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
+                inputs = paddle.to_tensor(inputs_np)
+                actual = paddle.histogram(inputs, bins=5, min=1, max=5)
+                self.assertTrue(
+                    (actual.numpy() == expected).all(),
+                    msg='histogram output is wrong, out =' +
+                    str(actual.numpy()))
 
 
 class TestHistogramOpError(unittest.TestCase):
@@ -118,6 +128,7 @@ class TestHistogramOp(OpTest):
         self.op_type = "histogram"
         self.init_test_case()
         np_input = np.random.uniform(low=0.0, high=20.0, size=self.in_shape)
+        self.python_api = paddle.histogram
         self.inputs = {"X": np_input}
         self.init_attrs()
         Out, _ = np.histogram(
@@ -134,7 +145,7 @@ class TestHistogramOp(OpTest):
         self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 if __name__ == "__main__":

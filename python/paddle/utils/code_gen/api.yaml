@@ -16,6 +16,7 @@
     func : cast
     param : [x, out_dtype]
     data_type : x
+  # backward : cast_grad
 
 
 - api : concat
@@ -722,14 +723,14 @@
 #     func : graph_send_recv
 #   backward : graph_send_recv_grad
 
-# # histogram int64 ???
-# - api : histogram
-#   args : (Tensor x, int64 bins, int min, int max)
-#   output : Tensor
-#   infer_meta :
-#     func : HistogramInferMeta
-#   kernel :
-#     func : histogram
+# histogram
+- api : histogram
+  args : (Tensor x, int64 bins, int min, int max)
+  output : Tensor
+  infer_meta :
+    func : HistogramInferMeta
+  kernel :
+    func : histogram
 
 # increment
 - api : increment
@@ -808,33 +809,33 @@
     func : log_loss
   backward : log_loss_grad
 
-# # logical_and
-# - api : logical_and
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : LogicalInferMeta
-#   kernel :
-#     func : logical_and
+# logical_and
+- api : logical_and
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_and
 
-# # logical_or
-# - api : logical_or
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : LogicalInferMeta
-#   kernel :
-#     func : logical_or
+# logical_or
+- api : logical_or
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_or
 
 
-# # logical_xor
-# - api : logical_xor
-#   args : (Tensor x, Tensor y)
-#   output : Tensor
-#   infer_meta :
-#     func : LogicalInferMeta
-#   kernel :
-#     func : logical_xor
+# logical_xor
+- api : logical_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logical_xor
 
 # logical_not
 - api : logical_not
@@ -845,16 +846,16 @@
   kernel :
     func : logical_not
 
-# # masked_select
-# - api : masked_select
-#   args : (Tensor x, Tensor mask)
-#   output : Tensor
-#   infer_meta :
-#     func : MaksedSelectInferMeta
-#   kernel :
-#     func : masked_select
-#     dtype : x
-#   backward : masked_select_grad
+# masked_select
+- api : masked_select
+  args : (Tensor x, Tensor mask)
+  output : Tensor
+  infer_meta :
+    func : MaskedSelectInferMeta
+  kernel :
+    func : masked_select
+    data_type : x
+  backward : masked_select_grad
 
 # # multi_dot
 # - api : multi_dot
@@ -1017,15 +1018,15 @@
     func : tile
   backward : tile_grad
 
-# # top_k
-# - api : top_k
-#   args : (Tensor x, Scalar k, int axis, bool largest, bool sorted)
-#   output : Tensor(out), Tensor(indices)
-#   infer_meta :
-#     func : TopkInferMeta
-#   kernel :
-#     func : top_k
-#   backward : top_k_grad
+# top_k
+- api : top_k
+  args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopKInferMeta
+  kernel :
+    func : top_k
+  backward : top_k_grad
 
 # trace
 - api : trace
@@ -1070,13 +1071,14 @@
 # # uniform_random_raw selected rows ??
 
 # viterbi_decode
-# - api : viterbi_decode
-#   args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
-#   output : Tensor(scores), Tensor(path)
-#   infer_meta :
-#     func : ViterbiDecodeInferMeta
-#   kernel :
-#     func : viterbi_decode
+- api : viterbi_decode
+  args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
+  output : Tensor(scores), Tensor(path)
+  infer_meta :
+    func : ViterbiDecodeInferMeta
+  kernel :
+    func : viterbi_decode
+    data_type : input
 
 # where_index
 - api : where_index
@@ -1088,14 +1090,15 @@
     func : where_index
 
 
-# # yolo_box
-# - api : yolo_box
-#   args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y, bool iou_aware, float iou_aware_factor)
-#   output : Tensor(boxes), Tensor(scores)
-#   infer_meta :
-#     func : YoloBoxInferMeta
-#   kernel :
-#     func : yolo_box
+# yolo_box
+- api : yolo_box
+  args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
+  output : Tensor(boxes), Tensor(scores)
+  infer_meta :
+    func : YoloBoxInferMeta
+  kernel :
+    func : yolo_box
+    data_type : x
 
 - api : gumbel_softmax
   args : (Tensor x, float temperature, bool hard, int axis)

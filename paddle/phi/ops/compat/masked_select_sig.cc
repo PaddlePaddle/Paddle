@@ -24,7 +24,7 @@ KernelSignature MaskedSelectOpArgumentMapping(
 KernelSignature MaskedSelectGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("masked_select_grad",
-                         {GradVarName("Y"), "X", "Mask"},
+                         {"X", "Mask", GradVarName("Y")},
                          {},
                          {GradVarName("X")});
 }

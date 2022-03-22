@@ -599,17 +599,28 @@
   kernel :
     func : bce_loss_grad
 
-
-
-# - backward_api : masked_selecte_grad
-#   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
-#   args : (Tensor out_grad, Tensor x, Tensor mask)
+# - backward_api : cast_grad
+#   forward : cast (Tensor x, DataType out_dtype) -> Tensor(out)
+#   args : (Tensor x, Tensor out_grad)
 #   output : Tensor(x_grad)
 #   infer_meta :
 #     func : UnchangedInferMeta
 #     param : [x]
 #   kernel :
-#     func : masked_selecte_grad
+#     func : cast_grad
+#     data_type : out_grad
+
+
+- backward_api : masked_select_grad
+  forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
+  args : (Tensor x, Tensor mask, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : masked_select_grad
+    data_type : x
 
 # - backward_api : multi_dot_grad
 #   forward : multi_dot (Tensor[] x) -> Tensor(out)
@@ -726,16 +737,16 @@
     func : gather_nd_grad
 
 
-# # forward backward type not match
-# - backward_api : top_k_grad 
-#   forward : top_k (Tensor x, Scalar k, int axis, bool largest, bool sorted) -> Tensor(out), Tensor(indices)
-#   args : (Tensor out_grad, Tensor x, Tensor indices, int k, index axis, bool largest, bool sorted)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : top_k_grad
+# forward backward type not match
+- backward_api : top_k_grad 
+  forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : top_k_grad
 
 
 - backward_api : trace_grad 

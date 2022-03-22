@@ -22,6 +22,7 @@ from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
 from paddle import _C_ops
+from paddle.fluid.framework import _in_eager_mode
 
 __all__ = [ #noqa
     'yolo_loss',
@@ -378,6 +379,10 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            boxes, scores = _C_ops.final_state_yolo_box(
+                x, img_size, anchors, class_num, conf_thresh, downsample_ratio,
+                clip_bbox, scale_x_y, iou_aware, iou_aware_factor)
         boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,

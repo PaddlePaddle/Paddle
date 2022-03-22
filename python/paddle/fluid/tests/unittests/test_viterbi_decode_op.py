@@ -74,6 +74,7 @@ class TestViterbiOp(OpTest):
 
     def setUp(self):
         self.op_type = "viterbi_decode"
+        self.python_api = paddle.text.viterbi_decode
         self.set_attr()
         bz, length, ntags = self.bz, self.len, self.ntags
         self.input = np.random.randn(bz, length, ntags).astype(self.dtype)
@@ -90,7 +91,7 @@ class TestViterbiOp(OpTest):
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestViterbiAPI(unittest.TestCase):
@@ -132,3 +133,8 @@ class TestViterbiAPI(unittest.TestCase):
     def test_static_net(self):
         for place in self.places:
             self.check_static_result(place)
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

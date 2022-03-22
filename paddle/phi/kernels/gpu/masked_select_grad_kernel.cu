@@ -52,9 +52,9 @@ __global__ void SelectGradWithPrefixMask(const int32_t* mask_prefix_sum,
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad,
                             const DenseTensor& x,
                             const DenseTensor& mask,
+                            const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
   auto* mask_data = mask.data<bool>();
   auto* input_data = out_grad.data<T>();

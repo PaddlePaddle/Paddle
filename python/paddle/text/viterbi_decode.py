@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..nn import Layer
-from ..fluid.framework import core, in_dygraph_mode
+from ..fluid.framework import core, in_dygraph_mode, _in_eager_mode
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle import _C_ops
@@ -59,6 +59,9 @@ def viterbi_decode(potentials,
             scores, path = paddle.text.viterbi_decode(emission, transition, length, False) # scores: [3.37089300, 1.56825531], path: [[1, 0, 0], [1, 1, 0]]
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_viterbi_decode(
+                potentials, transition_params, lengths, include_bos_eos_tag)
         return _C_ops.viterbi_decode(potentials, transition_params, lengths,
                                      'include_bos_eos_tag', include_bos_eos_tag)
     check_variable_and_dtype(potentials, 'input', ['float32', 'float64'],

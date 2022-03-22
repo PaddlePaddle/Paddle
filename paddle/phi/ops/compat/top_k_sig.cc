@@ -29,7 +29,7 @@ KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TopkGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("top_k_grad",
-                         {GradVarName("Out"), "X", "Indices"},
+                         {"X", "Indices", GradVarName("Out")},
                          {"k", "axis", "largest", "sorted"},
                          {GradVarName("X")});
 }

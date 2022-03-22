@@ -12446,6 +12446,9 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res) # [True False True False]
     """
+    if _in_eager_mode():
+        return _C_ops.final_state_logical_and(x, y)
+
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12485,6 +12488,8 @@ def logical_or(x, y, out=None, name=None):
             res = paddle.logical_or(x, y)
             print(res) # [[ True  True] [ True False]]
     """
+    if _in_eager_mode():
+        return _C_ops.final_state_logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12524,6 +12529,9 @@ def logical_xor(x, y, out=None, name=None):
             res = paddle.logical_xor(x, y)
             print(res) # [[False,  True], [ True, False]]
     """
+    if _in_eager_mode():
+        return _C_ops.final_state_logical_xor(x, y)
+
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12556,7 +12564,8 @@ def logical_not(x, out=None, name=None):
             res = paddle.logical_not(x)
             print(res) # [False  True False  True]
     """
-
+    if _in_eager_mode():
+        return _C_ops.final_state_logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
 

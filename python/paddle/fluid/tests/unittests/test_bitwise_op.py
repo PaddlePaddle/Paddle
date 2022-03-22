@@ -17,8 +17,6 @@ import numpy as np
 import paddle
 from op_test import OpTest
 
-paddle.enable_static()
-
 
 ################## TEST OP: BitwiseAnd ##################
 class TestBitwiseAnd(OpTest):
@@ -210,7 +208,7 @@ class TestBitwiseXor(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         pass
@@ -293,7 +291,7 @@ class TestBitwiseNot(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         pass
@@ -356,4 +354,5 @@ class TestBitwiseNotBool(TestBitwiseNot):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
