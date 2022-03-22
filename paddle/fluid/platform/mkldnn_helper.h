@@ -108,7 +108,7 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
+        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC/kNDHWC output_shape"
                 << print_dims(dims);
       }
       break;
@@ -118,7 +118,7 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
+        VLOG(3) << "Rotating Shape from: kNHWC/kNDHWC to: kMKLDNN output_shape"
                 << print_dims(dims);
       }
       break;

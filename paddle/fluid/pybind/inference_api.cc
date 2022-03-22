@@ -280,7 +280,18 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
 
 py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
   py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
-  auto tensor_shape = tensor.shape();
+
+  // For oneDNN tensor we need to rotate shape 
+  // so we create temporay tensor to share everything 
+  // with "tensor" and rotate its shape
+  auto get_actual_shape = [](paddle_infer::Tensor &tensor) -> DDim& dims {
+    paddle::framework::Tensor dummy;
+    dummy.ShareDataWith(tensor);
+    return dummy.dims();
+  }; 
+  
+  auto tensor_shape = tensor.layout() == paddle::DataLayout::kMKLDNN ? tensor.shape() : get_actual_shape(tensor);
+
   py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
   py::array array(dt, std::move(shape));
 
