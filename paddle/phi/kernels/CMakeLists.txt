@@ -62,6 +62,8 @@ register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS $
 
 # phi sparse kernels
 add_subdirectory(sparse)
+# phi selected_rows kernels
+add_subdirectory(selected_rows)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
