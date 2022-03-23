@@ -120,6 +120,19 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void DeformableConvInferMeta(const MetaTensor& x,
+                             const MetaTensor& offset,
+                             const MetaTensor& filter,
+                             paddle::optional<const MetaTensor&> mask,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::vector<int>& dilations,
+                             int deformable_groups,
+                             int groups,
+                             int im2col_step,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,

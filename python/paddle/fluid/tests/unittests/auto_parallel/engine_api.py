@@ -108,10 +108,8 @@ def train():
         grad_clip=None)
 
     dataset = MyDataset(batch_num * batch_size)
-    data_spec = [
-        InputSpec([batch_size, hidden_size], 'float32', 'x'),
-        InputSpec([batch_size], 'int64', 'label')
-    ]
+    inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
+    labels_spec = InputSpec([batch_size], 'int64', 'label')
 
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.amp = False
@@ -121,11 +119,18 @@ def train():
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
-    engine = Engine(mlp, data_spec, strategy=dist_strategy)
+    engine = Engine(
+        mlp,
+        inputs_spec=inputs_spec,
+        labels_spec=labels_spec,
+        strategy=dist_strategy)
     engine.prepare(optimizer, loss)
     engine.fit(dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size)
+    engine.save('./mlp')
+    engine.load('./mlp')
+    engine.save('./mlp_inf', training=False, mode='predict')
 
 
 if __name__ == "__main__":
