@@ -1414,126 +1414,136 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
     phi::Copy<GPUContext>(
         dev_ctx, *softmax, dev_ctx.GetPlace(), false, softmax_out);
 
-    auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
-    auto* loss_data = dev_ctx.template Alloc<T>(loss);
+    return;
+  }
 
-    if (axis_dim == 1) {
-      phi::funcs::SetConstant<GPUContext, T> set_constant;
-      set_constant(dev_ctx, softmax, static_cast<T>(1));
-      set_constant(dev_ctx, loss, static_cast<T>(0));
-      return;
-    }
+  const int rank = logits.dims().size();
+  const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
+  int axis_dim = logits.dims()[axis_v];
 
-    if (soft_label) {
-      auto* logits_data = logits.data<T>();
-      auto* labels_data = label.data<T>();
-      SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
-                                          rank,
-                                          axis_v,
-                                          logits_data,
-                                          labels_data,
-                                          softmax_data,
-                                          loss_data,
-                                          n,
-                                          axis_dim,
-                                          d / axis_dim);
+  const int64_t n = phi::funcs::SizeToAxis(axis_v, logits.dims());
+  const int64_t d = phi::funcs::SizeFromAxis(axis_v, logits.dims());
+
+  auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
+  auto* loss_data = dev_ctx.template Alloc<T>(loss);
+
+  if (axis_dim == 1) {
+    phi::funcs::SetConstant<GPUContext, T> set_constant;
+    set_constant(dev_ctx, softmax, static_cast<T>(1));
+    set_constant(dev_ctx, loss, static_cast<T>(0));
+    return;
+  }
+
+  if (soft_label) {
+    auto* logits_data = logits.data<T>();
+    auto* labels_data = label.data<T>();
+    SoftmaxWithCrossEntropySoftLabel<T>(dev_ctx,
+                                        rank,
+                                        axis_v,
+                                        logits_data,
+                                        labels_data,
+                                        softmax_data,
+                                        loss_data,
+                                        n,
+                                        axis_dim,
+                                        d / axis_dim);
+  } else {
+    if (!numeric_stable_mode) {
+      // CUDNN kernel only suppoer 2-D tensor and perfome softmax on last dim
+      DenseTensor logits_2d(logits);
+      logits_2d.Resize({n, d});
+      DenseTensor softmax_2d(*softmax);
+      softmax_2d.Resize({n, d});
+      DenseTensor labels_2d(label);
+      labels_2d.Resize({n, label.numel() / n});
+      DenseTensor loss_2d(*loss);
+      loss_2d.Resize({n, 1});
+      paddle::operators::math::SoftmaxCUDNNFunctor<T, GPUContext>()(
+          dev_ctx, &logits_2d, &softmax_2d);
+      paddle::operators::math::CrossEntropyFunctor<GPUContext, T>()(
+          dev_ctx,
+          &loss_2d,
+          &softmax_2d,
+          &labels_2d,
+          false,
+          ignore_index,
+          axis_dim);
     } else {
-      if (!numeric_stable_mode) {
-        // CUDNN kernel only suppoer 2-D tensor and perfome softmax on last dim
-        DenseTensor logits_2d(logits);
-        logits_2d.Resize({n, d});
-        DenseTensor softmax_2d(*softmax);
-        softmax_2d.Resize({n, d});
-        DenseTensor labels_2d(label);
-        labels_2d.Resize({n, label.numel() / n});
-        DenseTensor loss_2d(*loss);
-        loss_2d.Resize({n, 1});
-        paddle::operators::math::SoftmaxCUDNNFunctor<T, GPUContext>()(
-            dev_ctx, &logits_2d, &softmax_2d);
-        paddle::operators::math::CrossEntropyFunctor<GPUContext, T>()(
-            dev_ctx,
-            &loss_2d,
-            &softmax_2d,
-            &labels_2d,
-            false,
-            ignore_index,
-            axis_dim);
+      auto* logits_data = logits.data<T>();
+      auto* labels_data = label.data<LabelT>();
+      if (ignore_index >= 0 && ignore_index < axis_dim) {
+        SoftmaxWithCrossEntropyHardLabel<T, LabelT, true>(dev_ctx,
+                                                          rank,
+                                                          axis_v,
+                                                          logits_data,
+                                                          labels_data,
+                                                          loss_data,
+                                                          softmax_data,
+                                                          n,
+                                                          axis_dim,
+                                                          d / axis_dim,
+                                                          ignore_index);
       } else {
-        auto* logits_data = logits.data<T>();
-        auto* labels_data = label.data<LabelT>();
-        if (ignore_index >= 0 && ignore_index < axis_dim) {
-          SoftmaxWithCrossEntropyHardLabel<T, LabelT, true>(dev_ctx,
-                                                            rank,
-                                                            axis_v,
-                                                            logits_data,
-                                                            labels_data,
-                                                            loss_data,
-                                                            softmax_data,
-                                                            n,
-                                                            axis_dim,
-                                                            d / axis_dim,
-                                                            ignore_index);
-        } else {
-          SoftmaxWithCrossEntropyHardLabel<T, LabelT, false>(dev_ctx,
-                                                             rank,
-                                                             axis_v,
-                                                             logits_data,
-                                                             labels_data,
-                                                             loss_data,
-                                                             softmax_data,
-                                                             n,
-                                                             axis_dim,
-                                                             d / axis_dim,
-                                                             ignore_index);
-        }
+        SoftmaxWithCrossEntropyHardLabel<T, LabelT, false>(dev_ctx,
+                                                           rank,
+                                                           axis_v,
+                                                           logits_data,
+                                                           labels_data,
+                                                           loss_data,
+                                                           softmax_data,
+                                                           n,
+                                                           axis_dim,
+                                                           d / axis_dim,
+                                                           ignore_index);
       }
     }
   }
+}
 
-  template <typename T, typename Context>
-  void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
-                                     const DenseTensor& logits,
-                                     const DenseTensor& label,
-                                     bool soft_label,
-                                     bool use_softmax,
-                                     bool numeric_stable_mode,
-                                     int ignore_index,
-                                     int axis,
-                                     DenseTensor* softmax,
-                                     DenseTensor* loss) {
-    auto dtype = label.dtype();
-    if (soft_label) {
-      PADDLE_ENFORCE_EQ(
-          dtype,
-          paddle::experimental::CppTypeToDataType<T>::Type(),
-          phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                       "same data type as Input(Logits)."));
-      CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
-                                              logits,
-                                              label,
-                                              soft_label,
-                                              use_softmax,
-                                              numeric_stable_mode,
-                                              ignore_index,
-                                              axis,
-                                              softmax,
-                                              loss);
-    } else {
-      PD_DISPATCH_INTEGRAL_TYPES(
-          dtype, "CrossEntropyWithSoftmaxCUDAKernel", ([&] {
-            CrossEntropyWithSoftmaxCUDAKernel<T, data_t>(dev_ctx,
-                                                         logits,
-                                                         label,
-                                                         soft_label,
-                                                         use_softmax,
-                                                         numeric_stable_mode,
-                                                         ignore_index,
-                                                         axis,
-                                                         softmax,
-                                                         loss);
-          }));
-    }
+template <typename T, typename Context>
+void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
+                                   const DenseTensor& logits,
+                                   const DenseTensor& label,
+                                   bool soft_label,
+                                   bool use_softmax,
+                                   bool numeric_stable_mode,
+                                   int ignore_index,
+                                   int axis,
+                                   DenseTensor* softmax,
+                                   DenseTensor* loss) {
+  auto dtype = label.dtype();
+  if (soft_label) {
+    PADDLE_ENFORCE_EQ(
+        dtype,
+        paddle::experimental::CppTypeToDataType<T>::Type(),
+        phi::errors::InvalidArgument("The Input(Label) should be with the "
+                                     "same data type as Input(Logits)."));
+    CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
+                                            logits,
+                                            label,
+                                            soft_label,
+                                            use_softmax,
+                                            numeric_stable_mode,
+                                            ignore_index,
+                                            axis,
+                                            softmax,
+                                            loss);
+  } else {
+    PD_DISPATCH_INTEGRAL_TYPES(
+        dtype, "CrossEntropyWithSoftmaxCUDAKernel", ([&] {
+          CrossEntropyWithSoftmaxCUDAKernel<T, data_t>(dev_ctx,
+                                                       logits,
+                                                       label,
+                                                       soft_label,
+                                                       use_softmax,
+                                                       numeric_stable_mode,
+                                                       ignore_index,
+                                                       axis,
+                                                       softmax,
+                                                       loss);
+        }));
   }
+}
 
 }  // namespace phi
 
