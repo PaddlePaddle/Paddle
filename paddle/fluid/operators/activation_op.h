@@ -281,6 +281,11 @@ USE_PHI_DOUBLE_GRAD_FUNCTOR(Sigmoid)
 USE_PHI_TRIPLE_GRAD_FUNCTOR(Sigmoid)
 USE_PHI_FUNCTOR(LogSigmoid)
 USE_PHI_FUNCTOR(HardSigmoid)
+USE_PHI_FUNCTOR(Log)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(Log)
+USE_PHI_FUNCTOR(Log2)
+USE_PHI_FUNCTOR(Log10)
+USE_PHI_FUNCTOR(Log1p)
 
 template <typename T>
 using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
@@ -446,88 +451,6 @@ struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
   }
-};
-
-// log(x) = natural logarithm of x
-template <typename T>
-struct LogFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log();
-  }
-};
-
-template <typename T>
-struct LogGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (static_cast<T>(1) / x);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// log2(x) = logarithm to the base 2 of the elements of x
-template <typename T>
-struct Log2Functor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log() / static_cast<T>(log(2));
-  }
-};
-
-// the gradient of log2(x) is 1/(x*ln(2))
-template <typename T>
-struct Log2GradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(2)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// log10(x) = logarithm to the base 10 of the elements of x
-template <typename T>
-struct Log10Functor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log() / static_cast<T>(log(10));
-  }
-};
-
-// the gradient of log10(x) is 1/(x*ln(10))
-template <typename T>
-struct Log10GradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// log1p(x) = natural logarithm of x+1
-template <typename T>
-struct Log1pFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = (static_cast<T>(1) + x).log();
-  }
-};
-
-template <typename T>
-struct Log1pGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (static_cast<T>(1) / (x + static_cast<T>(1)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 // square(x) = x^2
@@ -1198,37 +1121,6 @@ class SquareDoubleGradKernel
 };
 
 template <typename DeviceContext, typename Functor>
-class LogDoubleGradKernel
-    : public SquareDoubleGradKernel<DeviceContext, Functor> {};
-
-template <typename DeviceContext, typename Functor>
-class ELUDoubleGradKernel
-    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
- public:
-  using T = typename Functor::ELEMENT_TYPE;
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor *X, *ddX, *dOut;
-    X = ddX = dOut = nullptr;
-    framework::Tensor *dX, *ddOut;
-    dX = ddOut = nullptr;
-
-    ExtractDoubleGradTensorWithInputDOut(ctx, &X, &ddX, &dX, &dOut, &ddOut);
-
-    if (dX) dX->mutable_data<T>(X->dims(), ctx.GetPlace());
-    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
-
-    auto& place = ctx.template device_context<DeviceContext>();
-
-    Functor functor;
-    auto attrs = functor.GetAttrs();
-    for (auto& attr : attrs) {
-      *attr.second = ctx.Attr<float>(attr.first);
-    }
-    functor(place, X, ddX, ddOut, dOut, dX);
-  }
-};
-
-template <typename DeviceContext, typename Functor>
 class CELUDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -1522,36 +1414,6 @@ class LogitGradKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-struct LogGradGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* ddX, framework::Tensor* ddOut,
-                  const framework::Tensor* dOut, framework::Tensor* dX) const {
-    auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "LogGradGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "LogGradGrad"));
-    // ddout = ddx / x; dx = -(dout / x) * (ddx / x)
-    // calculate dx first, so ddout can inplace ddx
-    if (dX) {
-      auto dout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dOut, "Output", "DOut", "LogGradGrad"));
-      auto dx = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dX, "Output", "DX", "LogGradGrad"));
-      dx.device(*d) = dout * static_cast<T>(-1) * ddx / (x * x);
-    }
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "LogGradGrad"));
-      ddout.device(*d) = ddx * static_cast<T>(1) / x;
-    }
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -1560,9 +1422,6 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                      \
   __macro(round, Round, RoundFunctor, ZeroGradFunctor);                      \
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor); \
-  __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                     \
-  __macro(log2, Log2, Log2Functor, Log2GradFunctor);                         \
-  __macro(log10, Log10, Log10Functor, Log10GradFunctor);                     \
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);        \
   __macro(stanh, STanh, STanhFunctor, STanhGradFunctor);                     \
   __macro(softplus, Softplus, SoftplusFunctor, SoftplusGradFunctor);         \

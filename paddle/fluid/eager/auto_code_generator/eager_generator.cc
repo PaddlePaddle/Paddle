@@ -47,6 +47,9 @@ std::unordered_map<std::string, std::vector<std::string>>
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
+static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
+    "split"};
+
 /* --- Black Ops list that's NO NEED to apply code generation --- */
 static std::unordered_set<std::string> black_ops_list = {"run_program"};
 
@@ -2360,11 +2363,21 @@ static std::string GenerateGradNodeCCContents(
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
       "std::vector<std::vector<paddle::experimental::Tensor>> "
-      "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, "
-      "bool create_graph) {\n%s\n}";
-  std::string grad_function_str = paddle::string::Sprintf(
-      GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
+      "GradNode%s::operator()("
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool "
+      "create_graph) {\n"
+      "%s"
+      "%s"
+      "\n}";
+  std::string fill_zero_str = "";
+  if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
+    fill_zero_str =
+        "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, "
+        "this->InputMeta());\n";
+  }
+  std::string grad_function_str =
+      paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, fwd_op_type,
+                              fill_zero_str, generated_grad_function_body);
 
   VLOG(6) << "Generated returns";
 
@@ -2396,9 +2409,9 @@ static std::string GenerateGradNodeHeaderContents(
       "  ~GradNode%s() override { VLOG(6) << \" Destruct GradNode%s \"; }\n"
       "\n"
       "  virtual std::vector<std::vector<paddle::experimental::Tensor>> "
-      "operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, const "
-      "bool create_graph = false) "
+      "operator()("
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool "
+      "create_graph = false) "
       "override;\n"
       "\n"
       "  void ClearTensorWrappers() override { \n"

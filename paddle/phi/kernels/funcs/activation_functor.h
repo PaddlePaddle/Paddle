@@ -1223,6 +1223,133 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// log(x) = natural logarithm of x
+template <typename T>
+struct LogFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.log();
+  }
+};
+
+template <typename T>
+struct LogGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<T>(1) / x);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// log2(x) = logarithm to the base 2 of the elements of x
+template <typename T>
+struct Log2Functor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.log() / static_cast<T>(log(2));
+  }
+};
+
+// the gradient of log2(x) is 1/(x*ln(2))
+template <typename T>
+struct Log2GradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(2)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// log10(x) = logarithm to the base 10 of the elements of x
+template <typename T>
+struct Log10Functor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.log() / static_cast<T>(log(10));
+  }
+};
+
+// the gradient of log10(x) is 1/(x*ln(10))
+template <typename T>
+struct Log10GradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// log1p(x) = natural logarithm of x+1
+template <typename T>
+struct Log1pFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = (static_cast<T>(1) + x).log();
+  }
+};
+
+template <typename T>
+struct Log1pGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<T>(1) / (x + static_cast<T>(1)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct LogGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  const DenseTensor* dOut,
+                  DenseTensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "LogGradGrad"));
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "LogGradGrad"));
+    // ddout = ddx / x; dx = -(dout / x) * (ddx / x)
+    // calculate dx first, so ddout can inplace ddx
+    if (dX) {
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "LogGradGrad"));
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "LogGradGrad"));
+      dx.device(*d) = dout * static_cast<T>(-1) * ddx / (x * x);
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "LogGradGrad"));
+      ddout.device(*d) = ddx * static_cast<T>(1) / x;
+    }
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
@@ -1968,6 +2095,99 @@ struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
   }
+};
+
+template <typename T>
+struct CudaLogFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // log(x) = log(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(log(x));
+  }
+};
+
+template <typename T>
+struct CudaLogGradFunctor : public BaseActivationFunctor<T> {
+  // dx = dout / x
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout / x;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // log1p(x) = log(1 + x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(log(one + x));
+  }
+};
+
+template <typename T>
+struct CudaLog1pGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout / (1 + x)
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout / (one + x);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLog2Functor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // log2(x) = log2(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(log2(x));
+  }
+};
+
+template <typename T>
+struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  T log_two = static_cast<T>(log(static_cast<MPType>(2.0f)));
+
+  // dx = dout / (x * log(2))
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout / (x * log_two);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLog10Functor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // log10(x) = log10(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(log10(x));
+  }
+};
+
+template <typename T>
+struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  T log_ten = static_cast<T>(log(static_cast<MPType>(10.0f)));
+
+  // dx = dout / (x * log(10))
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout / (x * log_ten);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 #endif
