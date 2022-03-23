@@ -34,14 +34,10 @@ from paddle.distributed.auto_parallel.engine import Engine
 
 paddle.enable_static()
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-PP_MESH_0 = auto.ProcessMesh([0])
-PP_MESH_1 = auto.ProcessMesh([1])
 batch_size = 1
 batch_num = 10
 hidden_size = 1024
-sequence_len = 512
 image_size = hidden_size
-class_num = 10
 
 paddle.seed(44)
 
@@ -53,8 +49,7 @@ class MyDataset(Dataset):
 
     def __getitem__(self, index):
         input = np.random.uniform(size=image_size).astype("float32")
-        label = np.random.randint(0, class_num - 1, dtype="int64")
-        return input, label
+        return input
 
     def __len__(self):
         return self.num_samples
@@ -82,12 +77,22 @@ class MLPLayer(nn.Layer):
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(
-            self.norm, dist_attr={"process_mesh": PP_MESH_0})(input)[0]
+        out = self.norm(input)
         out = self.linear0(input)
+        auto.shard_tensor(
+            self.linear0.weight,
+            dist_attr={
+                "process_mesh": global_process_mesh,
+                "dims_mapping": [-1, 0]
+            })
         out = F.gelu(out, approximate=True)
-        out = auto.shard_op(
-            self.linear1, dist_attr={"process_mesh": PP_MESH_1})(out)[0]
+        out = self.linear1(out)
+        auto.shard_tensor(
+            self.linear1.weight,
+            dist_attr={
+                "process_mesh": global_process_mesh,
+                "dims_mapping": [0, -1]
+            })
         out = self.dropout(out)
         out = self.linear2(out)
         return out
@@ -99,38 +104,18 @@ def train():
         intermediate_size=4 * hidden_size,
         dropout_ratio=0.1,
         initializer_range=0.02)
-    loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
-        learning_rate=0.00001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-08,
-        grad_clip=None)
 
     dataset = MyDataset(batch_num * batch_size)
     inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
-    labels_spec = InputSpec([batch_size], 'int64', 'label')
 
     dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.amp = False
-    dist_strategy.pipeline = False
-    dist_strategy.recompute = False
     # init parallel optimizer
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
-    engine = Engine(
-        mlp,
-        inputs_spec=inputs_spec,
-        labels_spec=labels_spec,
-        strategy=dist_strategy)
-    engine.prepare(optimizer, loss)
-    engine.fit(dataset,
-               batch_size=batch_size,
-               steps_per_epoch=batch_num * batch_size)
-    engine.save('./mlp')
-    engine.load('./mlp')
-    engine.save('./mlp_inf', training=False, mode='predict')
+    engine = Engine(mlp, inputs_spec=inputs_spec, strategy=dist_strategy)
+    engine.prepare(mode='predict')
+    engine.predict(dataset, batch_size=batch_size)
 
 
 if __name__ == "__main__":
