@@ -422,5 +422,121 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
   }
 };
 
+// Maximum
+template <typename T>
+struct MaximumFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a > b ? a : b;
+  }
+};
+
+template <typename T>
+struct MaxGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+
+template <typename T>
+struct MaxGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
+    // dy = dout * (x <= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
+    return outs;
+  }
+};
+
+// Minimum
+template <typename T>
+struct MinimumFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a < b ? a : b;
+  }
+};
+template <typename T>
+struct MinGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x < y);
+  }
+};
+template <typename T>
+struct MinGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x >= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MinGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * (x < y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
+    // dy = dout * (x >= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    return outs;
+  }
+};
+
+// Modulo
+template <typename T, typename Enable = void>
+struct ModuloFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = a % b;
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((b ^ res) < 0)) res += b;
+    return res;
+  }
+};
+
+template <typename T>
+struct ModuloFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(a, b);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((res < 0) != (b < 0))) res += b;
+    return res;
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseModuloFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = b % a;
+    if ((res != 0) && ((res < 0) != (a < 0))) res += a;
+    return res;
+  }
+};
+
+template <typename T>
+struct InverseModuloFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(b, a);
+    if ((res != 0) && ((a < 0) != (res < 0))) res += a;
+    return res;
+  }
+};
 }  // namespace funcs
 }  // namespace phi

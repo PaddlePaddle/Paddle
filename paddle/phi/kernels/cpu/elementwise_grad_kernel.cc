@@ -135,6 +135,32 @@ void MultiplyGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, *out, dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
+template <typename T, typename Context>
+void MaximumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       int axis,
+                       DenseTensor* dx,
+                       DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, MaxGradDx<T>, MaxGradDy<T>>(
+      dev_ctx, x, y, dout, dout, axis, dx, dy, MaxGradDx<T>(), MaxGradDy<T>());
+}
+
+template <typename T, typename Context>
+void MinimumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       int axis,
+                       DenseTensor* dx,
+                       DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, MinGradDx<T>, MinGradDy<T>>(
+      dev_ctx, x, y, dout, dout, axis, dx, dy, MinGradDx<T>(), MinGradDy<T>());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(add_grad,
@@ -259,6 +285,7 @@ PD_REGISTER_KERNEL(multiply_triple_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
 PD_REGISTER_KERNEL(fmax_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -276,3 +303,23 @@ PD_REGISTER_KERNEL(fmin_grad,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(maximum_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MaximumGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(minimum_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MinimumGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}

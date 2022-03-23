@@ -86,6 +86,45 @@ void MultiplyKernel(const Context& dev_ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
+void MaximumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out);
+
+template <typename T, typename Context>
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out);
+
+template <typename T, typename Context>
+void MinimumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out);
+
+template <typename T, typename Context>
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out);
+
+template <typename T, typename Context>
+void ModuloRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out);
+
+template <typename T, typename Context>
+void ModuloKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* out);
+
+template <typename T, typename Context>
 DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
@@ -129,4 +168,36 @@ DenseTensor Multiply(const Context& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename Context>
+DenseTensor Maximum(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  MaximumKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor Minimum(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  MinimumKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor Modulo(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  ModuloKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
 }  // namespace phi
