@@ -632,7 +632,7 @@ def assign(input, output=None):
             dtype = VarDesc.VarType.FP32
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
-            values = [bool(v) for v in input.flat]
+            values = [int(v) for v in input.flat]
         elif dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]

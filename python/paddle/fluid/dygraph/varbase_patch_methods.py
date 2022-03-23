@@ -768,8 +768,11 @@ def monkey_patch_varbase():
             return _setitem_impl_(self, item, value)
 
         else:
-            # Call c++ func __setitem_varbase__ to speedup.
-            return self.__setitem_varbase__(item, value)
+            if core._in_eager_mode():
+                return self.__setitem_eager_tensor__(item, value)
+            else:
+                # Call c++ func __setitem_varbase__ to speedup.
+                return self.__setitem_varbase__(item, value)
 
     @framework.dygraph_only
     def _grad_ivar(self):
