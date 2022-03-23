@@ -58,7 +58,29 @@ def get_api_yaml_info(file_path):
 def get_kernel_info(file_path):
     f = open(file_path, "r")
     cont = f.readlines()
-    return [l.strip() for l in cont]
+    ret = []
+    prev = []
+    for line in cont:
+        info = line.strip().split()
+        if info == '':
+            continue
+
+        if len(prev) == 0:
+            ret.append(line.strip())
+            prev = info
+            continue
+
+        if prev[0] == info[0] and prev[1] == info[1]:
+            ret.pop()
+        ret.append(line.strip())
+        prev = info
+    return ret
+
+
+def get_infermeta_info(file_path):
+    f = open(file_path, "r")
+    cont = f.readlines()
+    return [l.strip() for l in cont if l.strip() != '']
 
 
 def get_attr_info(file_path):
@@ -330,7 +352,7 @@ if __name__ == "__main__":
     args = parse_args()
     infer_meta_data = get_api_yaml_info(args.paddle_root_path)
     kernel_data = get_kernel_info(args.kernel_info_file)
-    info_meta_wrap_data = get_kernel_info(args.infermeta_wrap_file)
+    info_meta_wrap_data = get_infermeta_info(args.infermeta_wrap_file)
     attr_data = get_attr_info(args.attr_info_file)
     out = merge(infer_meta_data, kernel_data, info_meta_wrap_data)
     gen_phi_kernel_register_code(out, attr_data, args.generate_file)
