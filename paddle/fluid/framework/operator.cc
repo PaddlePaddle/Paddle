@@ -2102,7 +2102,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
          input_defs[i].type_index ==
              std::type_index(
                  typeid(paddle::optional<
-                        const std::vector<const phi::DenseTensor*>&>)))) {
+                        const std::vector<const phi::DenseTensor*>>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),

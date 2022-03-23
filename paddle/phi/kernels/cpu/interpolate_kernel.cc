@@ -519,7 +519,7 @@ static void Interpolate1DCPUFwd(
     const Context& dev_ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout_str,
     int out_w,
@@ -534,7 +534,7 @@ static void Interpolate1DCPUFwd(
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.;
-  if (!size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_w = new_size[0];
@@ -542,7 +542,7 @@ static void Interpolate1DCPUFwd(
     // float scale_w = -1;
     // auto scale_tensor = ctx.Input<Tensor>("Scale");
     // auto scale = ctx.Attr<std::vector<float>>("scale");
-    if (scale_tensor.get_ptr() != nullptr) {
+    if (scale_tensor) {
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
       scale_w = scale_data[0];
@@ -569,7 +569,7 @@ static void Interpolate1DCPUFwd(
     if (scale_w > 0.) {
       out_w = static_cast<int>(in_w * scale_w);
     }
-    if (out_size.get_ptr() != nullptr) {
+    if (out_size) {
       auto out_size_data =
           funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
       out_w = out_size_data[0];
@@ -621,7 +621,7 @@ static void Interpolate2DCPUFwd(
     const Context& dev_ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout_str,
     int out_h,
@@ -639,7 +639,7 @@ static void Interpolate2DCPUFwd(
   float scale_h = -1;
   float scale_w = -1;
 
-  if (!size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_h = new_size[0];
@@ -647,7 +647,7 @@ static void Interpolate2DCPUFwd(
   } else {
     // auto scale_tensor = ctx.Input<Tensor>("Scale");
     // auto scale = ctx.Attr<std::vector<float>>("scale");
-    if (scale_tensor.get_ptr() != nullptr) {
+    if (scale_tensor) {
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
       if (scale_data.size() > 1) {
@@ -697,7 +697,7 @@ static void Interpolate2DCPUFwd(
       out_w = static_cast<int>(in_w * scale_w);
     }
     // auto out_size = ctx.Input<Tensor>("OutSize");
-    if (out_size.get_ptr() != nullptr) {
+    if (out_size) {
       auto out_size_data =
           funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
       out_h = out_size_data[0];
@@ -792,7 +792,7 @@ static void Interpolate3DCPUFwd(
     const Context& dev_ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout_str,
     int out_d,
@@ -812,7 +812,7 @@ static void Interpolate3DCPUFwd(
   float scale_h = -1;
   float scale_w = -1;
 
-  if (!size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_d = new_size[0];
@@ -821,7 +821,7 @@ static void Interpolate3DCPUFwd(
   } else {
     // auto scale_tensor = ctx.Input<Tensor>("Scale");
     // auto scale = ctx.Attr<std::vector<float>>("scale");
-    if (scale_tensor.get_ptr() != nullptr) {
+    if (scale_tensor) {
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
       if (scale_data.size() > 1) {
@@ -888,7 +888,7 @@ static void Interpolate3DCPUFwd(
       out_h = static_cast<int>(in_h * scale_h);
       out_w = static_cast<int>(in_w * scale_w);
     }
-    if (out_size.get_ptr() != nullptr) {
+    if (out_size) {
       auto out_size_data =
           funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
       out_d = out_size_data[0];
@@ -991,7 +991,7 @@ void InterpolateKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,
@@ -1054,7 +1054,7 @@ void BilinearInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,
@@ -1086,7 +1086,7 @@ void NearestInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,
@@ -1118,7 +1118,7 @@ void TrilinearInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,
@@ -1150,7 +1150,7 @@ void LinearInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,
@@ -1182,7 +1182,7 @@ void BicubicInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,

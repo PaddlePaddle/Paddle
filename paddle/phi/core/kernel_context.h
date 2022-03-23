@@ -98,7 +98,7 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  paddle::optional<const std::vector<const TensorType*>&> OptionalInputsBetween(
+  paddle::optional<const std::vector<const TensorType*>> OptionalInputsBetween(
       size_t start, size_t end) {
     const auto& first = inputs_.at(start);
 
@@ -109,7 +109,7 @@ class KernelContext {
         v.emplace_back(t);
       }
     }
-    return paddle::optional<const std::vector<const TensorType*>&>(v);
+    return paddle::optional<const std::vector<const TensorType*>>(v);
   }
 
   template <typename TensorType>

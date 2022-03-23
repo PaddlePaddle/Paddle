@@ -23,7 +23,7 @@ void BilinearInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
     int out_d,
@@ -40,7 +40,7 @@ void NearestInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
 
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
@@ -58,7 +58,7 @@ void TrilinearInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
 
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
@@ -76,7 +76,7 @@ void LinearInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
 
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
@@ -94,7 +94,7 @@ void BicubicInterpKernel(
     const Context& ctx,
     const DenseTensor& x,
     paddle::optional<const DenseTensor&> out_size,
-    paddle::optional<const std::vector<const DenseTensor*>&> size_tensor,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
 
     paddle::optional<const DenseTensor&> scale_tensor,
     const std::string& data_layout,
