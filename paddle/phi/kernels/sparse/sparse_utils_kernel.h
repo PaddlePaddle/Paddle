@@ -133,26 +133,5 @@ DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
   return dense;
 }
 
-template <typename T, typename Context>
-void CreateSparseCooTensorKernel(const Context& dev_ctx,
-                                 const DenseTensor& non_zero_indices,
-                                 const DenseTensor& non_zero_elements,
-                                 const std::vector<int64_t>& dense_shape,
-                                 SparseCooTensor* out) {
-  out->SetMember(
-      non_zero_indices, non_zero_elements, phi::make_ddim(dense_shape), true);
-}
-
-template <typename T, typename Context>
-SparseCooTensor CreateSparseCooTensor(const Context& dev_ctx,
-                                      const DenseTensor& non_zero_indices,
-                                      const DenseTensor& non_zero_elements,
-                                      const std::vector<int64_t>& dense_shape) {
-  SparseCooTensor coo;
-  CreateSparseCooTensorKernel<T, Context>(
-      dev_ctx, non_zero_indices, non_zero_elements, dense_shape, &coo);
-  return coo;
-}
-
 }  // namespace sparse
 }  // namespace phi

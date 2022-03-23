@@ -16,6 +16,11 @@ limitations under the License. */
 
 namespace phi {
 
+SparseCsrTensor::SparseCsrTensor() {
+  DenseTensor non_zero_crows, non_zero_cols, non_zero_elements;
+  this->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, {1});
+}
+
 inline void check_shape(const DDim& dims) {
   bool valid = dims.size() == 2 || dims.size() == 3;
 

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import paddle
 from paddle import _C_ops
+from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -54,6 +55,26 @@ class TestSparseUtils(unittest.TestCase):
 
             dense_tensor = _C_ops.final_state_to_dense(out)
             assert np.array_equal(dense_tensor.numpy(), x)
+
+    def test_backward(self):
+        with _test_eager_guard():
+            non_zero_indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2],
+                                [1, 3, 2, 3]]
+            non_zero_elements = [1, 2, 3, 4]
+            indices = paddle.to_tensor(non_zero_indices, dtype='int32')
+            elements = paddle.to_tensor(
+                non_zero_elements, dtype='float32', stop_gradient=True)
+            dense_shape = [1, 1, 3, 4, 1]
+            #sparse_input = _C_ops.final_state_sparse_coo_tensor(indices, elements, dense_shape)
+            sparse_input = core.eager.sparse_coo_tensor(indices, elements,
+                                                        dense_shape, False)
+            print("sparse_input:", sparse_input)
+            print(sparse_input.non_zero_elements())
+            #out, rulebook = _C_ops.final_state_conv3d(sparse_input, dense_kernel, paddings, dilations, strides, 1, False)
+            out = _C_ops.final_state_sparse_test(sparse_input)
+            print("out", out)
+            out.backward(out)
+            print("sparse_input.grad:", sparse_input.grad)
 
 
 if __name__ == "__main__":

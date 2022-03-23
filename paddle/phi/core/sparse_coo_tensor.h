@@ -146,6 +146,8 @@ class SparseCooTensor : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0) override;
+
+  /// \brief set the dims of original dense tensor
   void set_dims(const DDim& dims) { this->dims_ = dims; }
 
  private:

@@ -19,12 +19,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CumsumKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  bool flatten,
-                  bool exclusive,
-                  bool reverse,
-                  DenseTensor* out);
+void DeformableConvKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& offset,
+                          const DenseTensor& filter,
+                          const DenseTensor& mask,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& dilations,
+                          int deformable_groups,
+                          int groups,
+                          int im2col_step,
+                          DenseTensor* out);
 
 }  // namespace phi

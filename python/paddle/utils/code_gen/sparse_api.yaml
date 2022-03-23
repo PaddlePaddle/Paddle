@@ -25,3 +25,11 @@
   args : (Tensor non_zero_indices, Tensor non_zero_elements, int64[] dense_shape={})
   output : Tensor(out@SparseCooTensor)
   invoke : sparse_coo_tensor_impl(non_zero_indices, non_zero_elements, dense_shape)
+
+- api : sparse_test
+  args : (Tensor x)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_test
+    layout : x
+  backward : sparse_test_grad

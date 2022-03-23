@@ -19,6 +19,8 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -36,7 +38,8 @@
 namespace egr {
 
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
-  VLOG(6) << "Construct GradNodeBase";
+  VLOG(6) << "Construct GradNodeBase: " << bwd_in_slot_num << ", "
+          << bwd_out_slot_num;
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
   adj_edges_.resize(bwd_out_slot_num);
@@ -113,26 +116,33 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
   auto& meta = metas[0];
   meta.SetStopGradient(fwd_out_meta->StopGradient());
 
-  // Record TensorMeta
-  if (phi::DenseTensor::classof(fwd_out.impl().get())) {
-    // Only Copy Meta
-    phi::DenseTensor* dense_tensor =
-        static_cast<phi::DenseTensor*>(fwd_out.impl().get());
-
-    PADDLE_ENFORCE_NE(
-        dense_tensor->meta().dtype, phi::DataType::UNDEFINED,
-        paddle::platform::errors::Fatal(
-            "Attempting to copy DenseTensorMeta with phi::DataType::UNDEFINED,"
-            "which is illegal."));
-    meta.SetTensorMeta(dense_tensor->meta());
-
-    if (paddle::framework::IsComplexType(
-            paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
-      need_complex_to_real_ = true;
-    }
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (fwd_out.is_dense_tensor()) {
+    dense_tensor = static_cast<phi::DenseTensor*>(fwd_out.impl().get());
+  } else if (fwd_out.is_sparse_coo_tensor()) {
+    phi::SparseCooTensor* coo_tensor =
+        static_cast<phi::SparseCooTensor*>(fwd_out.impl().get());
+    dense_tensor = coo_tensor->mutable_non_zero_elements();
+  } else if (fwd_out.is_sparse_csr_tensor()) {
+    phi::SparseCsrTensor* csr_tensor =
+        static_cast<phi::SparseCsrTensor*>(fwd_out.impl().get());
+    dense_tensor = csr_tensor->mutable_non_zero_elements();
   } else {
     VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
+  }
+
+  // Record TensorMeta
+  PADDLE_ENFORCE_NE(
+      dense_tensor->meta().dtype, phi::DataType::UNDEFINED,
+      paddle::platform::errors::Fatal(
+          "Attempting to copy DenseTensorMeta with phi::DataType::UNDEFINED,"
+          "which is illegal."));
+  meta.SetTensorMeta(dense_tensor->meta());
+
+  if (paddle::framework::IsComplexType(
+          paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
+    need_complex_to_real_ = true;
   }
 }
 
