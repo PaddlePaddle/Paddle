@@ -12,14 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mean_op.h"
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class MeanXPUKernel : public framework::OpKernel<T> {
