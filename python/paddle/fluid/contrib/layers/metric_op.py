@@ -66,7 +66,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             label = fluid.layers.data(name="label", shape=[1], dtype="int32")
             ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[1], dtype="float32")
             predict = fluid.layers.sigmoid(fluid.layers.fc(input=data, size=1))
-            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label)
+            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
     """
     if ins_tag_weight is None:
         ins_tag_weight = tensor.fill_constant_batch_size_like(
