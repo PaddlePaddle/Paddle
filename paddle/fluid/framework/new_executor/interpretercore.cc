@@ -234,10 +234,26 @@ void InterpreterCore::Convert(
     gc_check_input_list.erase(last, gc_check_input_list.end());
 
     for (auto var_id : gc_check_input_list) {
-      vec_meta_info[var_id].var_ref_count_++;
-      instr.AddGCCheckVar(var_id);
-      VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
-              << instr.OpBase()->Type();
+      paddle::framework::Variable* var = global_scope_->Var(var_id);
+      if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
+          var->IsType<LoDTensorArray>()) {
+        vec_meta_info[var_id].var_ref_count_++;
+        // TODO(zhiqiu): not all var needs to be checked, var need to be checked
+        // only
+        // after the last_live_op. For example,
+        // b = op1(a)
+        // c = op2(a, b)
+        // in this case, a is the input of op1 and op2, we only need to check
+        // a after op2, because op2 always uses a after op1.
+        instr.AddGCCheckVar(var_id);
+        VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
+                << instr.OpBase()->Type();
+      } else {
+        VLOG(4) << "not clear " << global_scope_->GetNameById(var_id)
+                << " after " << instr.OpBase()->Type()
+                << " because its type is "
+                << framework::ToTypeName(var->Type());
+      }
     }
   }
 
