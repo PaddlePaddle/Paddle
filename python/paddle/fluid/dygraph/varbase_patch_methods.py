@@ -798,6 +798,34 @@ def monkey_patch_varbase():
     def value(self):
         return self
 
+    @framework.dygraph_only
+    def _slice(self, begin_idx, end_idx):
+        return core.eager.Tensor(self.get_tensor()._slice(begin_idx, end_idx))
+
+    @framework.dygraph_only
+    def _numel(self):
+        return self.get_tensor()._numel()
+
+    @framework.dygraph_only
+    def cpu(self):
+        if self.place.is_cpu_place():
+            return self
+        else:
+            res = self._copy_to(core.CPUPlace(), True)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
+    @framework.dygraph_only
+    def cuda(self, device_id, blocking):
+        if self.place.is_gpu_place():
+            return self
+        else:
+            res = self._copy_to(core.CUDAPlace(device_id), True)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -821,6 +849,10 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.Tensor, "clone", clone)
         setattr(core.eager.Tensor, "value", value)
+        setattr(core.eager.Tensor, "cpu", cpu)
+        setattr(core.eager.Tensor, "cuda", cuda)
+        setattr(core.eager.Tensor, "_slice", _slice)
+        setattr(core.eager.Tensor, "_numel", _numel)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)
