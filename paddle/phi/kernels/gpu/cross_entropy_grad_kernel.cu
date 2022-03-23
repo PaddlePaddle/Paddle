@@ -162,7 +162,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   DenseTensor* logit_grad = logits_grad;
 
   T* logit_grad_data = nullptr;
-  bool copy_flag = (logit_grad != softmax && (!use_softmax || soft_label));
+  bool copy_flag = (logit_grad != &softmax && (!use_softmax || soft_label));
   if (copy_flag) {
     phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
     logit_grad_data = logit_grad->data<T>();
