@@ -306,6 +306,15 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   for (auto* var : cluster_internals) {
     if (!var->Var()) {
       // skip control var
+
+      // TODO(jiangcheng05): CINN not support control var now, so here we skip
+      // it, but it may incur result incorrect problem. In detail, for two
+      // unconnected ops, with control var, an op must run before another op.
+      // If we remove the control var, the program wouldn't guarantee the run
+      // ordering, in other words, the result may incorrect.
+      VLOG(4)
+          << "The internal var [" << var->Name() << "]'s vardesc empty,"
+          << " it may be a control var, but CINN not support control var now.";
       continue;
     }
     auto* sub_node = subgraph->CreateVarNode(var->Var());
