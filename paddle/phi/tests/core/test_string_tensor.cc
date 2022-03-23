@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -81,11 +84,48 @@ TEST(string_tensor, ctor) {
 }
 
 TEST(pstring, func) {
+  // Test Ctor
+  pstring empty_str;
+  pstring nchar_str(5, 'A');
+  pstring copy_nchar_str(nchar_str);
+  CHECK_EQ(empty_str, "");
+  CHECK_EQ(nchar_str, "AAAAA");
+  CHECK_EQ(copy_nchar_str, "AAAAA");
+
+  pstring move_nchar_str(std::move(nchar_str));
+  CHECK_EQ(move_nchar_str, "AAAAA");
+  pstring std_str(std::string("BBBB"));
+  CHECK_EQ(std_str, "BBBB");
+
   pstring long_str = "A large pstring whose length is longer than 22.";
   pstring short_str = "A short pstring.";
 
+  // Test operator+
+  pstring plus_str = move_nchar_str + std_str;
+  CHECK_EQ(plus_str, "AAAAABBBB");
+
+  // Test insert
+  plus_str.insert(5, 1, 'C');
+  CHECK_EQ(plus_str, "AAAAACBBBB");
+  plus_str.insert(5, "DDD", 0, 2);
+  CHECK_EQ(plus_str, "AAAAADDCBBBB");
+
+  // Test pushback
+  plus_str.push_back('E');
+  CHECK_EQ(plus_str, "AAAAADDCBBBBE");
+
+  // Test append
+  plus_str.append("FF");
+  CHECK_EQ(plus_str, "AAAAADDCBBBBEFF");
+  plus_str.append(2, 'G');
+  CHECK_EQ(plus_str, "AAAAADDCBBBBEFFGG");
+
   // Test operator[]
   CHECK_EQ(long_str[0], 'A');
+  CHECK_EQ(short_str[0], 'A');
+
+  // Test capacity
+  CHECK_EQ(short_str.capacity(), 22UL);
 
   // Test operator<<
   std::ostringstream oss1, oss2;
@@ -102,10 +142,24 @@ TEST(pstring, func) {
   CHECK_EQ((long_str < short_str), true);
   CHECK_EQ((long_str > short_str), false);
   CHECK_EQ((long_str == short_str), false);
+  CHECK_EQ((long_str != short_str), true);
 
   // Test operator =
   long_str = short_str;
   CHECK_EQ(short_str, long_str);
+  short_str = 'A';
+  CHECK_EQ(short_str, "A");
+  short_str = std::move(copy_nchar_str);
+  CHECK_EQ(short_str, "AAAAA");
+
+  // Test empty
+  CHECK_EQ(empty_str.empty(), true);
+  CHECK_EQ(nchar_str.empty(), false);
+  CHECK_EQ(empty_str.length(), 0UL);
+
+  // Test Resize
+  nchar_str.resize(6, 'B');
+  CHECK_EQ(nchar_str, "AAAAAB");
 }
 
 }  // namespace tests

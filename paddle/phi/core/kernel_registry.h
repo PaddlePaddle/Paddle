@@ -211,6 +211,14 @@ struct KernelRegistrar {
           dtype == static_cast<size_t>(DataType::UINT16)) {
         continue;
       }
+      // NOTE(zhoushunjie): Only the strings kernels can support pstring dtype
+      constexpr char strings_kernels_prefix[] = "strings_";
+      if (dtype == static_cast<size_t>(DataType::PSTRING) &&
+          strncmp(kernel_name_cstr,
+                  strings_kernels_prefix,
+                  strlen(strings_kernels_prefix))) {
+        continue;
+      }
       ConstructKernel(reg_type,
                       kernel_name_cstr,
                       backend_cstr,
