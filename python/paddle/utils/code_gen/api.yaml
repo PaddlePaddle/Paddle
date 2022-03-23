@@ -518,7 +518,7 @@
   kernel :
     func : batch_norm
     data_type : x
-   backward: batch_norm_grad
+# backward: batch_norm_grad
 
 # bernoulli
 - api : bernoulli
