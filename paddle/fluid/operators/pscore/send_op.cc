@@ -53,7 +53,7 @@ class SendOp : public framework::OperatorBase {
         send_varnames[0] != "@PS_STEP_COUNTER@") {
       auto fleet = paddle::distributed::FleetWrapper::GetInstance();
       std::vector<::std::future<int32_t>> status;
-      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, 0, -1);
+      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, -1, -1);
     } else {
       auto* communicator = paddle::distributed::Communicator::GetInstance();
       if (communicator->Check(send_varnames)) {

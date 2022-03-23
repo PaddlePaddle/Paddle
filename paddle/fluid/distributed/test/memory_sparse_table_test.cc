@@ -74,7 +74,7 @@ TEST(MemorySparseTable, SGD) {
   std::vector<uint32_t> init_fres = {1, 1, 1, 1, 1};
 
   std::vector<float> init_values;
-  init_values.resize(init_keys.size() * (emb_dim + 1));
+  init_values.resize(init_keys.size() * (emb_dim + 3));
   auto value = PullSparseValue(init_keys, init_fres, emb_dim);
   table->pull_sparse(init_values.data(), value);
 
@@ -119,11 +119,11 @@ TEST(MemorySparseTable, SGD) {
   }
 
   std::vector<float> pull_values;
-  pull_values.resize(init_keys.size() * (emb_dim + 1));
+  pull_values.resize(init_keys.size() * (emb_dim + 3));
   table->pull_sparse(pull_values.data(), value);
 
   for (size_t i = 0; i < init_keys.size(); ++i) {
-    for (size_t j = 0; j < emb_dim + 1; ++j) {
+    for (size_t j = 2; j < emb_dim + 3; ++j) {
       auto update_val = init_values[i * (emb_dim + 1) + j] -
                         0.1 * total_gradients[3 + i * (emb_dim + 4) + j];
       VLOG(3) << total_gradients[i * (emb_dim + 4) + j + 3] << ":"

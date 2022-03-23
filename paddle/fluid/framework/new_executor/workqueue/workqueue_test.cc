@@ -60,11 +60,13 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
     }
     finished = true;
   });
+  auto handle = work_queue->AddAwaitableTask([]() { return 1234; });
   // WaitQueueEmpty
   EXPECT_EQ(finished.load(), false);
   events_waiter.WaitEvent();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum);
+  EXPECT_EQ(handle.get(), 1234);
 }
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
@@ -146,6 +148,9 @@ TEST(WorkQueue, TestWorkQueueGroup) {
       ++counter;
     }
   });
+  int random_num = 123456;
+  auto handle =
+      queue_group->AddAwaitableTask(1, [random_num]() { return random_num; });
   // WaitQueueGroupEmpty
   events_waiter.WaitEvent();
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
@@ -154,4 +159,5 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   events_waiter.WaitEvent();
   queue_group.reset();
   EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
+  EXPECT_EQ(handle.get(), random_num);
 }
