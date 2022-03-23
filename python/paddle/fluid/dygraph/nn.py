@@ -21,7 +21,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags
+from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -2991,33 +2991,33 @@ class GroupNorm(layers.Layer):
             out, _, _ = _C_ops.group_norm(input, self.weight, self.bias, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
+        else:
+            inputs = {'X': input}
+            if self.bias is not None:
+                inputs['Bias'] = self.bias
+            if self.weight is not None:
+                inputs['Scale'] = self.weight
 
-        inputs = {'X': input}
-        if self.bias is not None:
-            inputs['Bias'] = self.bias
-        if self.weight is not None:
-            inputs['Scale'] = self.weight
+            # create output
+            mean_out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            variance_out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            group_norm_out = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
 
-        # create output
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        group_norm_out = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
+            self._helper.append_op(
+                type="group_norm",
+                inputs=inputs,
+                outputs={
+                    "Y": group_norm_out,
+                    "Mean": mean_out,
+                    "Variance": variance_out,
+                },
+                attrs={"epsilon": self._epsilon,
+                       "groups": self._groups})
 
-        self._helper.append_op(
-            type="group_norm",
-            inputs=inputs,
-            outputs={
-                "Y": group_norm_out,
-                "Mean": mean_out,
-                "Variance": variance_out,
-            },
-            attrs={"epsilon": self._epsilon,
-                   "groups": self._groups})
-
-        return self._helper.append_activation(group_norm_out, self._act)
+            return self._helper.append_activation(group_norm_out, self._act)
 
 
 class SpectralNorm(layers.Layer):

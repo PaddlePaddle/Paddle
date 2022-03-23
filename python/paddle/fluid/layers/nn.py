@@ -8760,8 +8760,8 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        pass
-        # return _C_ops.final_state_scatter_nd_add(ref, index, updates)
+        op = getattr(_C_ops, 'scatter_nd_add')
+        return op(ref, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
