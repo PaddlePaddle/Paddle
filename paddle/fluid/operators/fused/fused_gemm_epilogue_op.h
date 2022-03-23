@@ -15,11 +15,15 @@ limitations under the License. */
 
 #pragma once
 
+#include <cuda_runtime_api.h>
 #include <algorithm>
 #include <mutex>
 #include <unordered_map>
+#include "gflags/gflags.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
+
+DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace paddle {
 namespace operators {
@@ -27,19 +31,20 @@ namespace operators {
 class GemmEpilogueAlgoCache {
  public:
   static GemmEpilogueAlgoCache &Instance() {
-    static GemmEpilogueAlgoCache instance(0);
+    static GemmEpilogueAlgoCache instance(
+        FLAGS_cublaslt_exhaustive_search_times);
     return instance;
   }
 
   GemmEpilogueAlgoCache(GemmEpilogueAlgoCache const &) = delete;
   void operator=(GemmEpilogueAlgoCache const &) = delete;
 
-  cublasLtMatmulAlgo_t GetGemmAlgo(cublasLtHandle_t lt_handle,
-                                   size_t workspace_size,
-                                   cublasLtMatmulDesc_t op_desc,
-                                   cublasLtMatrixLayout_t a_desc,
-                                   cublasLtMatrixLayout_t b_desc,
-                                   cublasLtMatrixLayout_t c_desc) {
+  cublasLtMatmulAlgo_t GetGemmAlgo(
+      cublasLtHandle_t lt_handle, cublasLtMatmulDesc_t op_desc,
+      cublasLtMatrixLayout_t a_desc, cublasLtMatrixLayout_t b_desc,
+      cublasLtMatrixLayout_t c_desc, const void *alpha, const void *beta,
+      const void *a, const void *b, void *c, cudaStream_t stream,
+      void *workspace, size_t workspace_size) {
     int64_t seed = 0;
     std::hash<int64_t> hash_fn;
 
@@ -80,16 +85,76 @@ class GemmEpilogueAlgoCache {
 
       PADDLE_ENFORCE_GE(
           returned_results, 0,
-          platform::errors::NotFound("No GEMM epilogue algorithm support!"));
+          platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulPreferenceDestroy(preference));
 
-      ret = heuristic_results[0].algo;
+      if (search_times_ > 0) {
+        int best_algo_idx = 0;
+        float best_algo_time = 0;
+
+        cudaEvent_t start_event, stop_event;
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&start_event));
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop_event));
+
+        for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
+          float curr_time = 0;
+          for (int check_idx = 0; check_idx < search_times_; check_idx++) {
+            float time = 0;
+            PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event, stream));
+
+            cublasStatus_t status = platform::dynload::cublasLtMatmul(
+                lt_handle, op_desc, alpha, a, a_desc, b, b_desc, beta, c,
+                c_desc, c, c_desc, &heuristic_results[algo_idx].algo, workspace,
+                workspace_size, stream);
+
+            PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(stop_event, stream));
+            PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(stop_event));
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                cudaEventElapsedTime(&time, start_event, stop_event));
+            curr_time += time;
+            if (status != CUBLAS_STATUS_SUCCESS) {
+              curr_time = 3.40282e+038;  // Max Value of float
+              break;
+            }
+          }
+
+          curr_time = curr_time / search_times_;
+          if (curr_time < best_algo_time || algo_idx == 0) {
+            best_algo_idx = algo_idx;
+            best_algo_time = curr_time;
+          }
+        }
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(start_event));
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
+
+        ret = heuristic_results[best_algo_idx].algo;
+      } else {
+        int decided_algo_idx = -1;
+        for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
+          cublasStatus_t status = platform::dynload::cublasLtMatmul(
+              lt_handle, op_desc, alpha, a, a_desc, b, b_desc, beta, c, c_desc,
+              c, c_desc, &heuristic_results[algo_idx].algo, workspace,
+              workspace_size, stream);
+          if (status == CUBLAS_STATUS_SUCCESS) {
+            decided_algo_idx = algo_idx;
+            break;
+          }
+        }
+        if (decided_algo_idx == -1) {
+          PADDLE_THROW(platform::errors::Unavailable(
+              "No GEMM epilogue algorithm support!"));
+        }
+        ret = heuristic_results[decided_algo_idx].algo;
+      }
 
       std::lock_guard<std::mutex> lock(cache_mutex_);
       map_[seed] = ret;
     }
+
+    VLOG(4) << "Search time:" << search_times_ << ", Is hash-key (" << seed
+            << ") found in GemmEpilogueAlgoCache? " << have_found;
 
     return ret;
   }

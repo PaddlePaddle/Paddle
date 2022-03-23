@@ -132,9 +132,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
     size_t workspace_size = 4 * 1024 * 1024;
 
-    cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
-        lt_handle, workspace_size, operation_desc, y_desc, x_desc, out_desc);
-
     cudaStream_t stream = dev_ctx.stream();
     memory::allocation::AllocationPtr workspace =
         memory::Alloc(dev_ctx, workspace_size);
@@ -150,10 +147,26 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
       beta = &beta32;
     }
 
+    const auto* y_data = y->data<T>();
+    const auto* x_data = x->data<T>();
+
+    cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+        lt_handle, operation_desc, y_desc, x_desc, out_desc, alpha, beta,
+        y_data, x_data, out_data, stream, workspace->ptr(), workspace_size);
+
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
-        lt_handle, operation_desc, alpha, y->data<T>(), y_desc, x->data<T>(),
-        x_desc, beta, out_data, out_desc, out_data, out_desc, &algo,
-        workspace->ptr(), workspace_size, stream));
+        lt_handle, operation_desc, alpha, y_data, y_desc, x_data, x_desc, beta,
+        out_data, out_desc, out_data, out_desc, &algo, workspace->ptr(),
+        workspace_size, stream));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescDestroy(operation_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutDestroy(y_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutDestroy(x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutDestroy(out_desc));
   }
 
  private:
@@ -278,16 +291,26 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       memory::allocation::AllocationPtr dx_workspace =
           memory::Alloc(dev_ctx, workspace_size);
 
-      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
-          lt_handle, workspace_size, dx_operation_desc, y_desc, dout_desc,
-          dx_desc);
-
       dx->mutable_data<T>(ctx.GetPlace());
       auto* dx_data = dx->data<T>();
+      const auto* y_data = y->data<T>();
+      const auto* dout_data = dout->data<T>();
+
+      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+          lt_handle, dx_operation_desc, y_desc, dout_desc, dx_desc, alpha, beta,
+          y_data, dout_data, dx_data, stream, dx_workspace->ptr(),
+          workspace_size);
+
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
           lt_handle, dx_operation_desc, alpha, y->data<T>(), y_desc,
           dout->data<T>(), dout_desc, beta, dx_data, dx_desc, dx_data, dx_desc,
           &algo, dx_workspace->ptr(), workspace_size, stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescDestroy(dx_operation_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutDestroy(y_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutDestroy(dx_desc));
     }
 
     if (dy) {
@@ -329,17 +352,29 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
       memory::allocation::AllocationPtr dy_workspace =
           memory::Alloc(dev_ctx, workspace_size);
 
-      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
-          lt_handle, workspace_size, dy_operation_desc, dout_desc, x_desc,
-          dy_desc);
-
       dy->mutable_data<T>(ctx.GetPlace());
       auto* dy_data = dy->data<T>();
+      const auto* dout_data = dout->data<T>();
+      const auto* x_data = x->data<T>();
+
+      cublasLtMatmulAlgo_t algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(
+          lt_handle, dy_operation_desc, dout_desc, x_desc, dy_desc, alpha, beta,
+          dout_data, x_data, dy_data, stream, dy_workspace->ptr(),
+          workspace_size);
+
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(
-          lt_handle, dy_operation_desc, alpha, dout->data<T>(), dout_desc,
-          x->data<T>(), x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, &algo,
+          lt_handle, dy_operation_desc, alpha, dout_data, dout_desc, x_data,
+          x_desc, beta, dy_data, dy_desc, dy_data, dy_desc, &algo,
           dy_workspace->ptr(), workspace_size, stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatmulDescDestroy(dy_operation_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutDestroy(x_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cublasLtMatrixLayoutDestroy(dy_desc));
     }
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutDestroy(dout_desc));
   }
 
  private:
