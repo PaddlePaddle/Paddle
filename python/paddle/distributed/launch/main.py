@@ -40,7 +40,7 @@ def launch():
 
         - ``--rank``: The rank of the node, can be auto assigned by master. Default ``--rank=-1``.
 
-        - ``--log_level``: The log levl to set for logging.setLevel. Default ``--log_level=INFO``.
+        - ``--log_level``: The log levl to set for logging.setLevel. The rank 0 log will not print in the terminal by default, while you can enable it by adding --log_level=debug. Default ``--log_level=INFO``.
 
         - ``--nnodes``: The number of nodes for a distributed job, it can be a range in elastic mode, e.g., ``--nnnodes=2:3``. Default ``--nnodes=1``.
 
@@ -93,9 +93,11 @@ def launch():
 
 
     Returns:
-        ``None``
+        - ``None``
 
     Examples 0 (master, ip/port auto detection):
+        .. code-block:: bash
+            :name: code-block-example-bash0
 
             # For training on multi node, run the following command in one of the nodes
 
@@ -171,7 +173,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash5
 
-           # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
+            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
             
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
@@ -226,7 +228,7 @@ def launch():
             python -m paddle.distributed.launch --master etcd://10.0.0.1:2379 --nnodes 2:4 train.py
             
             # once the number of nodes changes between 2:4 during training, the strategy holds
-        
+
     """
 
     # initialize the context to run
