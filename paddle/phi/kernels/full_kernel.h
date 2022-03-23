@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -36,6 +38,18 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out);
+
+// In order to be compatible with fill_constant_batch_size_like op
+// that are still used in the 2.x APIs
+template <typename T, typename Context>
+void FullBatchSizeLikeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const std::vector<int>& shape,
+                             const Scalar& val,
+                             DataType dtype,
+                             int x_batch_size_dim,
+                             int out_batch_size_dim,
+                             DenseTensor* out);
 
 template <typename T, typename Context>
 void Full(const Context& dev_ctx,
