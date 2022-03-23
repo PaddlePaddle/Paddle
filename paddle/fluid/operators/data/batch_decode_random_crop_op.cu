@@ -27,7 +27,7 @@ namespace data {
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 using DataLayout = framework::DataLayout;
 
-NvjpegDecoderThreadPool* decode_pool = nullptr;
+ImageDecoderThreadPool* decode_pool = nullptr;
 
 template <typename T>
 class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
@@ -37,11 +37,15 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     auto program_id = ctx.Attr<int64_t>("program_id");
+    auto host_memory_padding = ctx.Attr<int64_t>("host_memory_padding");
+    auto device_memory_padding = ctx.Attr<int64_t>("device_memory_padding");
 
     // multi-phrase decode thread pool
     auto* decode_pool = 
-      DecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
-                          program_id, num_threads, mode, local_rank);
+      ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
+                          program_id, num_threads, mode, local_rank,
+                          static_cast<size_t>(host_memory_padding),
+                          static_cast<size_t>(device_memory_padding));
 
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
@@ -81,24 +85,24 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
       size_t x_numel = static_cast<size_t>(x.numel());
       
       if (data_layout == DataLayout::kNCHW){
-        NvjpegDecodeTask task = {
+        ImageDecodeTask task = {
           .bit_stream = x_data,
           .bit_len = x_numel,
           .tensor = &temp_array[i],
           .roi_generator = generators->at(i).get(),
           .place = dev
         };
-        decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
+        decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
       }
       else{
-        NvjpegDecodeTask task = {
+        ImageDecodeTask task = {
           .bit_stream = x_data,
           .bit_len = x_numel,
           .tensor = &out_array[i],
           .roi_generator = generators->at(i).get(),
           .place = dev
         };
-        decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
+        decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
       }
       
     }
@@ -109,11 +113,9 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
       const auto& dev_ctx = ctx.cuda_device_context();
       paddle::operators::math::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
       std::vector<int> axis = {2, 0, 1};
-      // LOG(ERROR) << "start transpose 01!!!";
       for (size_t i = 0; i < inputs->size(); i++) {
         // Do transpose
         const framework::DDim& in_sizes = temp_array[i].dims();
-        // const int ndim = in_sizes.size();
         framework::DDim transposed_input_shape = in_sizes.transpose(axis);
         std::vector<int64_t> transposed_input_shape_ =
             framework::vectorize(transposed_input_shape);

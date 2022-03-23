@@ -60,7 +60,7 @@ def _generate_stream_id():
     return _stream_id_generator.get_stream_id()
 
 
-def map(map_func, inputs):
+def map(map_func, inputs=[]):
     inputs = _to_list(inputs)
     if in_dygraph_mode():
         return map_func(*inputs)
@@ -100,7 +100,7 @@ def map(map_func, inputs):
 
     stream_id = _generate_stream_id()
     for idx in range(map_block.desc.op_size()):
-        map_block.desc.op(idx)._set_attr('stream_id', stream_id)
+        map_block.desc.op(idx)._set_attr('_stream_id', stream_id)
 
     helper.append_op(
         type="map",

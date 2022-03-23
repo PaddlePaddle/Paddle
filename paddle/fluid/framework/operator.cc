@@ -1110,9 +1110,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = HasAttr("stream_id") ? 
+  auto* dev_ctx = HasAttr("_stream_id") ? 
             platform::AsyncDeviceContextPool::Instance().Get(
-                place, Attr<int>("stream_id")) : nullptr;
+                place, Attr<int>("_stream_id")) : nullptr;
   if (dev_ctx == nullptr) {
     dev_ctx = pool.Get(place);
   }

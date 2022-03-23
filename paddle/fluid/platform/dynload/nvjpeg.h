@@ -40,6 +40,8 @@ extern void *nvjpeg_dso_handle;
 #define NVJPEG_RAND_ROUTINE_EACH(__macro)         \
   __macro(nvjpegCreateSimple);                    \
   __macro(nvjpegCreateEx);                        \
+  __macro(nvjpegSetDeviceMemoryPadding);          \
+  __macro(nvjpegSetPinnedMemoryPadding);          \
   __macro(nvjpegJpegStateCreate);                 \
   __macro(nvjpegJpegStreamCreate);                \
   __macro(nvjpegDecodeParamsCreate);              \

@@ -28,7 +28,6 @@ class MapOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const {
-    OP_INOUT_CHECK(ctx->HasInputs("In"), "Input", "In", "MapOp");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
   }
 
@@ -42,7 +41,6 @@ class MapOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
       const platform::Place& dev_place) const override {
-    // LOG(ERROR) << "MapOpKernel RunImpl enter";
     // Step1: get output vars and attrs
     auto inputs = Inputs("In");
     std::vector<Variable*> input_vars;
@@ -72,14 +70,12 @@ class MapOp : public framework::OperatorBase {
                     map_block, program_id, &scope, dev_place,
                     input_var_names, output_var_names,
                     input_queues, output_queues);
-    // LOG(ERROR) << "MapOpKernel RunImpl finish";
   }
 };
 
 class MapInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("In"), "Input", "In", "MapOp");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MapOp");
   }
 };

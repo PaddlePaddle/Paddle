@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/operators/data/nvjpeg_decoder.h"
+#include "paddle/fluid/operators/data/image_decoder.h"
 
 namespace paddle {
 namespace operators {

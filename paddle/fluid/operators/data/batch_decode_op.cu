@@ -23,8 +23,6 @@ namespace data {
 
 using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
 
-// static NvjpegDecoderThreadPool* decode_pool = nullptr;
-
 template <typename T>
 class GPUBatchDecodeKernel : public framework::OpKernel<T> {
  public:
@@ -34,16 +32,16 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
     auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     auto program_id = ctx.Attr<int64_t>("program_id");
-    
-    // // multi-phrase decode thread pool
-    // if (!decode_pool) {
-    //   LOG(ERROR) << "GPUBatchDecodeJpegKernel decode_pool init";
-    //   decode_pool = new NvjpegDecoderThreadPool(num_threads, mode, local_rank);
-    // }
-    auto* decode_pool = 
-      DecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
-                          program_id, num_threads, mode, local_rank);
+    auto host_memory_padding = ctx.Attr<int64_t>("host_memory_padding");
+    auto device_memory_padding = ctx.Attr<int64_t>("device_memory_padding");
 
+    // multi-phrase decode thread pool
+    auto* decode_pool = 
+      ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
+                          program_id, num_threads, mode, local_rank,
+                          static_cast<size_t>(host_memory_padding),
+                          static_cast<size_t>(device_memory_padding));
+    
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
 
@@ -56,14 +54,14 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
       auto* x_data = x.data<T>();
       size_t x_numel = static_cast<size_t>(x.numel());
 
-      NvjpegDecodeTask task = {
+      ImageDecodeTask task = {
         .bit_stream = x_data,
         .bit_len = x_numel,
         .tensor = &out_array[i],
         .roi_generator = nullptr,
         .place = ctx.GetPlace()
       };
-      decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
+      decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
     }
 
     decode_pool->RunAll(true);

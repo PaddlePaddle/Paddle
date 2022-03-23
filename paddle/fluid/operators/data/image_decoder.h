@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include <map>
 
 #ifdef PADDLE_WITH_OPENCV
   #include <opencv2/opencv.hpp>
@@ -34,12 +35,18 @@ namespace operators {
 namespace data {
 
 static int dev_malloc(void **p, size_t s) { return (int)cudaMalloc(p, s); }
-static int dev_free(void *p) { return (int)cudaFree(p);  }
 
-static int host_malloc(void** p, size_t s, unsigned int f) { return (int)cudaHostAlloc(p, s, f); }
-static int host_free(void* p) { return (int)cudaFreeHost(p);  }
+static int dev_free(void *p) { return (int)cudaFree(p); }
 
-struct NvjpegDecodeTask {
+static int host_malloc(void** p, size_t s, unsigned int f) {
+  return (int)cudaHostAlloc(p, s, f);
+}
+
+static int host_free(void* p) {
+  return (int)cudaFreeHost(p);
+}
+
+struct ImageDecodeTask {
   const uint8_t* bit_stream;
   size_t bit_len;
   framework::LoDTensor* tensor;
@@ -47,29 +54,31 @@ struct NvjpegDecodeTask {
   platform::Place place;
 };
 
-class NvjpegDecoder {
+class ImageDecoder {
   public:
-    NvjpegDecoder(const std::string mode, int dev_id);
+    ImageDecoder(const std::string mode, int dev_id,
+                 size_t host_memory_padding=0,
+                 size_t device_memory_padding=0);
 
-    ~NvjpegDecoder();
+    ~ImageDecoder();
 
     void Run(const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out, 
              RandomROIGenerator* roi_generator, platform::Place& place);
 
   private:
-    DISABLE_COPY_AND_ASSIGN(NvjpegDecoder);
-#ifdef PADDLE_WITH_OPENCV
-    void CPUDecodeRandomCropResize(const uint8_t* data, size_t length,
-                                RandomROIGenerator* roi_generator,
-                                unsigned char* workspace, size_t workspace_size,
-                                framework::LoDTensor& temp, framework::LoDTensor* out, platform::Place place);
-#endif
-    int ParseDecodeParams(
+    DISABLE_COPY_AND_ASSIGN(ImageDecoder);
+
+    void CPUDecodeRandomCrop(const uint8_t* data, size_t length,
+                             RandomROIGenerator* roi_generator,
+                             unsigned char* workspace, size_t workspace_size,
+                             framework::LoDTensor* out, platform::Place place);
+
+    nvjpegStatus_t ParseDecodeParams(
         const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
         RandomROIGenerator* roi_generator, nvjpegImage_t* out_image,
         platform::Place place);
 
-    void Decode(const uint8_t* bit_stream, size_t bit_len, nvjpegImage_t* out_image);
+    nvjpegStatus_t GPUDecodeRandomCrop(const uint8_t* bit_stream, size_t bit_len, nvjpegImage_t* out_image);
 
 
     cudaStream_t cuda_stream_ = nullptr;
@@ -90,13 +99,15 @@ class NvjpegDecoder {
     const std::string mode_;
 };
 
-class NvjpegDecoderThreadPool {
+class ImageDecoderThreadPool {
   public:
-    NvjpegDecoderThreadPool(const int num_threads, const std::string mode, const int dev_id);
+    ImageDecoderThreadPool(const int num_threads, const std::string mode,
+                           const int dev_id, size_t host_memory_padding,
+                           size_t device_memory_padding);
 
-    ~NvjpegDecoderThreadPool();
+    ~ImageDecoderThreadPool();
 
-    void AddTask(std::shared_ptr<NvjpegDecodeTask> task);
+    void AddTask(std::shared_ptr<ImageDecodeTask> task);
 
     void RunAll(const bool wait, const bool sort = true);
 
@@ -105,17 +116,18 @@ class NvjpegDecoderThreadPool {
     void ShutDown();
 
   private:
-    DISABLE_COPY_AND_ASSIGN(NvjpegDecoderThreadPool);
+    DISABLE_COPY_AND_ASSIGN(ImageDecoderThreadPool);
 
     void SortTaskByLengthDescend();
 
-    void ThreadLoop(const int thread_idx);
+    void ThreadLoop(const int thread_idx, const size_t host_memory_padding,
+                    const size_t device_memory_padding);
 
     std::vector<std::thread> threads_;
     std::string mode_;
     int dev_id_;
 
-    std::deque<std::shared_ptr<NvjpegDecodeTask>> task_queue_;
+    std::deque<std::shared_ptr<ImageDecodeTask>> task_queue_;
     std::mutex mutex_;
 
     bool shutdown_;
@@ -127,34 +139,39 @@ class NvjpegDecoderThreadPool {
     int outstand_tasks_;
 };
 
-class DecoderThreadPoolManager {
+class ImageDecoderThreadPoolManager {
  private:
-  DISABLE_COPY_AND_ASSIGN(DecoderThreadPoolManager);
+  DISABLE_COPY_AND_ASSIGN(ImageDecoderThreadPoolManager);
 
-  static DecoderThreadPoolManager *pm_instance_ptr_;
+  static ImageDecoderThreadPoolManager *pm_instance_ptr_;
   static std::mutex m_;
 
-  std::map<int64_t, std::unique_ptr<NvjpegDecoderThreadPool>> prog_id_to_pool_;
+  std::map<int64_t, std::unique_ptr<ImageDecoderThreadPool>> prog_id_to_pool_;
 
  public:
-  static DecoderThreadPoolManager* Instance() {
+  static ImageDecoderThreadPoolManager* Instance() {
     if (pm_instance_ptr_ == nullptr) {
       std::lock_guard<std::mutex> lk(m_);
       if (pm_instance_ptr_ == nullptr) {
-        pm_instance_ptr_ = new DecoderThreadPoolManager;
+        pm_instance_ptr_ = new ImageDecoderThreadPoolManager;
       }
     }
     return pm_instance_ptr_;
   }
 
-  NvjpegDecoderThreadPool* GetDecoderThreadPool(
+  ImageDecoderThreadPool* GetDecoderThreadPool(
       const int64_t program_id, const int num_threads,
-      const std::string mode, const int dev_id) {
+      const std::string mode, const int dev_id,
+      const size_t host_memory_padding,
+      const size_t device_memory_padding) {
     auto iter = prog_id_to_pool_.find(program_id);
     if (iter == prog_id_to_pool_.end()) {
+      LOG(ERROR) << "GetDecoderThreadPool new";
       prog_id_to_pool_[program_id] = 
-        std::unique_ptr<NvjpegDecoderThreadPool>(
-            new NvjpegDecoderThreadPool(num_threads, mode, dev_id));
+        std::unique_ptr<ImageDecoderThreadPool>(
+            new ImageDecoderThreadPool(num_threads, mode, dev_id,
+                                       host_memory_padding,
+                                       device_memory_padding));
     }
     return prog_id_to_pool_[program_id].get();
   }
@@ -177,9 +194,11 @@ class DecoderThreadPoolManager {
     }
   }
 
-  DecoderThreadPoolManager() { VLOG(1) << "DecoderThreadPoolManager init"; }
+  ImageDecoderThreadPoolManager() {
+    VLOG(1) << "ImageDecoderThreadPoolManager init";
+  }
 
-  ~DecoderThreadPoolManager() {
+  ~ImageDecoderThreadPoolManager() {
     VLOG(1) << "~DecoderThreadPoolManager";
     ShutDown();
   }

@@ -65,7 +65,6 @@ template <typename T>
 class RandomFlipCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "RandomFlipCPUKernel enter";
     const Tensor* x = ctx.Input<Tensor>("X");
     Tensor* out = ctx.Output<Tensor>("Out");
 
@@ -77,7 +76,6 @@ class RandomFlipCPUKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < x->dims()[0]; i++) {
       data[i] = generator->Generate();
     }
-    LOG(ERROR) << "RandomFlipCPUKernel finish";
   }
 };
 

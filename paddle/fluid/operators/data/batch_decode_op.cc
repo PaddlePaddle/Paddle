@@ -82,6 +82,14 @@ and 255.
                      "(int64_t)"
                      "The unique hash id used as cache key for "
                      "decode thread pool");
+    AddAttr<int64_t>(
+        "host_memory_padding",
+        "(int64, default 0), pinned memory allocation padding number for Nvjpeg decoding")
+        .SetDefault(0);
+    AddAttr<int64_t>(
+        "device_memory_padding",
+        "(int64, default 0), device memory allocation padding number for Nvjpeg decoding")
+        .SetDefault(0);
   }
 };
 

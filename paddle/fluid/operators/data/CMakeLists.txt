@@ -13,9 +13,9 @@ cc_library(map_runner SRCS map_runner.cc DEPS parallel_executor simple_threadpoo
 op_library(map_op SRCS map_op.cc map_op.cu.cc DEPS map_runner ${OP_HEADER_DEPS})
 
 cc_library(random_roi_generator SRCS random_roi_generator.cc DEPS ${OP_HEADER_DEPS})
-cc_library(nvjpeg_decoder SRCS nvjpeg_decoder.cc DEPS random_roi_generator ${OP_HEADER_DEPS} ${OpenCV_LIBS})
-op_library(batch_decode_random_crop_op SRCS batch_decode_random_crop_op.cc batch_decode_random_crop_op.cu DEPS nvjpeg_decoder ${OP_HEADER_DEPS})
-op_library(batch_decode_op SRCS batch_decode_op.cc batch_decode_op.cu DEPS nvjpeg_decoder ${OP_HEADER_DEPS})
+cc_library(image_decoder SRCS image_decoder.cc DEPS random_roi_generator ${OP_HEADER_DEPS} ${OpenCV_LIBS})
+op_library(batch_decode_random_crop_op SRCS batch_decode_random_crop_op.cc batch_decode_random_crop_op.cu DEPS image_decoder ${OP_HEADER_DEPS})
+op_library(batch_decode_op SRCS batch_decode_op.cc batch_decode_op.cu DEPS image_decoder ${OP_HEADER_DEPS})
 
 op_library(random_crop_and_resize_op SRCS random_crop_and_resize_op.cc random_crop_and_resize_op.cu DEPS ${OP_HEADER_DEPS})
 op_library(batch_resize_op SRCS batch_resize_op.cc batch_resize_op.cu DEPS ${OP_HEADER_DEPS})

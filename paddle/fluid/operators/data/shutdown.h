@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/operators/data/data_reader_op.h"
-#include "paddle/fluid/operators/data/nvjpeg_decoder.h"
+#include "paddle/fluid/operators/data/image_decoder.h"
 #include "paddle/fluid/operators/data/map_runner.h"
 #include "paddle/fluid/operators/data/pipeline.h"
 
@@ -23,25 +23,25 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-extern NvjpegDecoderThreadPool* decode_pool;
+extern ImageDecoderThreadPool* decode_pool;
 
 void ShutDownAllDataLoaders() {
-  LOG(ERROR) << "ShutDownAllDataLoaders enter";
+  VLOG(4) << "ShutDownAllDataLoaders enter";
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDown();
-  LOG(ERROR) << "ShutDownAllDataLoaders reader_wrapper shutdown finish";
+  // LOG(ERROR) << "ShutDownAllDataLoaders reader_wrapper shutdown finish";
   
   // step 2: shutdown decoder
   if (decode_pool) decode_pool->ShutDown();
-  LOG(ERROR) << "ShutDownAllDataLoaders decode_pool shutdown finish";
+  // LOG(ERROR) << "ShutDownAllDataLoaders decode_pool shutdown finish";
 
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
-  LOG(ERROR) << "ShutDownAllDataLoaders MapRunner shutdown finish";
+  // LOG(ERROR) << "ShutDownAllDataLoaders MapRunner shutdown finish";
   
   // step 3: shutdown Pipeline
   PipelineManager::Instance()->ShutDown();
-  LOG(ERROR) << "ShutDownAllDataLoaders Pipeline shutdown finish";
+  VLOG(4) << "ShutDownAllDataLoaders Pipeline shutdown finish";
 }
 
 void ShutDownReadersAndDecoders(const int64_t program_id) {
@@ -50,7 +50,7 @@ void ShutDownReadersAndDecoders(const int64_t program_id) {
   ReaderManager::Instance()->ShutDownReader(program_id);
 
   // step 2: shutdown decoder
-  DecoderThreadPoolManager::Instance()->ShutDownDecoder(program_id);
+  ImageDecoderThreadPoolManager::Instance()->ShutDownDecoder(program_id);
   LOG(ERROR) << "ShutDownReadersAndDecoders finish";
 }
 

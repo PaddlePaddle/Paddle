@@ -132,6 +132,14 @@ and 255.
         "for optionally converting the image, can be \"unchanged\" "
         ",\"gray\" , \"rgb\" .")
         .SetDefault("unchanged");
+    AddAttr<int64_t>(
+        "host_memory_padding",
+        "(int64, default 0), pinned memory allocation padding number for Nvjpeg decoding")
+        .SetDefault(0);
+    AddAttr<int64_t>(
+        "device_memory_padding",
+        "(int64, default 0), device memory allocation padding number for Nvjpeg decoding")
+        .SetDefault(0);
     AddAttr<std::string>(
         "data_layout",
         "(string, default NCHW) Only used in "

@@ -42,7 +42,6 @@ template <typename T>
 class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "MirrorNormalizeCUDAKernel Compute start";
     auto* x = ctx.Input<LoDTensor>("X");
     auto* mirror  = ctx.Input<LoDTensor>("Mirror");
     auto* out = ctx.Output<LoDTensor>("Out");
@@ -81,7 +80,6 @@ class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
     KeMirrorNormalize<T><<<config.block_per_grid, config.thread_per_block,
                            0, dev_ctx.stream()>>>(
         numel, x_data, mirror_data, out_data, mean_data, std_data, chw, hw, w);
-    LOG(ERROR) << "MirrorNormalizeCUDAKernel Compute finish";
   }
 };
 

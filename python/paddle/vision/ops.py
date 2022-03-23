@@ -867,7 +867,9 @@ def read_file(filename, name=None):
     return out
 
 
-def image_decode(x, mode='unchanged', num_threads=2, name=None):
+def image_decode(x, mode='unchanged', num_threads=2,
+                 host_memory_padding=0, device_memory_padding=0,
+                 name=None):
     """
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
     Optionally converts the image to the desired format. 
@@ -910,13 +912,17 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode(
                 x, out, "mode", mode, "num_threads", num_threads,
-                "local_rank", local_rank, "program_id", program_id)
+                "local_rank", local_rank, "program_id", program_id,
+                "host_memory_padding", host_memory_padding,
+                "device_memory_padding", device_memory_padding)
 
     inputs = {'X': x}
     attrs = {"mode": mode,
              "num_threads": num_threads,
              "local_rank": local_rank,
-             "program_id": utils._hash_with_id(default_main_program())}
+             "program_id": utils._hash_with_id(default_main_program()),
+             "host_memory_padding": host_memory_padding,
+             "device_memory_padding": device_memory_padding}
 
     helper = LayerHelper("batch_decode", **locals())
     out = helper.create_variable(
@@ -932,6 +938,8 @@ def image_decode(x, mode='unchanged', num_threads=2, name=None):
 def image_decode_random_crop(x,
                              mode='unchanged',
                              num_threads=2,
+                             host_memory_padding=0,
+                             device_memory_padding=0,
                              data_layout='NCHW',
                              aspect_ratio_min=3./4.,
                              aspect_ratio_max=4./3.,
@@ -983,16 +991,20 @@ def image_decode_random_crop(x,
                 core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode_random_crop(
-                x, out, "mode", mode, "num_threads", num_threads, "data_layout", data_layout,
-                "aspect_ratio_min", aspect_ratio_min,
-                "aspect_ratio_max", aspect_ratio_max,
+                x, out, "mode", mode, "num_threads", num_threads,
+                "data_layout", data_layout, "aspect_ratio_min",
+                aspect_ratio_min, "aspect_ratio_max", aspect_ratio_max,
                 "area_min", area_min, "area_max", area_max,
                 "num_attempts", num_attempts, "local_rank", local_rank,
-                "program_id", program_id)
+                "program_id", program_id,
+                "host_memory_padding", host_memory_padding,
+                "device_memory_padding", device_memory_padding)
 
     inputs = {'X': x}
     attrs = {"mode": mode,
              "num_threads": num_threads,
+             "host_memory_padding": host_memory_padding,
+             "device_memory_padding": device_memory_padding,
              "data_layout": data_layout,
              "aspect_ratio_min": aspect_ratio_min,
              "aspect_ratio_max": aspect_ratio_max,
@@ -1018,20 +1030,20 @@ def random_flip(x, prob=0.5, name=None):
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
 
-    # rand_vec = layers.uniform_random_batch_size_like(
-    #                                 x, [1, 1], min=0., max=1.)
-    # return rand_vec < prob
-    helper = LayerHelper("random_flip", **locals())
-    out = helper.create_variable(
-        name=unique_name.generate("random_flip"),
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        dtype=core.VarDesc.VarType.BOOL)
-    helper.append_op(
-        type="random_flip",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"probability": prob})
-    return out
+    rand_vec = layers.uniform_random_batch_size_like(
+                                    x, [1, 1], min=0., max=1.)
+    return rand_vec < prob
+    # helper = LayerHelper("random_flip", **locals())
+    # out = helper.create_variable(
+    #     name=unique_name.generate("random_flip"),
+    #     type=core.VarDesc.VarType.LOD_TENSOR,
+    #     dtype=core.VarDesc.VarType.BOOL)
+    # helper.append_op(
+    #     type="random_flip",
+    #     inputs={"X": x},
+    #     outputs={"Out": out},
+    #     attrs={"probability": prob})
+    # return out
 
 
 def mirror_normalize(x, mirror,
