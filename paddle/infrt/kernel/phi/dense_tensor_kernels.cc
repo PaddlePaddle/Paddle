@@ -18,6 +18,7 @@
 #include "paddle/infrt/kernel/phi/context_kernels.h"
 #include "paddle/infrt/paddle/model_parser.h"
 #include "paddle/infrt/paddle/scope.h"
+#include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 
@@ -146,9 +147,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 #undef PRINT_META_DATA
 }
 
-::infrt::phi::DenseTensorMap LoadParams(
-    host_context::Attribute<std::string> path) {
-  const auto& file_path = path.get();
+::infrt::phi::DenseTensorMap LoadParameters(const std::string& file_path) {
   std::cout << "loading params from: " << file_path << std::endl;
   ::infrt::phi::DenseTensorMap map;
 
@@ -180,17 +179,20 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
-::infrt::phi::DenseTensorMap LoadCombinedParams(
-    host_context::Attribute<std::string> model_path,
-    host_context::Attribute<std::string> params_path) {
-  const auto& model = model_path.get();
-  std::cout << "loading params from: " << model << std::endl;
+::infrt::phi::DenseTensorMap LoadParams(
+    host_context::Attribute<std::string> path) {
+  return LoadParameters(path.get());
+}
+
+::infrt::phi::DenseTensorMap LoadCombinedParameters(
+    const std::string& model_path, const std::string& params_path) {
+  std::cout << "loading params from: " << model_path << std::endl;
   ::infrt::phi::DenseTensorMap map;
 
-  auto pb_proto_prog = paddle::LoadProgram(model);
+  auto pb_proto_prog = paddle::LoadProgram(model_path);
   auto main_block = pb_proto_prog->blocks(0);
 
-  std::ifstream param_file(params_path.get(), std::ios::binary);
+  std::ifstream param_file(params_path, std::ios::binary);
 
   std::set<std::string> tmp;
   for (auto& var : main_block.vars()) {
@@ -216,6 +218,12 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
+::infrt::phi::DenseTensorMap LoadCombinedParams(
+    host_context::Attribute<std::string> model_path,
+    host_context::Attribute<std::string> params_path) {
+  return LoadCombinedParameters(model_path.get(), params_path.get());
+}
+
 ::phi::DenseTensor TensorMapGetTensor(
     const ::infrt::phi::DenseTensorMap& map,
     host_context::Attribute<std::string> name) {
@@ -226,6 +234,35 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
   return map.size();
+}
+
+::phi::DenseTensor ConvertHostTensor(::infrt::tensor::DenseHostTensor&& tensor,
+                                     ::phi::Allocator* host_allocator) {
+  std::vector<int64_t> dims;
+  dims.reserve(tensor.shape().GetRank());
+  for (const auto dim : tensor.shape()) {
+    dims.emplace_back(dim);
+  }
+  CHECK(tensor.dtype().kind() == ::infrt::DType::Kind::F32);
+  ::phi::DenseTensorMeta meta(::phi::DataType::FLOAT32, ::phi::make_ddim(dims));
+  ::phi::DenseTensor phi_tensor(host_allocator, std::move(meta));
+  void* src = tensor.raw_data();
+  void* dst = phi_tensor.data();
+  size_t bytes = sizeof(float) * tensor.shape().GetNumElements();
+  std::memcpy(dst, src, bytes);
+  return phi_tensor;
+}
+
+::infrt::phi::DenseTensorMap ConvertHostTensorMap(
+    ::infrt::tensor::TensorMap&& map, ::phi::Allocator* host_allocator) {
+  ::infrt::phi::DenseTensorMap phi_tensors;
+  for (auto& pair : map) {
+    phi_tensors.SetDenseTensor(
+        pair.first,
+        std::make_unique<::phi::DenseTensor>(
+            ConvertHostTensor(std::move(*pair.second), host_allocator)));
+  }
+  return phi_tensors;
 }
 
 }  // namespace phi

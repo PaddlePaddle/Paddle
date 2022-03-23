@@ -45,6 +45,9 @@ class TensorShape {
     return !(a == b);
   }
 
+  const int64_t* begin() const { return dims_.begin(); }
+  const int64_t* end() const { return dims_.end(); }
+
  private:
   llvm::SmallVector<int64_t, 4> dims_;
 };
