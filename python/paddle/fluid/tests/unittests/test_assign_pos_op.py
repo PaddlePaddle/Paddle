@@ -77,7 +77,7 @@ def get_redefined_allclose(cum_count):
                  "core is not compiled with CUDA")
 class TestAssignPosOpInt64(op_test.OpTest):
     def setUp(self):
-        x = np.random.randint(0, 16, size=(1000, 2)).astype("int64")
+        x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
         cum_count = np.cumsum(y).astype(x.dtype)
         self.op_type = "assign_pos"
