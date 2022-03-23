@@ -18,7 +18,7 @@ import six
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, _non_static_mode, cpu_places, _current_expected_place, _in_legacy_dygraph
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, _non_static_mode, cpu_places, _current_expected_place, _in_eager_without_dygraph_check
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
@@ -969,7 +969,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def __next__(self):
         try:
-            if not _in_legacy_dygraph():
+            if _in_eager_without_dygraph_check():
                 return core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0])
             else:

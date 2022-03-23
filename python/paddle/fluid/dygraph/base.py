@@ -25,7 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import _get_paddle_place, _in_legacy_dygraph
+from ..framework import _get_paddle_place, _in_legacy_dygraph, _in_eager_without_dygraph_check
 import paddle
 
 __all__ = [
@@ -566,7 +566,7 @@ def grad(outputs,
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
-                if not _in_legacy_dygraph():
+                if _in_eager_without_dygraph_check():
                     assert isinstance(
                         each_var, core.eager.
                         Tensor), "Elements of {} must be Tensor".format(name)
@@ -577,7 +577,7 @@ def grad(outputs,
                             name)
             return in_out_list
         else:
-            if not _in_legacy_dygraph():
+            if _in_eager_without_dygraph_check():
                 assert isinstance(
                     in_out_list, core.eager.
                     Tensor), "{} must be Tensor or list of Tensor".format(name)
@@ -596,7 +596,7 @@ def grad(outputs,
 
         for each_var in grad_outputs:
             if each_var is not None:
-                if not _in_legacy_dygraph():
+                if _in_eager_without_dygraph_check():
                     assert isinstance(
                         each_var, core.eager.Tensor
                     ), "grad_outputs must be None, a Variable or a list containing None or Variables"
@@ -620,7 +620,7 @@ def grad(outputs,
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            if not _in_legacy_dygraph():
+            if _in_eager_without_dygraph_check():
                 assert isinstance(
                     var,
                     core.eager.Tensor), "no_grad_vars can only contains Tensor"
@@ -629,7 +629,7 @@ def grad(outputs,
                     var,
                     core.VarBase), "no_grad_vars can only contains Variable"
     else:
-        if not _in_legacy_dygraph():
+        if _in_eager_without_dygraph_check():
             raise AssertionError(
                 "no_grad_vars must be None, Tensor or list/tuple/set of Tensors")
         else:
@@ -650,7 +650,7 @@ def grad(outputs,
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
 
-    if not _in_legacy_dygraph():
+    if _in_eager_without_dygraph_check():
         return core.eager.run_partial_grad(
             outputs, inputs, grad_outputs, retain_graph, create_graph,
             only_inputs, allow_unused, no_grad_vars)
@@ -754,7 +754,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        if not _in_legacy_dygraph():
+        if _in_eager_without_dygraph_check():
             return core.eager.Tensor(value,
                                      framework._current_expected_place(), False,
                                      zero_copy, name if name else None, True)

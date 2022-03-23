@@ -30,7 +30,7 @@ from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dty
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
 
 __all__ = []
 
@@ -164,7 +164,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    if not _in_legacy_dygraph() and isinstance(data, np.ndarray):
+    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
         return core.eager.Tensor(
             value=data,
             place=place,

@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, _non_static_mode, _current_expected_place, _in_legacy_dygraph
+from .framework import Variable, default_main_program, default_startup_program, _non_static_mode, _current_expected_place, _in_eager_without_dygraph_check
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -82,7 +82,7 @@ class LayerHelperBase(object):
 
         """
         if isinstance(value, np.ndarray):
-            if not _in_legacy_dygraph():
+            if _in_eager_without_dygraph_check():
                 return core.eager.Tensor(value,
                                          _current_expected_place(), False,
                                          False, name if name else None, True)

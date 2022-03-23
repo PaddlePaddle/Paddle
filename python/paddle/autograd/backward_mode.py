@@ -107,7 +107,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
                     each_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
     else:
-        if not framework._in_legacy_dygraph():
+        if framework._in_eager_mode_:
             grad_tensors = []
         else:
             grad_tensors = [None] * len(tensors)
@@ -118,7 +118,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
-    if not framework._in_legacy_dygraph():
+    if framework._in_eager_mode_:
         core.eager.run_backward(tensors, grad_tensors, retain_graph)
     else:
         core.dygraph_run_backward(tensors, grad_tensors, retain_graph,

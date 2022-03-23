@@ -42,7 +42,7 @@ from .. import compat as cpt
 from .lr import LRScheduler
 import copy
 from paddle import _C_ops
-from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 __all__ = []
 
@@ -605,8 +605,8 @@ class Optimizer(object):
             persistable=True,
             dtype=dtype or param.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR
-            if not framework._in_legacy_dygraph() else (param.type if
-                                                        type is None else type),
+            if framework._in_eager_without_dygraph_check() else
+            (param.type if type is None else type),
             shape=shape,
             belong_to_optimizer=True)
         if device is None:
@@ -1110,7 +1110,7 @@ class Optimizer(object):
                     if not p.stop_gradient:
                         param_list.append(p)
 
-        if not _in_legacy_dygraph():
+        if _in_eager_without_dygraph_check():
             for p in param_list:
                 clear_func = p._zero_grads if set_to_zero else p.clear_gradient
                 clear_func()

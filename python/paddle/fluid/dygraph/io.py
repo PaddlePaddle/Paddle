@@ -536,7 +536,7 @@ def _load_persistable_vars_by_program(model_path,
         orig_each_name = program_holder._suffix_varname_dict[each_var.name()]
         if _is_parameter(each_var, program_holder.infer_program):
             # create output varbase
-            if not framework._in_legacy_dygraph():
+            if framework._in_eager_without_dygraph_check():
                 new_var = framework.EagerParamBase(
                     shape=each_var.shape(),
                     dtype=each_var.dtype(),
@@ -629,7 +629,7 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
         # create output varbase
         if extra_var_info[name].get('trainable', None) is not None:
             # use default shape and dtype
-            if not framework._in_legacy_dygraph():
+            if framework._in_eager_without_dygraph_check():
                 new_var = framework.EagerParamBase(
                     shape=[
                         1
@@ -765,7 +765,7 @@ def _construct_params_and_buffers(model_path,
 def _valid_vars(vars):
     if vars:
         return vars
-    if not framework._in_legacy_dygraph():
+    if framework._in_eager_without_dygraph_check():
         return [
             core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
                               core.VarDesc.VarType.RAW, False)
@@ -788,7 +788,7 @@ def _run_dygraph(instance, input, program_holder):
                 % type(value))
         # NOTE: In order to unify the API, firstly convert the input to VarBase
         if isinstance(value, np.ndarray):
-            if not framework._in_legacy_dygraph():
+            if framework._in_eager_without_dygraph_check():
                 var = core.eager.Tensor(
                     value=value,
                     name=program_holder.input_descs[i].name(),
@@ -827,7 +827,7 @@ def _run_dygraph(instance, input, program_holder):
 
     output_vars = []
     for var_desc in program_holder.output_descs:
-        if not framework._in_legacy_dygraph():
+        if framework._in_eager_without_dygraph_check():
             var = core.eager.Tensor(
                 dtype=var_desc.dtype(),
                 dims=var_desc.shape(),
@@ -841,7 +841,7 @@ def _run_dygraph(instance, input, program_holder):
         output_vars.append(var)
 
     # hold forward variables
-    if not framework._in_legacy_dygraph():
+    if framework._in_eager_without_dygraph_check():
         tmp_scope_vec = [program_holder.scope]
     else:
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
@@ -851,7 +851,7 @@ def _run_dygraph(instance, input, program_holder):
 
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
-        if not framework._in_legacy_dygraph():
+        if framework._in_eager_without_dygraph_check():
             var = core.eager.Tensor(
                 dtype=var_desc.dtype(),
                 dims=var_desc.shape(),
