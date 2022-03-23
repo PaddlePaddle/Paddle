@@ -135,6 +135,14 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
                              DenseTensor* d_dout,
                              DenseTensor* d_ddx);
 
+template <typename T, typename Context>
+void LogDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
+
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Tan);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Acos);
@@ -149,6 +157,10 @@ DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Atanh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Silu);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid);
+DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Log);
+DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Log2);
+DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Log10);
+DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Log1p);
 
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh);
