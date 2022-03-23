@@ -1094,7 +1094,7 @@ def yolov3_loss(x,
         raise TypeError(
             "Attr use_label_smooth of yolov3_loss must be a bool value")
 
-    if _in_eager_mode():
+    if in_dygraph_mode():
         attrs = ("anchors", anchors, "anchor_mask", anchor_mask, "class_num",
                  class_num, "ignore_thresh", ignore_thresh, "downsample_ratio",
                  downsample_ratio, "use_label_smooth", use_label_smooth,
