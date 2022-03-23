@@ -420,7 +420,7 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
                         scale=self.scale,
                         return_softmax=True,
                         reduction=None,
-                        group=False)
+                        group=True)
 
         self.assertRaises(ValueError, test_dim)
         self.assertRaises(NotImplementedError, test_label_type)

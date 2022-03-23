@@ -241,7 +241,6 @@ class TestClassCenterSampleAPIError1(unittest.TestCase):
 
                     remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
                         label, self.num_classes, self.num_samples)
-                    print(remapped_label, sampled_class_index)
 
         def test_group_value():
             for place in self.places:
@@ -253,8 +252,7 @@ class TestClassCenterSampleAPIError1(unittest.TestCase):
                     label = paddle.to_tensor(label_np)
 
                     remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
-                        label, self.num_classes, self.num_samples)
-                    print(remapped_label, sampled_class_index)
+                        label, self.num_classes, self.num_samples, group=True)
 
         self.assertRaises(ValueError, test_empty_label)
         self.assertRaises(ValueError, test_group_value)

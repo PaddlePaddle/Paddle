@@ -1126,7 +1126,12 @@ def margin_cross_entropy(logits,
     could be referred to https://arxiv.org/abs/1801.07698.
 
     .. hint::
-        The API supports model parallel and single GPU. And logits.shape[-1] can be different at each rank.
+        The API single GPU and multi GPU, and don't supports CPU.
+
+        For data parallel mode, set ``group=False``.
+
+        For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
+        And logits.shape[-1] can be different at each rank.
 
     Args:
         logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
@@ -1136,8 +1141,9 @@ def margin_cross_entropy(logits,
         margin2 (float, optional): m2 of margin loss, default value is `0.5`.
         margin3 (float, optional): m3 of margin loss, default value is `0.0`.
         scale (float, optional): s of margin loss, default value is `64.0`.
-        group (Group, optional): The abstract representation of group, see paddle.distributed.collective.Group.
-            Default `None`.
+        group (Group, optional): The group instance return by paddle.distributed.new_group 
+            or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
+            Default is ``None``.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
         reduction (str, optional): The candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'mean'``, return the average of loss;
@@ -1296,10 +1302,13 @@ def margin_cross_entropy(logits,
     """
 
     assert reduction in ['mean', 'sum', 'none', None]
-    if group != False and group is not None and not group.is_member():
+    if not (group == False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
              (got group: {})'.format(group))
+        return
+
+    if hasattr(group, 'is_member') and not group.is_member():
         return
 
     ring_id = 0
