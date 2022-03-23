@@ -1761,6 +1761,7 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("size", &Scope::Size)
       .def("erase", &Scope::EraseVars, py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
@@ -2857,6 +2858,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
+             platform::RecordEvent record_event(
+                 "StandaloneExecutor:run",
+                 platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
