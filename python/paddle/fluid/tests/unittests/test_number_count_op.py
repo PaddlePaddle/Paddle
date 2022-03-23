@@ -43,7 +43,7 @@ class TestNumberCountOpInt64(op_test.OpTest):
         x = np.random.randint(-1, upper_num, size=(1000, 2)).astype('int64')
         self.inputs = {'numbers': x}
         self.outputs = {'Out': count(x, upper_num)}
-        self.attrs = {"upper_num": upper_num}
+        self.attrs = {"upper_range": upper_num}
 
     def test_forward(self):
         self.check_output_with_place(paddle.CUDAPlace(0))
