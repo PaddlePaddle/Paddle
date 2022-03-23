@@ -76,8 +76,8 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_hessian(func, xs, delta, np_dtype):
-    xs = _as_tensors(xs)
-    ys = _as_tensors(func(*xs))
+    xs = list(_as_tensors(xs))
+    ys = list(_as_tensors(func(*xs)))
     fin_size = len(xs)
     hessian = list([] for _ in range(fin_size))
     for i in range(fin_size):
@@ -107,10 +107,18 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
     return hessian
 
 
+def concat_to_matrix(xs, is_batched=False):
+    """Concats a tuple of tuple of Jacobian/Hessian matrix into one matrix"""
+    rows = []
+    for i in range(len(xs)):
+        rows.append(np.concatenate([x for x in xs[i]], -1))
+    return np.concatenate(rows, 1) if is_batched else np.concatenate(rows, 0)
+
+
 def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
     no_batch_jacobian = _compute_numerical_jacobian(func, xs, delta, np_dtype)
-    xs = _as_tensors(xs)
-    ys = _as_tensors(func(*xs))
+    xs = list(_as_tensors(xs))
+    ys = list(_as_tensors(func(*xs)))
     fin_size = len(xs)
     fout_size = len(ys)
     bs = xs[0].shape[0]
@@ -123,11 +131,11 @@ def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
             out_size = jac_shape[0] // bs
             in_size = jac_shape[1] // bs
             jac = np.reshape(jac, (bs, out_size, bs, in_size))
-            batch_jac_i_j = np.zeros(shape=(bs, out_size, in_size))
-            for b in range(bs):
-                for p in range(out_size):
+            batch_jac_i_j = np.zeros(shape=(out_size, bs, in_size))
+            for p in range(out_size):
+                for b in range(bs):
                     for q in range(in_size):
-                        batch_jac_i_j[b][p][q] = jac[b][p][b][q]
+                        batch_jac_i_j[p][b][q] = jac[b][p][b][q]
             batch_jac_i.append(batch_jac_i_j)
         bat_jac.append(batch_jac_i)
 
@@ -135,7 +143,7 @@ def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
-    xs = _as_tensors(xs)
+    xs = list(_as_tensors(xs))
     batch_size = xs[0].shape[0]
     fin_size = len(xs)
     hessian = []
@@ -189,7 +197,7 @@ def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
 
 
 def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
-    xs = _as_tensors(xs)
+    xs = list(_as_tensors(xs))
     hessian = np.array(_compute_numerical_hessian(func, xs, delta, np_dtype))
     flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
     vhp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]

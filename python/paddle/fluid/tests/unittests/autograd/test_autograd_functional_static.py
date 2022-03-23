@@ -87,7 +87,7 @@ class TestVJP(unittest.TestCase):
 @param.parameterize(
     (param.TEST_CASE_NAME, 'fun', 'xs', 'v', 'expected_exception'), (
         ('v-shape-not-equal-ys', utils.square, np.random.rand(3),
-         np.random.rand(1), ValueError), ))
+         np.random.rand(1), RuntimeError), ))
 class TestVJPException(unittest.TestCase):
     def setUp(self):
         self.exe = paddle.static.Executor()

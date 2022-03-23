@@ -5,3 +5,6 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach(TEST_OP)
+
+set_tests_properties(test_autograd_functional PROPERTIES TIMEOUT 80)
+set_tests_properties(test_autograd_functional_staic PROPERTIES TIMEOUT 80)
