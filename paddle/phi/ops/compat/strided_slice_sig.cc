@@ -32,34 +32,34 @@ KernelSignature StridedSliceOpArgumentMapping(
   std::string starts_key =
       ctx.HasInput("StartsTensor")
           ? "StartsTensor"
-          : (ctx.HasInput("StartsTensorList")
+          : (ctx.InputSize("StartsTensorList") > 0
                  ? (use_attr_starts ? "starts" : "StartsTensorList")
                  : "starts");
   std::string ends_key =
       ctx.HasInput("EndsTensor")
           ? "EndsTensor"
-          : (ctx.HasInput("EndsTensorList")
-                 ? (use_attr_ends ? "starts" : "EndsTensorList")
+          : (ctx.InputSize("EndsTensorList") > 0
+                 ? (use_attr_ends ? "ends" : "EndsTensorList")
                  : "ends");
   std::string strides_key =
       ctx.HasInput("StridesTensor")
           ? "StridesTensor"
-          : (ctx.HasInput("StridesTensorList")
-                 ? (use_attr_strides ? "starts" : "StridesTensorList")
+          : (ctx.InputSize("StridesTensorList") > 0
+                 ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
   paddle::SmallVector<std::string> inputs = {"Input"};
   paddle::SmallVector<std::string> attrs = {"axes",
-                                             starts_key,
-                                             ends_key,
-                                             strides_key,
-                                             "infer_flags",
-                                             "decrease_axis"};
+                                            starts_key,
+                                            ends_key,
+                                            strides_key,
+                                            "infer_flags",
+                                            "decrease_axis"};
   paddle::SmallVector<std::string> outputs = {"Out"};
 
   // NOTE(dev): Use op_type to avoid regular.
   std::string op_type;
-  if (ctx.IsDenseTensorVectorInput("X")) {
+  if (ctx.IsDenseTensorVectorInput("Input")) {
     op_type = "strided_slice_array";
   } else {
     op_type = "strided_slice";
@@ -80,34 +80,34 @@ KernelSignature StridedSliceGradOpArgumentMapping(
   std::string starts_key =
       ctx.HasInput("StartsTensor")
           ? "StartsTensor"
-          : (ctx.HasInput("StartsTensorList")
+          : (ctx.InputSize("StartsTensorList") > 0
                  ? (use_attr_starts ? "starts" : "StartsTensorList")
                  : "starts");
   std::string ends_key =
       ctx.HasInput("EndsTensor")
           ? "EndsTensor"
-          : (ctx.HasInput("EndsTensorList")
-                 ? (use_attr_ends ? "starts" : "EndsTensorList")
+          : (ctx.InputSize("EndsTensorList") > 0
+                 ? (use_attr_ends ? "ends" : "EndsTensorList")
                  : "ends");
   std::string strides_key =
       ctx.HasInput("StridesTensor")
           ? "StridesTensor"
-          : (ctx.HasInput("StridesTensorList")
-                 ? (use_attr_strides ? "starts" : "StridesTensorList")
+          : (ctx.InputSize("StridesTensorList") > 0
+                 ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
   paddle::SmallVector<std::string> inputs = {"Input", GradVarName("Out")};
   paddle::SmallVector<std::string> attrs = {"axes",
-                                             starts_key,
-                                             ends_key,
-                                             strides_key,
-                                             "infer_flags",
-                                             "decrease_axis"};
+                                            starts_key,
+                                            ends_key,
+                                            strides_key,
+                                            "infer_flags",
+                                            "decrease_axis"};
   paddle::SmallVector<std::string> outputs = {GradVarName("Input")};
 
   // NOTE(dev): Use op_type to avoid regular.
   std::string op_type;
-  if (ctx.IsDenseTensorVectorInput("X")) {
+  if (ctx.IsDenseTensorVectorInput("Input")) {
     op_type = "strided_slice_array_grad";
   } else {
     op_type = "strided_slice_grad";

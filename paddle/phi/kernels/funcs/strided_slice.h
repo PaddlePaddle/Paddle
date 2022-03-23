@@ -433,10 +433,11 @@ void StridedSliceCompute(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "The input LoDTensorArray Input[%d] holds no memory.", in_offset));
     auto* out_tensor = out.at(out_offset);
+    out_tensor->Resize(in_tensor->dims());
 
-    out_tensor->set_lod(in_tensor->lod());
     phi::Copy<Context>(
         dev_ctx, *in_tensor, dev_ctx.GetPlace(), false, out_tensor);
+    out_tensor->set_lod(in_tensor->lod());
   }
 }
 
@@ -452,7 +453,7 @@ void StridedSliceGradCompute(const Context& dev_ctx,
                              const std::vector<int>& decrease_axis,
                              DenseTensor* x_grad) {
   auto& place = *dev_ctx.eigen_device();
-  DDim out_dims = out_grad.dims();
+  DDim out_dims = x.dims();
 
   auto starts_ = starts.GetData();
   auto ends_ = ends.GetData();
@@ -614,7 +615,6 @@ void StridedSliceGradCompute(const Context& dev_ctx,
           "the dimension of output should be 1, but received %d.",
           out_dims.size()));
 
-  x_grad.resize(out_dims[0]);
   auto const d_out_array_size = x_grad.size();
 
   for (size_t j = 0; j < d_out_array_size; j++) {
@@ -639,9 +639,9 @@ void StridedSliceGradCompute(const Context& dev_ctx,
               "The input LoDTensorArray Input[%d] holds no memory.",
               in_offset));
 
-      d_out_tensor->set_lod(in_tensor->lod());
       phi::Copy<Context>(
           dev_ctx, *in_tensor, dev_ctx.GetPlace(), false, d_out_tensor);
+      d_out_tensor->set_lod(in_tensor->lod());
     } else {
       d_out_tensor->Resize(dim);
 
