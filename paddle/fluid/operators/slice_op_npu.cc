@@ -109,10 +109,10 @@ class SliceNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims =
-          GetSliceDims<int>(in_dims, axes, starts, ends, nullptr, nullptr);
-      out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+      phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
+                                                 nullptr, nullptr);
+      out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
       out->Resize(out_dims);
     }
