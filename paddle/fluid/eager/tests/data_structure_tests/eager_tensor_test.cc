@@ -90,7 +90,7 @@ TEST(Tensor, MemberFunction) {
   VLOG(6) << "Set impl";
   CHECK_EQ(et3.initialized(), true);
   CHECK_EQ(et3.is_cpu(), true);
-  CHECK_EQ(et3.is_cuda(), false);
+  CHECK_EQ(et3.is_gpu(), false);
   CHECK_EQ(et3.numel(), 2);
   auto expected_dim = phi::make_ddim({1, 2});
   CHECK_EQ(et3.dims(), expected_dim);

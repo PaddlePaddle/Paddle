@@ -243,6 +243,8 @@ def add(x, y, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        #if _in_eager_mode():
+        #return _C_ops.final_state_add(x, y)
         return _C_ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -1335,7 +1337,7 @@ def renorm(x, p, axis, max_norm):
             raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
         axis = axis + len(input_shape)
     if paddle.in_dynamic_mode():
-        out = core.ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
+        out = _C_ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
         return out
 
     inputs = {'X': x}
