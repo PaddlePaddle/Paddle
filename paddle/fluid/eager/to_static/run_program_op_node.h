@@ -438,10 +438,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (auto &t : x) {
-      auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
-      if (t_meta->StopGradient()) {
-        x_grad->emplace_back();
-      } else if (t.is_dense_tensor()) {
+      if (t.is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (t.is_selected_rows()) {
         x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
