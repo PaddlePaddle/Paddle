@@ -20,45 +20,65 @@
 // #include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(fill_constant);
-USE_OP(uniform_random);
+USE_OP_ITSELF(uniform_random);
 USE_OP(lookup_table);
-USE_OP(transpose2);
+USE_OP_ITSELF(transpose2);
 USE_OP_ITSELF(reshape2);
-USE_OP(split);
-USE_OP(slice);
-USE_OP(concat);
-USE_OP(matmul);
+USE_OP_ITSELF(split);
+USE_OP_ITSELF(slice);
+USE_OP_ITSELF(concat);
+USE_OP_ITSELF(matmul);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(tanh);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_mul);
 USE_OP(softmax_with_cross_entropy);
 USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(reduce_mean_grad);
 USE_OP_ITSELF(reshape2_grad);
-USE_OP(softmax_with_cross_entropy_grad);
+USE_OP_ITSELF(softmax_with_cross_entropy_grad);
 USE_OP_ITSELF(elementwise_add_grad);
-USE_OP(matmul_grad);
-USE_OP(square);
-USE_OP(transpose2_grad);
+USE_OP_ITSELF(matmul_grad);
+USE_OP_ITSELF(square);
+USE_OP_ITSELF(transpose2_grad);
 USE_OP(concat_grad);
 USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP_ITSELF(sigmoid_grad);
 USE_OP_ITSELF(tanh_grad);
 USE_OP(sum);
-USE_OP(slice_grad);
-USE_OP(lookup_table_grad);
+USE_OP_ITSELF(slice_grad);
+USE_OP_ITSELF(lookup_table_grad);
 USE_OP(sqrt);
 USE_OP(elementwise_max);
 USE_OP_ITSELF(elementwise_div);
-USE_OP(sgd);
+USE_OP_ITSELF(sgd);
 USE_OP(squared_l2_norm);
-USE_OP(memcpy_h2d);
-USE_OP(memcpy_d2h);
+USE_OP_ITSELF(memcpy_h2d);
+USE_OP_ITSELF(memcpy_d2h);
+
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform_random_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(transpose, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(split, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(reshape_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(transpose_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(max_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sgd, GPU, ALL_LAYOUT);
+
 DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
