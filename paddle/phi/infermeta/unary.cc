@@ -140,8 +140,6 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
 
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
-                            const Scalar& val,
-                            DataType dtype,
                             int x_batch_size_dim,
                             int out_batch_size_dim,
                             MetaTensor* out) {
@@ -191,7 +189,6 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
   output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
   out->set_dims(output_dim);
-  out->set_dtype(dtype);
 }
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
@@ -466,6 +463,17 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
   }
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
+}
+
+void FullBatchSizeLikeInferMeta(const MetaTensor& x,
+                                const std::vector<int>& shape,
+                                const Scalar& val,
+                                DataType dtype,
+                                int x_batch_size_dim,
+                                int out_batch_size_dim,
+                                MetaTensor* out) {
+  BatchSizeLikeInferMeta(x, shape, x_batch_size_dim, out_batch_size_dim, out);
+  out->set_dtype(dtype);
 }
 
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
