@@ -21,11 +21,11 @@ import os, shutil
 class PSController(Controller):
     @classmethod
     def enable(cls, ctx):
-        if ctx.args.mode == ControleMode.PS or ctx.args.server_num or len(
+        if ctx.args.run_mode == ControleMode.PS or ctx.args.server_num or len(
                 ctx.args.servers) > 0 or ctx.args.trainer_num or len(
                     ctx.args.trainers) > 0:
             ctx.logger.debug("{} enabled".format(cls.__name__))
-            ctx.args.mode = ControleMode.PS
+            ctx.args.run_mode = ControleMode.PS
             return True
         else:
             return False
