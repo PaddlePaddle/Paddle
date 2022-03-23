@@ -89,6 +89,11 @@ class BaseAPI(object):
         attr_types_map = {
             'ScalarArray': 'const ScalarArray&',
             'Scalar': 'const Scalar&',
+            'Scalar(int)': 'const Scalar&',
+            'Scalar(int32)': 'const Scalar&',
+            'Scalar(int64)': 'const Scalar&',
+            'Scalar(float)': 'const Scalar&',
+            'Scalar(dobule)': 'const Scalar&',
             'uint8': 'uint8_t',
             'int': 'int',
             'int32': 'int32_t',
@@ -109,20 +114,15 @@ class BaseAPI(object):
         optional_types_trans = {
             'Tensor': 'const paddle::optional<Tensor>&',
             'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
-            'ScalarArray': 'const paddle::optional<ScalarArray>&',
-            'Scalar': 'const paddle::optional<Scalar>&',
             'int': 'paddle::optional<int>',
             'int32': 'paddle::optional<int32_t>',
             'int64': 'paddle::optional<int64_t>',
-            'size_t': 'paddle::optional<size_t>',
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
             'bool': 'paddle::optional<bool>',
             'Place': 'paddle::optional<Place>',
             'DataLayout': 'paddle::optional<DataLayout>',
-            'DataType': 'paddle::optional<DataType>',
-            'int64[]': 'paddle::optional<std::vector<int64_t>>',
-            'int[]': 'paddle::optional<std::vector<int>>'
+            'DataType': 'paddle::optional<DataType>'
         }
 
         args_declare_str = ""

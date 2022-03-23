@@ -37,6 +37,11 @@ yaml_types_mapping = {
     'Tensor[]' : 'std::vector<Tensor>',
     'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
     'Scalar' : 'paddle::experimental::Scalar',
+    'Scalar(int)' : 'paddle::experimental::Scalar',
+    'Scalar(int32)' : 'paddle::experimental::Scalar',
+    'Scalar(int64)' : 'paddle::experimental::Scalar',
+    'Scalar(float)' : 'paddle::experimental::Scalar',
+    'Scalar(double)' : 'paddle::experimental::Scalar',
     'ScalarArray' : 'paddle::experimental::ScalarArray'
 }
 
@@ -314,8 +319,8 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
-    args_str = re.search(args_pattern, args_str).group(1)
+    args_pattern = f'^\({fargs}\)$'
+    args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
     returns_list = ParseYamlReturns(returns_str)
@@ -1358,7 +1363,6 @@ if __name__ == "__main__":
                 backward_grad_output_map, backward_attrs_list, optional_inputs,
                 intermediate_outputs, {})
             print("Generated Forward Definition: ", forward_definition_str)
-            print("Generated Forward Declaration: ", forward_declaration_str)
             yaml_forward_definition_str += definition_declaration_pair[0]
             yaml_forward_declaration_str += definition_declaration_pair[1]
 
