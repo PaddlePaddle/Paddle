@@ -215,5 +215,3 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
 
 ClipGradByGlobalNorm = ClipGradForMOEByGlobalNorm
-
-__all__ = ['ClipGradByGlobalNorm']

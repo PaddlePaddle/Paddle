@@ -16,5 +16,3 @@ from .gshard_gate import GShardGate
 from .switch_gate import SwitchGate
 from .naive_gate import NaiveGate
 from .base_gate import BaseGate
-
-__all__ = ["GShardGate", "SwitchGate", "NaiveGate", "BaseGate"]

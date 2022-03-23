@@ -30,8 +30,6 @@ from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 from paddle import fluid
 
-__all__ = ["MoeLayer"]
-
 
 def get_global_count(local_count, inside_group, outside_group):
     inside_nranks = inside_group.nranks
