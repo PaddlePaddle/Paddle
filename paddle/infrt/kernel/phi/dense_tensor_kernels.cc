@@ -186,7 +186,6 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 
 ::infrt::phi::DenseTensorMap LoadCombinedParameters(
     const std::string& model_path, const std::string& params_path) {
-  std::cout << "loading params from: " << model_path << std::endl;
   ::infrt::phi::DenseTensorMap map;
 
   auto pb_proto_prog = paddle::LoadProgram(model_path);

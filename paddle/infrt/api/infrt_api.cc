@@ -136,18 +136,18 @@ class PredictExecutor : public MlirToRuntimeTranslator {
       auto arg = predict_func.getArgument(i);
       auto type = arg.getType();
       // this param is TensorMap
-      if (type.isa<infrt::DenseHostTensorMapType>()) {
-        LOG(FATAL);
-      } else if (type.isa<::infrt::phi::DenseTensorMapType>()) {
+      if (type.isa<::infrt::phi::DenseTensorMapType>()) {
         auto* value = new host_context::Value(std::move(map));
         arguments_.push_back(value);
         AddValue(predict_func.getArgument(i), value);
-      } else {
+      } else if (type.isa<::infrt::DenseTensorType>()) {
         // this param is an input Tensor
         auto dht = ::phi::DenseTensor();
         auto* value = new host_context::Value(std::move(dht));
         arguments_.push_back(value);
         inputs_.push_back(&(value->get<::phi::DenseTensor>()));
+      } else {
+        llvm_unreachable("The input type has not been supported by predictor.");
       }
     }
 
