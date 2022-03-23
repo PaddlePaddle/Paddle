@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/pixel_unshuffle_kernel.h"
 #include <string>
 #include <vector>
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/kernels/pixel_unshuffle_kernel.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -56,18 +56,18 @@ void PixelUnshuffleKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pixel_unshuffle, 
+PD_REGISTER_KERNEL(pixel_unshuffle,
                    CPU,
-                   ALL_LAYOUT, 
-                   phi::PixelUnshuffleKernel, 
-                   float, 
+                   ALL_LAYOUT,
+                   phi::PixelUnshuffleKernel,
+                   float,
                    double) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(pixel_unshuffle, 
+PD_REGISTER_KERNEL(pixel_unshuffle,
                    GPU,
-                   ALL_LAYOUT, 
-                   phi::PixelUnshuffleKernel, 
-                   float, 
+                   ALL_LAYOUT,
+                   phi::PixelUnshuffleKernel,
+                   float,
                    double) {}
 #endif
