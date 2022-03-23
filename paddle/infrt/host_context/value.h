@@ -147,6 +147,7 @@ class Value : public common::Object {
 #endif
   explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
   explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::MetaConfig&& x) : data(std::move(x)) {}
 #ifdef INFRT_WITH_TRT
   explicit Value(::infrt::backends::tensorrt::TrtEngine&& x)
       : data(std::move(x)) {}
