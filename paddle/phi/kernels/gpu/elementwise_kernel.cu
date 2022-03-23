@@ -57,23 +57,11 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(elementwise_fmax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmax, GPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(elementwise_fmin,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMinKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(add_raw,
                    GPU,
