@@ -19,37 +19,79 @@
 namespace paddle {
 namespace framework {
 
+constexpr EventsWaiter::EventId kEmptyEventId = 0;
+
 EventsWaiter::EventsWaiter()
-    : trigger_event_(nullptr), counter_(0), waiting_(false), cv_(1) {}
+    : trigger_event_(kEmptyEventId),
+      counter_(0),
+      eof_(true),
+      waiting_(false),
+      cv_(1) {}
 
 std::shared_ptr<EventsWaiter::EventNotifier> EventsWaiter::RegisterEvent(
     const std::string& name, EventChecker checker) {
-  auto counter = counter_.fetch_add(1);
-  auto id = std::hash<std::string>()(name + std::to_string(counter));
+  EventId id = kEmptyEventId;
+  EventInfo* evt = nullptr;
+  do {
+    auto counter = counter_.fetch_add(1);
+    id = std::hash<std::string>()(name + std::to_string(counter));
+    if (id == kEmptyEventId) {
+      continue;
+    }
+    std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
+    if (events_.count(id) > 0) {
+      continue;
+    }
+    evt = &(events_[id]);
+  } while (evt == nullptr);
+  evt->id = id;
+  evt->name = name;
+  evt->type = TriggerType::LevelTriggered;
+  evt->checker = std::move(checker);
+  eof_.store(false, std::memory_order_relaxed);
   VLOG(10) << "Register event id:" << id << " name:" << name;
   auto notifier = std::shared_ptr<EventNotifier>(new EventNotifier(id, this));
-  EventInfo evt{id, name, TriggerType::LevelTriggered, std::move(checker)};
-  std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
-  events_[id] = std::move(evt);
   return notifier;
 }
 
 std::shared_ptr<EventsWaiter::EventNotifier> EventsWaiter::RegisterEvent(
     const std::string& name) {
-  auto counter = counter_.fetch_add(1);
-  auto id = std::hash<std::string>()(name + std::to_string(counter));
+  EventId id = kEmptyEventId;
+  EventInfo* evt = nullptr;
+  do {
+    auto counter = counter_.fetch_add(1);
+    id = std::hash<std::string>()(name + std::to_string(counter));
+    if (id == kEmptyEventId) {
+      continue;
+    }
+    std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
+    if (events_.count(id) > 0) {
+      continue;
+    }
+    evt = &(events_[id]);
+  } while (evt == nullptr);
+  evt->id = id;
+  evt->name = name;
+  evt->type = TriggerType::EdgeTriggered;
+  evt->checker = []() { return false; };
+  eof_.store(false, std::memory_order_relaxed);
   VLOG(10) << "Register event id:" << id << " name:" << name;
   auto notifier = std::shared_ptr<EventNotifier>(new EventNotifier(id, this));
-  EventInfo evt{id, name, TriggerType::EdgeTriggered, []() { return false; }};
-  std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
-  events_[id] = std::move(evt);
   return notifier;
 }
 
 void EventsWaiter::UnregisterEvent(const EventId& id) {
   VLOG(10) << "Unregister event id:" << id;
-  std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
-  events_.erase(id);
+  {
+    std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
+    deleted_events_.insert(id);
+    if (deleted_events_.size() == events_.size()) {
+      eof_.store(true, std::memory_order_relaxed);
+    }
+  }
+  if (eof_.load(std::memory_order_relaxed)) {
+    cv_.Notify(true);
+  }
 }
 
 std::string EventsWaiter::WaitEvent() {
@@ -61,42 +103,60 @@ std::string EventsWaiter::WaitEvent() {
     PADDLE_THROW(
         platform::errors::ResourceExhausted("Another thread is waiting."));
   }
+
   auto w = cv_.GetWaiter(0);
-  cv_.Prewait();
-  std::string* triggered = trigger_event_;
-  if (triggered == nullptr) {
+  EventId triggered = trigger_event_;
+  while (triggered == kEmptyEventId && !eof_) {
+    cv_.Prewait();
+
+    // double check
+    triggered = trigger_event_;
     // checkers
-    {
-      std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
-      for (auto& kv : events_) {
-        auto& evt = kv.second;
-        if (TriggerType::LevelTriggered == evt.type && evt.checker()) {
-          triggered = new std::string(evt.name);
-          break;
+    if (triggered == kEmptyEventId) {
+      {
+        std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
+        for (auto& kv : events_) {
+          auto& evt = kv.second;
+          if (TriggerType::LevelTriggered == evt.type && evt.checker()) {
+            triggered = evt.id;
+            break;
+          }
+        }
+      }
+      if (triggered != kEmptyEventId) {
+        EventId prev = kEmptyEventId;
+        if (!trigger_event_.compare_exchange_strong(
+                prev, triggered, std::memory_order_seq_cst,
+                std::memory_order_relaxed)) {
+          triggered = prev;
         }
       }
     }
-    if (triggered != nullptr) {
-      std::string* prev = nullptr;
-      if (!trigger_event_.compare_exchange_strong(prev, triggered,
-                                                  std::memory_order_seq_cst,
-                                                  std::memory_order_relaxed)) {
-        delete triggered;
-        triggered = prev;
-      }
+
+    if (triggered != kEmptyEventId || eof_) {
+      cv_.CancelWait();
+    } else {
+      cv_.CommitWait(w);
+      triggered = trigger_event_;
     }
   }
-  if (triggered) {
-    cv_.CancelWait();
-  } else {
-    cv_.CommitWait(w);
-    triggered = trigger_event_;
+
+  trigger_event_.store(kEmptyEventId, std::memory_order_relaxed);
+  waiting_.store(false, std::memory_order_relaxed);
+  std::string evt_name =
+      triggered == kEmptyEventId ? "NoEventNotifier" : GetEventName(triggered);
+  VLOG(10) << "Consume event id:" << triggered << ", name:" << evt_name;
+  // lazy deletion
+  {
+    std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
+    if (deleted_events_.size() > 0) {
+      for (auto evt : deleted_events_) {
+        events_.erase(evt);
+      }
+      deleted_events_.clear();
+    }
   }
-  trigger_event_.store(nullptr, std::memory_order_relaxed);
-  waiting_.store(false);
-  auto trigger_event = *triggered;
-  delete triggered;
-  return trigger_event;
+  return evt_name;
 }
 
 int EventsWaiter::Clear() {
@@ -106,32 +166,33 @@ int EventsWaiter::Clear() {
                                         std::memory_order_relaxed)) {
     return -1;
   }
-  trigger_event_.store(nullptr, std::memory_order_relaxed);
+  trigger_event_.store(kEmptyEventId, std::memory_order_relaxed);
   waiting_.store(false);
   return 0;
 }
 
 void EventsWaiter::TriggerEvent(const EventId& id) {
   VLOG(10) << "Try to trigger event id:" << id;
-  std::string* trigger_event = new std::string;
-  {
-    std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
-    auto iter = events_.find(id);
-    if (iter == events_.end()) {
-      delete trigger_event;
-      return;
-    }
-    *trigger_event = iter->second.name;
-  }
-  std::string* prev = nullptr;
-  if (!trigger_event_.compare_exchange_strong(prev, trigger_event,
-                                              std::memory_order_seq_cst,
-                                              std::memory_order_relaxed)) {
-    delete trigger_event;
+  EventId prev = kEmptyEventId;
+  if (!trigger_event_.compare_exchange_strong(
+          prev, id, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+    VLOG(10) << "Event id:" << prev << " is pending";
     return;
   }
-  VLOG(10) << "Triggered event id:" << id << " name:" << *trigger_event;
+  VLOG(10) << "Triggered event id:" << id;
   cv_.Notify(true);
+}
+
+void EventsWaiter::CancelEvent(const EventId& id) {
+  VLOG(10) << "Try to cancel event id:" << id;
+  EventId prev = id;
+  if (!trigger_event_.compare_exchange_strong(prev, kEmptyEventId,
+                                              std::memory_order_seq_cst,
+                                              std::memory_order_relaxed)) {
+    VLOG(10) << "Event id:" << prev << " is pending";
+    return;
+  }
+  VLOG(10) << "Cancelled event id:" << id;
 }
 
 std::string EventsWaiter::GetEventName(const EventId& id) {
