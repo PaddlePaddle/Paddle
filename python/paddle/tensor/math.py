@@ -243,12 +243,13 @@ def add(x, y, name=None):
 
     """
 
-    if paddle.in_dynamic_mode():
-        #if _in_eager_mode():
-        #return _C_ops.final_state_add(x, y)
-        return _C_ops.elementwise_add(x, y)
-
-    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+    if in_dygraph_mode():
+        return _C_ops.final_state_add( x, y)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.elementwise_add(x, y)
+        else:
+            return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -324,10 +325,14 @@ def subtract(x, y, name=None):
     op_type = 'elementwise_sub'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    if in_dygraph_mode():
+        return _C_ops.final_state_subtract(x, y)
+    else:
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type)
+        else:
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -381,11 +386,14 @@ def divide(x, y, name=None):
     op_type = 'elementwise_div'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
-
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    if in_dygraph_mode():
+        return _C_ops.final_state_divide( x, y)
+    else:
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type)
+        else:
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def floor_divide(x, y, name=None):
@@ -510,16 +518,19 @@ def multiply(x, y, name=None):
     act = None
     axis = -1
 
-    if paddle.in_dynamic_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+    if in_dygraph_mode():
+        return _C_ops.final_state_multiply(x, y)
+    else:
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type)
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype))
 
-    if x.dtype != y.dtype:
-        raise TypeError(
-            'Input tensors must be same type, but received type of x: %s, type of y: %s '
-            % (x.dtype, y.dtype))
-
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, name=None):
     """
@@ -3795,13 +3806,13 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_1 += ('starts', starts_1)
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
-        input_front = _C_ops.slice(new_input, None, None, 'axes', axes, \
+        input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
             'infer_flags', infer_flags, *attrs_1)
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(new_input, None, None, 'axes', axes, \
+        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
             'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:

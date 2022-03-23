@@ -37,8 +37,9 @@ class RunCustomOpNode : public GradNodeBase {
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-      bool create_graph) override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      bool create_graph = false)  // NOLINT
+      override;
 
   std::string name() {
     return paddle::string::Sprintf("RunCustomOpNode: %s_grad", op_type_);
