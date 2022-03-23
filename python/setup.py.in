@@ -733,7 +733,7 @@ with redirect_stdout():
         },
         entry_points={
             'console_scripts': [
-                'fleetrun = paddle.distributed.launch.__main__:launch'
+                'fleetrun = paddle.distributed.launch.main:launch'
             ]
         },
         classifiers=[
