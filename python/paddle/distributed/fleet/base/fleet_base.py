@@ -45,7 +45,7 @@ __all__ = []
 _grad_scalar = None
 
 
-class RecomputeModelWrapper(paddle.nn.Layer):
+class _RecomputeModelWrapper(paddle.nn.Layer):
     def __init__(self, model, segments=1, preserve_rng_state=True):
         super(RecomputeModelWrapper, self).__init__()
         assert isinstance(model, paddle.nn.Sequential), (
@@ -69,6 +69,7 @@ class RecomputeModelWrapper(paddle.nn.Layer):
         return RecomputeFunction.apply(func, self._preserve_rng_state, *args)
 
     def forward(self, input):
+        end = 0
         for begin in range(0, self._segment_size * (self._segments - 1),
                            self._segment_size):
             end = begin + self._segment_size
@@ -992,7 +993,7 @@ class Fleet(object):
         strategy = self._user_defined_strategy
         if strategy.amp == True:
             amp_enable = True
-            amp_level = strategy.amp_configs['amp_level']
+            amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
             if amp_level.upper() == "O2":
                 model = paddle.amp.decorate(
                     models=model,
@@ -1020,8 +1021,7 @@ class Fleet(object):
 
         if strategy.recompute == True:
             recompute_enable = True
-            segments = strategy.recompute_configs['segments']
-            model = RecomputeModelWrapper(model)
+            model = _RecomputeModelWrapper(model)
 
         if self._user_defined_strategy.heter_ccl_mode == True:
             model = paddle.DataParallel(

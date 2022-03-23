@@ -51,6 +51,9 @@ class TestDygraphFleetAPI(unittest.TestCase):
         net = paddle.nn.Sequential(
             paddle.nn.Linear(10, 1), paddle.nn.Linear(1, 2))
         net = dist.fleet.distributed_model(net)
+        data = np.random.uniform(-1, 1, [30, 10]).astype('float32')
+        data = paddle.to_tensor(data)
+        net(data)
 
 
 if __name__ == "__main__":
