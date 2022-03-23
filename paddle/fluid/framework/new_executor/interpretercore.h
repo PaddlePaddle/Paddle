@@ -76,11 +76,16 @@ class InterpreterCore {
   void RecordStreamForGC(const Instruction& instr);
 #endif
 
-  void CheckGC(const Instruction& instr);
+  void CheckGC(const Instruction& instr,
+               std::vector<std::atomic<size_t>>* atomic_var_ref);
 
-  void RunInstructionAsync(size_t instr_id);
+  void RunInstructionAsync(size_t instr_id,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
+                           std::queue<size_t>* reserved_next_ops,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
 
   void BuildSkipShareLoDInfo();
 

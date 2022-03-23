@@ -30,6 +30,7 @@ from paddle.fluid.framework import _set_expected_place, _current_expected_place,
 import queue
 
 import paddle
+import paddle.profiler as profiler
 from .. import core, layers
 from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
@@ -250,6 +251,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
+        trace_event = profiler.RecordEvent(
+            name="_DataLoaderIterSingleProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             if in_dygraph_mode():
                 data = core.eager.read_next_tensor_list(
@@ -284,6 +289,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._reader.shutdown()
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+        finally:
+            trace_event.end()
 
     def _shutdown_thread(self):
         if self._thread:
@@ -696,6 +703,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
+        trace_event = profiler.RecordEvent(
+            name="_DataLoaderIterMultiProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             # _batches_outstanding here record the total batch data number
             # in 'from after _try_put_indices to beforeoutput data', this
@@ -745,6 +756,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._reader.shutdown()
                 self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+        finally:
+            trace_event.end()
 
     # python2 compatibility
     def next(self):
