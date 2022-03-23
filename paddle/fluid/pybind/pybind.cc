@@ -3322,6 +3322,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
+      .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
