@@ -69,10 +69,10 @@ TEST(API, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = paddle::experimental::copy_to(x, phi::Backend::GPU, false);
-  auto out = paddle::experimental::copy_to(tmp, phi::Backend::CPU, true);
+  auto tmp = paddle::experimental::copy_to(x, phi::GPUPlace(), false);
+  auto out = paddle::experimental::copy_to(tmp, phi::CPUPlace(), true);
 #else
-  auto out = paddle::experimental::copy_to(x, phi::Backend::CPU, false);
+  auto out = paddle::experimental::copy_to(x, phi::CPUPlace(), false);
 #endif
 
   // 3. check result
@@ -85,10 +85,10 @@ TEST(Tensor, copy_to) {
 
 // 2. test API
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tmp = x.copy_to(phi::Backend::GPU, false);
-  auto out = tmp.copy_to(phi::Backend::CPU, true);
+  auto tmp = x.copy_to(phi::GPUPlace(), false);
+  auto out = tmp.copy_to(phi::CPUPlace(), true);
 #else
-  auto out = x.copy_to(phi::Backend::CPU, false);
+  auto out = x.copy_to(phi::CPUPlace(), false);
 #endif
 
   // 3. check result

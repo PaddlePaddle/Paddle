@@ -182,7 +182,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
         self.func_auto_prune2()
 
     # TODO(jiabin): Support this when we support better split tensor
-    def test_auto_prune3(self):
+    def func_auto_prune3(self):
         with fluid.dygraph.guard():
             case3 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -194,7 +194,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case3.linear.weight._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 0).all())
 
-    def test_auto_prune4(self):
+    def test_auto_prune3(self):
+        with _test_eager_guard():
+            self.func_auto_prune3()
+        self.func_auto_prune3()
+
+    def func_auto_prune4(self):
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -206,7 +211,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case4.linear.weight._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 1).all())
 
-    def test_auto_prune5(self):
+    def test_auto_prune4(self):
+        with _test_eager_guard():
+            self.func_auto_prune4()
+        self.func_auto_prune4()
+
+    def func_auto_prune5(self):
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -217,6 +227,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             part1.backward()
             self.assertTrue(case4.linear.weight._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 0).all())
+
+    def test_auto_prune5(self):
+        with _test_eager_guard():
+            self.func_auto_prune5()
+        self.func_auto_prune5()
 
     def func_auto_prune6(self):
         with fluid.dygraph.guard():

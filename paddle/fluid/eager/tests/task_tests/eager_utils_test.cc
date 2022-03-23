@@ -24,6 +24,9 @@
 #include "paddle/fluid/eager/utils.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -245,6 +248,22 @@ TEST(EagerUtils, GetGradAccumulationNode) {
   autograd_ptr0->SetGradNode(
       std::make_shared<eager_test::GradTestNode>(1, 2.0, 3));
   ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
+}
+
+TEST(EagerUtils, FillZeroForEmptyGradInputs) {
+  std::vector<std::vector<paddle::experimental::Tensor>> grads = {
+      std::vector<paddle::experimental::Tensor>(1)};
+  std::vector<std::vector<GradSlotMeta>> slot_metas = {
+      std::vector<GradSlotMeta>(1)};
+
+  phi::DenseTensorMeta tensor_meta;
+  tensor_meta.dtype = paddle::experimental::DataType::FLOAT32;
+  tensor_meta.dims = {2, 4};
+  slot_metas[0][0].SetTensorMeta(tensor_meta);
+  slot_metas[0][0].SetPlace(phi::CPUPlace());
+
+  EagerUtils::FillZeroForEmptyGradInputs(&grads, slot_metas);
+  eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 
 }  // namespace egr
