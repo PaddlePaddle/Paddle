@@ -5,7 +5,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : add
-  # backward : add_grad
+  backward : add_grad
 
 - api : cast
   args : (Tensor x, DataType out_dtype)
@@ -47,6 +47,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : divide
+  backward : divide_grad
 
 - api : dot
   args : (Tensor x, Tensor y)
@@ -136,6 +137,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : multiply
+  backward : multiply_grad
 
 - api : ones_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
@@ -208,6 +210,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : subtract
+  backward : subtract_grad
 
 - api : sum
   args : (Tensor x, int64[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
@@ -1314,7 +1317,7 @@
     func : AdamaxInferMeta
   kernel :
     func : adamax
-  
+
 
 
 - api : where
@@ -1370,7 +1373,7 @@
     func : CompareInferMeta
   kernel :
     func : equal
-  
+
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
