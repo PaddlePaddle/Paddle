@@ -133,11 +133,11 @@ namespace kernel {
 
 def gen_context(val):
     if val == "CPU":
-        return "phi::CPUContext", "phi_cpu"
+        return "::phi::CPUContext", "phi_cpu"
     elif val == "GPU":
-        return "phi::GPUContext", "phi_gpu"
+        return "::phi::GPUContext", "phi_gpu"
     # elif val == "XPU":
-    #     return "phi::XPUContext", "phi_xpu"
+    #     return "::phi::XPUContext", "phi_xpu"
     else:
         # raise Exception(f"Unknown context type {val}")
         return "", ""
@@ -157,12 +157,12 @@ def gen_kernel_func(val, ctx_name, dtype_name):
         ed = val.index('>')
         func_name = val[:st]
         template_name = val[st + 1:ed]
-        if 'phi::' in template_name:
-            return "&phi::" + val
+        if '::phi::' in template_name:
+            return "&::phi::" + val
         else:
-            return "&phi::" + func_name + "<phi::" + template_name + ">"
+            return "&::phi::" + func_name + "<::phi::" + template_name + ">"
     else:
-        return "&phi::" + val + "<" + dtype_name + ", " + ctx_name + ">"
+        return "&::phi::" + val + "<" + dtype_name + ", " + ctx_name + ">"
 
 
 def gen_dtype(vals: List[str]):
@@ -227,7 +227,7 @@ def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
         return ""
     item[2] = gen_layout(item[2])
     ir_dtypes, origin_dtypes = gen_dtype(item[4:-1])
-    infer_shape_func = "&phi::" + item[-1]
+    infer_shape_func = "&::phi::" + item[-1]
 
     res = ""
 
