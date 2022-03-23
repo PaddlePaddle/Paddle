@@ -370,7 +370,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>> &grads,
+      std::vector<std::vector<paddle::experimental::Tensor>> &grads,  // NOLINT
       bool create_graph) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     PADDLE_ENFORCE_EQ(

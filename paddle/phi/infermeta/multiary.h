@@ -92,6 +92,19 @@ void BatchNormInferMeta(const MetaTensor& x,
                         MetaTensor* reserve_space,
                         MetaConfig config = MetaConfig());
 
+void BatchNormInferInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             const MetaTensor& mean,
+                             const MetaTensor& variance,
+                             float momentum,
+                             float epsilon,
+                             const std::string& data_layout,
+                             MetaTensor* y,
+                             MetaTensor* mean_out,
+                             MetaTensor* variance_out,
+                             MetaConfig config = MetaConfig());
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
@@ -106,6 +119,19 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void DeformableConvInferMeta(const MetaTensor& x,
+                             const MetaTensor& offset,
+                             const MetaTensor& filter,
+                             paddle::optional<const MetaTensor&> mask,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::vector<int>& dilations,
+                             int deformable_groups,
+                             int groups,
+                             int im2col_step,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,

@@ -39,9 +39,7 @@ import os
 env = os.environ.copy()
 assert "PADDLE_PSERVERS_IP_PORT_LIST" in env
 assert "PADDLE_TRAINER_ENDPOINTS" in env
-#assert "PADDLE_PSERVER_ENDPOINTS" in env
-#assert "PADDLE_TRAINER_ENDPOINTS" in env
-#assert "PADDLE_ROLE" in env
+assert "PADDLE_ROLE" in env
 #assert "PADDLE_RANK" in env
 '''
 
@@ -62,27 +60,24 @@ class Collective_Test(unittest.TestCase):
         write_file(pyname, colpyfile)
 
     def pdrun(self, args, env=None):
-        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.run"]
+        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
         if args:
             cmd.extend(args.split(" "))
         cmd.extend([pyname])
         proc = subprocess.Popen(cmd, env)
         return proc
 
-    '''
     def test_collective_1(self):
-        args = "--id test1"
+        args = "--job_id test1"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
-
-    '''
 
     def test_collective_2(self):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
-        args = "--id test2 --devices 0,1,2"
+        args = "--job_id test2 --devices 0,1,2"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -95,7 +90,7 @@ class Collective_Test(unittest.TestCase):
             shutil.rmtree('./log')
 
         port = random.randrange(6000, 8000)
-        args = "--id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
+        args = "--job_id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
             port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
@@ -113,16 +108,15 @@ class PS_Test(unittest.TestCase):
         write_file(pyname, pspyfile)
 
     def pdrun(self, args, env=None):
-        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.run"]
+        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
         if args:
             cmd.extend(args.split(" "))
         cmd.extend([pyname])
         proc = subprocess.Popen(cmd, env)
         return proc
 
-    '''
     def test_ps_1(self):
-        args = "--mode ps"
+        args = "--run_mode ps"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -131,21 +125,20 @@ class PS_Test(unittest.TestCase):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
-        args = "--id ps2 --server_num=2 --trainer_num=2"
+        args = "--job_id ps2 --server_num=2 --trainer_num=2"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
 
         c = get_files('log', 'ps2')
         self.assertTrue(len(c) == 5)
-    '''
 
     def test_ps_3(self):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
         port = random.randrange(6000, 8000)
-        args = "--id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
+        args = "--job_id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
             port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
@@ -161,7 +154,7 @@ class PS_Test(unittest.TestCase):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
-        args = "--id ps4 --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
+        args = "--job_id ps4 --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
         p1 = self.pdrun(args)
         p1.wait()
         self.assertTrue(p1.poll() == 0)
