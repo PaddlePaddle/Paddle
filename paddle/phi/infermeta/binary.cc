@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-#include "paddle/phi/kernels/cpu/conv_util.h"
-
 namespace phi {
 namespace detail {
 
@@ -467,6 +465,31 @@ void ConvInferMeta(const MetaTensor& input,
 
   out->set_dims(make_ddim(output_shape));
   out->set_dtype(input.dtype());
+}
+
+void ConvInferInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& paddding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                paddding_algorithm,
+                groups,
+                dilations,
+                data_format,
+                /*use_addto=*/false,
+                /*workspace_size_MB=*/512,  // useless in infermeta
+                /*exhaustive_search=*/false,
+                out,
+                config);
 }
 
 void ConvTransposeInferMeta(const MetaTensor& x,
@@ -1670,3 +1693,4 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
 PD_REGISTER_INFER_META_FN(conv2d, phi::ConvInferMeta);
+PD_REGISTER_INFER_META_FN(conv2d_infer, phi::ConvInferInferMeta);
