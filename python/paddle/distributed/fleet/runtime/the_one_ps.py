@@ -62,9 +62,9 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
     if not accessor.HasField("accessor_class"):
         accessor.accessor_class = "CtrCommonAccessor"
     if not accessor.HasField("fea_dim"):
-        accessor.fea_dim = embedding_dim + 2
+        accessor.fea_dim = embedding_dim
     if not accessor.HasField("embedx_dim"):
-        accessor.embedx_dim = embedding_dim - 1
+        accessor.embedx_dim = embedding_dim - 3
     if not accessor.HasField("embedx_threshold"):
         accessor.embedx_threshold = 0
 
@@ -129,15 +129,15 @@ def check_embedding_dim(accessor, varname, o_main_program):
             embedding_dim = var.shape[1]
             break
     fea_dim = accessor.fea_dim
-    if fea_dim != embedding_dim + 2:
+    if fea_dim != embedding_dim:
         raise ValueError(
-            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
-            format(embedding_dim + 2, fea_dim))
+            "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
+            format(embedding_dim, fea_dim))
     embedx_dim = accessor.embedx_dim
-    if embedx_dim != embedding_dim - 1:
+    if embedx_dim != embedding_dim - 3:
         raise ValueError(
-            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
-            format(embedding_dim - 1, embedx_dim))
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
+            format(embedding_dim - 3, embedx_dim))
 
 
 class Accessor:
@@ -927,7 +927,6 @@ class TheOnePSRuntime(RuntimeBase):
 
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
-                print(" wxm python test send_ctx.items-->", idx, (name, ctx))
                 if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 
