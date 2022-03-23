@@ -86,7 +86,6 @@ def _assign_pos(x, cum_count):
             pos = paddle.distributed.utils.assign_pos(x=numbers, cum_count=num_cum)
             print(pos) # the result: (2, 0, 3, 1)
     """
-    print("last num:", cum_count)
     if in_dygraph_mode():
         return core.ops.assign_pos(x, cum_count, cum_count[-1])
     else:
