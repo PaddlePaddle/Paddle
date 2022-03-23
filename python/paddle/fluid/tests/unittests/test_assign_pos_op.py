@@ -100,7 +100,7 @@ class TestAssignPosAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(self.x, 16)
-        self.cum_count = np.cumsum(y).astype(x.dtype)
+        self.cum_count = np.cumsum(y).astype(self.x.dtype)
         self.out = assign_pos(self.x, self.cum_count)
         self.place = paddle.CUDAPlace(0)
 
