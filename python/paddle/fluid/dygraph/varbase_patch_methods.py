@@ -769,7 +769,7 @@ def monkey_patch_varbase():
             return _setitem_impl_(self, item, value)
 
         else:
-            if core._in_eager_mode():
+            if framework._in_eager_mode_:
                 return self.__setitem_eager_tensor__(item, value)
             else:
                 # Call c++ func __setitem_varbase__ to speedup.

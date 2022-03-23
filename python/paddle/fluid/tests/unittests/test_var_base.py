@@ -22,7 +22,7 @@ import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestVarBase(unittest.TestCase):
@@ -1140,12 +1140,12 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.dtype = "int32"
 
     def _test(self, value):
-        if not _in_eager_mode():
+        if _in_legacy_dygraph():
             self.assertEqual(self.tensor_x.inplace_version, 0)
 
         id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
-        if not _in_eager_mode():
+        if _in_legacy_dygraph():
             self.assertEqual(self.tensor_x.inplace_version, 1)
 
         if isinstance(value, (six.integer_types, float)):
@@ -1158,13 +1158,13 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
-        if not _in_eager_mode():
+        if _in_legacy_dygraph():
             self.assertEqual(self.tensor_x.inplace_version, 2)
         self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
-        if not _in_eager_mode():
+        if _in_legacy_dygraph():
             self.assertEqual(self.tensor_x.inplace_version, 3)
         self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
