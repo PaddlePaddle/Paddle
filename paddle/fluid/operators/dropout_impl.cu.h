@@ -39,16 +39,17 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/functors.h"
 namespace paddle {
 namespace operators {
+
 template <typename T1, typename T2 = T1, typename OutT = T1>
 struct DstMaskGenerator {
-  const float dropout_prob_;
+  const float retain_prob_;
   const bool is_upscale_in_train_;
   using MT = typename details::MPTypeTrait<T1>::Type;
   MT factor;
-  HOSTDEVICE inline DstMaskGenerator(const float dropout_prob,
+  HOSTDEVICE inline DstMaskGenerator(const float retain_prob,
                                      const bool is_upscale_in_train)
-      : dropout_prob_(dropout_prob), is_upscale_in_train_(is_upscale_in_train) {
-    factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
+      : retain_prob_(retain_prob), is_upscale_in_train_(is_upscale_in_train) {
+    factor = static_cast<MT>(1.0f / retain_prob_);
   }
 
   HOSTDEVICE inline void operator()(OutT* dst, const T1* src_val,
@@ -58,14 +59,14 @@ struct DstMaskGenerator {
 // 0 ~ kCount -1 is dist , kCount ~ 2 * kCount - 1 is mask
 #pragma unroll
     for (int i = 0; i < kCount; i++) {
-      if (rand[i] < dropout_prob_) {
-        dst[i] = static_cast<T1>(0);
-        dst[i + kCount] = dst[i];
-      } else {
+      if (rand[i] < retain_prob_) {
         dst[i] = is_upscale_in_train_
                      ? static_cast<T1>(static_cast<MT>(src_val[i]) * factor)
                      : static_cast<T1>(src_val[i]);
         dst[i + kCount] = static_cast<T1>(1);
+      } else {
+        dst[i] = static_cast<T1>(0);
+        dst[i + kCount] = dst[i];
       }
     }
   }
@@ -73,8 +74,8 @@ struct DstMaskGenerator {
 
 template <typename T, typename MaskType>
 __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
-                                          const float dropout_prob,
-                                          const T* src, MaskType* mask, T* dst,
+                                          const float retain_prob, const T* src,
+                                          MaskType* mask, T* dst,
                                           bool is_upscale_in_train,
                                           uint64_t increment,
                                           size_t main_offset) {
@@ -98,7 +99,7 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   using Cast = kps::IdentityFunctor<T>;
   int deal_size = BLOCK_NUM_X * kCount;
   auto dst_functor =
-      DstMaskGenerator<T, float>(dropout_prob, is_upscale_in_train);
+      DstMaskGenerator<T, float>(retain_prob, is_upscale_in_train);
   size_t fix = idx * kCount;
   for (; fix < main_offset; fix += stride) {
     kps::ReadData<T, kCount, 1, 1, false>(&dst_mask[0], src + fix, deal_size);
@@ -145,11 +146,13 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
 
+  float retain_prob = 1.0f - dropout_prob;
+
   if (!is_test) {
     auto* mask_data = mask->data<uint8_t>();
     size_t size = phi::product(mask->dims());
 
-    if (dropout_prob == 1.0f) {
+    if (retain_prob == 0.0f) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
@@ -164,30 +167,31 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
       return;
     }
 
-    // increment is used to set the args(offset) of curand_init, which defines
-    // offset in subsequence.
-    // The detail:
-    // https://docs.nvidia.com/cuda/curand/device-api-overview.html
-    // Increment should be at least the number of curand() random numbers used
-    // in each thread to avoid the random number generated this time being the
-    // same as the previous calls.
     uint64_t seed_data;
     uint64_t increment;
-    // VectorizedRandomGenerator use curand_uniform4, so we only support
-    // kVecSize is 4;
+    // VectorizedRandomGenerator use curand_uniform4, so kVecSize is 4;
     constexpr int kVecSize =
         phi::funcs::uniform_distribution<float>::kReturnsCount;
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
+    size_t grid_size = gpu_config.GetGridSize();
+    size_t block_size = gpu_config.GetBlockSize();
+
+    int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+    const auto& prop = platform::GetDeviceProperties(device_id);
+    size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
+                           prop.multiProcessorCount / block_size;
+    grid_size = std::min(grid_size, max_grid_size);
+
     auto offset =
-        ((x_numel - 1) / (gpu_config.GetThreadNum() * kVecSize) + 1) * kVecSize;
+        ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
     GetSeedDataAndIncrement(dev_ctx, seed, is_fix_seed, seed_val, offset,
                             &seed_data, &increment);
-    size_t main_offset = size / (gpu_config.GetBlockSize() * kVecSize) *
-                         (gpu_config.GetBlockSize() * kVecSize);
-    VectorizedRandomGenerator<T, uint8_t><<<
-        gpu_config.GetGridSize(), gpu_config.GetBlockSize(), 0, stream>>>(
-        size, seed_data, dropout_prob, x_data, mask_data, y_data,
+    size_t main_offset =
+        size / (block_size * kVecSize) * (block_size * kVecSize);
+
+    VectorizedRandomGenerator<T, uint8_t><<<grid_size, block_size, 0, stream>>>(
+        size, seed_data, retain_prob, x_data, mask_data, y_data,
         upscale_in_train, increment, main_offset);
   } else {
     if (upscale_in_train) {
@@ -203,7 +207,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
 #endif
     } else {
       using MT = typename details::MPTypeTrait<T>::Type;
-      MT factor = static_cast<MT>(1.0f - dropout_prob);
+      MT factor = static_cast<MT>(retain_prob);
       std::vector<const framework::Tensor*> ins = {&x};
       std::vector<framework::Tensor*> outs = {y};
       auto functor = phi::funcs::ScaleFunctor<T>(factor);
@@ -240,11 +244,12 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
   using MT = typename details::MPTypeTrait<T>::Type;
   auto stream = dev_ctx.stream();
   MT factor;
+  float retain_prob = 1.0f - dropout_prob;
   if (is_test) {
     if (dropout_implementation == "upscale_in_train") {
       factor = static_cast<MT>(1.0f);
     } else {
-      factor = static_cast<MT>(1.0f - dropout_prob);
+      factor = static_cast<MT>(retain_prob);
     }
     std::vector<const framework::Tensor*> ins = {&grad_y};
     std::vector<framework::Tensor*> outs = {grad_x};
@@ -255,14 +260,14 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
     std::vector<framework::Tensor*> outs = {grad_x};
     if (dropout_implementation == "upscale_in_train") {
-      if (dropout_prob == 1.0f) {
+      if (retain_prob == 0.0f) {
 #ifdef PADDLE_WITH_HIP
         hipMemset(grad_x->data<T>(), 0, size * sizeof(T));
 #else
         cudaMemset(grad_x->data<T>(), 0, size * sizeof(T));
 #endif
       } else {
-        factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
+        factor = static_cast<MT>(1.0f / retain_prob);
         paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
             dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
       }
