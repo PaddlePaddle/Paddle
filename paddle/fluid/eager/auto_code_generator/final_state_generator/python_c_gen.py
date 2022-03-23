@@ -266,8 +266,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
     def GeneratePythonCFunction(self):
         namespace = self.namespace
         inplace_map = self.inplace_map
-        forward_api_name = GetInplacedFunctionName(
-            self.forward_api_name) if inplace_map else self.forward_api_name
+        forward_api_name = self.forward_api_name
         orig_forward_attrs_list = self.orig_forward_attrs_list
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
@@ -331,24 +330,28 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         self.python_c_function_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
             forward_api_name, namespace, forward_api_name, forward_api_name)
 
-        if inplace_map:
+        if len(inplace_map) > 0:
+            inplaced_forward_api_name = GetInplacedFunctionName(
+                self.forward_api_name)
             assert len(
                 inplace_map
             ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
             for inplace_input, inplace_output in inplace_map.items():
                 return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
-                    forward_api_name, inplace_input, forward_api_name,
-                    inplace_output)
+                    inplaced_forward_api_name, inplace_input,
+                    inplaced_forward_api_name, inplace_output)
                 break
 
             self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
-                forward_api_name, pythonc_record_event_str, forward_api_name,
-                get_eager_tensor_str, parse_attributes_str, fwd_function_name,
+                inplaced_forward_api_name, pythonc_record_event_str,
+                inplaced_forward_api_name, get_eager_tensor_str,
+                parse_attributes_str, fwd_function_name,
                 dygraph_function_call_str, return_str)
 
             # Generate Python-C Function Registration
-            self.python_c_function_reg_str += PYTHON_C_FUNCTION_REG_TEMPLATE.format(
-                forward_api_name, namespace, forward_api_name, forward_api_name)
+            self.python_c_function_reg_str += "\n," + PYTHON_C_FUNCTION_REG_TEMPLATE.format(
+                inplaced_forward_api_name, namespace, inplaced_forward_api_name,
+                inplaced_forward_api_name)
 
     def run(self):
         # Initialized is_forward_only

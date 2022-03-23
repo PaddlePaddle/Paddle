@@ -148,7 +148,7 @@ FUNCTION_TEMPLATE = \
     std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
         // Call grad_api function
         VLOG(3) << \"Finally State Running: \" << \"{}\"; 
-        auto grad_api_returns = {}::{}({});
+        auto grad_api_returns = {}{}({});
         {}
     }}
 """
@@ -212,6 +212,7 @@ NODE_CC_FILE_TEMPLATE = \
 #include "glog/logging.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/utils.h"
@@ -396,6 +397,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         assert 'api' in forward_api_contents.keys()
         assert 'args' in forward_api_contents.keys()
         assert 'output' in forward_api_contents.keys()
+        assert 'backward' in forward_api_contents.keys()
 
         assert 'args' in grad_api_contents.keys()
         assert 'output' in grad_api_contents.keys()
@@ -488,9 +490,12 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                 assert pos in intermediate_positions
 
     def CollectBackwardInfo(self):
+        forward_api_contents = self.forward_api_contents
         grad_api_contents = self.grad_api_contents
 
+        self.backward_api_name = forward_api_contents['backward']
         self.backward_forward_str = grad_api_contents['forward']
+
         backward_args_str = grad_api_contents['args']
         backward_returns_str = grad_api_contents['output']
 
@@ -501,27 +506,11 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         print("Parsed Backward Returns List: ", self.backward_returns_list)
 
     def CollectForwardInfoFromBackwardContents(self):
+
         backward_forward_str = self.backward_forward_str
 
         self.forward_inputs_list, self.forward_attrs_list, self.forward_returns_list = ParseYamlForwardFromBackward(
             backward_forward_str)
-
-    def CollectForwardInfoFromForwardContents(self):
-        forward_api_contents = self.forward_api_contents
-
-        self.forward_api_name = forward_api_contents['api']
-        forward_args_str = forward_api_contents['args']
-        forward_returns_str = forward_api_contents['output']
-
-        # Collect Original Forward Inputs/Outputs and then perform validation checks
-        self.orig_forward_inputs_list, self.orig_forward_attrs_list, self.orig_forward_returns_list = ParseYamlForward(
-            forward_args_str, forward_returns_str)
-        print("Parsed Original Forward Inputs List: ",
-              self.orig_forward_inputs_list)
-        print("Prased Original Forward Attrs List: ",
-              self.orig_forward_attrs_list)
-        print("Parsed Original Forward Returns List: ",
-              self.orig_forward_returns_list)
 
     def SlotNameMatching(self):
         backward_inputs_list = self.backward_inputs_list
@@ -699,6 +688,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             else:
                 # Rearrange output order accordingly
                 returns_str += f"returns[{fwd_position}] =  grad_api_returns[{grad_api_position}];\n"
+        returns_str += f"if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"return returns;\n"
 
         grad_node_name = GetGradNodeName(forward_api_name)
@@ -768,10 +758,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         if len(intermediate_outputs) > 0:
             function_name = GetIntermediateAPIFunctionName(function_name)
 
-        if len(namespace) > 0:
-            forward_call_str = f"auto api_result = paddle::experimental::{namespace}::{function_name}({inputs_call_args_str});"
-        else:
-            forward_call_str = f"auto api_result = paddle::experimental::{function_name}({inputs_call_args_str});"
+        forward_call_str = f"auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
 
         # Get return type list & outputs
         num_outputs = len(forward_outputs_position_map.keys()) - len(
@@ -785,7 +772,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                 returns_list[0] = f"api_result"
             else:
                 # Tuple api_result
-                returns_list[pos] = f"api_result[{pos}]"
+                returns_list[pos] = f"std::get<{pos}>(api_result)"
 
             if IsPlainTensorType(rtype):
                 returns_type_list[pos] = "paddle::experimental::Tensor"
@@ -864,7 +851,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             else:
                 # Tuple api_result
                 if IsPlainTensorType(rtype):
-                    output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
+                    output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
                 else:
                     assert IsVectorTensorType(rtype)
                     output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
@@ -890,9 +877,8 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         # Node Construction
         num_backward_inputs = len(backward_grad_inputs_map.keys())
         num_backward_outputs = len(backward_grad_outputs_map.keys())
-        grad_node_name = GetGradNodeName(
-            RecoverBaseNameOfInplaceFunction(forward_api_name)
-        ) if inplace_map else GetGradNodeName(forward_api_name)
+        grad_node_name = GetGradNodeName(forward_api_name)
+
         node_construction_str = f"            auto grad_node = std::make_shared<{grad_node_name}>({num_backward_inputs}, {num_backward_outputs});"
 
         # SetAttributes
@@ -914,8 +900,11 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                 else:
                     set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
             else:
-                if IsVectorTensorType(atype):
-                    tw_name = f"api_result[{pos}]"
+                if num_fwd_outputs > 1:
+                    # Aligned with forward output position
+                    assert name in forward_outputs_position_map.keys()
+                    fwd_output_pos = forward_outputs_position_map[name][1]
+                    tw_name = f"std::get<{fwd_output_pos}>(api_result)"
                 else:
                     tw_name = f"api_result"
 
@@ -931,7 +920,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         set_edges_list = []
         for name, (_, pos) in forward_inputs_position_map.items():
             input_autograd_meta_name = GetAutoGradMetaName(name)
-            set_grad_out_meta = f"        grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
+            set_grad_out_meta = f"        grad_node->SetGradOutMeta({name}, {pos});"
             set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
             set_grad_out_meta_list.append(set_grad_out_meta)
             set_edges_list.append(set_edges)
@@ -948,17 +937,18 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             output_autograd_meta_name = GetAutoGradMetaName(name)
             set_out_rank = f"        egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
             set_history = f"        egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
-            set_grad_in_meta = f"        grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
-
-            set_out_rank_list.append(set_out_rank)
-            set_history_list.append(set_history)
-            set_grad_in_meta_list.append(set_grad_in_meta)
 
             if num_outputs == 1:
                 set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
+                set_grad_in_meta = f"       grad_node->SetGradInMeta(api_result, {pos});"
             else:
-                set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
+                set_retain_grad = f"            egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
+                set_grad_in_meta = f"            grad_node->SetGradInMeta(std::get<{pos}>(api_result), {pos});"
+            set_out_rank_list.append(set_out_rank)
+            set_history_list.append(set_history)
+            set_grad_in_meta_list.append(set_grad_in_meta)
             set_retain_grad_list.append(set_retain_grad)
+
         set_out_rank_str = "\n".join(set_out_rank_list)
         set_history_str = "\n".join(set_history_list)
         set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
