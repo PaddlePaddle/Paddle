@@ -871,7 +871,7 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "list") {
+  if (type_name == "list" || type_name == "tuple") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::ScalarArray(value);
 
