@@ -70,7 +70,9 @@ class TestNanmeanAPI(unittest.TestCase):
                 out_np[nan_mask] = 0
                 self.assertEqual(np.allclose(out_np, out_ref, rtol=1e-04), True)    
             else:
-                self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04), True)
+                self.assertEqual(
+                    np.allclose(
+                        out.numpy(), out_ref, rtol=1e-04), True)
 
         test_case(self.x)
         test_case(self.x, [])
