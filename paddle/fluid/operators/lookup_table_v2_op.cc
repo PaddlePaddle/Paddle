@@ -50,9 +50,9 @@ class LookupTableV2Op : public framework::OperatorWithKernel {
             "lookup table's shape = [%s].",
             table_dims.size(), table_dims));
 
-    auto output_dims = framework::vectorize(ids_dims);
+    auto output_dims = phi::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -202,14 +202,6 @@ REGISTER_OPERATOR(lookup_table_v2, ops::LookupTableV2Op,
 REGISTER_OPERATOR(lookup_table_v2_grad, ops::LookupTableV2OpGrad,
                   ops::LookupTableV2GradOpNoBufferVarsInferer,
                   ops::LookupTableV2OpGradVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(lookup_table_v2, ops::LookupTableV2Kernel<float>,
-                       ops::LookupTableV2Kernel<double>,
-                       ops::LookupTableV2Kernel<paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    lookup_table_v2_grad, ops::LookupTableV2GradKernel<float>,
-    ops::LookupTableV2GradKernel<double>,
-    ops::LookupTableV2GradKernel<paddle::platform::bfloat16>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(lookup_table_v2)

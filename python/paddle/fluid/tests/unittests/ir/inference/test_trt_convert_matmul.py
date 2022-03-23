@@ -172,11 +172,11 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
             }
             self.dynamic_shape.max_input_shape = {
                 "input1_data": [16, 4, 4],
-                "input2_data": [16, 4, 128]
+                "input2_data": [16, 4, 4]
             }
             self.dynamic_shape.opt_input_shape = {
                 "input1_data": [8, 4, 4],
-                "input2_data": [8, 4, 16]
+                "input2_data": [8, 4, 4]
             }
 
         attrs = [
@@ -192,17 +192,7 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 3), 1e-5
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(
-                    self.dynamic_shape.min_input_shape
-            ) != 0 and self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "Tensorrt MatrixMultiply layer will get error when dynamic shape fp16 mode."
-        )
+        pass
 
     def test(self):
         self.add_skip_trt_case()

@@ -31,15 +31,11 @@ const std::string GenerateOpName() {
 }
 
 const std::string CreateOpIdentifyId(Node *node) {
-  // format: op_type|out_var0|out_var1|...|_gen_*
+  // format:
+  //   op_type/_gen_*
   // this name will be used as op name when exporting onnx model from popart
   auto op_type = node->Name();
-  std::string op_out = "";
-  for (auto *out_node : node->outputs) {
-    op_out += "|";
-    op_out += out_node->Name();
-  }
-  return {op_type + op_out + "|" + GenerateOpName()};
+  return {op_type + "/" + GenerateOpName()};
 }
 
 Node *MakeVarNode(Graph *graph, Node *node) {
@@ -99,6 +95,18 @@ Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
   }
   if (!new_node->Op()->HasAttr(sIpuStageAttr)) {
     CopyOpAttr(sIpuStageAttr, node->Op(), new_node->Op());
+  }
+  if (node->Op()->HasAttr(sMatmulSerializeFactor)) {
+    CopyOpAttr(sMatmulSerializeFactor, node->Op(), new_node->Op());
+  }
+  if (node->Op()->HasAttr(sMatmulSerializeMode)) {
+    CopyOpAttr(sMatmulSerializeMode, node->Op(), new_node->Op());
+  }
+  if (node->Op()->HasAttr(sAvailMemAttribute)) {
+    CopyOpAttr(sAvailMemAttribute, node->Op(), new_node->Op());
+  }
+  if (node->Op()->HasAttr(sOpNamescope)) {
+    CopyOpAttr(sOpNamescope, node->Op(), new_node->Op());
   }
   {
     new_node->Op()->SetAttr(sOpIdentifyIdAttr, CreateOpIdentifyId(node));

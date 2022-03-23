@@ -19,12 +19,11 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
-DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace framework {
@@ -45,32 +44,37 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
+void AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  if (atomic_deps_.size() != dependecy_count.size()) {
-    atomic_deps_.clear();
-    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    atomic_deps_[i]->store(dependecy_count[i]);
-  }
-  return atomic_deps_;
+  VLOG(4) << "PrepareAtomicDeps";
+  auto p = std::make_shared<
+      std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
+  atomic_deps_ = p->get_future();
+  queue_group_->AddTask(2, [&dependecy_count, p] {
+    auto* op_deps =
+        new std::vector<std::atomic<size_t>>(dependecy_count.size());
+    for (size_t i = 0; i < dependecy_count.size(); ++i) {
+      (*op_deps)[i] = dependecy_count[i];
+    }
+    VLOG(4) << "AtomicDeps:" << op_deps << " " << (*op_deps).size();
+    p->set_value(std::unique_ptr<std::vector<std::atomic<size_t>>>(op_deps));
+  });
 }
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
+void AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
-  if (atomic_var_ref_.size() != vec_meta_info.size()) {
-    atomic_var_ref_.clear();
-    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
-  }
-  return atomic_var_ref_;
+  VLOG(4) << "PrepareAtomicVarRef";
+  auto p = std::make_shared<
+      std::promise<std::unique_ptr<std::vector<std::atomic<size_t>>>>>();
+  atomic_var_ref_ = p->get_future();
+  queue_group_->AddTask(2, [&vec_meta_info, p] {
+    auto* var_ref = new std::vector<std::atomic<size_t>>(vec_meta_info.size());
+    for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+      (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+    }
+    VLOG(4) << "AtomicVarRef:" << var_ref << " " << (*var_ref).size();
+    p->set_value(std::unique_ptr<std::vector<std::atomic<size_t>>>(var_ref));
+  });
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -264,7 +268,15 @@ void deal_operator_base(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
+  if (platform::is_gpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueAsync;
+  } else if (platform::is_cpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueSync;
+  } else {
+    PADDLE_THROW(
+        platform::errors::Fatal("Unsupported current place %s", place));
+  }
+
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
 
@@ -355,17 +367,8 @@ void build_op_func_list(const platform::Place& place,
         // TODO(Aurelius84): In case of control flow ops, they are NOT
         // inheritted
         // from OperatorWithKernel.
-        op_with_kernel->InferShape(&infer_shape_ctx);
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
       }
-
-      auto kernels_iter = all_op_kernels.find(op->Type());
-      PADDLE_ENFORCE_NE(
-          kernels_iter, all_op_kernels.end(),
-          platform::errors::Unavailable(
-              "There are no kernels which are registered in the %s operator.",
-              op->Type()));
-
-      OpKernelMap& kernels = kernels_iter->second;
 
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -404,35 +407,64 @@ void build_op_func_list(const platform::Place& place,
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
       op_func_node.dev_ctx_ = dev_ctx;
-
+      VLOG(3) << op_with_kernel->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
-      auto kernel_iter = kernels.find(expected_kernel_key);
-      PADDLE_ENFORCE_NE(
-          kernel_iter, kernels.end(),
-          platform::errors::NotFound(
-              "Operator (%s) does not have kernel for %s.", op->Type(),
-              KernelTypeToString(expected_kernel_key)));
-
-      auto run_pten_kernel = false;
-
-      if (FLAGS_run_pten_kernel &&
-          pten::KernelFactory::Instance().HasCompatiblePtenKernel(
+      auto run_phi_kernel = false;
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
               op_with_kernel->Type())) {
-        op_with_kernel->ChoosePtenKernel(exec_ctx);
-        run_pten_kernel = op_with_kernel->PtenKernel()->IsValid();
+        auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+        auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+
+        if (op_with_kernel->PhiKernel()->IsValid()) {
+          run_phi_kernel = true;
+        } else {
+          auto kernels_iter = all_op_kernels.find(op_with_kernel->Type());
+          if (kernels_iter == all_op_kernels.end() ||
+              kernels_iter->second.find(expected_kernel_key) ==
+                  kernels_iter->second.end()) {
+            auto pt_cpu_kernel_key = FallBackToCpu(
+                expected_kernel_key, pt_kernel_key, *op_with_kernel);
+            op_with_kernel->ResetPhiKernel(
+                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                    pt_kernel_name, pt_cpu_kernel_key)));
+            if (op_with_kernel->PhiKernel()->IsValid()) {
+              VLOG(6) << "Static mode PrepareImpl - kernel name: "
+                      << pt_kernel_name
+                      << " | kernel key: " << pt_cpu_kernel_key
+                      << " | kernel: " << *(op_with_kernel->PhiKernel());
+              run_phi_kernel = true;
+            }
+          }
+        }
       }
+      VLOG(3) << op_with_kernel->Type()
+              << " : expected_kernel_key : " << expected_kernel_key;
+      if (run_phi_kernel) {
+        phi::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
+                                              &pt_kernel_context);
+        op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
 
-      if (run_pten_kernel) {
-        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx);
-        op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
-        op_func_node.pt_kernel_context_ = op_with_kernel->PtenKernelContext();
-
-        (*op_func_node.pt_kernel_)(op_func_node.pt_kernel_context_);
-        op_with_kernel->WriteBackToOutputs(&runtime_context);
-        op_func_node.pt_kernel_context_->ClearData();
+        (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
+        auto kernels_iter = all_op_kernels.find(op->Type());
+        PADDLE_ENFORCE_NE(
+            kernels_iter, all_op_kernels.end(),
+            platform::errors::Unavailable(
+                "There are no kernels which are registered in the %s operator.",
+                op->Type()));
+        OpKernelMap& kernels = kernels_iter->second;
+
+        auto kernel_iter = kernels.find(expected_kernel_key);
+        PADDLE_ENFORCE_NE(
+            kernel_iter, kernels.end(),
+            platform::errors::NotFound(
+                "Operator (%s) does not have kernel for %s.", op->Type(),
+                KernelTypeToString(expected_kernel_key)));
+        // TODO(zhiqiu): add fallback logic
         op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
         op_func_node.kernel_func_(exec_ctx);
       }
@@ -467,8 +499,8 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<SelectedRows>()
+      } else if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/collective/c_embedding_op.h"
@@ -95,7 +96,7 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
 
-    const auto &index_type = ids_t->type();
+    const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       CEmbedding<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
           output, table, ids_t->data<int32_t>(), K, D, N, start_idx, end_idx,
@@ -138,7 +139,7 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     auto t = framework::EigenVector<T>::Flatten(*d_table_t);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-    const auto &index_type = ids_t->type();
+    const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       CEmbeddingGrad<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids_t->data<int32_t>(), K, D, N, start_idx,

@@ -18,7 +18,7 @@ import six
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place, _in_eager_mode
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
@@ -332,8 +332,6 @@ class DataLoader(object):
         self.use_buffer_reader = use_buffer_reader
         self.worker_init_fn = worker_init_fn
 
-        assert isinstance(dataset, Dataset), \
-            "dataset should be subclass instance of paddle.io.Dataset"
         self.dataset = dataset
 
         if not return_list and not in_dygraph_mode():
@@ -971,7 +969,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def __next__(self):
         try:
-            return self._reader.read_next_var_list()
+            if _in_eager_mode():
+                return core.eager.read_next_tensor_list(
+                    self._reader.read_next_list()[0])
+            else:
+                return self._reader.read_next_var_list()
         except StopIteration:
             self._reset()
             six.reraise(*sys.exc_info())

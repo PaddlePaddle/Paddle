@@ -22,7 +22,8 @@
 
 #include "paddle/infrt/host_context/value.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 class KernelRegistry;
 class OpExecutable;
@@ -83,4 +84,5 @@ class CoreRuntimeBuilder : public CoreRuntime {
   OpExecutableBuilder* NewOpExecutable(const std::string& op_name);
 };
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

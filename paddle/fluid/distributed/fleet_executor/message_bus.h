@@ -20,11 +20,10 @@
 #include <thread>
 #include <unordered_map>
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "brpc/channel.h"
 #include "brpc/server.h"
-#include "paddle/fluid/distributed/fleet_executor/interceptor_message_service.h"
+#include "paddle/fluid/distributed/fleet_executor/message_service.h"
 #endif
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
@@ -54,6 +53,7 @@ class MessageBus final {
 
   void IncreaseBarrierCount();
   void Barrier();
+  bool DispatchMsgToCarrier(const InterceptorMessage& interceptor_message);
 
  private:
   DISABLE_COPY_AND_ASSIGN(MessageBus);
@@ -63,8 +63,7 @@ class MessageBus final {
 
   const std::string& GetAddr(int64_t rank) const;
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // send the message inter rank (dst is different rank with src)
   bool SendInterRank(int64_t dst_rank,
                      const InterceptorMessage& interceptor_message);
@@ -80,9 +79,8 @@ class MessageBus final {
   // the ip needs to be listened
   std::string addr_;
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    !defined(PADDLE_WITH_ASCEND_CL)
-  InterceptorMessageServiceImpl interceptor_message_service_;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  MessageServiceImpl message_service_;
   // brpc server
   brpc::Server server_;
 #endif

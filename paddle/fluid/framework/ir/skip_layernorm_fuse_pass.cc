@@ -39,7 +39,6 @@ struct SkipLayerNorm : public PatternBase {
   PDNode *operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fused_skipe_layernorm);
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
@@ -59,9 +58,10 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   y->assert_is_op_input("elementwise_add", "Y");
   auto *elementwise =
       pattern->NewNode(elementwise_repr())->assert_is_op("elementwise_add");
-  auto *elementwise_out_var = pattern->NewNode(elementwise_out_repr())
-                                  ->AsOutput()
-                                  ->assert_is_op_output("elementwise_add");
+  auto *elementwise_out_var =
+      pattern->NewNode(elementwise_out_repr())
+          ->AsOutput()
+          ->assert_is_only_output_of_op("elementwise_add");
 
   // Add links for elementwise_add op.
   elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
@@ -158,8 +158,10 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
-    if (elementwise->Op()->HasAttr("out_threshold")) {
+    if (layer_norm->Op()->HasAttr("out_threshold")) {
       new_desc.SetAttr("enable_int8", true);
+      new_desc.SetAttr("out_threshold",
+                       layer_norm->Op()->GetAttr("out_threshold"));
     }
 
     // outputs

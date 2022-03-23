@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+import paddle
 
 import hypothesis
 from hypothesis import given, settings, seed, example, assume
@@ -27,15 +28,6 @@ import hypothesis.strategies as st
 
 class TestConvGeluMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-        # If the problem has been fixed, the judgment 
-        # needs to be deleted!!!
-        if attrs[0]['data_format'] == "NHWC":
-            return False
-
         return True
 
     def sample_program_config(self, draw):
@@ -108,22 +100,10 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ["conv2d"], (1e-5, 1e-5)
 
-    # If the problem has been fixed, the judgment 
-    # needs to be deleted!!!
-    def add_ignore_pass_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['data_format'] == "NHWC":
-                return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1, SkipReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d is wrong when data_format attribute is NHWC"
-        )
-
     def test(self):
         self.run_and_statis(quant=False, passes=["conv_gelu_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -222,7 +222,7 @@ def monkey_patch_math_varbase():
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
             if _in_eager_mode():
-                other_var_should_be = core.eager.EagerTensor
+                other_var_should_be = core.eager.Tensor
             else:
                 other_var_should_be = core.VarBase
             if not isinstance(other_var, other_var_should_be):
@@ -343,7 +343,7 @@ def monkey_patch_math_varbase():
     if core._in_eager_mode():
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
-        local_tensor = core.eager.EagerTensor
+        local_tensor = core.eager.Tensor
     else:
         local_already_patch = _already_patch_varbase
         _already_patch_varbase = True

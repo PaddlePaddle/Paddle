@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/kthvalue_op.h"
 #include <memory>
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,54 +25,6 @@ namespace operators {
 class KthvalueOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kthvalue");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "kthvalue");
-    OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "kthvalue");
-    auto input_dims = ctx->GetInputDim("X");
-    const int& dim_size = input_dims.size();
-    int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
-    PADDLE_ENFORCE_LT(axis, dim_size,
-                      paddle::platform::errors::InvalidArgument(
-                          "the axis must be [-%d, %d), but received %d .",
-                          dim_size, dim_size, axis));
-    PADDLE_ENFORCE_GE(axis, -dim_size,
-                      paddle::platform::errors::InvalidArgument(
-                          "the axis must be [-%d, %d), but received %d .",
-                          dim_size, dim_size, axis));
-    if (axis < 0) axis += dim_size;
-    int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
-    PADDLE_ENFORCE_GE(
-        k, 1, paddle::platform::errors::InvalidArgument(
-                  "the k in the kthvalue must >= 1, but received %d .", k));
-    PADDLE_ENFORCE_GE(input_dims.size(), 1,
-                      paddle::platform::errors::InvalidArgument(
-                          "input of kthvalue must have >= 1d shape"));
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_GE(
-          input_dims[axis], k,
-          paddle::platform::errors::InvalidArgument(
-              "input of kthvalue must have >= %d columns in axis of %d", k,
-              axis));
-    }
-    bool keepdim = ctx->Attrs().Get<bool>("keepdim");
-    std::vector<int64_t> dimvec;
-    for (int64_t i = 0; i < axis; i++) {
-      dimvec.emplace_back(input_dims[i]);
-    }
-    if (keepdim) {
-      dimvec.emplace_back(static_cast<int64_t>(1));
-    }
-    for (int64_t i = axis + 1; i < dim_size; i++) {
-      dimvec.emplace_back(input_dims[i]);
-    }
-    framework::DDim dims = framework::make_ddim(dimvec);
-    ctx->SetOutputDim("Out", dims);
-    ctx->SetOutputDim("Indices", dims);
-    ctx->ShareLoD("X", "Out");
-    ctx->ShareLoD("X", "Indices");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -155,20 +108,13 @@ class KthvalueGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(kthvalue, KthvalueInferShapeFunctor,
+                            PD_INFER_META(phi::KthvalueInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(kthvalue, ops::KthvalueOp, ops::KthvalueOpMaker,
                   ops::KthvalueGradOpMaker<paddle::framework::OpDesc>,
-                  ops::KthvalueGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    kthvalue, ops::KthvalueCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::KthvalueCPUKernel<paddle::platform::CPUPlace, double>,
-    ops::KthvalueCPUKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::KthvalueCPUKernel<paddle::platform::CPUPlace, int64_t>);
+                  ops::KthvalueGradOpMaker<paddle::imperative::OpBase>,
+                  KthvalueInferShapeFunctor);
 
 REGISTER_OPERATOR(kthvalue_grad, ops::KthvalueOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    kthvalue_grad,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, double>,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::KthvalueGradCPUKernel<paddle::platform::CPUPlace, int64_t>);

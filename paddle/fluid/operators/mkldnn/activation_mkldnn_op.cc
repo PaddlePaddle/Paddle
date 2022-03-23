@@ -16,10 +16,12 @@
 #include "paddle/fluid/operators/mkldnn/softplus_mkldnn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class MKLDNNDeviceContext;
 }  // namespace platform
@@ -236,6 +238,10 @@ using HardSwishMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
 
 template <typename T>
+using MishMKLDNNFunctor =
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
+
+template <typename T>
 using SigmoidMKLDNNFunctor =
     MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
 
@@ -257,6 +263,10 @@ template <typename T>
 using ExpMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
 
 template <typename T>
+using RoundMKLDNNFunctor =
+    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
+
+template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_relu>;
 
@@ -271,6 +281,10 @@ using SwishMKLDNNGradFunctor =
 template <typename T>
 using HardSwishMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_hardswish>;
+
+template <typename T>
+using MishMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
 using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
@@ -320,6 +334,10 @@ namespace ops = paddle::operators;
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
+#define REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(act_type, functor) \
+  REGISTER_OP_KERNEL(act_type, MKLDNN, ::paddle::platform::CPUPlace,  \
+                     ops::MKLDNNActivationKernel<ops::functor<float>>);
+
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
   __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
@@ -331,6 +349,8 @@ namespace ops = paddle::operators;
   __macro(exp, ExpMKLDNNFunctor, ExpMKLDNNGradUseOutFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
+REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
+
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(relu, ReluMKLDNNFunctor,
                                        ReluMKLDNNGradFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
@@ -339,6 +359,8 @@ REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
                                        SigmoidMKLDNNGradUseOutFunctor);
 REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sqrt, SqrtMKLDNNFunctor,
                                        SqrtMKLDNNGradUseOutFunctor);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(mish, MishMKLDNNFunctor,
+                                       MishMKLDNNGradFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

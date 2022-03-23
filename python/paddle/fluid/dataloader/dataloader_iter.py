@@ -30,8 +30,9 @@ from paddle.fluid.framework import _set_expected_place, _current_expected_place,
 import queue
 
 import paddle
+import paddle.profiler as profiler
 from .. import core, layers
-from ..framework import in_dygraph_mode
+from ..framework import in_dygraph_mode, _in_eager_mode
 from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
@@ -202,22 +203,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
-        # NOTE(chenweihang): [ Why need to set not to execute pten kernel here? ]
-        # Now, in order to ensure that the execution performance of the dynamic
-        # graph mode in pten compatible state does not decline significantly,
-        # we have adopted the approach of caching a KernelContext globally for
-        # the dynamic graph tracer to reduce the construction and deconstruction
-        # overhead of data interfaces such as the compatible state DenseTensor.
-        # The static graph is each op caches a KernelContext, but the op of
-        # the dynamic graph will be constructed and destroyed every round of
-        # execution, so it is impossible to cache KernelContext for each op.
-        # However, it is not thread-safe if using only one global kernel context in
-        # dynamic graph. If the pten op of paddle is used in the DataLoader thread,
-        # it may cause access errors. We temporarily do not execute pten kernel
-        # in this scenario and will find a better solution later and remove
-        # this setting.
-        set_flags({'FLAGS_run_pten_kernel': False})
-
         while not self._thread_done_event.is_set():
             try:
                 indices = next(self._sampler_iter)
@@ -266,9 +251,17 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
+        trace_event = profiler.RecordEvent(
+            name="_DataLoaderIterSingleProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
@@ -295,6 +288,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._reader.shutdown()
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+        finally:
+            trace_event.end()
 
     def _shutdown_thread(self):
         if self._thread:
@@ -460,7 +455,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
-                self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    self._reader.read_next_var_list()
             elif self._return_list:
                 self._reader.read_next_list()
             else:
@@ -519,9 +518,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
-        # NOTE(chenweihang): See Note [ Why need to set not to execute pten kernel here? ]
-        set_flags({'FLAGS_run_pten_kernel': False})
-
         while not self._thread_done_event.is_set():
             batch = self._get_data()
             if not self._thread_done_event.is_set():
@@ -575,6 +571,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._rcvd_idx += 1
                     self._batches_outstanding -= 1
                 else:
+                    # NOTE: when _rcvd_idx catch up _send_idx, which means
+                    #       one of following:
+                    #       1. all 2 * num_workers batches have been loaded
+                    #          and stored in _blocking_queue
+                    #       2. all data drained
+                    #       we need to let _thread blocking at _data_queue
+                    #       get_data to inoccupy CPU, otherwise may occupy
+                    #       CPU time for model running
                     # NOTE: in persistent workers mode, do not check data
                     #       drained here, simply let it go to _data_queue
                     #       reading to get _ResumeIteration
@@ -584,7 +588,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         #       may also be data in blocking queue
                         if self._batches_outstanding < len(self._places):
                             return None
-                        continue
 
             if self._rcvd_idx in self._task_infos and \
                     len(self._task_infos[self._rcvd_idx]) == 3:
@@ -699,6 +702,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
+        trace_event = profiler.RecordEvent(
+            name="_DataLoaderIterMultiProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             # _batches_outstanding here record the total batch data number
             # in 'from after _try_put_indices to beforeoutput data', this
@@ -715,7 +722,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._blocking_queue.close()
 
             if in_dygraph_mode():
-                data = self._reader.read_next_var_list()
+                if _in_eager_mode():
+                    data = core.eager.read_next_tensor_list(
+                        self._reader.read_next_list()[0])
+                else:
+                    data = self._reader.read_next_var_list()
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
@@ -743,6 +754,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._reader.shutdown()
                 self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+        finally:
+            trace_event.end()
 
     # python2 compatibility
     def next(self):

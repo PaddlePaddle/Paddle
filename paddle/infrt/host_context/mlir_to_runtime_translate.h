@@ -29,7 +29,8 @@ class Attribute;
 class Value;
 }  // namespace mlir
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 class CoreRuntimeBuilder;
 class Value;
@@ -62,7 +63,8 @@ class MlirToRuntimeTranslator {
   //! Emit a "ts.build_shape" operation.
   bool EmitBuildShapeOp(mlir::Operation* op);
   //! Emit an operation other than the special cases above.
-  bool EmitGeneralOp(mlir::Operation* op);
+  bool EmitGeneralOp(mlir::Operation* op,
+                     const KernelRegistry& kernel_registry);
   //! Emit all the functions.
   bool EmitFunctions();
 
@@ -73,7 +75,7 @@ class MlirToRuntimeTranslator {
   bool EmitCallOp(mlir::Operation* op, function_defs_t* function_table);
 
   template <typename T>
-  boost::optional<T> EmitAttribute(const mlir::Attribute* attr);
+  boost::optional<T> EmitAttribute(const mlir::Attribute& attr);
 
   Value* GetOpResult(mlir::Operation* op);
 
@@ -104,4 +106,5 @@ void MlirToRuntimeTranslate(mlir::ModuleOp module, CoreRuntimeBuilder* runtime);
  */
 void TestMlir(mlir::ModuleOp module, KernelRegistry* registry);
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

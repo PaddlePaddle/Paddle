@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
@@ -76,11 +76,16 @@ class InterpreterCore {
   void RecordStreamForGC(const Instruction& instr);
 #endif
 
-  void CheckGC(const Instruction& instr);
+  void CheckGC(const Instruction& instr,
+               std::vector<std::atomic<size_t>>* atomic_var_ref);
 
-  void RunInstructionAsync(size_t instr_id);
+  void RunInstructionAsync(size_t instr_id,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
+                           std::queue<size_t>* reserved_next_ops,
+                           std::vector<std::atomic<size_t>>* atomic_deps,
+                           std::vector<std::atomic<size_t>>* atomic_var_ref);
 
   void BuildSkipShareLoDInfo();
 

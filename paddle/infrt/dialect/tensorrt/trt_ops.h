@@ -14,37 +14,38 @@
 
 #pragma once
 
-#include "mlir/Dialect/Traits.h"
-#include "mlir/IR/Attributes.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/Dialect.h"
-#include "mlir/IR/Function.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/IR/Module.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/IR/StandardTypes.h"
-#include "mlir/IR/TypeUtilities.h"
-#include "mlir/Interfaces/CallInterfaces.h"
-#include "mlir/Interfaces/DerivedAttributeOpInterface.h"
-#include "mlir/Interfaces/InferTypeOpInterface.h"
-#include "mlir/Interfaces/LoopLikeInterface.h"
-#include "mlir/Interfaces/SideEffectInterfaces.h"
+#include <mlir/Dialect/Traits.h>
+#include <mlir/IR/Attributes.h>
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/Matchers.h>
+#include <mlir/IR/OpImplementation.h>
+#include <mlir/IR/TypeUtilities.h>
+#include <mlir/Interfaces/CallInterfaces.h>
+#include <mlir/Interfaces/DerivedAttributeOpInterface.h>
+#include <mlir/Interfaces/InferTypeOpInterface.h>
+#include <mlir/Interfaces/LoopLikeInterface.h>
+#include <mlir/Interfaces/SideEffectInterfaces.h>
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 namespace infrt {
 namespace trt {
 
-class TensorRTDialect : public ::mlir::Dialect {
+class TensorRTDialect : public mlir::Dialect {
  public:
-  explicit TensorRTDialect(::mlir::MLIRContext* context);
+  explicit TensorRTDialect(mlir::MLIRContext *context);
   static llvm::StringRef getDialectNamespace() { return "trt"; }
+  mlir::Type parseType(mlir::DialectAsmParser &parser) const;  // NOLINT
+  void printType(mlir::Type type,
+                 mlir::DialectAsmPrinter &printer) const;  // NOLINT
 };
-
-// mlir bug。 can be removed safety when update mlir to llvm11.
-using namespace mlir;  // NOLINT
-
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/tensorrt/trt_ops.hpp.inc"
-#undef GET_OP_CLASSES
 
 }  // namespace trt
 }  // namespace infrt
+
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/tensorrt/trt_ops.hpp.inc"

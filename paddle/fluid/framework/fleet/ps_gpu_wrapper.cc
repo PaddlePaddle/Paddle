@@ -148,7 +148,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       t.join();
     }
     timeline.Pause();
-    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+    VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   } else {
     CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
     VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
@@ -182,7 +182,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       t.join();
     }
     timeline.Pause();
-    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+    VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   }
 
   timeline.Start();
@@ -300,7 +300,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     int32_t cnt = 0;
     while (true) {
       auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-          reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+          i, reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
 
@@ -378,8 +378,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     int32_t cnt = 0;
     while (true) {
       auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-          reinterpret_cast<char**>(local_dim_ptr[i][j].data()), this->table_id_,
-          local_dim_keys[i][j].data(), key_size);
+          i, reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
+          this->table_id_, local_dim_keys[i][j].data(), key_size);
       bool flag = true;
 
       tt.wait();
@@ -431,7 +431,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     t.join();
   }
   timeline.Pause();
-  VLOG(1) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
+  VLOG(0) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
           << " seconds.";
   if (multi_node_) {
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
@@ -603,7 +603,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     t.join();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec()
+  VLOG(0) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec()
           << " seconds.";
 }
 
@@ -746,7 +746,7 @@ void PSGPUWrapper::BeginPass() {
         "[BeginPass] after build_task, current task is not null."));
   }
 
-  VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
+  VLOG(0) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::EndPass() {
@@ -769,7 +769,7 @@ void PSGPUWrapper::EndPass() {
   current_task_ = nullptr;
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
-  VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
+  VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
@@ -791,7 +791,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
         "Warning:: CPUPlace is not supported in GpuPs now."));
   } else if (platform::is_gpu_place(place)) {
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
@@ -859,7 +859,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in GPUPS now."));
   } else if (platform::is_gpu_place(place)) {
-    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+    int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =

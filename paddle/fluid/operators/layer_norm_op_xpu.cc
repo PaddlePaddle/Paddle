@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/layer_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
     const auto epsilon = ctx.Attr<float>("epsilon");
     const auto* x = ctx.Input<Tensor>("X");
     const auto& x_dims = x->dims();
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     const auto* scale = ctx.Input<Tensor>("Scale");
@@ -69,7 +69,7 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
     const auto epsilon = ctx.Attr<float>("epsilon");
     const auto* x = ctx.Input<Tensor>("X");
     const auto& x_dims = x->dims();
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     const auto* mean = ctx.Input<Tensor>("Mean");

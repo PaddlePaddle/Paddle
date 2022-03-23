@@ -8,7 +8,20 @@ function(detection_library TARGET_NAME)
     set(pybind_flag 0)
     cmake_parse_arguments(detection_library "${options}" "${oneValueArgs}"
             "${multiValueArgs}" ${ARGN})
-    op_library(${TARGET_NAME} SRCS ${detection_library_SRCS} DEPS ${common_deps} ${detection_library_DEPS})
+    set(srcs)
+    # filter cuda source file when not build with cuda/rocm
+    foreach(src ${detection_library_SRCS})
+      if (NOT WITH_GPU AND NOT WITH_ROCM)
+        if(${src} MATCHES ".*\\.cc$")
+          list(APPEND srcs ${src})
+        endif()
+      else()
+        list(APPEND srcs ${src})
+      endif()
+    endforeach()
+    
+    op_library(${TARGET_NAME} SRCS ${srcs} DEPS ${common_deps} ${detection_library_DEPS})
+
     set(LOCAL_DETECTION_LIBS
             ${TARGET_NAME}
             ${LOCAL_DETECTION_LIBS}
@@ -49,7 +62,7 @@ detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
 detection_library(matrix_nms_op SRCS matrix_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
-detection_library(yolo_box_op SRCS yolo_box_op.cc yolo_box_op.cu)
+detection_library(yolo_box_op SRCS yolo_box_op.cc)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc box_decoder_and_assign_op.cu)
 detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc sigmoid_focal_loss_op.cu)
 detection_library(retinanet_detection_output_op SRCS retinanet_detection_output_op.cc)

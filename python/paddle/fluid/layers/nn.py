@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_eager_mode
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -5611,6 +5611,8 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_transpose(x, perm)
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
@@ -6254,6 +6256,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             # the shape of reshaped_3 is [6,8].
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            tmp_tensor_type = core.eager.Tensor
+        else:
+            tmp_tensor_type = Variable
         #TODO(zhiqiu): enable inplace in dygraph mode.
         if inplace:
             warnings.warn(
@@ -6265,7 +6271,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 for item in shape
             ]
             out, _ = _C_ops.reshape2(x, None, 'shape', shape)
-        elif isinstance(shape, Variable):
+        elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
         else:
@@ -6276,7 +6282,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(x, 'x', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'
+        'float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'bool',
+        'uint16'
     ], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
@@ -6294,7 +6301,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 if dim_size == -1:
                     assert unk_dim_idx == -1, (
                         "Only one dimension value of 'shape' in reshape can "
-                        "be -1. But received shape[%d] is also -1." % dim_idx)
+                        "be -1. But received shape[%d] is also -1.\n"
+                        "\n\t# N = x.shape()[2]\t\t# N is an int. "
+                        "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
+                        "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
+                        "\t# z.shape is [-1, -1, 4]\n\n"
+                        "    If your target shape in Reshape represents dynamic shape, "
+                        "please turn it into a Tensor under @to_static. See above example for details."
+                        % dim_idx)
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
                     assert dim_idx < len(x.shape), (
@@ -6456,10 +6470,10 @@ def unsqueeze(input, axes, name=None):
         return out
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
-    check_variable_and_dtype(
-        input, 'input',
-        ['float16', 'float32', 'float64', 'bool', 'int8', 'int32', 'int64'],
-        'unsqueeze')
+    check_variable_and_dtype(input, 'input', [
+        'float16', 'float32', 'float64', 'bool', 'int8', 'int16', 'int32',
+        'int64'
+    ], 'unsqueeze')
     helper = LayerHelper("unsqueeze2", **locals())
     inputs = {"X": input}
     attrs = {}
@@ -8538,10 +8552,12 @@ def gather_nd(input, index, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather_nd(input, index)
         return _C_ops.gather_nd(input, index)
-    check_variable_and_dtype(input, 'input',
-                             ['bool', 'float32', 'float64', 'int32', 'int64'],
-                             'gather_np')
+    check_variable_and_dtype(
+        input, 'input',
+        ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'], 'gather_np')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather_np')
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
@@ -8714,6 +8730,8 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
+        #if _in_eager_mode():
+        #return _C_ops.final_state_scatter_nd_add(ref, index, updates)
         op = getattr(_C_ops, 'scatter_nd_add')
         return op(ref, index, updates)
 
@@ -10143,6 +10161,9 @@ def flatten(x, axis=1, name=None):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
         'flatten')
+    if in_dygraph_mode():
+        return _C_ops.flatten2(x, 'axis', axis)[0]
+
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):
@@ -11131,24 +11152,30 @@ def slice(input, axes, starts, ends):
 
         infer_flags = list(1 for i in range(len(axes)))
 
+        if _in_eager_mode():
+            tmp_tensor_type = core.eager.Tensor
+        else:
+            tmp_tensor_type = Variable
+
         if isinstance(starts, (list, tuple)):
             starts = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
             attrs += ('starts', starts)
-        elif isinstance(starts, Variable):
+        elif isinstance(starts, tmp_tensor_type):
             starts_tensor = starts
             starts.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
 
         if isinstance(ends, (list, tuple)):
             ends = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in ends
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type) else item for item in ends
             ]
             attrs += ('ends', ends)
-        elif isinstance(ends, Variable):
+        elif isinstance(ends, tmp_tensor_type):
             ends_tensor = ends
             ends_tensor.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
@@ -15191,6 +15218,9 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
+    if in_dygraph_mode():
+        return _C_ops.mish(x, 'threshold', threshold)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
     check_type(threshold, 'threshold', (float, int), 'mish')
     assert threshold > 0, "threshold of mish should be greater than 0, " \
@@ -15202,7 +15232,7 @@ def mish(x, threshold=20, name=None):
         type='mish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold or -1})
+        attrs={'threshold': threshold})
     return out
 
 
@@ -15268,6 +15298,8 @@ def gather_tree(ids, parents):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_gather_tree(ids, parents)
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())

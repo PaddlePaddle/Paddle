@@ -25,6 +25,7 @@ from copy import deepcopy
 import inspect
 
 import paddle
+import paddle.profiler as profiler
 
 from . import parallel_helper
 from .. import unique_name
@@ -342,7 +343,7 @@ class Layer(object):
                 import paddle
                 import numpy as np
 
-                # the forward_post_hook change the input of the layer: input = input * 2
+                # the forward_pre_hook change the input of the layer: input = input * 2
                 def forward_pre_hook(layer, input):
                     # user can use layer and input for information statistis tasks
 
@@ -760,7 +761,8 @@ class Layer(object):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not type(tensor) == core.VarBase:
+        elif tensor is not None and not (type(tensor) == core.VarBase or
+                                         type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
                 format(type(tensor).__name__))
@@ -904,7 +906,9 @@ class Layer(object):
 
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        with profiler.RecordEvent(self.full_name(),
+                                  profiler.TracerEventType.Forward):
+            outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -1154,7 +1158,8 @@ class Layer(object):
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase:
+                if type(value) == core.VarBase or \
+                    type(value) == core.eager.Tensor:
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
@@ -1279,8 +1284,36 @@ class Layer(object):
     def _obtain_parameters_buffers(self,
                                    destination=None,
                                    include_sublayers=True,
-                                   structured_name_prefix="",
-                                   include_non_persistable_buffer=False):
+                                   structured_name_prefix=""):
+        """
+        The difference from state_dict() is that state_dict_hook will not be called, 
+        but the original types of parameters and buffers will be maintained.
+        """
+        if destination is None:
+            destination = collections.OrderedDict()
+        for name, data in self._parameters.items():
+            if data is not None:
+                destination[structured_name_prefix + name] = data
+        for name, buffer in self._buffers.items():
+            if buffer is not None and name not in self._non_persistable_buffer_names_set:
+                destination[structured_name_prefix + name] = buffer
+
+        if include_sublayers:
+            for layer_name, layer_item in self._sub_layers.items():
+                if layer_item is not None:
+                    destination_temp = destination.copy()
+                    destination_temp.update(
+                        layer_item._obtain_parameters_buffers(
+                            destination_temp, include_sublayers,
+                            structured_name_prefix + layer_name + "."))
+                    destination = destination_temp
+        return destination
+
+    def _state_dict_impl(self,
+                         destination=None,
+                         include_sublayers=True,
+                         structured_name_prefix="",
+                         include_non_persistable_buffer=False):
         """
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -1313,16 +1346,6 @@ class Layer(object):
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer))
                     destination = destination_temp
-        return destination
-
-    def _state_dict_impl(self,
-                         destination=None,
-                         include_sublayers=True,
-                         structured_name_prefix="",
-                         include_non_persistable_buffer=False):
-        destination = self._obtain_parameters_buffers(
-            destination, include_sublayers, structured_name_prefix,
-            include_non_persistable_buffer)
         for state_dict_hook in self._state_dict_hooks.values():
             hook_result = state_dict_hook(destination)
             if hook_result is not None:
@@ -1550,6 +1573,8 @@ class Layer(object):
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
+
+        self._dtype = dtype
 
     def _to_impl(self,
                  device=None,

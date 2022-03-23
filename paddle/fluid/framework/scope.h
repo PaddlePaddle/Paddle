@@ -26,9 +26,9 @@ extern "C" {
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
@@ -144,6 +144,9 @@ class Scope : public ScopeBase {
   void Rename(const std::string& origin_name,
               const std::string& new_name) const;
 
+  // Return the number of variables in scope
+  size_t Size() { return vars_.size(); }
+
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
@@ -194,8 +197,8 @@ class Scope : public ScopeBase {
 #ifndef PADDLE_ON_INFERENCE
 
  private:
-  mutable RWLock kids_lock_;
-  mutable RWLock vars_lock_;
+  mutable phi::RWLock kids_lock_;
+  mutable phi::RWLock vars_lock_;
 #endif
 };
 

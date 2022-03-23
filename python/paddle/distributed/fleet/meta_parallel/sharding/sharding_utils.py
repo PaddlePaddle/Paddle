@@ -21,7 +21,6 @@ import numpy as np
 from types import MethodType
 
 import paddle
-import paddle.distributed as dist
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid import layers
@@ -57,14 +56,15 @@ class ShardingClipGrad:
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
-        params_and_grads = []
-
-        sum_square_fp16 = []
-        sum_square_fp32 = []
+        sum_square_fp32, sum_square_fp16 = [], []
+        unslice_params_fp32, unslice_params_fp16 = [], []
 
         for p, g in params_grads:
+            p_slice = True  # using for slice parameter in sharding stage3
             if g is None or getattr(p, 'need_clip', True) is False:
                 continue
+            if hasattr(p, "unslice"):
+                p_slice = False
 
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -74,9 +74,11 @@ class ShardingClipGrad:
             sum_square = layers.reduce_sum(square)
 
             if p.dtype == paddle.float16:
-                sum_square_fp16.append(sum_square)
+                if p_slice: sum_square_fp16.append(sum_square)
+                else: unslice_params_fp16.append(sum_square)
             elif p.dtype == paddle.float32:
-                sum_square_fp32.append(sum_square)
+                if p_slice: sum_square_fp32.append(sum_square)
+                else: unslice_params_fp32.append(sum_square)
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_fp16) == 0:
@@ -87,13 +89,29 @@ class ShardingClipGrad:
             global_norm_fp16 = paddle.cast(
                 global_norm_fp16, dtype=paddle.float32)
 
+        # global norm of non-distributed FP16 params_and_grads for unslice parameter
+        if len(unslice_params_fp16) == 0:
+            global_unslice_fp16 = paddle.to_tensor([0.], dtype=paddle.float32)
+        else:
+            global_unslice_fp16 = layers.concat(unslice_params_fp16)
+            global_unslice_fp16 = layers.reduce_sum(global_unslice_fp16)
+            global_unslice_fp16 = paddle.cast(
+                global_unslice_fp16, dtype=paddle.float32)
+
         # global norm of non-distributed FP32 params_and_grads
         global_norm_fp32 = layers.concat(sum_square_fp32) if len(
             sum_square_fp32) != 0 else paddle.to_tensor(
                 [0.], dtype=paddle.float32)
         global_norm_fp32 = layers.reduce_sum(global_norm_fp32)
 
-        global_norm_var = global_norm_fp16 + global_norm_fp32
+        # global norm of non-distributed FP32 params_and_grads for unslice parameter
+        global_unslice_fp32 = layers.concat(unslice_params_fp32) if len(
+            unslice_params_fp32) != 0 else paddle.to_tensor(
+                [0.], dtype=paddle.float32)
+        global_unslice_fp32 = layers.reduce_sum(global_unslice_fp32)
+        global_unslice_var = global_unslice_fp16 + global_unslice_fp32
+
+        global_norm_var = global_norm_fp16 + global_norm_fp32 + 1.0 / self._group.nranks * global_unslice_var
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
@@ -111,18 +129,18 @@ class ShardingClipGrad:
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
         for p, g in params_grads:
-            if g is None:
+            if getattr(p, 'need_clip', True) is False or g is None:
                 continue
-            if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
-                continue
+            origin_state = g.stop_gradient
+            g.stop_gradient = True
             if p.dtype == paddle.float16:
-                new_grad = layers.elementwise_mul(x=g, y=clip_var_fp16)
+                g.scale_(clip_var_fp16)
             else:
-                new_grad = layers.elementwise_mul(x=g, y=clip_var)
-            params_and_grads.append((p, new_grad))
+                g.scale_(clip_var)
+            g.stop_gradient = origin_state
+            p._reset_grad_inplace_version(True)
 
-        return params_and_grads
+        return params_grads
 
     def __getattr__(self, item):
         return getattr(self._clip, item)
@@ -152,6 +170,9 @@ def ShardingScaler(scaler):
         param_grads = []
         param_grads_fp16 = []
         param_grads_fp32 = []
+        if hasattr(optimizer, "update_slice"):
+            optimizer.update_slice()
+            optimizer.update_scaler = True
 
         if getattr(optimizer._optim, '_param_groups', None) and isinstance(
                 optimizer._optim._param_groups[0], dict):
@@ -161,27 +182,21 @@ def ShardingScaler(scaler):
                     if param._grad_ivar() is not None:
                         param_grads.append(param._grad_ivar())
                         if param._grad_ivar(
-                        ).dtype == core.VarDesc.VarType.FP16:
+                        ).dtype in [core.VarDesc.VarType.FP16, paddle.float16]:
                             param_grads_fp16.append(param._grad_ivar())
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            param_grads = [
-                param._grad_ivar() for param in optimizer._optim._parameter_list
-                if param._grad_ivar() is not None
-            ]
-            param_grads_fp16 = [
-                param._grad_ivar() for param in optimizer._optim._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16
-                           )
-            ]
-            param_grads_fp32 = [
-                param._grad_ivar() for param in optimizer._optim._parameter_list
-                if (param._grad_ivar() is not None
-                    ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32
-                           )
-            ]
+            for param in optimizer._optim._parameter_list:
+                if param.grad is not None:
+                    param_grads.append(param.grad)
+                    if param.grad.dtype in [
+                            core.VarDesc.VarType.FP16, paddle.float16
+                    ]:
+                        param_grads_fp16.append(param.grad)
+                    else:
+                        param_grads_fp32.append(param.grad)
+
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
 

@@ -38,7 +38,7 @@ class XPURangeKernel : public framework::OpKernel<T> {
 
     int64_t size = 0;
     GetSize(start, end, step, &size);
-    out->Resize(framework::make_ddim({size}));
+    out->Resize(phi::make_ddim({size}));
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
@@ -50,9 +50,8 @@ class XPURangeKernel : public framework::OpKernel<T> {
       out_cpu_data_ptr[i] = value;
       value += step;
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
-                 static_cast<void*>(out_data), platform::CPUPlace(),
-                 static_cast<void*>(out_cpu_data_ptr),
+    memory::Copy(context.GetPlace(), static_cast<void*>(out_data),
+                 platform::CPUPlace(), static_cast<void*>(out_cpu_data_ptr),
                  out->numel() * sizeof(T));
   }
 };

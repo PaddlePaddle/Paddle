@@ -33,7 +33,8 @@ using infrt::host_context::Attribute;
 using infrt::host_context::MlirFunctionExecutable;
 using infrt::host_context::RemainingArguments;
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 namespace {
 class BenchmarkStats {
  public:
@@ -193,8 +194,9 @@ tensor::DenseHostTensor ShadowCopyTensor(tensor::DenseHostTensor src) {
 
 void RegisterTestKernels(host_context::KernelRegistry *registry) {
   registry->AddKernel("infrt.benchmark", INFRT_KERNEL(benchmark));
-  registry->AddKernel("infrt.test.shadow_copy_tensor",
+  registry->AddKernel("Infrt.test.shadow_copy_tensor",
                       INFRT_KERNEL(ShadowCopyTensor));
 }
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt
