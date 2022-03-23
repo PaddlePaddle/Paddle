@@ -23,7 +23,6 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
-
 namespace phi {
 
 template <typename T>
