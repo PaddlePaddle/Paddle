@@ -155,8 +155,6 @@ class AddListenAndServPass(PassBase):
         main_program.global_block().append_op(
             type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=opt)
 
-        attrs['cloned_main'] = main_program
-
 
 @register_pass("add_rpc_global_flags_pass")
 class AddRpcGlobalFlagsPass(PassBase):
