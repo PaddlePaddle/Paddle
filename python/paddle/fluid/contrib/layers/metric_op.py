@@ -23,6 +23,7 @@ from paddle.fluid.initializer import Normal, Constant
 from paddle.fluid.framework import Variable
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layers import nn
+from paddle.fluid.layers import tensor
 
 __all__ = ['ctr_metric_bundle']
 
@@ -193,7 +194,11 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
                 "Y": [local_ins_num]},
         outputs={"Out": [local_ins_num]})
 
+    #if data is fake, return 0
     if ins_tag_weight[0] == 0:
-        local_q = 0
-        local_ins_num = 0
+        for var in [local_q, local_ins_num]:
+            helper.set_variable_initializer(
+                var, Constant(
+                    value=0.0, force_cpu=True))
+
     return local_sqrerr, local_abserr, local_prob, local_q, local_pos_num, local_ins_num
