@@ -11,8 +11,11 @@
 
 #pragma once
 #define NOMINMAX  // to use std::min std::max correctly on windows
+#include <algorithm>
+#include <functional>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/convert_utils.h"
@@ -23,8 +26,10 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"

@@ -94,6 +94,12 @@ void FlattenInferMeta(const MetaTensor& x,
                       int stop_axis,
                       MetaTensor* out);
 
+void FlattenWithXShapeInferMeta(const MetaTensor& x,
+                                int start_axis,
+                                int stop_axis,
+                                MetaTensor* out,
+                                MetaTensor* xshape);
+
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             float temperature,
                             bool hard,
