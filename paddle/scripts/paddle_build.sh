@@ -774,12 +774,12 @@ set +x
         get_precision_ut_mac
         ut_actual_total_startTime_s=`date +%s`
         if [[ "$on_precision" == "0" ]];then
-            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         else
-            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
@@ -848,7 +848,7 @@ set +x
                                 fi
                             done
                         failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --output-on-failure -j 2 | tee $tmpfile
+                        ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
