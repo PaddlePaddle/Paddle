@@ -11,6 +11,7 @@ nv_library(tensorrt_converter
                 roi_align_op.cc
                 affine_channel_op.cc
                 multiclass_nms_op.cc
+                multiclass_nms3_op.cc
                 nearest_interp_op.cc
                 reshape_op.cc
                 reduce_op.cc

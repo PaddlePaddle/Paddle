@@ -175,7 +175,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "multiclass_nms3"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -642,7 +643,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "multiclass_nms") {
+    if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -651,7 +652,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      for (auto& param_name : desc.Inputs()) {
+      auto multiclass_nms_inputs = desc.Inputs();
+      if (multiclass_nms_inputs.find("RoisNum") !=
+          multiclass_nms_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
+      }
+      for (auto& param_name : multiclass_nms_inputs) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
