@@ -596,4 +596,22 @@
     #func : gather
   #backward : gather_grad
 
+- api : kthvalue
+  args : (Tensor x, int k, int axis, bool keepdim)
+  output : Tensor(out), Tensor(indices)
+  infer_meta : 
+    func : KthvalueInferMeta
+  kernel : 
+    func : kthvalue
+  backward : kthvalue_grad
+
+- api : kldiv_loss
+  args : (Tensor x, Tensor label, str reduction)
+  output : Tensor(out)
+  infer_meta : 
+    func : KLDivInferMeta
+  kernel : 
+    func : kldiv_loss
+  backward : kldiv_loss_grad
+
 #  =================================== sep3

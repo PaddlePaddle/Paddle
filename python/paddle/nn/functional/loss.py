@@ -902,6 +902,8 @@ def kl_div(input, label, reduction='mean', name=None):
         label = paddle.cast(label, 'float64')
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_kldiv_loss(input, label, 'none')
         out = _C_ops.kldiv_loss(input, label, 'reduction', 'none')
         if reduction == 'mean':
             out = paddle.mean(out)

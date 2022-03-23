@@ -983,8 +983,12 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     """
     if paddle.in_dynamic_mode():
         if axis is not None:
+            if _in_eager_mode():
+                return _C_ops.final_state_kthvalue(x, k, axis, keepdim)
             return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim", keepdim)
         else:
+            if _in_eager_mode():
+                return _C_ops.final_state_kthvalue(x, k, -1, keepdim)
             return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
 
     helper = LayerHelper("kthvalue", **locals())

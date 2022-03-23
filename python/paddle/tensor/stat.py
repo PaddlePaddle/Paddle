@@ -17,7 +17,7 @@
 import numpy as np
 from ..static import Variable
 from ..fluid.layer_helper import LayerHelper
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -88,6 +88,8 @@ def mean(x, axis=None, keepdim=False, name=None):
         axis = [0]
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_mean(x, axis, keepdim)
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                   'reduce_all', reduce_all)
 

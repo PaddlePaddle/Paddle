@@ -28,6 +28,7 @@ np.random.seed(10)
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "mean"
+        self.python_api = paddle.mean
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
@@ -37,10 +38,10 @@ class TestMeanOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestMeanOpError(unittest.TestCase):
@@ -117,6 +118,7 @@ def ref_reduce_mean_grad(x, axis, dtype):
 class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
+        self.python_api = paddle.mean
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
         self.axis = [0]
@@ -154,7 +156,7 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'])
+            self.check_grad(['X'], ['Out'], check_eager=True)
         else:
             return
             if not core.is_compiled_with_cuda():
@@ -175,6 +177,7 @@ class TestReduceMeanOp(OpTest):
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
     def setUp(self):
         self.op_type = 'reduce_mean'
+        self.python_api = paddle.mean
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
 

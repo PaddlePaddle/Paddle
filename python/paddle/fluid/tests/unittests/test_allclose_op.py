@@ -29,6 +29,7 @@ class TestAllcloseOp(OpTest):
     def setUp(self):
         self.set_args()
         self.op_type = "allclose"
+        self.python_api = paddle.allclose
         self.inputs = {
             'Input': self.input,
             'Other': self.other,
