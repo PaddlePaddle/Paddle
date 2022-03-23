@@ -54,7 +54,7 @@ void ConvCudnnKernel(const Context& ctx,
                      int workspace_size_MB,
                      bool exhaustive_search_t,
                      DenseTensor* output) {
-  output->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
@@ -170,7 +170,7 @@ void ConvCudnnKernel(const Context& ctx,
     }
     DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
-    transformed_input.mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(&transformed_input);
 
     const int rank = transformed_input_channel.dims().size();
     T pad_value(0.0);
