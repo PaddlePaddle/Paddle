@@ -38,12 +38,10 @@ class ChannelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor, default Tensor<float>), the output of "
               "ChannelShuffleOp. The layout is also [N, C, "
               "H, W] or [N, H, W, C].");
-    AddAttr<int>("groups",
-                 "number of groups to divide channels in.")
+    AddAttr<int>("groups", "number of groups to divide channels in.")
         .AddCustomChecker([](const int& groups) {
-          PADDLE_ENFORCE_GE(groups, 1,
-                            platform::errors::InvalidArgument(
-                                "groups should be larger than 0."));
+          PADDLE_ENFORCE_GE(groups, 1, platform::errors::InvalidArgument(
+                                           "groups should be larger than 0."));
         });
     AddAttr<std::string>(
         "data_format",
@@ -84,7 +82,7 @@ class ChannelShuffleGradOp : public framework::OperatorWithKernel {
                           "Input should be a 4-D tensor of format [N, C, "
                           "H, W] or [N, H, W, C], but got %u.",
                           do_dims.size()));
-    
+
     auto dx_dims = do_dims;
     ctx->SetOutputDim(framework::GradVarName("X"), dx_dims);
   }
@@ -111,8 +109,7 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(channel_shuffle, ChannelShuffleInferShapeFunctor,
                             PD_INFER_META(phi::ChannelShuffleInferMeta));
 
-REGISTER_OPERATOR(channel_shuffle,
-                  ops::ChannelShuffleOp, 
+REGISTER_OPERATOR(channel_shuffle, ops::ChannelShuffleOp,
                   ops::ChannelShuffleOpMaker,
                   ops::ChannelShuffleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ChannelShuffleGradOpMaker<paddle::imperative::OpBase>,

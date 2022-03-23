@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/channel_shuffle_kernel.h"
 #include <string>
 #include <vector>
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/channel_shuffle_kernel.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -36,18 +36,18 @@ void ChannelShuffleKernel(const Context& ctx,
 
   DenseTensor t(*in);
   if (!channel_last) {
-    t.Resize({in_dims[0], groups, in_dims[1]/groups, in_dims[2], in_dims[3]});
+    t.Resize({in_dims[0], groups, in_dims[1] / groups, in_dims[2], in_dims[3]});
   } else {
-    t.Resize({in_dims[0], in_dims[1], in_dims[2], groups, in_dims[3]/groups});
+    t.Resize({in_dims[0], in_dims[1], in_dims[2], groups, in_dims[3] / groups});
   }
-  auto axis = !channel_last ? std::vector<int> {0, 2, 1, 3, 4}
-                            : std::vector<int> {0, 1, 2, 4, 3};
+  auto axis = !channel_last ? std::vector<int>{0, 2, 1, 3, 4}
+                            : std::vector<int>{0, 1, 2, 4, 3};
 
   DenseTensor o(*out);
   if (!channel_last) {
-    o.Resize({in_dims[0], in_dims[1]/groups, groups, in_dims[2], in_dims[3]});
+    o.Resize({in_dims[0], in_dims[1] / groups, groups, in_dims[2], in_dims[3]});
   } else {
-    o.Resize({in_dims[0], in_dims[1], in_dims[2], in_dims[3]/groups, groups});
+    o.Resize({in_dims[0], in_dims[1], in_dims[2], in_dims[3] / groups, groups});
   }
   phi::funcs::Transpose<Context, T, 5> trans;
   trans(ctx, t, &o, axis);

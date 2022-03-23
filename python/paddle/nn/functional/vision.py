@@ -345,6 +345,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
                "data_format": data_format})
     return out
 
+
 def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     This API implements channel shuffle operation.
@@ -388,8 +389,8 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
                              data_format))
 
     if in_dynamic_mode():
-        return _C_ops.channel_shuffle(x, "groups", groups,
-                                      "data_format", data_format)
+        return _C_ops.channel_shuffle(x, "groups", groups, "data_format",
+                                      data_format)
     
     helper = LayerHelper("channel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')

@@ -88,6 +88,7 @@ class PixelShuffle(Layer):
             main_str += ', name={}'.format(self._name)
         return main_str
 
+
 class ChannelShuffle(Layer):
     """
     
@@ -130,6 +131,7 @@ class ChannelShuffle(Layer):
             #   [[0.30000001]],
             #   [[0.50000000]]]]
     """
+
     def __init__(self, groups, data_format="NCHW", name=None):
         super(ChannelShuffle, self).__init__()
 
@@ -145,8 +147,8 @@ class ChannelShuffle(Layer):
         self._name = name
 
     def forward(self, x):
-        return functional.channel_shuffle(x, self._groups,
-                                          self._data_format, self._name)
+        return functional.channel_shuffle(x, self._groups, self._data_format,
+                                          self._name)
 
     def extra_repr(self):
         main_str = 'groups={}'.format(self._groups)

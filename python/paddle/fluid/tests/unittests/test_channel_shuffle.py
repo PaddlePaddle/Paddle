@@ -220,5 +220,6 @@ class TestChannelShuffleError(unittest.TestCase):
 
         self.assertRaises(ValueError, error_data_format_layer)
 
+
 if __name__ == '__main__':
     unittest.main()

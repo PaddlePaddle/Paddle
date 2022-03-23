@@ -32,6 +32,7 @@ KernelSignature ChannelShuffleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(channel_shuffle, phi::ChannelShuffleOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(channel_shuffle,
+                           phi::ChannelShuffleOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(channel_shuffle_grad,
                            phi::ChannelShuffleGradOpArgumentMapping);
