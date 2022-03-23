@@ -30,7 +30,6 @@ namespace ir {
 
 using GraphWithStats = std::pair<ir::Graph*, int>;
 
-
 class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
   GraphWithStats FuseFCAsX(const std::string& name_scope,
