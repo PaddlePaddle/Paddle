@@ -38,7 +38,15 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"assign", {"X"}},
     {"reshape2", {"X", "Shape"}},
     {"expand", {"X", "ExpandTimes"}},
-    {"slice", {"Input", "StartsTensor", "EndsTensor"}},
+    {"slice",
+     {"Input", "StartsTensor", "EndsTensor", "StartsTensorList",
+      "EndsTensorList"}},
+    {"strided_slice",
+     {"Input", "StartsTensor", "EndsTensor", "StridesTensor",
+      "StartsTensorList", "EndsTensorList", "StridesTensorList"}},
+    {"set_value",
+     {"Input", "ValueTensor", "StartsTensorList", "EndsTensorList",
+      "StepsTensorList"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
@@ -89,6 +97,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"Input", "Label", "Weight", "Bias", "SampleWeight", "CustomDistProbs",
       "CustomDistAlias", "CustomDistAliasProbs"}},
     {"check_finite_and_unscale", {"X", "Scale", "FloatStatus"}},
+    {"group_norm", {"X", "Scale", "Bias"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

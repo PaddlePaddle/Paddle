@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/impl/activation_grad_impl.h"
+#include "paddle/phi/kernels/impl/activation_impl.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
@@ -38,12 +38,13 @@ void ActivationGPUImpl(const Context& dev_ctx,
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
-#define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)                   \
-  template <typename T, typename Context>                                   \
-  void name##Kernel(                                                        \
-      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {     \
-    functor_class functor;                                                  \
-    ActivationGPUImpl<T, Context, functor_class>(dev_ctx, x, out, functor); \
+#define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \
+  template <typename T, typename Context>                               \
+  void name##Kernel(                                                    \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
+    funcs::functor_class<T> functor;                                    \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>(             \
+        dev_ctx, x, out, functor);                                      \
   }
 
 #define DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(name, functor_class, attr) \
@@ -75,26 +76,43 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                          \
   }
 
-DEFINE_GPU_ACTIVATION_KERNEL(Cos, funcs::CudaCosFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Tan, funcs::CudaTanFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Acos, funcs::CudaAcosFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Sin, funcs::CudaSinFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Asin, funcs::CudaAsinFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Atan, funcs::CudaAtanFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Sinh, funcs::CudaSinhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Cosh, funcs::CudaCoshFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Asinh, funcs::CudaAsinhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Acosh, funcs::CudaAcoshFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Atanh, funcs::CudaAtanhFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Relu, funcs::CudaReluFunctor<T>)
-DEFINE_GPU_ACTIVATION_KERNEL(Tanh, funcs::CudaTanhFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Cos, CudaCosFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Tan, CudaTanFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Acos, CudaAcosFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sin, CudaSinFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Asin, CudaAsinFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Atan, CudaAtanFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sinh, CudaSinhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Cosh, CudaCoshFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Asinh, CudaAsinhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Acosh, CudaAcoshFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Atanh, CudaAtanhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log, CudaLogFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log2, CudaLog2Functor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log10, CudaLog10Functor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log1p, CudaLog1pFunctor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
+                                     CudaHardShrinkFunctor,
+                                     threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
 
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, CudaBReluFunctor, t_min, t_max)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
+                                     CudaHardSigmoidFunctor,
+                                     slope,
+                                     offset)
 
 }  // namespace phi
 
@@ -142,3 +160,15 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
+PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)

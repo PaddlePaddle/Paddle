@@ -122,10 +122,30 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
   EAGER_TRY
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  egr::RunBackward(tensors, grad_tensors,
-                   CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
+  egr::Backward(tensors, grad_tensors,
+                CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
   Py_INCREF(Py_None);
   return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_run_partial_grad(PyObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto inputs = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
+  auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 2), 2);
+  auto retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
+  auto create_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+  auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
+  auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
+  auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
+
+  std::vector<paddle::experimental::Tensor> result =
+      egr::Grad(tensors, inputs, grad_tensors, retain_graph, create_graph,
+                only_inputs, allow_unused, no_grad_vars);
+  VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
+  return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -139,7 +159,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
 
-  dst = src.copy_to(phi::TransToPhiBackend(place), blocking);
+  dst = src.copy_to(place, blocking);
   egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
       egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
@@ -355,6 +375,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
   ins_auto_grad_metas.resize(ctx.InputRange().size());
   VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
   outs_auto_grad_metas.resize(ctx.OutputRange().size());
+
   for (size_t i = 0; i < ctx.InputRange().size(); i++) {
     ins_auto_grad_metas[i] =
         egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
@@ -384,11 +405,15 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     // Prepare Grad outputs
     size_t no_grad_cnt = 0;
     for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+      const std::vector<paddle::experimental::Tensor>& in_tensors =
+          ctx.InputsBetween(ctx.InputRangeAt(i).first,
+                            ctx.InputRangeAt(i).second);
+
       if (slot_map[0].find(i) != slot_map[0].end()) {
-        grad_node->SetGradOutMeta(&ins_auto_grad_metas[i], slot_map[0][i]);
+        grad_node->SetGradOutMeta(in_tensors, slot_map[0][i]);
         grad_node->AddEdges(&ins_auto_grad_metas[i], slot_map[0][i]);
       } else {
-        grad_node->SetGradOutMeta(&ins_auto_grad_metas[i],
+        grad_node->SetGradOutMeta(in_tensors,
                                   ins_auto_grad_metas.size() - 1 - no_grad_cnt);
         grad_node->AddEdges(&ins_auto_grad_metas[i],
                             ins_auto_grad_metas.size() - 1 - no_grad_cnt);
@@ -397,11 +422,14 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     }
     // Prepare Grad inputs with grad of fwd outputs
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
+      const std::vector<paddle::experimental::Tensor>& out_tensors =
+          ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
+                              ctx.OutputRangeAt(i).second);
+
       egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
       egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
-      grad_node->SetGradInMeta(&(outs_auto_grad_metas[i]), i);
-      egr::EagerUtils::CheckAndRetainGrad(ctx.OutputsBetweeen(
-          ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
+      grad_node->SetGradInMeta(out_tensors, i);
+      egr::EagerUtils::CheckAndRetainGrad(out_tensors);
     }
 
     // Prepare Grad inputs with fwd outputs
@@ -451,6 +479,9 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_get_expected_place,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"run_partial_grad",
+     (PyCFunction)(void (*)(void))eager_api_run_partial_grad,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_run_custom_op", (PyCFunction)(void (*)(void))eager_api_run_costum_op,
      METH_VARARGS | METH_KEYWORDS, NULL},

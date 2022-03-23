@@ -58,19 +58,15 @@ __global__ void DequantizeOneScaleQuantAxis0(const T* in, const T* scale,
 }
 
 template <typename T>
-__global__ void DequantizeOneScaleQuantAxis1(const T* in, const T* scale,
-                                             T max_range, const int num,
-                                             const int cin, const int cout,
-                                             T* out) {
-  int bid = blockIdx.x;
-  T s = scale[bid % cout];
-
-  int wh_size = num / (cin * cout);
-  const T* in_current = in + bid * wh_size;
-  T* out_current = out + bid * wh_size;
-
-  for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
-    out_current[i] = in_current[i] * s / max_range;
+__global__ void DequantizeOneScaleQuantAxisN(const T* in, const T* scale,
+                                             const T max_range,
+                                             const int64_t num,
+                                             const int n_scales,
+                                             const int quant_stride, T* out) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    T s = scale[(i / quant_stride) % n_scales];
+    out[i] = in[i] * s / max_range;
   }
 }
 
@@ -98,20 +94,32 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
     if (scale_num == 1) {
-      int num = in->numel();
+      int64_t num = in->numel();
       const T* scale_factor = scales[0]->data<T>();
       if (quant_axis == 0) {
         int grid = in_dims[0];
         int block = 1024;
         DequantizeOneScaleQuantAxis0<T><<<grid, block, 0, dev_ctx.stream()>>>(
             in_data, scale_factor, max_range, num, in_dims[0], out_data);
-      } else if (quant_axis == 1) {
-        // Dequantize weight of Cin * Cout * W * H
-        int grid = in_dims[0] * in_dims[1];
-        int block = 1024;
-        DequantizeOneScaleQuantAxis1<T><<<grid, block, 0, dev_ctx.stream()>>>(
-            in_data, scale_factor, max_range, num, in_dims[0], in_dims[1],
-            out_data);
+      } else {
+        int quant_stride = 1;
+        for (int i = quant_axis + 1; i < in_dims.size(); i++) {
+          quant_stride *= in_dims[i];
+        }
+
+        int64_t block_size = std::min(
+            num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
+        int64_t max_threads =
+            dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
+        const int64_t max_blocks = std::max(
+            ((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+        const int64_t grid_size =
+            std::min(max_blocks, (num + block_size - 1) / block_size);
+
+        DequantizeOneScaleQuantAxisN<
+            T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+            in_data, scale_factor, max_range, num, in_dims[quant_axis],
+            quant_stride, out_data);
       }
     } else if (scale_num == 2) {
       // Not need to consider quant_axis
