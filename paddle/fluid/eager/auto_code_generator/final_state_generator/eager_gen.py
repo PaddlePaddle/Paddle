@@ -29,6 +29,7 @@ from codegen_utils import GetInplacedFunctionName
 from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromBackward
 from codegen_utils import ParseYamlForward, ParseYamlBackward
 from codegen_utils import FunctionGeneratorBase, YamlGeneratorBase
+from codegen_utils import ops_to_fill_zero_for_empty_grads
 
 
 ###########
@@ -116,7 +117,7 @@ NODE_DECLARATION_TEMPLATE = \
       ~{}() override = default;
 
       virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-          const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+          std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
       std::string name() override {{ return \" {} \"; }}
       
       void ClearTensorWrappers() override {{
@@ -145,9 +146,12 @@ NODE_DECLARATION_TEMPLATE = \
 
 FUNCTION_TEMPLATE = \
 """
-    std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+    std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+        {}
+        auto hooked_grads = ApplyGradientHooks(grads);
+
         // Call grad_api function
-        VLOG(3) << \"Finally State Running: \" << \"{}\"; 
+        VLOG(3) << \"Final State Running: \" << \"{}\"; 
         auto grad_api_returns = {}{}({});
         {}
     }}
@@ -552,7 +556,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                         backward_input_type, False, backward_input_pos
                     ]
                 else:
-                    assert False
+                    assert False, backward_input_name
 
         for backward_output in backward_returns_list:
             backward_output_name = backward_output[0]
@@ -561,7 +565,8 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
 
             backward_fwd_name = FindForwardName(backward_output_name)
             assert backward_fwd_name is not None
-            assert backward_fwd_name in forward_inputs_position_map.keys()
+            assert backward_fwd_name in forward_inputs_position_map.keys(
+            ), f"Unable to find {backward_fwd_name} in forward inputs"
 
             matched_forward_input_type = forward_inputs_position_map[
                 backward_fwd_name][0]
@@ -662,10 +667,12 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         for _, (ttype, fwd_position,
                 grad_api_position) in backward_grad_inputs_map.items():
             if IsPlainTensorType(ttype):
-                grad_api_args[grad_api_position] = f"grads[{fwd_position}][0]"
+                grad_api_args[
+                    grad_api_position] = f"hooked_grads[{fwd_position}][0]"
             else:
                 assert IsVectorTensorType(ttype)
-                grad_api_args[grad_api_position] = f"grads[{fwd_position}]"
+                grad_api_args[
+                    grad_api_position] = f"hooked_grads[{fwd_position}]"
 
         for name, _, _, grad_api_position in backward_attrs_list:
             saved_attribute_name = GetSavedName(name)
@@ -692,10 +699,15 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         returns_str += f"return returns;\n"
 
         grad_node_name = GetGradNodeName(forward_api_name)
+
+        fill_zero_str = ""
+        if forward_api_name in ops_to_fill_zero_for_empty_grads:
+            fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
+
         grad_api_namespace = f"paddle::experimental::{namespace}"
 
         self.node_definition_str = FUNCTION_TEMPLATE.format(
-            grad_node_name, grad_node_name, grad_api_namespace,
+            grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
             backward_api_name, grad_api_args_str, returns_str)
 
         print("Generated Node Definition: ", self.node_definition_str)
@@ -854,7 +866,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                     output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
                 else:
                     assert IsVectorTensorType(rtype)
-                    output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
+                    output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));\n"
                     output_autograd_meta += f"    std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
             outputs_autograd_meta_list.append(output_autograd_meta)
@@ -883,8 +895,15 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
 
         # SetAttributes
         set_attributes_list = []
-        for name, _, _, _ in backward_attrs_list:
-            set_attributes = f"        grad_node->SetAttribute{name}({name});"
+        forward_attrs_name_set = set()
+        for name, _, _, _ in forward_attrs_list:
+            forward_attrs_name_set.add(name)
+
+        for name, _, default_val_attr, _ in backward_attrs_list:
+            if name in forward_attrs_name_set:
+                set_attributes = f"        grad_node->SetAttribute{name}({name});"
+            else:
+                set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
             set_attributes_list.append(set_attributes)
         set_attributes_str = "\n".join(set_attributes_list)
 
