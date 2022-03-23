@@ -470,7 +470,7 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
                     backward_input_type, False, backward_input_pos
                 ]
             else:
-                assert False
+                assert False, backward_input_name
 
     for backward_output in backward_returns_list:
         backward_output_name = backward_output[0]
@@ -479,7 +479,8 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
 
         backward_fwd_name = FindForwardName(backward_output_name)
         assert backward_fwd_name is not None
-        assert backward_fwd_name in forward_inputs_position_map.keys()
+        assert backward_fwd_name in forward_inputs_position_map.keys(
+        ), backward_fwd_name
 
         matched_forward_input_type = forward_inputs_position_map[
             backward_fwd_name][0]
@@ -772,7 +773,7 @@ def GenerateNodeCreationCodes(
                 output_autograd_meta = f"        egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
             else:
                 assert IsVectorTensorType(rtype)
-                output_autograd_meta = f"        std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
+                output_autograd_meta = f"        std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));\n"
                 output_autograd_meta += f"        std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
         outputs_autograd_meta_list.append(output_autograd_meta)
@@ -808,8 +809,15 @@ def GenerateNodeCreationCodes(
 
     # SetAttributes
     set_attributes_list = []
-    for name, _, _, _ in backward_attrs_list:
-        set_attributes = f"            grad_node->SetAttribute{name}({name});"
+    forward_attrs_name_set = set()
+    for name, _, _, _ in forward_attrs_list:
+        forward_attrs_name_set.add(name)
+
+    for name, _, default_val_attr, _ in backward_attrs_list:
+        if name in forward_attrs_name_set:
+            set_attributes = f"        grad_node->SetAttribute{name}({name});"
+        else:
+            set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
 
@@ -1253,7 +1261,7 @@ if __name__ == "__main__":
                 inplace_map = ParseInplaceInfo(fwd_api['inplace'])
 
             bwd_api_name = fwd_api['backward']
-            assert bwd_api_name in grad_api_dict.keys()
+            assert bwd_api_name in grad_api_dict.keys(), bwd_api_name
             bwd_api = grad_api_dict[bwd_api_name]
 
             assert 'args' in bwd_api.keys()
@@ -1325,7 +1333,7 @@ if __name__ == "__main__":
             print("Generated Backward Grad Output Map: ",
                   backward_grad_output_map)
 
-            # Backward Validation Check
+            # Backward Validation Check            
             BackwardValidationCheck(backward_fwd_input_map,
                                     backward_grad_input_map,
                                     backward_attrs_list)
