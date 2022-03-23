@@ -215,6 +215,8 @@ class TestLayerNormOp(unittest.TestCase):
                                   for name in ['x', 'scale', 'bias', 'y@GRAD']
                               },
                               fetch_list=fetch_list)
+                # print(y)
+                # print(out[0])
                 self.__assert_close(y, out[0], "y")
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
@@ -238,6 +240,7 @@ class TestLayerNormOp(unittest.TestCase):
 
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
+
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(
             shape=[2, 3, 4, 5],
@@ -432,4 +435,5 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

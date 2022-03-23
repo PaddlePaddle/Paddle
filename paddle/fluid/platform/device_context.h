@@ -1,4 +1,6 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -29,6 +31,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/dynload/cusparse.h"
@@ -72,8 +75,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 
-#include "paddle/fluid/platform/device/device_ext.h"
-#include "paddle/fluid/platform/device/stream.h"
+#include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/stream.h"
 
 #if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -332,6 +335,12 @@ class CUDAContext {
   }
 
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  const std::unique_ptr<CublasLtHandleHolder>& CublasLtHandle() const {
+    return cublaslt_handle_;
+  }
+#endif
+
   const std::unique_ptr<CusparseHandleHolder>& CusparseHandle() const {
     return cusparse_handle_;
   }
@@ -348,6 +357,14 @@ class CUDAContext {
   }
 
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  /*! \brief  Call cublasLt function safely. */
+  inline void CublasLtCall(
+      const std::function<void(blasLtHandle_t)>& callback) const {
+    cublaslt_handle_->Call(callback);
+  }
+#endif
+
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
       const std::function<void(phi::sparseHandle_t)>& callback) const {
@@ -394,6 +411,12 @@ class CUDAContext {
 #endif
 
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  void InitCuBlasLtContext() {
+    cublaslt_handle_.reset(new CublasLtHandleHolder());
+  }
+#endif
+
   void InitCuSparseContext() {
     cusparse_handle_.reset(new CusparseHandleHolder(RawStream()));
   }
@@ -472,6 +495,10 @@ class CUDAContext {
   }
 
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  void DestoryCuBlasLtContext() { cublaslt_handle_.reset(); }
+#endif
+
   void DestoryCuSparseContext() { cusparse_handle_.reset(); }
 #endif
 
@@ -497,6 +524,9 @@ class CUDAContext {
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  std::unique_ptr<CublasLtHandleHolder> cublaslt_handle_;
+#endif
   cusolverDnHandle_t cusolver_dn_handle_;
   std::unique_ptr<CusparseHandleHolder> cusparse_handle_;
 #endif
@@ -559,6 +589,7 @@ class CUDADeviceContext : public phi::GPUContext {
   rocblas_handle cublas_handle() const;
 #else
   cublasHandle_t cublas_handle() const;
+  cublasLtHandle_t cublaslt_handle() const;
   cusparseHandle_t cusparse_handle() const;
 #endif
 
@@ -838,7 +869,7 @@ class CustomDeviceContext : public phi::CustomContext {
   void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
  private:
-  std::shared_ptr<platform::stream::Stream> stream_;
+  std::shared_ptr<phi::stream::Stream> stream_;
 };
 template <>
 struct DefaultDeviceContextType<platform::CustomPlace> {
@@ -884,6 +915,11 @@ class DeviceContextPool {
   }
 
   size_t size() const { return device_contexts_.size(); }
+
+  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
+  device_contexts() const {
+    return device_contexts_;
+  }
 
  private:
   static DeviceContextPool* pool;

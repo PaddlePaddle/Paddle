@@ -14,7 +14,7 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer
+from ..framework import _varbase_creator, _dygraph_tracer, _in_eager_mode
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
 
@@ -147,7 +147,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
             check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
+                val, name,
+                ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+                'matmul')
 
     __check_input(x, y)
 
@@ -1146,6 +1148,8 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_cross(x, y, axis)
         if axis is not None:
             return _C_ops.cross(x, y, 'dim', axis)
         else:
@@ -1490,6 +1494,8 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_mv(x, vec)
         out = _C_ops.mv(x, vec)
         return out
 

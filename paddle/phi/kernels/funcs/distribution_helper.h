@@ -23,11 +23,13 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 
@@ -48,11 +50,15 @@ struct exponential_transform {
 
   HOSTDEVICE inline T operator()(T val) const {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (std::is_same<T, double>::value) {
-      return static_cast<T>(-1.0) / lambda_ * log(val);
-    } else {
-      return static_cast<T>(-1.0) / lambda_ * __logf(val);
+    T log = -std::numeric_limits<T>::epsilon() / 2;
+    if (val < static_cast<T>(1.) - std::numeric_limits<T>::epsilon() / 2) {
+      if (std::is_same<T, double>::value) {
+        log = logf(val);
+      } else {
+        log = __logf(val);
+      }
     }
+    return static_cast<T>(-1.0) / lambda_ * log;
 #else
     return static_cast<T>(-1.0) / lambda_ * std::log(static_cast<T>(1.0) - val);
 #endif
@@ -112,13 +118,19 @@ struct normal_transform {
 namespace kps = phi::kps;
 
 /*********************** Distribution Function *************************/
-template <typename T>
-struct uniform_distribution;
 
 template <typename T>
 struct normal_distribution;
 
 #if defined(__NVCC__)
+template <typename T>
+struct uniform_distribution {
+  __device__ inline T operator()(curandStatePhilox4_32_10_t *state) const {
+    return static_cast<T>(curand_uniform(state));
+  }
+  static constexpr int kReturnsCount = 1;
+};
+
 template <>
 struct uniform_distribution<float> {
   __device__ inline float4 operator()(curandStatePhilox4_32_10_t *state) const {
@@ -175,6 +187,14 @@ struct normal_distribution<double> {
 };
 
 #else
+template <typename T>
+struct uniform_distribution {
+  __device__ inline T operator()(hiprandStatePhilox4_32_10_t *state) const {
+    return hiprand_uniform(state);
+  }
+  static constexpr int kReturnsCount = 1;
+};
+
 template <>
 struct uniform_distribution<float> {
   __device__ inline float4 operator()(
@@ -254,11 +274,13 @@ __global__ void DistributionKernel(size_t size,
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
   size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
-  T args[kCount];
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
-    kps::ElementwiseRandom<SType, T, kCount, 1, DistOp>(&args[0], dist, &state);
-    kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(
+    kps::ElementwiseRandom<SType, MT, kCount, 1, DistOp>(
+        &args[0], dist, &state);
+    kps::ElementwiseUnary<MT, T, kCount, 1, 1, TransformOp>(
         &result[0], &args[0], trans);
     kps::WriteData<T, T, kCount, 1, 1, true>(
         out_data + i, &result[0], size - i, 1, stride, 1);
