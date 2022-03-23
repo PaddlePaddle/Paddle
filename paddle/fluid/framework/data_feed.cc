@@ -2115,21 +2115,31 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
 
     int lines = 0;
     bool is_ok = true;
+    auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
-      int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      if (ps_gpu_ptr->UseAfsApi()) {
+        auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+        is_ok = parser->ParseFileInstance(
+            [this, afs_reader](char* buf, int len) {
+              return afs_reader->read(buf, len);
+            },
+            pull_record_func, lines);
+      } else {
+        int err_no = 0;
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
 
-      CHECK(this->fp_ != nullptr);
-      __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-      is_ok = parser->ParseFileInstance(
-          [this](char* buf, int len) {
-            return fread(buf, sizeof(char), len, this->fp_.get());
-          },
-          pull_record_func, lines);
+        CHECK(this->fp_ != nullptr);
+        __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+        is_ok = parser->ParseFileInstance(
+            [this](char* buf, int len) {
+              return fread(buf, sizeof(char), len, this->fp_.get());
+            },
+            pull_record_func, lines);
 
-      if (!is_ok) {
-        LOG(WARNING) << "parser error, filename=" << filename
-                     << ", lines=" << lines;
+        if (!is_ok) {
+          LOG(WARNING) << "parser error, filename=" << filename
+                       << ", lines=" << lines;
+        }
       }
     } while (!is_ok);
     timeline.Pause();
