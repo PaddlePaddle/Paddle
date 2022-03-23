@@ -25,7 +25,7 @@ import paddle.nn.functional as F
 import paddle.tensor as tensor
 import paddle.utils as utils
 from paddle.fluid import layers
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed.fleet import fleet

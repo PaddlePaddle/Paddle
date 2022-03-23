@@ -27,7 +27,7 @@ class TestTracerMode(unittest.TestCase):
         self.init_mode = True
 
     def get_tracer_mode(self):
-        assert fluid.in_dygraph_mode(), "Dygraph mode must be enabled"
+        assert fluid._non_static_mode(), "Dygraph mode must be enabled"
 
     @fluid.dygraph.no_grad
     def no_grad_func(self, a):

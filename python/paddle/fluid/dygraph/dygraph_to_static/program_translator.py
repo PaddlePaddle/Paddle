@@ -23,7 +23,7 @@ import threading
 import weakref
 
 from paddle.fluid import framework
-from paddle.fluid import in_dygraph_mode
+from paddle.fluid import _non_static_mode
 from paddle.fluid.dygraph import layers
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
@@ -344,7 +344,7 @@ class StaticFunction(object):
                 "ProgramTranslator.enable(True)")
             return self._call_dygraph_function(*args, **kwargs)
 
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             raise RuntimeError(
                 "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
                 "because it is NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "

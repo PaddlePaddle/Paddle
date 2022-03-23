@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import warnings
-from .framework import Variable, in_dygraph_mode, static_only
+from .framework import Variable, _non_static_mode, static_only
 from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype
 from ..utils import deprecated
@@ -111,7 +111,7 @@ def one_hot(input, depth, allow_out_of_range=False):
 
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         inputs = {'X': input}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:

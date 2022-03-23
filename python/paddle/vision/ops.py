@@ -19,7 +19,7 @@ from ..fluid import core, layers
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-
+from ..fluid.framework import _non_static_mode
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
@@ -194,7 +194,7 @@ def yolo_loss(x,
                                              scale_x_y=1.)
     """
 
-    if in_dygraph_mode() and gt_score is None:
+    if _non_static_mode() and gt_score is None:
         loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
             'class_num', class_num, 'ignore_thresh', ignore_thresh,
@@ -377,7 +377,7 @@ def yolo_box(x,
                                                    clip_bbox=True,
                                                    scale_x_y=1.)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,
@@ -551,7 +551,7 @@ def deform_conv2d(x,
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'deformable_groups', deformable_groups, 'groups', groups,
                  'im2col_step', 1)
@@ -847,7 +847,7 @@ def read_file(filename, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.read_file('filename', filename)
 
     inputs = dict()
@@ -894,7 +894,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             print(img.shape)
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.decode_jpeg(x, "mode", mode)
 
     inputs = {'X': x}
@@ -952,7 +952,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     assert len(x.shape) == 4, \
             "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                  output_channels, "spatial_scale",
                                  spatial_scale, "pooled_height", pooled_height,
@@ -1062,7 +1062,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = _C_ops.roi_pool(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
@@ -1217,7 +1217,7 @@ def roi_align(x,
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",

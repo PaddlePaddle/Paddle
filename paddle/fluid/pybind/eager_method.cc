@@ -342,7 +342,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
   Py_ssize_t args_num = PyTuple_Size(args);
   bool set_to_zero = true;
   if (args_num == (Py_ssize_t)1) {
-    CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+    set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
 
   paddle::experimental::Tensor* grad;

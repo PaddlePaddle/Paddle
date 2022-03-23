@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
+from ..framework import Program, Variable, Operator, _non_static_mode, static_only
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
@@ -1213,7 +1213,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         now_cond = pre_cond.numpy()[0]
         while (now_cond):
             output_vars = body(*loop_vars)
@@ -1526,7 +1526,7 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             x, Variable
         ), "The input data 'x' in array_write must be Variable in dygraph mode"
@@ -1611,7 +1611,7 @@ def create_array(dtype, initialized_list=None):
                 "All values in `initialized_list` should be Variable, but recevied {}.".
                 format(type(val)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return array
 
     helper = LayerHelper("array", **locals())
@@ -1998,7 +1998,7 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_read must be list in dygraph mode"
@@ -2112,7 +2112,7 @@ def array_length(array):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_write must be a list in dygraph mode"
@@ -2430,7 +2430,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #           [ True  True  True]]            
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
         assert pred.numpy().size == 1, "condition input's numel should be 1"
         pred = pred.numpy()[0]
@@ -3851,7 +3851,7 @@ def is_empty(x, name=None):
             #    - data: [0])
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

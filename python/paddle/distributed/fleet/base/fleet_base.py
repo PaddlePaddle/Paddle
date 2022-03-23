@@ -256,7 +256,7 @@ class Fleet(object):
                         "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
                     )
 
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.fluid.framework._non_static_mode():
             if self.worker_num() == 1:
                 # if worker_num is 1, should construct default topology & hcg
                 self._topology = tp.CommunicateTopology()
@@ -880,7 +880,7 @@ class Fleet(object):
 
         self._context = {}
 
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.fluid.framework._non_static_mode():
             if self.worker_num() > 1:
                 if self._user_defined_strategy.heter_ccl_mode == False:
                     return HybridParallelOptimizer(optimizer, self._hcg,
@@ -1422,7 +1422,7 @@ class Fleet(object):
         context = {}
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy)
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.fluid.framework._non_static_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
             self._context = context

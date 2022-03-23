@@ -14,7 +14,7 @@
 
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 
 
 def _number_count(gate_idx, upper_range):
@@ -39,7 +39,7 @@ def _number_count(gate_idx, upper_range):
             number_count = paddle.distributed.utils.number_count(gate_idx, upper_range)
             print(number_count) # the result: [2, 0, 2, 0, 0, 0]
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return core.ops.number_count(gate_idx, 'upper_range', upper_range)
     else:
         op_type = 'number_count'

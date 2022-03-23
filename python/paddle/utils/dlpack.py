@@ -14,7 +14,7 @@
 
 import paddle
 from ..fluid.core import LoDTensor
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
 
 __all__ = [
@@ -47,7 +47,7 @@ def to_dlpack(x):
             # <capsule object "dltensor" at 0x7f6103c681b0>
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if not isinstance(x, paddle.Tensor):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
@@ -93,7 +93,7 @@ def from_dlpack(dlpack):
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
             " but received {}.".format(type(dlpack)))
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = paddle.fluid.core.from_dlpack(dlpack)
         out = paddle.to_tensor(out)
         return out

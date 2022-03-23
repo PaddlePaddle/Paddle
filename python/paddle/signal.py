@@ -19,7 +19,7 @@ import paddle
 from .tensor.attribute import is_complex, is_floating_point
 from .fft import fft_r2c, fft_c2r, fft_c2c
 from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.framework import in_dygraph_mode
+from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
 from . import _C_ops
 
@@ -127,7 +127,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
 
     op_type = 'frame'
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('frame_length', frame_length, 'hop_length', hop_length, 'axis',
                  axis)
         op = getattr(_C_ops, op_type)
@@ -214,7 +214,7 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
     op_type = 'overlap_add'
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('hop_length', hop_length, 'axis', axis)
         op = getattr(_C_ops, op_type)
         out = op(x, *attrs)

@@ -252,7 +252,7 @@ class Momentum(Optimizer):
 
     def _create_accumulators(self, block, parameters):
         '''
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             return
         '''
         assert isinstance(block, framework.Block)
@@ -313,7 +313,7 @@ class Momentum(Optimizer):
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
             _, _, _ = _C_ops.momentum(
@@ -466,7 +466,7 @@ class Momentum(Optimizer):
             if len(self._param_dict[key]) > 0:
                 find_master = self._multi_precision and key == 'FP16_LODTensor'
 
-                if framework.in_dygraph_mode():
+                if framework._non_static_mode():
                     _, _, _ = _C_ops.merged_momentum(
                         self._param_dict[key], grad_dict[key],
                         self._velocity_dict[key], lr_dict[key],

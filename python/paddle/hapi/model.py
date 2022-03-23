@@ -29,7 +29,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -215,7 +215,7 @@ def prepare_distributed_context(place=None):
             exe = fluid.Executor(place)
             exe.run(communicator_prog)
 
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
@@ -722,10 +722,10 @@ class DynamicGraphAdapter(object):
                 level=self._amp_level):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
             else:
                 outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                    * [to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -746,7 +746,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -760,7 +760,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -791,7 +791,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -1025,7 +1025,7 @@ class Model(object):
         self._test_dataloader = None
         self.stop_training = False
 
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             if not isinstance(inputs, (list, tuple, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or tuple or dict, and couldn't be None."
@@ -1037,7 +1037,7 @@ class Model(object):
         self._labels = self._verify_spec(labels)
 
         # init backend
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -1091,7 +1091,7 @@ class Model(object):
               print(loss)
         """
         loss = self._adapter.train_batch(inputs, labels, update)
-        if fluid.in_dygraph_mode() and self._input_info is None:
+        if fluid._non_static_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1143,7 +1143,7 @@ class Model(object):
               print(loss)
         """
         loss = self._adapter.eval_batch(inputs, labels)
-        if fluid.in_dygraph_mode() and self._input_info is None:
+        if fluid._non_static_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1188,7 +1188,7 @@ class Model(object):
               print(out)
         """
         loss = self._adapter.predict_batch(inputs)
-        if fluid.in_dygraph_mode() and self._input_info is None:
+        if fluid._non_static_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1365,7 +1365,7 @@ class Model(object):
             path + ".pdopt")
 
         # TODO: support save/load scaler state in static graph
-        if in_dygraph_mode():
+        if _non_static_mode():
             scaler_state = None
             if hasattr(self, '_scaler') and self._scaler is not None:
                 if os.path.exists(path + '.pdscaler'):
@@ -1471,7 +1471,7 @@ class Model(object):
                     format(tuple(amp_config_key_set - accepted_param_set)))
 
             if 'use_fp16_guard' in amp_config_key_set:
-                if in_dygraph_mode():
+                if _non_static_mode():
                     raise ValueError(
                         "'use_fp16_guard' is supported in static mode only.")
                 self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
@@ -1521,7 +1521,7 @@ class Model(object):
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
             if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
-                if fluid.in_dygraph_mode():
+                if fluid._non_static_mode():
                     main_prog_seed = fluid.default_main_program().random_seed
                     startup_prog_seed = fluid.default_startup_program(
                     ).random_seed
@@ -2010,7 +2010,7 @@ class Model(object):
             None
         """
 
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
                 if self._input_info is None:  # No provided or inferred
@@ -2192,7 +2192,7 @@ class Model(object):
             if is_input:
                 arg_names = extract_args(self.network.forward)[1:]
                 # While Saving inference model in dygraph, and providing inputs only in running.
-                if shapes is not None and dtypes is not None and fluid.in_dygraph_mode(
+                if shapes is not None and dtypes is not None and fluid._non_static_mode(
                 ):
                     out_specs = [
                         Input(

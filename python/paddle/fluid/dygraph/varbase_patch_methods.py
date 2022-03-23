@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, _in_eager_mode, EagerParamBase
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -39,7 +39,8 @@ class TensorHookRemoveHelper(object):
     """
 
     def __init__(self, tensor, hook_id):
-        self._tensor = tensor if core._in_eager_mode() else weakref.ref(tensor)
+        self._tensor = tensor if framework._in_eager_mode_ else weakref.ref(
+            tensor)
         self._hook_id = hook_id
 
     def remove(self):
@@ -49,7 +50,7 @@ class TensorHookRemoveHelper(object):
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = self._tensor if core._in_eager_mode() else self._tensor()
+        tensor = self._tensor if framework._in_eager_mode_ else self._tensor()
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -152,7 +153,7 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        if core._in_eager_mode():
+        if framework._in_eager_mode_:
             base_tensor = core.eager.Tensor
         else:
             base_tensor = core.VarBase
@@ -243,12 +244,12 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             record_event = profiler.RecordEvent(
                 "Gradient Backward", profiler.TracerEventType.Backward)
             record_event.begin()
             if grad_tensor is not None:
-                if core._in_eager_mode():
+                if framework._in_eager_mode_:
                     assert isinstance(
                         grad_tensor, core.eager.
                         Tensor), "The type of grad_tensor must be paddle.Tensor"
@@ -260,7 +261,7 @@ def monkey_patch_varbase():
                     "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
 
-            if core._in_eager_mode():
+            if framework._in_eager_mode_:
                 if grad_tensor is None:
                     grad_tensor = []
                 else:
@@ -268,7 +269,7 @@ def monkey_patch_varbase():
             if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                if core._in_eager_mode():
+                if framework._in_eager_mode_:
                     core.eager.run_backward([scaled_loss], grad_tensor,
                                             retain_graph)
                 else:
@@ -276,7 +277,7 @@ def monkey_patch_varbase():
                                               retain_graph,
                                               framework._dygraph_tracer())
             else:
-                if core._in_eager_mode():
+                if framework._in_eager_mode_:
                     core.eager.run_backward([self], grad_tensor, retain_graph)
                 else:
                     core.dygraph_run_backward([self], [grad_tensor],
@@ -316,7 +317,7 @@ def monkey_patch_varbase():
                 # [500.]
 
         """
-        if core._in_eager_mode():
+        if framework._in_eager_mode_:
             if self.grad is None:
                 return None
             # TODO(wanghuancoder) support SELECTED_ROWS
@@ -598,7 +599,7 @@ def monkey_patch_varbase():
                 #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        if core._in_eager_mode():
+        if framework._in_eager_mode_:
             from paddle.tensor.to_string import tensor_to_string
             return tensor_to_string(self)
         else:
@@ -630,7 +631,7 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        if core._in_eager_mode():
+        if framework._in_eager_mode_:
             new_varbase = core.eager.Tensor()
         else:
             new_varbase = core.VarBase()
@@ -646,7 +647,7 @@ def monkey_patch_varbase():
     def __nonzero__(self):
         numel = np.prod(self.shape)
         assert numel == 1, "When Variable is used as the condition of if/while , Variable can only contain one element."
-        if core._in_eager_mode():
+        if framework._in_eager_mode_:
             assert self._is_initialized(), "tensor not initialized"
             return bool(np.all(self.numpy() > 0))
         else:
@@ -797,7 +798,7 @@ def monkey_patch_varbase():
     def value(self):
         return self
 
-    if core._in_eager_mode() and not hasattr(core, "eager"):
+    if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
     for method_name, method in (
@@ -810,12 +811,12 @@ def monkey_patch_varbase():
         ("__module__", "paddle"), ("__array__", __array__),
         ("__getitem__", __getitem__), ("item", item),
         ("__setitem__", __setitem__), ("_to", _to)):
-        if core._in_eager_mode():
+        if framework._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:
             setattr(core.VarBase, method_name, method)
 
-    if core._in_eager_mode():
+    if framework._in_eager_mode_:
         setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.Tensor, "clone", clone)

@@ -20,7 +20,7 @@ from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
@@ -2987,7 +2987,7 @@ def generate_proposals(scores,
                          im_info, anchors, variances)
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta)
@@ -3753,7 +3753,7 @@ def distribute_fpn_proposals(fpn_rois,
     """
     num_lvl = max_level - min_level + 1
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale)
@@ -3950,7 +3950,7 @@ def collect_fpn_proposals(multi_rois,
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert rois_num_per_level is not None, "rois_num_per_level should not be None in dygraph mode."
         attrs = ('post_nms_topN', post_nms_top_n)
         output_rois, rois_num = _C_ops.collect_fpn_proposals(
