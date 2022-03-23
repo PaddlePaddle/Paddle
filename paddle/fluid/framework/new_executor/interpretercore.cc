@@ -47,12 +47,17 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
+  // NOTE(zhiqiu): why not use flag to decide stream_safe_allocator?
+  // FLAGS_use_stream_safe_allocator, FLAGS_use_system_allocator, and
+  // FLAGS_allocator_strategy may be changed, however, the
+  // AllocatorFacade::Instance() is initialized at the begining once.
+  // Especially in optest, the FLAGS_use_system_allocator is set to
+  // true and reset to false after the ut.
   static bool is_stream_safe_allocator_used =
       (std::dynamic_pointer_cast<memory::allocation::StreamSafeCUDAAllocator>(
            paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
                platform::CUDAPlace(0))) != nullptr);
-  return FLAGS_fast_eager_deletion_mode &&
-         FLAGS_use_stream_safe_cuda_allocator && is_stream_safe_allocator_used;
+  return FLAGS_fast_eager_deletion_mode && is_stream_safe_allocator_used;
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
