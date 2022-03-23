@@ -235,13 +235,3 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(lookup_table_v2, ops::LookupTableV2CUDAKernel<float>,
-                        ops::LookupTableV2CUDAKernel<double>,
-                        ops::LookupTableV2CUDAKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(lookup_table_v2_grad,
-                        ops::LookupTableV2GradCUDAKernel<float>,
-                        ops::LookupTableV2GradCUDAKernel<double>,
-                        ops::LookupTableV2GradCUDAKernel<plat::float16>);

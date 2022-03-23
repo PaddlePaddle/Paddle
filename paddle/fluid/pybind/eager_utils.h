@@ -154,9 +154,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
 paddle::experimental::ScalarArray CastPyArg2ScalarArray(
     PyObject* obj, const std::string& op_type, ssize_t arg_pos);
 
-paddle::experimental::Backend CastPyArg2Backend(PyObject* obj,
-                                                const std::string& op_type,
-                                                ssize_t arg_pos);
+paddle::experimental::Place CastPyArg2Place(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos);
 
 paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
                                                   const std::string& op_type,

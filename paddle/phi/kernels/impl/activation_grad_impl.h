@@ -275,4 +275,22 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
           d_ddx);
 }
 
+template <typename T, typename Context>
+void LogDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  funcs::LogGradGradFunctor<T> functor;
+  functor(dev_ctx, &x, &ddx, ddout, &dout, dx);
+}
+
 }  // namespace phi

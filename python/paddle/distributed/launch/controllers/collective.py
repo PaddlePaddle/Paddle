@@ -115,46 +115,6 @@ class CollectiveElasticController(CollectiveController):
 
         self.master.register_heartbeat(self.job.id, self.pod.name)
 
-    def watch(self) -> bool:
-        '''
-        watch self and peer status, return true to exit
-        '''
-
-        self.ctx.logger.info("Watching {}".format(self.pod))
-        while not self.ctx.status.is_done():
-            # self status
-            status = self.pod.watch(timeout=2)
-            self.ctx.logger.debug("Pod status {}, Ctx status {}".format(
-                status, self.ctx.status.current()))
-
-            # completed
-            if status == self.ctx.status.COMPLETED:
-                self.master.set_status(status)
-                self.ctx.status.complete()
-                self.ctx.logger.info("Pod complete {}".format(status))
-                return True
-
-            # self failure
-            elif status == self.ctx.status.FAILED:
-                self.master.set_status(status)
-                self.master.restart_peer()
-                self.ctx.logger.info("Pod failed {}".format(status))
-                self.pod.stop()
-
-                if self.ctx.args.elastic_level <= 0:
-                    return True
-                else:
-                    return False
-
-            # peer failure
-            if self.ctx.status.is_restarting() and self.master.get_status(
-            ) != self.ctx.status.COMPLETED:
-                self.pod.stop()
-                return False
-
-            #peers = self.master.fetch_peer_alive()
-            #print("peers {}".format(peers))
-
     def run(self):
 
         timeout = self.ctx.args.elastic_timeout if self.job.elastic else self.ctx.args.elastic_timeout * 10
@@ -163,6 +123,8 @@ class CollectiveElasticController(CollectiveController):
         while self.pod.restart <= self.ctx.args.max_restart:
 
             self.build_job()
+
+            self.ctx.logger.info("Waiting peer ready...")
 
             ok, replicas = self.master.wait_peer_ready(
                 self.job.replicas_min, self.job.replicas_max, timeout)
