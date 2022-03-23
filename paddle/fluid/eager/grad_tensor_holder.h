@@ -26,12 +26,13 @@ namespace egr {
  * GradTensorHolder should have as same format as forward output **/
 class GradTensorHolder {
  public:
-  explicit GradTensorHolder(const std::vector<GradSlotMeta>& meta) {
-    VLOG(7) << "Init GradTensorHolder with meta size: " << meta.size();
-    buffer_.resize(meta.size());
+  explicit GradTensorHolder(
+      const std::vector<std::vector<GradSlotMeta>>& metas) {
+    VLOG(7) << "Init GradTensorHolder with meta size: " << metas.size();
+    buffer_.resize(metas.size());
     for (size_t i = 0; i < buffer_.size(); i++) {
-      VLOG(7) << "Init GradTensorHolder with meta rank: " << meta[i].Size();
-      buffer_[i].resize(meta[i].Size());
+      VLOG(7) << "Init GradTensorHolder with meta rank: " << metas[i].size();
+      buffer_[i].resize(metas[i].size());
     }
   }
 
@@ -52,9 +53,11 @@ class GradTensorHolder {
     return buffer_[pos];
   }
 
-  const std::vector<std::vector<paddle::experimental::Tensor>>& Buffers() {
+  std::vector<std::vector<paddle::experimental::Tensor>>& Buffers() {
     return buffer_;
   }
+
+  void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
 
  private:
   std::vector<std::vector<paddle::experimental::Tensor>> buffer_;

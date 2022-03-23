@@ -114,6 +114,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/phi/backends/device_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -742,6 +743,11 @@ PYBIND11_MODULE(core_noavx, m) {
   // stored in this static instance to avoid illegal memory access.
   m.def("clear_kernel_factory",
         []() { phi::KernelFactory::Instance().kernels().clear(); });
+  m.def("clear_device_manager", []() {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    phi::DeviceManager::Clear();
+#endif
+  });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
@@ -1755,6 +1761,7 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("size", &Scope::Size)
       .def("erase", &Scope::EraseVars, py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
@@ -2851,6 +2858,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
+             platform::RecordEvent record_event(
+                 "StandaloneExecutor:run",
+                 platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
@@ -3312,6 +3322,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
+      .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
@@ -4258,6 +4269,7 @@ All parameter, weight, gradient are variables in Paddle.
                  platform::ipu::IpuBackend::GetInstance());
            },
            py::return_value_policy::reference)
+      .def("weights_to_host", &platform::ipu::IpuBackend::WeightsToHost)
       .def("detach", &platform::ipu::IpuBackend::Detach)
       .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
@@ -4304,6 +4316,15 @@ All parameter, weight, gradient are variables in Paddle.
                      self.SetTensorLocation(
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
+                   }
+                 } else if (option_name == "accumulate_outer_fragment") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::vector<int> values;
+                     for (auto value : option.second.cast<py::list>()) {
+                       values.push_back(value.cast<int>());
+                     }
+                     self.SetAccumulateOuterFragmentSettings(
+                         option.first.cast<std::uint64_t>(), values);
                    }
                  } else if (option_name == "custom_op") {
                    std::string paddle_op;

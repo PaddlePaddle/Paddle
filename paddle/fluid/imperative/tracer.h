@@ -74,16 +74,32 @@ class Tracer {
                paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
                bool use_default_attr_map = true);
 
+  template <typename VarType>
+  void TraceOpImpl(
+      const std::string& type, const NameVarMap<VarType>& ins,
+      const NameVarMap<VarType>& outs,
+      framework::AttributeMap& attrs,  // NOLINT
+      const platform::Place& place, bool trace_backward,
+      const std::map<std::string, std::string>& inplace_map = {},
+      paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
+      bool use_default_attr_map = true);
+
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
                const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameTensorMap& ins,
-               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const NameTensorMap& outs,
+               paddle::framework::AttributeMap& attrs,  // NOLINT
                const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameTensorMap& ins,
-               const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
+               const NameTensorMap& outs,
+               paddle::framework::AttributeMap attrs);
+
+  void TraceOp(const std::string& type, const NameTensorMap& ins,
+               const NameTensorMap& outs,
+               paddle::framework::AttributeMap& attrs,  // NOLINT
                const paddle::platform::Place& place,
                paddle::framework::AttributeMap* default_attrs,
                bool use_default_attr_map,
@@ -156,8 +172,8 @@ class Tracer {
   }
 
   phi::KernelSignature GetExpectedKernelSignature(
-      const std::string& type, const NameVarBaseMap& ins,
-      const NameVarBaseMap& outs, framework::AttributeMap attrs) const;
+      const std::string& type, const NameTensorMap& ins,
+      const NameTensorMap& outs, framework::AttributeMap attrs) const;
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);

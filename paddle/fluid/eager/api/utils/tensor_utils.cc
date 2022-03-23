@@ -30,7 +30,8 @@ namespace egr_utils_api {
 
 bool IsLeafTensor(const paddle::experimental::Tensor& target) {
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
-  if (std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
+  if (!grad_node ||
+      std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
     return true;
   }
 
@@ -42,8 +43,7 @@ paddle::experimental::Tensor CreateTensorWithValue(
     const phi::DataType& dtype, const phi::DataLayout& layout, float value,
     bool is_leaf) {
   paddle::experimental::Tensor out = paddle::experimental::full(
-      phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype,
-      phi::TransToPhiBackend(place));
+      phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype, place);
 
   auto meta = EagerUtils::autograd_meta(&out);
   if (is_leaf) {

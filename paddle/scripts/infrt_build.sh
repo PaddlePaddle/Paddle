@@ -44,6 +44,9 @@ function update_pd_ops() {
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
    python3 generate_phi_kernel_dialect.py
+   # generate test model
+   cd ${PADDLE_ROOT}
+   python3 paddle/infrt/tests/model/abs_model.py ${PADDLE_ROOT}/build/paddle/infrt/tests/abs
 }
 
 function init() {
@@ -93,7 +96,7 @@ function infrt_gen_and_build() {
         exit 7;
     fi
 
-    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec phi-ir-exec phi-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
+    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec phi-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -111,6 +114,7 @@ function create_fake_models() {
     python3 -m pip install  *whl
     cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+    python3 ${PADDLE_ROOT}/paddle/infrt/tests/model/linear.py
 }
 
 function test_infrt() {
