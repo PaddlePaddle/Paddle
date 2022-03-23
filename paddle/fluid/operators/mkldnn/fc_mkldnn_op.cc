@@ -543,10 +543,9 @@ class FCPrimitiveFactory {
   dnnl::memory CreateDstMemory(
       const dnnl::inner_product_forward::primitive_desc& fc_prim_desc,
       const ExecutionContext& ctx, Tensor* output) {
-
     if (ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_param = ctx.Input<Tensor>("ResidualData");
-      
+
       PADDLE_ENFORCE_EQ(
           output->dims(), residual_param->dims(),
           platform::errors::InvalidArgument(
@@ -554,7 +553,7 @@ class FCPrimitiveFactory {
               "same dimension sizes, but got output's dimension = %d"
               " and residual param's dimension =%d .",
               output->dims().size(), residual_param->dims().size()));
-      
+
       output->ShareDataWith(*residual_param);
     }
 
@@ -615,7 +614,7 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
 template <typename T_in, typename T_w>
 static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
                       const Tensor* w, const Tensor* bias, LoDTensor* output,
-                      bool fuse_relu, bool force_fp32_output) 
+                      bool fuse_relu, bool force_fp32_output) {
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   std::string prim_key = platform::CreateKey(
       dev_ctx, input->format(), input->dims()[0],
