@@ -95,6 +95,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   std::unordered_map<std::string, std::pair<VarDesc *, int>>
       name_to_desc_block_id;
 
+  block_id_ = block.ID();
   const BlockDesc *block_var_visible = &block;
   while (block_var_visible != nullptr) {
     for (auto *var : block_var_visible->AllVars()) {

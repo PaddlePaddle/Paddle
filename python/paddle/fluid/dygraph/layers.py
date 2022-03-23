@@ -25,6 +25,7 @@ from copy import deepcopy
 import inspect
 
 import paddle
+import paddle.profiler as profiler
 
 from . import parallel_helper
 from .. import unique_name
@@ -760,7 +761,8 @@ class Layer(object):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not type(tensor) == core.VarBase:
+        elif tensor is not None and not (type(tensor) == core.VarBase or
+                                         type(tensor) == core.eager.Tensor):
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
                 format(type(tensor).__name__))
@@ -904,7 +906,9 @@ class Layer(object):
 
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        with profiler.RecordEvent(self.full_name(),
+                                  profiler.TracerEventType.Forward):
+            outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
@@ -1154,7 +1158,8 @@ class Layer(object):
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase:
+                if type(value) == core.VarBase or \
+                    type(value) == core.eager.Tensor:
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
