@@ -850,7 +850,7 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "list") {
+  if (type_name == "list" || type_name == "tuple") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::ScalarArray(value);
 
@@ -929,28 +929,10 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
   return result;
 }
 
-paddle::experimental::Backend CastPyArg2Backend(PyObject* obj,
-                                                const std::string& op_type,
-                                                ssize_t arg_pos) {
-  if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "int or place, but got %s",
-        op_type, arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-  }
-
-  PyTypeObject* type = obj->ob_type;
-  auto type_name = std::string(type->tp_name);
-  if (type_name == "int") {
-    int value = CastPyArg2Int(obj, op_type, arg_pos);
-    return static_cast<paddle::experimental::Backend>(value);
-  } else {
-    platform::Place place = CastPyArg2Place(obj, arg_pos);
-    return phi::TransToPhiBackend(place);
-  }
-
-  return paddle::experimental::Backend::CPU;
+paddle::experimental::Place CastPyArg2Place(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos) {
+  return CastPyArg2Place(obj, arg_pos);
 }
 
 paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,

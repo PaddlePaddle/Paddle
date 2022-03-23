@@ -5,7 +5,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : add
-  # backward : add_grad
+  backward : add_grad
 
 - api : cast
   args : (Tensor x, DataType out_dtype)
@@ -36,9 +36,9 @@
     func : conj
 
 - api : copy_to
-  args : (Tensor x, Backend backend, bool blocking)
+  args : (Tensor x, Place place, bool blocking)
   output : Tensor
-  invoke : copy_to_impl(x, backend, blocking)
+  invoke : copy_to_impl(x, place, blocking)
 
 - api : divide
   args : (Tensor x, Tensor y)
@@ -47,6 +47,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : divide
+  backward : divide_grad
 
 - api : dot
   args : (Tensor x, Tensor y)
@@ -57,7 +58,7 @@
     func : dot
 
 - api : empty
-  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU)
+  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -69,7 +70,7 @@
     backend : place
 
 - api : empty_like
-  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED)
+  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
@@ -89,7 +90,7 @@
     func : flatten
 
 - api : full
-  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU)
+  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -101,7 +102,7 @@
     backend : place
 
 - api : full_like
-  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED)
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
@@ -136,9 +137,10 @@
     func : ElementwiseInferMeta
   kernel :
     func : multiply
+  backward : multiply_grad
 
 - api : ones_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place={})
   output : Tensor
   invoke : full_like(x, 1, dtype, place)
 
@@ -167,6 +169,7 @@
   kernel :
     func : relu
   inplace : (x -> out)
+  backward: relu_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -206,6 +209,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : subtract
+  backward : subtract_grad
 
 - api : sum
   args : (Tensor x, int64[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
@@ -217,7 +221,7 @@
     data_type : x
 
 - api : zeros_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
@@ -229,7 +233,7 @@
     func : OneHotInferMeta
   kernel :
     func : one_hot
-    
+
 - api : digamma
   args : (Tensor x)
   output : Tensor
@@ -275,7 +279,6 @@
   kernel :
     func : diagonal
   backward : diagonal_grad
-
 
 - api : gumbel_softmax
   args : (Tensor x, float temperature, bool hard, int axis)
@@ -367,7 +370,7 @@
     func : AdamaxInferMeta
   kernel :
     func : adamax
-  
+
 
 
 - api : where
@@ -423,7 +426,7 @@
     func : CompareInferMeta
   kernel :
     func : equal
-  
+
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
@@ -537,3 +540,16 @@
   kernel :
     func : mv
   backward : mv_grad
+
+
+
+#  =================================== sep0
+
+
+#  =================================== sep1
+
+
+#  =================================== sep2
+
+
+#  =================================== sep3

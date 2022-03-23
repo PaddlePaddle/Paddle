@@ -20,7 +20,7 @@ env_args_mapping = {
     'PADDLE_MASTER': 'master',
     'PADDLE_DEVICES': 'devices',
     'PADDLE_NNODES': 'nnodes',
-    'PADDLE_MODE': 'mode',
+    'PADDLE_RUN_MODE': 'run_mode',
     'PADDLE_LOG_LEVEL': 'log_level',
     'PADDLE_NPROC_PER_NODE': 'nproc_per_node',
     'PADDLE_JOB_ID': 'job_id',
@@ -60,7 +60,7 @@ def parse_args():
         "--legacy", type=bool, default=False, help="use legacy launch")
 
     base_group.add_argument(
-        "--rank", type=int, default=-1, help="the peer rank")
+        "--rank", type=int, default=-1, help="the node rank")
 
     base_group.add_argument(
         "--log_level", type=str, default="INFO", help="log level. Default INFO")
@@ -69,7 +69,7 @@ def parse_args():
         "--nnodes",
         type=str,
         default="1",
-        help="the number of peers, i.e. pod/node number")
+        help="the number of nodes, i.e. pod/node number")
 
     base_group.add_argument(
         "--nproc_per_node",
@@ -83,7 +83,7 @@ def parse_args():
         default="log",
         help="the path for each process's log. Default ./log")
     base_group.add_argument(
-        "--mode",
+        "--run_mode",
         type=str,
         default="collective",
         help="run mode of the job, collective/ps/ps-heter")
@@ -146,6 +146,6 @@ def parse_args():
         "--elastic_timeout",
         type=int,
         default=30,
-        help="seconds to wait before elastic perform training")
+        help="seconds to wait before elastic job begin to train")
 
     return parser.parse_known_args()

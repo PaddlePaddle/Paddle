@@ -25,6 +25,12 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(conv2d_transpose, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(batch_norm, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(gelu, CPU, ALL_LAYOUT);
 
 USE_OP_ITSELF(batch_norm);
 USE_OP_DEVICE_KERNEL(batch_norm, MKLDNN);
