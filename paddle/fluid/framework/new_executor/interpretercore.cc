@@ -13,16 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+
 #include <unordered_set>
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -47,17 +52,21 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
-  // NOTE(zhiqiu): why not use flag to decide stream_safe_allocator?
-  // FLAGS_use_stream_safe_allocator, FLAGS_use_system_allocator, and
-  // FLAGS_allocator_strategy may be changed, however, the
-  // AllocatorFacade::Instance() is initialized at the begining once.
-  // Especially in optest, the FLAGS_use_system_allocator is set to
-  // true and reset to false after the ut.
+// NOTE(zhiqiu): why not use flag to decide stream_safe_allocator?
+// FLAGS_use_stream_safe_allocator, FLAGS_use_system_allocator, and
+// FLAGS_allocator_strategy may be changed, however, the
+// AllocatorFacade::Instance() is initialized at the begining once.
+// Especially in optest, the FLAGS_use_system_allocator is set to
+// true and reset to false after the ut.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   static bool is_stream_safe_allocator_used =
       (std::dynamic_pointer_cast<memory::allocation::StreamSafeCUDAAllocator>(
            paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
                platform::CUDAPlace(0))) != nullptr);
   return FLAGS_fast_eager_deletion_mode && is_stream_safe_allocator_used;
+#else
+  return false;
+#endif
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,

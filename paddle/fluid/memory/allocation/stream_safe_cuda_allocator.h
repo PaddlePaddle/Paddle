@@ -23,7 +23,9 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
-#else
+#endif
+
+#ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
 
