@@ -517,7 +517,8 @@
     func : BatchNormInferMeta
   kernel :
     func : batch_norm
-#   backward: batch_norm_grad
+    data_type : x
+   backward: batch_norm_grad
 
 # bernoulli
 - api : bernoulli
