@@ -309,7 +309,7 @@ class TestFleetBase(unittest.TestCase):
                 (tr1_proc, tr1_out, tr1_err, tr1_out_log, tr1_err_log))
 
     def _run_cluster(self, model, envs):
-        env = {'GRAD_CLIP': str(self._grad_clip_mode)}
+        env = {'GRAD_CLIP': str(self._grad_clip_mode), 'WITH_DISTRIBUTE': 'ON'}
         python_path = self._python_interp
         gloo_path = tempfile.mkdtemp()
 
@@ -343,7 +343,8 @@ class TestFleetBase(unittest.TestCase):
         tr1_proc, tr1_out, tr1_err, tr1_out_log, tr1_err_log = tr1
 
         # Wait until trainer process terminate
-        time_out = 120
+        #time_out = 120
+        time_out = 60
         cur_time = 0
 
         while True:
