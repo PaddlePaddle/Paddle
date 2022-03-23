@@ -86,6 +86,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
           paddle::experimental::Tensor t_elements(
               std::make_shared<phi::DenseTensor>(
                   t_sparse->non_zero_elements()));
+
           auto buffer_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(
               buffer_tensor.impl());
           paddle::experimental::Tensor buffer_elements(
