@@ -18,7 +18,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -251,19 +253,6 @@ class UnsqueezeDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 class Unsqueeze2Op : public UnsqueezeOp {
  public:
   using UnsqueezeOp::UnsqueezeOp;
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    UnsqueezeOp::InferShape(ctx);
-    const auto &x_dims = ctx->GetInputDim("X");
-
-    if (!ctx->HasOutput("XShape")) return;
-    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-    xshape_dims[0] = 0;
-    for (int i = 0; i < x_dims.size(); ++i) {
-      xshape_dims[i + 1] = x_dims[i];
-    }
-    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", /*->*/ "XShape");
-  }
 };
 
 class Unsqueeze2OpMaker : public UnsqueezeOpMaker {
@@ -339,10 +328,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(unsqueeze2, Unsqueeze2InferShapeFunctor,
+                            PD_INFER_META(phi::UnsqueezeInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
                   ops::UnsqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeGradOpMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
@@ -351,7 +344,8 @@ REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp,
 REGISTER_OPERATOR(unsqueeze2, ops::Unsqueeze2Op, ops::Unsqueeze2OpMaker,
                   ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Unsqueeze2GradOpMaker<paddle::imperative::OpBase>,
-                  ops::UnsqueezeInplaceInferer);
+                  Unsqueeze2InferShapeFunctor, ops::UnsqueezeInplaceInferer);
+
 REGISTER_OPERATOR(unsqueeze2_grad, ops::Unsqueeze2GradOp,
                   ops::Unsqueeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::Unsqueeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
@@ -388,34 +382,3 @@ REGISTER_OP_CPU_KERNEL(
                              paddle::platform::complex<double>>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
                              paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    unsqueeze2, ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    unsqueeze2_grad,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::bfloat16>);

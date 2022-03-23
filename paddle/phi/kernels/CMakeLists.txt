@@ -60,8 +60,9 @@ register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS $
 
 # phi sparse kernels
 add_subdirectory(sparse)
-
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
-
 # For strings kernels
 add_subdirectory(strings)
+
+# 5. kernel autotune 
+add_subdirectory(autotune)
