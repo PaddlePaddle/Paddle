@@ -357,4 +357,64 @@
   kernel : 
     func : kldiv_loss_grad
 
+- backward_api : squeeze_grad
+  forward : squeeze(Tensor x, int[] axes) -> Tensor(xshape), Tensor(out)
+  args : (Tensor xshape, Tensor out_grad, int[] axes)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [xshape]
+  kernel : 
+    func : squeeze_grad
+
+- backward_api : unsqueeze_grad
+  forward : unsqueeze(Tensor x, ScalarArray axes) -> Tensor(xshape), Tensor(out)
+  args : (Tensor xshape, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [xshape]
+  kernel : 
+    func : unsqueeze_grad
+
+- backward_api : log_grad
+  forward : log (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log_grad
+
+- backward_api : log2_grad
+  forward : log2 (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log2_grad
+
+- backward_api : log10_grad
+  forward : log10 (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log10_grad
+
+- backward_api : log1p_grad
+  forward : log1p (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log1p_grad
+
 #  =================================== sep3

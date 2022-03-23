@@ -6406,6 +6406,8 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_squeeze(input, axes)[1]
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
 
@@ -6466,6 +6468,8 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
+        if _in_eager_mode():
+            return _C_ops.final_state_unsqueeze(input, axes)[1]
         out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
         return out
 

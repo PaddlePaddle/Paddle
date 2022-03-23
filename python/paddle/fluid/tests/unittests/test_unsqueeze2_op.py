@@ -29,6 +29,8 @@ class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
+        self.python_api = paddle.unsqueeze
+        self.python_out_sig = ["Out"]
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {
@@ -37,10 +39,10 @@ class TestUnsqueezeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -88,6 +90,8 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
+        self.python_out_sig = ["Out"]
+        self.python_api = paddle.unsqueeze
 
         axes_tensor_list = []
         for index, ele in enumerate(self.axes):
@@ -105,10 +109,10 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -152,6 +156,8 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
+        self.python_out_sig = ["Out"]
+        self.python_api = paddle.unsqueeze
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float64"),
@@ -164,10 +170,10 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
