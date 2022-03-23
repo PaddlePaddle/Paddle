@@ -199,3 +199,42 @@ def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
                                flat_v)
     vhp = [vhp[j].reshape(xs[j].shape) for j in range(len(xs))]
     return vhp
+
+
+def reduce(x):
+    return paddle.sum(x)
+
+
+def reduce_dim(x):
+    return paddle.sum(x, axis=0)
+
+
+def matmul(x, y):
+    return paddle.matmul(x, y)
+
+
+def mul(x, y):
+    return x * y
+
+
+def pow(x, y):
+    return paddle.pow(x, y)
+
+
+def o2(x, y):
+    return paddle.multiply(x, y), paddle.matmul(x, y.t())
+
+
+def unuse(x, y):
+    return paddle.sum(x)
+
+
+def nested(x):
+    def inner(y):
+        return x * y
+
+    return inner
+
+
+def square(x):
+    return x * x
