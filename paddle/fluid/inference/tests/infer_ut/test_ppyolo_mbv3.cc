@@ -73,7 +73,7 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
                   FLAGS_modeldir + "/model.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
+      1 << 24, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
   LOG(INFO) << config.Summary();
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
@@ -93,7 +93,8 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   for (int i = 0; i < thread_num; ++i) {
     LOG(INFO) << "join tid : " << i;
     threads[i].join();
-    CompareRecord(&truth_output_data, &infer_output_data, 1e-2);
+    // for tensorrt, the order of output is not consistent with multiclass nms
+    CompareUnorderedRecord(&truth_output_data, &infer_output_data, 1e-2);
     // TODO(OliverLPH): precision set to 1e-2 since input is fake, change to
     // real input later
   }
