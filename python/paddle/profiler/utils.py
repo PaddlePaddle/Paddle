@@ -1,23 +1,24 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.core import (_RecordEvent, TracerEventType,
-                               load_profiler_result)
 from typing import Any
 from warnings import warn
 import functools
 from contextlib import ContextDecorator
+
+from paddle.fluid.core import (_RecordEvent, TracerEventType)
+import paddle.fluid.core as core
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -32,14 +33,28 @@ class RecordEvent(ContextDecorator):
     Interface for recording a time range.
 
     Parameters:
-    name(str): Name of the record event
-    event_type(TracerEventType): Type of the record event, can be used for statistics.
+        name(str): Name of the record event
 
     Examples:
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.RecordEvent(name='op1', event_type=TracerEventType=TracerEventType.UserDefined):
-            op1()
+
+            import paddle
+            import paddle.profiler as profiler
+            # method1: using context manager
+            with profiler.RecordEvent("record_add"):
+                data1 = paddle.randn(shape=[3])
+                data2 = paddle.randn(shape=[3])
+                result = data1 + data2
+            # method2: call begin() and end()
+            record_event = profiler.RecordEvent("record_add")
+            record_event.begin()
+            data1 = paddle.randn(shape=[3])
+            data2 = paddle.randn(shape=[3])
+            result = data1 + data2
+            record_event.end()
+
+    Note:
+        RecordEvent will take effect only when profiler is on and at the state of RECORD.
     """
 
     def __init__(self,
@@ -57,6 +72,20 @@ class RecordEvent(ContextDecorator):
         self.end()
 
     def begin(self):
+        r"""
+        Record the time of begining.
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.profiler as profiler
+            record_event = profiler.RecordEvent("record_sub")
+            record_event.begin()
+            data1 = paddle.randn(shape=[3])
+            data2 = paddle.randn(shape=[3])
+            result = data1 - data2
+            record_event.end()
+        """
         if self.event_type not in _AllowedEventTypeList:
             warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
                   can be recorded.".format(*_AllowedEventTypeList))
@@ -67,8 +96,49 @@ class RecordEvent(ContextDecorator):
             self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
+        r'''
+        Record the time of ending.
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.profiler as profiler
+            record_event = profiler.RecordEvent("record_mul")
+            record_event.begin()
+            data1 = paddle.randn(shape=[3])
+            data2 = paddle.randn(shape=[3])
+            result = data1 * data2
+            record_event.end()
+        '''
         if self.event:
             self.event.end()
+
+
+def load_profiler_result(filename: str):
+    r"""
+    Load dumped profiler data back to memory.
+
+    Parameters:
+        filename(str): Name of the exported protobuf file of profiler data.
+
+    Returns:
+        ProfilerResult object.
+
+    Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            with profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 10)) as p:
+                for iter in range(10):
+                    #train()
+                    p.step()
+            p.export('test_export_protobuf.pb', format='pb')
+            profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
+    """
+    return core.load_profiler_result(filename)
 
 
 def wrap_optimizers():
