@@ -35,6 +35,7 @@ class ElementwiseHeavisideOpMaker : public ElementwiseOpMaker {
     return "Computes the Heaviside step function determined by Y "
            "for each element in X.";
   }
+}
 
 template <typename T>
 class ElementwiseHeavisideGradOpMaker: public framework::SingleGradOpMaker<T> {
