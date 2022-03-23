@@ -47,7 +47,7 @@ _grad_scalar = None
 
 class _RecomputeModelWrapper(paddle.nn.Layer):
     def __init__(self, model, segments=1, preserve_rng_state=True):
-        super(RecomputeModelWrapper, self).__init__()
+        super(_RecomputeModelWrapper, self).__init__()
         assert isinstance(model, paddle.nn.Sequential), (
             "The model passed to RecomputeModelWrapper must be of type "
             "paddle.nn.Sequential.")
