@@ -23,11 +23,32 @@ limitations under the License. */
 #include <thrust/scan.h>
 #include <thrust/transform.h>
 
-#include "paddle/fluid/platform/transform.h"
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/arg_min_max_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/inclusive_scan.h"
 #include "paddle/phi/kernels/funcs/multinomial_functor.h"
+#include "paddle/phi/kernels/top_k_kernel.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/transform.h"
+
+DECLARE_bool(use_curand);
 
 namespace phi {
 
@@ -57,12 +78,12 @@ template <typename T>
 __global__ void GetCumulativeProbs(T* norm_probs_data,
                                    int64_t num_distributions,
                                    int64_t num_categories,
-                                   T* cumulative_probs) {
+                                   T* cumulative_probs_data) {
   int id = blockIdx.x;
   thrust::inclusive_scan(thrust::device,
                          norm_probs_data + id * num_categories,
                          norm_probs_data + (id + 1) * num_categories,
-                         cumulative_probs + id * num_categories);
+                         cumulative_probs_data + id * num_categories);
 }
 
 template <typename T>
@@ -80,7 +101,7 @@ struct RandomGeneratorCudaFunctor {
 };
 
 template <typename T>
-__device__ int binarySearchFunctor(T* cumulative_probs,
+__device__ int binarySearchFunctor(T* cumulative_probs_data,
                                    T* norm_probs_data,
                                    int num_categories,
                                    T rng_number) {
@@ -90,7 +111,7 @@ __device__ int binarySearchFunctor(T* cumulative_probs,
   while (right - left > 0) {
     int mid = left + (right - left) / 2;
 
-    T temp_prob = cumulative_probs[mid];
+    T temp_prob = cumulative_probs_data[mid];
     if (temp_prob < rng_number) {
       left = mid + 1;
     } else {
@@ -114,26 +135,35 @@ __global__ void sampleMultinomialWithReplacement(
     int64_t* out_data,
     const int64_t num_distributions,
     const int64_t num_categories,
-    T* cumulative_probs,
-    T* norm_probs_data) {
+    T* cumulative_probs_data,
+    T* norm_probs_data,
+    uint64_t seed,
+    uint64_t offset,
+    bool use_curand) {
   // use binary search to get the selected category sample id.
-  // let cumulative_probs[id-1] < rng_data < cumulative_probs[id].
+  // let cumulative_probs_data[id-1] < rng_data < cumulative_probs_data[id].
+  size_t idx = gridDim.x * blockDim.x * blockIdx.y + blockDim.x * blockIdx.x +
+               threadIdx.x;
 
-  // for every distribution
-  int dist = blockIdx.y;
-  // for every sample
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, offset, &state);
+
   int sample = blockIdx.x * blockDim.x + threadIdx.x;
-  if (sample < num_samples) {
-    T rng_number = rng_data[sample + dist * num_samples];
+  for (int dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
+    if (sample < num_samples) {
+      T rng_number = rng_data[sample + dist * num_samples];
+      if (use_curand) {
+        rng_number = static_cast<T>(curand_uniform4(&state).x);
+      }
+      // Find the bucket that a uniform random number lies in
+      int selected_category =
+          binarySearchFunctor<T>(cumulative_probs_data + dist * num_categories,
+                                 norm_probs_data + dist * num_categories,
+                                 num_categories,
+                                 rng_number);
 
-    // Find the bucket that a uniform random number lies in
-    int selected_category =
-        binarySearchFunctor<T>(cumulative_probs + dist * num_categories,
-                               norm_probs_data + dist * num_categories,
-                               num_categories,
-                               rng_number);
-
-    out_data[sample + dist * num_samples] = selected_category;
+      out_data[sample + dist * num_samples] = selected_category;
+    }
   }
 }
 
@@ -172,6 +202,54 @@ void MultinomialKernel(const Context& dev_ctx,
                in_data_numel * sizeof(T),
                cudaMemcpyDeviceToHost);
 #endif
+    if (FLAGS_use_curand) {
+      for (size_t i = 0; i < num_distributions; ++i) {
+        int zero_num = 0;
+        for (size_t j = 0; j < num_categories; ++j) {
+          T weight = cpu_in_data[i * num_distributions + j];
+          PADDLE_ENFORCE_GE(
+              weight,
+              0,
+              errors::InvalidArgument(
+                  "Each element of multinomial'input must >= 0, but got %f.",
+                  weight));
+          if (weight == static_cast<T>(0)) {
+            zero_num++;
+          }
+        }
+        int valid_samples = num_categories - zero_num;
+        PADDLE_ENFORCE_LE(
+            num_samples,
+            valid_samples,
+            errors::InvalidArgument("When replacement=False, 'num_samples' "
+                                    "must less than or eaqual to the number of "
+                                    "positive item of input"));
+      }
+
+      // Refer to [gumbel softmax algorithm]
+      DenseTensor rand = EmptyLike<T, Context>(dev_ctx, x);
+      T* rand_data = rand.data<T>();
+      funcs::uniform_distribution<T> dist;
+      funcs::exponential_transform<T> trans(1.0);
+      funcs::distribution_and_transform<T>(dev_ctx, &rand, dist, trans);
+
+      funcs::ForRange<Context> for_range(dev_ctx, x.numel());
+      for_range([rand_data, in_data] __device__(size_t idx) {
+        rand_data[idx] = in_data[idx] / rand_data[idx];
+      });
+
+      if (num_samples == 1) {
+        ArgMaxKernel<T, Context>(
+            dev_ctx, rand, -1, true, false, 3 /*proto::VarType::INT64*/, out);
+      } else {
+        std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
+        DenseTensor value =
+            Empty<T, Context>(dev_ctx, ScalarArray(out_dim_vec));
+        TopkKernel<T, Context>(
+            dev_ctx, rand, Scalar(num_samples), -1, true, true, &value, out);
+      }
+      return;
+    }
 
     funcs::MultinomialFunctor<T>(dev_ctx,
                                  cpu_out_data,
@@ -228,7 +306,8 @@ void MultinomialKernel(const Context& dev_ctx,
   auto* norm_probs_data = dev_ctx.template Alloc<T>(&norm_probs_tensor);
 
   // number of threads in a block is min(num_categories, 512)
-  dim3 block_norm(num_categories < 512 ? num_categories : 512);
+  int block_size = num_categories < 512 ? num_categories : 512;
+  dim3 block_norm(block_size);
   dim3 grid_norm((num_distributions * num_categories - 1) / block_norm.x + 1);
   NormalizeProbability<T><<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(
       norm_probs_data,
@@ -238,16 +317,34 @@ void MultinomialKernel(const Context& dev_ctx,
       num_categories);
 
   // Get cumulative probability of each distribution. It's the same function
-  // of
-  // ``cumsum`` op.
+  // of ``cumsum`` op.
   DenseTensor cumulative_probs_tensor;
   cumulative_probs_tensor.Resize({num_distributions, num_categories});
-  auto* cumulative_probs = dev_ctx.template Alloc<T>(&cumulative_probs_tensor);
+  auto* cumulative_probs_data =
+      dev_ctx.template Alloc<T>(&cumulative_probs_tensor);
 
-  dim3 block_cumsum(1);
-  dim3 grid_cumsum(num_distributions);
-  GetCumulativeProbs<T><<<grid_cumsum, block_cumsum, 0, dev_ctx.stream()>>>(
-      norm_probs_data, num_distributions, num_categories, cumulative_probs);
+  if (FLAGS_use_curand) {
+    // 'phi::funcs::InclusiveScan' has higher accuracy than
+    // 'thrust::inclusive_scan'
+    funcs::InclusiveScan<T, std::plus<T>>(
+        /*in*/ norm_probs_data,
+        /*out*/ cumulative_probs_data,
+        /*outer_dim*/ static_cast<size_t>(num_distributions),
+        /*mid_dim*/ static_cast<size_t>(num_categories),
+        /*inner_dim*/ static_cast<size_t>(1),
+        /*init*/ static_cast<T>(0),
+        std::plus<T>(),
+        /*reverse=*/false,
+        dev_ctx);
+  } else {
+    dim3 block_cumsum(1);
+    dim3 grid_cumsum(num_distributions);
+    GetCumulativeProbs<T><<<grid_cumsum, block_cumsum, 0, dev_ctx.stream()>>>(
+        norm_probs_data,
+        num_distributions,
+        num_categories,
+        cumulative_probs_data);
+  }
 
   // Generate random number for each sample.
   std::random_device rd;
@@ -266,16 +363,30 @@ void MultinomialKernel(const Context& dev_ctx,
         RandomGeneratorCudaFunctor<T>(seed));
 
   // Sample the multinomial distributions.
-  dim3 block_sample(128);
-  dim3 grid_sample((num_samples - 1) / block_sample.x + 1, num_distributions);
-  sampleMultinomialWithReplacement<
-      T><<<grid_sample, block_sample, 0, dev_ctx.stream()>>>(rng_data,
-                                                             num_samples,
-                                                             out_data,
-                                                             num_distributions,
-                                                             num_categories,
-                                                             cumulative_probs,
-                                                             norm_probs_data);
+  dim3 block(128);
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  int grid_y = std::min<int64_t>(num_distributions, prop.maxGridSize[1]);
+  dim3 grid((num_samples - 1) / block.x + 1, grid_y);
+
+  auto gen_cuda = dev_ctx.GetGenerator();
+  size_t curand4_loop_times =
+      (num_distributions + 4 * grid_y - 1) / (4 * grid_y);
+  // 'increment' shoulde be multiple of 4
+  uint64_t increment = curand4_loop_times * 4;
+  auto seed_offset = gen_cuda->IncrementOffset(increment);
+
+  sampleMultinomialWithReplacement<T><<<grid, block, 0, dev_ctx.stream()>>>(
+      rng_data,
+      num_samples,
+      out_data,
+      num_distributions,
+      num_categories,
+      cumulative_probs_data,
+      norm_probs_data,
+      seed_offset.first,
+      seed_offset.second,
+      FLAGS_use_curand);
 }
 
 }  // namespace phi
