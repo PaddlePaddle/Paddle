@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/operators/batch_size_like.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -61,9 +64,13 @@ obtained from the `input` tensor.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(fill_constant_batch_size_like,
+                            FillConstantBatchSizeLikeInferShapeFunctor,
+                            PD_INFER_META(phi::BatchSizeLikeInferMeta));
 REGISTER_OPERATOR(
     fill_constant_batch_size_like, ops::FillConstantBatchSizeLikeOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillConstantBatchSizeLikeOpMaker,
-    ops::BatchSizeLikeNoNeedBufferVarsInferer);
+    ops::BatchSizeLikeNoNeedBufferVarsInferer,
+    FillConstantBatchSizeLikeInferShapeFunctor);

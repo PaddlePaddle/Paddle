@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/batch_size_like.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -68,12 +71,16 @@ via input arguments.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random_batch_size_like,
+                            GaussianRandomBatchSizeLikeInferShapeFunctor,
+                            PD_INFER_META(phi::BatchSizeLikeInferMeta));
 REGISTER_OPERATOR(
     gaussian_random_batch_size_like,
     paddle::operators::GaussianRandomBatchSizeLikeOp,
     paddle::operators::GaussianRandomBatchSizeLikeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
+    paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer,
+    GaussianRandomBatchSizeLikeInferShapeFunctor);
 
 // Kernels are registered in gaussian_random_op.cc and gaussian_random_op.cu

@@ -138,6 +138,62 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void BatchSizeLikeInferMeta(const MetaTensor& x,
+                            const std::vector<int>& shape,
+                            const Scalar& val,
+                            DataType dtype,
+                            int x_batch_size_dim,
+                            int out_batch_size_dim,
+                            MetaTensor* out) {
+  PADDLE_ENFORCE_GT(
+      shape.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "Shape size must be larger than 0, but received: %s.", shape.size()));
+  std::vector<int64_t> shape_int64(shape.size(), 0);
+  std::transform(shape.begin(), shape.end(), shape_int64.begin(), [](int a) {
+    return static_cast<int64_t>(a);
+  });
+  auto output_dim = phi::make_ddim(shape_int64);
+
+  int input_dim_size = static_cast<int>(x.dims().size());
+  PADDLE_ENFORCE_GE(
+      x_batch_size_dim,
+      0,
+      phi::errors::InvalidArgument("Input dimension index must be larger "
+                                   "equal than 0, but received: %s.",
+                                   x_batch_size_dim));
+  PADDLE_ENFORCE_GT(input_dim_size,
+                    x_batch_size_dim,
+                    phi::errors::InvalidArgument(
+                        "Input dimension size must be larger than "
+                        "input dimension index, but received input "
+                        "dimension size: %s, input dimension index: %s.",
+                        input_dim_size,
+                        x_batch_size_dim));
+
+  int output_dim_size = static_cast<int>(shape.size());
+  PADDLE_ENFORCE_GE(
+      out_batch_size_dim,
+      0,
+      phi::errors::InvalidArgument("Output dimension index must be larger "
+                                   "equal than 0, but received: %s.",
+                                   out_batch_size_dim));
+  PADDLE_ENFORCE_GT(
+      output_dim_size,
+      out_batch_size_dim,
+      phi::errors::InvalidArgument(
+          "Output dimension size must be larger than output dimension index, "
+          "but received output dimension size: %s, output dimension index: "
+          "%s.",
+          output_dim_size,
+          out_batch_size_dim));
+
+  output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
+  out->set_dims(output_dim);
+  out->set_dtype(dtype);
+}
+
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   auto dims = x.dims();
   auto rank = dims.size();
