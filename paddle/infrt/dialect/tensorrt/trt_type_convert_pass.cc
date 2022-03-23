@@ -59,7 +59,7 @@ void TrtTypeConvertPass::runOnFunction() {
   ::infrt::TargetType target = ::infrt::TargetType::GPU;
   for (auto& op : worklist) {
     if (auto tensor_map_get_op =
-            llvm::dyn_cast<::infrt::dt::TensorMapGetTensorOp>(op)) {
+            llvm::dyn_cast<::infrt::phi::TensorMapGetTensorOp>(op)) {
       auto res = tensor_map_get_op.output();
       if (auto t = res.getType().dyn_cast<::infrt::DenseTensorType>()) {
         auto replace_type = ::infrt::DenseTensorType::get(
