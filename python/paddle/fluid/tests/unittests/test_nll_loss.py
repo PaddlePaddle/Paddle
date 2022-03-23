@@ -194,6 +194,8 @@ class TestNLLLoss(unittest.TestCase):
                     weight=paddle.to_tensor(weight_np))
                 eager_res = nll_loss(
                     paddle.to_tensor(input_np), paddle.to_tensor(label_np))
+                loss = eager_res.sum()
+                loss.backward()
                 eager_result = eager_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
