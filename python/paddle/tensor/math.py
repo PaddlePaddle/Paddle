@@ -243,8 +243,8 @@ def add(x, y, name=None):
     """
 
     if paddle.in_dynamic_mode():
-        #if _in_eager_mode():
-        #return _C_ops.final_state_add(x, y)
+        if _in_eager_mode():
+            return _C_ops.final_state_add( x, y)
         return _C_ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -324,6 +324,8 @@ def subtract(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_subtract(x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -381,6 +383,8 @@ def divide(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_divide( x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
@@ -510,6 +514,8 @@ def multiply(x, y, name=None):
     axis = -1
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_multiply(x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
