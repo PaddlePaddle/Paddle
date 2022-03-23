@@ -34,12 +34,11 @@ using GraphWithStats = std::pair<ir::Graph*, int>;
 class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
   GraphWithStats FuseFCAsX(const std::string& name_scope,
-                             const GraphWithStats& graph_with_stats) const;
+                           const GraphWithStats& graph_with_stats) const;
   GraphWithStats FuseFCAsY(const std::string& name_scope,
-                             const GraphWithStats& graph_with_stats) const;
-  GraphWithStats FuseProjectionFC(
-      const std::string& name_scope,
-      const GraphWithStats& graph_with_stats) const;
+                           const GraphWithStats& graph_with_stats) const;
+  GraphWithStats FuseProjectionFC(const std::string& name_scope,
+                                  const GraphWithStats& graph_with_stats) const;
 
  public:
   FCResidualConnectionMKLDNNFusePass();
@@ -49,9 +48,8 @@ class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const;
 
   static bool HasFusedActivation(Node* fc_node) {
-    return !(fc_node->Op()
-                 ->GetAttrIfExists<std::string>("activation_type")
-                 .empty());
+    return !(
+        fc_node->Op()->GetAttrIfExists<std::string>("activation_type").empty());
   }
 
   const std::string name_scope_{"fc_residual_connection_fuse_pass"};

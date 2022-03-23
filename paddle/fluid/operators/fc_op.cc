@@ -184,19 +184,19 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0f), The quantize scale of output data")
         .SetDefault(1.0f);
     AddAttr<float>("Scale_in_eltwise",
-                 "Scale_in_eltwise to be used for int8 eltwise input data."
-                 "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f)
-      .AsExtra();    
+                   "Scale_in_eltwise to be used for int8 eltwise input data."
+                   "Only used with MKL-DNN INT8.")
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
     AddAttr<bool>("fuse_residual_connection",
-                "(bool, default false) Only used in mkldnn kernel. Used "
-                "whenever fc output is as an input to residual connection.")
-      .SetDefault(false)
-      .AsExtra();    
+                  "(bool, default false) Only used in mkldnn kernel. Used "
+                  "whenever fc output is as an input to residual connection.")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Fully Connected Operator.
 

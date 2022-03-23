@@ -29,9 +29,9 @@ namespace ir {
 constexpr int nodes_removed = 3;
 constexpr int nodes_added = 1;
 
-OpDesc* Create_Op_FC(
-    ProgramDesc* prog, const std::vector<test::InOutVarNamePair>& inputs,
-    const std::vector<test::InOutVarNamePair>& outputs) {
+OpDesc* Create_Op_FC(ProgramDesc* prog,
+                     const std::vector<test::InOutVarNamePair>& inputs,
+                     const std::vector<test::InOutVarNamePair>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType("fc");
   op->SetAttr("use_mkldnn", true);
@@ -76,9 +76,8 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsY) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
-                 {{"Out", "c"}});
+  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+               {{"Out", "c"}});
   Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
@@ -97,14 +96,12 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX_FCBiasAsY) {
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
 
   // left branch
-  Create_Op_FC(&prog,
-                 {{"Input", "a"}, {"Bias", "bias"}, {"W", "weights"}},
-                 {{"Out", "f"}});
+  Create_Op_FC(&prog, {{"Input", "a"}, {"Bias", "bias"}, {"W", "weights"}},
+               {{"Out", "f"}});
 
   // right branch
-  Create_Op_FC(&prog,
-                 {{"Input", "b"}, {"Bias", "bias2"}, {"W", "weights2"}},
-                 {{"Out", "c"}});
+  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias2"}, {"W", "weights2"}},
+               {{"Out", "c"}});
 
   Create_Op_elementwise_add(&prog, {{"X", "f"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
@@ -122,9 +119,8 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
-                 {{"Out", "c"}});
+  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+               {{"Out", "c"}});
 
   Create_Op_elementwise_add(&prog, {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
@@ -142,13 +138,11 @@ TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_NotResidualConnection) {
                                      {"bias", "weights", "bias2", "weights2"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
-                 {{"Out", "c"}});
+  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+               {{"Out", "c"}});
 
-  Create_Op_FC(&prog,
-                 {{"Input", "d"}, {"Bias", "bias2"}, {"W", "weights2"}},
-                 {{"Out", "e"}});
+  Create_Op_FC(&prog, {{"Input", "d"}, {"Bias", "bias2"}, {"W", "weights2"}},
+               {{"Out", "e"}});
 
   Create_Op_elementwise_add(&prog, {{"X", "c"}, {"Y", "e"}}, {{"Out", "f"}});
   test::CreateOp(&prog, "relu", {{"X", "f"}}, {{"Out", "g"}});
@@ -161,19 +155,20 @@ TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_NotResidualConnection) {
 }
 
 TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_VITOCR) {
-  auto prog =
-      test::BuildProgramDesc({"a", "b", "c", "d", "e", "f", "g", "h", "i"}, {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2"});
+  auto prog = test::BuildProgramDesc(
+      {"a", "b", "c", "d", "e", "f", "g", "h", "i"},
+      {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2"});
 
   Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "b"}}, {{"Out", "c"}});
 
-  test::CreateOp(&prog, "layer_norm", {{"X","c"}, {"Bias","ln_bias"}, {"Scale","ln_scale"}}, {{"Y","d"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
-                 {{"Out", "e"}});
+  test::CreateOp(&prog, "layer_norm",
+                 {{"X", "c"}, {"Bias", "ln_bias"}, {"Scale", "ln_scale"}},
+                 {{"Y", "d"}});
+  Create_Op_FC(&prog, {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
+               {{"Out", "e"}});
   test::CreateOp(&prog, "gelu", {{"X", "e"}}, {{"Out", "f"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
-                 {{"Out", "g"}});
+  Create_Op_FC(&prog, {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
+               {{"Out", "g"}});
   Create_Op_elementwise_add(&prog, {{"X", "g"}, {"Y", "c"}}, {{"Out", "h"}});
   test::CreateOp(&prog, "relu", {{"X", "h"}}, {{"Out", "i"}});
 
@@ -186,37 +181,37 @@ TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_VITOCR) {
 }
 
 TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_Sequence) {
-  auto prog =
-      test::BuildProgramDesc({"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"},
-      {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2", "ln_bias2", "ln_scale2", "bias3", "weights3", "bias4", "weights4"});
+  auto prog = test::BuildProgramDesc(
+      {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"},
+      {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2",
+       "ln_bias2", "ln_scale2", "bias3", "weights3", "bias4", "weights4"});
 
   Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "b"}}, {{"Out", "c"}});
 
-  test::CreateOp(&prog, "layer_norm", {{"X","c"}, {"Bias","ln_bias"}, {"Scale","ln_scale"}}, {{"Y","d"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
-                 {{"Out", "e"}});
+  test::CreateOp(&prog, "layer_norm",
+                 {{"X", "c"}, {"Bias", "ln_bias"}, {"Scale", "ln_scale"}},
+                 {{"Y", "d"}});
+  Create_Op_FC(&prog, {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
+               {{"Out", "e"}});
   test::CreateOp(&prog, "gelu", {{"X", "e"}}, {{"Out", "f"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
-                 {{"Out", "g"}});
+  Create_Op_FC(&prog, {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
+               {{"Out", "g"}});
   Create_Op_elementwise_add(&prog, {{"X", "g"}, {"Y", "c"}}, {{"Out", "h"}});
-  
-  test::CreateOp(&prog, "layer_norm", {{"X","h"}, {"Bias","ln_bias2"}, {"Scale","ln_scale2"}}, {{"Y","i"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "i"}, {"Bias", "bias3"}, {"W", "weights3"}},
-                 {{"Out", "j"}});
+  test::CreateOp(&prog, "layer_norm",
+                 {{"X", "h"}, {"Bias", "ln_bias2"}, {"Scale", "ln_scale2"}},
+                 {{"Y", "i"}});
+  Create_Op_FC(&prog, {{"Input", "i"}, {"Bias", "bias3"}, {"W", "weights3"}},
+               {{"Out", "j"}});
   test::CreateOp(&prog, "gelu", {{"X", "j"}}, {{"Out", "k"}});
-  Create_Op_FC(&prog,
-                 {{"Input", "k"}, {"Bias", "bias4"}, {"W", "weights4"}},
-                 {{"Out", "l"}});
+  Create_Op_FC(&prog, {{"Input", "k"}, {"Bias", "bias4"}, {"W", "weights4"}},
+               {{"Out", "l"}});
   Create_Op_elementwise_add(&prog, {{"X", "h"}, {"Y", "l"}}, {{"Out", "m"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
                                      "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "m", nodes_removed*2, nodes_added*2));
+                                     "m", nodes_removed * 2, nodes_added * 2));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 4}, {"elementwise_add", 1}}));
 }
 

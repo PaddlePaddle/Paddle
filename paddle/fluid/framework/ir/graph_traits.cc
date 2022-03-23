@@ -26,8 +26,8 @@ namespace ir {
 //
 class Node;
 
-bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
-  auto find_node = [](ir::Graph* graph, const Node* node) -> Node* {
+bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
+  auto find_node = [](ir::Graph *graph, const Node *node) -> Node * {
     for (auto n : graph->Nodes()) {
       if (n == node) {
         return n;
@@ -41,15 +41,15 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
     return true;
   }
 
-  std::map<Node*, bool> visited;
+  std::map<Node *, bool> visited;
 
-  for (auto& node : GraphTraits::DFS(*graph)) {
+  for (auto &node : GraphTraits::DFS(*graph)) {
     visited[&node] = false;
   }
 
   visited[from] = true;
 
-  std::list<Node*> queue;
+  std::list<Node *> queue;
   queue.push_back(from);
 
   while (!queue.empty()) {

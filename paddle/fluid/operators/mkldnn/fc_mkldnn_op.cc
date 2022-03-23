@@ -128,8 +128,7 @@ class FCPrimitiveFactory {
     // Store weights and bias in the mkldnn cache
     CacheWeightsAndBias(dev_ctx, ctx);
 
-    if(ctx.Attr<bool>("fuse_residual_connection"))
-    {
+    if (ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_param = ctx.Input<Tensor>("ResidualData");
       output->ShareDataWith(*residual_param);
     }
@@ -422,12 +421,13 @@ class FCPrimitiveFactory {
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
 
     // If the output will be in floats, we don't multiply by scale_out.
-    float activation_scale = force_fp32_output ? 1.0f
-                             : has_activation  ? ctx.Attr<float>("Scale_out")
-                                               : 1.0f;
-    float inner_scale = force_fp32_output ? 1.0f
-                        : has_activation  ? 1.0f
-                                          : ctx.Attr<float>("Scale_out");
+    float activation_scale =
+        force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
+                                                  : 1.0f;
+    float inner_scale =
+        force_fp32_output ? 1.0f : has_activation
+                                       ? 1.0f
+                                       : ctx.Attr<float>("Scale_out");
     float sum_scale =
         fuse_residual_conn ? inner_scale / scale_in_eltwise_data : 1.0f;
 
@@ -479,7 +479,7 @@ class FCPrimitiveFactory {
       int mask = CreateMask(1, output_shift_scale.size() > 1);
       attributes.set_output_scales(mask, output_shift_scale);
     }
-  
+
     if (ctx.Attr<bool>("fuse_residual_connection")) {
       post_operations.append_sum(sum_scale);
     }
@@ -487,43 +487,44 @@ class FCPrimitiveFactory {
     if (ctx.Attr<std::string>("activation_type") == "relu") {
       constexpr float negative_slope = 0.0f;
       constexpr float placeholder = 1.0f;  // beta
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_relu,
+      post_operations.append_eltwise(activation_scale,
+                                     dnnl::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_gelu,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_gelu, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_gelu_tanh,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_gelu_tanh, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_gelu_erf,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_gelu_erf, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_tanh,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_tanh, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_logistic,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_logistic, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "mish") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_mish,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_mish, alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_hardswish,
-                                     alpha, beta);
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_hardswish, alpha, beta);
     }
 
     attributes.set_post_ops(post_operations);
@@ -603,8 +604,9 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
 // output type (uint8, int8 or float).
 template <typename T_in, typename T_w>
 static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
-                      const Tensor* w, const Tensor* bias, const Tensor* residual_param,
-                      LoDTensor* output, bool fuse_relu, bool force_fp32_output,
+                      const Tensor* w, const Tensor* bias,
+                      const Tensor* residual_param, LoDTensor* output,
+                      bool fuse_relu, bool force_fp32_output,
                       bool fuse_residual_conn) {
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   std::string prim_key = platform::CreateKey(
@@ -648,8 +650,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
-    ExecuteFc<T_in, T_w>(ctx, input, w, bias, residual_data,
-                 output, fuse_relu, force_fp32_output, fuse_residual_conn);
+    ExecuteFc<T_in, T_w>(ctx, input, w, bias, residual_data, output, fuse_relu,
+                         force_fp32_output, fuse_residual_conn);
 
     output->set_layout(DataLayout::kMKLDNN);
   }

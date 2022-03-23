@@ -26,20 +26,17 @@ import hypothesis.strategies as st
 
 
 class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
-
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         FCAsX = draw(st.sampled_from([True, False]))
-        fc_in = draw(st.sampled_from([16, 32, 48, 64]))
-        fc_wei = draw(st.sampled_from([16, 32, 48, 64]))
+        fc_in = draw(st.sampled_from([32, 64]))
+        fc_wei = draw(st.sampled_from([32, 64]))
 
         def generate_input():
-            return np.random.random(
-                [fc_in, fc_wei]).astype(np.float32)
+            return np.random.random([fc_in, fc_wei]).astype(np.float32)
 
         def generate_fc_weight():
-            return np.random.random(
-                [fc_wei, fc_wei]).astype(np.float32)
+            return np.random.random([fc_wei, fc_wei]).astype(np.float32)
 
         def generate_fc_bias():
             return np.random.random([fc_wei]).astype(np.float32)
@@ -48,14 +45,14 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
             type="relu",
             inputs={"X": ["input_data"]},
             outputs={"Out": ["relu_out"]},
-            attrs={}
-        )
+            attrs={})
 
         fc_op = OpConfig(
             type="fc",
-            inputs={"Input": ["relu_out"],
-                    "W": ["fc_weight"],
-                    "Bias": ["fc_bias"]},
+            inputs={
+                "Input": ["relu_out"],
+                "W": ["fc_weight"],
+                "Bias": ["fc_bias"]},
             outputs={"Out": ["fc_output"]},
             attrs={
                 "use_mkldnn": True,
@@ -84,14 +81,11 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "fc_weight":
-                TensorConfig(data_gen=partial(generate_fc_weight)),
-                "fc_bias":
-                TensorConfig(data_gen=partial(generate_fc_bias)),
+                "fc_weight": TensorConfig(data_gen=partial(generate_fc_weight)),
+                "fc_bias": TensorConfig(data_gen=partial(generate_fc_bias)),
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input))
+                "input_data": TensorConfig(data_gen=partial(generate_input))
             },
             outputs=["elementwise_output"])
 
