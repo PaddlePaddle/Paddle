@@ -37,10 +37,10 @@ class TestScatterOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=True)
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 class TestScatterOp0(OpTest):
@@ -57,10 +57,10 @@ class TestScatterOp0(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=True)
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 class TestScatterOp1(OpTest):
@@ -80,10 +80,10 @@ class TestScatterOp1(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X", "Updates"], "Out", check_eager=True)
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -103,13 +103,13 @@ class TestScatterOp2(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_eager=True)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True)
+                place, ['X', 'Updates'], 'Out', check_eager=False)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -133,13 +133,13 @@ class TestScatterOp3(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_eager=True)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True)
+                place, ['X', 'Updates'], 'Out', check_eager=False)
 
 
 class TestScatterOp4(OpTest):
@@ -155,10 +155,10 @@ class TestScatterOp4(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Updates'], 'Out', check_eager=False)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -178,13 +178,13 @@ class TestScatterOp5(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_eager=True)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_eager=True)
+                place, ['X', 'Updates'], 'Out', check_eager=False)
 
 
 class TestScatterAPI(unittest.TestCase):

@@ -28,14 +28,14 @@ namespace paddle {
 namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Backend backend, bool blocking);
+Tensor copy_to(const Tensor &x, Place place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }
 
-Tensor Tensor::copy_to(Backend backend, bool blocking) const {
-  return experimental::copy_to(*this, backend, blocking);
+Tensor Tensor::copy_to(Place place, bool blocking) const {
+  return experimental::copy_to(*this, place, blocking);
 }
 
 template <typename T>
@@ -45,7 +45,7 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
                   "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
+  return copy_to(ConvertExtPlaceToInnerPlace(target_place), /*blocking=*/false);
 }
 
 template PADDLE_API Tensor
