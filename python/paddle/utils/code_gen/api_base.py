@@ -107,7 +107,7 @@ class BaseAPI(object):
             'long[]': 'const std::vector<int64_t>&'
         }
         optional_types_trans = {
-            'Tensor': 'const paddle::optional<Tensor>&',
+            'Tensor': 'paddle::optional<const Tensor&>',
             'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
             'ScalarArray': 'const paddle::optional<ScalarArray>&',
             'Scalar': 'const paddle::optional<Scalar>&',
@@ -505,7 +505,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::DenseTensor*>&',
-            'const paddle::optional<Tensor>&':
+            'const paddle::optional<Tensor&>':
+            'paddle::optional<const phi::DenseTensor&>',
+            'paddle::optional<const Tensor&>':
             'paddle::optional<const phi::DenseTensor&>',
             'const paddle::optional<std::vector<Tensor>>&':
             'paddle::optional<const std::vector<phi::DenseTensor>&>'

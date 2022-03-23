@@ -97,8 +97,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np)[0]
@@ -132,8 +131,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
@@ -170,10 +168,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np))
+                weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
@@ -210,10 +207,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np), reduction='sum')
+                weight=paddle.to_tensor(weight_np), reduction='sum')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
         expected = nll_loss_1d(
             input_np, label_np, weight=weight_np, reduction='sum')[0]
@@ -249,10 +245,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np))
+                weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
@@ -287,10 +282,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np), reduction='none')
+                weight=paddle.to_tensor(weight_np), reduction='none')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
         expected = nll_loss_1d(
             input_np, label_np, weight=weight_np, reduction='none')
@@ -326,8 +320,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np)[0]
@@ -363,8 +356,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np, reduction='sum')[0]
@@ -404,10 +396,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np))
+                weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
@@ -445,10 +436,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np))
+                weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
@@ -487,10 +477,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np), reduction='sum')
+                weight=paddle.to_tensor(weight_np), reduction='sum')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(
@@ -527,8 +516,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
@@ -572,10 +560,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np))
+                weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
@@ -620,10 +607,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np), reduction='sum')
+                weight=paddle.to_tensor(weight_np), reduction='sum')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
@@ -671,10 +657,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np), reduction='none')
+                weight=paddle.to_tensor(weight_np), reduction='none')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
@@ -721,10 +706,9 @@ class TestNLLLoss(unittest.TestCase):
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
-                weight=fluid.dygraph.to_variable(weight_np), reduction='none')
+                weight=paddle.to_tensor(weight_np), reduction='none')
             dy_res = nll_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np))
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
@@ -749,6 +733,7 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.with_weight = False
+        self.python_api = paddle.nn.functional.nll_loss
         np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
                                      self.input_shape).astype("float64")
@@ -769,7 +754,7 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.attrs = {'reduction': 'mean', 'ignore_index': -100}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_output_with_weight(self):
         self.with_weight = True
@@ -1014,4 +999,5 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

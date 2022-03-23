@@ -569,7 +569,6 @@
   kernel :
     func : bitwise_or
 
-
 # bitwise_xor
 - api : bitwise_xor
   args : (Tensor x, Tensor y)
@@ -790,7 +789,7 @@
     param : [label]
   kernel :
     func : label_smooth
-  # optional : prior_dist
+  optional : prior_dist
   # backward : label_smooth_grad
   # 
 
@@ -889,6 +888,8 @@
     func : NllLossRawInferMeta
   kernel :
     func : nll_loss
+    data_type : x
+  optional : weight
   # backward : nll_loss_grad
   # optional : weight
 
