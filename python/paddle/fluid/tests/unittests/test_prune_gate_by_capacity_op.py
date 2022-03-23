@@ -68,7 +68,7 @@ def assert_allclose(output, expected, n_expert):
 class TestPruneGateByCapacityAPI1(unittest.TestCase):
     def init_test_case(self):
         self.gate_idx = np.random.randint(
-            0, self.n_expert, size=(2000, )).astype("int64")
+            0, self.n_expert, size=(200, )).astype("int64")
         expert_count = count(self.gate_idx, self.n_expert * self.n_worker)
         capacity = np.random.randint(10, 200, size=(self.n_expert, ))
         self.expert_count = limit_by_capacity(expert_count, capacity,
