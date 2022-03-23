@@ -87,7 +87,7 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
   } else if (kernel_type.library_type_ == LibraryType::kKP) {
     backend = phi::Backend::KPS;
   } else {
-    // do
+    // do nothing
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
