@@ -71,15 +71,15 @@ void ConvCudnnGradGradKernel(
   auto dW = filter_grad;
   auto dX = input_grad;
   if (ddO) {
-    ddO->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(ddO);
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(ctx, ddO, static_cast<T>(0));
   }
   if (dW) {
-    dW->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(dW);
   }
   if (dX) {
-    dX->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(dX);
   }
 
   // const T* x = X->data<T>();
@@ -131,7 +131,7 @@ void ConvCudnnGradGradKernel(
     }
     if (dX) {
       ResizeToChannelFirst<Context, T>(ctx, dX, &transformed_dX_channel);
-      transformed_dX_channel.mutable_data<T>(ctx.GetPlace());
+      ctx.template Alloc<T>(&transformed_dX_channel);
     }
 
   } else {
@@ -186,13 +186,13 @@ void ConvCudnnGradGradKernel(
     transformed_ddX.Resize(new_input_shape);
     transformed_dX.Resize(new_input_shape);
 
-    transformed_X.mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(&transformed_X);
 
     if (ddX) {
-      transformed_ddX.mutable_data<T>(ctx.GetPlace());
+      ctx.template Alloc<T>(&transformed_ddX);
     }
     if (dX) {
-      transformed_dX.mutable_data<T>(ctx.GetPlace());
+      ctx.template Alloc<T>(&transformed_dX);
     }
 
     // pad for input
