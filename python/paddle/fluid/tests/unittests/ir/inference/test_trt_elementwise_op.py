@@ -56,5 +56,23 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TensorRTSubgraphPassElementwiseBroadcastTest1(
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_sub(x=data1, y=data2, axis=0)
+
+
+class TensorRTSubgraphPassElementwiseBroadcastTest2(
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_mul(x=data1, y=data2, axis=0)
+
+
+class TensorRTSubgraphPassElementwiseBroadcastTest3(
+        TensorRTSubgraphPassElementwiseBroadcastTest):
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_div(x=data1, y=data2, axis=0)
+
+
 if __name__ == "__main__":
     unittest.main()
