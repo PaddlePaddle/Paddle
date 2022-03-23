@@ -27,9 +27,17 @@
   invoke : sparse_coo_tensor_impl(non_zero_indices, non_zero_elements, dense_shape)
 
 - api : sparse_test
-  args : (Tensor x)
+  args : (Tensor x, Tensor y)
   output : Tensor(out@SparseCooTensor)
   kernel :
     func : sparse_test
     layout : x
   backward : sparse_test_grad
+
+- api : sparse_relu
+  args : (Tensor x)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_relu
+    layout : x
+  backward : sparse_relu_grad
