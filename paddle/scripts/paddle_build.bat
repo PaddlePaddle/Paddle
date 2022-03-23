@@ -252,6 +252,7 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set vcvars64_dir="D:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -317,11 +318,9 @@ echo    ========================================
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-echo %task_name%|findstr wincheck_inference >nul && (
-    call "D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-) || (
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-)
+if not defined vcvars64_dir set vcvars64_dir="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+call %vcvars64_dir%
+
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
@@ -394,8 +393,7 @@ echo %task_name%|findstr build >nul && (
 )
 
 if "%WITH_GPU%"=="ON" (
-    for /F %%# in ('dir /b /d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\"') do set cuda_version=%%#
-    set cuda_version=!cuda_version:~-4!
+    set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
     set sub_dir=cuda!cuda_version:.=!
 ) else (
     set sub_dir=cpu
