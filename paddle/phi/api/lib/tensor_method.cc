@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
 
+#include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -184,15 +184,17 @@ void Tensor::copy_(const Tensor &src,
   }
 }
 
-Tensor Tensor::to_sparse_coo(const int64_t sparse_dim) {
-  return experimental::sparse::to_sparse_coo_impl(*this, sparse_dim);
+Tensor Tensor::to_sparse_coo(const int64_t sparse_dim) const {
+  return experimental::sparse::to_sparse_coo(*this, sparse_dim);
 }
 
-Tensor Tensor::to_sparse_csr() {
-  return experimental::sparse::to_sparse_csr_impl(*this);
+Tensor Tensor::to_sparse_csr() const {
+  return experimental::sparse::to_sparse_csr(*this);
 }
 
-Tensor Tensor::to_dense() { return experimental::sparse::to_dense_impl(*this); }
+Tensor Tensor::to_dense() const {
+  return experimental::sparse::to_dense(*this);
+}
 
 }  // namespace experimental
 }  // namespace paddle

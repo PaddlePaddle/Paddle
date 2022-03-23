@@ -528,21 +528,21 @@ class PADDLE_API Tensor final {
    * @param sparse_dim, The number of sparse dimensions
    * @return Tensor
    */
-  Tensor to_sparse_coo(const int64_t sparse_dim);
+  Tensor to_sparse_coo(const int64_t sparse_dim) const;
 
   /**
    * @brief Convert DenseTensor or SparseCooTensor to SparseCsrTensor
    *
    * @return Tensor
    */
-  Tensor to_sparse_csr();
+  Tensor to_sparse_csr() const;
 
   /**
    * @brief Convert SparseCooTensor or SparseCsrTensor to DenseTensor
    *
    * @return Tensor
    */
-  Tensor to_dense();
+  Tensor to_dense() const;
 
  private:
   /**
