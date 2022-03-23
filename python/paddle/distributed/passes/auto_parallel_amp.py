@@ -503,8 +503,6 @@ class AMPPass(PassBase):
             return False
         if self.get_attr("decr_ratio") < 0:
             return False
-        if len(self.get_attr("params_grads")) <= 0:
-            return False
         if self.get_attr("dist_context") is None:
             return False
         return True

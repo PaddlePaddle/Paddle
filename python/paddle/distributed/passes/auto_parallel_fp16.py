@@ -31,7 +31,10 @@ from .auto_parallel_amp import AMPPass
 world_process_group = get_world_process_group()
 # if user use python "+, -, * /" for network, there might be cast in vanilla program
 __amp_skip_ops__ = [
-    'create_py_reader', 'create_double_buffer_reader', 'read', 'while', 'cast'
+    'create_py_reader',
+    'create_double_buffer_reader',
+    'while',
+    'cast',
 ]
 
 
@@ -138,14 +141,18 @@ class FP16State(object):
             return
 
         if is_forward_op(op):
+
+            # ernie inference trick
+            if op.type == "assign" and "array_" in op.input_arg_names[0]:
+                self._op_fp16_dict[op.desc.id()] = False
+                return
             if _need_keep_fp32(op, self.amp_list.unsupported_list,
                                self.use_fp16_guard):
                 self._op_fp16_dict[op.desc.id()] = False
             else:
                 self._op_fp16_dict[op.desc.id()] = True
             for var_name in op.output_arg_names:
-                assert var_name not in self.forward_non_leaf_tensors, "{}".format(
-                    var_name)
+                # assert var_name not in self.forward_non_leaf_tensors, "{}".format(var_name)
                 self.forward_non_leaf_tensors[var_name] = op.desc.id()
 
         elif is_backward_op(op) == int(OpRole.Backward):
@@ -165,7 +172,9 @@ class FP16State(object):
         except ValueError as e:
             var = self.program.global_block().var(var_name)
 
-        if var is None or var.type not in _valid_types:
+        # NOTE(JZ-LIANG) "array_" is a hack to adopt for ernie3.0 inference, since there is  
+        # a trick which make the LOD_TENSOR_ARRAY to the float32 in while block to reset the LOD_TENSOR_ARRAY
+        if var is None or var.type not in _valid_types or "array_" in var_name:
             return
 
         if var.dtype == core.VarDesc.VarType.FP32:
@@ -277,6 +286,7 @@ class FP16State(object):
                 in_var = block._find_var_recursive(in_var_name)
                 if in_var is None or in_var.type not in _valid_types or in_var.dtype == dst_dtype:
                     continue
+
                 if in_var.dtype == src_dtype:
                     cast_name = in_var.name + '.cast_' + _dtype_to_str(
                         dst_dtype)
