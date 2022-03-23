@@ -52,273 +52,81 @@ class SimpleConv(fluid.dygraph.Layer):
 
 
 class TestAutoCast(unittest.TestCase):
+    def amp_guard_white_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_fp16 = conv2d(data)
+
+            with fluid.dygraph.amp_guard(False):
+                out_fp32 = conv2d(data)
+
+        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+
     def test_amp_guard_white_op(self):
-        def func_isinstance():
-            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-            with fluid.dygraph.guard():
-                conv2d = fluid.dygraph.Conv2D(
-                    3, 2, 3, bias_attr=False, act=None)
-                data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard(True):
-                    out_fp16 = conv2d(data)
-
-                with fluid.dygraph.amp_guard(False):
-                    out_fp32 = conv2d(data)
-
-            self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
-            self.assertTrue(out_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
-            self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
-
         with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
+            self.amp_guard_white_op()
+        self.amp_guard_white_op()
+
+    def amp_guard_black_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_fp32 = fluid.layers.mean(data)
+
+        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
 
     def test_amp_guard_black_op(self):
-        def func_isinstance():
-            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-            with fluid.dygraph.guard():
-                data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard(True):
-                    out_fp32 = fluid.layers.mean(data)
-
-            self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
-            self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
-
         with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
+            self.amp_guard_black_op()
+        self.amp_guard_black_op()
+
+    def custom_op_list(self):
+        with fluid.dygraph.guard():
+            tracer = fluid.framework._dygraph_tracer()
+            base_white_list = fluid.dygraph.amp.auto_cast.WHITE_LIST
+            base_black_list = fluid.dygraph.amp.auto_cast.BLACK_LIST
+            with fluid.dygraph.amp_guard(
+                    custom_white_list=["log"], custom_black_list=["conv2d"]):
+                white_list, black_list = tracer._get_amp_op_list()
+                self.assertTrue(
+                    set(white_list) ==
+                    (set(base_white_list) | {"log"}) - {"conv2d"})
+
+                self.assertTrue(
+                    set(black_list) ==
+                    (set(base_black_list) - {"log"}) | {"conv2d"})
+
+            base_white_list = fluid.dygraph.amp.auto_cast.PURE_FP16_WHITE_LIST
+            base_black_list = fluid.dygraph.amp.auto_cast.PURE_FP16_BLACK_LIST
+            with fluid.dygraph.amp_guard(
+                    custom_white_list=["log"],
+                    custom_black_list=["conv2d"],
+                    level='O2'):
+                white_list, black_list = tracer._get_amp_op_list()
+                self.assertTrue(
+                    set(white_list) ==
+                    (set(base_white_list) | {"log"}) - {"conv2d"})
+
+                self.assertTrue(
+                    set(black_list) ==
+                    (set(base_black_list) - {"log"}) | {"conv2d"})
 
     def test_custom_op_list(self):
-        def func_isinstance():
-            with fluid.dygraph.guard():
-                tracer = fluid.framework._dygraph_tracer()
-                base_white_list = fluid.dygraph.amp.auto_cast.WHITE_LIST
-                base_black_list = fluid.dygraph.amp.auto_cast.BLACK_LIST
-                with fluid.dygraph.amp_guard(
-                        custom_white_list=["log"],
-                        custom_black_list=["conv2d"]):
-                    white_list, black_list = tracer._get_amp_op_list()
-                    self.assertTrue(
-                        set(white_list) ==
-                        (set(base_white_list) | {"log"}) - {"conv2d"})
-
-                    self.assertTrue(
-                        set(black_list) ==
-                        (set(base_black_list) - {"log"}) | {"conv2d"})
-
-                base_white_list = fluid.dygraph.amp.auto_cast.PURE_FP16_WHITE_LIST
-                base_black_list = fluid.dygraph.amp.auto_cast.PURE_FP16_BLACK_LIST
-                with fluid.dygraph.amp_guard(
-                        custom_white_list=["log"],
-                        custom_black_list=["conv2d"],
-                        level='O2'):
-                    white_list, black_list = tracer._get_amp_op_list()
-                    self.assertTrue(
-                        set(white_list) ==
-                        (set(base_white_list) | {"log"}) - {"conv2d"})
-
-                    self.assertTrue(
-                        set(black_list) ==
-                        (set(base_black_list) - {"log"}) | {"conv2d"})
-
         with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
+            self.custom_op_list()
+        self.custom_op_list()
 
-    def test_custom_op_list_exception(self):
-        def func_isinstance():
-            inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+    def custom_op_list_exception(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
 
-            def func():
-                with fluid.dygraph.guard():
-                    model = SimpleConv(
-                        num_channels=3,
-                        num_filters=64,
-                        filter_size=7,
-                        stride=2,
-                        act='relu')
-                    with fluid.dygraph.amp_guard(
-                            custom_white_list=["conv2d"],
-                            custom_black_list=["conv2d"]):
-                        inp = fluid.dygraph.to_variable(inp_np)
-                        out = model(inp)
-
-            self.assertRaises(ValueError, func)
-
-        with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
-
-    def test_amp_guard_upsupported_fp16_op(self):
-        def func_isinstance():
-            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-            with fluid.dygraph.guard():
-                conv2d = fluid.dygraph.Conv2D(
-                    3, 2, 3, bias_attr=False, act=None)
-                data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard(True):
-                    out_amp_fp16 = conv2d(data)
-                    out_amp_fp32 = paddle.expand_as(
-                        out_amp_fp16,
-                        out_amp_fp16)  # expand_as_v2 has no fp16 kernel
-
-                with fluid.dygraph.amp_guard(True, level='O2'):
-                    out_purefp16_fp16 = conv2d(data)
-                    out_purefp16_fp32 = paddle.expand_as(
-                        out_purefp16_fp16,
-                        out_purefp16_fp16)  # expand_as_v2 has no fp16 kernel
-            self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
-            self.assertTrue(
-                out_amp_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
-            self.assertTrue(
-                out_amp_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
-            self.assertTrue(
-                out_purefp16_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
-            self.assertTrue(
-                out_purefp16_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
-
-        with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
-
-    def test_mode_exception(self):
-        def func_isinstance():
-            def func():
-                data = np.random.uniform(-1, 1,
-                                         [10, 3, 32, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    conv2d = fluid.dygraph.Conv2D(
-                        3, 2, 3, bias_attr=False, act=None)
-                    data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard(level='O'):
-                        out = conv2d(data)
-
-            self.assertRaises(ValueError, func)
-
-        with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
-
-
-class TestAmpScaler(unittest.TestCase):
-    def test_scale(self):
-        def func_isinstance():
-            with fluid.dygraph.guard():
-                data = paddle.rand([10, 1024])
-                scaler = paddle.fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                scaled_data = scaler.scale(data)
-                self.assertEqual(
-                    np.array_equal(scaled_data.numpy(), data.numpy() * 1024),
-                    True)
-
-        with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
-
-    def test_minimize(self):
-        def func_isinstance():
-            inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
-
-            def run_simple_conv(inp_np, use_scaler=True):
-                paddle.seed(10)
-                paddle.framework.random._manual_program_seed(10)
-                with fluid.dygraph.guard():
-                    model = SimpleConv(
-                        num_channels=3,
-                        num_filters=64,
-                        filter_size=7,
-                        stride=2,
-                        act='relu')
-                    optimizer = fluid.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
-                    scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                    data = fluid.dygraph.to_variable(inp_np)
-
-                    out = model(data)
-                    loss = fluid.layers.mean(out)
-                    if use_scaler:
-                        print('use scaler')
-                        scaled_loss = scaler.scale(loss)
-                        scaled_loss.backward()
-                        optimize_ops, params_grads = scaler.minimize(
-                            optimizer, scaled_loss)
-                    else:
-                        print('use no scaler')
-                        loss.backward()
-                        optimize_ops, params_grads = optimizer.minimize(loss)
-                return optimize_ops, params_grads
-
-            outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
-            outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
-
-            self.assertEqual(outs_with_scaler[0],
-                             [])  # optimize_ops is [] in dygraph mode
-            self.assertEqual(outs_no_scaler[0],
-                             [])  # optimize_ops is [] in dygraph mode
-            for i in range(len(outs_with_scaler[1])):
-                # check each grad
-                self.assertEqual(
-                    np.allclose(outs_with_scaler[1][i][1].numpy(),
-                                outs_no_scaler[1][i][1].numpy()), True)
-                # check each parameter
-                self.assertEqual(
-                    np.allclose(outs_with_scaler[1][i][0].numpy(),
-                                outs_no_scaler[1][i][0].numpy()), True)
-
-        with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
-
-    def test_step(self):
-        def func_isinstance():
-            inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
-
-            def run_simple_conv(inp_np, use_scaler=True):
-                paddle.seed(10)
-                paddle.framework.random._manual_program_seed(10)
-                with fluid.dygraph.guard():
-                    model = SimpleConv(
-                        num_channels=3,
-                        num_filters=64,
-                        filter_size=7,
-                        stride=2,
-                        act='relu')
-                    optimizer = paddle.optimizer.SGD(
-                        learning_rate=0.01, parameters=model.parameters())
-                    scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                    data = fluid.dygraph.to_variable(inp_np)
-
-                    out = model(data)
-                    loss = fluid.layers.mean(out)
-                    if use_scaler:
-                        print('use scaler')
-                        scaled_loss = scaler.scale(loss)
-                        scaled_loss.backward()
-                        scaler.step(optimizer)
-                        scaler.update()
-                    else:
-                        print('use no scaler')
-                        loss.backward()
-                        optimizer.step()
-                return optimizer._parameter_list
-
-            outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
-            outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
-
-            for i in range(len(outs_with_scaler)):
-                # check each parameter
-                self.assertEqual(
-                    np.allclose(outs_with_scaler[i].numpy(),
-                                outs_no_scaler[i].numpy()), True)
-
-        with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
-
-    def test_nan_inf(self):
-        def func_isinstance():
-            inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
-            inp_np[0][1][2][3] = np.nan
+        def func():
             with fluid.dygraph.guard():
                 model = SimpleConv(
                     num_channels=3,
@@ -326,9 +134,93 @@ class TestAmpScaler(unittest.TestCase):
                     filter_size=7,
                     stride=2,
                     act='relu')
-                params_init = {}
-                for param in model.parameters():
-                    params_init[param.name] = param.numpy()
+                with fluid.dygraph.amp_guard(
+                        custom_white_list=["conv2d"],
+                        custom_black_list=["conv2d"]):
+                    inp = fluid.dygraph.to_variable(inp_np)
+                    out = model(inp)
+
+        self.assertRaises(ValueError, func)
+
+    def test_custom_op_list_exception(self):
+        with _test_eager_guard():
+            self.custom_op_list_exception()
+        self.custom_op_list_exception()
+
+    def amp_guard_upsupported_fp16_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_amp_fp16 = conv2d(data)
+                out_amp_fp32 = paddle.expand_as(
+                    out_amp_fp16,
+                    out_amp_fp16)  # expand_as_v2 has no fp16 kernel
+
+            with fluid.dygraph.amp_guard(True, level='O2'):
+                out_purefp16_fp16 = conv2d(data)
+                out_purefp16_fp32 = paddle.expand_as(
+                    out_purefp16_fp16,
+                    out_purefp16_fp16)  # expand_as_v2 has no fp16 kernel
+        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_amp_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_amp_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(
+            out_purefp16_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(
+            out_purefp16_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+
+    def test_amp_guard_upsupported_fp16_op(self):
+        with _test_eager_guard():
+            self.amp_guard_upsupported_fp16_op()
+        self.amp_guard_upsupported_fp16_op()
+
+    def mode_exception(self):
+        def func():
+            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+            with fluid.dygraph.guard():
+                conv2d = fluid.dygraph.Conv2D(
+                    3, 2, 3, bias_attr=False, act=None)
+                data = fluid.dygraph.to_variable(data)
+                with fluid.dygraph.amp_guard(level='O'):
+                    out = conv2d(data)
+
+        self.assertRaises(ValueError, func)
+
+    def test_mode_exception(self):
+        with _test_eager_guard():
+            self.mode_exception()
+        self.mode_exception()
+
+
+class TestAmpScaler(unittest.TestCase):
+    def scale(self):
+        with fluid.dygraph.guard():
+            data = paddle.rand([10, 1024])
+            scaler = paddle.fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            scaled_data = scaler.scale(data)
+            self.assertEqual(
+                np.array_equal(scaled_data.numpy(), data.numpy() * 1024), True)
+
+    def test_scale(self):
+        with _test_eager_guard():
+            self.scale()
+        self.scale()
+
+    def minimize(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+
+        def run_simple_conv(inp_np, use_scaler=True):
+            paddle.seed(10)
+            paddle.framework.random._manual_program_seed(10)
+            with fluid.dygraph.guard():
+                model = SimpleConv(
+                    num_channels=3,
+                    num_filters=64,
+                    filter_size=7,
+                    stride=2,
+                    act='relu')
                 optimizer = fluid.optimizer.SGDOptimizer(
                     learning_rate=0.01, parameter_list=model.parameters())
                 scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
@@ -336,81 +228,171 @@ class TestAmpScaler(unittest.TestCase):
 
                 out = model(data)
                 loss = fluid.layers.mean(out)
-                scaled_loss = scaler.scale(loss)
-                scaled_loss.backward()
-                optimize_ops, params_grads = scaler.minimize(optimizer,
-                                                             scaled_loss)
-                self.assertEqual(scaler._found_inf.numpy() == 1, True)
+                if use_scaler:
+                    print('use scaler')
+                    scaled_loss = scaler.scale(loss)
+                    scaled_loss.backward()
+                    optimize_ops, params_grads = scaler.minimize(optimizer,
+                                                                 scaled_loss)
+                else:
+                    print('use no scaler')
+                    loss.backward()
+                    optimize_ops, params_grads = optimizer.minimize(loss)
+            return optimize_ops, params_grads
 
-                for param in model.parameters():
-                    # param not update when tensor contains nan or inf
-                    self.assertTrue(
-                        np.array_equal(param.numpy(), params_init[param.name]))
+        outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
+        outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
 
+        self.assertEqual(outs_with_scaler[0],
+                         [])  # optimize_ops is [] in dygraph mode
+        self.assertEqual(outs_no_scaler[0],
+                         [])  # optimize_ops is [] in dygraph mode
+        for i in range(len(outs_with_scaler[1])):
+            # check each grad
+            self.assertEqual(
+                np.allclose(outs_with_scaler[1][i][1].numpy(),
+                            outs_no_scaler[1][i][1].numpy()), True)
+            # check each parameter
+            self.assertEqual(
+                np.allclose(outs_with_scaler[1][i][0].numpy(),
+                            outs_no_scaler[1][i][0].numpy()), True)
+
+    def test_minimize(self):
         with _test_eager_guard():
-            func_isinstance()
-        func_isinstance()
+            self.minimize()
+        self.minimize()
+
+    def step(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+
+        def run_simple_conv(inp_np, use_scaler=True):
+            paddle.seed(10)
+            paddle.framework.random._manual_program_seed(10)
+            with fluid.dygraph.guard():
+                model = SimpleConv(
+                    num_channels=3,
+                    num_filters=64,
+                    filter_size=7,
+                    stride=2,
+                    act='relu')
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                 parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = fluid.dygraph.to_variable(inp_np)
+
+                out = model(data)
+                loss = fluid.layers.mean(out)
+                if use_scaler:
+                    print('use scaler')
+                    scaled_loss = scaler.scale(loss)
+                    scaled_loss.backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    print('use no scaler')
+                    loss.backward()
+                    optimizer.step()
+            return optimizer._parameter_list
+
+        outs_with_scaler = run_simple_conv(inp_np, use_scaler=True)
+        outs_no_scaler = run_simple_conv(inp_np, use_scaler=False)
+
+        for i in range(len(outs_with_scaler)):
+            # check each parameter
+            self.assertEqual(
+                np.allclose(outs_with_scaler[i].numpy(),
+                            outs_no_scaler[i].numpy()), True)
+
+    def test_step(self):
+        with _test_eager_guard():
+            self.step()
+        self.step()
+
+    def nan_inf(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+        inp_np[0][1][2][3] = np.nan
+        with fluid.dygraph.guard():
+            model = SimpleConv(
+                num_channels=3,
+                num_filters=64,
+                filter_size=7,
+                stride=2,
+                act='relu')
+            params_init = {}
+            for param in model.parameters():
+                params_init[param.name] = param.numpy()
+            optimizer = fluid.optimizer.SGDOptimizer(
+                learning_rate=0.01, parameter_list=model.parameters())
+            scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            data = fluid.dygraph.to_variable(inp_np)
+
+            out = model(data)
+            loss = fluid.layers.mean(out)
+            scaled_loss = scaler.scale(loss)
+            scaled_loss.backward()
+            optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
+            self.assertEqual(scaler._found_inf.numpy() == 1, True)
+
+            for param in model.parameters():
+                # param not update when tensor contains nan or inf
+                self.assertTrue(
+                    np.array_equal(param.numpy(), params_init[param.name]))
+
+    def test_nan_inf(self):
+        with _test_eager_guard():
+            self.nan_inf()
+        self.nan_inf()
+
+    def step_update_exception(self):
+        def func1():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.unscale_(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func1)
+
+        def func2():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func2)
+
+        def func3():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.step(optimizer)
+
+        self.assertRaises(RuntimeError, func3)
 
     def test_step_update_exception(self):
-        def func_isinstance1():
-            def func1():
-                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
-                                                 parameters=model.parameters())
-                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                data = paddle.rand([10, 3, 32, 32])
-                conv = model(data)
-                loss = paddle.mean(conv)
-                scaled = scaler.scale(loss)
-                scaled.backward()
-                scaler.unscale_(optimizer)
-                scaler.unscale_(optimizer)
-
-            self.assertRaises(RuntimeError, func1)
-
         with _test_eager_guard():
-            func_isinstance1()
-        func_isinstance1()
-
-        def func_isinstance2():
-            def func2():
-                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
-                                                 parameters=model.parameters())
-                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                data = paddle.rand([10, 3, 32, 32])
-                conv = model(data)
-                loss = paddle.mean(conv)
-                scaled = scaler.scale(loss)
-                scaled.backward()
-                scaler.step(optimizer)
-                scaler.unscale_(optimizer)
-
-            self.assertRaises(RuntimeError, func2)
-
-        with _test_eager_guard():
-            func_isinstance2()
-        func_isinstance2()
-
-        def func_isinstance3():
-            def func3():
-                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                optimizer = paddle.optimizer.SGD(learning_rate=0.01,
-                                                 parameters=model.parameters())
-                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                data = paddle.rand([10, 3, 32, 32])
-                conv = model(data)
-                loss = paddle.mean(conv)
-                scaled = scaler.scale(loss)
-                scaled.backward()
-                scaler.step(optimizer)
-                scaler.step(optimizer)
-
-            self.assertRaises(RuntimeError, func3)
-
-        with _test_eager_guard():
-            func_isinstance3()
-        func_isinstance3()
+            self.step_update_exception()
+        self.step_update_exception()
 
     def test_get_and_set(self):
         with fluid.dygraph.guard():
@@ -858,103 +840,101 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
 
 class TestPureFp16InferenceSaveLoad(unittest.TestCase):
+    def inference_save_load(self):
+        BATCH_SIZE = 16
+        BATCH_NUM = 4
+        EPOCH_NUM = 4
+        IMAGE_SIZE = 784
+        CLASS_NUM = 10
+
+        # define a random dataset
+        class RandomDataset(paddle.io.Dataset):
+            def __init__(self, num_samples):
+                self.num_samples = num_samples
+
+            def __getitem__(self, idx):
+                image = np.random.random([IMAGE_SIZE]).astype('float32')
+                label = np.random.randint(0, CLASS_NUM - 1,
+                                          (1, )).astype('int64')
+                return image, label
+
+            def __len__(self):
+                return self.num_samples
+
+        class LinearNet(nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+            def forward(self, x):
+                return self._linear(x)
+
+        def train(layer, loader, loss_fn, opt):
+            for epoch_id in range(EPOCH_NUM):
+                for batch_id, (image, label) in enumerate(loader()):
+                    with paddle.amp.auto_cast(
+                            enable=True,
+                            custom_white_list=None,
+                            custom_black_list=None,
+                            level='O2'):
+                        out = layer(image)
+                        loss = loss_fn(out, label)
+                    loss.backward()
+                    opt.step()
+                    opt.clear_grad()
+
+        # train
+        layer = LinearNet()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.001,
+            parameters=layer.parameters(),
+            multi_precision=True)
+        loss_fn = nn.CrossEntropyLoss()
+        layer, adam = paddle.amp.decorate(
+            models=layer, optimizers=adam, save_dtype='float32')
+        dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+        loader = paddle.io.DataLoader(
+            dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            drop_last=True,
+            num_workers=2)
+
+        train(layer, loader, loss_fn, adam)
+
+        # save 
+        path = "example_model/linear"
+        paddle.jit.save(
+            layer, path, input_spec=[InputSpec(
+                shape=[IMAGE_SIZE], name='x')])
+
+        # jit.load
+        loaded_layer = paddle.jit.load(path)
+
+        # inference
+        loaded_layer.eval()
+        x = np.random.randn(1, IMAGE_SIZE).astype('float32')
+        x_tensor = paddle.to_tensor(x)
+        pred = loaded_layer(x_tensor)
+
+        # load_inference_model
+        paddle.enable_static()
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        [inference_program, feed_target_names, fetch_targets] = (
+            paddle.static.load_inference_model(path, exe))
+        tensor_img = x
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_img},
+                          fetch_list=fetch_targets)
+        print("pred.numpy()", pred.numpy())
+        print("results", results)
+        self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
+        paddle.disable_static()
+
     def test_inference_save_load(self):
-        def func_isinstance():
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
-
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
-
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1,
-                                              (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
-                def forward(self, x):
-                    return self._linear(x)
-
-            def train(layer, loader, loss_fn, opt):
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        with paddle.amp.auto_cast(
-                                enable=True,
-                                custom_white_list=None,
-                                custom_black_list=None,
-                                level='O2'):
-                            out = layer(image)
-                            loss = loss_fn(out, label)
-                        loss.backward()
-                        opt.step()
-                        opt.clear_grad()
-
-            # train
-            layer = LinearNet()
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.001,
-                parameters=layer.parameters(),
-                multi_precision=True)
-            loss_fn = nn.CrossEntropyLoss()
-            layer, adam = paddle.amp.decorate(
-                models=layer, optimizers=adam, save_dtype='float32')
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(
-                dataset,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-
-            train(layer, loader, loss_fn, adam)
-
-            # save 
-            path = "example_model/linear"
-            paddle.jit.save(
-                layer,
-                path,
-                input_spec=[InputSpec(
-                    shape=[IMAGE_SIZE], name='x')])
-
-            # jit.load
-            loaded_layer = paddle.jit.load(path)
-
-            # inference
-            loaded_layer.eval()
-            x = np.random.randn(1, IMAGE_SIZE).astype('float32')
-            x_tensor = paddle.to_tensor(x)
-            pred = loaded_layer(x_tensor)
-
-            # load_inference_model
-            paddle.enable_static()
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            [inference_program, feed_target_names, fetch_targets] = (
-                paddle.static.load_inference_model(path, exe))
-            tensor_img = x
-            results = exe.run(inference_program,
-                              feed={feed_target_names[0]: tensor_img},
-                              fetch_list=fetch_targets)
-            print("pred.numpy()", pred.numpy())
-            print("results", results)
-            self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
-            paddle.disable_static()
-
-        func_isinstance()
+        self.inference_save_load()
         with _test_eager_guard():
-            func_isinstance()
+            self.inference_save_load()
 
 
 class TestResnet2(unittest.TestCase):
