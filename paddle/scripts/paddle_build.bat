@@ -76,7 +76,7 @@ if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
-if not defined retry_times set retry_times=3
+if not defined retry_times set retry_times=1
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
 set task_name=%1
@@ -234,7 +234,6 @@ set WITH_MKL=OFF
 set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
-set retry_times=1
 set ON_INFER=OFF
 
 call :cmake || goto cmake_error
@@ -267,7 +266,6 @@ rem ------Build windows avx whl package------
 set WITH_AVX=ON
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
-set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -279,7 +277,6 @@ rem ------Build windows no-avx whl package------
 set WITH_AVX=OFF
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
-set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
