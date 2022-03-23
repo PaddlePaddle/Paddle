@@ -52,7 +52,8 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
             inputs={
                 "Input": ["relu_out"],
                 "W": ["fc_weight"],
-                "Bias": ["fc_bias"]},
+                "Bias": ["fc_bias"]
+            },
             outputs={"Out": ["fc_output"]},
             attrs={
                 "use_mkldnn": True,

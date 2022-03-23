@@ -128,11 +128,6 @@ class FCPrimitiveFactory {
     // Store weights and bias in the mkldnn cache
     CacheWeightsAndBias(dev_ctx, ctx);
 
-    if (ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Input<Tensor>("ResidualData");
-      output->ShareDataWith(*residual_param);
-    }
-
     // Based on format determined by inner_product, create output in desired
     // memory format
     output_ = CreateDstMemory(*fc_prim_desc, ctx, output);
@@ -424,12 +419,12 @@ class FCPrimitiveFactory {
     float activation_scale =
         force_fp32_output ? 1.0f : has_activation ? ctx.Attr<float>("Scale_out")
                                                   : 1.0f;
-    float inner_scale =
+    float scale_out_data =
         force_fp32_output ? 1.0f : has_activation
                                        ? 1.0f
                                        : ctx.Attr<float>("Scale_out");
     float sum_scale =
-        fuse_residual_conn ? inner_scale / scale_in_eltwise_data : 1.0f;
+        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
 
     const size_t weight_scales_num = scale_weights_data.size();
     std::vector<float> output_shift_scale(weight_scales_num);
@@ -437,10 +432,10 @@ class FCPrimitiveFactory {
 #pragma omp parallel for
     for (size_t i = 0; i < weight_scales_num; i++) {
       if (scale_weights_data[i] == 0.0)
-        output_shift_scale[i] = inner_scale;
+        output_shift_scale[i] = scale_out_data;
       else
         output_shift_scale[i] =
-            inner_scale / (scale_in_data * scale_weights_data[i]);
+            scale_out_data / (scale_in_data * scale_weights_data[i]);
     }
 
     return make_tuple(sum_scale, output_shift_scale, activation_scale);
@@ -548,6 +543,21 @@ class FCPrimitiveFactory {
   dnnl::memory CreateDstMemory(
       const dnnl::inner_product_forward::primitive_desc& fc_prim_desc,
       const ExecutionContext& ctx, Tensor* output) {
+
+    if (ctx.Attr<bool>("fuse_residual_connection")) {
+      auto* residual_param = ctx.Input<Tensor>("ResidualData");
+      
+      PADDLE_ENFORCE_EQ(
+          output->dims(), residual_param->dims(),
+          platform::errors::InvalidArgument(
+              "Output and elementwise parameter need to have the "
+              "same dimension sizes, but got output's dimension = %d"
+              " and residual param's dimension =%d .",
+              output->dims().size(), residual_param->dims().size()));
+      
+      output->ShareDataWith(*residual_param);
+    }
+
     auto dst_desc = fc_prim_desc.dst_desc();
     auto buffer_size = dst_desc.get_size();
     T_out* output_data =
@@ -604,10 +614,8 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
 // output type (uint8, int8 or float).
 template <typename T_in, typename T_w>
 static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
-                      const Tensor* w, const Tensor* bias,
-                      const Tensor* residual_param, LoDTensor* output,
-                      bool fuse_relu, bool force_fp32_output,
-                      bool fuse_residual_conn) {
+                      const Tensor* w, const Tensor* bias, LoDTensor* output,
+                      bool fuse_relu, bool force_fp32_output) 
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   std::string prim_key = platform::CreateKey(
       dev_ctx, input->format(), input->dims()[0],
@@ -643,15 +651,13 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
-    auto residual_data = ctx.Input<Tensor>("ResidualData");
     auto output = ctx.Output<LoDTensor>("Out");
 
-    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
-    ExecuteFc<T_in, T_w>(ctx, input, w, bias, residual_data, output, fuse_relu,
-                         force_fp32_output, fuse_residual_conn);
+    ExecuteFc<T_in, T_w>(ctx, input, w, bias, output, fuse_relu,
+                         force_fp32_output);
 
     output->set_layout(DataLayout::kMKLDNN);
   }
