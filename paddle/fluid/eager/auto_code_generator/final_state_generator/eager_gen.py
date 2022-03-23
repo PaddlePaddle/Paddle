@@ -831,7 +831,7 @@ def GenerateNodeCreationCodes(
 
         if is_fwd_input:
             if is_optional:
-                set_tensor_wrappers = f"            if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+                set_tensor_wrappers = f"            if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
             else:
                 set_tensor_wrappers = f"            grad_node->SetTensorWrapper{name}({name}, true);"
         else:
@@ -844,7 +844,7 @@ def GenerateNodeCreationCodes(
                 tw_name = f"api_result"
 
             if is_optional:
-                set_tensor_wrappers = f"            if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
+                set_tensor_wrappers = f"            if({tw_name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({tw_name}.get_ptr()), false);"
             else:
                 set_tensor_wrappers = f"            grad_node->SetTensorWrapper{name}({tw_name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
@@ -854,9 +854,14 @@ def GenerateNodeCreationCodes(
     set_grad_out_meta_list = []
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
+        is_optional = (name in optional_inputs)
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
-        set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        if is_optional:
+            set_grad_out_meta = f"            if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+            set_edges = f"            if({name}.get_ptr() != nullptr)  grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        else:
+            set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
+            set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
     set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -968,7 +973,7 @@ def GenerateForwardDefinition(
         is_optional = (name in optional_inputs)
         if IsPlainTensorType(ttype):
             if is_optional:
-                arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+                arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
             else:
                 if inplace_map and name in inplace_map.keys():
                     arg_str = f"paddle::experimental::Tensor& {name}"
