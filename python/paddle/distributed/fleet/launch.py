@@ -242,7 +242,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     elastic_group.add_argument(
         "--force", type=bool, default=False, help="update np force")
 
-    return parser.parse_args()
+    known_args, _ = parser.parse_known_args()
+    return known_args
 
 
 def get_cluster_from_args(args, device_mode, devices_per_proc):

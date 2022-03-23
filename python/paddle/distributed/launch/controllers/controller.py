@@ -210,6 +210,8 @@ class Controller(ControllerBase):
 
         if self.ctx.args.nproc_per_node:
             return int(self.ctx.args.nproc_per_node)
+        elif self.ctx.args.devices:
+            return len(self.ctx.args.devices.split(','))
         else:
             return self.ctx.node.device.count
 

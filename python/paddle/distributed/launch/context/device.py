@@ -57,7 +57,7 @@ class Device(object):
         else:
             self._labels = []
 
-    def get_selected_flag_key(self):
+    def get_selected_device_key(self):
         if self._dtype == DeviceType.CPU:
             return 'FLAGS_selected_cpus'
         if self._dtype == DeviceType.GPU:
@@ -70,19 +70,15 @@ class Device(object):
             return 'FLAGS_selected_mlus'
         return 'FLAGS_selected_devices'
 
-    def get_selected_flag_label(self, idx):
-        if idx < len(self._labels):
-            return self._labels[idx]
+    def get_selected_devices(self, devices=''):
+        '''
+        return the device label/id relative to the visible devices
+        '''
+        if not devices:
+            return [str(x) for x in range(0, len(self._labels))]
         else:
-            return '0'
-
-    def selected_flags(self, idx=None):
-        if idx is None:
-            return {self.get_selected_flag_key(): ','.join(self._labels)}
-        else:
-            return {
-                self.get_selected_flag_key(): self.get_selected_flag_label(idx)
-            }
+            devs = [x.strip() for x in devices.split(',')]
+            return [str(self._labels.index(d)) for d in devs]
 
     @classmethod
     def parse_device(self):

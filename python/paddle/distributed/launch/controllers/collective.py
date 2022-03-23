@@ -75,6 +75,9 @@ class CollectiveController(Controller):
         job_endpoints = [i['endpoints'] for i in peer_list]
 
         self.pod.reset()
+        selected_dev_key = self.ctx.node.device.get_selected_device_key()
+        selected_dev_list = self.ctx.node.device.get_selected_devices(
+            self.ctx.args.devices)
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
@@ -90,9 +93,9 @@ class CollectiveController(Controller):
                 "PADDLE_RANK_IN_NODE": str(i),
             }
             if self.pod.replicas == 1:
-                e.update(self.ctx.node.device.selected_flags())
+                e.update({selected_dev_key: selected_dev_list})
             else:
-                e.update(self.ctx.node.device.selected_flags(i))
+                e.update({selected_dev_key: selected_dev_list[i]})
             self.add_container(envs=e, log_tag=i)
 
         return True

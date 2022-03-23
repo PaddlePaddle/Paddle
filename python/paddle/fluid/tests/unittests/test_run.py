@@ -64,7 +64,10 @@ class Collective_Test(unittest.TestCase):
         if args:
             cmd.extend(args.split(" "))
         cmd.extend([pyname])
-        proc = subprocess.Popen(cmd, env)
+        env = os.environ.copy()
+        # virtual devies for testing
+        env.update({'CUDA_VISIBLE_DEVICES': '0,1,2,3,4,5,6,7'})
+        proc = subprocess.Popen(cmd, env=env)
         return proc
 
     def test_collective_1(self):
