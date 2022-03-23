@@ -114,13 +114,19 @@ struct normal_transform {
 namespace kps = phi::kps;
 
 /*********************** Distribution Function *************************/
-template <typename T>
-struct uniform_distribution;
 
 template <typename T>
 struct normal_distribution;
 
 #if defined(__NVCC__)
+template <typename T>
+struct uniform_distribution {
+  __device__ inline T operator()(curandStatePhilox4_32_10_t *state) const {
+    return static_cast<T>(curand_uniform(state));
+  }
+  static constexpr int kReturnsCount = 1;
+};
+
 template <>
 struct uniform_distribution<float> {
   __device__ inline float4 operator()(curandStatePhilox4_32_10_t *state) const {
@@ -177,6 +183,14 @@ struct normal_distribution<double> {
 };
 
 #else
+template <typename T>
+struct uniform_distribution {
+  __device__ inline T operator()(hiprandStatePhilox4_32_10_t *state) const {
+    return hiprand_uniform(state);
+  }
+  static constexpr int kReturnsCount = 1;
+};
+
 template <>
 struct uniform_distribution<float> {
   __device__ inline float4 operator()(
