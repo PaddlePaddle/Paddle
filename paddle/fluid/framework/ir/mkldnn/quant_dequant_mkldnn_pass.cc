@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/quant_dequant_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/quant_dequant_mkldnn_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void QuantDequantMkldnnFusePass::MarkSkipQuantizedOps(
+void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
     ir::Graph* graph, std::unordered_set<std::string> skip_ops) const {
   VLOG(3) << "mark skip quantized ops";
   for (auto* op_node :
@@ -52,7 +52,7 @@ void QuantDequantMkldnnFusePass::MarkSkipQuantizedOps(
   }
 }
 
-void QuantDequantMkldnnFusePass::GatherInfoFromFake(
+void QuantDequantMkldnnPass::GatherInfoFromFake(
     ir::Graph* graph, Scope* scope,
     std::unordered_set<std::string> fake_dequantize_types,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
@@ -90,7 +90,7 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
   }
 }
 
-void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
+void QuantDequantMkldnnPass::GatherInputScalesFromFake(
     ir::Graph* graph, Scope* scope,
     std::unordered_set<std::string> fake_quantize_types,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
@@ -137,7 +137,7 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
   }
 }
 
-void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
+void QuantDequantMkldnnPass::GatherOutputScalesFromAttr(
     ir::Graph* graph,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
@@ -165,7 +165,7 @@ void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
   }
 }
 
-void QuantDequantMkldnnFusePass::CollectFakeQuantizeOps(
+void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
     ir::Graph* graph, Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
   auto* op_desc = op_node->Op();
@@ -213,7 +213,7 @@ void QuantDequantMkldnnFusePass::CollectFakeQuantizeOps(
   nodes2rm->insert(fake_quant_out_scale);
 }
 
-void QuantDequantMkldnnFusePass::CollectFakeDequantizeOps(
+void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
     ir::Graph* graph, Node* op_node,
     std::unordered_set<const Node*>* nodes2rm) const {
   auto* op_desc = op_node->Op();
@@ -250,7 +250,7 @@ void QuantDequantMkldnnFusePass::CollectFakeDequantizeOps(
   nodes2rm->insert(fake_dequant_out);
 }
 
-void QuantDequantMkldnnFusePass::RemoveFakeOps(
+void QuantDequantMkldnnPass::RemoveFakeOps(
     ir::Graph* graph, const std::unordered_set<std::string> fake_quantize_types,
     const std::unordered_set<std::string> fake_dequantize_types,
     const std::unordered_set<std::string> fake_quantize_dequantize_types)
@@ -274,7 +274,7 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantMkldnnFusePass::TransposeWeight(Tensor* input) const {
+void QuantDequantMkldnnPass::TransposeWeight(Tensor* input) const {
   const auto input_dims = input->dims();
   std::vector<int> orders;
   for (int i = input_dims.size() - 1; i >= 0; i--) {
@@ -319,7 +319,7 @@ void QuantDequantMkldnnFusePass::TransposeWeight(Tensor* input) const {
   }
 }
 
-bool QuantDequantMkldnnFusePass::IsInt8Weight(
+bool QuantDequantMkldnnPass::IsInt8Weight(
     Node* op_node, Scope* scope, const std::string& weight_name) const {
   auto* op_desc = op_node->Op();
   auto var_name = op_desc->Input(weight_name)[0];
@@ -339,7 +339,7 @@ bool QuantDequantMkldnnFusePass::IsInt8Weight(
   return is_int8;
 }
 
-void QuantDequantMkldnnFusePass::DequantizeOpWeights(
+void QuantDequantMkldnnPass::DequantizeOpWeights(
     Node* op_node, Scope* scope, const std::string& weight_name,
     const std::string& output_name,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
@@ -426,7 +426,7 @@ void QuantDequantMkldnnFusePass::DequantizeOpWeights(
   weight_tensor->Resize(weight_dims);
 }
 
-void QuantDequantMkldnnFusePass::DequantizeWeights(
+void QuantDequantMkldnnPass::DequantizeWeights(
     ir::Graph* graph, Scope* scope,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
     const {
@@ -449,7 +449,7 @@ void QuantDequantMkldnnFusePass::DequantizeWeights(
   }
 }
 
-void QuantDequantMkldnnFusePass::UpdateActivations(ir::Graph* graph) const {
+void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
   VLOG(3) << "update conv2d or depthwise_conv2d fused activation";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -476,7 +476,7 @@ void QuantDequantMkldnnFusePass::UpdateActivations(ir::Graph* graph) const {
   }
 }
 
-void QuantDequantMkldnnFusePass::RemoveCtrlVars(ir::Graph* graph) const {
+void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
   VLOG(3) << "remove control flow variable";
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
@@ -490,8 +490,8 @@ void QuantDequantMkldnnFusePass::RemoveCtrlVars(ir::Graph* graph) const {
 }
 
 // save weight_thresholds and var_quant_scales in the first op's attr
-// for requant_mkldnn_fuse_pass
-void QuantDequantMkldnnFusePass::SaveQuantInfo(
+// for compute_propagate_scales_mkldnn_pass
+void QuantDequantMkldnnPass::SaveQuantInfo(
     ir::Graph* graph,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
@@ -516,9 +516,9 @@ void QuantDequantMkldnnFusePass::SaveQuantInfo(
   }
 }
 
-void QuantDequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
+void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle slim quantized model to mkldnn quantized model.";
-  const std::string pattern_name = "quant_dequant_mkldnn_fuse_pass";
+  const std::string pattern_name = "quant_dequant_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);
 
   const std::unordered_set<std::string> skip_ops = {
@@ -556,10 +556,10 @@ void QuantDequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(quant_dequant_mkldnn_fuse_pass,
-              paddle::framework::ir::QuantDequantMkldnnFusePass);
+REGISTER_PASS(quant_dequant_mkldnn_pass,
+              paddle::framework::ir::QuantDequantMkldnnPass);
 
-REGISTER_PASS_CAPABILITY(quant_dequant_mkldnn_fuse_pass)
+REGISTER_PASS_CAPABILITY(quant_dequant_mkldnn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)

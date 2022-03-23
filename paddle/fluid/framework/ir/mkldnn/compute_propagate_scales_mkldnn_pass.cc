@@ -16,14 +16,14 @@
 #include <algorithm>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/mkldnn/requant_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void RequantMkldnnFusePass::GetTensorFromVector(
+void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
     const std::vector<float>& data_v, Tensor* tensor) const {
   tensor->mutable_data<float>({static_cast<int>(data_v.size())},
                               platform::CPUPlace());
@@ -31,7 +31,7 @@ void RequantMkldnnFusePass::GetTensorFromVector(
   TensorFromVector(data_v, dev_ctx, tensor);
 }
 
-void RequantMkldnnFusePass::GetQuantInfo(
+void ComputePropagateScalesMkldnnPass::GetQuantInfo(
     ir::Graph* graph, Scope* scope, StringTensorMap* weight_thresholds,
     StringPairMap* var_quant_scales) const {
   for (auto* op_node :
@@ -73,8 +73,8 @@ void RequantMkldnnFusePass::GetQuantInfo(
   }
 }
 
-std::vector<float> RequantMkldnnFusePass::GetScales(Tensor* tensor,
-                                                    int axis) const {
+std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
+                                                               int axis) const {
   PADDLE_ENFORCE_LT(axis, 2, "The input axis is required to be less than 2.");
   auto data = tensor->mutable_data<float>(platform::CPUPlace());
   const auto dims = tensor->dims();
@@ -112,7 +112,7 @@ std::vector<float> RequantMkldnnFusePass::GetScales(Tensor* tensor,
   return scales;
 }
 
-void RequantMkldnnFusePass::ComputeVarScales(
+void ComputePropagateScalesMkldnnPass::ComputeVarScales(
     ir::Graph* graph, Scope* scope, const std::unordered_set<std::string> ops,
     const std::string& weight_name, const int axis,
     StringPairMap* var_quant_scales) const {
@@ -153,7 +153,7 @@ void RequantMkldnnFusePass::ComputeVarScales(
   }
 }
 
-void RequantMkldnnFusePass::ComputeSingleGruWeightScales(
+void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
     Scope* scope, const std::string& wx_var_name,
     const std::string& wh_var_name, Tensor* tensor) const {
   auto* wx_var = scope->FindVar(wx_var_name);
@@ -210,7 +210,7 @@ void RequantMkldnnFusePass::ComputeSingleGruWeightScales(
   GetTensorFromVector(scale_ur, tensor);
 }
 
-void RequantMkldnnFusePass::ComputeGruWeightScales(
+void ComputePropagateScalesMkldnnPass::ComputeGruWeightScales(
     ir::Graph* graph, Scope* scope, const std::string& wx_name,
     const std::string& wh_name, StringPairMap* var_quant_scales) const {
   for (auto* op_node :
@@ -239,7 +239,7 @@ void RequantMkldnnFusePass::ComputeGruWeightScales(
   }
 }
 
-void RequantMkldnnFusePass::ComputeSingleLstmWeightScales(
+void ComputePropagateScalesMkldnnPass::ComputeSingleLstmWeightScales(
     Scope* scope, const std::string& wx_var_name,
     const std::string& wh_var_name, Tensor* tensor) const {
   auto* wx_var = scope->FindVar(wx_var_name);
@@ -275,7 +275,7 @@ void RequantMkldnnFusePass::ComputeSingleLstmWeightScales(
   GetTensorFromVector(scale, tensor);
 }
 
-void RequantMkldnnFusePass::ComputeLstmWeightScales(
+void ComputePropagateScalesMkldnnPass::ComputeLstmWeightScales(
     ir::Graph* graph, Scope* scope, const std::string& wx_name,
     const std::string& wh_name, StringPairMap* var_quant_scales) const {
   for (auto* op_node :
@@ -304,7 +304,7 @@ void RequantMkldnnFusePass::ComputeLstmWeightScales(
   }
 }
 
-void RequantMkldnnFusePass::ComputeWeightScales(
+void ComputePropagateScalesMkldnnPass::ComputeWeightScales(
     ir::Graph* graph, Scope* scope, StringPairMap* var_quant_scales) const {
   ComputeVarScales(graph, scope, {"conv2d", "depthwise_conv2d"}, "Filter", 1,
                    var_quant_scales);
@@ -317,7 +317,7 @@ void RequantMkldnnFusePass::ComputeWeightScales(
   ComputeLstmWeightScales(graph, scope, "WeightX", "WeightH", var_quant_scales);
 }
 
-void RequantMkldnnFusePass::UpdateScaleOpInScale(
+void ComputePropagateScalesMkldnnPass::UpdateScaleOpInScale(
     Node* op_node, const std::string& input_name,
     const std::string& output_name, StringPairMap* var_quant_scales) const {
   auto iter = var_quant_scales->find(output_name);
@@ -338,7 +338,7 @@ void RequantMkldnnFusePass::UpdateScaleOpInScale(
   }
 }
 
-std::unordered_set<std::string> RequantMkldnnFusePass::UpdateScales(
+std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
     ir::Graph* graph, StringPairMap* var_quant_scales,
     const std::unordered_set<std::string> scale_immutable_ops) const {
   std::unordered_set<std::string> waiting_for_scale{};
@@ -380,7 +380,7 @@ std::unordered_set<std::string> RequantMkldnnFusePass::UpdateScales(
   return waiting_for_scale;
 }
 
-void RequantMkldnnFusePass::PropagateScales(
+void ComputePropagateScalesMkldnnPass::PropagateScales(
     ir::Graph* graph, StringPairMap* var_quant_scales,
     const std::unordered_set<std::string> scale_immutable_ops) const {
   auto waiting_for_scale =
@@ -396,9 +396,9 @@ void RequantMkldnnFusePass::PropagateScales(
   }
 }
 
-void RequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
+void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle model to mkldnn quantized model.";
-  const std::string pattern_name = "requant_mkldnn_fuse_pass";
+  const std::string pattern_name = "compute_propagate_scales_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);
 
   const std::unordered_set<std::string> scale_immutable_ops = {
@@ -418,10 +418,10 @@ void RequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(requant_mkldnn_fuse_pass,
-              paddle::framework::ir::RequantMkldnnFusePass);
+REGISTER_PASS(compute_propagate_scales_mkldnn_pass,
+              paddle::framework::ir::ComputePropagateScalesMkldnnPass);
 
-REGISTER_PASS_CAPABILITY(requant_mkldnn_fuse_pass)
+REGISTER_PASS_CAPABILITY(compute_propagate_scales_mkldnn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)

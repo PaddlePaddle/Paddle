@@ -24,10 +24,10 @@ namespace ir {
 using StringTensorMap = std::unordered_map<std::string, Tensor>;
 using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor>>;
 
-class RequantMkldnnFusePass : public FusePassBase {
+class ComputePropagateScalesMkldnnPass : public FusePassBase {
  public:
-  RequantMkldnnFusePass() = default;
-  virtual ~RequantMkldnnFusePass() {}
+  ComputePropagateScalesMkldnnPass() = default;
+  virtual ~ComputePropagateScalesMkldnnPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

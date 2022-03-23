@@ -21,10 +21,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class QuantDequantMkldnnFusePass : public FusePassBase {
+class QuantDequantMkldnnPass : public FusePassBase {
  public:
-  QuantDequantMkldnnFusePass() = default;
-  virtual ~QuantDequantMkldnnFusePass() {}
+  QuantDequantMkldnnPass() = default;
+  virtual ~QuantDequantMkldnnPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
