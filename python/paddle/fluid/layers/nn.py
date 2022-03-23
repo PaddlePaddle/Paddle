@@ -13533,8 +13533,6 @@ def get_tensor_from_selected_rows(x, name=None):
             input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
-    if in_dygraph_mode():
-        return _C_ops.get_tensor_from_selected_rows(x)
 
     check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
     if x.type != core.VarDesc.VarType.SELECTED_ROWS:
