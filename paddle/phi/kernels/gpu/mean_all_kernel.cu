@@ -57,4 +57,6 @@ PD_REGISTER_KERNEL(mean_all,
                    phi::MeanAllKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

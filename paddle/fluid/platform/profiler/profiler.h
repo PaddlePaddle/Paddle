@@ -43,6 +43,8 @@ class Profiler {
  public:
   static std::unique_ptr<Profiler> Create(const ProfilerOptions& options);
 
+  static bool IsCuptiSupported();
+
   void Prepare();
 
   void Start();

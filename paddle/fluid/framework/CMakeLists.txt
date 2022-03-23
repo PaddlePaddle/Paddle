@@ -235,7 +235,7 @@ if(WITH_PYTHON)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
-  py_proto_compile(ps_py_proto SRCS ps.proto)
+  py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(fleet_proto_init ALL  
@@ -249,7 +249,7 @@ if(WITH_PYTHON)
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMAND cp ps_pb2.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMAND cp the_one_ps_pb2.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_proto_init fleet_executor_desc_py_proto
@@ -261,7 +261,7 @@ if(WITH_PYTHON)
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
           COMMAND copy /Y *.py ${proto_dstpath}
-      COMMAND copy /Y ps_pb2.py ${fleet_proto_dstpath}
+      COMMAND copy /Y the_one_ps_pb2.py ${fleet_proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
 	  COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto."
@@ -314,7 +314,7 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc heter_pipeline_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-            downpour_worker.cc downpour_worker_opt.cc
+            downpour_worker.cc downpour_lite_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             index_sampler index_wrapper sampler index_dataset_proto
@@ -329,6 +329,7 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(downpour_lite_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(heter_section_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(heter_pipeline_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   else()

@@ -46,4 +46,6 @@ PD_REGISTER_KERNEL(mean_all_grad,
                    phi::MeanAllGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
