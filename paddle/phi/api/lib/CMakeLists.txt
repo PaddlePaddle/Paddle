@@ -66,36 +66,36 @@ if (NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
 endif()
 
-# # generate forward api
-# add_custom_command(
-#   OUTPUT ${api_header_file} ${api_source_file} ${dygraph_api_header_file} ${dygraph_api_source_file}
-#   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
-#   COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
-#                  --api_yaml_path ${api_yaml_file}
-#                  --api_header_path ${api_header_file_tmp}
-#                  --api_source_path ${api_source_file_tmp}
-#                  --dygraph_api_header_path ${dygraph_api_header_file_tmp}
-#                  --dygraph_api_source_path ${dygraph_api_source_file_tmp}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_header_file_tmp} ${dygraph_api_header_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp} ${dygraph_api_source_file}
-#   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-#   DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
-#   VERBATIM)
+# generate forward api
+add_custom_command(
+  OUTPUT ${api_header_file} ${api_source_file} ${dygraph_api_header_file} ${dygraph_api_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
+  COMMAND ${PYTHON_EXECUTABLE} ${api_gen_file}
+                 --api_yaml_path ${api_yaml_file}
+                 --api_header_path ${api_header_file_tmp}
+                 --api_source_path ${api_source_file_tmp}
+                 --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+                 --dygraph_api_source_path ${dygraph_api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp} ${api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp} ${api_source_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_header_file_tmp} ${dygraph_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp} ${dygraph_api_source_file}
+  COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
+  DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
+  VERBATIM)
 
-# # generate backward api
-# add_custom_command(
-#   OUTPUT ${bw_api_header_file} ${bw_api_source_file} ${bw_api_header_file_tmp} ${bw_api_source_file_tmp}
-#   COMMAND ${PYTHON_EXECUTABLE} ${bw_api_gen_file}
-#                  --backward_yaml_path ${bw_api_yaml_file}
-#                  --backward_header_path ${bw_api_header_file_tmp}
-#                  --backward_source_path ${bw_api_source_file_tmp}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_header_file_tmp} ${bw_api_header_file}
-#   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp} ${bw_api_source_file}
-#   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-#   DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
-#   VERBATIM)
+# generate backward api
+add_custom_command(
+  OUTPUT ${bw_api_header_file} ${bw_api_source_file} ${bw_api_header_file_tmp} ${bw_api_source_file_tmp}
+  COMMAND ${PYTHON_EXECUTABLE} ${bw_api_gen_file}
+                 --backward_yaml_path ${bw_api_yaml_file}
+                 --backward_header_path ${bw_api_header_file_tmp}
+                 --backward_source_path ${bw_api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_header_file_tmp} ${bw_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp} ${bw_api_source_file}
+  COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
+  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+  VERBATIM)
 
 # generate sparse api
 add_custom_command(
