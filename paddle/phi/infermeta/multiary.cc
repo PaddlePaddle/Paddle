@@ -698,31 +698,6 @@ void PsroiPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void WhereInferMeta(const MetaTensor& condition,
-                    const MetaTensor& x,
-                    const MetaTensor& y,
-                    MetaTensor* out) {
-  auto cond_dims = condition.dims();
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  PADDLE_ENFORCE_EQ(
-      cond_dims,
-      x_dims,
-      phi::errors::InvalidArgument(
-          "The dims of Inputs(Condition) and Inputs(X) should be same. "
-          "But received Condition's shape is [%s], X's shape is [%s]",
-          cond_dims,
-          x_dims));
-  PADDLE_ENFORCE_EQ(x_dims,
-                    y_dims,
-                    phi::errors::InvalidArgument(
-                        "The dims of Inputs(X) and Inputs(Y) should be same. "
-                        "But received X's shape is [%s], Y's shape is [%s]",
-                        x_dims,
-                        y_dims));
-  out->share_meta(x);
-}
-
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const paddle::optional<const MetaTensor&> logits_length,
@@ -758,6 +733,31 @@ void WarpctcInferMeta(const MetaTensor& logits,
 
   loss->set_dims({-1, 1});
   loss->set_dtype(logits.dtype());
+}
+
+void WhereInferMeta(const MetaTensor& condition,
+                    const MetaTensor& x,
+                    const MetaTensor& y,
+                    MetaTensor* out) {
+  auto cond_dims = condition.dims();
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      cond_dims,
+      x_dims,
+      phi::errors::InvalidArgument(
+          "The dims of Inputs(Condition) and Inputs(X) should be same. "
+          "But received Condition's shape is [%s], X's shape is [%s]",
+          cond_dims,
+          x_dims));
+  PADDLE_ENFORCE_EQ(x_dims,
+                    y_dims,
+                    phi::errors::InvalidArgument(
+                        "The dims of Inputs(X) and Inputs(Y) should be same. "
+                        "But received X's shape is [%s], Y's shape is [%s]",
+                        x_dims,
+                        y_dims));
+  out->share_meta(x);
 }
 
 }  // namespace phi

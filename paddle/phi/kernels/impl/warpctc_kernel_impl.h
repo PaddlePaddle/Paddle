@@ -20,6 +20,7 @@
 #include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/optional.h"
@@ -268,10 +269,10 @@ void WarpctcKernel(const Context& dev_ctx,
 
     DenseTensor logits_length_cpu;
     DenseTensor labels_length_cpu;
-    paddle::framework::TensorCopy(
-        *logits_length, phi::CPUPlace(), &logits_length_cpu);
-    paddle::framework::TensorCopy(
-        *labels_length, phi::CPUPlace(), &labels_length_cpu);
+    phi::Copy(
+        dev_ctx, *logits_length, phi::CPUPlace(), false, &logits_length_cpu);
+    phi::Copy(
+        dev_ctx, *labels_length, phi::CPUPlace(), false, &labels_length_cpu);
 
     logits_lod.push_back(0);
     label_lod.push_back(0);
@@ -346,8 +347,7 @@ void WarpctcKernel(const Context& dev_ctx,
   DenseTensor warpctc_logits(warpctc_logits_tmp);
 
   if (logits_length.is_initialized()) {
-    paddle::framework::TensorCopySync(
-        logits, dev_ctx.GetPlace(), &warpctc_logits);
+    phi::Copy(dev_ctx, logits, dev_ctx.GetPlace(), true, &warpctc_logits);
   } else {
     DenseTensor cpu_pad_value;
     cpu_pad_value.Resize({1});
@@ -357,8 +357,7 @@ void WarpctcKernel(const Context& dev_ctx,
     if (dev_ctx.GetPlace() == phi::CPUPlace()) {
       pad_value = cpu_pad_value;
     } else {
-      paddle::framework::TensorCopySync(
-          cpu_pad_value, dev_ctx.GetPlace(), &pad_value);
+      phi::Copy(dev_ctx, cpu_pad_value, dev_ctx.GetPlace(), true, &pad_value);
     }
 
     paddle::operators::math::PaddingLoDTensorFunctor<Context, T>()(
@@ -427,11 +426,10 @@ void WarpctcKernel(const Context& dev_ctx,
           0 /*lod_level*/,
           false /*norm_by_times*/,
           paddle::operators::math::kBatchLengthWidth);
-      paddle::framework::TensorCopySync(
-          gpu_label, phi::CPUPlace(), &warpctc_label);
+      phi::Copy(dev_ctx, gpu_label, phi::CPUPlace(), true, &warpctc_label);
     }
   } else {
-    paddle::framework::TensorCopySync(label, phi::CPUPlace(), &warpctc_label);
+    phi::Copy(dev_ctx, label, phi::CPUPlace(), true, &warpctc_label);
   }
 
   const int* warpctc_label_data = warpctc_label.data<int>();
@@ -450,8 +448,7 @@ void WarpctcKernel(const Context& dev_ctx,
                                blank,
                                warpctc_loss_data);
   // Copy the loss back
-  paddle::framework::TensorCopy(
-      warpctc_loss, dev_ctx.GetPlace(), dev_ctx, loss);
+  phi::Copy(dev_ctx, warpctc_loss, dev_ctx.GetPlace(), false, loss);
 }
 
 }  // namespace phi
