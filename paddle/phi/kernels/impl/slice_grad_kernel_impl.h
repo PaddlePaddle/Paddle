@@ -30,7 +30,7 @@ void LaunchEigenPadding(
     const DenseTensor* d_out,
     const DDim& out_dims,
     const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) {
-  auto& place = *context.template eigen_device();
+  auto& place = *context.eigen_device();
   auto d_in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *d_input, in_dims);
   auto d_out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
