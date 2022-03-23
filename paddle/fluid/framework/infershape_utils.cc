@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 
+#include <algorithm>
 #include <string>
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -70,27 +71,42 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return var_types[0] == proto::VarType::LOD_TENSOR;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::LOD_TENSOR;
+                       });
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return var_types[0] == proto::VarType::SELECTED_ROWS;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SELECTED_ROWS;
+                       });
   }
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return var_types[0] == proto::VarType::LOD_TENSOR_ARRAY;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::LOD_TENSOR_ARRAY;
+                       });
   }
 
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
-    return var_types[0] == proto::VarType::LOD_TENSOR;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::LOD_TENSOR;
+                       });
   }
 
   bool IsSelectedRowsOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
-    return var_types[0] == proto::VarType::SELECTED_ROWS;
+    return std::all_of(var_types.begin(), var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SELECTED_ROWS;
+                       });
   }
 
   bool IsForInferShape() const override { return true; }
