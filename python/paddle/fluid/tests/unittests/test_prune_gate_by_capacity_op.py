@@ -68,18 +68,20 @@ def assert_allclose(output, expected, n_expert):
 class TestPruneGateByCapacityAPI1(unittest.TestCase):
     def init_test_case(self):
         self.gate_idx = np.random.randint(
-            0, self.n_expert, size=(200, )).astype("int64")
+            0, self.n_expert, size=(200, )).astype(self.dtype)
         expert_count = count(self.gate_idx, self.n_expert * self.n_worker)
         capacity = np.random.randint(10, 200, size=(self.n_expert, ))
         self.expert_count = limit_by_capacity(expert_count, capacity,
-                                              self.n_worker)
+                                              self.n_worker).astype(self.dtype)
         self.out = prune_gate_by_capacity(self.gate_idx, self.expert_count,
-                                          self.n_expert, self.n_worker)
+                                          self.n_expert,
+                                          self.n_worker).astype(self.dtype)
         self.place = paddle.CUDAPlace(0)
 
     def setUp(self):
         self.n_expert = 24
         self.n_worker = 2
+        self.dtype = "int64"
         self.init_test_case()
 
     def test_static_api(self):
@@ -115,6 +117,7 @@ class TestPruneGateByCapacityAPI2(TestPruneGateByCapacityAPI1):
     def setUp(self):
         self.n_expert = 12
         self.n_worker = 1
+        self.dtype = "int64"
         self.init_test_case()
 
 
