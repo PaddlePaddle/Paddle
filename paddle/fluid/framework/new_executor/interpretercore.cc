@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -33,6 +34,8 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
 DECLARE_bool(fast_eager_deletion_mode);
 DECLARE_bool(use_stream_safe_cuda_allocator);
+DECLARE_bool(use_system_allocator);
+DECLARE_string(allocator_strategy);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -44,7 +47,12 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
-  return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+  static bool is_stream_safe_allocator_used =
+      (std::dynamic_pointer_cast<memory::allocation::StreamSafeCUDAAllocator>(
+           paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+               platform::CUDAPlace(0))) != nullptr);
+  return FLAGS_fast_eager_deletion_mode &&
+         FLAGS_use_stream_safe_cuda_allocator && is_stream_safe_allocator_used;
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
