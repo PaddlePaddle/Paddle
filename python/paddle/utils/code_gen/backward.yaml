@@ -395,7 +395,7 @@
 #     param : [out, out_grad, axis]
 #   kernel :
 #     func : gumbel_softmax_grad
-  
+
 
 - backward_api : transpose_grad
   forward : transpose (Tensor x, int[] axis) -> Tensor(out)
@@ -416,7 +416,6 @@
     param : [x, y]
   kernel :
     func : lerp_grad
-
 
 - backward_api : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)

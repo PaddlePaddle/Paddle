@@ -1187,7 +1187,7 @@
     func : AdamaxInferMeta
   kernel :
     func : adamax
-  
+
 
 
 - api : where
@@ -1243,7 +1243,7 @@
     func : CompareInferMeta
   kernel :
     func : equal
-  
+
 - api : not_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor

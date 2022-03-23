@@ -17,6 +17,8 @@ import re
 import argparse
 import os
 
+ops_to_fill_zero_for_empty_grads = set(list("split"))
+
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
 core_ops_returns_info = {}
@@ -599,7 +601,8 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+  
   std::string name() override {{ return \" {} \"; }}
   
   void ClearTensorWrappers() override {{
@@ -657,10 +660,11 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_input_map.items():
         if IsPlainTensorType(ttype):
-            grad_api_args[grad_api_position] = f"grads[{fwd_position}][0]"
+            grad_api_args[
+                grad_api_position] = f"hooked_grads[{fwd_position}][0]"
         else:
             assert IsVectorTensorType(ttype)
-            grad_api_args[grad_api_position] = f"grads[{fwd_position}]"
+            grad_api_args[grad_api_position] = f"hooked_grads[{fwd_position}]"
 
     for name, _, _, grad_api_position in backward_attrs_list:
         saved_attribute_name = GetSavedName(name)
@@ -689,23 +693,30 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
 
     grad_node_name = GetGradNodeName(fwd_api_name)
 
+    fill_zero_str = ""
+    if fwd_api_name in ops_to_fill_zero_for_empty_grads:
+        fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
+
     if len(namespace) > 0:
         grad_api_namespace = f"paddle::experimental::{namespace}"
     else:
         grad_api_namespace = f"paddle::experimental"
 
     FUNCTION_TEMPLATE = """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+    {}
+    auto hooked_grads = ApplyGradientHooks(grads);
+    
     // Call grad_api function
-    VLOG(3) << \"Finally State Running: \" << \"{}\"; 
+    VLOG(3) << \"Final State Running: \" << \"{}\"; 
     auto grad_api_returns = {}::{}({});
     {}
 }}
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, grad_node_name, grad_api_namespace, bwd_api_name,
-        grad_api_args_str, returns_str)
+        grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
+        bwd_api_name, grad_api_args_str, returns_str)
 
     return node_definition_str
 
