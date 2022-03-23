@@ -27,7 +27,6 @@ static inline paddle::experimental::DataType GetPromoteType(
     const std::vector<std::vector<paddle::experimental::Tensor>>&
         amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
-  VLOG(6) << "AMP: GetPromoteType for op " << api_name;
   auto dst_type = amp_dtype;
   for (const auto& tensors : amp_tensors_vector) {
     for (const auto& tensor : tensors) {
@@ -45,7 +44,6 @@ static inline paddle::experimental::DataType GetPromoteType(
       dst_type = paddle::experimental::DataType::FLOAT16;
     }
   }
-  VLOG(6) << "PromoteType is: " << paddle::framework::DataType2String(dst_type);
   return dst_type;
 }
 
@@ -134,8 +132,6 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
                             const paddle::experimental::DataType& dst_dtype) {
   auto place = tensor.inner_place();
   auto data_type = tensor.dtype();
-  VLOG(6) << "AMP NeedCast: tensor place:" << place
-          << ", tensor dtype: " << data_type;
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
@@ -206,5 +202,4 @@ paddle::experimental::Tensor AmpAutoCast(
   }
   return input;
 }
-
 }  // namespace egr

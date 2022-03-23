@@ -1615,7 +1615,6 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   if (inplace_mapping_str.size() > 0)
     inplace_mapping_str.pop_back();  // Remove trailing ","
 
-  /* ------ amp logic generation ------ */
   if ((op_type != "cast") && (inplace_map.empty())) {
     VLOG(6) << "Generating Dygraph Forward AMP";
     const char* AMP_LOGIC_CONTEXT =
