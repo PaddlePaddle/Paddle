@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -33,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/slice_utils.h"
-#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -730,6 +728,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self, PyObject* args,
 #undef TENSOR_TO_PY_SCALAR
   PADDLE_THROW(platform::errors::Unimplemented(
       "Unsupported tensor data type: %s", tensor.dtype()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
