@@ -28,11 +28,51 @@ static inline paddle::experimental::DataType GetPromoteType(
         amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
-  for (const auto& tensors : amp_tensors_vector) {
-    for (const auto& tensor : tensors) {
-      if (tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
-        dst_type = tensor.dtype();
-        break;
+  if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
+      "float16") {
+    if (api_name == "batch_norm" || api_name == "layer_norm" ||
+        api_name == "sync_batch_norm") {
+      if (amp_tensors_vector[0][0].dtype() ==
+          paddle::experimental::DataType::FLOAT32) {
+        dst_type = paddle::experimental::DataType::FLOAT32;
+      }
+    } else if (api_name == "fused_attention") {
+      for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
+        if (i != 3 || i != 4 || i != 9 || i != 10) {
+          if (amp_tensors_vector[i][0].dtype() ==
+              paddle::experimental::DataType::FLOAT32) {
+            dst_type = paddle::experimental::DataType::FLOAT32;
+            break;
+          }
+        }
+      }
+    } else if (api_name == "fused_feedforward") {
+      for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
+        if (i != 7 || i != 8 || i != 9 || i != 10) {
+          if (amp_tensors_vector[i][0].dtype() ==
+              paddle::experimental::DataType::FLOAT32) {
+            dst_type = paddle::experimental::DataType::FLOAT32;
+            break;
+          }
+        }
+      }
+    } else {
+      for (const auto& tensors : amp_tensors_vector) {
+        for (const auto& tensor : tensors) {
+          if (tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+            dst_type = tensor.dtype();
+            break;
+          }
+        }
+      }
+    }
+  } else {
+    for (const auto& tensors : amp_tensors_vector) {
+      for (const auto& tensor : tensors) {
+        if (tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+          dst_type = tensor.dtype();
+          break;
+        }
       }
     }
   }
