@@ -75,6 +75,8 @@ class SoftMaxOpConverter : public OpConverter {
         axes = axis;
       }
     }
+    int tt = 1 << axes;
+    LOG(INFO) << "input dims " << input_dims << " , axis " << axis << " set axes " << tt;
     layer->setAxes(1 << axes);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);

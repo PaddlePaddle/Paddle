@@ -23,6 +23,7 @@ nv_library(tensorrt_converter
                 deformable_conv_op.cc
                 preln_emb_eltwise_layernorm.cc
                 preln_skip_layernorm.cc
+                c_allreduce_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS

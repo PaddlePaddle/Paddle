@@ -61,3 +61,4 @@ class ReshapeOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(reshape, ReshapeOpConverter);
+REGISTER_TRT_OP_CONVERTER(reshape2, ReshapeOpConverter);

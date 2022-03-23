@@ -180,6 +180,19 @@ class MatMulOpConverter : public OpConverter {
         }
       }
     }
+
+    // nvinfer1::Dims dims_x = input1->getDimensions();
+    // nvinfer1::Dims dims_y = input2->getDimensions();
+
+    // LOG(INFO) << dims_x << "  " << dims_y;
+    LOG(INFO) << "========X=======";
+    for (int k = 0; k < dims_x.nbDims; ++k) {
+        LOG(INFO) << dims_x.d[k];
+    }
+    LOG(INFO) << "========Y=======";
+    for (int k = 0; k < dims_x.nbDims; ++k) {
+        LOG(INFO) << dims_y.d[k];
+    }
   }
 };
 

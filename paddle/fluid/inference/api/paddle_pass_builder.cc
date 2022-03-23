@@ -84,6 +84,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "simplify_with_basic_ops_pass",                 //
       "embedding_eltwise_layernorm_fuse_pass",        //
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
+      "trt_map_matmul_v2_to_matmul_pass",             //
       "multihead_matmul_fuse_pass_v2",                //
       "multihead_matmul_fuse_pass_v3",                //
       "skip_layernorm_fuse_pass",                     //
@@ -94,7 +95,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_reshape2_matmul_fuse_pass",                //
       "trt_flatten2_matmul_fuse_pass",                //
       "trt_map_matmul_v2_to_mul_pass",                //
-      "trt_map_matmul_v2_to_matmul_pass",             //
       "trt_map_matmul_to_mul_pass",                   //
       "fc_fuse_pass",                                 //
       "conv_elementwise_add_fuse_pass",               //
