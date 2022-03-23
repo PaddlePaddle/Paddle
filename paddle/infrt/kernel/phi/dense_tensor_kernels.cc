@@ -21,7 +21,6 @@
 #include "paddle/infrt/paddle/scope.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
-// #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef INFRT_WITH_GPU
 #include <cuda_runtime.h>

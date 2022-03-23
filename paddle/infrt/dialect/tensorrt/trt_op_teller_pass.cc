@@ -64,7 +64,3 @@ void TRTOpTellerPass::runOnFunction() {
 }
 }  // namespace trt
 }  // namespace infrt
-
-std::unique_ptr<mlir::Pass> infrt::trt::createTRTOpTellerPass() {
-  return std::make_unique<infrt::trt::TRTOpTellerPass>();
-}
