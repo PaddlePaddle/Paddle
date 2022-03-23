@@ -117,10 +117,11 @@ void StringTensor::init_holder() {
 #endif
   } else {
     // TODO(zhoushunjie): Need to support more places
-    PADDLE_THROW(errors::Unimplemented(
-        "StringTensor only support CPU or GPU place currently, but it wants to "
-        "create StringTensor on %s",
-        place.DebugString()));
+    PADDLE_THROW(
+        errors::Unimplemented("StringTensor can only be created in CPU or GPU "
+                              "place. But now attemps to "
+                              "create StringTensor on %s",
+                              place.DebugString()));
   }
 }
 
