@@ -15,6 +15,7 @@
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
 
 
 def _number_count(gate_idx, upper_range):
