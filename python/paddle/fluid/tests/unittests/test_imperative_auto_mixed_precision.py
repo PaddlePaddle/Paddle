@@ -137,7 +137,6 @@ class TestAutoCast(unittest.TestCase):
                         filter_size=7,
                         stride=2,
                         act='relu')
-
                     with fluid.dygraph.amp_guard(
                             custom_white_list=["conv2d"],
                             custom_black_list=["conv2d"]):
@@ -168,7 +167,6 @@ class TestAutoCast(unittest.TestCase):
                     out_purefp16_fp32 = paddle.expand_as(
                         out_purefp16_fp16,
                         out_purefp16_fp16)  # expand_as_v2 has no fp16 kernel
-
             self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
             self.assertTrue(
                 out_amp_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
