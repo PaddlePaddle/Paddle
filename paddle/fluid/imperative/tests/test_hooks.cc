@@ -28,6 +28,8 @@
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 
 namespace platform = paddle::platform;
 namespace framework = paddle::framework;
