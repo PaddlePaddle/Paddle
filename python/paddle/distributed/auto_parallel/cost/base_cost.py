@@ -297,42 +297,28 @@ class CommOpCost(OpCost):
     def comm_context(self):
         return self._comm_context
 
-    def _check_comm_op_type(self):
-        op_type = None
-        if self.op is not None:
-            op_type = self.op.type
-        else:
-            op_type = self.op_desc["op"]
-
-        if self.OP_TYPE != "COMM":
-            assert op_type == self.OP_TYPE
-
-        if op_type not in COMM_OP_TYPE:
-            raise TypeError("Please Check op type in {}, but got {}.".format(
-                COMM_OP_TYPE, op_type))
+    @classmethod
+    def _check_comm_op_type(cls):
+        if cls.OP_TYPE != "COMM":
+            if cls.OP_TYPE not in COMM_OP_TYPE:
+                raise TypeError("Please Check op type in {}, but got {}.".
+                                format(COMM_OP_TYPE, cls.OP_TYPE))
 
 
 class CompOpCost(OpCost):
-    OPTYPE = "COMP"
+    OP_TYPE = "COMP"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
         super(CompOpCost, self).__init__(op=op, op_desc=op_desc)
-        self._check_comp_op_type(op, op_desc)
+        self._check_comp_op_type()
         self.cluster = cluster
 
-    def _check_comp_op_type(self, op, op_desc):
-        op_type = None
-        if op is not None:
-            op_type = op.type
-        elif op_desc is not None:
-            op_type = op_desc["op"]
-
-        if op_type in NON_COMP_TYPE:
-            raise TypeError("Please Check op type not in {}, but got {}.".
-                            format(NON_COMP_TYPE, op_type))
-
-        if self.OP_TYPE != "COMP":
-            assert op_type == self.OP_TYPE
+    @classmethod
+    def _check_comp_op_type(cls):
+        if cls.OP_TYPE != "COMP":
+            if cls.OP_TYPE in NON_COMP_TYPE:
+                raise TypeError("Please Check op type not in {}, but got {}.".
+                                format(NON_COMP_TYPE, cls.OP_TYPE))
 
 
 def register_op_cost(cls):
