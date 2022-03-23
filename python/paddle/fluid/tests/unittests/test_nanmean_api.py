@@ -90,6 +90,36 @@ class TestNanmeanAPI(unittest.TestCase):
             x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.nanmean, x)
 
+    def test_api_dygraph_grad(self):
+        paddle.disable_static(self.place)
+
+        def test_case(x, axis=None, keepdim=False):
+            if isinstance(axis, list):
+                axis = list(axis)
+                if len(axis) == 0:
+                    axis = None
+            x_tensor = paddle.to_tensor(x, stop_gradient = False)
+            y = paddle.nanmean(x_tensor, axis, keepdim)
+            dx = paddle.grad(y, x_tensor)[0].numpy()
+            sum_dx_ref = np.prod(y.shape)
+            if np.isnan(y.numpy()).sum():
+                sum_dx_ref -= np.isnan(y.numpy()).sum()
+            dx[np.isnan(dx)] = 0
+            sum_dx = dx.sum()
+            self.assertEqual(
+                np.allclose(
+                    sum_dx, sum_dx_ref, rtol=1e-04), True)
+
+        test_case(self.x)
+        test_case(self.x, [])
+        test_case(self.x, -1)
+        #test_case(self.x, keepdim=True)
+        test_case(self.x, 2, keepdim=True)
+        test_case(self.x, [0, 2])
+        test_case(self.x, (0, 2))
+        test_case(self.x, [0, 1, 2, 3])
+        print("test grad ok")
+        paddle.enable_static()
 
 if __name__ == "__main__":
     unittest.main()
