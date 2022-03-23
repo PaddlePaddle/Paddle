@@ -3386,6 +3386,8 @@ def lerp(x, y, weight, name=None):
         check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
+        if _in_eager_mode():
+            return _C_ops.final_state_lerp( x, y, weight)
         return _C_ops.lerp(x, y, weight)
 
     if isinstance(weight, float):

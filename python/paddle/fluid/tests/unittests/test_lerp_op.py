@@ -27,6 +27,7 @@ np.random.seed(0)
 class TestLerp(OpTest):
     def setUp(self):
         self.op_type = "lerp"
+        self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
         x = np.arange(1., 101.).astype(self.dtype).reshape(self.shape)
@@ -42,10 +43,10 @@ class TestLerp(OpTest):
         self.shape = [100]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestLerpWithDim2(TestLerp):

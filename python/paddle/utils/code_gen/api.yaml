@@ -672,6 +672,7 @@
     func : ExpandAsInferMeta
   kernel :
     func : expand_as
+  optional : y
   # backward : expand_as_grad
   # optional : y
 
@@ -789,7 +790,7 @@
     param : [label]
   kernel :
     func : label_smooth
-    optional : prior_dist
+  # optional : prior_dist
   # backward : label_smooth_grad
   # 
 
@@ -1137,7 +1138,7 @@
     func : LerpInferMeta
   kernel :
     func : lerp
-  # backward : lerp_grad
+  backward : lerp_grad
 
 - api : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite)

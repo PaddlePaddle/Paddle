@@ -636,7 +636,7 @@ class {} : public egr::GradNodeBase {{
 
 def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
                            backward_grad_input_map, backward_grad_output_map,
-                           backward_attrs_list):
+                           backward_attrs_list, forward_inputs_position_map):
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
@@ -669,7 +669,8 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
 
     # Construct grad_api returns
     num_bwd_outputs = len(backward_grad_output_map.keys())
-    returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({num_bwd_outputs});\n"
+    slot_num_bwd_outputs = len(forward_inputs_position_map.keys())
+    returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_output_map.items():
         # Infer Grad API Return Type
@@ -790,7 +791,8 @@ def GenerateNodeCreationCodes(
 
     # Node Construction
     num_bwd_inputs = len(backward_grad_input_map.keys())
-    num_bwd_outputs = len(backward_grad_output_map.keys())
+    #  num_bwd_outputs = len(backward_grad_output_map.keys())
+    num_bwd_outputs = len(forward_inputs_position_map.keys())
     grad_node_name = GetGradNodeName(
         RecoverBaseNameOfInplaceFunction(
             fwd_api_name)) if inplace_map else GetGradNodeName(fwd_api_name)
@@ -1337,7 +1339,7 @@ if __name__ == "__main__":
             yaml_node_definition_str += GenerateNodeDefinition(
                 fwd_api_name, bwd_api_name, backward_fwd_input_map,
                 backward_grad_input_map, backward_grad_output_map,
-                backward_attrs_list)
+                backward_attrs_list, forward_inputs_position_map)
             print("Generated Node Definition: ", node_definition_str)
 
             # Node Definition Generation
