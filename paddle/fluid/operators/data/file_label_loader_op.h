@@ -369,7 +369,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     image_arr->reserve(batch_size);
     label_tensor->Resize(
         framework::make_ddim({static_cast<int64_t>(batch_size)}));
-    auto* label_data = label_tensor->mutable_data<int>(platform::CPUPlace());
+    auto* label_data = label_tensor->mutable_data<int64_t>(platform::CPUPlace());
     for (int64_t i = 0; i < batch_size; i++) {
       int64_t index = static_cast<int>(indices_data[i]);
       auto file = samples->at(index).first;
@@ -389,7 +389,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
       input.read(reinterpret_cast<char*>(data), file_size);
 
       image_arr->emplace_back(image);
-      label_data[i] = label;
+      label_data[i] = static_cast<int64_t>(label);
     }
 
     LOG(ERROR) << "FileLabelLoaderOp RunImpl finish";
