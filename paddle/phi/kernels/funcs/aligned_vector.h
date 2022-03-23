@@ -15,6 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/hostdevice.h"
+#if defined(__xpu__)
+#define CHAR_BIT 8
+#endif
 
 namespace phi {
 
