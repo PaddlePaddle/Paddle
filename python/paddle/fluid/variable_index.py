@@ -382,7 +382,7 @@ def _getitem_impl_(var, item):
             idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
-        elif isinstance(slice_item, (Variable)):
+        elif isinstance(slice_item, (Variable, core.eager.Tensor)):
             if len(item) == 1:
 
                 from ..tensor import index_select, gather_nd
@@ -636,7 +636,7 @@ def _setitem_impl_(var, item, value):
         shape = list(value.shape)
         if dtype == core.VarDesc.VarType.BOOL:
             value_name = "bool_values"
-            values = [bool(v) for v in value.flat]
+            values = [int(v) for v in value.flat]
         elif dtype == core.VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in value.flat]
@@ -657,7 +657,7 @@ def _setitem_impl_(var, item, value):
         attrs[value_name] = values
         attrs["shape"] = shape
 
-    elif isinstance(value, Variable):
+    elif isinstance(value, (Variable, core.eager.Tensor)):
         inputs["ValueTensor"] = value
     else:
         raise TypeError(
@@ -665,7 +665,9 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
-    if paddle.fluid.framework.in_dygraph_mode():
+    if paddle.fluid.framework.in_dygraph_mode(
+    ) and not paddle.fluid.framework._in_eager_mode():
+        # TODO(pangyoki) add inplace(BumpInplaceVersion) if need
         var._bump_inplace_version()
 
     cur_block = default_main_program().current_block()

@@ -1734,7 +1734,6 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
-
         return True
 
     def is_output_compatible(self, dist_op):

@@ -243,6 +243,8 @@ def add(x, y, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_add( x, y)
         return _C_ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -322,6 +324,8 @@ def subtract(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_subtract(x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -379,6 +383,8 @@ def divide(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_divide( x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
@@ -508,6 +514,8 @@ def multiply(x, y, name=None):
     axis = -1
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_multiply(x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
@@ -1335,7 +1343,7 @@ def renorm(x, p, axis, max_norm):
             raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
         axis = axis + len(input_shape)
     if paddle.in_dynamic_mode():
-        out = core.ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
+        out = _C_ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
         return out
 
     inputs = {'X': x}
@@ -3787,13 +3795,13 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         attrs_1 += ('starts', starts_1)
         ends_1 = [dim_len - 1]
         attrs_1 += ('ends', ends_1)
-        input_front = _C_ops.slice(new_input, None, None, 'axes', axes, \
+        input_front = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
             'infer_flags', infer_flags, *attrs_1)
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
         ends_2 = [dim_len]
         attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(new_input, None, None, 'axes', axes, \
+        input_back = _C_ops.slice(new_input, None, None, None, None, 'axes', axes, \
             'infer_flags', infer_flags, *attrs_2)
 
         if x.dtype == paddle.bool:

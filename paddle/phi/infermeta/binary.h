@@ -83,6 +83,17 @@ void ConvInferMeta(const MetaTensor& input,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void ConvInferInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& paddding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+
 void ConvTransposeInferMeta(const MetaTensor& x,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
