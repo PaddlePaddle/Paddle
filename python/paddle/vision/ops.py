@@ -19,7 +19,7 @@ from ..fluid import core, layers
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-
+from ..fluid.framework import _non_static_mode
 from paddle.common_ops_import import *
 from paddle import _C_ops
 

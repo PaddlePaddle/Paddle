@@ -403,7 +403,7 @@ class DataLoader(object):
         self.auto_collate_batch = self.batch_sampler is not None
 
         self.pin_memory = False
-        if _non_static_mode() or in_legacy_dygraph():
+        if _non_static_mode():
             self.pin_memory = True if use_pinned_memory(
             ) is None else use_pinned_memory()
 
@@ -752,7 +752,7 @@ class DataLoader(object):
                 # number is less than CPU core number can be tested.
                 print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
-        if _non_static_mode() or _in_legacy_dygraph():
+        if _non_static_mode():
             return DygraphGeneratorLoader(feed_list, capacity,
                                           use_double_buffer, iterable,
                                           return_list, use_multiprocess)

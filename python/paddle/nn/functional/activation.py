@@ -576,7 +576,7 @@ def relu_(x, name=None):
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
-    if paddle.framework._in_eager_mode_:
+    if paddle.fluid.framework._in_eager_mode_:
         return _C_ops.final_state_relu_(x)
     return _C_ops.relu_(x)
 
