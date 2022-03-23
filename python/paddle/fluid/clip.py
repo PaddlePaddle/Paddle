@@ -71,6 +71,9 @@ def _squared_l2_norm(x):
         return sum_square
 
     if in_dygraph_mode():
+        if core._in_eager_mode() and x.is_selected_rows():
+            new_x = paddle.to_tensor(x.numpy())
+            return _C_ops.squared_l2_norm(new_x)
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'

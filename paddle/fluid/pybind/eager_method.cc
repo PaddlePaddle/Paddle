@@ -193,23 +193,53 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
   }
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     platform::CPUPlace place;
-    // deep copy
-    paddle::memory::Copy(place, reinterpret_cast<void*>(
-                                    pybind11::detail::array_proxy(array)->data),
-                         place, dense_tensor->data(), sizeof_dtype * numel);
+    if (self->tensor.is_selected_rows()) {
+      VLOG(6) << "Getting SelectedRows's numpy value";
+      auto* selected_rows =
+          static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+          selected_rows->mutable_value());
+
+      // deep copy
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          place, dense_tensor->data(), sizeof_dtype * numel);
+    } else {
+      VLOG(6) << "Getting DenseTensor's numpy value";
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      // deep copy
+      paddle::memory::Copy(
+          place,
+          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
+          place, dense_tensor->data(), sizeof_dtype * numel);
+    }
+
 #if defined(PADDLE_WITH_CUDA)
   } else if (self->tensor.is_gpu()) {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-
-    paddle::platform::GpuMemcpySync(
-        pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
-        paddle::framework::DataTypeSize(dense_tensor->dtype()) *
-            dense_tensor->numel(),
-        cudaMemcpyDeviceToHost);
+    if (self->tensor.is_selected_rows()) {
+      VLOG(6) << "Getting SelectedRows's numpy value";
+      auto* selected_rows =
+          static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+          selected_rows->mutable_value());
+      paddle::platform::GpuMemcpySync(
+          pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
+          paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+              dense_tensor->numel(),
+          cudaMemcpyDeviceToHost);
+    } else {
+      VLOG(6) << "Getting DenseTensor's numpy value";
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      paddle::platform::GpuMemcpySync(
+          pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
+          paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+              dense_tensor->numel(),
+          cudaMemcpyDeviceToHost);
+    }
 #endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1100,6 +1130,26 @@ static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_selected_rows(TensorObject* self,
+                                                PyObject* args,
+                                                PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(self->tensor.is_selected_rows());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
+                                        PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.is_selected_rows(),
+                 paddle::platform::errors::Fatal(
+                     "this method is only effective for SelectedRows"));
+  auto selected_rows =
+      std::dynamic_pointer_cast<phi::SelectedRows>(self->tensor.impl());
+  return ToPyObject(selected_rows->rows());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1181,6 +1231,11 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"is_selected_rows",
+     (PyCFunction)(void (*)(void))tensor_method_is_selected_rows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

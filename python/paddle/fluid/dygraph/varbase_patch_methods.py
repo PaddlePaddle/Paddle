@@ -319,7 +319,8 @@ def monkey_patch_varbase():
         if core._in_eager_mode():
             if self.grad is None:
                 return None
-            # TODO(wanghuancoder) support SELECTED_ROWS
+            if self.grad.is_selected_rows():
+                return (np.array(self.grad.numpy()), np.array(self.grad.rows()))
             return self.grad.numpy()
         else:
             if self._grad_ivar() is None:
