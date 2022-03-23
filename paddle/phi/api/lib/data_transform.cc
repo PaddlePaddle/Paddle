@@ -191,7 +191,6 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
            dense_tensor.layout(), target_args_def.layout, transform_flag))) {
     return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
   }
-
   phi::DenseTensor out =
       TransformData(dense_tensor, target_args_def, transform_flag);
   return std::make_shared<phi::DenseTensor>(std::move(out));
