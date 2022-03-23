@@ -53,3 +53,26 @@ def _number_count(gate_idx, upper_range):
             outputs={'Out': out},
             attrs={'upper_range': upper_range})
         return out
+
+
+def _random_routing(topk_idx, topk_value, prob, topk=2):
+    r"""
+        random routing topk gate idx
+        ```
+            out = topk_idx
+            for i in len(topk_idx):
+                if topk * value[i][topk-1] < prob[i]:
+                    out[i][topk-1] = -1
+        ```
+        Args:
+            topk_idx: gate idx, shape=(N, topk)
+            topk_value: values, shape = topk_idx.shape
+            prob: random prob, shape=(topk_idx.shape[0],)
+    """
+    if topk == 2:
+        if in_dygraph_mode():
+            return core.ops.random_routing(prob, topk_value, topk_idx)
+        else:
+            raise RuntimeError("Not supporting static mode now")
+    else:
+        raise RuntimeError("only topk=2 is supported now")
