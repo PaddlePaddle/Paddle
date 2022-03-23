@@ -41,7 +41,7 @@ def valid_eigenvalues(actual, expected):
 
     diff = np.abs(expected - actual)
     max_diff = np.max(diff)
-    max_ref = np.max(expected)
+    max_ref = np.max(np.abs(expected))
     relative_error = max_diff / max_ref
     np.testing.assert_array_less(relative_error, rtol)
 
