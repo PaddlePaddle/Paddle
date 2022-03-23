@@ -67,8 +67,7 @@ class GradNodePyLayer : public GradNodeBase {
         } else {
           forward_outputs_meta_[i].emplace_back();
         }
-        forward_outputs_place_[i].emplace_back(
-            phi::TransToPhiBackend(tensor->inner_place()));
+        forward_outputs_place_[i].emplace_back(tensor->inner_place());
       }
     }
   }
@@ -77,8 +76,7 @@ class GradNodePyLayer : public GradNodeBase {
   PyObject* ctx_{nullptr};
   PyObject* outputs_{nullptr};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
-  std::vector<std::vector<paddle::experimental::Backend>>
-      forward_outputs_place_;
+  std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
 };
 
 }  // namespace egr
