@@ -104,9 +104,6 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                              MetaTensor* mean_out,
                              MetaTensor* variance_out,
                              MetaConfig config = MetaConfig());
-void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
-                        const MetaTensor& ids,
-                        MetaTensor* out);
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
@@ -141,6 +138,10 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* w_out);
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out);
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,

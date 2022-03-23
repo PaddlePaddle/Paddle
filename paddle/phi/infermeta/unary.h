@@ -81,16 +81,6 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
-void TrilTriuInferMeta(const MetaTensor& x,
-                       int diagonal,
-                       bool lower,
-                       MetaTensor* out);
-
-void QrInferMeta(const MetaTensor& x,
-                 const std::string& mode,
-                 MetaTensor* q,
-                 MetaTensor* r);
-
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -184,6 +174,11 @@ void PoolInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void QrInferMeta(const MetaTensor& x,
+                 const std::string& mode,
+                 MetaTensor* q,
+                 MetaTensor* r);
+
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
@@ -276,6 +271,11 @@ void TransposeInferMeta(const MetaTensor& x,
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
+
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
