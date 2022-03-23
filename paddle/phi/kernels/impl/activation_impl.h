@@ -41,8 +41,7 @@ void ActivationImpl(const Context& dev_ctx,
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
   bool is_gpu_place = paddle::platform::is_gpu_place(dev_ctx.GetPlace());
   if (use_32bit_index && is_gpu_place) {
-    // functor(*place, To32BitIndex(x), To32BitIndex(out));
-    functor(*place, x, out);
+    functor(*place, To32BitIndex(x), To32BitIndex(out));    
   } else {
     functor(*place, x, out);
   }

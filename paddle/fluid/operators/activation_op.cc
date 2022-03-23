@@ -1506,6 +1506,26 @@ REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
 REGISTER_ACTIVATION_OP(reciprocal, Reciprocal, ReciprocalFunctor,
                        ReciprocalGradFunctor);
 
+REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
+REGISTER_OP_CPU_KERNEL(square,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<double>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<int>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<int64_t>>);
+REGISTER_OP_CPU_KERNEL(
+    square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                           ops::SquareGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<double>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<int>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<int64_t>>);
+
 /* ==========================    sigmoid register  =============================
  */
 // 1. Register Sigmoid Operator

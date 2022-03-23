@@ -283,6 +283,7 @@ USE_PHI_TRIPLE_GRAD_FUNCTOR(Sigmoid)
 USE_PHI_FUNCTOR(LogSigmoid)
 USE_PHI_FUNCTOR(HardSigmoid)
 
+USE_PHI_FUNCTOR(Exp)
 USE_PHI_FUNCTOR(Expm1)
 USE_PHI_FUNCTOR(Mish)
 USE_PHI_FUNCTOR(STanh)
@@ -1185,12 +1186,6 @@ class PowGradKernel
     }
     functor(*place, x, out, dout, dx);
   }
-};
-
-template <typename DeviceContext, typename T>
-class LogitGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {}
 };
 
 template <typename T>

@@ -1002,19 +1002,6 @@ struct SoftsignFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// template <typename T>
-// struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
-//   template <typename Device, typename X, typename Out, typename dOut,
-//             typename dX>
-//   void operator()(Device d, X x, Out out, dOut dout, dX dx) {
-//     dx.device(d) =
-//         dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
-//   }
-
-//   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX;
-//   }
-// };
-
 // d(softsign(x))/dx = 1 / (1 + |x|)^2
 // Taken from https://en.wikipedia.org/wiki/Activation_function
 

@@ -478,6 +478,18 @@ USE_PHI_FUNCTOR(CudaSigmoid)
 USE_PHI_FUNCTOR(CudaLogSigmoid)
 USE_PHI_FUNCTOR(CudaHardSigmoid)
 
+USE_PHI_FUNCTOR(CudaExp)
+USE_PHI_FUNCTOR(CudaExpm1)
+USE_PHI_FUNCTOR(CudaMish)
+USE_PHI_FUNCTOR(CudaSTanh)
+USE_PHI_FUNCTOR(CudaReciprocal)
+USE_PHI_FUNCTOR(CudaSquare)
+USE_PHI_FUNCTOR(CudaSqrt)
+USE_PHI_FUNCTOR(CudaRsqrt)
+USE_PHI_FUNCTOR(CudaSoftplus)
+USE_PHI_FUNCTOR(CudaSoftsign)
+
+
 template <typename T>
 using CudaELUGradNegativeAlphaFunctor =
     phi::funcs::CudaELUGradNegativeAlphaFunctor<T>;
@@ -557,6 +569,9 @@ REGISTER_OP_CUDA_KERNEL(
 
 /* ===========================   sqrt register  ============================= */
 
+REGISTER_ACTIVATION_CUDA_KERNEL(sqrt, Sqrt, CudaSqrtFunctor,
+                                CudaSqrtGradFunctor);
+
 REGISTER_OP_CUDA_KERNEL(
     sqrt_grad_grad,
     ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -583,6 +598,9 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================  square register  ============================ */
+
+REGISTER_ACTIVATION_CUDA_KERNEL_INT(square, Square, CudaSquareFunctor,
+                                    CudaSquareGradFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     square_grad_grad,
