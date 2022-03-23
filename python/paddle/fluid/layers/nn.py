@@ -11189,8 +11189,8 @@ def slice(input, axes, starts, ends):
             ends_tensor.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
 
-        return _C_ops.slice(input, starts_tensor, ends_tensor, 'axes', axes,
-                            'infer_flags', infer_flags, *attrs)
+        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
+                            'axes', axes, 'infer_flags', infer_flags, *attrs)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(

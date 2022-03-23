@@ -62,7 +62,7 @@ def FindParsingFunctionFromAttributeType(atype):
 ## Refactored Functions ##
 ##########################
 PARSE_PYTHON_C_TENSORS_TEMPLATE = \
-"    auto {} = {}(\"{}\", \"{}\", args, {}, false);\n"
+"    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 
 
 PARSE_PYTHON_C_ARGS_TEMPLATE = \
@@ -279,15 +279,17 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             is_optional = (name in optional_inputs)
             if IsVectorTensorType(ttype):
                 get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                    name, "GetTensorListFromArgs", forward_api_name, name, pos)
+                    name, "GetTensorListFromArgs", forward_api_name, name, pos,
+                    "false")
             else:
                 if is_optional:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetOptionalTensorFromArgs", forward_api_name,
-                        name, pos)
+                        name, pos, "true")
                 else:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                        name, "GetTensorFromArgs", forward_api_name, name, pos)
+                        name, "GetTensorFromArgs", forward_api_name, name, pos,
+                        "false")
 
         parse_attributes_str = ""
 
