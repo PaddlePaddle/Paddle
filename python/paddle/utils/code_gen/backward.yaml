@@ -56,16 +56,6 @@
   kernel :
     func : abs_grad
 
-- backward_api : relu_grad
-  forward : relu (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu_grad
-
 - backward_api : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -322,7 +312,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : relu_grad
+    func : tan_grad
 
 - backward_api : tanh_shrink_grad
   forward : tanh_shrink (Tensor x) -> Tensor(out)
@@ -333,7 +323,6 @@
     param : [x]
   kernel :
     func : tanh_shrink_grad
-
 
 - backward_api : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
