@@ -197,7 +197,6 @@ inline void RunProgramAPI(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
   // Step 2. prepare executor and init persistable variables
-
   // NOTE(Aurelius84): While training some models, forward can be called many
   // times and then apply backpropagation all at once, such as Reinforcement
   // Learning. Tensor data in multi-step training should be saved into single
@@ -382,9 +381,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       params_grad_ptr.emplace_back(&i);
     }
 
-    // auto x_grad_ptr = ConstructGradTensors(x_);
-    // auto params_grad_ptr = ConstructGradTensors(params_);
-
     PADDLE_ENFORCE_EQ(
         grads[0].size(), fwd_out_names_.size(),
         paddle::platform::errors::InvalidArgument(
@@ -402,7 +398,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
-    // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
   }
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
@@ -469,12 +464,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
         param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
       }
       param_grad->back().set_name(t.name() + "@GRAD");
-
-      // auto grad_tesnor =
-      // egr::EagerUtils::unsafe_autograd_meta(fwd_t)->Grad();
-      // grad_tensors->emplace_back(grad_tesnor.impl());
-      // auto &grad_t = grad_tensors->back();
-      // grad_t.set_name(fwd_t.name() + "@GRAD");
     }
   }
 
