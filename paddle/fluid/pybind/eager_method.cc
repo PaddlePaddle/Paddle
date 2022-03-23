@@ -947,16 +947,22 @@ static PyObject* tensor_register_grad_hook(TensorObject* self, PyObject* args,
   int64_t hook_id;
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
+
+    auto autograd_meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
+
+    if (autograd_meta && !autograd_meta->StopGradient()) {
+      if (!autograd_meta->GetMutableGradNode()) {
+        VLOG(6) << "Detected NULL grad_node, Leaf tensor should have had "
+                   "grad_node with type: GradNodeAccumulation.";
+        autograd_meta->SetGradNode(
+            std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+      }
+    }
+
     std::shared_ptr<egr::GradNodeBase> grad_node =
         egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node,"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation."));
     auto rank_info =
         egr::EagerUtils::unsafe_autograd_meta(self->tensor)->OutRankInfo();
-
     PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
 
     auto accumulation_grad_node =
@@ -1027,8 +1033,8 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* set_grad_type(TensorObject* self, PyObject* args,
-                               PyObject* kwargs) {
+static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
+                                       PyObject* kwargs) {
   EAGER_TRY
   auto var_type = pybind::CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensor =
@@ -1042,6 +1048,42 @@ static PyObject* set_grad_type(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__clear(TensorObject* self, PyObject* args,
+                               PyObject* kwargs) {
+  EAGER_TRY
+  self->tensor.reset();
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__copy_gradient_from(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  auto src = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  if (self->tensor.is_initialized()) {
+    PADDLE_ENFORCE_EQ(self->tensor.dtype(), src.dtype(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s",
+                          self->tensor.name(), src.name()));
+    PADDLE_ENFORCE_EQ(self->tensor.impl()->type_info().id(),
+                      src.impl()->type_info().id(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "ShareGradientDataWith cannot be performed!",
+                          self->tensor.name(), src.name()));
+  }
+  VLOG(6) << "Tensor copy gradient from: " << src.name();
+  auto* p_grad = egr::EagerUtils::mutable_grad(self->tensor);
+  if (p_grad) {
+    PADDLE_ENFORCE_EQ(src.initialized(), true,
+                      platform::errors::InvalidArgument(
+                          "Tensor %s has not been initialized", src.name()));
+    p_grad->set_impl(src.impl());
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1199,7 +1241,12 @@ PyMethodDef variable_methods[] = {
     {"_register_backward_hook",
      (PyCFunction)(void (*)(void))tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_set_grad_type", (PyCFunction)(void (*)(void))set_grad_type,
+    {"_set_grad_type", (PyCFunction)(void (*)(void))tensor__set_grad_type,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_clear", (PyCFunction)(void (*)(void))tensor__clear,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_copy_gradient_from",
+     (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"non_zero_indices",

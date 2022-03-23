@@ -3,6 +3,7 @@ add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)
 
+math_library(deformable_conv_functor DEPS dense_tensor)
 math_library(concat_and_split_functor DEPS dense_tensor)
 math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
