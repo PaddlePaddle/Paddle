@@ -771,6 +771,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                       int left_num,
                                       int blocking_size,
                                       const kps::DimConfig dim,
+                                      int mean_div,
                                       bool is_mean) {
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
@@ -805,6 +806,9 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                   kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &reduce_compute, reducer, false);
     }
+    if (is_mean) {
+      reduce_var = reduce_var / static_cast<MPType>(mean_div);
+    }
     Ty result = static_cast<Ty>(reduce_var);
     kps::WriteData<Ty, 1, 1, 1, false>(
         y + store_offset + idx, &result, block.BlockDimX());
@@ -832,7 +836,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     }
 
     if (is_mean) {
-      reduce_var = reduce_var / static_cast<MPType>(reduce_num);
+      reduce_var = reduce_var / static_cast<MPType>(mean_div);
     }
     Ty result = static_cast<Ty>(reduce_var);
     kps::WriteData<Ty, 1, 1, 1, true>(
@@ -956,15 +960,18 @@ static void LaunchReduceKernel(const Tx* x_data,
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.SetRem(config.left_num % block.x, 0, 0);
 #ifdef PADDLE_WITH_XPU_KP
-    grid = 8;
-    block = 64;
+    int grid_size = 8;
+    int block_size = 64;
+#else
+    auto grid_size = grid;
+    auto block_size = block;
 #endif
     ReduceHigherDimKernel<
         Ty,
         Ty,
         MPType,
         ReduceOp,
-        kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+        kps::IdentityFunctor<Ty, MPType>><<<grid_size, block_size, 0, stream>>>(
         config.output_data,
         y_data,
         reducer,
@@ -974,6 +981,7 @@ static void LaunchReduceKernel(const Tx* x_data,
         config.left_num,
         config.grid.y,
         dim,
+        config.reduce_num,
         is_mean);
   }
 }
@@ -1077,8 +1085,18 @@ void ReduceKernel(const KPDevice& dev_ctx,
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
-    CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
-        x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
+    if (is_mean) {
+      using Div = kps::DivideFunctor<Tx>;
+      CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(x_data,
+                                                 y_data,
+                                                 Div(config.reduce_num),
+                                                 config.reduce_num,
+                                                 dev_ctx,
+                                                 stream);
+    } else {
+      CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+          x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
+    }
     return;
   }
 #endif
@@ -1124,6 +1142,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
         config.left_num,
         config.blocking_size,
         dim,
+        config.reduce_num,
         is_mean && (!config.should_reduce_again));
 
     if (config.should_reduce_again) {
@@ -1134,15 +1153,19 @@ void ReduceKernel(const KPDevice& dev_ctx,
       dim2.SetRem(config.left_num % config.block.x, 0, 0);
 
 #ifdef PADDLE_WITH_XPU_KP
-      grid = 8;
-      block = 64;
+      int grid_size = 8;
+      int block_size = 64;
+#else
+      auto grid_size = grid;
+      auto block_size = block;
 #endif
       ReduceHigherDimKernel<
           Ty,
           Ty,
           MPType,
           ReduceOp<MPType>,
-          kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+          kps::IdentityFunctor<Ty,
+                               MPType>><<<grid_size, block_size, 0, stream>>>(
           config.output_data,
           y_data,
           reducer,
@@ -1152,6 +1175,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
           config.left_num,
           config.grid.y,
           dim2,
+          config.reduce_num,
           is_mean);
     }
     return;

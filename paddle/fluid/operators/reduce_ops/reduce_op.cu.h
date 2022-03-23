@@ -38,7 +38,7 @@ void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
 
   phi::funcs::ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx), x, y, transform,
-      origin_reduce_dims, true);
+      origin_reduce_dims, is_mean);
 }
 
 }  // namespace operators
