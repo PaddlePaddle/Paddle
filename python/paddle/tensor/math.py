@@ -980,7 +980,7 @@ def nanmean(x, axis=None, keepdim=False, name=None):
     Compute the arithmetic mean along the specified axis, ignoring NaNs.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
         axis (int|list|tuple, optional):The axis along which to perform mean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), mean is calculated along
