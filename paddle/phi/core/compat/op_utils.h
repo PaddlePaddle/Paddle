@@ -66,9 +66,7 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "expand_as",
                                                            "expand_grad",
                                                            "expand_as_grad",
-                                                           "sum",
                                                            "one_hot",
-                                                           "sum_grad",
                                                            "top_k",
                                                            "top_k_grad"});
 
