@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.distributed.utils import expert_count, assign_pos, global_scatter, global_gather, global_hierarchy_scatter, global_hierarchy_gather
+from paddle.distributed.utils import global_scatter, global_gather
 from paddle.distributed import alltoall, all_gather
 
 from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
@@ -30,26 +30,7 @@ from .utils import count_by_gate
 from paddle.distributed.fleet.meta_parallel.pp_utils.utils import _hp_recompute
 from paddle import fluid
 
-
-def get_global_count(local_count, inside_group, outside_group):
-    inside_nranks = inside_group.nranks
-    cur_mp_rank = inside_group.rank
-    outside_nranks = outside_group.nranks
-    cur_dp_rank = outside_group.rank
-
-    mp_gather = _all_gather(local_count, inside_group).reshape(
-        [inside_nranks, -1]).transpose((1, 0))
-    split_list = paddle.split(mp_gather, outside_nranks * inside_nranks, axis=0)
-    mp_global_count_list = [
-        t.flatten() for t in split_list[cur_mp_rank::inside_nranks]
-    ]
-    mp_global_count = paddle.concat(mp_global_count_list, axis=-1)
-
-    dp_gather = _all_gather(mp_global_count, outside_group).reshape(
-        [outside_nranks, -1]).transpose((1, 0))
-    split_list = paddle.split(dp_gather, outside_nranks, axis=0)
-    dp_global_count = split_list[cur_dp_rank].flatten()
-    return mp_global_count, dp_global_count
+__all__ = ["MoeLayer"]
 
 
 def _local_scatter(inp, pos):
@@ -103,41 +84,37 @@ class MOEScatter(PyLayer):
                 pos,
                 local_expert_count,
                 global_expert_count,
-                mp_global_count,
-                dp_global_count,
                 fwd_batch_size,
                 world_size,
-                mp_group=None,
-                dp_group=None):
+                group=None):
         local_input_buf = _local_scatter(inp, pos)
         if world_size > 1:
-            global_input_buf = global_hierarchy_scatter(
-                local_input_buf, local_expert_count, mp_global_count,
-                dp_global_count, mp_group, dp_group)
+            global_input_buf = global_scatter(
+                local_input_buf,
+                local_expert_count,
+                global_expert_count,
+                group=group)
         else:
             global_input_buf = local_input_buf
 
-        ctx.moe_args = inp.shape[0], world_size, mp_group, dp_group
+        ctx.moe_args = inp.shape[0], world_size, group
 
-        variables = (pos, local_expert_count, global_expert_count,
-                     mp_global_count, dp_global_count)
+        variables = (pos, local_expert_count, global_expert_count)
         ctx.save_for_backward(*variables)
         return global_input_buf
 
     @staticmethod
     def backward(ctx, grad):
-        (pos, local_expert_count, global_expert_count, mp_global_count,
-         dp_global_count) = ctx.saved_tensor()
-        (inp_batch_size, world_size, mp_group, dp_group) = ctx.moe_args
+        (pos, local_expert_count, global_expert_count) = ctx.saved_tensor()
+        (inp_batch_size, world_size, group) = ctx.moe_args
 
         if world_size > 1:
-            local_grad_in = global_hierarchy_gather(
-                grad, local_expert_count, mp_global_count, dp_global_count,
-                mp_group, dp_group)
+            local_grad_in = global_gather(
+                grad, local_expert_count, global_expert_count, group=group)
         else:
             local_grad_in = grad
         grad_in = _local_gather(local_grad_in, pos, inp_batch_size)
-        return grad_in, None, None, None, None, None
+        return grad_in, None, None, None
 
 
 class MOEGather(PyLayer):
@@ -152,41 +129,39 @@ class MOEGather(PyLayer):
                 pos,
                 local_expert_count,
                 global_expert_count,
-                mp_global_count,
-                dp_global_count,
                 local_batch_size,
                 world_size,
-                mp_group=None,
-                dp_group=None):
+                group=None):
         if world_size > 1:
-            local_output_buf = global_hierarchy_gather(
-                global_output_buf, local_expert_count, mp_global_count,
-                dp_global_count, mp_group, dp_group)
+            local_output_buf = global_gather(
+                global_output_buf,
+                local_expert_count,
+                global_expert_count,
+                group=group)
         else:
             local_output_buf = global_output_buf
         output = _local_gather(
             local_output_buf, pos, local_batch_size, maybe_overlap=False)
 
-        ctx.moe_args = (global_output_buf.shape[0], world_size, mp_group,
-                        dp_group)
-        variables = (pos, local_expert_count, global_expert_count,
-                     mp_global_count, dp_global_count)
+        ctx.moe_args = (global_output_buf.shape[0], world_size, group)
+        variables = (pos, local_expert_count, global_expert_count)
         ctx.save_for_backward(*variables)
         return output
 
     @staticmethod
     def backward(ctx, grad_out):
-        pos, local_expert_count, global_expert_count, mp_global_count, dp_global_count = ctx.saved_tensor(
-        )
-        fwd_batch_size, world_size, mp_group, dp_group = ctx.moe_args
+        pos, local_expert_count, global_expert_count = ctx.saved_tensor()
+        fwd_batch_size, world_size, group = ctx.moe_args
         grad_out_buf = _local_scatter(grad_out, pos)
         if world_size > 1:
-            global_grad_out_buf = global_hierarchy_scatter(
-                grad_out_buf, local_expert_count, mp_global_count,
-                dp_global_count, mp_group, dp_group)
+            global_grad_out_buf = global_scatter(
+                grad_out_buf,
+                local_expert_count,
+                global_expert_count,
+                group=group)
         else:
             global_grad_out_buf = grad_out_buf
-        return global_grad_out_buf, None, None, None, None, None
+        return global_grad_out_buf, None, None, None
 
 
 class AllGather(PyLayer):
@@ -235,24 +210,17 @@ class Slice(PyLayer):
         # return grad_out
 
 
-def prepare_forward(gate, num_expert, world_size, moe_group, mp_group,
-                    dp_group):
+def prepare_forward(gate, num_expert, world_size, moe_group):
     pos, local_expert_count, global_expert_count = count_by_gate(
         gate, num_expert, world_size, group=moe_group)
     with paddle.no_grad():
         fwd_expert_count = global_expert_count.reshape_(
             [world_size, num_expert]).sum(axis=0)
         fwd_batch_size = int(fwd_expert_count.sum().item())
-
-        # to get mp_global_count, dp_global_count
-        mp_global_count, dp_global_count = get_global_count(local_expert_count,
-                                                            mp_group, dp_group)
     return (
         pos,
         local_expert_count,
         global_expert_count,
-        mp_global_count,
-        dp_global_count,
         fwd_expert_count,
         fwd_batch_size, )
 
@@ -326,7 +294,6 @@ class MoeLayer(nn.Layer):
                  gate=None,
                  moe_group=None,
                  mp_group=None,
-                 dp_group=None,
                  **kwargs):
         super(MoeLayer, self).__init__()
 
@@ -349,7 +316,6 @@ class MoeLayer(nn.Layer):
         self.experts = experts
 
         self.mp_group = mp_group
-        self.dp_group = dp_group
         self.d_model = d_model
         if isinstance(gate, dict):
             self.top_k = gate.get("top_k", 2)
@@ -405,12 +371,9 @@ class MoeLayer(nn.Layer):
             pos,
             local_expert_count,
             global_expert_count,
-            mp_global_count,
-            dp_global_count,
             fwd_expert_count,
             fwd_batch_size, ) = prepare_forward(gate, self.num_expert,
-                                                self.world_size, self.group,
-                                                self.mp_group, self.dp_group)
+                                                self.world_size, self.group)
 
         topk = 1
         if len(gate.shape) == 2:
@@ -423,9 +386,8 @@ class MoeLayer(nn.Layer):
         assert topk == self.top_k
 
         x = MOEScatter.apply(inp, temp_pos, local_expert_count,
-                             global_expert_count, mp_global_count,
-                             dp_global_count, fwd_batch_size, self.world_size,
-                             self.mp_group, self.dp_group)
+                             global_expert_count, fwd_batch_size,
+                             self.world_size, self.group)
 
         d_model = self.d_model
 
@@ -455,8 +417,7 @@ class MoeLayer(nn.Layer):
             out_batch_size *= gate.shape[1]
 
         x = MOEGather.apply(x, pos, local_expert_count, global_expert_count,
-                            mp_global_count, dp_global_count, out_batch_size,
-                            self.world_size, self.mp_group, self.dp_group)
+                            out_batch_size, self.world_size, self.group)
 
         x = x.reshape([-1, self.top_k, d_model])
         value = value.reshape([x.shape[0], 1, self.top_k])
