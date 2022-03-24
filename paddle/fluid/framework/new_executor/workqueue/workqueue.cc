@@ -31,11 +31,8 @@ class WorkQueueImpl : public WorkQueue {
  public:
   explicit WorkQueueImpl(const WorkQueueOptions& options) : WorkQueue(options) {
     if (options_.track_task && options.events_waiter != nullptr) {
+      empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      empty_notifier_ = options.events_waiter->RegisterEvent(
-          kQueueEmptyEvent,
-          [tracker]() { return tracker->PendingTaskNum() == 0; });
       tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
     }
     if (options_.detached == false && options.events_waiter != nullptr) {
@@ -47,9 +44,6 @@ class WorkQueueImpl : public WorkQueue {
   }
 
   virtual ~WorkQueueImpl() {
-    if (empty_notifier_) {
-      empty_notifier_->UnregisterEvent();
-    }
     delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
@@ -57,7 +51,6 @@ class WorkQueueImpl : public WorkQueue {
     }
     if (destruct_notifier_) {
       destruct_notifier_->NotifyEvent();
-      destruct_notifier_->UnregisterEvent();
     }
   }
 
@@ -124,14 +117,12 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
     const auto& options = queues_options_[idx];
     if (options.track_task && tracker_ == nullptr &&
         options.events_waiter != nullptr) {
+      empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      empty_notifier_ = options.events_waiter->RegisterEvent(
-          kQueueEmptyEvent,
-          [tracker]() { return tracker->PendingTaskNum() == 0; });
       tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
     }
-    if (options.detached == false && options.events_waiter != nullptr) {
+    if (options.detached == false && options.events_waiter != nullptr &&
+        !destruct_notifier_) {
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
@@ -141,9 +132,6 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
 }
 
 WorkQueueGroupImpl::~WorkQueueGroupImpl() {
-  if (empty_notifier_) {
-    empty_notifier_->UnregisterEvent();
-  }
   for (auto queue : queues_) {
     queue->~NonblockingThreadPool();
   }
@@ -154,7 +142,6 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
   free(queues_storage_);
   if (destruct_notifier_) {
     destruct_notifier_->NotifyEvent();
-    destruct_notifier_->UnregisterEvent();
   }
 }
 

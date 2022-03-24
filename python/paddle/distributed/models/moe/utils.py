@@ -17,11 +17,11 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 
 
-def _number_count(gate_idx, upper_range):
+def _number_count(numbers, upper_range):
     """
     calculate the expert count according to the gate index.
     Args:
-        gate_idx (Tensor): Tensor. The input gate index whose data type should be int32 or int64.
+        numbers (Tensor): Tensor. The input gate index whose data type should be int32 or int64.
         upper_range (int): The number of the experts.
     Returns:
         out (Tensor): The output expert count.
@@ -30,26 +30,75 @@ def _number_count(gate_idx, upper_range):
             # required: distributed
             import paddle
 
-            gate_idx = [
+            numbers = [
                 [0, 2],
                 [0, 2]
             ]
             upper_range = 6
-            gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
-            number_count = paddle.distributed.utils.number_count(gate_idx, upper_range)
+            numbers = paddle.to_tensor(numbers, dtype="int32")
+            number_count = paddle.distributed.utils.number_count(numbers, upper_range)
             print(number_count) # the result: [2, 0, 2, 0, 0, 0]
     """
     if in_dygraph_mode():
-        return core.ops.number_count(gate_idx, 'upper_range', upper_range)
+        return core.ops.number_count(numbers, 'upper_range', upper_range)
     else:
         op_type = 'number_count'
 
         helper = LayerHelper(op_type, **locals())
-        out = helper.create_variable_for_type_inference(dtype=gate_idx.dtype)
+        out = helper.create_variable_for_type_inference(dtype=numbers.dtype)
 
         helper.append_op(
             type=op_type,
-            inputs={'gate_idx': gate_idx},
+            inputs={'numbers': numbers},
             outputs={'Out': out},
             attrs={'upper_range': upper_range})
+        return out
+
+
+def _assign_pos(x, cum_count):
+    """
+    Assign pos decides which tokens should be fetched belong to 
+    specially expert orderingly.
+    
+    Args:
+        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32 or int64.
+        cum_count (Tensor): The cumulative sum tokens of counters. Every element in the list must be a Tensor whose 
+            data type should be int64.
+  
+    Returns:
+        out (Tensor): Assemble numbers in the order of counters. 
+    
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+            number_count = [2, 0, 2, 0]
+            numbers = [
+                [0, 2],
+                [0, 2]
+            ]
+            number_count = paddle.to_tensor(number_count)
+            numbers = paddle.to_tensor(numbers, dtype="int32")
+            num_cum = paddle.cumsum(number_count)
+            pos = paddle.distributed.utils.assign_pos(x=numbers, cum_count=num_cum)
+            print(pos) # the result: (2, 0, 3, 1)
+    """
+    if in_dygraph_mode():
+        return core.ops.assign_pos(x, cum_count, cum_count[-1])
+    else:
+        op_type = 'assign_pos'
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=cum_count.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': [x],
+                'cum_count': [cum_count],
+                "eff_num_len": [cum_count[-1]]
+            },
+            outputs={'Out': [out]})
         return out
