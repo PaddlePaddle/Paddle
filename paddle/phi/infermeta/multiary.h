@@ -150,7 +150,8 @@ void InterpolateInferMeta(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
-    MetaTensor* output);
+    MetaTensor* output,
+    MetaConfig config = MetaConfig());
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 

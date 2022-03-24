@@ -103,7 +103,7 @@ KernelSignature BilinearInterpGradOpArgumentMapping(
        "interp_method",
        "align_corners",
        "align_mode"},
-      {"Out"});
+      {GradVarName("X")});
 }
 
 KernelSignature NearestInterpGradOpArgumentMapping(
@@ -119,7 +119,7 @@ KernelSignature NearestInterpGradOpArgumentMapping(
        "interp_method",
        "align_corners",
        "align_mode"},
-      {"Out"});
+      {GradVarName("X")});
 }
 KernelSignature TrilinearInterpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -134,7 +134,7 @@ KernelSignature TrilinearInterpGradOpArgumentMapping(
        "interp_method",
        "align_corners",
        "align_mode"},
-      {"Out"});
+      {GradVarName("X")});
 }
 
 KernelSignature LinearInterpGradOpArgumentMapping(
@@ -150,7 +150,7 @@ KernelSignature LinearInterpGradOpArgumentMapping(
        "interp_method",
        "align_corners",
        "align_mode"},
-      {"Out"});
+      {GradVarName("X")});
 }
 
 KernelSignature BicubicInterpGradOpArgumentMapping(
@@ -166,7 +166,7 @@ KernelSignature BicubicInterpGradOpArgumentMapping(
        "interp_method",
        "align_corners",
        "align_mode"},
-      {"Out"});
+      {GradVarName("X")});
 }
 
 }  // namespace phi
