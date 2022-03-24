@@ -16,50 +16,11 @@
 
 #include <unordered_map>
 #include "glog/logging.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace phi {
-
-class AutoTuneResult {
-  // TODO(limingshu): to be achieved later.
-};
-
-class AutoTunerBase {
- public:
-  template <typename Context, typename Callback>
-  AutoTuneResult PickBestAlgorithm(Context ctx,
-                                   Callback&& kernels,
-                                   bool need_workspace = false) {
-    if (need_workspace) {
-      // 查询可用显存信息
-    }
-    float min_time = -1.f;
-    for (&kernel : kernels) {
-      if (need_workspace) {
-        /* TODO(limingshu): Currently, only conv need workspace and workspace
-           query has beed added into conv, if more op need workspace, the
-           function
-           will be achieved. */
-      }
-      // kernel_time = RunKernelSync(ctx, kernel);
-      if (min_time > 0 && kernel_time < min_time) {
-        min_time = kernel_time;
-        selected_kernel = kernel;
-      }
-    }
-  }
-
-  template <typename Context, typename Callback>
-  double RunKernelSync(Context ctx, Callback&& kernel_func) {
-    /*
-    ctx.Wait();
-    time_start = profiler.start();
-    kernel_func(...);
-    time_end = profiler.end();
-    ctx.Wait();
-    return time_end - time_start;
-    */
-  }
-}
 
 /* This class is the main control abstraction of op auto-tune, to judge whether
    the op needed auto-tune, and choose out the best performance kernel
@@ -69,35 +30,69 @@ class AutoTunerBase {
         2. Tunning the op with different kernels
         3. Choose out and cache the best kernel implement.
 */
-class AutoTunerMap {
+class AutoTunerBase {
  public:
-  AutoTunerMap& Instance() {
-    static AutoTunerMap op_tune_map;
-    return op_tune_map;
-  }
+  template <typename Context>
+  phi::Kernel PickBestAlgorithm(Context ctx,
+                                const std::string& op_name,
+                                bool need_workspace = false) {
+    float min_time = -1.f;
+    size_t aviliable_memory = 0;
+    if (need_workspace) {
+      // Query the avaliable memory info
+      aviliable_memory = paddle::platform::GpuAvailableMemToAlloc();
+    }
+    if (kernels_.empty()) {
+      return phi::Kernel();
+    }
 
-  AutoTuneResult OpTuner(const std::string& op_type) {
-    auto need_tune = Has(op_type);
-    if (need_tune) {
-      auto iter = tune_map.find(op_type);
-      auto op_tuner = &iter->second;
-      // return op_tuner::PickBestAlgorithm();
+    for (&kernel : kernels) {
+      if (need_workspace) {
+        /* TODO(limingshu): Currently, only conv need workspace and workspace
+           query has beed added into conv, if more op need workspace, the
+           function will be achieved. */
+      }
+      float kernel_time = RunKernelSync(kernel);
+      if (min_time > 0 && kernel_time < min_time) {
+        min_time = kernel_time;
+        Kernel selected_kernel = kernel;
+      }
     }
   }
 
+  void KernelCollection(const std::string& op_name) {
+    auto has_kernel =
+        std::find(op_list_.begin(), op_list_.end(), op_name) != op_list_.end();
+    if (has_kernel) {
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_name)) {
+        KernelKeyMap kernel_iter =
+            phi::KernelFactory::Instance().SelectKernelMap(op_name);
+        PADDLE_ENFORCE_NE(kernel_iter,
+                          phi::KernelKeyMap(),
+                          platform::errors::NotFound(
+                              "Cannot find %s op gpu kernels.", op_name));
+
+        for (auto iter = kernel_iter.begin(); iter != kernel_iter.end();
+             iter++) {
+          auto kernel_key = iter->first;
+          if (kernel_key.backend() == phi::Backend::GPU ||
+              kernel_key.backend() == phi::Backend::GPUDNN) {
+            kernels_.emplace_back(iter->second);
+          }
+        }
+      }
+    }
+  }
+
+  template <typename Context, typename Callback>
+  float RunKernelSync(Context ctx, Callback&& kernel_func) {
+    /*
+    */
+  }
+
  private:
-  bool Has(const std::string& op_type) const {
-    return tune_map.find(op_type) != tune_map.end();
-  }
-
-  const AutoTunerBase& Get(const std::string& type) const {
-    auto op_info_ptr = GetNullable(type);
-  }
-
-  std::unordered_map<std::string, AutoTunerBase> tune_map;
-  size_t cached_counts;   // recording the total cached count in one iter
-  float cached_hit_rate;  //
-  size_t iter_idx;        // recording the iter no.
+  std::vector<phi::Kernel> kernels_;
+  std::vector<string> op_list_{"conv2d"};
 };
 
 }  // namespace phi
