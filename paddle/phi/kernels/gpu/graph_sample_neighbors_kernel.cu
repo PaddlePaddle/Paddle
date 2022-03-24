@@ -131,36 +131,37 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 }
 
 template <typename T, typename Context>
+int GetTotalSampleNum(thrust::device_vector<T>* input,
+                      const T* col_ptr,
+                      thrust::device_ptr<int> output_count,
+                      int sample_size,
+                      int bs) {
+  thrust::transform(
+      input->begin(), input->end(), output_count, DegreeFunctor<T>(col_ptr));
+  if (sample_size >= 0) {
+    thrust::transform(
+        output_count, output_count + bs, output_count, MaxFunctor(sample_size));
+  }
+  int total_sample_num = thrust::reduce(output_count, output_count + bs);
+  return total_sample_num;
+}
+
+template <typename T, typename Context>
 void SampleNeighbors(const Context& dev_ctx,
                      const T* row,
                      const T* col_ptr,
                      thrust::device_vector<T>* input,
-                     thrust::device_vector<T>* output,
-                     thrust::device_vector<int>* output_count,
+                     thrust::device_ptr<T> output,
+                     thrust::device_ptr<int> output_count,
                      int sample_size,
-                     int bs) {
-  output_count->resize(bs);
-
-  thrust::transform(input->begin(),
-                    input->end(),
-                    output_count->begin(),
-                    DegreeFunctor<T>(col_ptr));
-  if (sample_size >= 0) {
-    thrust::transform(output_count->begin(),
-                      output_count->end(),
-                      output_count->begin(),
-                      MaxFunctor(sample_size));
-  }
-  int total_sample_num =
-      thrust::reduce(output_count->begin(), output_count->end());
-  output->resize(total_sample_num);
-
+                     int bs,
+                     int total_sample_num) {
   thrust::device_vector<int> output_ptr;
   thrust::device_vector<int> output_idxs;
   output_ptr.resize(bs);
   output_idxs.resize(total_sample_num);
   thrust::exclusive_scan(
-      output_count->begin(), output_count->end(), output_ptr.begin(), 0);
+      output_count, output_count + bs, output_ptr.begin(), 0);
 
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
@@ -173,7 +174,7 @@ void SampleNeighbors(const Context& dev_ctx,
       thrust::raw_pointer_cast(input->data()),
       row,
       col_ptr,
-      thrust::raw_pointer_cast(output->data()),
+      thrust::raw_pointer_cast(output),
       thrust::raw_pointer_cast(output_ptr.data()),
       thrust::raw_pointer_cast(output_idxs.data()));
 }
@@ -193,24 +194,27 @@ void GraphSampleNeighborsKernel(const Context& dev_ctx,
 
   thrust::device_vector<T> input(bs);
   thrust::copy(x_data, x_data + bs, input.begin());
-  thrust::device_vector<T> output;
-  thrust::device_vector<int> output_count;
+
+  out_count->Resize({bs});
+  int* out_count_data = dev_ctx.template Alloc<int>(out_count);
+  thrust::device_ptr<int> output_count(out_count_data);
+
+  int total_sample_size = GetTotalSampleNum<T, Context>(
+      &input, col_ptr_data, output_count, sample_size, bs);
+
+  out->Resize({static_cast<int>(total_sample_size)});
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  thrust::device_ptr<T> output(out_data);
 
   SampleNeighbors<T, Context>(dev_ctx,
                               row_data,
                               col_ptr_data,
                               &input,
-                              &output,
-                              &output_count,
+                              output,
+                              output_count,
                               sample_size,
-                              bs);
-
-  out->Resize({static_cast<int>(output.size())});
-  T* out_data = dev_ctx.template Alloc<T>(out);
-  thrust::copy(output.begin(), output.end(), out_data);
-  out_count->Resize({bs});
-  int* out_count_data = dev_ctx.template Alloc<int>(out_count);
-  thrust::copy(output_count.begin(), output_count.end(), out_count_data);
+                              bs,
+                              total_sample_size);
 }
 
 }  // namespace phi
