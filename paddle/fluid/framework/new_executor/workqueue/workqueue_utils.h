@@ -81,7 +81,13 @@ class TaskTracker {
 
   ~TaskTracker() = default;
 
-  void AddCounter() { num_tasks_.fetch_add(1, std::memory_order_relaxed); }
+  void AddCounter() {
+    if (0 == num_tasks_.fetch_add(1, std::memory_order_relaxed)) {
+      if (notifier_ != nullptr) {
+        notifier_->CancelEvent();
+      }
+    }
+  }
 
   void SubCounter() {
     if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
