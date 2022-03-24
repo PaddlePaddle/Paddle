@@ -358,34 +358,41 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
     const int cvm_offset = ctx.Attr<int>("cvm_offset");
 
     int embedding_size = inputs[0]->numel() / inputs[0]->dims()[0];
-    int batch_size = -1;
-    std::vector<paddle::framework::MixVector<size_t> *> mix_lods_v(slot_size);
-
+    int batch_size = inputs[0]->lod().size() ? inputs[0]->lod()[0].size() - 1 : inputs[0]->dims()[0];
+    std::vector<size_t> mix_lods;
+    mix_lods.reserve(slot_size * (batch_size + 1));
     for (size_t i = 0; i < slot_size; ++i) {
       const auto *input = inputs[i];
-
-      Vector<size_t> lods;
       if (input->lod().size() != 0) {
         auto lod = input->lod();
-        lods = lod[0];
+        PADDLE_ENFORCE_EQ(lod.size(), 1,
+                          platform::errors::PreconditionNotMet(
+                              "The lod size of all input should be 1, "
+                              "please cheack"));
+        PADDLE_ENFORCE_EQ(lod[0].size(), batch_size + 1,
+                          platform::errors::PreconditionNotMet(
+                              "The lod[0] size of all input should be batch_size + 1, "
+                              "please cheack"));
+        mix_lods.insert(mix_lods.end(), lod[0].begin(), lod[0].end());
       } else {
-        lods.push_back(0);
+        mix_lods.push_back(0);
         for (int i = 0; i < input->dims()[0]; i++) {
-          lods.push_back(i + 1);
+          mix_lods.push_back(i + 1);
         }
       }
       int cur_batch_size =
           input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
-      if (batch_size == -1) {
-        batch_size = cur_batch_size;
-      } else {
-        PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
-                          platform::errors::PreconditionNotMet(
-                              "The batch size of all input should be same, "
-                              "please cheack, last batchsize is %d, current "
-                              "batchsize is %d",
-                              batch_size, cur_batch_size));
-      }
+      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+                        platform::errors::PreconditionNotMet(
+                            "The batch size of all input should be same, "
+                            "please cheack, last batchsize is %d, current "
+                            "batchsize is %d",
+                            batch_size, cur_batch_size));
+    }
+    paddle::framework::MixVector<size_t> mix_lods_v(&mix_lods);
+    auto mix_lods_data = mix_lods_v.CUDAData(ctx.GetPlace());
+    for (size_t i = 0; i < slot_size; ++i) {
+      const auto *input = inputs[i];
       input_data[i] = reinterpret_cast<const T *>(input->data<T>());
 
       auto *output = outputs[i];
@@ -396,8 +403,8 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       }
       output_data[i] =
           reinterpret_cast<T *>(output->mutable_data<T>(ctx.GetPlace()));
-      mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
-      lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
+      lods_data[i] = mix_lods_data;
+      mix_lods_data += batch_size + 1;
       seqpool_output_data[i] =
           reinterpret_cast<T *>(seqpool_outputs[i].mutable_data<T>(
               {batch_size, embedding_size}, ctx.GetPlace()));
@@ -406,10 +413,6 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
     FusedSeqpoolCVM(ctx, input_data, output_data, seqpool_output_data,
                     lods_data, batch_size, slot_size, embedding_size,
                     padding_value, use_cvm, cvm_offset);
-
-    for (int i = 0; i < slot_size; i++) {
-      delete mix_lods_v[i];
-    }
   }
 };
 
@@ -432,52 +435,54 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<const size_t *> lods_data(slot_size);
 
     int embedding_size = in_grads[0]->numel() / in_grads[0]->dims()[0];
-    int batch_size = -1;
-    std::vector<paddle::framework::MixVector<size_t> *> mix_lods_v(slot_size);
+    int batch_size = in_grads[0]->lod().size() ? in_grads[0]->lod()[0].size() - 1 : in_grads[0]->dims()[0];
+    std::vector<size_t> mix_lods;
+    mix_lods.reserve(slot_size * (batch_size + 1));
+    for (size_t i = 0; i < slot_size; ++i) {
+      auto *in_grad = in_grads[i];
+      if (in_grad->lod().size() != 0) {
+        auto lod = in_grad->lod();
+        PADDLE_ENFORCE_EQ(lod.size(), 1,
+                          platform::errors::PreconditionNotMet(
+                              "The lod size of all in_grad should be 1, "
+                              "please cheack"));
+        PADDLE_ENFORCE_EQ(lod[0].size(), batch_size + 1,
+                          platform::errors::PreconditionNotMet(
+                              "The lod[0] size of all in_grad should be batch_size + 1, "
+                              "please cheack"));
+        mix_lods.insert(mix_lods.end(), lod[0].begin(), lod[0].end());
+      } else {
+        mix_lods.push_back(0);
+        for (int i = 0; i < in_grad->dims()[0]; i++) {
+          mix_lods.push_back(i + 1);
+        }
+      }
+      int cur_batch_size = in_grad->lod().size() ? in_grad->lod()[0].size() - 1 : in_grad->dims()[0];
+      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+                        platform::errors::PreconditionNotMet(
+                            "The batch size of all in_grad should be same, "
+                            "please cheack, last batchsize is %d, current "
+                            "batchsize is %d",
+                            batch_size, cur_batch_size));
+    }
+    paddle::framework::MixVector<size_t> mix_lods_v(&mix_lods);
+    auto mix_lods_data = mix_lods_v.CUDAData(ctx.GetPlace());
 
     for (size_t i = 0; i < slot_size; ++i) {
       auto *in_grad = in_grads[i];
-
-      Vector<size_t> lods;
-      if (in_grad->lod().size() != 0) {
-        auto lod = in_grad->lod();
-        lods = lod[0];
-      } else {
-        lods.push_back(0);
-        for (int i = 0; i < in_grad->dims()[0]; i++) {
-          lods.push_back(i + 1);
-        }
-      }
-
-      int cur_batch_size = in_grad->lod().size() ? in_grad->lod()[0].size() - 1
-                                                 : in_grad->dims()[0];
-      if (batch_size == -1) {
-        batch_size = cur_batch_size;
-      } else {
-        PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
-                          platform::errors::PreconditionNotMet(
-                              "The batch size of all input should be same, "
-                              "please cheack, last batchsize is %d, current "
-                              "batchsize is %d",
-                              batch_size, cur_batch_size));
-      }
 
       auto *out_grad = out_grads[i];
       out_grads_data[i] = reinterpret_cast<const T *>(out_grad->data<T>());
 
       in_grads_data[i] =
           reinterpret_cast<T *>(in_grad->mutable_data<T>(ctx.GetPlace()));
-      mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
-      lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
+      lods_data[i] = mix_lods_data;
+      mix_lods_data += batch_size + 1;
       cvm_data[i] = reinterpret_cast<const T *>(cvm->data<T>());
     }
     FusedSeqpoolCVMGrad(ctx, out_grads_data, in_grads_data, cvm_data, lods_data,
                         batch_size, slot_size, embedding_size, use_cvm,
                         cvm_offset);
-
-    for (int i = 0; i < slot_size; i++) {
-      delete mix_lods_v[i];
-    }
   }
 };
 
