@@ -155,7 +155,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['Out'])
 
         Ids_var = main_block.var(kwargs['Ids'][0])
-        Weight_var = main_block.var(kwargs['W'][0])
+        Weight_var = main_block._var_recursive(kwargs['W'][0])
         Out_var = main_block.var(kwargs['Out'][0])
 
         # got dist attribute info
@@ -277,7 +277,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         # param initialization sync
         if Weight_var.is_parameter and not op_dist_attr.is_recompute:
-            assert Weight_var.name not in dist_op_context.already_init_sync_vars
+            if Weight_var.name in dist_op_context.already_init_sync_vars:
+                return
             dist_op_context.already_init_sync_vars.add(Weight_var.name)
             param = startup_block.var(Weight_var.name)
             param_dist_attr = ctx.get_tensor_dist_attr_for_program(param)

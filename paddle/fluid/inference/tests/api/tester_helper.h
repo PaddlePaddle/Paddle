@@ -213,15 +213,15 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                     element_in_batch * 3 * 224 * 224,
                 3 * 224 * 224,
                 static_cast<float *>(images.data.data()) + i * 3 * 224 * 224);
-
-    std::copy_n(static_cast<int64_t *>(test_data[batch][1].data.data()) +
-                    element_in_batch,
-                1, static_cast<int64_t *>(labels.data.data()) + i);
+    if (FLAGS_with_accuracy_layer)
+      std::copy_n(static_cast<int64_t *>(test_data[batch][1].data.data()) +
+                      element_in_batch,
+                  1, static_cast<int64_t *>(labels.data.data()) + i);
   }
-
-  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(2);
+  auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(
+      FLAGS_with_accuracy_layer ? 2 : 1);
   (*warmup_data)[0] = std::move(images);
-  (*warmup_data)[1] = std::move(labels);
+  if (FLAGS_with_accuracy_layer) (*warmup_data)[1] = std::move(labels);
   return warmup_data;
 }
 
@@ -254,9 +254,13 @@ void SetInputs(std::vector<std::vector<PaddleTensor>> *inputs,
   }
   for (auto i = 0; i < iterations; i++) {
     auto images = image_reader.NextBatch();
-    auto labels = label_reader.NextBatch();
-    inputs->emplace_back(
-        std::vector<PaddleTensor>{std::move(images), std::move(labels)});
+    std::vector<PaddleTensor> tmp_vec;
+    tmp_vec.push_back(std::move(images));
+    if (FLAGS_with_accuracy_layer) {
+      auto labels = label_reader.NextBatch();
+      tmp_vec.push_back(std::move(labels));
+    }
+    inputs->push_back(std::move(tmp_vec));
   }
 }
 
@@ -825,7 +829,8 @@ void CompareQuantizedAndAnalysis(
   SummarizePerformance("FP32", sample_latency_fp32, "INT8",
                        sample_latency_int8);
 
-  CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
+  if (FLAGS_with_accuracy_layer)
+    CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
 }
 
 void CompareBFloat16AndAnalysis(
@@ -864,7 +869,8 @@ void CompareBFloat16AndAnalysis(
   SummarizePerformance("FP32", sample_latency_fp32, "BF16",
                        sample_latency_bf16);
 
-  CompareAccuracy(bf16_outputs, analysis_outputs, compared_idx);
+  if (FLAGS_with_accuracy_layer)
+    CompareAccuracy(bf16_outputs, analysis_outputs, compared_idx);
 }
 
 void CompareAnalysisAndAnalysis(

@@ -335,15 +335,37 @@ class MultiheadMatMulOpConverter : public OpConverter {
         reshape_before_fc_dim.d[4] = 1;
         auto* reshape_before_fc_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+        if (enable_int8) {
+          engine_->SetTensorDynamicRange(reshape_before_fc_layer->getOutput(0),
+                                         in_scale);
+        }
         reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
         reshape_before_fc_layer->setName(
             ("shuffle_before_multihead_mamul(Output: " + output_name + ")")
                 .c_str());
 
         // add layer fc
-        auto* fc_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0), n,
-            weight.get(), bias.get());
+        nvinfer1::ILayer* fc_layer = nullptr;
+        if (enable_int8) {
+          nvinfer1::DimsHW nv_ksize(1, 1);
+          fc_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Convolution, *reshape_before_fc_layer->getOutput(0), n,
+              nv_ksize, weight.get(), bias.get());
+        } else {
+          fc_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
+              n, weight.get(), bias.get());
+        }
+
+        if (enable_int8) {
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("fc_out_threshold"), true,
+              platform::errors::InvalidArgument(
+                  "must have out threshold in multihead layers in int8 mode"));
+          float out_scale =
+              BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+          engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+        }
         fc_layer->setName(
             ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 
@@ -359,6 +381,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
         plugin_inputs.push_back(input_bias_qk);
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+        if (enable_int8) {
+          with_fp16 = 1;
+        }
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(hidden_in, head_number,
                                                   head_size, scale, with_fp16);

@@ -988,18 +988,6 @@ inline std::ostream& operator<<(std::ostream& os, const float16& a) {
   return os;
 }
 
-template <typename T>
-class MPTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class MPTypeTrait<float16> {
- public:
-  using Type = float;
-};
-
 }  // namespace dtype
 }  // namespace phi
 

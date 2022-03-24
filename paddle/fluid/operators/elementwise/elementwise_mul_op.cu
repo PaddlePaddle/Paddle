@@ -63,33 +63,6 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
   }
 };
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-ElementwiseMulGrad(const framework::ExecutionContext& ctx,
-                   const framework::Tensor* x, const framework::Tensor* y,
-                   const framework::Tensor* out, const framework::Tensor* dout,
-                   framework::Tensor* dx, framework::Tensor* dy) {
-  int axis = ctx.Attr<int>("axis");
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  const auto place = ctx.GetPlace();
-
-  if (dx != nullptr && dy != nullptr) {
-    std::vector<const framework::Tensor*> ins = {dout, y, x};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dx, dy, MulGradXYFunctor<T, T>());
-  } else if (dx != nullptr && dy == nullptr) {
-    std::vector<const framework::Tensor*> ins = {dout, y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
-                                                dx, MulGradFunctor<T>());
-  } else if (dx == nullptr && dy != nullptr) {
-    std::vector<const framework::Tensor*> ins = {dout, x};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
-                                                dy, MulGradFunctor<T>());
-  }
-}
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -103,44 +76,3 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_mul_grad,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, bool>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::bfloat16>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
-                                  plat::complex<float>>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
-                                  plat::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_mul_grad_grad,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, bool>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::bfloat16>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex<float>>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_mul_triple_grad,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, bool>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext,
-                                        plat::bfloat16>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex<float>>,
-    ops::ElementwiseMulTripleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex<double>>);

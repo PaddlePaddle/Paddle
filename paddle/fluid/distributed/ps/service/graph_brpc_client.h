@@ -63,8 +63,8 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual ~GraphBrpcClient() {}
   // given a batch of nodes, sample graph_neighbors for each of them
   virtual std::future<int32_t> batch_sample_neighbors(
-      uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
-      std::vector<std::vector<uint64_t>>& res,
+      uint32_t table_id, std::vector<int64_t> node_ids, int sample_size,
+      std::vector<std::vector<int64_t>>& res,
       std::vector<std::vector<float>>& res_weight, bool need_weight,
       int server_index = -1);
 
@@ -75,20 +75,20 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
                                                    int server_index,
                                                    int sample_size,
-                                                   std::vector<uint64_t>& ids);
+                                                   std::vector<int64_t>& ids);
   virtual std::future<int32_t> get_node_feat(
-      const uint32_t& table_id, const std::vector<uint64_t>& node_ids,
+      const uint32_t& table_id, const std::vector<int64_t>& node_ids,
       const std::vector<std::string>& feature_names,
       std::vector<std::vector<std::string>>& res);
 
   virtual std::future<int32_t> set_node_feat(
-      const uint32_t& table_id, const std::vector<uint64_t>& node_ids,
+      const uint32_t& table_id, const std::vector<int64_t>& node_ids,
       const std::vector<std::string>& feature_names,
       const std::vector<std::vector<std::string>>& features);
 
   virtual std::future<int32_t> clear_nodes(uint32_t table_id);
   virtual std::future<int32_t> add_graph_node(
-      uint32_t table_id, std::vector<uint64_t>& node_id_list,
+      uint32_t table_id, std::vector<int64_t>& node_id_list,
       std::vector<bool>& is_weighted_list);
   virtual std::future<int32_t> use_neighbors_sample_cache(uint32_t table_id,
                                                           size_t size_limit,
@@ -96,11 +96,11 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual std::future<int32_t> load_graph_split_config(uint32_t table_id,
                                                        std::string path);
   virtual std::future<int32_t> remove_graph_node(
-      uint32_t table_id, std::vector<uint64_t>& node_id_list);
+      uint32_t table_id, std::vector<int64_t>& node_id_list);
   virtual int32_t initialize();
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
-  int get_server_index_by_id(uint64_t id);
+  int get_server_index_by_id(int64_t id);
   void set_local_channel(int index) {
     this->local_channel = get_cmd_channel(index);
   }

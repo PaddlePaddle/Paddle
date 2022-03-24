@@ -348,6 +348,29 @@ __device__ __forceinline__ void Reduce(T* out,
   }
 }
 
+/*
+* @brief Fill register with a constant according to OpFunc
+*
+* @template paraments
+* InT: The data type of in1 and in2.
+* OutT: The data type of out.
+* NX: The number of data columns loaded by each thread.
+* NY: The number of data rows loaded by each thread.
+* BlockSize: Identifies the current device thread index method. For xpu,
+* core_id() is used as the index.
+* OpFunc: Compute functor which has an operator() as following
+*     template <typename InT>
+*     struct XxxFunctor {
+*       HOSTDEVICE InT operator()()
+* const {
+*         return a;
+*       }
+*     };
+*
+* @param
+* out: The register pointer of out, the size is NX * NY.
+* compute: Compute function which was declared like OpFunc<InT>().
+*/
 template <typename InT,
           typename OutT,
           int NX,

@@ -25,6 +25,8 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
 
+paddle.enable_static()
+
 
 class TestScaleOp(OpTest):
     def setUp(self):
@@ -201,5 +203,4 @@ class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

@@ -117,8 +117,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarsInferer, "X", "Y");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(where, WhereInferShapeFunctor,
-                            PT_INFER_META(phi::WhereInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(where, WhereInferShapeFunctor,
+                            PD_INFER_META(phi::WhereInferMeta));
 REGISTER_OPERATOR(where, ops::WhereOp, ops::WhereOpMaker,
                   ops::WhereOpGradMaker<paddle::framework::OpDesc>,
                   ops::WhereOpGradMaker<paddle::imperative::OpBase>,

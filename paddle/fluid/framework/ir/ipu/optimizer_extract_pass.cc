@@ -25,14 +25,14 @@ std::set<std::string> ignored_ops = {
     "sum",
     "clip",
     "clip_by_norm",
-    "square",
     "reduce_sum",
     "sqrt",
     "elementwise_max",
     "elementwise_div",
     "elementwise_mul",
-    "scale",   // adamax
-    "assign",  // adamw
+    "scale",           // adamax
+    "assign",          // adamw
+    "squared_l2_norm"  // gradient_clip_norm
 };
 
 const bool startswith(const std::string& str, const std::string& pre) {
@@ -62,6 +62,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   new_op.SetAttr("with_lr_sched", false);
 
   std::set<std::string> set_ops{};
+  // save the weight decay tensor_name and weight_decay_value for Lamb
+  std::vector<std::string> weight_decay_vars{};
+  std::vector<float> weight_decay_values{};
+
   // use map store <op_type, op_ptr> ?
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp()) {
@@ -75,6 +79,15 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
     auto op_role = static_cast<OpRole>(op_role_);
 
     if (op_role == OpRole::kOptimize) {
+      // save weight decay value from every lamb optimizer op
+      if (op_type == "lamb" && op->HasAttr("weight_decay")) {
+        auto weight_decay_value =
+            BOOST_GET_CONST(float, op->GetAttr("weight_decay"));
+        auto params = op->Output("ParamOut");
+        weight_decay_vars.push_back(params[0]);
+        weight_decay_values.push_back(weight_decay_value);
+      }
+
       if (set_ops.count(op_type)) {
         continue;
       }
@@ -270,7 +283,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   // seems with_lr_sched is always true
   new_op.SetAttr("with_lr_sched", true);
 
-  // setup weight deacy
+  // setup weight decay for Lamb
+  new_op.SetAttr("weight_decay_vars", weight_decay_vars);
+  new_op.SetAttr("weight_decay_values", weight_decay_values);
+
   // weight_decay/coeff is "scale" attr of scale_op
   if (set_ops.count("scale") && set_ops.count("sum")) {
     if (set_ops.count("sign")) {

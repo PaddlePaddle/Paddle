@@ -15,8 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
+#include <unordered_map>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {
@@ -66,18 +69,29 @@ struct HostPythonNode {
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
-  explicit ProfilerResult(NodeTrees* tree);
+  explicit ProfilerResult(std::unique_ptr<NodeTrees> tree,
+                          const ExtraInfo& extra_info);
   ~ProfilerResult();
   std::map<uint64_t, HostPythonNode*> GetData() {
-    return thread_event_trees_map;
+    return thread_event_trees_map_;
   }
-  void Save(const std::string& file_name);
+  std::unordered_map<std::string, std::string> GetExtraInfo() {
+    return extra_info_.GetExtraInfo();
+  }
+
+  void Save(const std::string& file_name,
+            const std::string format = std::string("json"));
+
+  std::unique_ptr<NodeTrees>& GetNodeTrees() { return tree_; }
 
  private:
-  std::map<uint64_t, HostPythonNode*> thread_event_trees_map;
-  NodeTrees* tree_;
-  HostPythonNode* CopyTree(HostTraceEventNode* node);
+  std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
+  std::unique_ptr<NodeTrees> tree_;
+  ExtraInfo extra_info_;
+  HostPythonNode* CopyTree(HostTraceEventNode* root);
 };
+
+std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename);
 
 }  // namespace platform
 }  // namespace paddle

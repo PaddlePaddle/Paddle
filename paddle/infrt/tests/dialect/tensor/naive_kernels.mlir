@@ -13,7 +13,7 @@ func @naive_elementwise_add() {
   // CHECK: tensor: shape=shape[2,8], values=[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   dt.print_tensor (%c : !infrt.dense_tensor<CPU, FP32, NCHW>)
 
-  Infrt.return
+  infrt.return
 }
 
 // RUN: infrtexec -i %s | FileCheck %s
@@ -31,5 +31,5 @@ func @naive_matmul() {
   // CHECK: tensor: shape=shape[2,4], values=[16, 16, 16, 16, 16, 16, 16, 16]
   dt.print_tensor (%c : !infrt.dense_tensor<CPU, FP32, NCHW>)
 
-  Infrt.return
+  infrt.return
 }

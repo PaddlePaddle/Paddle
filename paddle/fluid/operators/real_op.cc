@@ -82,8 +82,8 @@ DECLARE_INPLACE_OP_INFERER(RealGradOpInplaceInferer,
 }  // namespace operators
 }  // namespace paddle
 
-DELCARE_INFER_SHAPE_FUNCTOR(real, RealInferShapeFunctor,
-                            PT_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(real, RealInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
 
 namespace ops = paddle::operators;
 

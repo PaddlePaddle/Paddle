@@ -81,13 +81,9 @@ class TestHuberLossOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['Y'],
             'Out',
@@ -95,8 +91,6 @@ class TestHuberLossOp(OpTest):
             no_grad_set=set("residual"))
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(
             self.place, ['X'],
             'Out',

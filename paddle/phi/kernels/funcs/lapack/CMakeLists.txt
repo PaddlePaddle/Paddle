@@ -1,1 +1,1 @@
-math_library(lapack_function DEPS dynload_lapack)
+math_library(lapack_function DEPS phi_dynload_lapack)

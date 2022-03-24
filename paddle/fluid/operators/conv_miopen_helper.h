@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -51,12 +52,11 @@ static inline void GetNCDHW(const framework::DDim& dims,
 }
 
 template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const framework::ExecutionContext& context,
+static void RemovePaddingSlice(const phi::GPUContext& context,
                                const Tensor* input, Tensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  auto& place = *context.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
   auto offsets = Eigen::array<int, D>();
@@ -128,11 +128,10 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, size_t workspace_size,
-                     const framework::ExecutionContext& ctx) {
+                     const phi::GPUContext& ctx) {
     algo_t algo;
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -170,11 +169,10 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, size_t workspace_size,
-                     const framework::ExecutionContext& ctx) {
+                     const phi::GPUContext& ctx) {
     algo_t algo;
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -212,11 +210,10 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, size_t workspace_size,
-                     const framework::ExecutionContext& ctx) {
+                     const phi::GPUContext& ctx) {
     algo_t algo;
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto workspace_handle = ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;

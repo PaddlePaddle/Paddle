@@ -75,7 +75,7 @@ class DistributedInfer:
 
         if self.sparse_table_maps is None:
             self.sparse_table_maps = {}
-            send_ctx = fleet.fleet._runtime_handle._communicator.send_ctx_
+            send_ctx = fleet.fleet._runtime_handle._send_ctx
             for gradname, ctx in send_ctx.items():
                 if ctx.is_sparse:
                     param = gradname.strip("@GRAD")

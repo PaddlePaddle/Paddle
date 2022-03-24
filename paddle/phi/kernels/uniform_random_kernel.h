@@ -17,7 +17,6 @@
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 
@@ -41,26 +40,5 @@ void UniformRandomKernel(const Context& dev_ctx,
                          float max,
                          int seed,
                          DenseTensor* out);
-
-template <typename T, typename Context>
-void UniformRandomRawSRKernel(const Context& dev_ctx,
-                              const ScalarArray& shape,
-                              DataType dtype,
-                              float min,
-                              float max,
-                              int seed,
-                              int diag_num,
-                              int diag_step,
-                              float diag_val,
-                              SelectedRows* out);
-
-template <typename T, typename Context>
-void UniformRandomSRKernel(const Context& dev_ctx,
-                           const ScalarArray& shape,
-                           DataType dtype,
-                           float min,
-                           float max,
-                           int seed,
-                           SelectedRows* out);
 
 }  // namespace phi

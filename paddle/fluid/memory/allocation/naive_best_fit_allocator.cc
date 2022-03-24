@@ -739,7 +739,7 @@ class BuddyAllocatorList {
  private:
   explicit BuddyAllocatorList(const std::string &device_type)
       : device_type_(device_type) {
-    auto devices = platform::DeviceManager::GetDeviceList(device_type);
+    auto devices = phi::DeviceManager::GetDeviceList(device_type);
     for (auto dev_id : devices) {
       init_flags_[dev_id].reset(new std::once_flag());
     }
@@ -766,15 +766,15 @@ class BuddyAllocatorList {
                           device_type_, dev_id));
 
     std::call_once(*init_flags_[dev_id], [this, dev_id] {
-      platform::DeviceManager::SetDevice(device_type_, dev_id);
+      phi::DeviceManager::SetDevice(device_type_, dev_id);
       platform::CustomPlace place(device_type_, dev_id);
 
       allocators_[dev_id].reset(new BuddyAllocator(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),
-          platform::DeviceManager::GetMinChunkSize(place),
-          platform::DeviceManager::GetMaxChunkSize(place),
-          platform::DeviceManager::GetExtraPaddingSize(place), device_type_));
+          phi::DeviceManager::GetMinChunkSize(place),
+          phi::DeviceManager::GetMaxChunkSize(place),
+          phi::DeviceManager::GetExtraPaddingSize(place), device_type_));
     });
 
     return allocators_[dev_id].get();
@@ -808,9 +808,9 @@ void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
   auto *ptr = buddy_allocator->Alloc(size);
 
   if (ptr == nullptr) {
-    platform::DeviceGuard guard(place);
+    phi::DeviceGuard guard(place);
     size_t avail, total;
-    platform::DeviceManager::MemoryStats(place, &total, &avail);
+    phi::DeviceManager::MemoryStats(place, &total, &avail);
     PADDLE_THROW(platform::errors::ResourceExhausted(
         "Cannot allocate %s in %s:%d, avaliable %s, total %s, used "
         "%s. ",
@@ -819,8 +819,7 @@ void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
         string::HumanReadableSize(total - avail)));
   } else {
     if (FLAGS_init_allocated_mem) {
-      platform::DeviceManager::GetDeviceWithPlace(place)->MemorySet(ptr, 0xEF,
-                                                                    size);
+      phi::DeviceManager::GetDeviceWithPlace(place)->MemorySet(ptr, 0xEF, size);
     }
   }
   VLOG(10) << "  pointer=" << ptr;

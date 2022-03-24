@@ -20,11 +20,11 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace phi {
 
@@ -80,8 +80,4 @@ void CastKernel(const Context& dev_ctx,
         paddle::experimental::DataType::UNDEFINED);     \
   }
 
-#if !defined(PADDLE_WITH_HIP)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, phi::dtype::bfloat16)
-#else
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
-#endif

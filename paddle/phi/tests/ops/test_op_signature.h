@@ -72,6 +72,11 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return selected_rows_inputs.count(name) > 0;
   }
 
+  // add member if needed
+  bool IsDenseTensorVectorInput(const std::string& name) const override {
+    return false;
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     return dense_tensor_outputs.count(name) > 0;
   }
@@ -79,6 +84,8 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
   bool IsSelectedRowsOutput(const std::string& name) const override {
     return selected_rows_outputs.count(name) > 0;
   }
+
+  bool IsForInferShape() const override { return false; }
 
  private:
   const std::unordered_set<std::string> dense_tensor_inputs;

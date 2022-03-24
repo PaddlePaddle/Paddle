@@ -119,8 +119,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradOpNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(unfold, UnfoldInferShapeFunctor,
-                            PT_INFER_META(phi::UnfoldInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(unfold, UnfoldInferShapeFunctor,
+                            PD_INFER_META(phi::UnfoldInferMeta));
 REGISTER_OPERATOR(unfold, ops::UnfoldOp, ops::UnfoldOpMaker,
                   ops::UnfoldGradMaker<paddle::framework::OpDesc>,
                   ops::UnfoldGradMaker<paddle::imperative::OpBase>,

@@ -125,6 +125,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable the use of cuDNN kernel.
   virtual void EnableCUDNN() {}
 
+  /// \brief Enable use gpu fp16 kernel.
+  virtual void Exp_EnableUseGpuFp16() {}
+
   /// \brief Enable the use of MKLDNN.
   /// The MKLDNN control exists in both CPU and GPU mode, because there can
   /// still be some CPU kernels running in GPU mode.
@@ -139,6 +142,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
+
+  /// \brief Check if we are using gpu fp16 kernel.
+  /// \return A bool variable implying whether we are in gpu fp16 mode.
+  bool use_gpu_fp16() const { return use_gpu_fp16_; }
 
   /// \brief Check if we are using xpu.
   /// \return A bool variable implying whether we are in xpu mode.
@@ -162,6 +169,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_npu_{false};
   bool use_ipu_{false};
   bool use_mkldnn_{false};
+  bool use_gpu_fp16_{false};
   /// \endcond
 };
 
@@ -223,6 +231,9 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Enable the use of cuDNN kernel.
   void EnableCUDNN() override;
 
+  /// \brief Enable the use of gpu fp16 kernel.
+  void Exp_EnableUseGpuFp16() override;
+
   /// \brief Not supported in GPU mode yet.
   void EnableMKLDNN() override;
 
@@ -238,6 +249,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
  protected:
   /// \cond Protected
   bool use_cudnn_{false};
+  bool use_gpu_fp16_{false};
   /// \endcond
 };
 

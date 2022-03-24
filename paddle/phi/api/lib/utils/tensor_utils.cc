@@ -40,6 +40,13 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        tensor.numel(),
+        1UL,
+        platform::errors::InvalidArgument("The DenseTensor used to construct "
+                                          "the Scalar contains more than 1 "
+                                          "value, it contains `%d` values.",
+                                          tensor.numel()));
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);

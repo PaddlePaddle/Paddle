@@ -27,11 +27,11 @@ class ReduceMinMLUKernel : public framework::OpKernel<T> {
     int out_dtype = context.Attr<int>("out_dtype");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = input->dims();
     const auto& input_dim_size = input->dims().size();
     std::vector<int> reduce_dims;
     if (reduce_all) {
-      for (size_t i = 0; i < input_dims.size(); i++) {
+      for (int i = 0; i < input_dims.size(); i++) {
         reduce_dims.push_back(static_cast<int>(i));
       }
     } else {

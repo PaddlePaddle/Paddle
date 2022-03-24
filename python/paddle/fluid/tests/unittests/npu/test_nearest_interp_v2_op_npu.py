@@ -39,10 +39,11 @@ class TestNearestInterpOp(OpTest):
         self.set_npu()
         self.out_size = None
         self.actual_shape = None
+        self.init_dtype()
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -95,8 +96,21 @@ class TestNearestInterpOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', in_place=True, max_relative_error=0.006)
+        if self.dtype == np.float16:
+            self.check_grad_with_place(
+                self.place, ['X'],
+                'Out',
+                in_place=True,
+                max_relative_error=0.02)
+        else:
+            self.check_grad_with_place(
+                self.place, ['X'],
+                'Out',
+                in_place=True,
+                max_relative_error=0.006)
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -106,6 +120,11 @@ class TestNearestInterpOp(OpTest):
         self.scale = 0.
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = False
+
+
+class TestNearestNeighborInterpFP16(TestNearestInterpOp):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):

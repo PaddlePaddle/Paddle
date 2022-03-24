@@ -36,7 +36,7 @@ template <typename T, typename Context>
 void EyeKernel(const Context& ctx,
                int64_t num_rows,
                int64_t num_columns,
-               int dtype,
+               DataType dtype,
                DenseTensor* out) {
   auto num = num_columns;
   if (num == -1) {

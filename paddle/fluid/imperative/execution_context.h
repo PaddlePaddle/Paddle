@@ -133,6 +133,11 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return (it != var_map_in_.end() && it->second.size() > 0);
   }
 
+  bool HasInputs(const std::string& name) const override {
+    auto it = var_map_in_.find(name);
+    return (it != var_map_in_.end() && it->second.size() > 0);
+  }
+
   bool HasOutput(const std::string& name) const override {
     auto it = var_map_out_.find(name);
     return (it != var_map_out_.end() && it->second.size() > 0);

@@ -30,6 +30,7 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import in_dygraph_mode
+from paddle import _C_ops
 
 __all__ = ['TranslatedLayer']
 
@@ -761,6 +762,21 @@ def _construct_params_and_buffers(model_path,
     return var_dict
 
 
+def _valid_vars(vars):
+    if vars:
+        return vars
+    if framework._in_eager_mode():
+        return [
+            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+                              core.VarDesc.VarType.RAW, False)
+        ]
+    else:
+        return [
+            core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
+                         core.VarDesc.VarType.RAW, False)
+        ]
+
+
 def _run_dygraph(instance, input, program_holder):
 
     # 1. prepare inputs, outputs, attrs
@@ -826,17 +842,12 @@ def _run_dygraph(instance, input, program_holder):
 
     # hold forward variables
     if framework._in_eager_mode():
-        tmp_scope_vec = core.eager.Tensor(
-            dtype=core.VarDesc.VarType.FP32,
-            dims=[],
-            name="program_out_scope",
-            type=core.VarDesc.VarType.STEP_SCOPES,
-            persistable=True)
+        tmp_scope_vec = [program_holder.scope]
     else:
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
-    tmp_scope_vec.value().set_scope(program_holder.scope)
+        tmp_scope_vec.value().set_scope(program_holder.scope)
 
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
@@ -852,41 +863,18 @@ def _run_dygraph(instance, input, program_holder):
                                var_desc.shape(),
                                var_desc.name(), var_desc.type(), False)
         double_grad_vars.append(var)
-    if len(double_grad_vars) == 0:
-        if framework._in_eager_mode():
-            double_grad_vars = [
-                core.eager.Tensor(
-                    value=[1],
-                    name='Fake_var',
-                    place=framework._current_expected_place())
-            ]
-        else:
-            double_grad_vars = [
-                core.VarBase(
-                    value=[1],
-                    name='Fake_var',
-                    place=framework._current_expected_place())
-            ]
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
     end_op_index = program_holder.infer_program.block(0).op_size()
-    framework._dygraph_tracer().trace_op(
-        type='run_program',
-        inputs={'X': input_vars,
-                'Params': persistable_vars},
-        outputs={
-            'Out': output_vars,
-            'OutScope': tmp_scope_vec,
-            'DOut': double_grad_vars
-        },
-        attrs={
-            'global_block': trace_program.block(0),
-            'start_op_index': 0,
-            'end_op_index': end_op_index,
-            'is_test': instance._is_test,
-            'program_id': _hash_with_id(trace_program)
-        })
+    attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
+             'end_op_index', end_op_index, 'is_test', instance._is_test,
+             'program_id', _hash_with_id(trace_program, instance))
+    _C_ops.run_program(
+        _valid_vars(input_vars),
+        _valid_vars(persistable_vars),
+        _valid_vars(output_vars), tmp_scope_vec,
+        _valid_vars(double_grad_vars), *attrs)
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
@@ -914,8 +902,10 @@ def _run_dygraph(instance, input, program_holder):
 
 def drop_scope_if_no_grad(instance, scope_vec):
     tracer = framework._dygraph_tracer()
+    scope = scope_vec.value().get_scope() if isinstance(scope_vec, (
+        core.VarBase)) else scope_vec[0]
     if (not instance._is_test) and (not tracer._has_grad):
-        scope_vec.value().get_scope().drop_kids()
+        scope.drop_kids()
 
 
 def _run_static_graph(input, program_holder, trace_program):

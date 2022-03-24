@@ -52,49 +52,44 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
   }
 }
 
-static void RetainGradForRegularNode(
-    const paddle::experimental::Tensor& tensor) {
-  AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
-  if (meta->RetainGrads()) {
-    return;
-  } else {
-    meta->SetRetainGrads(true);
-  }
-
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
-      meta->WeakGrad();
-
-  // Define Hook
-  auto hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
-    if (!weak_grad_tensor.expired()) {
-      auto grad_tensor = weak_grad_tensor.lock();
-      if (t.defined()) {
-        VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
-        // Simply Copy impl() to grad_tensor
-        grad_tensor->set_impl(t.impl());
-        return *grad_tensor.get();
-      } else {
-        VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-        return paddle::experimental::Tensor();
-      }
-    } else {
-      VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-      return paddle::experimental::Tensor();
-    }
-  };
-
-  // Append to GradientHooks
-  RegisterGradientHookForTensor(tensor,
-                                std::make_shared<egr::CppTensorHook>(hook));
-}
-
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
   if (IsLeafTensor(tensor)) {
     // Leaf tensor's grad will always be retained
     // Refer to implementation of AccumulationNode for more details
     return;
   } else {
-    RetainGradForRegularNode(tensor);
+    AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
+    if (meta->RetainGrads()) {
+      return;
+    } else {
+      meta->SetRetainGrads(true);
+    }
+
+    std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
+        meta->WeakGrad();
+
+    // Define Hook
+    auto hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
+      if (!weak_grad_tensor.expired()) {
+        auto grad_tensor = weak_grad_tensor.lock();
+        if (t.defined()) {
+          VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
+          // Simply Copy impl() to grad_tensor
+          grad_tensor->set_impl(t.impl());
+          return *grad_tensor.get();
+        } else {
+          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+          return paddle::experimental::Tensor();
+        }
+      } else {
+        VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+        return paddle::experimental::Tensor();
+      }
+    };
+
+    // Append to GradientHooks
+    RegisterGradientHookForTensor(tensor,
+                                  std::make_shared<egr::CppTensorHook>(hook));
   }
 }
 

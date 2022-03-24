@@ -44,9 +44,9 @@ void Copy<platform::CPUPlace, platform::CustomPlace>(
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << ", stream=" << stream;
 
-  platform::DeviceManager::SetDevice(src_place);
-  platform::stream::Stream stream_wrapper(src_place, stream);
-  platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyD2H(
+  phi::DeviceManager::SetDevice(src_place);
+  phi::stream::Stream stream_wrapper(src_place, stream);
+  phi::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyD2H(
       dst, src, num, &stream_wrapper);
 }
 
@@ -62,9 +62,9 @@ void Copy<platform::CustomPlace, platform::CPUPlace>(
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << ", stream=" << stream;
 
-  platform::DeviceManager::SetDevice(dst_place);
-  platform::stream::Stream stream_wrapper(dst_place, stream);
-  platform::DeviceManager::GetDeviceWithPlace(dst_place)->MemoryCopyH2D(
+  phi::DeviceManager::SetDevice(dst_place);
+  phi::stream::Stream stream_wrapper(dst_place, stream);
+  phi::DeviceManager::GetDeviceWithPlace(dst_place)->MemoryCopyH2D(
       dst, src, num, &stream_wrapper);
 }
 
@@ -82,16 +82,16 @@ void Copy<platform::CustomPlace, platform::CustomPlace>(
           << dst_place << ", stream=" << stream;
 
   if (src_type == dst_type) {
-    platform::DeviceManager::SetDevice(src_place);
-    platform::stream::Stream stream_wrapper(src_place, stream);
+    phi::DeviceManager::SetDevice(src_place);
+    phi::stream::Stream stream_wrapper(src_place, stream);
 
     auto src_id = platform::PlaceHelper::GetDeviceId(src_place);
     auto dst_id = platform::PlaceHelper::GetDeviceId(dst_place);
     if (src_id == dst_id) {
-      platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyD2D(
+      phi::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyD2D(
           dst, src, num, &stream_wrapper);
     } else {
-      platform::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyP2P(
+      phi::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyP2P(
           dst_place, dst, src, num, &stream_wrapper);
     }
   } else {

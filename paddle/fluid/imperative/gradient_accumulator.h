@@ -179,5 +179,29 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
 template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst);
 
+inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
+                     const std::shared_ptr<VariableWrapper>& post) {
+  if (pre->IsEmpty() && !post->IsEmpty()) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "The tensor(%s) in before and after hook are not consistent",
+        pre->Name()));
+  }
+  if (!pre->IsEmpty() && !post->IsEmpty()) {
+    VLOG(4) << pre->DataType() << " " << post->DataType();
+    PADDLE_ENFORCE_EQ(
+        pre->DataType(), post->DataType(),
+        platform::errors::PermissionDenied(
+            "The dtype of tensor(%s) before(%s) and after(%s) hook are not "
+            "consistent",
+            pre->Name(), framework::DataTypeToString(pre->DataType()),
+            framework::DataTypeToString(post->DataType())));
+    PADDLE_ENFORCE_EQ(pre->Place(), post->Place(),
+                      platform::errors::PermissionDenied(
+                          "The place of tensor(%s) before(%s) and after(%s) "
+                          "hook are not consistent",
+                          pre->Name(), pre->Place(), post->Place()));
+  }
+}
+
 }  // namespace imperative
 }  // namespace paddle

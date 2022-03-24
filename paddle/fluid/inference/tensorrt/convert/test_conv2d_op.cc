@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
-USE_OP(conv2d);
-USE_OP(conv2d_transpose);
+USE_OP_ITSELF(conv2d);
+USE_OP_ITSELF(conv2d_transpose);
 
 namespace paddle {
 namespace inference {

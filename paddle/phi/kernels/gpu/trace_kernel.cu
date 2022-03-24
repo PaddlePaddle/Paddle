@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
 
@@ -31,11 +31,10 @@ void TraceKernel(const Context& ctx,
   T* out_data = ctx.template Alloc<T>(out);
   auto diag = funcs::Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
-    auto stream = ctx.stream();
     std::vector<int> reduce_dims;
     reduce_dims.push_back(out->dims().size());
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims, stream);
+    funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        ctx, diag, out, kps::IdentityFunctor<T>(), reduce_dims);
   } else {
     phi::funcs::SetConstant<Context, T> functor;
     functor(ctx, out, static_cast<T>(0));

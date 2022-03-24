@@ -32,7 +32,7 @@ namespace platform = paddle::platform;
 namespace op = paddle::operators;
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(batch_norm);
+USE_OP_ITSELF(batch_norm);
 USE_CUDA_ONLY_OP(fused_bn_add_activation);
 USE_CUDA_ONLY_OP(fused_bn_add_activation_grad);
 

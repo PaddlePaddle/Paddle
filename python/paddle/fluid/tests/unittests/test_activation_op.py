@@ -183,6 +183,34 @@ class TestSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSigmoidBF16(OpTest):
+    def setUp(self):
+        self.op_type = "sigmoid"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = 1 / (1 + np.exp(-x))
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+
 class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
@@ -945,6 +973,34 @@ class TestSqrt(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSqrtBF16(OpTest):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.init_dtype()
+
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        out = np.sqrt(x)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
@@ -983,7 +1039,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestCeil(TestActivation):
@@ -2195,6 +2251,34 @@ class TestSquare(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSquareBF16(OpTest):
+    def setUp(self):
+        self.op_type = "square"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        out = np.square(x)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.5)
+
+
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
@@ -2431,6 +2515,35 @@ class TestSoftplus(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftplusBF16(OpTest):
+    def setUp(self):
+        self.op_type = "softplus"
+        self.init_dtype()
+
+        beta = 2
+        threshold = 15
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(np.float32)
+        out = ref_softplus(x, beta, threshold)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'beta': beta, "threshold": threshold}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.05)
 
 
 class TestSoftplusAPI(unittest.TestCase):

@@ -423,7 +423,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
   if (data_type == framework::proto::VarType::BF16) {
     if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       return TensorAddImpl<platform::CUDADeviceContext, platform::bfloat16>(
           src_tensor, dst_tensor, place);
 #else
@@ -732,6 +732,7 @@ void GradientAccumulator::CallGradientHooks() {
             << var_->GetVariableWrapperHooks().size();
     for (const auto& hook_pair : var_->GetVariableWrapperHooks()) {
       tmp_var = (*hook_pair.second)(tmp_var);
+      CheckVar(inner_var_, tmp_var);
     }
     inner_var_ = tmp_var;
   }

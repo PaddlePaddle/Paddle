@@ -32,9 +32,21 @@ enum TracerEventTypeProto {
   Memset = 6;
   // Used to mark record defined by user
   UserDefined = 7;
-  // A flag to denote the number of current types
-  NumTypes = 8;
-}
+  // Used to mark operator detail, (such as infer shape, compute)
+  OperatorInner = 8;
+  // Used to mark model training or testing perspective, forward process
+  Forward = 9;
+  // Used to mark model training perspective, backward process
+  Backward = 10;
+  // Used to mark model training perspective, optimization process
+  Optimization = 11;
+  // Used to mark distributed training perspective
+  Communication = 12;
+  // Used to mark python api
+  PythonOp = 13;
+  // Used to mark python level userdefined
+  PythonUserDefined = 14;
+};
 
 message KernelEventInfoProto {
   // The X-dimension block size for the kernel.
@@ -175,7 +187,14 @@ message ThreadNodeTreeProto {
   repeated HostTraceEventNodeProto host_nodes = 2;
 }
 
+message ExtraInfoMap {
+  required string key = 1;
+  required string value = 2;
+}
+
 message NodeTreesProto {
   required string version = 1;
-  repeated ThreadNodeTreeProto thread_trees = 2;
+  required uint32 span_indx = 2;
+  repeated ThreadNodeTreeProto thread_trees = 3;
+  repeated ExtraInfoMap extra_info = 4;
 }

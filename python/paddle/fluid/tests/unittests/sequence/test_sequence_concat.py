@@ -20,6 +20,7 @@ import sys
 sys.path.append("../")
 from op_test import OpTest
 
+import paddle
 from paddle import fluid
 
 
@@ -115,4 +116,5 @@ class TestSequenceConcatOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
