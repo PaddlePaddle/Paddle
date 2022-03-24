@@ -90,11 +90,9 @@ class BaseAPI(object):
             'ScalarArray': 'const ScalarArray&',
             'Scalar': 'const Scalar&',
             'Scalar(int)': 'const Scalar&',
-            'Scalar(int32)': 'const Scalar&',
-            'Scalar(int64)': 'const Scalar&',
+            'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',
             'Scalar(dobule)': 'const Scalar&',
-            'uint8': 'uint8_t',
             'int': 'int',
             'int32': 'int32_t',
             'int64': 'int64_t',
@@ -107,16 +105,15 @@ class BaseAPI(object):
             'Place': 'Place',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
-            'int64[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&',
-            'long[]': 'const std::vector<int64_t>&'
+            'int64_t[]': 'const std::vector<int64_t>&',
+            'int[]': 'const std::vector<int>&'
         }
         optional_types_trans = {
             'Tensor': 'const paddle::optional<Tensor>&',
             'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
             'int': 'paddle::optional<int>',
-            'int32': 'paddle::optional<int32_t>',
-            'int64': 'paddle::optional<int64_t>',
+            'int32_t': 'paddle::optional<int32_t>',
+            'int64_t': 'paddle::optional<int64_t>',
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
             'bool': 'paddle::optional<bool>',

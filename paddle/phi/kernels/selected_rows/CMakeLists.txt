@@ -1,0 +1,3 @@
+
+set(SELECTED_ROWS_KERNEL_DEPS dense_tensor selected_rows sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils math_function custom_kernel)
+register_kernels(DEPS ${SELECTED_ROWS_KERNEL_DEPS} SUB_DIR "selected_rows_kernel")

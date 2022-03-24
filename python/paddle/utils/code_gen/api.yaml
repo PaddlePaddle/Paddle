@@ -19,7 +19,7 @@
 
 
 - api : concat
-  args : (Tensor[] x, Scalar(int64) axis)
+  args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
   infer_meta :
     func : ConcatInferMeta
@@ -123,7 +123,7 @@
   backward : matmul_grad
 
 - api : mean
-  args : (Tensor x, int64[] axis={}, bool keep_dim=false)
+  args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
@@ -212,7 +212,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : SumInferMeta

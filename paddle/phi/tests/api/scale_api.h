@@ -17,7 +17,6 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"

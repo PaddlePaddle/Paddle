@@ -152,6 +152,10 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out);
+
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
                         paddle::optional<const MetaTensor&> rois_num,
