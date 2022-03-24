@@ -235,35 +235,6 @@ int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
   return map.size();
 }
 
-::phi::DenseTensor ConvertHostTensor(::infrt::tensor::DenseHostTensor&& tensor,
-                                     ::phi::Allocator* host_allocator) {
-  std::vector<int64_t> dims;
-  dims.reserve(tensor.shape().GetRank());
-  for (const auto dim : tensor.shape()) {
-    dims.emplace_back(dim);
-  }
-  CHECK(tensor.dtype().kind() == ::infrt::DType::Kind::F32);
-  ::phi::DenseTensorMeta meta(::phi::DataType::FLOAT32, ::phi::make_ddim(dims));
-  ::phi::DenseTensor phi_tensor(host_allocator, std::move(meta));
-  void* src = tensor.raw_data();
-  void* dst = phi_tensor.data();
-  size_t bytes = sizeof(float) * tensor.shape().GetNumElements();
-  std::memcpy(dst, src, bytes);
-  return phi_tensor;
-}
-
-::infrt::phi::DenseTensorMap ConvertHostTensorMap(
-    ::infrt::tensor::TensorMap&& map, ::phi::Allocator* host_allocator) {
-  ::infrt::phi::DenseTensorMap phi_tensors;
-  for (auto& pair : map) {
-    phi_tensors.SetDenseTensor(
-        pair.first,
-        std::make_unique<::phi::DenseTensor>(
-            ConvertHostTensor(std::move(*pair.second), host_allocator)));
-  }
-  return phi_tensors;
-}
-
 }  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

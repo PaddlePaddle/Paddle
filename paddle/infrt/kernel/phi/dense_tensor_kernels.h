@@ -60,12 +60,6 @@ infrt::phi::DenseTensorMap LoadParams(
 
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
 
-::phi::DenseTensor ConvertHostTensor(::infrt::tensor::DenseHostTensor&& tensor,
-                                     ::phi::Allocator* host_allocator);
-
-::infrt::phi::DenseTensorMap ConvertHostTensorMap(
-    ::infrt::tensor::TensorMap&& map, ::phi::Allocator* host_allocator);
-
 }  // namespace phi
 }  // namespace kernel
 }  // namespace infrt
