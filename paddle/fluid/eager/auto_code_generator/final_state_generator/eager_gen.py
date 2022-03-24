@@ -639,7 +639,7 @@ class {} : public egr::GradNodeBase {{
 
 def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
                            backward_grad_input_map, backward_grad_output_map,
-                           backward_attrs_list):
+                           backward_attrs_list, forward_inputs_position_map):
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
@@ -673,7 +673,8 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
 
     # Construct grad_api returns
     num_bwd_outputs = len(backward_grad_output_map.keys())
-    returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({num_bwd_outputs});\n"
+    slot_num_bwd_outputs = len(forward_inputs_position_map.keys())
+    returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_output_map.items():
         # Infer Grad API Return Type
@@ -801,7 +802,7 @@ def GenerateNodeCreationCodes(
 
     # Node Construction
     num_bwd_inputs = len(backward_grad_input_map.keys())
-    num_bwd_outputs = len(backward_grad_output_map.keys())
+    num_bwd_outputs = len(forward_inputs_position_map.keys())
     grad_node_name = GetGradNodeName(
         RecoverBaseNameOfInplaceFunction(
             fwd_api_name)) if inplace_map else GetGradNodeName(fwd_api_name)
@@ -817,6 +818,7 @@ def GenerateNodeCreationCodes(
         if name in forward_attrs_name_set:
             set_attributes = f"        grad_node->SetAttribute{name}({name});"
         else:
+            assert default_val_attr is not None, f"{name}should have default value"
             set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
@@ -828,7 +830,7 @@ def GenerateNodeCreationCodes(
 
         if is_fwd_input:
             if is_optional:
-                set_tensor_wrappers = f"            if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+                set_tensor_wrappers = f"            if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
             else:
                 set_tensor_wrappers = f"            grad_node->SetTensorWrapper{name}({name}, true);"
         else:
@@ -841,7 +843,7 @@ def GenerateNodeCreationCodes(
                 tw_name = f"api_result"
 
             if is_optional:
-                set_tensor_wrappers = f"            if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
+                set_tensor_wrappers = f"            if({tw_name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({tw_name}.get_ptr()), false);"
             else:
                 set_tensor_wrappers = f"            grad_node->SetTensorWrapper{name}({tw_name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
@@ -851,9 +853,14 @@ def GenerateNodeCreationCodes(
     set_grad_out_meta_list = []
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
+        is_optional = (name in optional_inputs)
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
-        set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        if is_optional:
+            set_grad_out_meta = f"            if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+            set_edges = f"            if({name}.get_ptr() != nullptr)  grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+        else:
+            set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
+            set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
     set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -965,7 +972,7 @@ def GenerateForwardDefinition(
         is_optional = (name in optional_inputs)
         if IsPlainTensorType(ttype):
             if is_optional:
-                arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+                arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
             else:
                 if inplace_map and name in inplace_map.keys():
                     arg_str = f"paddle::experimental::Tensor& {name}"
@@ -1347,7 +1354,7 @@ if __name__ == "__main__":
             yaml_node_definition_str += GenerateNodeDefinition(
                 fwd_api_name, bwd_api_name, backward_fwd_input_map,
                 backward_grad_input_map, backward_grad_output_map,
-                backward_attrs_list)
+                backward_attrs_list, forward_inputs_position_map)
             print("Generated Node Definition: ", node_definition_str)
 
             # Node Definition Generation

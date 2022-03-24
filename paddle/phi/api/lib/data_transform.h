@@ -76,5 +76,10 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
+std::shared_ptr<phi::DenseTensor> PrepareData(
+    const paddle::optional<const Tensor&> input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
 }  // namespace experimental
 }  // namespace paddle

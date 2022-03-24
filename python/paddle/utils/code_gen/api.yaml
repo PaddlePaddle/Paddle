@@ -542,6 +542,17 @@
   backward : mv_grad
 
 
+- api : nll_loss
+  args : (Tensor x, Tensor label, Tensor weight, int64 ignore_index, str reduction)
+  output : Tensor(out), Tensor(total_weight)
+  infer_meta :
+    func : NllLossRawInferMeta
+  kernel :
+    func : nll_loss
+    data_type : x
+  optional : weight
+  backward : nll_loss_grad
+
 
 #  =================================== sep0
 
