@@ -154,6 +154,9 @@ def export_chrome_tracing(dir_name: str,
     Parameters:
         dir_name(str): Directory to save profiling data.
         worker_name(Optional[str]): Prefix of the file name saved, default is [hostname]_[pid].
+    
+    Returns:
+        A callable, which takes a Profiler object as parameter and calls its export method to save data to chrome tracing format file.
 
     Examples:
         .. code-block:: python
@@ -198,6 +201,9 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
     Parameters:
         dir_name(str): Directory to save profiling data.
         worker_name(Optional[str]): Prefix of the file name saved, default is [hostname]_[pid].
+
+    Returns:
+        A callable, which takes a Profiler object as parameter and calls its export method to save data to protobuf file.
 
     Examples:
         .. code-block:: python
@@ -522,7 +528,12 @@ class Profiler:
 
     def export(self, path="", format="json"):
         r"""
-        Exports the tracing data in Chrome tracing data format.
+        Exports the tracing data to file.
+
+        Parameters:
+            path(str): file path of the output.
+            format(str): output format, can be chosen from ['json', 'pb], 'json' for chrome tracing and 'pb' for protobuf.
+
 
         Examples:
             .. code-block:: python
@@ -548,7 +559,7 @@ class Profiler:
                 thread_sep=False,
                 time_unit='ms'):
         r"""
-        Print the Summary table.
+        Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
 
         Parameters:
             sorted_by(SortedKeys): how to rank the op table items.

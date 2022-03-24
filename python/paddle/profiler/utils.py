@@ -17,8 +17,8 @@ from warnings import warn
 import functools
 from contextlib import ContextDecorator
 
+from paddle.fluid import core
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
-import paddle.fluid.core as core
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
