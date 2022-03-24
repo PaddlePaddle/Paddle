@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/utils/array.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
+
 namespace paddle {
 namespace operators {
 
@@ -42,10 +44,10 @@ __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
-                                   const IndexT* indices, T* output,
-                                   size_t remain_size, size_t slice_size,
-                                   size_t end_size) {
+__global__ void GatherNdCUDAKernel(
+    const T* input, const pten::framework::Array<int64_t, 10> input_dims,
+    const IndexT* indices, T* output, size_t remain_size, size_t slice_size,
+    size_t end_size) {
   CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -105,8 +107,8 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   int64_t n = slice_size * index_size;
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
-    reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()[0];
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+          .GetCUDAMaxGridDimSize()[0];
   if (grid > maxGridDimX) grid = maxGridDimX;
 
   GatherCUDAKernel<T, IndexT><<<
@@ -141,32 +143,26 @@ void GPUGatherNd(const framework::ExecutionContext& context,
   for (int64_t i = end_size; i < input_dims_size; ++i) {
     slice_size *= input_dims[i];
   }
-  // source dim
-  std::vector<int64_t> v_input_dims(input_dims_size);
-  for (int i = 0; i < input_dims_size; ++i) {
-    v_input_dims[i] = input_dims[i];
-  }
 
-  auto& dev_ctx = context.cuda_device_context();
-  int64_t bytes = input_dims_size * sizeof(int64_t);
-  auto p_input_dims = memory::Alloc(dev_ctx, bytes);
-  int64_t* g_input_dims = reinterpret_cast<int64_t*>(p_input_dims->ptr());
-  memory::Copy(gplace, g_input_dims, cplace, v_input_dims.data(), bytes,
-               ctx.stream());
+  // source dim
+  pten::framework::Array<int64_t, 10> d_input_dims;
+  for (int i = 0; i < input_dims_size; ++i) {
+    d_input_dims[i] = input_dims[i];
+  }
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
-  
+
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
-    reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()[0];
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+          .GetCUDAMaxGridDimSize()[0];
   if (grid > maxGridDimX) grid = maxGridDimX;
 
   GatherNdCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_input, g_input_dims, p_index, p_output, remain_numel, slice_size,
+      p_input, d_input_dims, p_index, p_output, remain_numel, slice_size,
       end_size);
 }
 

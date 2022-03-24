@@ -110,14 +110,14 @@ class IndexSelectCUDAKernel : public framework::OpKernel<T> {
           (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
                                                 numel, stride, size, delta);
-      platform::GpuStreamSync(stream);
+      // platform::GpuStreamSync(stream);
     } else {
       const int* index_data = index->data<int>();
       index_select_cuda_kernel<T, int><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                              PADDLE_CUDA_NUM_THREADS,
                                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           in_data, out_data, index_data, numel, stride, size, delta);
-      platform::GpuStreamSync(stream);
+      // platform::GpuStreamSync(stream);
     }
   }
 };
@@ -173,7 +173,7 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
                                                 index_data, index_nums,
                                                 out_nums, stride, size, delta);
-      platform::GpuStreamSync(stream);
+      // platform::GpuStreamSync(stream);
     } else {
       const int* index_data = index->data<int>();
       index_select_grad_cuda_kernel<T, int><<<
@@ -181,7 +181,7 @@ class IndexSelectGradCUDAKernel : public framework::OpKernel<T> {
           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
                                                 index_data, index_nums,
                                                 out_nums, stride, size, delta);
-      platform::GpuStreamSync(stream);
+      // platform::GpuStreamSync(stream);
     }
   }
 };

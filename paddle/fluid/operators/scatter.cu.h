@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pten/core/utils/array.h"
 #include "paddle/pten/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -72,10 +73,10 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
-                                    T* output, const int64_t* output_dims,
-                                    size_t remain_size, size_t slice_size,
-                                    size_t end_size) {
+__global__ void ScatterNdCUDAKernel(
+    const T* update, const IndexT* indices, T* output,
+    const pten::framework::Array<int64_t, 10> output_dims, size_t remain_size,
+    size_t slice_size, size_t end_size) {
   CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -148,8 +149,8 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   int64_t n = slice_size * index_size;
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
-    reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()[0];
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+          .GetCUDAMaxGridDimSize()[0];
   grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   // if not overwrite mode, init data
@@ -226,29 +227,23 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   const auto gplace = ctx.GetPlace();
   auto cplace = platform::CPUPlace();
 
-  std::vector<int64_t> v_output_dims(output_dims_size);
+  pten::framework::Array<int64_t, 10> d_output_dims;
   for (int i = 0; i < output_dims_size; ++i) {
-    v_output_dims[i] = output_dims[i];
+    d_output_dims[i] = output_dims[i];
   }
-  auto& dev_ctx = context.cuda_device_context();
-  int64_t bytes = output_dims_size * sizeof(int64_t);
-  auto output_dims_ptr = memory::Alloc(dev_ctx, bytes);
-  int64_t* g_output_dims = reinterpret_cast<int64_t*>(output_dims_ptr->ptr());
-  memory::Copy(gplace, g_output_dims, cplace, v_output_dims.data(), bytes,
-               ctx.stream());
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
   int64_t grid = (n + block - 1) / block;
   unsigned int maxGridDimX =
-    reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-        .GetCUDAMaxGridDimSize()[0];
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+          .GetCUDAMaxGridDimSize()[0];
   grid = grid > maxGridDimX ? maxGridDimX : grid;
 
   ScatterNdCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_update, p_index, p_output, g_output_dims, remain_numel, slice_size,
+      p_update, p_index, p_output, d_output_dims, remain_numel, slice_size,
       end_size);
 }
 

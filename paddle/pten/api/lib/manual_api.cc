@@ -48,8 +48,8 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
 
-  VLOG(0) << "to API kernel key: " << kernel_key;
-  VLOG(0) << "to API kernel: " << kernel;
+  // VLOG(0) << "to API kernel key: " << kernel_key;
+  // VLOG(0) << "to API kernel: " << kernel;
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());

@@ -26,6 +26,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/where_index_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/pten/core/utils/array.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +46,8 @@ __global__ void GetTrueNum(const T *cond_data, const int64_t numel,
 
 template <typename T>
 __global__ void SetTrueIndex(int64_t *out_ptr, const T *cond_data,
-                             const int64_t numel, const int64_t *stride_array,
+                             const int64_t numel,
+                             const pten::framework::Array<int64_t, 10> strides,
                              const int64_t rank,
                              const int64_t *true_num_array) {
   const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -58,9 +60,9 @@ __global__ void SetTrueIndex(int64_t *out_ptr, const T *cond_data,
     if (static_cast<bool>(cond_data[idx])) {
       int64_t rank_index = idx;
       for (int j = 0; j < rank; j++) {
-        const int64_t out_index = rank_index / stride_array[j];
+        const int64_t out_index = rank_index / strides[j];
         out_ptr[true_index * rank + j] = out_index;
-        rank_index -= out_index * stride_array[j];
+        rank_index -= out_index * strides[j];
       }
     }
   }
@@ -79,24 +81,14 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     auto dims = condition->dims();
     const int rank = dims.size();
 
-    auto d_array_mem = memory::Alloc(dev_ctx, (numel + rank) * sizeof(int64_t));
-    auto h_array_mem =
-        memory::Alloc(platform::CPUPlace(), (rank + 1) * sizeof(int64_t));
-
-    // "stride_array" is an array and len(stride_array)==rank,
-    // each element is the stride of each dimension -- the length from i to i+1.
-    int64_t *h_stride_array = reinterpret_cast<int64_t *>(h_array_mem->ptr());
-    int64_t *d_stride_array = reinterpret_cast<int64_t *>(d_array_mem->ptr());
-
-    // "true_num_array" is an array and len(stride_array)==numel,
-    // at the beginning,
     // "true_num_array" will set 1 if condition[i] == true else 0,
     // then it will be calculated by cub::InclusiveSum,
     // so that we can get the true number before i as the out index
-    int64_t *d_true_num_array = d_stride_array + rank;
+    auto d_array_mem = memory::Alloc(dev_ctx, numel * sizeof(int64_t));
+    int64_t *d_true_num_array = reinterpret_cast<int64_t *>(d_array_mem->ptr());
 
     // the total_true_num is the total number of condition[i] == true
-    int64_t *h_total_true_num = h_stride_array + rank;
+    int64_t total_true_num = 0;
 
     // alloce cub memory
     size_t cub_size = 0;
@@ -123,32 +115,32 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     cub::DeviceScan::InclusiveSum(cub_data, cub_size, d_true_num_array,
                                   d_true_num_array, numel, dev_ctx.stream());
 
-    // calculate each dimension's stride
-    h_stride_array[rank - 1] = 1;
-    for (int i = rank - 2; i >= 0; i--) {
-      h_stride_array[i] = h_stride_array[i + 1] * dims[i + 1];
-    }
-    memory::Copy(dev_ctx.GetPlace(), d_stride_array, platform::CPUPlace(),
-                 h_stride_array, rank * sizeof(int64_t), dev_ctx.stream());
-
     // get total ture number and set output size
     // the last element of cub::InclusiveSum is the total number
-    memory::Copy(platform::CPUPlace(), h_total_true_num, dev_ctx.GetPlace(),
+    memory::Copy(platform::CPUPlace(), &total_true_num, dev_ctx.GetPlace(),
                  d_true_num_array + numel - 1, sizeof(int64_t),
                  dev_ctx.stream());
     dev_ctx.Wait();
 
-    int64_t true_num = *h_total_true_num;
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    out->Resize(
+        framework::make_ddim({static_cast<int64_t>(total_true_num), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());
 
-    if (true_num == 0) {
+    if (total_true_num == 0) {
       return;
     }
 
-    // using true_num_array and stride_array to calculate the output index
+    // strides is an array and len(strides)==rank,
+    // each element is the stride of each dimension -- the length from i to i+1.
+    pten::framework::Array<int64_t, 10> strides;
+    strides[rank - 1] = 1;
+    for (int i = rank - 2; i >= 0; i--) {
+      strides[i] = strides[i + 1] * dims[i + 1];
+    }
+
+    // using true_num_array and strides to calculate the output index
     SetTrueIndex<T><<<grids, threads, 0, dev_ctx.stream()>>>(
-        out_data, cond_data, numel, d_stride_array, rank, d_true_num_array);
+        out_data, cond_data, numel, strides, rank, d_true_num_array);
   }
 };
 
