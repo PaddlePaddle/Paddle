@@ -856,7 +856,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.ps_desc_builder = PsDescBuilder(self.context)
 
-    def _init_params(self, scopes, send_ctx, recv_map):
+    def _init_all_params(self, scopes, send_ctx, recv_map):
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -877,6 +877,17 @@ class TheOnePSRuntime(RuntimeBase):
             var_names = recv_map[table_id]
             # print("pull all dense:", idx, table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
+
+    def _init_params(self, program, scope, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            if ctx.program_id() != id(program):
+                continue
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            # print("init params:", table_id, var_names)
+            self._worker.push_dense_params(scope, table_id, var_names)
 
     def _pull_dense(self, program, scope, send_ctx, recv_map):
         for name, ctx in send_ctx.items():
@@ -1007,7 +1018,7 @@ class TheOnePSRuntime(RuntimeBase):
                 self._communicator.init_params(init_params)
             else:
                 if role_id == 0:
-                    self._init_params(scopes, send_ctx, dense_map)
+                    self._init_all_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
         self._pull_all_dense(scopes, send_ctx, dense_map)
@@ -1320,19 +1331,17 @@ class TheOnePSRuntime(RuntimeBase):
                                            dirname,
                                            mode=0,
                                            main_program=None):
-        if main_program is None:
-            main_program = self.origin_main_program
+        main_program = self.origin_main_programs[
+            0] if main_program is None else main_program
+        _, _, idx = get_program_by_id(self.context, id(main_program))
+        scope = self.scopes[idx]
+        print("load inference model scope idx:", idx)
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        denses = get_the_one_recv_context(
-            self.context,
-            is_dense=True,
-            split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
         sparses = get_the_one_recv_context(
             self.context,
             is_dense=False,
@@ -1342,8 +1351,16 @@ class TheOnePSRuntime(RuntimeBase):
         sparse_varnames = self._load_sparse_params(dirname, sparses,
                                                    main_program, mode)
 
+        dense_map = get_the_one_recv_context(
+            self.context, split_dense_table=self.is_heter_ps_mode)
+        send_ctx = get_the_one_send_context(
+            self.context,
+            split_dense_table=self.is_heter_ps_mode,
+            use_origin_program=self.is_heter_ps_mode,
+            ep_list=self.endpoints)
+
         recv_dense_varnames = []
-        for id, names in denses.items():
+        for _, names in dense_map.items():
             recv_dense_varnames.extend(names)
 
         loaded_varnames = sparse_varnames
@@ -1362,9 +1379,9 @@ class TheOnePSRuntime(RuntimeBase):
             if var.name not in recv_dense_varnames:
                 continue
             tensor = paddle.load(os.path.join(model_path, var.name))
-            var.set_value(tensor)
+            var.set_value(tensor, scope)
 
-        self._communicator.init_params(denses)
+        self._init_params(main_program, scope, send_ctx, dense_map)
 
     def _load_distributed_persistables(self, path, mode):
         self._worker.load_model(path, mode)

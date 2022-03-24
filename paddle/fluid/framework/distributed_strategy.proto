@@ -187,6 +187,7 @@ message TableParameter {
   optional uint64 shard_num = 4 [ default = 1000 ];
   optional TableType type = 5;
   optional TableAccessorParameter accessor = 6;
+  optional bool compress_in_save = 7 [ default = false ];
 }
 
 message TableAccessorParameter {
