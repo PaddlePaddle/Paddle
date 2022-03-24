@@ -204,7 +204,7 @@ __forceinline__ __device__ void MomentumUpdate(
     const bool is_amp) {
   const MT lr = learning_rate[0];
   MT local_lr = lr;
-  if (lars_weight_decay > static_cast<MT>(0)) {
+  if (param_norm > static_cast<MT>(0) && grad_norm > static_cast<MT>(0)) {
     local_lr = lr * lars_coeff * param_norm /
                (fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
   }
