@@ -37,8 +37,9 @@ class TestProcessGroupFp32(unittest.TestCase):
         pass
 
     def test_init_process_group(self):
-        paddle.distributed.init_parallel_env()
-        paddle.distributed.new_group()
+        with _test_eager_guard():
+            paddle.distributed.init_parallel_env()
+            paddle.distributed.new_group()
         print("test ok\n")
 
 

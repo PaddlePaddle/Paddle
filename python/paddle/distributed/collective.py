@@ -268,8 +268,13 @@ def new_group(ranks=None, backend=None):
         ranks = sorted(ranks)
         if global_rank in ranks:
             rank = ranks.index(global_rank)
-            pg = _new_process_group_impl(backend, _default_store, rank, size,
-                                         group_name, pg_options)
+            pg = _new_process_group_impl(
+                backend,
+                _default_store,
+                rank,
+                size,
+                group_name,
+                pg_options=None)
         else:
             rank = -1
             pg = None
@@ -288,7 +293,6 @@ def new_group(ranks=None, backend=None):
 
     ring_id = _new_ring_id()
 
-    global _group_map
     if global_rank not in ranks:
         gp = Group(-1, -1, ring_id, ranks)
         _group_map[ring_id] = gp
@@ -810,12 +814,11 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         group = _get_default_group() if group is None else group
         out = paddle.concat(tensor_list)
         wait(out, group, use_calc_stream=True)
-        task = group.all_gather(tensor, out)
-        if use_calc_stream:
-            task.wait()
-            return None
-        else:
-            return task
+        task = group.process_group.all_gather(tensor, out)
+        task.wait()
+        tensor_list.clear()
+        tensor_list.extend(paddle.split(out, group.nranks, 0))
+        return
 
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks

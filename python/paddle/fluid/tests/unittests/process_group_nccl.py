@@ -68,12 +68,10 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             sum_result = tensor_x + tensor_y
             if pg.rank() == 0:
-                task = pg.allreduce(tensor_x)
-                task.wait()
+                task = dist.all_reduce(tensor_x)
                 assert np.array_equal(tensor_x, sum_result)
             else:
-                task = pg.allreduce(tensor_y)
-                task.wait()
+                task = dist.all_reduce(tensor_y)
                 assert np.array_equal(tensor_y, sum_result)
 
             print("test allreduce sum api ok")
@@ -89,11 +87,13 @@ class TestProcessGroupFp32(unittest.TestCase):
             max_result = paddle.maximum(tensor_x, tensor_y)
 
             if pg.rank() == 0:
-                task = pg.allreduce(tensor_x, core.ReduceOp.MAX)
+                task = dist.all_reduce(
+                    tensor_x, dist.ReduceOp.MAX, use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_x, max_result)
             else:
-                task = pg.allreduce(tensor_y, core.ReduceOp.MAX)
+                task = dist.all_reduce(
+                    tensor_y, dist.ReduceOp.MAX, use_calc_stream=False)
                 task.wait()
                 assert np.array_equal(tensor_y, max_result)
 
@@ -109,16 +109,14 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             broadcast_result = paddle.assign(tensor_x)
             if pg.rank() == 0:
-                task = pg.broadcast(tensor_x, 0)
+                task = dist.broadcast(tensor_x, 0, use_calc_stream=False)
                 task.synchronize()
                 paddle.device.cuda.synchronize()
                 assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_x)
             else:
-                task = pg.broadcast(tensor_y, 0)
-                task.synchronize()
+                task = dist.broadcast(tensor_y, 0)
                 paddle.device.cuda.synchronize()
-                assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_y)
 
             print("test broadcast api ok")
@@ -126,8 +124,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             # test barrier
             # rank 0
             if pg.rank() == 0:
-                task = pg.barrier()
-                task.wait()
+                dist.barrier()
             # rank 1
             else:
                 task = pg.barrier()
@@ -151,9 +148,13 @@ class TestProcessGroupFp32(unittest.TestCase):
                 paddle.device.cuda.synchronize()
             # rank 1
             else:
-                task = pg.all_gather(tensor_y, tensor_out)
-                task.wait()
+                tensor_out_list = [
+                    paddle.empty_like(tensor_x), paddle.empty_like(tensor_x)
+                ]
+                task = dist.all_gather(
+                    tensor_out_list, tensor_y, use_calc_stream=False)
                 paddle.device.cuda.synchronize()
+                tensor_out = paddle.concat(tensor_out_list)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
             out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
                                  [out_shape[0]])
