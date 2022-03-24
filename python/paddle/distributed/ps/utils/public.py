@@ -23,7 +23,6 @@ import logging
 import six
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
 import paddle.distributed.fleet as fleet
 
@@ -73,9 +72,9 @@ def logger_config(log_path, logging_name):
     return logger
 
 
-ps_log_root_dir = '/ps_log/'
+ps_log_root_dir = './ps_log/'
 logger = logger_config(
-    log_path='/ps_usr_print_log', logging_name='ps_usr_print_log')
+    log_path='./ps_usr_print_log', logging_name='ps_usr_print_log')
 
 
 class DistributedMode:
@@ -342,6 +341,7 @@ def get_dense_send_context(program,
         aggregate = True
         print("public get_dense_send_context dense_table:", grad_name,
               var_numel, origin_varnames)
+        from paddle.fluid.core import CommContext
         dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                 [var_numel], origin_varnames, trainer_id,
                                 aggregate, False, False, idx, False, False,
@@ -364,6 +364,7 @@ def get_dense_send_context(program,
         aggregate = True
         print("public get_dense_send_context data_norm table:", grad_name,
               var_numel, origin_varnames)
+        from paddle.fluid.core import CommContext
         data_norm_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False, True,
@@ -378,6 +379,7 @@ def get_dense_send_context(program,
             var_numel = reduce(lambda x, y: x * y, var.shape)
             grad_name = origin_varname
             aggregate = True
+            from paddle.fluid.core import CommContext
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], [origin_varname], trainer_id,
                                     aggregate, False, False, idx, False, False,
@@ -407,7 +409,7 @@ def get_geo_trainer_send_context(context):
 
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
-
+            from paddle.fluid.core import CommContext
             sparse_ctx = CommContext(grad_name, [grad_name],
                                      ["127.0.0.1:6071"], [var_numel],
                                      [grad_name], trainer_id, True, True,
@@ -432,6 +434,7 @@ def _step_ctx(idx, role_maker):
     endpoints = get_ps_endpoints(role_maker)
     sections = [1] * len(endpoints)
     names = [name] * len(endpoints)
+    from paddle.fluid.core import CommContext
     ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
                       True, False, False, idx, True, False, -1)
     return name, ctx
@@ -448,12 +451,8 @@ def get_the_one_send_context(context,
     origin_programs = context['origin_main_programs']
 
     idx = 0
-    for i, program in enumerate(origin_programs):
-        merged_dense_pairs = context['merged_dense_pairs'][i]
-        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
-                                     trainer_id, split_dense_table)
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
-    print("public distibuted_varnames:", distibuted_varnames)
+    # print("public distibuted_varnames:", distibuted_varnames)
     for i, program in enumerate(origin_programs):
         merged_sparse_pairs = context['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
@@ -472,10 +471,11 @@ def get_the_one_send_context(context,
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            print("public get_the_one_send_context sparse:", grad_name,
-                  splited_varname, shape)
+            # print("public get_the_one_send_context sparse:", grad_name,
+            #       splited_varname, shape)
             if grad_name in send_ctx:
                 continue
+            from paddle.fluid.core import CommContext
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False, False,
@@ -483,6 +483,11 @@ def get_the_one_send_context(context,
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+    for i, program in enumerate(origin_programs):
+        merged_dense_pairs = context['merged_dense_pairs'][i]
+        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
+                                     trainer_id, split_dense_table)
 
     if len(context['tensor_table']) > 0 and context['is_worker']:
         name, ctx = _step_ctx(idx, context['role_maker'])
@@ -1258,8 +1263,8 @@ def build_var_distributed(context):
     context["merged_variable_map"] = {}
     for origin_program in origin_programs:
         sparse_pairs, dense_pairs = get_param_grads(origin_program)
-        print("public build_var_distributed sparse_pairs:", sparse_pairs)
-        print("public build_var_distributed dense_pairs:", dense_pairs)
+        #        print("public build_var_distributed sparse_pairs:", sparse_pairs)
+        #        print("public build_var_distributed dense_pairs:", dense_pairs)
         origin_for_sparse = []
         origin_for_dense = []
         merged_sparse_pairs = []
@@ -1279,8 +1284,8 @@ def build_var_distributed(context):
             m_grad = MergedVariable(grad, [grad], [0])
             merged_variables_pairs.append((m_param, m_grad))
             merged_dense_pairs.append((m_param, m_grad))
-        print("public build_var_distributed merged_dense_pairs:",
-              merged_dense_pairs)
+        # print("public build_var_distributed merged_dense_pairs:",
+        #       merged_dense_pairs)
 
         for sparse_pair in origin_for_sparse:
             param, grad = sparse_pair
@@ -1289,8 +1294,8 @@ def build_var_distributed(context):
             m_grad = MergedVariable(grad, [grad], [0])
             merged_variables_pairs.append((m_param, m_grad))
             merged_sparse_pairs.append((m_param, m_grad))
-        print("public build_var_distributed merged_sparse_pairs:",
-              merged_sparse_pairs)
+        # print("public build_var_distributed merged_sparse_pairs:",
+        #       merged_sparse_pairs)
 
         for merged in merged_variables_pairs:
             m_param, m_grad = merged
@@ -1315,18 +1320,19 @@ def build_var_distributed(context):
     context["param_name_to_grad_name"] = param_name_to_grad_name
     context["grad_name_to_param_name"] = grad_name_to_param_name
 
-    print("public build_var_distributed origin_sparse_pairs:",
-          context["origin_sparse_pairs"])
-    print("public build_var_distributed origin_for_dense:",
-          context["origin_dense_pairs"])
-    print("public build_var_distributed merged_sparse_pairs:",
-          context["merged_sparse_pairs"])
-    print("public build_var_distributed merged_dense_pairs:",
-          context['merged_dense_pairs'])
-    print("public build_var_distributed param_name_to_grad_name:",
-          param_name_to_grad_name)
-    print("public build_var_distributed grad_name_to_param_name:",
-          grad_name_to_param_name)
+
+#    print("public build_var_distributed origin_sparse_pairs:",
+#          context["origin_sparse_pairs"])
+#    print("public build_var_distributed origin_for_dense:",
+#          context["origin_dense_pairs"])
+#    print("public build_var_distributed merged_sparse_pairs:",
+#          context["merged_sparse_pairs"])
+#    print("public build_var_distributed merged_dense_pairs:",
+#          context['merged_dense_pairs'])
+#    print("public build_var_distributed param_name_to_grad_name:",
+#          param_name_to_grad_name)
+#    print("public build_var_distributed grad_name_to_param_name:",
+#          grad_name_to_param_name)
 
 
 def _is_opt_role_op(op):

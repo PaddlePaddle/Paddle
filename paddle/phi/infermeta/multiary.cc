@@ -516,6 +516,215 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+inline int ConvOutputSize(
+    int input_size, int filter_size, int dilation, int padding, int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
+  PADDLE_ENFORCE_GT(
+      output_size,
+      0,
+      phi::errors::InvalidArgument(
+          "The output's size is expected to be greater than 0. "
+          "But recieved: output's size is %d. The output's size is computed by "
+          "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
+          "stride + 1), where input_size is %d, padding is %d, "
+          "filter_size is %d, dilation is %d, stride is %d.",
+          output_size,
+          input_size,
+          padding,
+          filter_size,
+          dilation,
+          stride));
+
+  return output_size;
+}
+
+void DeformableConvInferMeta(const MetaTensor& x,
+                             const MetaTensor& offset,
+                             const MetaTensor& filter,
+                             paddle::optional<const MetaTensor&> mask,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::vector<int>& dilations,
+                             int deformable_groups,
+                             int groups,
+                             int im2col_step,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  auto in_dims = x.dims();
+  auto offset_dims = offset.dims();
+  auto filter_dims = filter.dims();
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Conv input should be 4-D tensor, get %u",
+                                   in_dims.size()));
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    filter_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Conv input dimension and filter dimension should be "
+                        "the same. The difference is [%d]: [%d]",
+                        in_dims.size(),
+                        filter_dims.size()));
+  PADDLE_ENFORCE_EQ(in_dims.size() - strides.size(),
+                    2U,
+                    phi::errors::InvalidArgument(
+                        "Conv input dimension and strides "
+                        "dimension should be consistent. But received input "
+                        "dimension:[%d], strides dimension:[%d]",
+                        in_dims.size(),
+                        strides.size()));
+  PADDLE_ENFORCE_EQ(paddings.size(),
+                    strides.size(),
+                    phi::errors::InvalidArgument(
+                        "Conv paddings dimension and Conv strides dimension "
+                        "should be the same. The difference is [%d]: [%d]",
+                        paddings.size(),
+                        strides.size()));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims[1],
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input channels should be equal to filter "
+          "channels * groups. The difference is [%d]: [%d]",
+          in_dims[1],
+          filter_dims[1] * groups));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output channels should be divided by groups. But "
+          "received output channels:[%d], groups:[%d]",
+          filter_dims[0],
+          groups));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % deformable_groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output channels should be "
+          "divided by deformable groups. The difference is [%d]: [%d]",
+          filter_dims[0] % groups,
+          0));
+
+  if (in_dims[0] > im2col_step) {
+    PADDLE_ENFORCE_EQ(
+        in_dims[0] % im2col_step,
+        0U,
+        phi::errors::InvalidArgument(
+            "Input batchsize must be smaller than or divide im2col_step. But "
+            "received Input batchsize:[%d], im2col_step:[%d]",
+            in_dims[0],
+            im2col_step));
+  }
+
+  for (size_t i = 0; i < strides.size(); ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0U,
+        phi::errors::InvalidArgument("stride %d size incorrect", i));
+  }
+  for (size_t i = 0; i < dilations.size(); ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0U,
+        phi::errors::InvalidArgument("dilation %d size incorrect", i));
+  }
+
+  std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
+  for (size_t i = 0; i < strides.size(); ++i) {
+    if (!config.is_runtime &&
+        (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(ConvOutputSize(in_dims[i + 2],
+                                            filter_dims[i + 2],
+                                            dilations[i],
+                                            paddings[i],
+                                            strides[i]));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      output_shape[1] % deformable_groups,
+      0U,
+      phi::errors::InvalidArgument(
+          "output num_filter must divide deformable group size. But received "
+          "output num_filter:[%d], deformable group size:[%d]",
+          output_shape[1],
+          deformable_groups));
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(output_shape[2],
+                      offset_dims[2],
+                      phi::errors::InvalidArgument(
+                          "output height must equal to offset map height. "
+                          "The difference is [%d]: [%d]",
+                          output_shape[2],
+                          offset_dims[2]));
+    PADDLE_ENFORCE_EQ(output_shape[3],
+                      offset_dims[3],
+                      phi::errors::InvalidArgument(
+                          "output width must equal to offset map width. The "
+                          "difference is [%d]: [%d]",
+                          output_shape[3],
+                          offset_dims[3]));
+
+    PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]),
+                      0U,
+                      phi::errors::InvalidArgument(
+                          "offset filter must divide deformable group size. "
+                          "But received [%d]: [%d]",
+                          offset_dims[1],
+                          filter_dims[2] * filter_dims[3]));
+    PADDLE_ENFORCE_EQ(
+        offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
+        deformable_groups,
+        phi::errors::InvalidArgument(
+            "offset filter must divide deformable group size. But received "
+            "[%d]: [%d]",
+            offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
+            deformable_groups));
+
+    if (mask) {
+      auto mask_dims = mask->dims();
+      PADDLE_ENFORCE_EQ(output_shape[2],
+                        mask_dims[2],
+                        phi::errors::InvalidArgument(
+                            "output height must equal to mask map height. The "
+                            "difference is [%d] vs [%d]",
+                            output_shape[2],
+                            mask_dims[2]));
+      PADDLE_ENFORCE_EQ(output_shape[3],
+                        mask_dims[3],
+                        phi::errors::InvalidArgument(
+                            "output width must equal to mask map width. The "
+                            "difference is [%d] vs [%d]",
+                            output_shape[3],
+                            mask_dims[3]));
+
+      PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]),
+                        0U,
+                        phi::errors::InvalidArgument(
+                            "mask filter must divide deformable group size. "
+                            "But received [%d]: [%d]",
+                            mask_dims[1],
+                            filter_dims[2] * filter_dims[3]));
+      PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        phi::errors::InvalidArgument(
+                            "mask filter must divide deformable group size. "
+                            "But received [%d]: [%d]",
+                            mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                            deformable_groups));
+    }
+  }
+
+  out->set_dims(phi::make_ddim(output_shape));
+  out->set_dtype(x.dtype());
+}
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,

@@ -17,6 +17,8 @@ import re
 import argparse
 import os
 
+ops_to_fill_zero_for_empty_grads = set(list("split"))
+
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
 core_ops_returns_info = {}
@@ -468,7 +470,7 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
                     backward_input_type, False, backward_input_pos
                 ]
             else:
-                assert False
+                assert False, backward_input_name
 
     for backward_output in backward_returns_list:
         backward_output_name = backward_output[0]
@@ -477,7 +479,8 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
 
         backward_fwd_name = FindForwardName(backward_output_name)
         assert backward_fwd_name is not None
-        assert backward_fwd_name in forward_inputs_position_map.keys()
+        assert backward_fwd_name in forward_inputs_position_map.keys(
+        ), backward_fwd_name
 
         matched_forward_input_type = forward_inputs_position_map[
             backward_fwd_name][0]
@@ -598,7 +601,8 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+  
   std::string name() override {{ return \" {} \"; }}
   
   void ClearTensorWrappers() override {{
@@ -656,10 +660,11 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_input_map.items():
         if IsPlainTensorType(ttype):
-            grad_api_args[grad_api_position] = f"grads[{fwd_position}][0]"
+            grad_api_args[
+                grad_api_position] = f"hooked_grads[{fwd_position}][0]"
         else:
             assert IsVectorTensorType(ttype)
-            grad_api_args[grad_api_position] = f"grads[{fwd_position}]"
+            grad_api_args[grad_api_position] = f"hooked_grads[{fwd_position}]"
 
     for name, _, _, grad_api_position in backward_attrs_list:
         saved_attribute_name = GetSavedName(name)
@@ -687,23 +692,30 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
 
     grad_node_name = GetGradNodeName(fwd_api_name)
 
+    fill_zero_str = ""
+    if fwd_api_name in ops_to_fill_zero_for_empty_grads:
+        fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
+
     if len(namespace) > 0:
         grad_api_namespace = f"paddle::experimental::{namespace}"
     else:
         grad_api_namespace = f"paddle::experimental"
 
     FUNCTION_TEMPLATE = """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+    {}
+    auto hooked_grads = ApplyGradientHooks(grads);
+    
     // Call grad_api function
-    VLOG(3) << \"Finally State Running: \" << \"{}\"; 
+    VLOG(3) << \"Final State Running: \" << \"{}\"; 
     auto grad_api_returns = {}::{}({});
     {}
 }}
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, grad_node_name, grad_api_namespace, bwd_api_name,
-        grad_api_args_str, returns_str)
+        grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
+        bwd_api_name, grad_api_args_str, returns_str)
 
     return node_definition_str
 
@@ -761,7 +773,7 @@ def GenerateNodeCreationCodes(
                 output_autograd_meta = f"        egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
             else:
                 assert IsVectorTensorType(rtype)
-                output_autograd_meta = f"        std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
+                output_autograd_meta = f"        std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));\n"
                 output_autograd_meta += f"        std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
         outputs_autograd_meta_list.append(output_autograd_meta)
@@ -797,8 +809,15 @@ def GenerateNodeCreationCodes(
 
     # SetAttributes
     set_attributes_list = []
-    for name, _, _, _ in backward_attrs_list:
-        set_attributes = f"            grad_node->SetAttribute{name}({name});"
+    forward_attrs_name_set = set()
+    for name, _, _, _ in forward_attrs_list:
+        forward_attrs_name_set.add(name)
+
+    for name, _, default_val_attr, _ in backward_attrs_list:
+        if name in forward_attrs_name_set:
+            set_attributes = f"        grad_node->SetAttribute{name}({name});"
+        else:
+            set_attributes = f"        grad_node->SetAttribute{name}({default_val_attr});"
         set_attributes_list.append(set_attributes)
     set_attributes_str = "\n".join(set_attributes_list)
 
@@ -1242,7 +1261,7 @@ if __name__ == "__main__":
                 inplace_map = ParseInplaceInfo(fwd_api['inplace'])
 
             bwd_api_name = fwd_api['backward']
-            assert bwd_api_name in grad_api_dict.keys()
+            assert bwd_api_name in grad_api_dict.keys(), bwd_api_name
             bwd_api = grad_api_dict[bwd_api_name]
 
             assert 'args' in bwd_api.keys()
@@ -1314,7 +1333,7 @@ if __name__ == "__main__":
             print("Generated Backward Grad Output Map: ",
                   backward_grad_output_map)
 
-            # Backward Validation Check
+            # Backward Validation Check            
             BackwardValidationCheck(backward_fwd_input_map,
                                     backward_grad_input_map,
                                     backward_attrs_list)
