@@ -1024,6 +1024,8 @@ function generate_api_spec() {
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
     deactivate
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
 }
 
 function check_approvals_of_unittest() {
