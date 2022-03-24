@@ -24,7 +24,7 @@ KernelSignature LogsumexpOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature LogsumexpGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("logsumexp_grad",
-                         {GradVarName("Out"), "X"},
+                         {GradVarName("Out"), "X", "Out"},
                          {"axis", "keepdim", "reduce_all"},
                          {GradVarName("X")});
 }
