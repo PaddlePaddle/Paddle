@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);
 USE_OP(cinn_launch);
 USE_OP_ITSELF(elementwise_add);
 namespace paddle::framework {

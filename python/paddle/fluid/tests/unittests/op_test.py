@@ -698,7 +698,10 @@ class OpTest(unittest.TestCase):
                 + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
                 self.__class__.__name__)
 
-    def _calc_python_api_output(self, place):
+    def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
+        """ set egr_inps and egr_oups = None if you want to create it by yourself.
+        """
+
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
@@ -710,53 +713,90 @@ class OpTest(unittest.TestCase):
             def is_empty(a):
                 return isinstance(a, Empty)
 
-            def get_default(idx, all_params_number, defaults):
-                related_idx = idx - all_params_number + len(defaults)
-                assert related_idx >= 0, "%d-th arguments don't have default value" % idx
-                return defaults[related_idx]
-
-            def filter_by_name(x):
-                names = set(['name', 'out', 'output'])
-                if isinstance(x, list): return [i for i in x if i not in names]
-                if isinstance(x, dict):
-                    return {k: v for k, v in x.items() if k not in names}
-                assert False, "Only support list or dict."
+            def get_default(idx, defaults):
+                assert not isinstance(
+                    defaults[idx], Empty
+                ), "%d-th params of python api don't have default value." % idx
+                return defaults[idx]
 
             def to_defaults_list(params, defaults):
                 return [defaults[p] for p in params if p in defaults]
 
-            # NOTE(xiongkun): why don't use input arguments dicts ? 
-            # Because we don't know the python api name of each arguments.
-            # using parse_arg_and_kwargs, we can get the all api information we need.
-            api_params, api_defaults = [
-                filter_by_name(item) for item in parse_arg_and_kwargs(api)
-            ]
+            def parse_attri_value(name, op_inputs, op_attrs):
+                """ parse true value from inputs and attrs, if there is no name passed by OpTest, return Empty
+                    1. if the name in op_attrs, use the op_attrs[name]
+                    2. if the name in op_inputs, convert the op_inputs to [type of default value]
+                    3. if the name not in op_attrs ans op_inputs, return Empty. (this will use the default value from python api)
+                """
+                if name in op_proto_attrs:
+                    return op_proto_attrs[name]
+                elif name in op_inputs:
+                    assert op_inputs[name].__len__(
+                    ) == 1, "currently don't support multi-input in attribute."
+                    # why don't use numpy().item() : if the Tensor is float64, we will change it to python.float32, where we loss accuracy: [allclose_op]
+                    # why we reconstruct a tensor: because we want the tensor in cpu. 
+                    return paddle.to_tensor(
+                        op_inputs[name][0].numpy(), place='cpu')
+                else:
+                    return Empty()
+
+            # NOTE(xiongkun): the logic of constructing parameters: 
+            # for example:  
+            #    python api: cumprod(x, dim, dtype=None, name=None) 
+            #    kernel sig: [["x"], ["dim"], ["out"]]"
+            #
+            # we will construct a lot of list with the same length : len == len(api_params), here is 4
+            #    api_params = ["x", "dim", "dtype", "name"]
+            #    api_defaults = [Empty, Empty, None, None]; empty means no defaults.
+            #    inputs_and_attrs = ["x", "dim"] , the length may shorter or longer than api_params
+            #    input_arguments = [RealValue in self.inputs and self.attrs]
+            # then ,we will loop for the api_params, construct a result list: 
+            #    if the name in ['name', 'dtype', 'out', 'output'], we will use the default value
+            #    else, we will consume a input_arguments. (because the name is not corresponding, so we only use the order)
+
+            api_params, api_defaults = parse_arg_and_kwargs(api)
             api_defaults = to_defaults_list(api_params, api_defaults)
+            api_defaults = [
+                Empty() for i in range(len(api_params) - len(api_defaults))
+            ] + api_defaults
+            assert len(api_defaults) == len(
+                api_params), "Error happens. contack xiongkun03 to solve."
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
-            assert (
-                len(api_params) == len(inputs_and_attrs)
-            ), "inputs and attrs length must equals to python api length. (May be output is in argument list?)"
             input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
-                op_proto_attrs[name] if name in op_proto_attrs else Empty()
+                parse_attri_value(name, op_proto_ins, op_proto_attrs)
                 for name in attrs_sig
             ]
             results = []
-            for idx, arg in enumerate(input_arguments):
-                if is_empty(arg):
-                    results.append(
-                        get_default(idx, len(input_arguments), api_defaults))
+            api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+            idx_of_op_proto_arguments = 0
+            for idx, arg_name in enumerate(api_params):
+                if arg_name in api_ignore_param_list:
+                    results.append(get_default(idx, api_defaults))
                 else:
-                    results.append(arg)
+                    assert idx_of_op_proto_arguments < len(
+                        input_arguments), "Assert False."
+                    tmp = input_arguments[idx_of_op_proto_arguments]
+                    idx_of_op_proto_arguments += 1
+                    if isinstance(tmp, Empty):
+                        results.append(get_default(idx, api_defaults))
+                    else:
+                        results.append(tmp)
+            assert len(results) == len(api_params)
             return results
 
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
             if not isinstance(ret_tuple, (tuple, list)):
                 ret_tuple = [ret_tuple]
-            assert len(output_sig) == len(
-                ret_tuple), "expect %d outputs, but get %d outputs" % (
-                    len(output_sig), len(ret_tuple))
-            return {a: b for a, b in zip(output_sig, ret_tuple)}
+            if len(output_sig) == len(ret_tuple):
+                # [assumption]: we assume {"Out": [Tensor]}
+                return {a: [b] for a, b in zip(output_sig, ret_tuple)}
+            else:
+                # [assumption]: return multi-Tensor in a single output. such as paddle.split()
+                assert len(
+                    output_sig
+                ) == 1, "Don't support multi-output with multi-tensor output."
+                return {output_sig[0]: ret_tuple}
 
         def assumption_assert_and_transform(args, inp_num):
             """
@@ -775,6 +815,18 @@ class OpTest(unittest.TestCase):
             ] + args[inp_num:]
             return args
 
+        def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
+                                  attrs_outputs):
+            try:
+                kernel_sig = _dygraph_tracer()._get_kernel_signature(
+                    self.op_type, eager_tensor_inputs, eager_tensor_outputs,
+                    attrs_outputs)
+            except RuntimeError as re:
+                """ we think the kernel_sig is missing.
+                """
+                kernel_sig = None
+            return kernel_sig
+
         def cal_python_api(python_api, args, kernel_sig):
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             args = assumption_assert_and_transform(args, len(inputs_sig))
@@ -785,10 +837,10 @@ class OpTest(unittest.TestCase):
             block = fluid.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
-            eager_tensor_inputs = self.append_input_output_for_dygraph(
+            eager_tensor_inputs = egr_inps if egr_inps else self.append_input_output_for_dygraph(
                 op_proto, self.inputs, True, False, block)
             # prepare output variable
-            eager_tensor_outputs = self.append_input_output_for_dygraph(
+            eager_tensor_outputs = egr_oups if egr_oups else self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
             # prepare attrbutes
@@ -798,13 +850,13 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            kernel_sig = _dygraph_tracer()._get_kernel_signature(
-                self.op_type, eager_tensor_inputs, eager_tensor_outputs,
-                attrs_outputs)
-
+            kernel_sig = _get_kernel_signature(
+                eager_tensor_inputs, eager_tensor_outputs, attrs_outputs)
+            if not kernel_sig:
+                return None
             assert hasattr(
                 self, "python_api"
-            ), "Please set the `self.python_api` if you want to compare python api output."
+            ), "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_eager = True" % self.op_type
             args = prepare_python_api_arguments(
                 self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig)
             """ we directly return the cal_python_api value because the value is already tensor. 
@@ -1285,14 +1337,13 @@ class OpTest(unittest.TestCase):
                 place, no_check_set=no_check_set)
 
         if check_eager:
+            # we only check end2end api when check_eager=True
             with _test_eager_guard():
-                eager_dygraph_outs = self._calc_dygraph_output(
-                    place, no_check_set=no_check_set)
-                # we only check end2end api when check_eager=True
-                if hasattr(self, "python_api"):
-                    api_outs = self._calc_python_api_output(place)
-                    self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
-                                                         place)
+                eager_dygraph_outs = self._calc_python_api_output(place)
+                if eager_dygraph_outs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    eager_dygraph_outs = self._calc_dygraph_output(
+                        place, no_check_set=no_check_set)
 
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
@@ -1826,7 +1877,7 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
-                no_grad_set)
+                no_grad_set, False)
             fp32_grads = []
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
@@ -1842,7 +1893,7 @@ class OpTest(unittest.TestCase):
             with _test_eager_guard():
                 eager_dygraph_grad = self._get_dygraph_grad(
                     inputs_to_check, place, output_names,
-                    user_defined_grad_outputs, no_grad_set)
+                    user_defined_grad_outputs, no_grad_set, check_eager)
                 fp32_grads = []
                 for grad in eager_dygraph_grad:
                     if grad.dtype == np.uint16:
@@ -1868,7 +1919,8 @@ class OpTest(unittest.TestCase):
                           place,
                           output_names,
                           user_defined_grad_outputs=None,
-                          no_grad_set=None):
+                          no_grad_set=None,
+                          check_eager=False):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1889,11 +1941,16 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            block.append_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=attrs_outputs if hasattr(self, "attrs") else None)
+            if check_eager:
+                outputs = self._calc_python_api_output(place, inputs, outputs)
+
+            # if outputs is None, kernel sig is empty or other error is happens.
+            if not check_eager or outputs is None:
+                block.append_op(
+                    type=self.op_type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(outputs,

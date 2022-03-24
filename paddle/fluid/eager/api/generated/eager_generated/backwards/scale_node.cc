@@ -145,8 +145,9 @@ void GradNodeScale::SetTensorWrappers_X(
 void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeScale::
-operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-           bool create_graph) {
+operator()(
+    std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
+    bool create_graph) {
   // 1. Check Output Size
   PADDLE_ENFORCE(
       ((grads.size() == 1) && (grads[0].size() == 1)),
