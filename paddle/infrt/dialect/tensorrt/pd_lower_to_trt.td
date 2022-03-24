@@ -14,7 +14,7 @@ def PD2TRT_Matmul_Lower : Pat<
         (TRT_MatrixMultiplyOp $X, $transpose_X, $Y, $transpose_Y)>;
 
 def PD2TRT_ElementwiseAdd_Lower : Pat<
-        (PD_Elementwise_addOp $X, $Y, ConstantAttr<SI32Attr, "-1">),
+        (PD_Elementwise_addOp $X, $Y, $_),
         (TRT_ElementWiseOp $X, $Y, (TRT_createNvinferEnumAttr<"nvinfer1::ElementWiseOperation", "kSUM">))>;
 
 def PD2TRT_Relu_Lower : Pat<
@@ -25,4 +25,23 @@ def PD2TRT_Relu6_Lower : Pat<
         (PD_Relu6Op $X, $threshold),
         (TRT_ActivationOp $X, (TRT_createNvinferEnumAttr<"nvinfer1::ActivationType", "kCLIP">), (INFRT_createF32Attr<"0.0">), $threshold)>;
 
+
+def createTRTConv2dOp : NativeCodeCall<"createTRTConv2dOp($_builder, $0.getDefiningOp())">;
+
+def PD2TRT_Conv2d_Lower : Pat<
+        (PD_Conv2dOp:$old_value $Input, $Filter, $strides, $paddings, $padding_algorithm, $groups, $dilations, $data_format),
+        (createTRTConv2dOp $old_value)>;
+
+def PD2TRT_Pooling_Lower : Pat<
+        (PD_Pool2dOp $Input, $pooling_type, $ksize, $global_pooling, $strides, $paddings, $exclusive, $adaptive, $ceil_mode, $data_format, $padding_algorithm),
+        (TRT_PoolingOp $Input, (INFRT_createI32Attr<"0">)/*kmax*/, $ksize, $strides, $paddings, $padding_algorithm)>;
+
+def PD2TRT_MatrixMultipl_Lower : Pat<
+        (PD_MulOp $Input1, $Input2, $x_num_col_dims, $y_num_col_dims),
+        (TRT_MatrixMultiplOp $Input1, (INFRT_createI32Attr<"0">)/*kNONE*/, $Input2, (INFRT_createI32Attr<"0">)/*kNONE*/)>;
+
+def PD2TRT_SoftMax_Lower : Pat<
+        (PD_SoftmaxOp $Input, $axis, $_),
+        (TRT_SoftMaxOp $Input, $axis)>;
 #endif // PD_LOWER_TO_TRT
+

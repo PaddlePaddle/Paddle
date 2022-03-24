@@ -23,6 +23,7 @@
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
+#include "paddle/infrt/dialect/tensorrt/convert.h"
 
 namespace infrt {
 namespace trt {

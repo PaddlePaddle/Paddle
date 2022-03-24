@@ -20,6 +20,7 @@
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 
 namespace infrt {
 namespace trt {
@@ -42,6 +43,7 @@ void TRTOpTellerPass::runOnFunction() {
     if (::llvm::dyn_cast_or_null<infrt::pd::FetchOp>(op)) continue;
     if (::llvm::dyn_cast_or_null<infrt::pd::GraphOp>(op)) continue;
     if (::llvm::dyn_cast_or_null<::infrt::ReturnOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<::infrt::phi::TensorMapGetTensorOp>(op)) continue;
 
     builder.setInsertionPoint(op);
     auto loc = getFunction().getLoc();
