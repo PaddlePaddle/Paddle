@@ -81,12 +81,6 @@ class QuantDequantMkldnnPass : public FusePassBase {
   void UpdateActivations(ir::Graph* graph) const;
 
   void RemoveCtrlVars(ir::Graph* graph) const;
-
-  void SaveQuantInfo(
-      ir::Graph* graph,
-      std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
-      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
-      const;
 };
 }  // namespace ir
 }  // namespace framework

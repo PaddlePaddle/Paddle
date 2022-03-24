@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/quant_dequant_mkldnn_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -489,33 +490,6 @@ void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-// save weight_thresholds and var_quant_scales in the first op's attr
-// for compute_propagate_scales_mkldnn_pass
-void QuantDequantMkldnnPass::SaveQuantInfo(
-    ir::Graph* graph,
-    std::unordered_map<std::string, std::vector<float>>* weight_thresholds,
-    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
-    const {
-  VLOG(3) << "save variables in the first op's attr";
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
-      continue;
-    op_node->Op()->SetAttr("has_quant_info", true);
-
-    for (auto iter = weight_thresholds->begin();
-         iter != weight_thresholds->end(); ++iter) {
-      op_node->Op()->SetAttr(iter->first + "_weight_thresholds", iter->second);
-    }
-    for (auto iter = var_quant_scales->begin(); iter != var_quant_scales->end();
-         ++iter) {
-      op_node->Op()->SetAttr(iter->first + "_var_quant_scales", iter->second);
-    }
-    break;
-  }
-}
-
 void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle slim quantized model to mkldnn quantized model.";
   const std::string pattern_name = "quant_dequant_mkldnn_pass";
@@ -549,7 +523,11 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   DequantizeWeights(graph, scope, &weight_thresholds);
   UpdateActivations(graph);
   RemoveCtrlVars(graph);
-  SaveQuantInfo(graph, &weight_thresholds, &var_quant_scales);
+
+  // save var_quant_scales in the first op's attr
+  // for compute_propagate_scales_mkldnn_pass
+  SaveQuantInfo(graph, "has_quant_info", "_var_quant_scales",
+                &var_quant_scales);
 }
 
 }  // namespace ir
