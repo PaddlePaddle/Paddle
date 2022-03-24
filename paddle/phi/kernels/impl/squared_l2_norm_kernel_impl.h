@@ -14,19 +14,19 @@
 
 #pragma once
 
-// #include "paddle/phi/kernels/funcs/squared_l2_norm.h"
+#include "paddle/phi/kernels/funcs/squared_l2_norm.h"
 
-// namespace phi {
+namespace phi {
 
-// template <typename T, typename Context>
-// void SquaredL2NormKernel(const Context& dev_ctx,
-//                          const DenseTensor& x,
-//                          DenseTensor* out) {
-//     const T* x_ptr = x.data<T>();
-//     auto numel = x.numel();
-//     T* out_ptr = dev_ctx.template Alloc<T>(out);
+template <typename T, typename Context>
+void SquaredL2NormKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out) {
+  const T* x_ptr = x.data<T>();
+  auto numel = x.numel();
+  T* out_ptr = dev_ctx.template Alloc<T>(out);
 
-//     phi::funcs::SquaredL2Norm<Context, T, T>(dev_ctx, x_ptr, out_ptr, numel);
-// }
+  phi::funcs::SquaredL2Norm<Context, T, T>(dev_ctx, x_ptr, out_ptr, numel);
+}
 
-// }  // namespace phi
+}  // namespace phi

@@ -14,14 +14,14 @@
 
 #pragma once
 
-// #include "paddle/phi/core/dense_tensor.h"
-// #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
-// namespace phi {
+namespace phi {
 
-// template <typename T, typename Context>
-// void SquaredL2NormKernel(const Context& dev_ctx,
-//                          const DenseTensor& x,
-//                          DenseTensor* out);
+template <typename T, typename Context>
+void SquaredL2NormKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out);
 
-// }  // namespace phi
+}  // namespace phi

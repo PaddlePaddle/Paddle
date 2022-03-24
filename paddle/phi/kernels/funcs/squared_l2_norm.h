@@ -33,64 +33,64 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-// namespace phi {
-// namespace funcs {
+namespace phi {
+namespace funcs {
 
-// template <typename DeviceContext, typename T1, typename T2 = T1>
-// void SquaredL2Norm(const DeviceContext& ctx,
-//                    const T1* x,
-//                    T2* y,
-//                    size_t numel,
-//                    paddle::memory::Buffer* buffer = nullptr) {
-//   if (std::is_same<T1, T2>::value) {
-//     using EigenT = typename EigenTensor<T1, 1>::Type;
-//     using ConstEigenT = typename EigenTensor<T1, 1>::ConstType;
-//     using EigenDim = typename EigenDim<1>::Type;
-//     ConstEigenT input(x, EigenDim(numel));
-//     EigenT output(reinterpret_cast<T1*>(y), EigenDim(1));
-//     output.device(*ctx.eigen_device()) = input.square().sum();
-//   } else {
-//     T2 ret = static_cast<T2>(0);
-//     for (size_t i = 0; i < numel; ++i) {
-//       auto tmp = static_cast<T2>(x[i]);
-//       ret += tmp * tmp;
-//     }
-//     *y = ret;
-//   }
-// }
+template <typename DeviceContext, typename T1, typename T2 = T1>
+void SquaredL2Norm(const DeviceContext& ctx,
+                   const T1* x,
+                   T2* y,
+                   size_t numel,
+                   paddle::memory::Buffer* buffer = nullptr) {
+  if (std::is_same<T1, T2>::value) {
+    using EigenT = typename EigenTensor<T1, 1>::Type;
+    using ConstEigenT = typename EigenTensor<T1, 1>::ConstType;
+    using EigenDim = typename EigenDim<1>::Type;
+    ConstEigenT input(x, EigenDim(numel));
+    EigenT output(reinterpret_cast<T1*>(y), EigenDim(1));
+    output.device(*ctx.eigen_device()) = input.square().sum();
+  } else {
+    T2 ret = static_cast<T2>(0);
+    for (size_t i = 0; i < numel; ++i) {
+      auto tmp = static_cast<T2>(x[i]);
+      ret += tmp * tmp;
+    }
+    *y = ret;
+  }
+}
 
-// #if defined(__NVCC__) || defined(__HIPCC__)
-// template <typename T1, typename T2 = T1>
-// void SquaredL2Norm(const DeviceContext& ctx,
-//                    const T1* x,
-//                    T2* y,
-//                    size_t numel,
-//                    paddle::memory::Buffer* buffer = nullptr) {
-//   if (UNLIKELY(buffer == nullptr)) {
-//     paddle::memory::Buffer tmp_buffer(ctx.GetPlace());
-//     return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
-//   }
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename T1, typename T2 = T1>
+void SquaredL2Norm(const DeviceContext& ctx,
+                   const T1* x,
+                   T2* y,
+                   size_t numel,
+                   paddle::memory::Buffer* buffer = nullptr) {
+  if (UNLIKELY(buffer == nullptr)) {
+    paddle::memory::Buffer tmp_buffer(ctx.GetPlace());
+    return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
+  }
 
-//   using FunctorT = kernel_primitives::SquareFunctor<T1, T2>;
-//   cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
-//   size_t temp_storage_bytes = 0;
-//   void* d_temp_storage = nullptr;
-//   auto stream = ctx.stream();
-// #pragma unroll 2
-//   for (size_t i = 0; i < 2; ++i) {
-//     if (temp_storage_bytes > 0) {
-//       d_temp_storage = buffer->Alloc<void>(temp_storage_bytes);
-//     }
-//     PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::Reduce(d_temp_storage,
-//                                                          temp_storage_bytes,
-//                                                          iter,
-//                                                          y,
-//                                                          numel,
-//                                                          cub::Sum(),
-//                                                          static_cast<T2>(0)));
-//   }
-// }
-// #endif
+  using FunctorT = kernel_primitives::SquareFunctor<T1, T2>;
+  cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
+  size_t temp_storage_bytes = 0;
+  void* d_temp_storage = nullptr;
+  auto stream = ctx.stream();
+#pragma unroll 2
+  for (size_t i = 0; i < 2; ++i) {
+    if (temp_storage_bytes > 0) {
+      d_temp_storage = buffer->Alloc<void>(temp_storage_bytes);
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::Reduce(d_temp_storage,
+                                                         temp_storage_bytes,
+                                                         iter,
+                                                         y,
+                                                         numel,
+                                                         cub::Sum(),
+                                                         static_cast<T2>(0)));
+  }
+}
+#endif
 
-// }  // namespace funcs
-// }  // namespace phi
+}  // namespace funcs
+}  // namespace phi

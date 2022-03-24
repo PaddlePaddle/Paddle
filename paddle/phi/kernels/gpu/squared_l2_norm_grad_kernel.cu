@@ -18,9 +18,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/squared_l2_norm_grad_kernel_impl.h"
 
-// PD_REGISTER_KERNEL(squared_l2_norm_grad,
-//                   GPU,
-//                   ALL_LAYOUT,
-//                   phi::SquaredL2NormGradKernel,
-//                   float,
-//                   double) {}
+PD_REGISTER_KERNEL(squared_l2_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SquaredL2NormGradKernel,
+                   float,
+                   double) {}

@@ -11,13 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// #include "paddle/phi/kernels/squared_l2_norm_kernel.h"
+#include "paddle/phi/kernels/squared_l2_norm_kernel.h"
 
-// #include "paddle/phi/backends/cpu/cpu_context.h"
-// #include "paddle/phi/core/kernel_registry.h"
-// #include "paddle/phi/kernels/impl/squared_l2_norm_kernel_impl.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/squared_l2_norm_kernel_impl.h"
 
-// PD_REGISTER_KERNEL(
-//     squared_l2_norm, CPU, ALL_LAYOUT, phi::SquaredL2NormKernel, float,
-//     double) {
-// }
+PD_REGISTER_KERNEL(
+    squared_l2_norm, CPU, ALL_LAYOUT, phi::SquaredL2NormKernel, float, double) {
+}

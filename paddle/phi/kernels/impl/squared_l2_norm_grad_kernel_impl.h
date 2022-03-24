@@ -16,24 +16,27 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-// namespace phi {
+namespace phi {
 
-// template <typename T, typename Context>
-// void SquaredL2NormGradKernel(const Context& dev_ctx, const DenseTensor& x,
-// const DenseTensor& out_grad, DenseTensor* x_grad) {
-//     PADDLE_ENFORCE_EQ(
-//         out_grad.numel(), 1,
-//         errors::InvalidArgument(
-//             "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
-//     dev_ctx.template Alloc<T>(x_grad);
+template <typename T, typename Context>
+void SquaredL2NormGradKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& out_grad,
+                             DenseTensor* x_grad) {
+  PADDLE_ENFORCE_EQ(
+      out_grad.numel(),
+      1,
+      errors::InvalidArgument(
+          "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
+  dev_ctx.template Alloc<T>(x_grad);
 
-//     auto xx = EigenVector<T>::Flatten(x);
-//     auto dout = EigenVector<T>::Flatten(out_grad);
-//     auto dx = EigenVector<T>::Flatten(*x_grad);
-//     auto& place = *dev_ctx.eigen_device();
+  auto xx = EigenVector<T>::Flatten(x);
+  auto dout = EigenVector<T>::Flatten(out_grad);
+  auto dx = EigenVector<T>::Flatten(*x_grad);
+  auto& place = *dev_ctx.eigen_device();
 
-//     Eigen::DSizes<int, 1> x_dsize(x.numel());
-//     dx.device(place) = (dout.broadcast(x_dsize) * xx) * static_cast<T>(2.0);
-// }
+  Eigen::DSizes<int, 1> x_dsize(x.numel());
+  dx.device(place) = (dout.broadcast(x_dsize) * xx) * static_cast<T>(2.0);
+}
 
-// }  // namespace phi
+}  // namespace phi
