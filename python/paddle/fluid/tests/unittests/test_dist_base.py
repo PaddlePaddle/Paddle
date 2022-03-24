@@ -750,16 +750,16 @@ class TestParallelDyGraphRunnerBase(object):
         if args.update_method in ["nccl2", "gloo"]:
             paddle.distributed.init_parallel_env()
 
-        # 4. build process group
-        nranks = ParallelEnv().nranks
-        rank = ParallelEnv().local_rank
-        is_master = True if rank == 0 else False
-        store = paddle.fluid.core.TCPStore("127.0.0.1", args.dist_port,
-                                           is_master, nranks)
-        if args.update_method == "nccl2":
-            group = core.ProcessGroupNCCL(store, rank, nranks)
-        elif args.update_method == "gloo":
-            group = core.ProcessGroupGloo(store, rank, nranks)
+            # 4. build process group
+            nranks = ParallelEnv().nranks
+            rank = ParallelEnv().local_rank
+            is_master = True if rank == 0 else False
+            store = paddle.fluid.core.TCPStore("127.0.0.1", args.dist_port,
+                                               is_master, nranks)
+            if args.update_method == "nccl2":
+                group = core.ProcessGroupNCCL(store, rank, nranks)
+            elif args.update_method == "gloo":
+                group = core.ProcessGroupGloo(store, rank, nranks)
 
         # 5. train model
         with _test_eager_guard():
