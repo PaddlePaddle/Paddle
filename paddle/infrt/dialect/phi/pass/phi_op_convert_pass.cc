@@ -97,12 +97,12 @@ void PhiOpConvertPass::convertStage() {
     }
     auto loc = getFunction().getLoc();
     builder.setInsertionPoint(op);
-    if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_name)) {
-      std::string kernel_name = phi::TransToPhiKernelName(op_name);
+    op_name = phi::TransToPhiKernelName(op_name);
+    if (!::phi::OpUtilsMap::Instance().Contains(op_name)) {
       auto kernel_op = builder.create<infrt::KernelOp>(loc,
                                                        op->getResultTypes(),
                                                        op->getOperands(),
-                                                       kernel_name,
+                                                       op_name,
                                                        op->getAttrDictionary());
       op->replaceAllUsesWith(kernel_op.getResults());
     } else {
