@@ -108,8 +108,8 @@ class TestInplace(unittest.TestCase):
         self._test_forward_version()
 
     def test_backward_error(self):
-        with _test_eager_guard():
-            self._test_backward_error()
+        # with _test_eager_guard():
+        #     self._test_backward_error()
         self._test_backward_error()
 
     def test_backward_success_1(self):
