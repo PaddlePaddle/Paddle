@@ -102,6 +102,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
             multi_precision, rescale_grad, param_out, velocity_out,
             master_param_out);
       }
+      return;
     }
 
     VLOG(10) << " so use sgd optimizer";
