@@ -160,7 +160,7 @@ def _non_static_mode():
 
 
 @signature_safe_contextmanager
-def _test_eager_guard(tracer=None):
+def _test_eager_guard(place=None):
     _disable_legacy_dygraph()
     from paddle import _C_ops
     _C_ops.switch_to_eager_ops()
