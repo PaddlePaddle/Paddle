@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/cast_grad_kernel.h"
-#include "paddle/phi/kernels/cpu/cast_impl.h"
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/cast_impl.h"
 
 namespace phi {
 
