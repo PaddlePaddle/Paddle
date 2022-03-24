@@ -323,12 +323,11 @@ class Profiler:
 
             .. code-block:: python
 
+                import paddle
                 import paddle.profiler as profiler
-                import paddle.nn as nn
-                import paddle.nn.functional as F
-                from paddle.io import Dataset, DataLoader
-
-                class RandomDataset(Dataset):
+                import numpy as np
+                
+                class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
                 
@@ -340,20 +339,20 @@ class Profiler:
                     def __len__(self):
                         return self.num_samples
                 
-                class SimpleNet(nn.Layer):
+                class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
-                        self.fc = nn.Linear(100, 10)
+                        self.fc = paddle.nn.Linear(100, 10)
                 
                     def forward(self, image, label=None):
                         return self.fc(image)
-
+                
                 dataset = RandomDataset(20 * 4)
                 simple_net = SimpleNet()
                 opt = paddle.optimizer.SGD(learning_rate=1e-3,
                                            parameters=simple_net.parameters())
                 BATCH_SIZE = 4
-                loader = DataLoader(
+                loader = paddle.io.DataLoader(
                     dataset,
                     batch_size=BATCH_SIZE,
                     shuffle=True,
@@ -363,7 +362,7 @@ class Profiler:
                 p.start()
                 for i, (image, label) in enumerate(loader()):
                     out = simple_net(image)
-                    loss = F.cross_entropy(out, label)
+                    loss = paddle.nn.functional.cross_entropy(out, label)
                     avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     opt.minimize(avg_loss)
@@ -561,18 +560,37 @@ class Profiler:
 
     def step_info(self, unit=None):
         r"""
-        Get statistics for current step, such as the cost of loading data, the cost of
-        a step and the speed of the model when `timer_only` is true. If the function
-        is called at certain iteration intervals, the result is the average of all
-        steps between the previous call and this call.
+        Get statistics for current step. If the function is called at certain iteration
+        intervals, the result is the average of all steps between the previous call and
+        this call. Statistics are as follows：
+
+        1. reader_cost: the cost of loading data measured in seconds.
+
+        2. batch_cost: the cost of step measured in seconds.
+
+        3. ips(Instance Per Second): the throughput of the model measured in `samples/s`
+        or others depends on the `unit`. When `num_samples` of `step()` is None, it is
+        measured in `steps/s`.
 
         Parameters:
-            unit (string, optional): Specifies the unit of input data for throughput.
-            For example, when it is `images`, the unit of throughput is `images/s`.
-            Default: None, the unit of throughput is `samples/s` .
+            unit (string, optional): The unit of input data is only used When `num_samples`
+            of `step()` is specified as a number. For example, when it is `images`, the unit
+            of throughput is `images/s`. Default: None, the unit of throughput is `samples/s`.
 
         Returns:
             string: A string representing the statistic.
+        Examples:
+            .. code-block:: python
+
+                import paddle.profiler as profiler
+                prof = profiler.Profiler(timer_only=True)
+                prof.start()
+                for iter in range(20):
+                    #train()
+                    prof.step()
+                    if iter % 10 == 0:
+                        print(prof.step_info())
+                prof.stop()
         """
         if unit is None:
             unit = 'samples'
@@ -698,10 +716,9 @@ class Profiler:
             statistic_data = StatisticData(
                 self.profiler_result.get_data(),
                 self.profiler_result.get_extra_info())
-            print(
-                _build_table(
-                    statistic_data,
-                    sorted_by=sorted_by,
-                    op_detail=op_detail,
-                    thread_sep=thread_sep,
-                    time_unit=time_unit))
+            print(_build_table(
+                statistic_data,
+                sorted_by=sorted_by,
+                op_detail=op_detail,
+                thread_sep=thread_sep,
+                time_unit=time_unit))

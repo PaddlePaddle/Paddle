@@ -92,11 +92,11 @@ class Benchmark(object):
                 self.current_event.speed_unit = 'steps/s'
             else:
                 self.current_event.speed_unit = unit + '/s'
-            message += ' %s: %.5f s' % ('step_cost', batch_average)
+            message += ' %s: %.5f s' % ('batch_cost', batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
-            message += ' speed: %.3f %s' % (speed_average,
-                                            self.current_event.speed_unit)
+            message += ' ips: %.3f %s' % (speed_average,
+                                          self.current_event.speed_unit)
         self.current_event.reset()
         return message
 
@@ -157,8 +157,9 @@ class TimerHook(Hook):
         self.start_reader = timeit.default_timer()
 
     def after_reader(self, benchmark):
+        reader_cost = timeit.default_timer() - self.start_reader
         if (benchmark.current_event is None) or (
-                not benchmark.current_event.need_record):
+                not benchmark.current_event.need_record) or (reader_cost == 0):
             return
         reader_cost = timeit.default_timer() - self.start_reader
         benchmark.current_event.record_reader(reader_cost)
@@ -199,24 +200,21 @@ class TimerHook(Hook):
         print('Perf Summary'.center(100, '='))
         if summary['reader_ratio'] != 0:
             print('Reader_ratio: ' + '%.3f' % (summary['reader_ratio']) + '%')
-        print('Time unit: s, Speed unit: %s' %
+        print('Time unit: s, IPS unit: %s' %
               (benchmark.current_event.speed_unit))
         print('|', ''.center(15), '|', 'avg'.center(15), '|', 'max'.center(15),
               '|', 'min'.center(15), '|')
         # if DataLoader is not called, reader_summary is unnecessary.
         if summary['reader_summary']['avg'] != 0:
             self.print_stats('reader_cost', summary['reader_summary'])
-        item = 'batch_cost' if benchmark.current_event.speed_mode == 'samples/s' else 'step_cost'
-        self.print_stats(item, summary['batch_summary'])
-        self.print_stats('Speed', summary['speed_summary'])
+        self.print_stats('batch_cost', summary['batch_summary'])
+        self.print_stats('ips', summary['ips_summary'])
 
     def print_stats(self, item, message_dict):
         avg_str = '%.5f' % (message_dict['avg'])
         max_str = '%.5f' % (message_dict['max'])
         min_str = '%.5f' % (message_dict['min'])
-        print('|',
-              item.center(15), '|',
-              avg_str.center(15), '|',
+        print('|', item.center(15), '|', avg_str.center(15), '|',
               max_str.center(15), '|', min_str.center(15), '|')
 
 
@@ -250,6 +248,7 @@ class Event(object):
     def record_batch(self, usetime, num_samples=None):
         if num_samples is None:
             self.speed_mode = "steps/s"
+            self.speed_unit = "steps/s"
         self.batch_cost_averager.record(usetime, num_samples)
         self.total_iters += 1
 
@@ -297,7 +296,7 @@ class Event(object):
             max=self.batch_records['max'],
             min=self.batch_records['min'],
             avg=batch_avg)
-        speed_summary = dict(
+        ips_summary = dict(
             max=self.speed_records['max'],
             min=self.speed_records['min'],
             avg=speed_avg)
@@ -305,7 +304,7 @@ class Event(object):
         summary = dict(
             reader_summary=reader_summary,
             batch_summary=batch_summary,
-            speed_summary=speed_summary,
+            ips_summary=ips_summary,
             reader_ratio=reader_ratio)
 
         return summary
