@@ -30,6 +30,7 @@ paddle.enable_static()
 class TestDiagonalOp(OpTest):
     def setUp(self):
         self.op_type = "diagonal"
+        self.python_api = paddle.diagonal
         self.init_config()
         self.outputs = {'Out': self.target}
 

@@ -39,7 +39,7 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_backend() &&
              target != Backend::ALL_BACKEND &&
-             !platform::is_same_place(input, phi::TransToPhiPlace(target));
+             phi::TransToPhiBackend(input) != target;
   return ret;
 }
 
@@ -180,21 +180,20 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
-  VLOG(6) << tensor_in->dtype() << "\t" << target_args_def.dtype;
-  if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
+  phi::DenseTensor& dense_tensor =
+      *static_cast<phi::DenseTensor*>(tensor_in.get());
+  if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
       (!NeedTransformPlace(
-           tensor_in->place(), target_args_def.backend, transform_flag) &&
+           dense_tensor.place(), target_args_def.backend, transform_flag) &&
        !NeedTransformDataType(
-           tensor_in->dtype(), target_args_def.dtype, transform_flag) &&
+           dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
        !NeedTransformLayout(
-           tensor_in->layout(), target_args_def.layout, transform_flag))) {
+           dense_tensor.layout(), target_args_def.layout, transform_flag))) {
     return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
   }
 
   phi::DenseTensor out =
-      TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
-                    target_args_def,
-                    transform_flag);
+      TransformData(dense_tensor, target_args_def, transform_flag);
   return std::make_shared<phi::DenseTensor>(std::move(out));
 }
 
