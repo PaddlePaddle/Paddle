@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #else
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
+#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #endif
 
 namespace ops = paddle::operators;

@@ -138,8 +138,8 @@ DECLARE_INPLACE_OP_INFERER(BCELossGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(bce_loss, BCELossInferShapeFunctor,
-                            PT_INFER_META(phi::BCELossInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(bce_loss, BCELossInferShapeFunctor,
+                            PD_INFER_META(phi::BCELossInferMeta));
 
 REGISTER_OPERATOR(bce_loss, ops::BCELossOp, ops::BCELossOpMaker,
                   ops::BCELossGradOpMaker<paddle::framework::OpDesc>,

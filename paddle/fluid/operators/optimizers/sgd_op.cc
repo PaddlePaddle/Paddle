@@ -166,8 +166,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SGDOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SGDOpKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>,
-    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

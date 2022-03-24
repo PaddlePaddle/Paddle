@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+//#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include <queue>
 
 namespace paddle {

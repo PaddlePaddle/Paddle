@@ -57,13 +57,14 @@ class MlirToRuntimeTranslator {
  protected:
   //! Emit a "infrt.constant.*" operation, return true if succeed.
   bool EmitConstantOp(mlir::Operation* op);
-  //! Emit a "Infrt.return" operation.
+  //! Emit a "infrt.return" operation.
   bool EmitReturnOp(mlir::Operation* op,
                     llvm::SmallVectorImpl<mlir::Value>* results);
   //! Emit a "ts.build_shape" operation.
   bool EmitBuildShapeOp(mlir::Operation* op);
   //! Emit an operation other than the special cases above.
-  bool EmitGeneralOp(mlir::Operation* op);
+  bool EmitGeneralOp(mlir::Operation* op,
+                     const KernelRegistry& kernel_registry);
   //! Emit all the functions.
   bool EmitFunctions();
 

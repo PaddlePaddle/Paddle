@@ -1,4 +1,6 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -157,10 +159,8 @@ inline void EmplaceDeviceContext(
               cuda_ctx,
               platform::errors::InvalidArgument(
                   "Failed to dynamic_cast dev_ctx into CUDADeviceContext."));
-          // Note: A trick method to init context, why GetAllocator interface
-          // needs a stream parameter?
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
-                                    .GetAllocator(p, cuda_ctx->stream())
+                                    .GetAllocator(p)
                                     .get());
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
@@ -465,6 +465,9 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitCuBlasContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  InitCuBlasLtContext();
+#endif
   InitCuSparseContext();
   InitCuSolverContext();
 #endif
@@ -476,6 +479,9 @@ void CUDAContext::SetStream(gpuStream_t stream) {
     DestoryCuDNNContext();
     DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+    DestoryCuBlasLtContext();
+#endif
     DestoryCuSolverContext();
 #endif
 
@@ -485,6 +491,9 @@ void CUDAContext::SetStream(gpuStream_t stream) {
     InitCuBlasContext();
     InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+    InitCuBlasLtContext();
+#endif
     InitCuSolverContext();
 #endif
   }
@@ -495,6 +504,9 @@ CUDAContext::~CUDAContext() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  InitCuBlasLtContext();
+#endif
   DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
@@ -503,10 +515,10 @@ CUDAContext::~CUDAContext() {
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
   phi::GPUContext::PartialInitWithoutAllocator();
   cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
-  workspace_.reset(new phi::DnnWorkspaceHandle(
-      memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(place, phi::GPUContext::stream())
-          .get()));
+  auto& instance = memory::allocation::AllocatorFacade::Instance();
+  instance.SetDefaultStream(place, phi::GPUContext::stream());
+  workspace_.reset(
+      new phi::DnnWorkspaceHandle(instance.GetAllocator(place).get()));
 }
 
 CUDADeviceContext::~CUDADeviceContext() = default;
@@ -551,6 +563,14 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   }
   return phi::GPUContext::cublas_handle();
 }
+#if CUDA_VERSION >= 11060
+cublasLtHandle_t CUDADeviceContext::cublaslt_handle() const {
+  if (thread_ctx_.count(this)) {
+    return context()->CublasLtHandle()->GetCublasLtHandle();
+  }
+  return phi::GPUContext::cublaslt_handle();
+}
+#endif
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CusparseHandle()->GetCusparseHandle();
@@ -596,7 +616,7 @@ phi::DnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
     // return workspace_.get();
     return phi::DnnWorkspaceHandle(
         memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(GetPlace(), phi::GPUContext::stream())
+            .GetAllocator(GetPlace())
             .get());
   }
   return phi::GPUContext::cudnn_workspace_handle();
@@ -903,7 +923,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 CustomDeviceContext::CustomDeviceContext(CustomPlace place)
     : phi::CustomContext(place) {
   Init();
-  stream_.reset(new platform::stream::Stream(place, stream()));
+  stream_.reset(new phi::stream::Stream(place, stream()));
 }
 
 CustomDeviceContext::~CustomDeviceContext() {}

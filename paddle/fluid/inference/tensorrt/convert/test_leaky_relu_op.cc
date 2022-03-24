@@ -45,4 +45,4 @@ TEST(leaky_relu_op, test_leaky_relu) {
 }  // namespace paddle
 
 // USE_OP(leaky_relu);
-USE_OP(leaky_relu);
+USE_OP_ITSELF(leaky_relu);

@@ -105,8 +105,8 @@ class Atan2OpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(atan2, Atan2InferShapeFunctor,
-                            PT_INFER_META(phi::Atan2InferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(atan2, Atan2InferShapeFunctor,
+                            PD_INFER_META(phi::Atan2InferMeta));
 REGISTER_OPERATOR(atan2, ops::Atan2Op, ops::Atan2OpMaker,
                   ops::Atan2GradMaker<paddle::framework::OpDesc>,
                   ops::Atan2GradMaker<paddle::imperative::OpBase>,

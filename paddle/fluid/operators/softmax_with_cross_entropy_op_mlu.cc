@@ -37,7 +37,7 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
                           "the mlu kernel of softmax_with_cross_entropy."));
 
     const int rank = logits->dims().size();
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
     loss->mutable_data<T>(ctx.GetPlace());
     backprop->mutable_data<T>(ctx.GetPlace());
@@ -45,10 +45,10 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
 
     // cnnl softmax only support 3-dims, regard all shape as [d1, d2, d3]
     const int cnnl_softmax_dims = 3;
-    const int d1 = SizeToAxis(axis, logits->dims());
+    const int d1 = phi::funcs::SizeToAxis(axis, logits->dims());
     const int d2_logits = logits->dims()[axis];
     const int d2_labels = labels->dims()[axis];
-    const int d3 = SizeOutAxis(axis, logits->dims());
+    const int d3 = phi::funcs::SizeOutAxis(axis, logits->dims());
 
     // CNNL_SOFTMAX_MODE_LOW_DIMENSION has better perfermence, use it as much as
     // possible.

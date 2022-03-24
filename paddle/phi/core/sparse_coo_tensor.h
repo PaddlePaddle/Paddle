@@ -145,6 +145,7 @@ class SparseCooTensor : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0) override;
+  void set_dims(const DDim& dims) { this->dims_ = dims; }
 
  private:
   // save the indices of non zero elements in original dense tensor

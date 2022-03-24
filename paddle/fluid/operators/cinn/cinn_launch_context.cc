@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/ddim.h"
@@ -90,9 +91,30 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   // Convert the CINN runtime program to a Paddle graph
   runtime_graph_ = std::make_unique<framework::ir::Graph>(
       BuildCompiledProgram(graph, compiled_obj));
-  runtime_graph_->SetNotOwned<Name2VarInfoMap>(
-      kMemOptVarInfoFromMainGraph,
-      &graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph));
+  auto& outer_varinfo = graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
+  runtime_graph_->SetNotOwned<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph,
+                                               &outer_varinfo);
+  // collect skip_eager_vars
+  skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
+  auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
+    // if a var exists at outer_varinfo map,
+    // that means it can be erased after graph execution
+    if (!outer_varinfo.count(var_name)) {
+      skip_eager_vars_.emplace_back(var_name);
+    }
+  };
+  std::for_each(input_var_names.begin(), input_var_names.end(),
+                add_skip_var_fn);
+  std::for_each(output_var_names.begin(), output_var_names.end(),
+                add_skip_var_fn);
+  VLOG(4) << string::Sprintf(
+      "Distribution of variables in the graph compiled:"
+      "input[%lu],internal[%lu],output[%lu],"
+      "outer_eager_deletion[%lu],skip_eager_deletion[%lu],"
+      "initialized_beforehand[%lu]",
+      input_var_names.size(), internal_var_names_.size(),
+      output_var_names.size(), outer_varinfo.size(), skip_eager_vars_.size(),
+      initialized_beforehand_vars_.size());
 }
 
 void CinnLaunchContext::BuildVarNameMap(
@@ -288,6 +310,7 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
   //   are set by values of the corresponding compiled tensors,
   //   including the in/out variables where the equiality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
+  std::unordered_set<std::string> has_refer_vars;
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);
     framework::VarDesc* var_desc = block->Var(var_name);
@@ -298,6 +321,7 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
       auto* ori_desc = res->second;
       var_desc->SetPersistable(ori_desc->Persistable());
       var_desc->SetIsParameter(ori_desc->IsParameter());
+      has_refer_vars.insert(var_name);
     }
 
     auto cinn_tensor = GetCinnTensorOfVar(var_name);
@@ -331,6 +355,12 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
     auto* ins = instructions.at(ins_idx).get();
     auto in_args = trans_and_pack_args_fn(ins->GetInArgs());
     auto out_args = trans_and_pack_args_fn(ins->GetOutArgs());
+    for (auto&& var_name : in_args) {
+      if (!has_refer_vars.count(var_name)) {
+        initialized_beforehand_vars_.emplace_back(var_name);
+      }
+    }
+    has_refer_vars.insert(out_args.begin(), out_args.end());
 
     auto* op_desc = block->AppendOp();
     op_desc->SetType("cinn_instruction_run");
@@ -348,16 +378,26 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
                                                   framework::Scope* scope) {
   if (!parallel_executor_) {
     framework::details::ExecutionStrategy exec_strategy;
+    exec_strategy.num_threads_ = 1;
+    exec_strategy.use_device_ = platform::Place2DeviceType(place);
     framework::details::BuildStrategy build_strategy;
     parallel_executor_ = std::make_unique<ParallelExecutor>(
         place, scope, exec_strategy, build_strategy, runtime_graph_.get());
   }
 
   // update the scope bound to an OpHandle and rebuild temporary variables
+  VLOG(4) << "Reset scope and initialize temporary variables";
   std::unordered_map<Scope*, Scope*> scope_map = {
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
   parallel_executor_->PrepareVariables(scope);
+  for (auto&& var_name : initialized_beforehand_vars_) {
+    auto* var = scope->GetVar(var_name);
+    auto* buffer = GetCinnBufferOfVar(var_name);
+    auto dim = framework::DDim(buffer->dims, buffer->dimensions);
+    var->GetMutable<LoDTensor>()->Resize(dim);
+    var->GetMutable<LoDTensor>()->mutable_data<float>(place);
+  }
   return parallel_executor_.get();
 }
 

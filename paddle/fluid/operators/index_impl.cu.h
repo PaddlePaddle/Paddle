@@ -19,11 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
@@ -58,7 +58,7 @@ void IndexKernel(const KPDevice &dev_ctx, Tensor *out, Functor func) {
   int numel = out->numel();
   T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
   if (numel <= 0) return;
-  int vec_size = paddle::platform::GetVectorizedSize(out_data);
+  int vec_size = phi::GetVectorizedSize(out_data);
 #ifdef PADDLE_WITH_XPU_KP
   int block = 64;
   int grid = 8;

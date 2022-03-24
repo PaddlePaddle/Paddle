@@ -546,13 +546,15 @@ class Pod(object):
 
 def get_logger(log_level, name="root"):
     logger = logging.getLogger(name)
-    logger.setLevel(log_level)
+    # Avoid printing multiple logs
+    if not logger.handlers:
+        logger.setLevel(log_level)
 
-    log_handler = logging.StreamHandler()
-    log_format = logging.Formatter(
-        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-    log_handler.setFormatter(log_format)
-    logger.addHandler(log_handler)
+        log_handler = logging.StreamHandler()
+        log_format = logging.Formatter(
+            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+        log_handler.setFormatter(log_format)
+        logger.addHandler(log_handler)
 
     return logger
 

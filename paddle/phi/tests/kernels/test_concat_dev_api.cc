@@ -53,7 +53,7 @@ TEST(DEV_API, concat) {
     }
   }
 
-  std::vector<phi::DenseTensor> inputs = {dense_x, dense_y};
+  std::vector<const phi::DenseTensor*> inputs = {&dense_x, &dense_y};
 
   // 2. test API
   phi::CPUContext dev_ctx;

@@ -16,9 +16,6 @@
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
-// only can include the headers in paddle/top/api dirs
-#include "paddle/phi/kernels/gpu/elementwise.h"
-
 namespace paddle {
 namespace operators {
 

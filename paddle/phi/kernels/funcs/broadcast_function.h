@@ -25,6 +25,8 @@ namespace kps = phi::kps;
 namespace phi {
 namespace funcs {
 
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
@@ -182,8 +184,6 @@ struct DimensionsTransform {
     std::swap(in_dims[min_idx], in_dims[0]);
   }
 };
-
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
@@ -493,16 +493,14 @@ void BroadcastKernelForDifferentVecSize(
               "%d-th output tensor`s shape is not.",
               i));
       out_vec_size = std::min(
-          paddle::platform::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()),
-          out_vec_size);
+          phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
     }
   } else {
-    out_vec_size =
-        paddle::platform::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>());
+    out_vec_size = phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>());
   }
 
   for (auto *in : ins) {
-    auto temp_size = paddle::platform::GetVectorizedSize<InT>(in->data<InT>());
+    auto temp_size = phi::GetVectorizedSize<InT>(in->data<InT>());
     in_vec_size = in->dims() == (*outs)[0]->dims()
                       ? std::min(temp_size, in_vec_size)
                       : in_vec_size;
@@ -578,7 +576,41 @@ void BroadcastKernel(const KPDevice &ctx,
   }
 }
 
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {z};
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
+      dev_ctx, ins, &outs, axis, func);
+}
+
 #endif
+
+template <typename DeviceContext,
+          typename T,
+          typename Functor,
+          typename InverseFunctor>
+void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
+                                const DenseTensor &x,
+                                const DenseTensor &y,
+                                DenseTensor *z,
+                                int axis = -1) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  dev_ctx.template Alloc<T>(z);
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+  } else {
+    funcs::ElementwiseCompute<InverseFunctor, T>(
+        dev_ctx, x, y, axis, InverseFunctor(), z);
+  }
+}
 
 }  // namespace funcs
 }  // namespace phi

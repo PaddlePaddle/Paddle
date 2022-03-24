@@ -310,6 +310,10 @@ HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
 
+HOSTDEVICE inline bfloat16(abs)(const bfloat16& a) {
+  return bfloat16(std::abs(static_cast<float>(a)));
+}
+
 inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
   os << static_cast<float>(a);
   return os;
@@ -377,31 +381,31 @@ struct numeric_limits<phi::dtype::bfloat16> {
   static const bool traps = true;
   static const bool tinyness_before = false;
 
-  static phi::dtype::bfloat16(min)() {
+  HOSTDEVICE static phi::dtype::bfloat16(min)() {
     return phi::dtype::raw_uint16_to_bfloat16(0x007f);
   }
-  static phi::dtype::bfloat16 lowest() {
+  HOSTDEVICE static phi::dtype::bfloat16 lowest() {
     return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
   }
-  static phi::dtype::bfloat16(max)() {
+  HOSTDEVICE static phi::dtype::bfloat16(max)() {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
-  static phi::dtype::bfloat16 epsilon() {
+  HOSTDEVICE static phi::dtype::bfloat16 epsilon() {
     return phi::dtype::raw_uint16_to_bfloat16(0x3400);
   }
-  static phi::dtype::bfloat16 round_error() {
+  HOSTDEVICE static phi::dtype::bfloat16 round_error() {
     return phi::dtype::bfloat16(0.5);
   }
-  static phi::dtype::bfloat16 infinity() {
+  HOSTDEVICE static phi::dtype::bfloat16 infinity() {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f80);
   }
-  static phi::dtype::bfloat16 quiet_NaN() {
+  HOSTDEVICE static phi::dtype::bfloat16 quiet_NaN() {
     return phi::dtype::raw_uint16_to_bfloat16(0xffc1);
   }
-  static phi::dtype::bfloat16 signaling_NaN() {
+  HOSTDEVICE static phi::dtype::bfloat16 signaling_NaN() {
     return phi::dtype::raw_uint16_to_bfloat16(0xff81);
   }
-  static phi::dtype::bfloat16 denorm_min() {
+  HOSTDEVICE static phi::dtype::bfloat16 denorm_min() {
     return phi::dtype::raw_uint16_to_bfloat16(0x0001);
   }
 };

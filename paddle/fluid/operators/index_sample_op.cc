@@ -100,8 +100,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSampleGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(index_sample, IndexSampleInferShapeFunctor,
-                            PT_INFER_META(phi::IndexSampleInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(index_sample, IndexSampleInferShapeFunctor,
+                            PD_INFER_META(phi::IndexSampleInferMeta));
 REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
                   ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSampleGradMaker<paddle::imperative::OpBase>,

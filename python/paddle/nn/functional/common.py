@@ -351,7 +351,6 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
-
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
@@ -362,6 +361,8 @@ def interpolate(x,
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
                     out_shape = list(out_shape.numpy())
+                else:
+                    out_shape = list(out_shape)
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
                         out_shape[i] = dim.numpy()[0]
@@ -1818,7 +1819,6 @@ def fold(x,
     can be calculated as following.
 
     .. math::
-
         H_out &= output_size[0]
         W_out &= output_size[1]
         C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
@@ -1826,21 +1826,21 @@ def fold(x,
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
                                   data type can be float32 or float64
-        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+        output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
+        paddings(int|list|tuple):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -1859,9 +1859,9 @@ def fold(x,
             import paddle
             import paddle.nn.functional as F
 
-            x = paddle.randn([2,12,9])
-            y = F.fold(x, output_sizes=(4, 4), kernel_sizes=2)
-            # y.shape = [2,3,4,4]
+            x = paddle.randn([2,3*2*2,12])
+            y = F.fold(x, output_sizes=[4, 5], kernel_sizes=2)
+            # y.shape = [2,3,4,5]
 
     """
 
@@ -1872,29 +1872,32 @@ def fold(x,
     assert len(x.shape) == 3, \
             "input should be the format of [N, C, L]"
 
+    def _is_list_or_turple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert isinstance(output_sizes, list) and (len(output_sizes) == 2), \
-            "output_sizes should either be an integer or a list of two integers"
+        assert _is_list_or_turple_(output_sizes) and (len(output_sizes) == 2), \
+            "output_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
-            "kernel_sizes should either be an integer or a list of two integers"
+        assert _is_list_or_turple_(kernel_sizes) and (len(kernel_sizes) == 2), \
+            "kernel_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert isinstance(strides, list) and (len(strides) == 2), \
-            "strides should either be an integer or a list of two integers"
+        assert _is_list_or_turple_(strides) and (len(strides) == 2), \
+            "strides should either be an integer or a list/tuple of two integers"
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert isinstance(dilations, list) and (len(dilations) == 2), \
-            "dilations should either be an integer or a list of two integers"
+        assert _is_list_or_turple_(dilations) and (len(dilations) == 2), \
+            "dilations should either be an integer or a list/tuple of two integers"
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
@@ -1912,16 +1915,21 @@ def fold(x,
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="fold",
-        inputs={"X": x},
-        outputs={"Y": out},
-        attrs={
-            "output_sizes": output_sizes,
-            "kernel_sizes": kernel_sizes,
-            "strides": strides,
-            "paddings": paddings,
-            "dilations": dilations
-        })
+    if in_dynamic_mode():
+        out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
+                          kernel_sizes, "strides", strides, "paddings",
+                          paddings, "dilations", dilations)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="fold",
+            inputs={"X": x},
+            outputs={"Y": out},
+            attrs={
+                "output_sizes": output_sizes,
+                "kernel_sizes": kernel_sizes,
+                "strides": strides,
+                "paddings": paddings,
+                "dilations": dilations
+            })
     return out

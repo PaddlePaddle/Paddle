@@ -147,7 +147,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             if len(attrs[0]['paddings']) == 4:
                 return 1, 2
             else:
-                return 1, 2
+                return 1, 4
 
         attrs = [
             program_config.ops[i].attrs
@@ -160,20 +160,8 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-5
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(program_config.ops[0].attrs["strides"]) != 2:
-                return False
-
-            return True
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "In deformable conv, length of Attr(strides) should be 2.")
-
     def test(self):
         self.trt_param.workspace_size = 1 << 28
-        self.add_skip_trt_case()
         self.run_test()
 
 

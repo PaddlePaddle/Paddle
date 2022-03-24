@@ -16,13 +16,9 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
+                                                          IPUOpTest)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -31,76 +27,100 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
-        self.set_attrs()
+        self.set_data_feed()
+        self.set_feed_attr()
+        self.set_op_attrs()
 
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([1, 3, 10, 10])
+    @property
+    def fp16_enabled(self):
+        return True
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-5
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-3
 
-        self.feed_list = list(self.feed.keys())
+    def set_data_feed(self):
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
 
-    def set_attrs(self):
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['is_test'] = False
         self.attrs['data_layout'] = 'NCHW'
         self.attrs['in_place'] = False
 
-    def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+    def _test_base(self, exec_mode):
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
+
                 conv1 = paddle.static.nn.conv2d(
                     x, num_filters=3, filter_size=3, bias_attr=False)
                 out = paddle.fluid.layers.batch_norm(conv1, **self.attrs)
 
                 fetch_list = [out.name]
 
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
+            if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
+            else:
+                place = paddle.IPUPlace()
+
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
-                program = compiler.IPUCompiledProgram(
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                    ipu_strategy.set_precision_config(enable_fp16=True)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            feed = self.feed_fp32
+            if exec_mode > ExecutionMode.IPU_FP32:
+                feed = self.feed_fp16
+
+            result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
-    def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+    def test(self):
+        output_dict = {}
+        for mode in ExecutionMode:
+            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
+                break
+            output_dict[mode] = self._test_base(mode).flatten()
 
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
+        self.check(output_dict)
 
 
 class TestCase1(TestBase):
-    def set_attrs(self):
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
+
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['is_test'] = True
         self.attrs['data_layout'] = 'NCHW'
@@ -108,7 +128,13 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
-    def set_attrs(self):
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
+
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['is_test'] = True
         self.attrs['data_layout'] = 'NCHW'

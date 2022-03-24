@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle
 
 
 def compute_mean_iou(predictions, labels, num_classes, in_wrongs, in_corrects,
@@ -129,4 +130,5 @@ class TestMeanIOUOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

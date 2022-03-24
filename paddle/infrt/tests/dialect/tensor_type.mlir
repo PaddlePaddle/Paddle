@@ -6,5 +6,5 @@ func @test_tensor_type() {
   // CHECK: tensor: shape=shape[3,4], values=[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   dt.print_tensor (%a : !infrt.dense_tensor<CPU, FP32, NCHW>)
 
-  Infrt.return
+  infrt.return
 }

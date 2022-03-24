@@ -21,6 +21,11 @@
 
 namespace egr {
 
+void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
+  buffer_[slot_id][rank] =
+      paddle::experimental::zeros_like(buffer_[slot_id][rank]);
+}
+
 void GradTensorHolder::add(size_t slot_id, size_t rank,
                            const paddle::experimental::Tensor& t,
                            bool fill_one) {
@@ -88,7 +93,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0
-      buffer_[slot_id][rank] = paddle::experimental::ones_like(t);
+      buffer_[slot_id][rank] = paddle::experimental::ones_like(t, t.dtype());
     }
   }
 }

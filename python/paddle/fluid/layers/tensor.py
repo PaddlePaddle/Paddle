@@ -632,7 +632,7 @@ def assign(input, output=None):
             dtype = VarDesc.VarType.FP32
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
-            values = [bool(v) for v in input.flat]
+            values = [int(v) for v in input.flat]
         elif dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
@@ -663,7 +663,9 @@ def assign(input, output=None):
             })
 
     if is_inplace and in_dygraph_mode():
-        output._bump_inplace_version()
+        # TODO(jiabin): Remove this when we support inplace
+        if not core._in_eager_mode():
+            output._bump_inplace_version()
 
     return output
 
@@ -754,7 +756,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     check_shape(shape)
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'uint8', 'int16', 'int32',
-        'int64'
+        'int64', 'complex64', 'complex128'
     ], 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 

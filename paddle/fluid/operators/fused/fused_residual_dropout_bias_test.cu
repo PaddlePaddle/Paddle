@@ -19,6 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_dropout_test.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(dropout, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dropout_grad, GPU, ALL_LAYOUT);
+#endif
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

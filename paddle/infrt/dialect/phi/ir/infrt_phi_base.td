@@ -2,6 +2,8 @@
 #define PHI_BASE
 
 include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "mlir/Interfaces/InferTypeOpInterface.td"
 
 def PHI_Dialect : Dialect {
   let name = "phi";
@@ -11,27 +13,32 @@ def PHI_Dialect : Dialect {
   }];
 
   let cppNamespace = "::infrt::phi";
-}
-
-class AllocatorTypeOf<string place, list<Trait> traits=[]>:
-    TypeDef<PHI_Dialect, place # "Allocator", traits> {
-    let summary = !strconcat("!phi.allocator_", place, " type");
-}
-
-class ContextTypeOf<string place, list<Trait> traits=[]>:
-    TypeDef<PHI_Dialect, place # "Context", traits> {
-    let summary = !strconcat("!phi.context_", place, " type");
+  let useDefaultTypePrinterParser = 1;
 }
 
 def PhiOpTrait : NativeOpTrait<"PhiOpTrait">;
 
-def CPU_Allocator : AllocatorTypeOf<"CPU">;
-def GPU_Allocator : AllocatorTypeOf<"GPU">;
+class PHI_Type<string type, list<Trait> traits = [], string baseCppClass = "::mlir::Type">
+   : TypeDef<PHI_Dialect, type, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove]), baseCppClass> {}
 
-def CPU_Context : ContextTypeOf<"CPU">;
-def GPU_Context : ContextTypeOf<"GPU">;
+def Allocator : PHI_Type<"Allocator"> {
+   let mnemonic = "allocator";
+   let parameters = (ins
+     TargetParam:$target
+   );
+   let assemblyFormat = "`<` $target `>`";
+ }
 
-def Allocator : AnyTypeOf<[CPU_Allocator, GPU_Allocator], "Allocator type">;
-def Context : AnyTypeOf<[CPU_Context, GPU_Context], "Context type">;
+ def Context : PHI_Type<"Context"> {
+   let mnemonic = "context";
+   let parameters = (ins
+     TargetParam:$target
+   );
+   let assemblyFormat = "`<` $target `>`";
+ }
+
+def PD_DenseTensorMap : PHI_Type<"DenseTensorMap"> {
+  let mnemonic = "dense_tensor_map";
+}
 
 #endif

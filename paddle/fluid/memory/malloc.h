@@ -41,15 +41,15 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
+extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+                           const phi::Stream& stream);
+
 extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                          const phi::Stream& stream);
 
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
-                           const gpuStream_t& stream);
-
 extern uint64_t Release(const platform::CUDAPlace& place,
                         const gpuStream_t& stream);
 

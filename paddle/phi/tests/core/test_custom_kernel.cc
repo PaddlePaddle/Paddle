@@ -43,7 +43,7 @@ template <typename T, typename Context>
 void FakeDot(const Context& dev_ctx,
              const phi::DenseTensor& x,
              const phi::DenseTensor& y,
-             const std::vector<phi::DenseTensor>& fake_input_vec,
+             const std::vector<const phi::DenseTensor*>& fake_input_vec,
              bool fake_attr_bool,
              int fake_attr_int,
              float fake_attr_float,
@@ -172,7 +172,9 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // register
-  phi::RegisterCustomKernels(phi::CustomKernelMap::Instance());
+  phi::CustomKernelMap::Instance().RegisterCustomKernels();
+
+  EXPECT_EQ(0, static_cast<int>(custom_fake_dot_kernels.size()));
 
   EXPECT_TRUE(fake_dot_kernels.find(
                   phi::KernelKey(backend, layout, phi::DataType::FLOAT32)) !=

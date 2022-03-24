@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/bernoulli_kernel.h"
+
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #ifdef __NVCC__
@@ -28,7 +30,6 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/bernoulli_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 // See Note [ Why still include the fluid headers? ]

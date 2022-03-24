@@ -20,6 +20,8 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class SimpleNet(nn.Layer):
@@ -445,8 +447,7 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.func_multiple_hooks_for_interior_var()
         self.func_multiple_hooks_for_interior_var()
 
-    # TODO(wuweilong): enable this case when DoubleGrad in eager mode is ready
-    def test_hook_in_double_grad(self):
+    def func_hook_in_double_grad(self):
         def double_print_hook(grad):
             grad = grad * 2
             print(grad)
@@ -461,10 +462,11 @@ class TestTensorRegisterHook(unittest.TestCase):
         x.register_hook(double_print_hook)
 
         y = x * x
-
+        fluid.set_flags({'FLAGS_retain_grad_for_all_tensor': False})
         # Since y = x * x, dx = 2 * x
         dx = paddle.grad(
             outputs=[y], inputs=[x], create_graph=True, retain_graph=True)[0]
+        fluid.set_flags({'FLAGS_retain_grad_for_all_tensor': True})
 
         z = y + dx
         self.assertTrue(x.grad is None)
@@ -475,8 +477,17 @@ class TestTensorRegisterHook(unittest.TestCase):
         # x.gradient() = 2 * x + 2 = 4.0
         # after changed by hook: 8.0
 
-        z.backward()
-        self.assertTrue(np.array_equal(x.grad.numpy(), np.array([8.])))
+        # TODO(wuweilong): enable this case when DoubleGrad in eager mode is ready
+        if core._in_eager_mode():
+            pass
+        else:
+            z.backward()
+            self.assertTrue(np.array_equal(x.grad.numpy(), np.array([8.])))
+
+    def test_hook_in_double_grad(self):
+        with _test_eager_guard():
+            self.func_hook_in_double_grad()
+        self.func_hook_in_double_grad()
 
     def func_remove_one_hook_multiple_times(self):
         for device in self.devices:
@@ -533,12 +544,8 @@ class TestTensorRegisterHook(unittest.TestCase):
             size=[self.batch_size, self.in_size]).astype('float32')
         data_t = paddle.to_tensor(data)
 
-        if _in_eager_mode():
-            with self.assertRaises(TypeError):
-                out = jit_net(data_t)
-        else:
-            with self.assertRaises(AssertionError):
-                out = jit_net(data_t)
+        with self.assertRaises(AssertionError):
+            out = jit_net(data_t)
 
     def test_register_hook_in_dy2static_mode(self):
         with _test_eager_guard():

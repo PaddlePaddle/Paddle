@@ -23,7 +23,7 @@ KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("norm_grad",
-                         {GradVarName("Out"), "X", "Norm"},
+                         {"X", "Norm", GradVarName("Out")},
                          {"axis", "epsilon", "is_test"},
                          {GradVarName("X")});
 }

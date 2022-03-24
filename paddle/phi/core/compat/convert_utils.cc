@@ -20,19 +20,20 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/phi/backends/device_manager.h"
 #endif
 
 namespace phi {
 
 Backend TransToPhiBackend(const phi::Place& place) {
-  if (place.GetType() == phi::AllocationType::CPU) {
+  auto allocation_type = place.GetType();
+  if (allocation_type == phi::AllocationType::CPU) {
     return Backend::CPU;
-  } else if (place.GetType() == phi::AllocationType::GPU) {
+  } else if (allocation_type == phi::AllocationType::GPU) {
     return Backend::GPU;
-  } else if (place.GetType() == phi::AllocationType::XPU) {
+  } else if (allocation_type == phi::AllocationType::XPU) {
     return Backend::XPU;
-  } else if (place.GetType() == phi::AllocationType::CUSTOM) {
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
         GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
@@ -83,9 +84,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
       if (!device_type.empty()) {
         return phi::CustomPlace(
             device_type,
-            set_device_id
-                ? paddle::platform::DeviceManager::GetDevice(device_type)
-                : 0);
+            set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(

@@ -23,6 +23,8 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
+paddle.enable_static()
+
 
 class TestElementwiseAddOp(OpTest):
     def set_mlu(self):
@@ -523,5 +525,4 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

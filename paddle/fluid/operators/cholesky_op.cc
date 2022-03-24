@@ -90,8 +90,8 @@ class CholeskyGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(cholesky, CholeskyInferShapeFunctor,
-                            PT_INFER_META(phi::CholeskyInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(cholesky, CholeskyInferShapeFunctor,
+                            PD_INFER_META(phi::CholeskyInferMeta));
 REGISTER_OPERATOR(cholesky, ops::CholeskyOp, ops::CholeskyOpMaker,
                   ops::CholeskyGradOpMaker<paddle::framework::OpDesc>,
                   ops::CholeskyGradOpMaker<paddle::imperative::OpBase>,
