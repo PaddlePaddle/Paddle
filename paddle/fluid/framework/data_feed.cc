@@ -2082,7 +2082,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
-#ifdef _LINUX
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
