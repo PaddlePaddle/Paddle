@@ -26,16 +26,16 @@ from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
+import paddle.distributed as dist
 
 
 def init_process_group(strategy=None):
     nranks = ParallelEnv().nranks
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
-    store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
-    pg_group = core.ProcessGroupNCCL(store, rank, nranks)
+    pg_group = dist.init_parallel_env()
 
-    return pg_group
+    return pg_group.process_group
 
 
 class TestProcessGroupFp32(unittest.TestCase):

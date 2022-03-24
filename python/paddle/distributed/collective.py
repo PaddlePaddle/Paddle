@@ -288,6 +288,7 @@ def new_group(ranks=None, backend=None):
 
     ring_id = _new_ring_id()
 
+    global _group_map
     if global_rank not in ranks:
         gp = Group(-1, -1, ring_id, ranks)
         _group_map[ring_id] = gp
