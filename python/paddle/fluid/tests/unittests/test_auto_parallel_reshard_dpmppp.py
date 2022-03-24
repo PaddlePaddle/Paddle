@@ -179,7 +179,7 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 2
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        resharder = Resharder(distributed_program, dist_startup_prog, rank_id,
+        resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
         # print_program_with_dist_attr(dist_main_prog, dist_context)

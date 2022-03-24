@@ -169,7 +169,7 @@ class ConcatOpDesc:
     Describe the concat op in the reshard phase.
 
     Args:
-        partition_index_list (list): A list contains all partition index.
+        partition_index_list (list): The list contains all partition index.
     """
 
     def __init__(self, partition_index_list):
@@ -288,7 +288,7 @@ class Inserter:
         return outs
 
     @staticmethod
-    def insert_fill_constant_op(block, idx):
+    def insert_fill_constant_op(block, idx, op_role):
         """Insert fill constant op into block at the given index."""
         helper = LayerHelper("fill_constant", **locals())
         with paddle.static.program_guard(block.program):
@@ -320,7 +320,8 @@ class Inserter:
         # instant process group before insert allgather op.
         if not group.is_instantiate():
             # insert fill_constant op
-            fill_constant_out = Remover.insert_fill_constant_op(block, idx)
+            fill_constant_out = Inserter.insert_fill_constant_op(block, idx,
+                                                                 op_role)
             fill_constant_out.stop_gradient = True
 
             # insert c_allreduce_sum op
@@ -364,8 +365,8 @@ class Inserter:
         idx_offset += 1
 
         # insert split op
-        split_out = _insert_split_op(block, idx + idx_offset, allgather_out,
-                                     group.nranks, op_role)
+        split_out = Inserter.insert_split_op(
+            block, idx + idx_offset, allgather_out, group.nranks, op_role)
         idx_offset += 1
         tensor_list.extend(split_out)
         return tensor_list, idx_offset
@@ -384,14 +385,14 @@ class Inserter:
                     partition_tensor_list[i][1], partition_index)
                 if concat_axis != -1:
                     has_concat = True
-                    _ = _insert_concat_op(block, idx[0], [partition_tensor_list[i][0], tensor], concat_axis, op_role) \
+                    _ = Inserter.insert_concat_op(block, idx[0], [partition_tensor_list[i][0], tensor], concat_axis, op_role) \
                         if first_order == 0 else \
-                        _insert_concat_op(block, idx[0], [tensor, partition_tensor_list[i][0]], concat_axis, op_role)
+                        Inserter.insert_concat_op(block, idx[0], [tensor, partition_tensor_list[i][0]], concat_axis, op_role)
                     partition_tensor_list.pop(i)
                     idx[0] += 1
-                    concat_partitions_with_op(partition_tensor_list, _,
-                                              new_partition, block, idx,
-                                              op_role)
+                    Inserter.concat_partitions_with_op(partition_tensor_list, _,
+                                                       new_partition, block,
+                                                       idx, op_role)
                     break
                 i += 1
             if not has_concat:
@@ -1098,7 +1099,7 @@ class Resharder:
                         source_process, complete_shape, source_dims_mapping,
                         source_process_shape, source_process_group)
                     to_send_process = None
-                    if all(_ for _ in list(map(_is_overlapped, source_partition_index, target_partition_index))) \
+                    if all(_ for _ in list(map(self.is_overlapped, source_partition_index, target_partition_index))) \
                             and source_partition_index not in has_sent:
                         idx = list([
                             item[0] for item in partition_process_mapping_list
@@ -1280,7 +1281,7 @@ class Resharder:
                 partition_index_list = op_desc.partition_index_list
                 idx_list = [idx]
                 for index, tensor in enumerate(tensor_list):
-                    Resharder.concat_partitions_with_op(
+                    Inserter.concat_partitions_with_op(
                         partition_tensor_list, tensor,
                         partition_index_list[index], block, idx_list,
                         reshard_op.attr('op_role'))
@@ -1459,8 +1460,8 @@ class Resharder:
                 dist_op = self.dist_context.get_dist_op_for_program(op)
                 if dist_op is not None and op.type not in skip_ops:
                     for var_name in op.output_arg_names:
-                        var = self.get_var(var_name, block,
-                                           self.auto_parallel_main_prog)
+                        var = get_var_with_recursion(
+                            var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
                             var)
                         process_mesh = dist_op.dist_attr.process_mesh
