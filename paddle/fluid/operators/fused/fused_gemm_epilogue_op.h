@@ -94,6 +94,24 @@ class GemmEpilogueAlgoCache {
         int best_algo_idx = 0;
         float best_algo_time = 0;
 
+        // Run 100 times for warmup
+        int warmup_algo_idx = 0;
+        for (int t = 0; t < 100; t++) {
+          cublasStatus_t status = platform::dynload::cublasLtMatmul(
+              lt_handle, op_desc, alpha, a, a_desc, b, b_desc, beta, c, c_desc,
+              c, c_desc, &heuristic_results[warmup_algo_idx].algo, workspace,
+              workspace_size, stream);
+          if (status != CUBLAS_STATUS_SUCCESS) {
+            t = -1;
+            warmup_algo_idx += 1;
+            if (warmup_algo_idx == requested_algo_count_) {
+              PADDLE_THROW(platform::errors::Unavailable(
+                  "No GEMM epilogue algorithm support!"));
+              break;
+            }
+          }
+        }
+
         cudaEvent_t start_event, stop_event;
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&start_event));
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop_event));
