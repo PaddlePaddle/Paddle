@@ -116,7 +116,7 @@ class PS_Test(unittest.TestCase):
         return proc
 
     def test_ps_1(self):
-        args = "--mode ps"
+        args = "--run_mode ps"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
