@@ -28,5 +28,8 @@ KernelSignature MeanGradOpGradArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(mean, mean_all);
+PD_REGISTER_BASE_KERNEL_NAME(mean_grad, mean_all_grad);
+
 PD_REGISTER_ARG_MAPPING_FN(mean, phi::MeanOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(mean_grad, phi::MeanGradOpGradArgumentMapping);
