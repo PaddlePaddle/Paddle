@@ -39,14 +39,18 @@ void MeanAllKernel(const Context& dev_ctx,
     return;
   }
 
-  using Div = kps::DivideFunctor<T, T>;
   std::vector<int> reduce_dims;
   reduce_dims.reserve(rank);
   for (decltype(rank) i = 0; i < rank; ++i) {
     reduce_dims.push_back(i);
   }
-  funcs::ReduceKernel<T, T, kps::AddFunctor, Div>(
-      dev_ctx, x, out, Div(numel), reduce_dims);
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx,
+      x,
+      out,
+      kps::IdentityFunctor<T>(),
+      reduce_dims,
+      /*is_mean=*/true);
 }
 
 }  // namespace phi
