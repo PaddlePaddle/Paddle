@@ -16,7 +16,11 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,12 +28,6 @@ namespace operators {
 class MeanOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "mean");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "mean");
-    ctx->SetOutputDim("Out", {1});
-  }
 };
 
 class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -56,11 +54,6 @@ class MeanOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 class MeanGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", framework::GradVarName("X"));
-  }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -90,8 +83,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(MeanGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(mean, MeanInferShapeFunctor,
+                            PD_INFER_META(phi::MeanAllInferMeta));
 REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
                   ops::MeanGradMaker<paddle::framework::OpDesc>,
-                  ops::MeanGradMaker<paddle::imperative::OpBase>);
+                  ops::MeanGradMaker<paddle::imperative::OpBase>,
+                  MeanInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(mean_grad, MeanGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
-                  ops::MeanGradNoNeedBufferVarsInferer);
+                  ops::MeanGradNoNeedBufferVarsInferer,
+                  MeanGradInferShapeFunctor);

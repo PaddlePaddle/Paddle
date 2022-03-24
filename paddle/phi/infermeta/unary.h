@@ -144,6 +144,8 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
 
+void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,

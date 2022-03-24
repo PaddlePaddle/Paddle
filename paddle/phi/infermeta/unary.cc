@@ -822,6 +822,11 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   mask->set_dtype(paddle::experimental::CppTypeToDataType<int>::Type());
 }
 
+void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(x.dtype());
+}
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,
