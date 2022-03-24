@@ -97,8 +97,9 @@ void PhiOpConvertPass::convertStage() {
     }
     auto loc = getFunction().getLoc();
     builder.setInsertionPoint(op);
-    op_name = phi::TransToPhiKernelName(op_name);
-    if (!::phi::OpUtilsMap::Instance().Contains(op_name)) {
+
+    if (!::phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_name)) {
+      op_name = phi::TransToPhiKernelName(op_name);
       auto kernel_op = builder.create<infrt::KernelOp>(loc,
                                                        op->getResultTypes(),
                                                        op->getOperands(),
