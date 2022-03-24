@@ -51,6 +51,7 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
     def setUp(self):
         self.init_test_case()
         self.expert_count = self.expert_count.astype("int64")
+        self.capacity = self.capacity.astype("int64")
 
     def test_static_api(self):
         paddle.enable_static()
