@@ -196,7 +196,7 @@ def run_adaround(data_loader,
                  exe,
                  scope,
                  place,
-                 quantized_op_output_name_dict,
+                 quantized_op_pairs,
                  weight_op_pairs,
                  scale_dict,
                  num_iterations=1000,
@@ -204,8 +204,7 @@ def run_adaround(data_loader,
                  fast_mode=True):
     fetch_op_name = fetch_list[0].name
     final_weight_tensor_quant_dict = {}
-    for weight_var_name, quant_op_out_name in quantized_op_output_name_dict.items(
-    ):
+    for weight_var_name, quant_op_out_name in quantized_op_pairs.items():
         _logger.info('Start adaround op: {}'.format(weight_var_name))
         weight_op_type = weight_op_pairs[weight_var_name]
         # get scale and weight tensor
@@ -305,6 +304,6 @@ def run_adaround(data_loader,
         del adaround
 
     # update adarounded calibrated weights
-    for weight_var_name in quantized_op_output_name_dict.keys():
+    for weight_var_name in quantized_op_pairs.keys():
         set_variable_data(scope, place, weight_var_name,
                           final_weight_tensor_quant_dict[weight_var_name])

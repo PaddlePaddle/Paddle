@@ -124,7 +124,6 @@ class PostTrainingQuantization(object):
                  hist_percent=0.99999,
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
                  round_type='round',
-                 train_iterations=1000,
                  learning_rate=0.001,
                  is_full_quantize=False,
                  bias_correction=False,
@@ -182,11 +181,9 @@ class PostTrainingQuantization(object):
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul"].
             round_type(str, optional): The method of converting the quantized weights
-                value from float to int. Currently supports ['round', 'adaround'] methods.
+                value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the nearest whole number.
-            train_iterations(flota, optional): The number of training iter, used to
-                calibrate the adaptive rounding method, when round_type='adaround'.
-            learning_rate(flota, optional): The learning rate of adaround method.
+            learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
                 is_full_quantized as False, only apply quantization to the op type 
@@ -265,7 +262,6 @@ class PostTrainingQuantization(object):
         ]
         assert round_type in ['adaround', 'round']
         self._round_type = round_type
-        self._train_iterations = train_iterations
         self._learning_rate = learning_rate
         self._dynamic_quantize_op_type = ['lstm']
         self._support_quantize_op_type = \
@@ -446,10 +442,10 @@ class PostTrainingQuantization(object):
             self._executor,
             self._scope,
             self._place,
-            self._quantized_op_output_name_dict,
+            self._quantized_op_pairs,
             self._weight_op_pairs,
             scale_dict,
-            num_iterations=self._train_iterations,
+            num_iterations=self._batch_nums,
             lr=self._learning_rate)
 
     def save_quantized_model(self,
@@ -534,7 +530,7 @@ class PostTrainingQuantization(object):
         '''
         # TODO(juncaipeng), consider the name_scope of skip_quant
         _logger.info("Collect quantized variable names ...")
-        self._quantized_op_output_name_dict = {}
+        self._quantized_op_pairs = {}
 
         def collect_var_name(var_name_list, persistable_var_names, op_type):
             for var_name in var_name_list:
@@ -564,7 +560,7 @@ class PostTrainingQuantization(object):
                     for out_var_name in _get_op_output_var_names(op):
                         for in_var_name in _get_op_input_var_names(op):
                             if in_var_name in persistable_var_names:
-                                self._quantized_op_output_name_dict[
+                                self._quantized_op_pairs[
                                     in_var_name] = out_var_name
                 # For other op, only sample output scale
                 elif op_type in self._out_scale_op_list:
@@ -984,7 +980,7 @@ class PostTrainingQuantization(object):
                     argname_index[0] + str(argname_index[1]) + "_threshold",
                     "post_hist")
 
-            elif self._algo in ["avg", "abs_max", "mse"]:
+            elif self._algo in ["avg", "abs_max", "mse", "emd"]:
                 save_info(op_node, out_var_name, self._quantized_threshold,
                           "out_threshold", "post_" + str(self._algo))
                 save_info(
