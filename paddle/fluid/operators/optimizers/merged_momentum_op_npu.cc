@@ -145,7 +145,7 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
                                           {regularized_grad}, {});
         runner2.Run(dev_ctx.stream());
       } else {
-        regularized_grad = *grad;
+        regularized_grad.ShareDataWith(*grad);
       }
       framework::TensorCopy(*param, ctx.GetPlace(), dev_ctx, param_out);
       framework::TensorCopy(*velocity, ctx.GetPlace(), dev_ctx, velocity_out);
