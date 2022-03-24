@@ -364,6 +364,7 @@ GradNodeBase::ApplyGradientHooks(
       if (!outs[i][j].defined() || !outs[i][j].initialized()) {
         outs[i][j] = tensors[i][j];
       }
+      CheckTensor(tensors[i][j], outs[i][j]);
     }
   }
 
