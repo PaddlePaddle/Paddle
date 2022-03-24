@@ -31,7 +31,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _disable_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -1333,10 +1333,14 @@ class OpTest(unittest.TestCase):
                     "no_check_set of op %s must be set to None." % self.op_type)
 
         if check_dygraph:
-            _enable_legacy_dygraph()
-            dygraph_outs = self._calc_dygraph_output(
-                place, no_check_set=no_check_set)
-            _disable_legacy_dygraph()
+            if _in_eager_without_dygraph_check():
+                _enable_legacy_dygraph()
+                dygraph_outs = self._calc_dygraph_output(
+                    place, no_check_set=no_check_set)
+                _disable_legacy_dygraph()
+            else:
+                dygraph_outs = self._calc_dygraph_output(
+                    place, no_check_set=no_check_set)
         if check_eager:
             # we only check end2end api when check_eager=True
             with fluid.dygraph.base.guard(place):
@@ -1385,12 +1389,18 @@ class OpTest(unittest.TestCase):
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
                     if check_dygraph:
-                        _enable_legacy_dygraph()
-                        imperative_actual = find_imperative_actual(
-                            sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(imperative_actual.value()
-                                                       .get_tensor())
-                        _disable_legacy_dygraph()
+                        if _in_eager_without_dygraph_check():
+                            _enable_legacy_dygraph()
+                            imperative_actual = find_imperative_actual(
+                                sub_out_name, dygraph_outs, place)
+                            imperative_actual_t = np.array(
+                                imperative_actual.value().get_tensor())
+                            _disable_legacy_dygraph()
+                        else:
+                            imperative_actual = find_imperative_actual(
+                                sub_out_name, dygraph_outs, place)
+                            imperative_actual_t = np.array(
+                                imperative_actual.value().get_tensor())
                     if check_eager:
                         with fluid.dygraph.base.guard(place):
                             with _test_eager_guard():
