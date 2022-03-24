@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 
 namespace infrt {
 namespace kernel {
@@ -30,6 +31,10 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
     } else {
       infershape_kernel_frame_builder.AddArgument(value);
     }
+  }
+  if (infershape_kernel_frame_builder.GetNumArgs() < arg_size_) {
+    infershape_kernel_frame_builder.AddArgument(
+        new host_context::Value(::phi::MetaConfig()));
   }
 }
 
