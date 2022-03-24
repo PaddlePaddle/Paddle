@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -352,6 +353,14 @@ void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out) {
+  FlattenWithXShapeInferMeta(x, start_axis, stop_axis, out, nullptr);
+}
+
+void FlattenWithXShapeInferMeta(const MetaTensor& x,
+                                int start_axis,
+                                int stop_axis,
+                                MetaTensor* out,
+                                MetaTensor* xshape) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -394,6 +403,14 @@ void FlattenInferMeta(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+  if (xshape == nullptr) return;
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
 }
 
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
@@ -1113,6 +1130,44 @@ void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void QrInferMeta(const MetaTensor& x,
+                 const std::string& mode,
+                 MetaTensor* q,
+                 MetaTensor* r) {
+  auto x_dims = x.dims();
+  int x_rank = x_dims.size();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+  bool compute_q;
+  bool reduced_mode;
+  int m = x_dims[x_rank - 2];
+  int n = x_dims[x_rank - 1];
+  int min_mn = std::min(m, n);
+  std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
+
+  if (compute_q) {
+    int k = reduced_mode ? min_mn : m;
+    auto q_dims_vec = phi::vectorize(x_dims);
+    q_dims_vec[q_dims_vec.size() - 1] = k;
+    q->set_dims(phi::make_ddim(q_dims_vec));
+  } else {
+    q->set_dims(phi::make_ddim({0}));
+  }
+
+  int k = reduced_mode ? min_mn : m;
+  auto r_dims_vec = phi::vectorize(x_dims);
+  r_dims_vec[r_dims_vec.size() - 2] = k;
+  r_dims_vec[r_dims_vec.size() - 1] = n;
+  r->set_dims(phi::make_ddim(r_dims_vec));
+
+  q->share_lod(x);
+  r->share_lod(x);
+  q->set_dtype(x.dtype());
+  r->set_dtype(x.dtype());
+}
+
 DDim ReduceInferDim(const MetaTensor& x,
                     const std::vector<int64_t>& axis,
                     bool keep_dim,
@@ -1829,6 +1884,20 @@ void UnbindInferMeta(const MetaTensor& x,
     (*outs)[i].set_layout(x.layout());
     (*outs)[i].share_lod(x);
   }
+}
+
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  PADDLE_ENFORCE_GE(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(X)'s rank must be at least 2 in TrilTriuOp."));
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {

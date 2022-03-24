@@ -43,6 +43,8 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
+                'const paddle::optional<Tensor&>':
+                'const paddle::optional<MetaTensor&>'
             }
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)

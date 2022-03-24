@@ -86,6 +86,12 @@ void FlattenInferMeta(const MetaTensor& x,
                       int stop_axis,
                       MetaTensor* out);
 
+void FlattenWithXShapeInferMeta(const MetaTensor& x,
+                                int start_axis,
+                                int stop_axis,
+                                MetaTensor* out,
+                                MetaTensor* xshape);
+
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             float temperature,
                             bool hard,
@@ -173,6 +179,11 @@ void PoolInferMeta(const MetaTensor& x,
                    const std::string& padding_algorithm,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
+
+void QrInferMeta(const MetaTensor& x,
+                 const std::string& mode,
+                 MetaTensor* q,
+                 MetaTensor* r);
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -275,6 +286,11 @@ void TransposeInferMeta(const MetaTensor& x,
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
+
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
