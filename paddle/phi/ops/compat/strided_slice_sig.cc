@@ -57,14 +57,15 @@ KernelSignature StridedSliceOpArgumentMapping(
                                             "decrease_axis"};
   paddle::SmallVector<std::string> outputs = {"Out"};
 
-  // NOTE(dev): Use op_type to avoid regular.
   std::string op_type;
   if (ctx.IsDenseTensorVectorInput("Input")) {
     op_type = "strided_slice_array";
   } else {
     op_type = "strided_slice";
   }
-  return KernelSignature(op_type, inputs, attrs, outputs);
+  // NOTE(dev): Use this to avoid regularization.
+  KernelSignature sig(op_type, inputs, attrs, outputs);
+  return sig;
 }
 
 KernelSignature StridedSliceGradOpArgumentMapping(
@@ -105,14 +106,16 @@ KernelSignature StridedSliceGradOpArgumentMapping(
                                             "decrease_axis"};
   paddle::SmallVector<std::string> outputs = {GradVarName("Input")};
 
-  // NOTE(dev): Use op_type to avoid regular.
   std::string op_type;
   if (ctx.IsDenseTensorVectorInput("Input")) {
     op_type = "strided_slice_array_grad";
   } else {
     op_type = "strided_slice_grad";
   }
-  return KernelSignature(op_type, inputs, attrs, outputs);
+
+  // NOTE(dev): Use this to avoid regularization.
+  KernelSignature sig(op_type, inputs, attrs, outputs);
+  return sig;
 }
 
 }  // namespace phi
