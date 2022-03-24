@@ -35,8 +35,7 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   void GetTensorFromVector(const std::vector<float>& data_v,
                            Tensor* tensor) const;
 
-  void GetQuantInfo(ir::Graph* graph, Scope* scope,
-                    StringPairMap* var_quant_scales) const;
+  void GetQuantInfo(ir::Graph* graph, StringPairMap* var_quant_scales) const;
 
   std::vector<float> GetScales(Tensor* tensor, int axis) const;
 

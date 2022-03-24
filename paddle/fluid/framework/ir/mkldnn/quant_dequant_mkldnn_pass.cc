@@ -79,7 +79,7 @@ void QuantDequantMkldnnPass::GatherInfoFromFake(
             var, "The Scales variable of dequantize op is not found.");
 
         auto* scale_tensor = var->GetMutable<LoDTensor>();
-        auto scale_data =
+        auto* scale_data =
             scale_tensor->mutable_data<float>(platform::CPUPlace());
         std::vector<float> thresholds{};
         for (int i = 0; i < scale_tensor->numel(); i++) {
@@ -119,7 +119,8 @@ void QuantDequantMkldnnPass::GatherInputScalesFromFake(
           var, "The InScale variable of quantize op is not found.");
 
       auto* scale_tensor = var->GetMutable<LoDTensor>();
-      auto scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* scale_data =
+          scale_tensor->mutable_data<float>(platform::CPUPlace());
       float scale = 1.0 / scale_data[0];
       if (std::isinf(scale) || std::isnan(scale)) {
         scale = 0.0;
@@ -329,7 +330,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
       var, "The input persistable var of %s op is not found.", op_desc->Type());
 
   auto* weight_tensor = var->GetMutable<LoDTensor>();
-  auto weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
   bool is_int8 = true;
   for (int i = 0; i < weight_tensor->numel(); i++) {
     if (weight_data[i] - static_cast<int>(weight_data[i]) != 0) {
@@ -368,7 +369,8 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
 
   const int size = scales.size();
   if (size == 1 || size == weight_dims[0]) {
-    auto weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* weight_data =
+        weight_tensor->mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor->numel(); i++) {
       weight_data[i] /= 127;
     }
@@ -395,7 +397,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
 
     TransposeWeight(weight_tensor);
   } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
-    auto weight_data =
+    auto* weight_data =
         weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor->numel(); i++) {
       weight_data[i] /= 127;

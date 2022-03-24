@@ -26,14 +26,15 @@ namespace ir {
 
 void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
     const std::vector<float>& data_v, Tensor* tensor) const {
-  tensor->mutable_data<float>({static_cast<int>(data_v.size())},
-                              platform::CPUPlace());
-  auto dev_ctx = paddle::platform::CPUDeviceContext();
-  TensorFromVector(data_v, dev_ctx, tensor);
+  const int size = static_cast<int>(data_v.size());
+  auto* data = tensor->mutable_data<float>({size}, platform::CPUPlace());
+  for (int i = 0; i < size; i++) {
+    data[i] = data_v[i];
+  }
 }
 
 void ComputePropagateScalesMkldnnPass::GetQuantInfo(
-    ir::Graph* graph, Scope* scope, StringPairMap* var_quant_scales) const {
+    ir::Graph* graph, StringPairMap* var_quant_scales) const {
   std::unordered_map<std::string, std::vector<float>> info_map{};
   GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
@@ -48,7 +49,7 @@ void ComputePropagateScalesMkldnnPass::GetQuantInfo(
 std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
                                                                int axis) const {
   PADDLE_ENFORCE_LT(axis, 2, "The input axis is required to be less than 2.");
-  auto data = tensor->mutable_data<float>(platform::CPUPlace());
+  auto* data = tensor->mutable_data<float>(platform::CPUPlace());
   const auto dims = tensor->dims();
   PADDLE_ENFORCE_EQ(dims.size(), 2,
                     "The input tensor's rank is required to be 2.");
@@ -109,9 +110,9 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
       Tensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
       tmp_tensor.Resize(phi::make_ddim(reshape_dims));
-      auto weight_data =
+      auto* weight_data =
           weight_tensor->mutable_data<float>(platform::CPUPlace());
-      auto tmp_data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
+      auto* tmp_data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
         tmp_data[i] = std::fabs(weight_data[i]);
       }
@@ -300,7 +301,7 @@ void ComputePropagateScalesMkldnnPass::UpdateScaleOpInScale(
     const auto scale = BOOST_GET_CONST(float, op_node->Op()->GetAttr("scale"));
     Tensor tmp_tensor;
     tmp_tensor.Resize(tensor.dims());
-    auto data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
+    auto* data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < tensor.numel(); i++) {
       data[i] = data[i] * scale;
     }
@@ -395,7 +396,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   StringPairMap var_quant_scales{};
 
   auto* scope = param_scope();
-  GetQuantInfo(graph, scope, &var_quant_scales);
+  GetQuantInfo(graph, &var_quant_scales);
   ComputeWeightScales(graph, scope, &var_quant_scales);
   PropagateScales(graph, &var_quant_scales, scale_immutable_ops);
 
