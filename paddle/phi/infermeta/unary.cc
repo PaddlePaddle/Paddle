@@ -132,12 +132,6 @@ void ArgsortInferMeta(const MetaTensor& input,
   indices->share_lod(input);
 }
 
-void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(out_dtype);
-  out->set_layout(x.layout());
-}
-
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
@@ -189,6 +183,12 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
   output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
   out->set_dims(output_dim);
+}
+
+void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(out_dtype);
+  out->set_layout(x.layout());
 }
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
