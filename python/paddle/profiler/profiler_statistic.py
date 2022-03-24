@@ -33,23 +33,17 @@ _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    Sorted keys for printing summary table.
+    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_profiler_profiler_summary>` table.
 
-    CPUTotal: Sorted by CPU total time.
-
-    CPUAvg: Sorted by CPU average time.
-
-    CPUMax: Sorted by CPU max time.
-
-    CPUMin: Sorted by CPU min time.
-
-    GPUTotal: Sorted by GPU total time.
-
-    GPUAvg: Sorted by GPU average time.
-
-    GPUMax: Sorted by GPU max time.
-
-    GPUMin: Sorted by GPU min time.
+    The meaning of each SortedKeys is as following:
+        - **SortedKeys.CPUTotal** :  Sorted by CPU total time.
+        - **SortedKeys.CPUAvg**  : Sorted by CPU average time.
+        - **SortedKeys.CPUMax**  : Sorted by CPU max time.
+        - **SortedKeys.CPUMin**  : Sorted by CPU min time.
+        - **SortedKeys.GPUTotal**  : Sorted by GPU total time.
+        - **SortedKeys.GPUAvg**  : Sorted by GPU average time.
+        - **SortedKeys.GPUMax**  : Sorted by GPU max time.
+        - **SortedKeys.GPUMin**  : Sorted by GPU min time.
     """
     CPUTotal = 0
     CPUAvg = 1
