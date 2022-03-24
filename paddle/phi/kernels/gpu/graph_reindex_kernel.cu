@@ -263,6 +263,10 @@ void GraphReindexKernel(const Context& dev_ctx,
 
   if (flag_buffer_hashtable) {
     // Here we directly use buffer tensor to act as a hash table.
+    const auto* ph_value = &hashtable_value;
+    hashtable_value_out->ShareDataWith(*ph_value);
+    const auto* ph_index = &hashtable_index;
+    hashtable_index_out->ShareDataWith(*ph_index);
     int* hashtable_value_data =
         hashtable_value_out->mutable_data<int>(dev_ctx.GetPlace());
     int* hashtable_index_data =
