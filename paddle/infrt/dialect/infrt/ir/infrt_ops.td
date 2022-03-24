@@ -53,9 +53,9 @@ def Infrt_CallOp : Infrt_Op<"call"> {
   }];
 }
 
-def Infrt_CvtTensorOp : Infrt_Op<"cvt_tensor", [NoSideEffect]> {
-  let summary = "convert tensor type op";
-  let description = [{convert tensor type op!}];
+def Infrt_TensorCastOp : Infrt_Op<"tensor_cast", [NoSideEffect]> {
+  let summary = "cast tensor type op";
+  let description = [{cast tensor type op!}];
   let arguments = (ins AnyType:$input);
   let results = (outs AnyType:$output);
 }

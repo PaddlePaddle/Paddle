@@ -44,7 +44,7 @@ void GraphPsService_Stub::service(
   }
 }
 
-int GraphBrpcClient::get_server_index_by_id(uint64_t id) {
+int GraphBrpcClient::get_server_index_by_id(int64_t id) {
   int shard_num = get_shard_num();
   int shard_per_server = shard_num % server_size == 0
                              ? shard_num / server_size
@@ -53,7 +53,7 @@ int GraphBrpcClient::get_server_index_by_id(uint64_t id) {
 }
 
 std::future<int32_t> GraphBrpcClient::get_node_feat(
-    const uint32_t &table_id, const std::vector<uint64_t> &node_ids,
+    const uint32_t &table_id, const std::vector<int64_t> &node_ids,
     const std::vector<std::string> &feature_names,
     std::vector<std::vector<std::string>> &res) {
   std::vector<int> request2server;
@@ -66,7 +66,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
     }
   }
   size_t request_call_num = request2server.size();
-  std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
+  std::vector<std::vector<int64_t>> node_id_buckets(request_call_num);
   std::vector<std::vector<int>> query_idx_buckets(request_call_num);
   for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
     int server_index = get_server_index_by_id(node_ids[query_idx]);
@@ -129,7 +129,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
 
     closure->request(request_idx)
         ->add_params((char *)node_id_buckets[request_idx].data(),
-                     sizeof(uint64_t) * node_num);
+                     sizeof(int64_t) * node_num);
     std::string joint_feature_name =
         paddle::string::join_strings(feature_names, '\t');
     closure->request(request_idx)
@@ -179,9 +179,9 @@ std::future<int32_t> GraphBrpcClient::clear_nodes(uint32_t table_id) {
   return fut;
 }
 std::future<int32_t> GraphBrpcClient::add_graph_node(
-    uint32_t table_id, std::vector<uint64_t> &node_id_list,
+    uint32_t table_id, std::vector<int64_t> &node_id_list,
     std::vector<bool> &is_weighted_list) {
-  std::vector<std::vector<uint64_t>> request_bucket;
+  std::vector<std::vector<int64_t>> request_bucket;
   std::vector<std::vector<bool>> is_weighted_bucket;
   bool add_weight = is_weighted_list.size() > 0;
   std::vector<int> server_index_arr;
@@ -191,7 +191,7 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
     if (index_mapping[server_index] == -1) {
       index_mapping[server_index] = request_bucket.size();
       server_index_arr.push_back(server_index);
-      request_bucket.push_back(std::vector<uint64_t>());
+      request_bucket.push_back(std::vector<int64_t>());
       if (add_weight) is_weighted_bucket.push_back(std::vector<bool>());
     }
     request_bucket[index_mapping[server_index]].push_back(
@@ -229,7 +229,7 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
     size_t node_num = request_bucket[request_idx].size();
     closure->request(request_idx)
         ->add_params((char *)request_bucket[request_idx].data(),
-                     sizeof(uint64_t) * node_num);
+                     sizeof(int64_t) * node_num);
     if (add_weight) {
       bool weighted[is_weighted_bucket[request_idx].size() + 1];
       for (size_t j = 0; j < is_weighted_bucket[request_idx].size(); j++)
@@ -248,8 +248,8 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
   return fut;
 }
 std::future<int32_t> GraphBrpcClient::remove_graph_node(
-    uint32_t table_id, std::vector<uint64_t> &node_id_list) {
-  std::vector<std::vector<uint64_t>> request_bucket;
+    uint32_t table_id, std::vector<int64_t> &node_id_list) {
+  std::vector<std::vector<int64_t>> request_bucket;
   std::vector<int> server_index_arr;
   std::vector<int> index_mapping(server_size, -1);
   for (size_t query_idx = 0; query_idx < node_id_list.size(); ++query_idx) {
@@ -257,7 +257,7 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
     if (index_mapping[server_index] == -1) {
       index_mapping[server_index] = request_bucket.size();
       server_index_arr.push_back(server_index);
-      request_bucket.push_back(std::vector<uint64_t>());
+      request_bucket.push_back(std::vector<int64_t>());
     }
     request_bucket[index_mapping[server_index]].push_back(
         node_id_list[query_idx]);
@@ -291,7 +291,7 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
 
     closure->request(request_idx)
         ->add_params((char *)request_bucket[request_idx].data(),
-                     sizeof(uint64_t) * node_num);
+                     sizeof(int64_t) * node_num);
     // PsService_Stub rpc_stub(get_cmd_channel(server_index));
     GraphPsService_Stub rpc_stub =
         getServiceStub(get_cmd_channel(server_index));
@@ -303,9 +303,9 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
 }
 // char* &buffer,int &actual_size
 std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
-    uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
-    // std::vector<std::vector<std::pair<uint64_t, float>>> &res,
-    std::vector<std::vector<uint64_t>> &res,
+    uint32_t table_id, std::vector<int64_t> node_ids, int sample_size,
+    // std::vector<std::vector<std::pair<int64_t, float>>> &res,
+    std::vector<std::vector<int64_t>> &res,
     std::vector<std::vector<float>> &res_weight, bool need_weight,
     int server_index) {
   if (server_index != -1) {
@@ -337,7 +337,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
           int start = 0;
           while (start < actual_size) {
             res[node_idx].emplace_back(
-                *(uint64_t *)(node_buffer + offset + start));
+                *(int64_t *)(node_buffer + offset + start));
             start += GraphNode::id_size;
             if (need_weight) {
               res_weight[node_idx].emplace_back(
@@ -358,7 +358,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
     closure->request(0)->set_table_id(table_id);
     closure->request(0)->set_client_id(_client_id);
     closure->request(0)->add_params((char *)node_ids.data(),
-                                    sizeof(uint64_t) * node_ids.size());
+                                    sizeof(int64_t) * node_ids.size());
     closure->request(0)->add_params((char *)&sample_size, sizeof(int));
     closure->request(0)->add_params((char *)&need_weight, sizeof(bool));
     ;
@@ -380,14 +380,14 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
     }
-    // res.push_back(std::vector<std::pair<uint64_t, float>>());
+    // res.push_back(std::vector<std::pair<int64_t, float>>());
     res.push_back({});
     if (need_weight) {
       res_weight.push_back({});
     }
   }
   size_t request_call_num = request2server.size();
-  std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
+  std::vector<std::vector<int64_t>> node_id_buckets(request_call_num);
   std::vector<std::vector<int>> query_idx_buckets(request_call_num);
   for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
     int server_index = get_server_index_by_id(node_ids[query_idx]);
@@ -428,7 +428,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
               int start = 0;
               while (start < actual_size) {
                 res[query_idx].emplace_back(
-                    *(uint64_t *)(node_buffer + offset + start));
+                    *(int64_t *)(node_buffer + offset + start));
                 start += GraphNode::id_size;
                 if (need_weight) {
                   res_weight[query_idx].emplace_back(
@@ -459,7 +459,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
 
     closure->request(request_idx)
         ->add_params((char *)node_id_buckets[request_idx].data(),
-                     sizeof(uint64_t) * node_num);
+                     sizeof(int64_t) * node_num);
     closure->request(request_idx)
         ->add_params((char *)&sample_size, sizeof(int));
     closure->request(request_idx)
@@ -476,7 +476,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
 }
 std::future<int32_t> GraphBrpcClient::random_sample_nodes(
     uint32_t table_id, int server_index, int sample_size,
-    std::vector<uint64_t> &ids) {
+    std::vector<int64_t> &ids) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = (DownpourBrpcClosure *)done;
@@ -490,7 +490,7 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
       auto size = io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
       int index = 0;
       while (index < bytes_size) {
-        ids.push_back(*(uint64_t *)(buffer + index));
+        ids.push_back(*(int64_t *)(buffer + index));
         index += GraphNode::id_size;
       }
       delete[] buffer;
@@ -633,7 +633,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
 }
 
 std::future<int32_t> GraphBrpcClient::set_node_feat(
-    const uint32_t &table_id, const std::vector<uint64_t> &node_ids,
+    const uint32_t &table_id, const std::vector<int64_t> &node_ids,
     const std::vector<std::string> &feature_names,
     const std::vector<std::vector<std::string>> &features) {
   std::vector<int> request2server;
@@ -646,7 +646,7 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
     }
   }
   size_t request_call_num = request2server.size();
-  std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
+  std::vector<std::vector<int64_t>> node_id_buckets(request_call_num);
   std::vector<std::vector<int>> query_idx_buckets(request_call_num);
   std::vector<std::vector<std::vector<std::string>>> features_idx_buckets(
       request_call_num);
@@ -696,7 +696,7 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
 
     closure->request(request_idx)
         ->add_params((char *)node_id_buckets[request_idx].data(),
-                     sizeof(uint64_t) * node_num);
+                     sizeof(int64_t) * node_num);
     std::string joint_feature_name =
         paddle::string::join_strings(feature_names, '\t');
     closure->request(request_idx)

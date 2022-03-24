@@ -114,6 +114,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/phi/backends/device_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -164,6 +165,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -187,6 +191,7 @@ PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
+PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -738,6 +743,11 @@ PYBIND11_MODULE(core_noavx, m) {
   // stored in this static instance to avoid illegal memory access.
   m.def("clear_kernel_factory",
         []() { phi::KernelFactory::Instance().kernels().clear(); });
+  m.def("clear_device_manager", []() {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    phi::DeviceManager::Clear();
+#endif
+  });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
@@ -757,6 +767,57 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
+  py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
+      m, "CustomOpKernelContext", R"DOC()DOC");
+  g_custom_op_kernel_ctx_pytype =
+      reinterpret_cast<PyTypeObject *>(custom_op_kernel_ctx.ptr());
+  custom_op_kernel_ctx.def(py::init<>())
+      .def("add_inputs",
+           [](paddle::CustomOpKernelContext &self, const py::handle &input) {
+             PyObject *obj = input.ptr();
+             if (PyList_Check(obj) || PyTuple_Check(obj)) {
+               self.EmplaceBackInputs(
+                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else {
+               self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
+             }
+           })
+      .def("add_outputs",
+           [](paddle::CustomOpKernelContext &self, py::handle &outputs) {
+             PyObject *obj = outputs.ptr();
+             if (PyList_Check(obj) || PyTuple_Check(obj)) {
+               self.EmplaceBackOutputs(
+                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else {
+               self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
+             }
+           })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          bool attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          int attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          float attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          int64_t attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr",
+           [](paddle::CustomOpKernelContext &self, const std::string &attr) {
+             self.EmplaceBackAttr(attr);
+           })
+      .def("add_attr",
+           [](paddle::CustomOpKernelContext &self,
+              const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr",
+           [](paddle::CustomOpKernelContext &self,
+              const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr",
+           [](paddle::CustomOpKernelContext &self,
+              const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          const std::vector<std::string> &attr) {
+        self.EmplaceBackAttr(attr);
+      });
+
   py::class_<framework::Tensor> framework_tensor(m, "Tensor",
                                                  py::buffer_protocol());
   g_framework_tensor_pytype =
@@ -768,6 +829,8 @@ PYBIND11_MODULE(core_noavx, m) {
            [](const framework::Tensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
            })
+      .def("_slice", &framework::Tensor::Slice)
+      .def("_numel", &framework::Tensor::numel)
       .def("_is_initialized",
            [](const framework::Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -1700,6 +1763,7 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("size", &Scope::Size)
       .def("erase", &Scope::EraseVars, py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
@@ -2796,6 +2860,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
+             platform::RecordEvent record_event(
+                 "StandaloneExecutor:run",
+                 platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
@@ -2827,10 +2894,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
-  m.def("load_op_meta_info_and_register_op",
-        framework::LoadOpMetaInfoAndRegisterOp);
+  m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
+    egr::Controller::Instance().MergeOpMetaInfoMap(
+        framework::LoadOpMetaInfoAndRegisterOp(dso_name));
+  });
   m.def("init_devices", []() { framework::InitDevices(); });
-
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
@@ -3256,6 +3324,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
+      .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
@@ -4202,6 +4271,7 @@ All parameter, weight, gradient are variables in Paddle.
                  platform::ipu::IpuBackend::GetInstance());
            },
            py::return_value_policy::reference)
+      .def("weights_to_host", &platform::ipu::IpuBackend::WeightsToHost)
       .def("detach", &platform::ipu::IpuBackend::Detach)
       .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
@@ -4248,6 +4318,15 @@ All parameter, weight, gradient are variables in Paddle.
                      self.SetTensorLocation(
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
+                   }
+                 } else if (option_name == "accumulate_outer_fragment") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::vector<int> values;
+                     for (auto value : option.second.cast<py::list>()) {
+                       values.push_back(value.cast<int>());
+                     }
+                     self.SetAccumulateOuterFragmentSettings(
+                         option.first.cast<std::uint64_t>(), values);
                    }
                  } else if (option_name == "custom_op") {
                    std::string paddle_op;

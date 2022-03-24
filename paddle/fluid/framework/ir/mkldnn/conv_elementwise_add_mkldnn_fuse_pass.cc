@@ -118,7 +118,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "AnyLayout"})
+      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -145,10 +145,10 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
   patterns::Conv conv_pattern{pattern, name_scope};
   auto conv_output = conv_pattern();
 
-  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope};
-  elementwise_add_pattern(
-      conv_output,
-      pattern->NewNode(elementwise_add_pattern.elementwise_add_y_repr()));
+  patterns::Elementwise elementwise_pattern{pattern, name_scope};
+  elementwise_pattern(
+      conv_output, pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
+      "elementwise_add");
   conv_output->AsIntermediate();
 
   int found_conv_as_x_count = 0;
@@ -160,16 +160,16 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_identity, elementwise_add_y,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_identity, elementwise_y,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
+                              elementwise_pattern);
 
-    if (FindFuseOption(*conv_op, *elementwise_add_op) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
 
-    if (!IsReachable(g, elementwise_add_identity, conv_output)) return;
+    if (!IsReachable(g, elementwise_identity, conv_output)) return;
 
     if (HasFusedActivation(conv_op)) return;
 
@@ -179,14 +179,14 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
       return;
     }
 
-    conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
-    conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
+    conv_op->Op()->SetInput("ResidualData", {elementwise_identity->Name()});
+    conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
     conv_op->Op()->SetAttr("fuse_residual_connection", true);
 
-    GraphSafeRemoveNodes(g, {conv_output, elementwise_add_op});
+    GraphSafeRemoveNodes(g, {conv_output, elementwise_op});
 
-    IR_NODE_LINK_TO(elementwise_add_identity, conv_op);
-    IR_NODE_LINK_TO(conv_op, elementwise_add_out);
+    IR_NODE_LINK_TO(elementwise_identity, conv_op);
+    IR_NODE_LINK_TO(conv_op, elementwise_out);
 
     found_conv_as_x_count++;
   };
@@ -212,10 +212,10 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
   patterns::Conv conv_pattern{pattern, name_scope};
   auto conv_output = conv_pattern();
 
-  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope};
-  elementwise_add_pattern(
-      pattern->NewNode(elementwise_add_pattern.elementwise_add_x_repr()),
-      conv_output);
+  patterns::Elementwise elementwise_pattern{pattern, name_scope};
+  elementwise_pattern(
+      pattern->NewNode(elementwise_pattern.elementwise_x_repr()), conv_output,
+      "elementwise_add");
   conv_output->AsIntermediate();
 
   int found_conv_as_y_count = 0;
@@ -227,16 +227,16 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_x, elementwise_x,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
+                              elementwise_pattern);
 
-    if (FindFuseOption(*conv_op, *elementwise_add_op) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
 
-    if (!IsReachable(g, elementwise_add_x, conv_output)) return;
+    if (!IsReachable(g, elementwise_x, conv_output)) return;
 
     if (HasFusedActivation(conv_op)) return;
 
@@ -246,14 +246,14 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
       return;
     }
 
-    conv_op->Op()->SetInput("ResidualData", {elementwise_add_x->Name()});
-    conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
+    conv_op->Op()->SetInput("ResidualData", {elementwise_x->Name()});
+    conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
     conv_op->Op()->SetAttr("fuse_residual_connection", true);
 
-    GraphSafeRemoveNodes(g, {conv_output, elementwise_add_op});
+    GraphSafeRemoveNodes(g, {conv_output, elementwise_op});
 
-    IR_NODE_LINK_TO(elementwise_add_x, conv_op);
-    IR_NODE_LINK_TO(conv_op, elementwise_add_out);
+    IR_NODE_LINK_TO(elementwise_x, conv_op);
+    IR_NODE_LINK_TO(conv_op, elementwise_out);
 
     found_conv_as_y_count++;
   };
@@ -282,8 +282,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   patterns::Conv conv_y_pattern{pattern, name_scope};
   auto conv_y_output = conv_y_pattern();
 
-  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope};
-  elementwise_add_pattern(conv_x_output, conv_y_output);
+  patterns::Elementwise elementwise_pattern{pattern, name_scope};
+  elementwise_pattern(conv_x_output, conv_y_output, "elementwise_add");
   conv_x_output->AsIntermediate();
   conv_y_output->AsIntermediate();
 
@@ -301,10 +301,10 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
     GET_IR_NODE_FROM_SUBGRAPH(conv_y_filter, conv_filter, conv_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_y_output, conv_output, conv_y_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
+                              elementwise_pattern);
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
@@ -312,8 +312,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
       return;
     }
 
-    if (FindFuseOption(*conv_x_op, *elementwise_add_op) != FUSE_MKLDNN) return;
-    if (FindFuseOption(*conv_y_op, *elementwise_add_op) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*conv_x_op, *elementwise_op) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*conv_y_op, *elementwise_op) != FUSE_MKLDNN) return;
 
     Node* projection_node;
     Node* residual_conv_op;
@@ -333,14 +333,14 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
     if (HasFusedActivation(residual_conv_op)) return;
 
     residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
-    residual_conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
+    residual_conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
 
     residual_conv_op->Op()->SetAttr("fuse_residual_connection", true);
 
-    GraphSafeRemoveNodes(g, {residual_conv_output, elementwise_add_op});
+    GraphSafeRemoveNodes(g, {residual_conv_output, elementwise_op});
 
     IR_NODE_LINK_TO(projection_node, residual_conv_op);
-    IR_NODE_LINK_TO(residual_conv_op, elementwise_add_out);
+    IR_NODE_LINK_TO(residual_conv_op, elementwise_out);
 
     found_projection_conv_count++;
   };

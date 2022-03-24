@@ -22,7 +22,9 @@ attr_type_converter = {
     "i": 'SI32Attr',
     "b": 'BoolAttr',
     "l": 'SI64Attr',
-    "f": 'F32Attr'
+    "f": 'F32Attr',
+    "NSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE": 'StrAttr',
+    "St6vectorIiSaIiEE": 'I32ArrayAttr'
 }
 
 target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
@@ -43,7 +45,8 @@ precision_type_converter = {
     "float64": "FLOAT64",
     "complex64": "COMPLEX64",
     "complex128": "COMPLEX128",
-    "bool": "BOOL"
+    "bool": "BOOL",
+    "Undefined": "UNK"
 }
 
 kernel_types_info_file = "./kernels.json"

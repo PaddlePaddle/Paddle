@@ -18,7 +18,7 @@
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
-#include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 
 int main(int argc, char** argv) {
   static llvm::cl::opt<std::string> input_file(

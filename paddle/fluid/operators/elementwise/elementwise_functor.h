@@ -1,11 +1,8 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -89,86 +86,6 @@ struct MinFunctor {
 
 template <typename T>
 using Complex = paddle::platform::complex<T>;
-
-// Fmax
-template <typename T>
-struct FMaxFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return std::fmax(a, b);
-  }
-};
-
-template <>
-struct FMaxFunctor<paddle::platform::float16> {
-  inline HOSTDEVICE paddle::platform::float16 operator()(
-      const paddle::platform::float16 a,
-      const paddle::platform::float16 b) const {
-    float float_a = static_cast<float>(a);
-    float float_b = static_cast<float>(b);
-    auto result = std::fmax(float_a, float_b);
-    return static_cast<paddle::platform::float16>(result);
-  }
-};
-
-template <>
-struct FMaxFunctor<int> {
-  inline HOSTDEVICE int operator()(const int a, const int b) const {
-    float float_a = static_cast<float>(a);
-    float float_b = static_cast<float>(b);
-    auto result = std::fmax(float_a, float_b);
-    return std::lrint(result);
-  }
-};
-
-template <>
-struct FMaxFunctor<int64_t> {
-  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
-    double double_a = static_cast<double>(a);
-    double double_b = static_cast<double>(b);
-    auto result = std::fmax(double_a, double_b);
-    return std::llrint(result);
-  }
-};
-
-// Fmin
-template <typename T>
-struct FMinFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return std::fmin(a, b);
-  }
-};
-
-template <>
-struct FMinFunctor<paddle::platform::float16> {
-  inline HOSTDEVICE paddle::platform::float16 operator()(
-      const paddle::platform::float16 a,
-      const paddle::platform::float16 b) const {
-    float float_a = static_cast<float>(a);
-    float float_b = static_cast<float>(b);
-    auto result = std::fmin(float_a, float_b);
-    return static_cast<paddle::platform::float16>(result);
-  }
-};
-
-template <>
-struct FMinFunctor<int> {
-  inline HOSTDEVICE int operator()(const int a, const int b) const {
-    float float_a = static_cast<float>(a);
-    float float_b = static_cast<float>(b);
-    auto result = std::fmin(float_a, float_b);
-    return std::lrint(result);
-  }
-};
-
-template <>
-struct FMinFunctor<int64_t> {
-  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
-    double double_a = static_cast<double>(a);
-    double double_b = static_cast<double>(b);
-    auto result = std::fmin(double_a, double_b);
-    return std::llrint(result);
-  }
-};
 
 template <typename T>
 struct MinGradXFunctor {

@@ -153,6 +153,7 @@ PD_BUILD_GRAD_OP(custom_relu_no_x_in_backward)
     .SetInferShapeFn(PD_INFER_SHAPE(ReluBackwardWithoutXInferShape));
 
 void relu_cpu_forward_out(const paddle::Tensor& x, paddle::Tensor* out) {
+  out->reshape(x.shape());
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
         relu_cpu_forward_kernel<data_t>(
@@ -164,6 +165,7 @@ void relu_cpu_backward_out(const paddle::Tensor& x,
                            const paddle::Tensor& out,
                            const paddle::Tensor& grad_out,
                            paddle::Tensor* grad_x) {
+  grad_x->reshape(x.shape());
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(
                                    grad_out.data<data_t>(),

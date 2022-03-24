@@ -484,6 +484,71 @@ TEST(ARG_MAP, set_value) {
       "set_value");
 }
 
+TEST(ARG_MAP, set_value_grad) {
+  TestArgumentMappingContext arg_case(
+      {"Out@GRAD", "StartsTensorList", "EndsTensorList"},
+      {},
+      {},
+      {"Input@GRAD", "ValueTensor@GRAD"},
+      {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case1(
+      {"Out@GRAD", "StartsTensorList", "StepsTensorList"},
+      {},
+      {},
+      {"Input@GRAD", "ValueTensor@GRAD"},
+      {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case1)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case2({"Out@GRAD", "StartsTensorList"},
+                                       {},
+                                       {},
+                                       {"Input@GRAD", "ValueTensor@GRAD"},
+                                       {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case2)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case3(
+      {"Out@GRAD", "EndsTensorList", "StepsTensorList"},
+      {},
+      {},
+      {"Input@GRAD", "ValueTensor@GRAD"},
+      {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case3)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case4({"Out@GRAD", "EndsTensorList"},
+                                       {},
+                                       {},
+                                       {"Input@GRAD", "ValueTensor@GRAD"},
+                                       {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case4)
+                .name,
+            "set_value_grad");
+
+  TestArgumentMappingContext arg_case5({"Out@GRAD", "StepsTensorList"},
+                                       {},
+                                       {},
+                                       {"Input@GRAD", "ValueTensor@GRAD"},
+                                       {});
+  ASSERT_EQ(OpUtilsMap::Instance()
+                .GetArgumentMappingFn("set_value_grad")(arg_case5)
+                .name,
+            "set_value_grad");
+}
+
 TEST(ARG_MAP, allclose) {
   TestArgumentMappingContext arg_case1(
       {"Input", "Other", "Rtol"},
