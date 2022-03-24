@@ -266,7 +266,7 @@ def monkey_patch_math_varbase():
 
             if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                 self = astype(self, 'float32')
-                other_var = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
 
             # 4. calculation
             axis = -1
