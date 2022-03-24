@@ -384,8 +384,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_mish_mkldnn_fuse_pass");
     passes_.push_back("conv_hard_sigmoid_mkldnn_fuse_pass");
     passes_.push_back("conv_gelu_mkldnn_fuse_pass");
-    // How to set input parameters？
-    /// passes_.push_back("fc_fuse_pass");
+    passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
     // How to judge whether fc is quantified?
     // passes_.push_back("fc_mkldnn_pass");

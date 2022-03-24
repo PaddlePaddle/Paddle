@@ -261,6 +261,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_bfloat16_);
   CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
+  CP_MEMBER(use_mkldnn_int8_);
+  CP_MEMBER(int8_enabled_op_types_);
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
   CP_MEMBER(min_input_shape_);
@@ -435,9 +437,11 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
-void AnalysisConfig::EnableMkldnnInt8() {
+void AnalysisConfig::EnableMkldnnInt8(std::unordered_set<std::string> op_list) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
+  int8_enabled_op_types_.insert(op_list.begin(), op_list.end());
+  use_fc_padding_ = false;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
   use_mkldnn_int8_ = false;
@@ -645,7 +649,15 @@ void AnalysisConfig::Update() {
 
   if (use_mkldnn_int8_) {
 #ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableMkldnnInt8();
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
+                    "is enabled.";
+    } else if (!use_mkldnn_) {
+      LOG(ERROR) << "EnableMkldnnInt8() only works when MKLDNN "
+                    "is enabled.";
+    } else {
+      pass_builder()->EnableMkldnnInt8();
+    }
 #endif
   }
 
@@ -748,6 +760,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
   for (auto &item : bfloat16_enabled_op_types_) ss << item;
+  ss << use_mkldnn_int8_;
+  for (auto &item : int8_enabled_op_types_) ss << item;
   ss << ";";
   ss << model_from_memory_;
 

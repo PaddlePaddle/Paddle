@@ -713,17 +713,24 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
+  /// \brief Turn on MKLDNN int8.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void EnableMkldnnInt8(std::unordered_set<std::string> op_list = {});
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  ///
+  /// \return bool Whether to use the MKLDNN Bfloat16.
+  ///
+  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
+
+  ///
   /// \brief Turn on MKLDNN bfloat16.
   ///
   ///
   void EnableMkldnnBfloat16();
-
-  ///
-  /// \brief Turn on MKLDNN int8.
-  ///
-  ///
-  void EnableMkldnnInt8();
-
   ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///
@@ -986,8 +993,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
-  bool use_mkldnn_int8_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
+  bool use_mkldnn_int8_{false};
+  std::unordered_set<std::string> int8_enabled_op_types_;
 
   // ipu related.
   bool use_ipu_{false};
