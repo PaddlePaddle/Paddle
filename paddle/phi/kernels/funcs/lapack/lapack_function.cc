@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
-#include "paddle/fluid/platform/dynload/lapack.h"
+#include "paddle/phi/backends/dynload/lapack.h"
 #include "paddle/phi/common/complex.h"
 
 namespace phi {
@@ -22,12 +22,12 @@ namespace funcs {
 // LU (for example)
 template <>
 void lapackLu<double>(int m, int n, double *a, int lda, int *ipiv, int *info) {
-  paddle::platform::dynload::dgetrf_(&m, &n, a, &lda, ipiv, info);
+  dynload::dgetrf_(&m, &n, a, &lda, ipiv, info);
 }
 
 template <>
 void lapackLu<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
-  paddle::platform::dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
+  dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
 }
 
 // eigh
@@ -47,7 +47,7 @@ void lapackEigh<float>(char jobz,
                        int *info) {
   (void)rwork;   // unused
   (void)lrwork;  // unused
-  paddle::platform::dynload::ssyevd_(
+  dynload::ssyevd_(
       &jobz, &uplo, &n, a, &lda, w, work, &lwork, iwork, &liwork, info);
 }
 
@@ -67,7 +67,7 @@ void lapackEigh<double>(char jobz,
                         int *info) {
   (void)rwork;   // unused
   (void)lrwork;  // unused
-  paddle::platform::dynload::dsyevd_(
+  dynload::dsyevd_(
       &jobz, &uplo, &n, a, &lda, w, work, &lwork, iwork, &liwork, info);
 }
 
@@ -86,20 +86,19 @@ void lapackEigh<phi::dtype::complex<float>, float>(
     int *iwork,
     int liwork,
     int *info) {
-  paddle::platform::dynload::cheevd_(
-      &jobz,
-      &uplo,
-      &n,
-      reinterpret_cast<std::complex<float> *>(a),
-      &lda,
-      w,
-      reinterpret_cast<std::complex<float> *>(work),
-      &lwork,
-      rwork,
-      &lrwork,
-      iwork,
-      &liwork,
-      info);
+  dynload::cheevd_(&jobz,
+                   &uplo,
+                   &n,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   w,
+                   reinterpret_cast<std::complex<float> *>(work),
+                   &lwork,
+                   rwork,
+                   &lrwork,
+                   iwork,
+                   &liwork,
+                   info);
 }
 
 template <>
@@ -117,20 +116,19 @@ void lapackEigh<phi::dtype::complex<double>, double>(
     int *iwork,
     int liwork,
     int *info) {
-  paddle::platform::dynload::zheevd_(
-      &jobz,
-      &uplo,
-      &n,
-      reinterpret_cast<std::complex<double> *>(a),
-      &lda,
-      w,
-      reinterpret_cast<std::complex<double> *>(work),
-      &lwork,
-      rwork,
-      &lrwork,
-      iwork,
-      &liwork,
-      info);
+  dynload::zheevd_(&jobz,
+                   &uplo,
+                   &n,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   w,
+                   reinterpret_cast<std::complex<double> *>(work),
+                   &lwork,
+                   rwork,
+                   &lrwork,
+                   iwork,
+                   &liwork,
+                   info);
 }
 
 // Eig
@@ -152,20 +150,20 @@ void lapackEig<double>(char jobvl,
   double *wr = w;
   double *wi = w + n;
   (void)rwork;  // unused
-  paddle::platform::dynload::dgeev_(&jobvl,
-                                    &jobvr,
-                                    &n,
-                                    a,
-                                    &lda,
-                                    wr,
-                                    wi,
-                                    vl,
-                                    &ldvl,
-                                    vr,
-                                    &ldvr,
-                                    work,
-                                    &lwork,
-                                    info);
+  dynload::dgeev_(&jobvl,
+                  &jobvr,
+                  &n,
+                  a,
+                  &lda,
+                  wr,
+                  wi,
+                  vl,
+                  &ldvl,
+                  vr,
+                  &ldvr,
+                  work,
+                  &lwork,
+                  info);
 }
 
 template <>
@@ -186,20 +184,20 @@ void lapackEig<float>(char jobvl,
   float *wr = w;
   float *wi = w + n;
   (void)rwork;  // unused
-  paddle::platform::dynload::sgeev_(&jobvl,
-                                    &jobvr,
-                                    &n,
-                                    a,
-                                    &lda,
-                                    wr,
-                                    wi,
-                                    vl,
-                                    &ldvl,
-                                    vr,
-                                    &ldvr,
-                                    work,
-                                    &lwork,
-                                    info);
+  dynload::sgeev_(&jobvl,
+                  &jobvr,
+                  &n,
+                  a,
+                  &lda,
+                  wr,
+                  wi,
+                  vl,
+                  &ldvl,
+                  vr,
+                  &ldvr,
+                  work,
+                  &lwork,
+                  info);
 }
 
 template <>
@@ -218,21 +216,20 @@ void lapackEig<phi::dtype::complex<double>, double>(
     int lwork,
     double *rwork,
     int *info) {
-  paddle::platform::dynload::zgeev_(
-      &jobvl,
-      &jobvr,
-      &n,
-      reinterpret_cast<std::complex<double> *>(a),
-      &lda,
-      reinterpret_cast<std::complex<double> *>(w),
-      reinterpret_cast<std::complex<double> *>(vl),
-      &ldvl,
-      reinterpret_cast<std::complex<double> *>(vr),
-      &ldvr,
-      reinterpret_cast<std::complex<double> *>(work),
-      &lwork,
-      rwork,
-      info);
+  dynload::zgeev_(&jobvl,
+                  &jobvr,
+                  &n,
+                  reinterpret_cast<std::complex<double> *>(a),
+                  &lda,
+                  reinterpret_cast<std::complex<double> *>(w),
+                  reinterpret_cast<std::complex<double> *>(vl),
+                  &ldvl,
+                  reinterpret_cast<std::complex<double> *>(vr),
+                  &ldvr,
+                  reinterpret_cast<std::complex<double> *>(work),
+                  &lwork,
+                  rwork,
+                  info);
 }
 
 template <>
@@ -251,21 +248,20 @@ void lapackEig<phi::dtype::complex<float>, float>(
     int lwork,
     float *rwork,
     int *info) {
-  paddle::platform::dynload::cgeev_(
-      &jobvl,
-      &jobvr,
-      &n,
-      reinterpret_cast<std::complex<float> *>(a),
-      &lda,
-      reinterpret_cast<std::complex<float> *>(w),
-      reinterpret_cast<std::complex<float> *>(vl),
-      &ldvl,
-      reinterpret_cast<std::complex<float> *>(vr),
-      &ldvr,
-      reinterpret_cast<std::complex<float> *>(work),
-      &lwork,
-      rwork,
-      info);
+  dynload::cgeev_(&jobvl,
+                  &jobvr,
+                  &n,
+                  reinterpret_cast<std::complex<float> *>(a),
+                  &lda,
+                  reinterpret_cast<std::complex<float> *>(w),
+                  reinterpret_cast<std::complex<float> *>(vl),
+                  &ldvl,
+                  reinterpret_cast<std::complex<float> *>(vr),
+                  &ldvr,
+                  reinterpret_cast<std::complex<float> *>(work),
+                  &lwork,
+                  rwork,
+                  info);
 }
 
 template <>
@@ -280,8 +276,7 @@ void lapackGels<double>(char trans,
                         double *work,
                         int lwork,
                         int *info) {
-  paddle::platform::dynload::dgels_(
-      &trans, &m, &n, &nrhs, a, &lda, b, &ldb, work, &lwork, info);
+  dynload::dgels_(&trans, &m, &n, &nrhs, a, &lda, b, &ldb, work, &lwork, info);
 }
 
 template <>
@@ -296,8 +291,7 @@ void lapackGels<float>(char trans,
                        float *work,
                        int lwork,
                        int *info) {
-  paddle::platform::dynload::sgels_(
-      &trans, &m, &n, &nrhs, a, &lda, b, &ldb, work, &lwork, info);
+  dynload::sgels_(&trans, &m, &n, &nrhs, a, &lda, b, &ldb, work, &lwork, info);
 }
 
 template <>
@@ -316,20 +310,20 @@ void lapackGelsd<double>(int m,
                          double *rwork,
                          int *iwork,
                          int *info) {
-  paddle::platform::dynload::dgelsd_(&m,
-                                     &n,
-                                     &nrhs,
-                                     a,
-                                     &lda,
-                                     b,
-                                     &ldb,
-                                     s,
-                                     &rcond,
-                                     rank,
-                                     work,
-                                     &lwork,
-                                     iwork,
-                                     info);
+  dynload::dgelsd_(&m,
+                   &n,
+                   &nrhs,
+                   a,
+                   &lda,
+                   b,
+                   &ldb,
+                   s,
+                   &rcond,
+                   rank,
+                   work,
+                   &lwork,
+                   iwork,
+                   info);
 }
 
 template <>
@@ -348,20 +342,20 @@ void lapackGelsd<float>(int m,
                         float *rwork,
                         int *iwork,
                         int *info) {
-  paddle::platform::dynload::sgelsd_(&m,
-                                     &n,
-                                     &nrhs,
-                                     a,
-                                     &lda,
-                                     b,
-                                     &ldb,
-                                     s,
-                                     &rcond,
-                                     rank,
-                                     work,
-                                     &lwork,
-                                     iwork,
-                                     info);
+  dynload::sgelsd_(&m,
+                   &n,
+                   &nrhs,
+                   a,
+                   &lda,
+                   b,
+                   &ldb,
+                   s,
+                   &rcond,
+                   rank,
+                   work,
+                   &lwork,
+                   iwork,
+                   info);
 }
 
 template <>
@@ -379,7 +373,7 @@ void lapackGelsy<double>(int m,
                          int lwork,
                          double *rwork,
                          int *info) {
-  paddle::platform::dynload::dgelsy_(
+  dynload::dgelsy_(
       &m, &n, &nrhs, a, &lda, b, &ldb, jpvt, &rcond, rank, work, &lwork, info);
 }
 
@@ -398,7 +392,7 @@ void lapackGelsy<float>(int m,
                         int lwork,
                         float *rwork,
                         int *info) {
-  paddle::platform::dynload::sgelsy_(
+  dynload::sgelsy_(
       &m, &n, &nrhs, a, &lda, b, &ldb, jpvt, &rcond, rank, work, &lwork, info);
 }
 
@@ -417,7 +411,7 @@ void lapackGelss<double>(int m,
                          int lwork,
                          double *rwork,
                          int *info) {
-  paddle::platform::dynload::dgelss_(
+  dynload::dgelss_(
       &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond, rank, work, &lwork, info);
 }
 
@@ -436,7 +430,7 @@ void lapackGelss<float>(int m,
                         int lwork,
                         float *rwork,
                         int *info) {
-  paddle::platform::dynload::sgelss_(
+  dynload::sgelss_(
       &m, &n, &nrhs, a, &lda, b, &ldb, s, &rcond, rank, work, &lwork, info);
 }
 
@@ -450,15 +444,14 @@ void lapackCholeskySolve<phi::dtype::complex<double>>(
     phi::dtype::complex<double> *b,
     int ldb,
     int *info) {
-  paddle::platform::dynload::zpotrs_(
-      &uplo,
-      &n,
-      &nrhs,
-      reinterpret_cast<std::complex<double> *>(a),
-      &lda,
-      reinterpret_cast<std::complex<double> *>(b),
-      &ldb,
-      info);
+  dynload::zpotrs_(&uplo,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   reinterpret_cast<std::complex<double> *>(b),
+                   &ldb,
+                   info);
 }
 
 template <>
@@ -471,14 +464,14 @@ void lapackCholeskySolve<phi::dtype::complex<float>>(
     phi::dtype::complex<float> *b,
     int ldb,
     int *info) {
-  paddle::platform::dynload::cpotrs_(&uplo,
-                                     &n,
-                                     &nrhs,
-                                     reinterpret_cast<std::complex<float> *>(a),
-                                     &lda,
-                                     reinterpret_cast<std::complex<float> *>(b),
-                                     &ldb,
-                                     info);
+  dynload::cpotrs_(&uplo,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   reinterpret_cast<std::complex<float> *>(b),
+                   &ldb,
+                   info);
 }
 
 template <>
@@ -490,7 +483,7 @@ void lapackCholeskySolve<double>(char uplo,
                                  double *b,
                                  int ldb,
                                  int *info) {
-  paddle::platform::dynload::dpotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
+  dynload::dpotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
 }
 
 template <>
@@ -502,7 +495,7 @@ void lapackCholeskySolve<float>(char uplo,
                                 float *b,
                                 int ldb,
                                 int *info) {
-  paddle::platform::dynload::spotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
+  dynload::spotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
 }
 
 }  // namespace funcs

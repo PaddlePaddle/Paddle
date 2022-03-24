@@ -196,26 +196,19 @@ class DAdamD2Sum : public DenseOptimizer {
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
       if (names[x] == "LearningRate") {
         learning_rate = (*values)[x].data();
-      }
-      if (names[x] == "Param") {
+      } else if (names[x] == "Param") {
         param = (*values)[x].data();
-      }
-      if (names[x] == "Moment") {
+      } else if (names[x] == "Moment") {
         mom_velocity = (*values)[x].data();
-      }
-      if (names[x] == "G2Sum") {
+      } else if (names[x] == "G2Sum") {
         ada_g2sum = (*values)[x].data();
-      }
-      if (names[x] == "D2Sum") {
+      } else if (names[x] == "D2Sum") {
         ada_d2sum = (*values)[x].data();
-      }
-      if (names[x] == "MomentDecayRate") {
+      } else if (names[x] == "MomentDecayRate") {
         mom_decay_rate = (*values)[x].data();
-      }
-      if (names[x] == "AdaDecayRate") {
+      } else if (names[x] == "AdaDecayRate") {
         ada_decay_rate = (*values)[x].data();
-      }
-      if (names[x] == "AdaEpsilon") {
+      } else if (names[x] == "AdaEpsilon") {
         ada_epsilon = (*values)[x].data();
       }
     }
@@ -266,6 +259,35 @@ class DAdamD2Sum : public DenseOptimizer {
   float* mom_decay_rate;
   float* ada_decay_rate;
   float* ada_epsilon;
+};
+
+// for data_norm
+class DSummary : public DenseOptimizer {
+ public:
+  explicit DSummary(const CommonAccessorParameter& accessor,
+                    std::vector<std::vector<float>>* values) {
+    auto& names = accessor.params();
+    for (int x = 0; x < static_cast<int>(names.size()); ++x) {
+      if (names[x] == "Param") {
+        param = (*values)[x].data();
+      } else if (names[x] == "SummaryDecayRate") {
+        summary_decay_rate = (*values)[x].data();
+      }
+    }
+  }
+
+  void update(const float* update_values, size_t num, int begin,
+              int end) override {
+    auto update_numel = end - begin;
+    Eigen::Map<Eigen::MatrixXf> mat_w(param + begin, 1, update_numel);
+    Eigen::Map<const Eigen::MatrixXf> mat_grad(update_values + begin, 1,
+                                               update_numel);
+    mat_w = mat_w * summary_decay_rate_d + mat_grad;
+  }
+
+  float* summary_decay_rate;
+  double summary_decay_rate_d = 0.999999;
+  float* param;
 };
 
 }  // namespace distributed

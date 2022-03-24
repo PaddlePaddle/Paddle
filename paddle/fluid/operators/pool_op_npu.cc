@@ -11,8 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/pool_op.h"
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -68,8 +70,8 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
       strides_vec[2] = strides[0];
       strides_vec[3] = strides[1];
     }
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     PADDLE_ENFORCE_LT(
         std::max(paddings[0], paddings[1]), ksize[0],
         platform::errors::InvalidArgument(
@@ -201,8 +203,8 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
       strides_vec[2] = strides[0];
       strides_vec[3] = strides[1];
     }
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
 
     PADDLE_ENFORCE_LT(
         std::max(paddings[0], paddings[1]), ksize[0],

@@ -30,7 +30,8 @@ void Reduce(const KPDevice& dev_ctx,
             const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
-            DenseTensor* out) {
+            DenseTensor* out,
+            bool is_mean = false) {
   std::vector<int> reduce_dims =
       phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
@@ -39,8 +40,6 @@ void Reduce(const KPDevice& dev_ctx,
     reduce_num *= (x.dims())[i];
   }
 
-  KPStream stream = dev_ctx.stream();
-
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
@@ -48,29 +47,29 @@ void Reduce(const KPDevice& dev_ctx,
         phi::DataType::INT64,
         phi::DataType::FLOAT16,
         out_dtype,
-        "TensorReduceImpl",
+        "ReduceKernel",
         ([&] {
           using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
-          phi::funcs::TensorReduceImpl<data_t,
-                                       data_t,
-                                       ReduceOp,
-                                       TransformOp<data_t, MPType>>(
+          phi::funcs::ReduceKernel<data_t,
+                                   data_t,
+                                   ReduceOp,
+                                   TransformOp<data_t, MPType>>(
               dev_ctx,
               tmp_tensor,
               out,
               TransformOp<data_t, MPType>(reduce_num),
               reduce_dims,
-              stream);
+              is_mean);
         }));
   } else {
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    phi::funcs::TensorReduceImpl<T, T, ReduceOp, TransformOp<T, MPType>>(
+    phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
         dev_ctx,
         x,
         out,
         TransformOp<T, MPType>(reduce_num),
         reduce_dims,
-        stream);
+        is_mean);
   }
 }
 }  // namespace phi

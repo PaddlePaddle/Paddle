@@ -332,8 +332,6 @@ class DataLoader(object):
         self.use_buffer_reader = use_buffer_reader
         self.worker_init_fn = worker_init_fn
 
-        assert isinstance(dataset, Dataset), \
-            "dataset should be subclass instance of paddle.io.Dataset"
         self.dataset = dataset
 
         if not return_list and not in_dygraph_mode():

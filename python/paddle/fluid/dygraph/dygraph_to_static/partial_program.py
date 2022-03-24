@@ -148,10 +148,7 @@ class PartialProgramLayer:
 
         self._origin_main_program = self._verify_program(main_program)
         self._tmp_scope_vec = self._create_scope_vec()
-        # A fake_var to handle empty input or output
-        self.__fake_vars = _create_fake_var()
         # Set default mode to train
-        self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
         custom_white_list, custom_black_list = None, None
@@ -162,6 +159,14 @@ class PartialProgramLayer:
         self._amp_list = AutoMixedPrecisionLists(
             custom_white_list=custom_white_list,
             custom_black_list=custom_black_list)
+
+    @LazyInitialized
+    def __fake_vars(self):
+        return _create_fake_var()
+
+    @LazyInitialized
+    def _double_grads(self):
+        return self._get_double_grads(self._origin_main_program)
 
     @LazyInitialized
     def _infer_program(self):
@@ -356,8 +361,10 @@ class PartialProgramLayer:
 
     def drop_scope_if_no_grad(self):
         tracer = framework._dygraph_tracer()
+        scope = self._tmp_scope_vec.value().get_scope() if isinstance(
+            self._tmp_scope_vec, (core.VarBase)) else self._tmp_scope_vec[0]
         if self.training and not tracer._has_grad:
-            self._tmp_scope_vec.value().get_scope().drop_kids()
+            scope.drop_kids()
 
     @property
     def program(self):
@@ -449,18 +456,14 @@ class PartialProgramLayer:
     def _create_scope_vec(self):
         # Hold forward variables
         tmp_scope_vec = None
+        inner_scope = core.Scope()
         if not core._in_eager_mode():
             tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                          "program_out_scope",
                                          core.VarDesc.VarType.STEP_SCOPES, True)
-            # TODO(jiabin): Support this later.
-            # else:
-            #     tmp_scope_vec = core.eager.Tensor(core.VarDesc.VarType.FP32, [],
-            #                                 "program_out_scope",
-            #                                 core.VarDesc.VarType.STEP_SCOPES, True)
-
-            inner_scope = core.Scope()
             tmp_scope_vec.value().set_scope(inner_scope)
+        else:
+            tmp_scope_vec = [inner_scope]
         return tmp_scope_vec
 
     def _restore_out(self, out_vars):
@@ -598,12 +601,10 @@ def _create_fake_var():
                          core.VarDesc.VarType.RAW, False)
         ]
     else:
-        return []
-        # TODO(jiabin): Support this later
-        # return [
-        #     core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
-        #                 core.VarDesc.VarType.RAW, False)
-        # ]
+        return [
+            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+                              core.VarDesc.VarType.RAW, False)
+        ]
 
 
 def partial_program_from(concrete_program):

@@ -36,7 +36,7 @@ from ...static import Variable
 from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
-from paddle.framework import core
+from paddle.framework import core, _in_eager_mode
 
 __all__ = []
 
@@ -114,7 +114,10 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             reduction)
 
     if in_dynamic_mode():
-        out = _C_ops.bce_loss(input, label)
+        if _in_eager_mode():
+            out = _C_ops.final_state_bce_loss(input, label)
+        else:
+            out = _C_ops.bce_loss(input, label)
         if weight is not None:
             out = _C_ops.elementwise_mul(out, weight, 'axis', -1)
 

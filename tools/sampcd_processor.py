@@ -550,6 +550,42 @@ def get_incrementapi():
                 f.write('\n')
 
 
+def exec_gen_doc():
+    result = True
+    cmd = ["bash", "document_preview.sh"]
+    logger.info("----exec gen_doc----")
+    start_time = time.time()
+    subprc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = subprc.communicate()
+    msg = "".join(output.decode(encoding='utf-8'))
+    err = "".join(error.decode(encoding='utf-8'))
+    end_time = time.time()
+
+    if subprc.returncode != 0:
+        logger.info("----gen_doc msg----")
+        logger.info(msg)
+        logger.error("----gen_doc error msg----")
+        logger.error(err)
+        logger.error("----exec gen_doc failed----")
+        result = False
+    else:
+        logger.info("----gen_doc msg----")
+        logger.info(msg)
+        logger.info("----exec gen_doc success----")
+
+    for fn in [
+            '/docs/en/develop/index_en.html', '/docs/zh/develop/index_cn.html'
+    ]:
+        if os.path.exists(fn):
+            logger.info('%s exists.', fn)
+        else:
+            logger.error('%s not exists.', fn)
+
+    # msg is the returned code execution report
+    return result, msg, end_time - start_time
+
+
 arguments = [
     # flags, dest, type, default, help
     ['--gpu_id', 'gpu_id', int, 0, 'GPU device id to use [0]'],
@@ -570,6 +606,11 @@ def parse_args():
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument('--full-test', dest='full_test', action="store_true")
     parser.add_argument('mode', type=str, help='run on device', default='cpu')
+    parser.add_argument(
+        '--build-doc',
+        dest='build_doc',
+        action='store_true',
+        help='build doc if need.')
     for item in arguments:
         parser.add_argument(
             item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
@@ -702,3 +743,7 @@ if __name__ == '__main__':
             exit(1)
 
     logger.info("Sample code check is successful!")
+
+    if args.mode == "cpu":
+        # As cpu mode is also run with the GPU whl, so skip it in gpu mode.
+        exec_gen_doc()
