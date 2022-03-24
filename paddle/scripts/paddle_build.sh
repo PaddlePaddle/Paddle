@@ -209,6 +209,9 @@ function cmake_base() {
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
@@ -262,6 +265,9 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -1018,6 +1024,9 @@ function generate_api_spec() {
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
     deactivate
+
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
 }
 
 function check_approvals_of_unittest() {
