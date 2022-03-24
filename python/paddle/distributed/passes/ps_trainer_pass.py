@@ -84,8 +84,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         logger.info("send_ctx: {}".format(send_ctx))
         dummys = []
         for merged_name, send in send_ctx.items():
-            if send.is_sparse(
-            ) and ps_mode != DistributedMode.GEO and ps_mode != DistributedMode.SYNC:
+            if send.is_sparse() and ps_mode == DistributedMode.ASYNC:
                 continue
             if send.program_id() != id(attrs['loss'].block.program):
                 continue
