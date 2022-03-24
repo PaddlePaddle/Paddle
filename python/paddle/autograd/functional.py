@@ -77,7 +77,7 @@ def vjp(func, xs, v=None):
     """
     _check_inputs(func, xs, v)
 
-    # clone xs as formal parameters for breaking the dependencies with other 
+    # clone xs as formal parameters for breaking the dependencies with other
     # variables. See more ``_clone`` .
     xs, v = _clone(xs), _clone(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
@@ -134,7 +134,7 @@ def jvp(func, xs, v=None):
 
     """
     _check_inputs(func, xs, v)
-    # clone xs as formal parameters for breaking the dependencies with other 
+    # clone xs as formal parameters for breaking the dependencies with other
     # variables. See more ``_clone`` .
     xs, v = _clone(xs), _clone(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
@@ -146,12 +146,20 @@ def _double_backward_trick(ys, xs, v):
     """Double backward trick for computing ``jvp`` by ``vjp``
     see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
     """
-    # In theory, it can be any random value, using zeros at this palce is just
-    # for computing conveniently.
-    zeros_ys = [paddle.zeros_like(y) for y in _as_tensors(ys)] if isinstance(
-        ys, typing.Sequence) else paddle.zeros_like(ys)
-    first_order_grad = _grad(ys, xs, zeros_ys)
-    return _grad(first_order_grad, zeros_ys, v)
+    # The value of ys_grad is not important, it can be any random value in t
+    # heory, but it's required to set stop_gradient=False
+    if not isinstance(ys, typing.Sequence):
+        ys_grad = paddle.zeros_like(ys)
+        ys_grad.stop_gradient = False
+    else:
+        ys_grad = []
+        for y in ys:
+            y_grad = paddle.zeros_like(y)
+            y_grad.stop_gradient = False
+            ys_grad.append(y_grad)
+
+    xs_grad = _grad(ys, xs, ys_grad)
+    return _grad(xs_grad, ys_grad, v)
 
 
 class Jacobian(object):
@@ -247,7 +255,7 @@ class Jacobian(object):
 
 class Hessian(object):
     """
-    Computes the Hessian matrix  with a given ``func`` with respect to `inputs`.
+    Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
 
     ``func`` is treated as a vector valued function with all its inputs 
     flattened into a single one dimensional Tensor, or a two dimensional Tensor 
@@ -319,7 +327,7 @@ class _Jacobian(object):
         * ``_flatten``, flattens the inputs ``xs``.
         * ``_evaluate``, the method for evaluating one slice along 
             ``_lazy_axis`` .
-        
+
     Notes:
 
         Because currently PaddlePaddle only support reverse differentiation by 
@@ -521,11 +529,19 @@ def _stack_tensor_or_return_none(origin_list):
 
 def _replace_none_with_zero_tensor(xs, refs):
     if xs is None:
-        return paddle.zeros_like(refs)
+        xs = paddle.zeros_like(refs)
+        xs.stop_gradient = refs.stop_gradient
+        return xs
     elif isinstance(xs, typing.Sequence):
-        return tuple(
-            paddle.zeros_like(refs[i]) if x is None else x
-            for i, x in enumerate(xs))
+        ys = []
+        for i, x in enumerate(xs):
+            if x is None:
+                y = paddle.zeros_like(refs[i])
+                y.stop_gradient = refs[i].stop_gradient
+            else:
+                y = x
+            ys.append(y)
+        return tuple(ys)
     else:
         return xs
 
@@ -852,7 +868,7 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
         be a tuple of Tensors. If both of inputs and outputs are Tensor
         list/tuple, then the Jacobian will be a tuple of tuple of Tensors.
         Noted that the first dimension of inputs is batch size.
-        
+
         For example,
         the inputs shape and outputs shape of function ``func` is [batch_size, num] 
         and [batch_size, num] respectively, then the Jacobian will be a Tensor with
@@ -922,7 +938,7 @@ def batch_jacobian(func, inputs, create_graph=False, allow_unused=False):
             #        [0., 1., 0., 1., 0., 1., 0., 1.]]), Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             #       [[1., 0., 1., 0., 1., 0., 1., 0.],
             #        [0., 1., 0., 1., 0., 1., 0., 1.]]))
-   
+
     '''
     inputs = _as_tensors(inputs)
     outputs = _as_tensors(func(*inputs))
@@ -1002,7 +1018,7 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
         the inputs shape and outputs shape of function ``func` is [batch_size, num] 
         and [batch_size, 1] respectively, then the batched Hessian will be a Tensor with
         a shape of [num, batch_size * num].
-        
+
         Why the final shape in this case is that?
         because batch_hessian will create a inner func(the wrapper of paddle.grad() func)
         to computes the sum of gradients of `outputs` with respect to each `inputs`,
@@ -1012,7 +1028,7 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
         matrix of the ``i``th column output(Noted that this output means the first order 
         differentiation) and the ``j``th input and will have same dtype and device as the 
         corresponding input. Other situations can be deduced by analogy.
-    
+
 
     Examples 1:
         .. code-block:: python
@@ -1025,8 +1041,8 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x):
                 return paddle.matmul(x * x, weight)[:, 0:1]
-            
-           
+
+
             x.stop_gradient = False
             batch_hessian = paddle.autograd.batch_hessian(func, x)
             print(batch_hessian)
@@ -1045,7 +1061,7 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x, y):
                 return paddle.matmul(x * x * y * y, weight)[:, 0:1]
-            
+
             x.stop_gradient = False
             y.stop_gradient = False
             batch_hessian = paddle.autograd.batch_hessian(func, [x, y])
@@ -1062,7 +1078,7 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
             #   Tensor(shape=[2, 8], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
             #        [[2., 0., 2., 0., 2., 0., 2., 0.],
             #         [0., 2., 0., 2., 0., 2., 0., 2.]])))
-            
+
 
     Examples 3:
         .. code-block:: python
@@ -1072,7 +1088,7 @@ def batch_hessian(func, inputs, create_graph=False, allow_unused=False):
             x = paddle.ones(shape=(4, 2), dtype='float64')
             weight = paddle.ones(shape=(2, 4), dtype='float64')
             y = paddle.ones(shape=(4, 2), dtype='float64')
-            
+
             def func(x, y):
                 return paddle.matmul(x * x, weight)[:, 0:1]
 
@@ -1148,7 +1164,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             hessian = paddle.autograd.hessian(func, x)
@@ -1166,7 +1182,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x, y):
                 return paddle.sum(paddle.matmul(x, y))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             y = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
@@ -1201,7 +1217,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x, y):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             y = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
@@ -1271,7 +1287,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             import paddle
             def func(x):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
@@ -1288,7 +1304,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             import paddle
             def func(x):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             vhp_rslt = paddle.autograd.vhp(func, x)
@@ -1304,7 +1320,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             import paddle
             def func(x, y):
                 return paddle.sum(paddle.matmul(x, x))
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             y = paddle.ones(shape=[2, 2], dtype='float32')

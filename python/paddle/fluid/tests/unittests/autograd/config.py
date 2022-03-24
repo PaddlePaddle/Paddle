@@ -19,14 +19,31 @@ if paddle.is_compiled_with_cuda():
 
 DEFAULT_DTYPE = 'float64'
 
-# All test case will use float64 for compare percision, refs:
-# https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64
-RTOL = {
-    'float32': 1e-03,
-    'complex64': 1e-3,
-    'float64': 1e-6,
-    'complex128': 1e-6
+# The numerical tolerance of different dtype of different order different
+# derivative. It's a empirical value provided by Paddle Science team.
+TOLERANCE = {
+    "float32": {
+        "first_order_grad": {
+            "rtol": 1e-3,
+            "atol": 1e-3,
+            "eps": 1e-4
+        },
+        "second_order_grad": {
+            "rtol": 1e-2,
+            "atol": 1e-2,
+            "eps": 1e-2
+        }
+    },
+    "float64": {
+        "first_order_grad": {
+            "rtol": 1e-7,
+            "atol": 1e-7,
+            "eps": 1e-7
+        },
+        "second_order_grad": {
+            "rtol": 1e-5,
+            "atol": 1e-5,
+            "eps": 1e-5
+        }
+    }
 }
-ATOL = {'float32': 0.0, 'complex64': 0, 'float64': 0.0, 'complex128': 0}
-
-EPS = {'float32': 1e-3, 'float64': 1e-6}
