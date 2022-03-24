@@ -14,7 +14,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/interpolate_v2_op.h"
 
 #ifdef PADDLE_WITH_XPU
 
