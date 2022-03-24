@@ -525,9 +525,6 @@ static void Interpolate1DCPUFwd(
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_w = new_size[0];
   } else {
-    // float scale_w = -1;
-    // auto scale_tensor = ctx.Input<Tensor>("Scale");
-    // auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor) {
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -631,8 +628,6 @@ static void Interpolate2DCPUFwd(
     out_h = new_size[0];
     out_w = new_size[1];
   } else {
-    // auto scale_tensor = ctx.Input<Tensor>("Scale");
-    // auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor) {
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -682,7 +677,6 @@ static void Interpolate2DCPUFwd(
       out_h = static_cast<int>(in_h * scale_h);
       out_w = static_cast<int>(in_w * scale_w);
     }
-    // auto out_size = ctx.Input<Tensor>("OutSize");
     if (out_size) {
       auto out_size_data =
           funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
@@ -706,7 +700,6 @@ static void Interpolate2DCPUFwd(
   } else {
     dim_out = {n, out_h, out_w, c};
   }
-  // output->mutable_data<T>(dim_out, ctx.GetPlace());
   output->Resize(dim_out);
   dev_ctx.template Alloc<T>(output);
 
@@ -805,8 +798,6 @@ static void Interpolate3DCPUFwd(
     out_h = new_size[1];
     out_w = new_size[2];
   } else {
-    // auto scale_tensor = ctx.Input<Tensor>("Scale");
-    // auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor) {
       auto scale_data =
           funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -905,7 +896,6 @@ static void Interpolate3DCPUFwd(
     dim_out = {n, out_d, out_h, out_w, c};
   }
 
-  // output->mutable_data<T>(dim_out, ctx.GetPlace());
   output->Resize(dim_out);
   dev_ctx.template Alloc<T>(output);
 

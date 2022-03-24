@@ -1070,7 +1070,6 @@ static void Interpolate2DCUDABwd(
                                                              align_type_value,
                                                              is_nchw);
     } else if (!optimize_flag & is_nchw) {
-      //
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
       KeBilinearInterpNCHWBw<
