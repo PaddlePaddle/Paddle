@@ -196,9 +196,12 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
 
     #if data is fake, return 0
     if ins_tag_weight[0] == 0:
-        for var in [local_q, local_ins_num]:
-            helper.set_variable_initializer(
-                var, Constant(
-                    value=0.0, force_cpu=True))
+        local_ins_num = tensor.fill_constant_batch_size_like(
+            input=local_ins_num,
+            shape=local_ins_num.shape,
+            dtype="float32",
+            value=0.0)
+        local_q = tensor.fill_constant_batch_size_like(
+            input=local_q, shape=local_q.shape, dtype="float32", value=0.0)
 
     return local_sqrerr, local_abserr, local_prob, local_q, local_pos_num, local_ins_num
