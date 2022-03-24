@@ -120,10 +120,6 @@ class TestEigvalshAPI(unittest.TestCase):
         self.complex_symm = np.divide(
             complex_data + np.conj(complex_data.transpose(self.trans_dims)), 2)
 
-    # def compare_result(self, actual_w, expected_w):
-    #     np.testing.assert_allclose(
-    #         actual_w, expected_w, rtol=self.rtol, atol=self.atol)
-
     def check_static_float_result(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
