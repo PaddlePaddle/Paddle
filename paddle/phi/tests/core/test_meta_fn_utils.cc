@@ -52,7 +52,7 @@ TEST(MetaFnFactory, InferMetaFnExists) {
   phi::InferMetaContext ctx;
   ctx.EmplaceBackInput(shared_meat_x);
   ctx.EmplaceBackOutput(shared_meta_out);
-  ctx.SetMetaConfig(/*is_runtime=*/true);
+  ctx.SetMetaConfig({/*is_runtime =*/true, /*is_run_mkldnn_kernel=*/false});
   phi::MetaFnFactory::Instance().Get("sign")(&ctx);
 
   EXPECT_EQ(dense_out1.dims().size(), dense_out2.dims().size());
@@ -78,7 +78,7 @@ TEST(MetaFnFactory, CopyInferMetaFn) {
   ctx.EmplaceBackAttr(Backend::CPU);
   ctx.EmplaceBackAttr(false);
   ctx.EmplaceBackOutput(shared_meta_out);
-  ctx.SetMetaConfig(/*is_runtime=*/true);
+  ctx.SetMetaConfig({/*is_runtime =*/true, /*is_run_mkldnn_kernel=*/false});
   phi::MetaFnFactory::Instance().Get("copy_to")(&ctx);
 
   EXPECT_EQ(dense_out1.dims().size(), dense_out2.dims().size());
@@ -105,7 +105,7 @@ TEST(MetaFnFactory, SplitInferMetaFn) {
   ctx.EmplaceBackAttr(num_or_sections);
   ctx.EmplaceBackAttr(axis);
   ctx.EmplaceBackOutputs(out);
-  ctx.SetMetaConfig(/*is_runtime=*/true);
+  ctx.SetMetaConfig({/*is_runtime =*/true, /*is_run_mkldnn_kernel=*/false});
   phi::MetaFnFactory::Instance().Get("split")(&ctx);
 
   ASSERT_EQ(dense_out1.dims().size(), 2);

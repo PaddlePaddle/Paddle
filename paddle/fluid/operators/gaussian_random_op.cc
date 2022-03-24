@@ -15,12 +15,14 @@ limitations under the License. */
 #include <random>
 
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
@@ -53,38 +55,6 @@ class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 class GaussianRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GaussianRandom");
-
-    auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    std::vector<int64_t> temp;
-    temp.reserve(shape.size());
-    for (auto dim : shape) {
-      temp.push_back(static_cast<int64_t>(dim));
-    }
-    if (shape.empty() && ctx->HasInput("ShapeTensor")) {
-      auto shape_dims = ctx->GetInputDim("ShapeTensor");
-      int num_ele = 1;
-      for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
-      }
-      auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
-
-      return;
-    }
-    if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
-      PADDLE_ENFORCE_GT(
-          shape.size(), 0UL,
-          platform::errors::InvalidArgument(
-              "Attribute(shape) of GaussianRandomOp must be set "
-              "and shape.size() > 0, but reveived shape.size() is %d",
-              shape.size()));
-    }
-
-    ctx->SetOutputDim("Out", phi::make_ddim(temp));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -171,11 +141,20 @@ Used to initialize tensors with gaussian random generator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
-                             ops::GaussianRandomOpMaker);
+
+DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random, GaussianRandomInferShapeFunctor,
+                            PD_INFER_META(phi::GaussianRandomInferMeta));
+
+REGISTER_OPERATOR(
+    gaussian_random, ops::GaussianRandomOp, ops::GaussianRandomOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    GaussianRandomInferShapeFunctor);
+
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<double>);
+
 REGISTER_OP_VERSION(gaussian_random)
     .AddCheckpoint(
         R"ROC(

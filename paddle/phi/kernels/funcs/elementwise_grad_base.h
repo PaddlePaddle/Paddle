@@ -24,6 +24,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #endif
 
@@ -1757,6 +1758,32 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
 }
 
 #endif
+
+template <typename DeviceContext,
+          typename T,
+          typename DX_OP,
+          typename DY_OP,
+          typename Tout = T>
+void ElemwiseGradCompute(const DeviceContext &dev_ctx,
+                         const DenseTensor &x,
+                         const DenseTensor &y,
+                         const DenseTensor &out,
+                         const DenseTensor &dout,
+                         int axis,
+                         DenseTensor *dx,
+                         DenseTensor *dy,
+                         DX_OP dx_op,
+                         DY_OP dy_op) {
+  const DDim &x_dim = x.dims();
+  const DDim &y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP, Tout>(
+        dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+  } else {
+    ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP, Tout>(
+        dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+  }
+}
 
 }  // namespace funcs
 }  // namespace phi

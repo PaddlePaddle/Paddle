@@ -900,10 +900,12 @@ def save_persistables(exe, dirname, main_program, filename=None):
 
     def is_opt_vars(var):
         # NOTE(JZ-LIANG): The checks should be updated when add new compatible optimizer
-        # now only Momentum and adam are compatible with sharding
+        # now only Momentum and adam are compatible with sharding,
+        # support EMA optimizer with '_ema_0',
+        # support offload with '@offload_0' and '.cast_fp16'
         checks = [
             "_moment1_0", "_moment2_0", "_beta1_pow_acc_0", "_beta2_pow_acc_0",
-            "_velocity_0"
+            "_velocity_0", "_ema_0", "@offload_0", ".cast_fp16"
         ]
         for check in checks:
             if var.name.endswith(check) and var.persistable:

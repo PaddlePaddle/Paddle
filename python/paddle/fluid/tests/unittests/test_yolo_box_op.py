@@ -109,7 +109,7 @@ class TestYoloBoxOp(OpTest):
         self.outputs = {'Boxes': boxes, 'Scores': scores}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
@@ -260,5 +260,6 @@ class TestYoloBoxOpHW(TestYoloBoxOp):
         self.iou_aware_factor = 0.5
 
 
-if (__name__ == '__main__'):
+if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

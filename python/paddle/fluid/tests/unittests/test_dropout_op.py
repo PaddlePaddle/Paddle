@@ -933,5 +933,65 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
             self.check_static_result(place=place)
 
 
+class TestDropoutBackward(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def cal_grad_upscale_train(self, mask, prob):
+        return mask.astype("float32") / (1 - prob)
+
+    def cal_grad_downscale_in_infer(self, mask):
+        return mask.astype("float32")
+
+    def test_backward_downscale_in_infer(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+
+                input = paddle.uniform([40, 40], dtype="float32")
+                input.stop_gradient = False
+                out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                out.backward()
+
+                self.assertTrue(
+                    np.array_equal(input.gradient(
+                    ), self.cal_grad_downscale_in_infer(mask.numpy())))
+
+    def test_backward_upscale_train(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+
+                prob = 0.5
+                input = paddle.uniform([40, 40], dtype="float32")
+                input.stop_gradient = False
+                out, mask = core.ops.dropout(input, 'dropout_prob', prob,
+                                             "dropout_implementation",
+                                             "upscale_in_train")
+                out.backward()
+
+                self.assertTrue(
+                    np.allclose(input.gradient(
+                    ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+    def test_backward_upscale_train_2(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+
+                prob = 0.3
+                input = paddle.uniform([40, 40], dtype="float32")
+                input.stop_gradient = False
+                out, mask = core.ops.dropout(input, 'dropout_prob', prob,
+                                             "dropout_implementation",
+                                             "upscale_in_train")
+                out.backward()
+
+                self.assertTrue(
+                    np.allclose(input.gradient(
+                    ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

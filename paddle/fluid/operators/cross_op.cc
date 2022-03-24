@@ -109,8 +109,8 @@ class CrossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(cross, CrossInferShapeFunctor,
-                            PT_INFER_META(phi::CrossInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(cross, CrossInferShapeFunctor,
+                            PD_INFER_META(phi::CrossInferMeta));
 REGISTER_OPERATOR(cross, ops::CrossOp, ops::CrossOpMaker,
                   ops::CrossGradMaker<paddle::framework::OpDesc>,
                   ops::CrossGradMaker<paddle::imperative::OpBase>,

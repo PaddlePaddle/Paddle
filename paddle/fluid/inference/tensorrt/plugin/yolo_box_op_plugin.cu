@@ -16,7 +16,6 @@
 #include <cassert>
 
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
-#include "paddle/fluid/operators/detection/yolo_box_op.h"
 
 namespace paddle {
 namespace inference {

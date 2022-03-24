@@ -28,19 +28,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class Graph;
-class GraphPatternDetector;
-class Node;
-namespace patterns {
-struct Conv;
-}  // namespace patterns
-
-using graph_ptr = ir::Graph*;
 using GraphWithStats = std::pair<ir::Graph*, int>;
 
-void CorrectGraphEdges(Graph* graph, Node* from, Node* to);
 bool IsReachable(ir::Graph* graph, Node* from, Node* to);
-paddle::optional<Node*> HasBias(const Node& op, const std::string& bias_name);
 
 class ResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
@@ -52,91 +42,13 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
       const std::string& name_scope,
       const GraphWithStats& graph_with_stats) const;
 
-  template <typename RetType>
-  using GetNodeFunc =
-      std::function<RetType(const GraphPatternDetector::subgraph_t& subgraph)>;
-  using IdentityConvFunc = GetNodeFunc<std::tuple<Node*, Node*, Node*, Node*>>;
-  using IdentityElementwiseAddFunc =
-      GetNodeFunc<std::tuple<Node*, Node*, Node*>>;
-
-  using ProjectionConvFunc = IdentityConvFunc;
-  using ProjectionElementwiseAddFunc = GetNodeFunc<std::tuple<Node*, Node*>>;
-
-  using CanFuseFunc = std::function<bool(Node*, Node*)>;
-
-  std::tuple<Node*, Node*, Node*, Node*> GetNodesFromConv(
-      const patterns::Conv& conv_pattern,
-      const GraphPatternDetector::subgraph_t& subgraph) const;
-
-  std::tuple<Node*, Node*, Node*, Node*> GetNodesFromProjectionConv(
-      const patterns::Conv& conv_pattern,
-      const GraphPatternDetector::subgraph_t& subgraph) const;
-
-  template <typename HandleType, typename... OpFuncs>
-  GraphWithStats ExecuteHandleOnGraph(GraphPatternDetector* gpd,
-                                      const GraphWithStats& graph_with_stats,
-                                      OpFuncs&&... op_funcs) const {
-    ir::Graph* graph;
-    int stats;
-
-    std::tie(graph, stats) = graph_with_stats;
-
-    auto can_fuse = [this](Node* op1, Node* op2) -> bool {
-      return this->FindFuseOption(*op1, *op2) == FUSE_MKLDNN;
-    };
-    auto fuse_handle = HandleType{can_fuse, std::forward<OpFuncs>(op_funcs)...};
-
-    (*gpd)(graph, fuse_handle);
-
-    return std::make_pair(graph, stats + fuse_handle.get_stats());
-  }
-
-  struct IdentityFuseHandle {
-    IdentityFuseHandle(
-        const CanFuseFunc& can_fuse_func,
-        const IdentityConvFunc& get_node_from_conv_op,
-        const IdentityElementwiseAddFunc& get_node_from_elementwise_add_op,
-        const ResidualConnectionMKLDNNFusePass* pass);
-
-    void operator()(const GraphPatternDetector::subgraph_t& subgraph,
-                    Graph* graph);
-    int get_stats() const { return *fusion_stats; }
-
-   private:
-    std::shared_ptr<int> fusion_stats;
-    CanFuseFunc can_fuse_func;
-    IdentityConvFunc get_node_from_conv_op;
-    IdentityElementwiseAddFunc get_node_from_elementwise_add_op;
-    const ResidualConnectionMKLDNNFusePass* pass_;
-  };
-
-  struct ProjectionFuseHandle {
-    ProjectionFuseHandle(
-        const CanFuseFunc& can_fuse_func,
-        const ProjectionConvFunc& get_node_from_conv_x_op,
-        const ProjectionConvFunc& get_node_from_conv_y_op,
-        const ProjectionElementwiseAddFunc& get_node_from_elementwise_add_op,
-        const ResidualConnectionMKLDNNFusePass* pass);
-
-    void operator()(const GraphPatternDetector::subgraph_t& subgraph,
-                    Graph* graph);
-    int get_stats() const { return *fusion_stats; }
-
-   private:
-    std::shared_ptr<int> fusion_stats;
-    CanFuseFunc can_fuse_func;
-    ProjectionConvFunc get_node_from_conv_x_op;
-    ProjectionConvFunc get_node_from_conv_y_op;
-    ProjectionElementwiseAddFunc get_node_from_elementwise_add_op;
-    const ResidualConnectionMKLDNNFusePass* pass_;
-  };
-
  public:
   ResidualConnectionMKLDNNFusePass();
   virtual ~ResidualConnectionMKLDNNFusePass() {}
 
  protected:
-  void ApplyImpl(graph_ptr graph) const;
+  void ApplyImpl(ir::Graph* graph) const;
+
   static bool HasFusedActivation(Node* conv_node) {
     return !(conv_node->Op()
                  ->GetAttrIfExists<std::string>("fuse_activation")

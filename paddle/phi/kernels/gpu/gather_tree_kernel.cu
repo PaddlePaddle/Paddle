@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gather_tree_kernel.h"
+
+#include <algorithm>
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 

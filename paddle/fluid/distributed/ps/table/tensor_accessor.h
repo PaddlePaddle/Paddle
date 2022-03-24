@@ -30,6 +30,7 @@ class CommMergeAccessor : public ValueAccessor {
   CommMergeAccessor() {}
   virtual ~CommMergeAccessor() {}
   virtual int initialize();
+  virtual void GetTableInfo(AccessorInfo &info);
   // value维度
   virtual size_t dim();
   // value各个维度的size

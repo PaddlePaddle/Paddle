@@ -147,21 +147,3 @@ REGISTER_OPERATOR(elementwise_fmin, ops::ElementwiseOp,
                   ops::ElementwiseFMinGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_fmin_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_fmin,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext,
-                               paddle::platform::float16>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMinKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_fmin_grad,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext,
-                                   paddle::platform::float16>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMinGradKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);

@@ -87,7 +87,8 @@ void Copy(const Context& dev_ctx,
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-  } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
+  } else if ((paddle::platform::is_cpu_place(src_place) ||
+              paddle::platform::is_cuda_pinned_place(src_place)) &&  // NOLINT
              paddle::platform::is_gpu_place(dst_place)) {
     auto src_cpu_place = src_place;
     auto dst_gpu_place = dst_place;

@@ -12,26 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/arg_min_max_op_base.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
+DECLARE_INFER_SHAPE_FUNCTOR(arg_min, ArgMinInferShapeFunctor,
+                            PD_INFER_META(phi::ArgMinMaxInferMeta));
 
 REGISTER_OPERATOR(
     arg_min, paddle::operators::ArgMinMaxOp, paddle::operators::ArgMinOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ArgMinInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(
-    arg_min,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, double>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
-                                    int32_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
-                                    int16_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
-                                    uint8_t>);
 REGISTER_OP_VERSION(arg_min)
     .AddCheckpoint(
         R"ROC(

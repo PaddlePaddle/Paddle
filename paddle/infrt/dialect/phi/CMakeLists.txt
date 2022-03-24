@@ -8,5 +8,9 @@ add_subdirectory(pass)
 add_executable(phi-ir-exec phi_ir_exec.cc)
 target_link_libraries(phi-ir-exec infrt)
 
+
 add_executable(phi-exec phi_exec.cc)
 target_link_libraries(phi-exec infrt)
+
+gather_srcs(infrt_src SRCS
+    data_type.cc)

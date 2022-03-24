@@ -96,8 +96,8 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
-DELCARE_INFER_SHAPE_FUNCTOR(reduce_mean, ReduceMeanInferShapeFunctor,
-                            PT_INFER_META(phi::MeanRawInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean, ReduceMeanInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
 
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
@@ -107,12 +107,3 @@ REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
                   ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);
-
-template <typename T>
-using CPUReduceMeanGradKernel =
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, T,
-                          ops::MeanGradFunctor, true>;
-
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<bool>,
-                       CPUReduceMeanGradKernel<float>,
-                       CPUReduceMeanGradKernel<double>);

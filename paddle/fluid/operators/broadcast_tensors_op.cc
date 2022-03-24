@@ -167,9 +167,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(BroadcastTensorsGradNoNeedBufVarsInferer,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DELCARE_INFER_SHAPE_FUNCTOR(broadcast_tensors,
+DECLARE_INFER_SHAPE_FUNCTOR(broadcast_tensors,
                             BroadcastTensorsInferShapeFunctor,
-                            PT_INFER_META(phi::BroadcastTensorsInferMeta));
+                            PD_INFER_META(phi::BroadcastTensorsInferMeta));
 
 REGISTER_OPERATOR(broadcast_tensors, ops::BroadcastTensorsOp,
                   ops::BroadcastTensorsOpMaker,

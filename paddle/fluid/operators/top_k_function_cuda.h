@@ -51,6 +51,19 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+inline void GetDims(const phi::DDim& dim, int axis, int* pre, int* n,
+                    int* post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
+
 struct SegmentOffsetIter {
   EIGEN_DEVICE_FUNC
   explicit SegmentOffsetIter(int num_cols) : num_cols_(num_cols) {}

@@ -24,6 +24,7 @@ from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 class ElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
+        self.python_api = paddle.divide
         self.dtype = np.float64
         self.init_dtype()
         """ Warning
@@ -37,8 +38,11 @@ class ElementwiseDivOp(OpTest):
         }
         self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
+    def check_eager(self):
+        return (self.use_mkldnn == False and self.axis == -1)
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)

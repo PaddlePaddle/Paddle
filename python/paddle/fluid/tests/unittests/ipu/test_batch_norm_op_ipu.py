@@ -115,7 +115,7 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
     def set_atol(self):
-        self.atol = 1e-7
+        self.atol = 1e-6
         self.rtol = 1e-6
         self.atol_fp16 = 1e-3
         self.rtol_fp16 = 1e-3
@@ -129,7 +129,7 @@ class TestCase1(TestBase):
 
 class TestCase2(TestBase):
     def set_atol(self):
-        self.atol = 1e-7
+        self.atol = 1e-6
         self.rtol = 1e-6
         self.atol_fp16 = 1e-3
         self.rtol_fp16 = 1e-3

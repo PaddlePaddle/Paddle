@@ -30,6 +30,11 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 TEST(Backward, SingleNodeEmptyGrad) {
@@ -75,7 +80,7 @@ TEST(Backward, SingleNodeEmptyGrad) {
   }
   std::vector<paddle::experimental::Tensor> outs = {target_tensor};
   // Run Backward
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Check Output Value
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
@@ -134,7 +139,7 @@ TEST(Backward, SingleNodeCustomGrad) {
   }
 
   // Run Backward
-  RunBackward(target_tensors, grad_tensors);
+  Backward(target_tensors, grad_tensors);
 
   // Check Output Value
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
@@ -207,7 +212,7 @@ TEST(Backward, LinearNodes) {
   }
 
   // Use Empty Grad Tensor
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   // Check Output Value
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 50.0);
@@ -311,7 +316,7 @@ TEST(Backward, WithAccumulation) {
     node2_ptr->AddEdges(&res2, 0);
   }
 
-  RunBackward(target_tensors, grad_tensors);
+  Backward(target_tensors, grad_tensors);
 
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 2500.0);
 }

@@ -16,9 +16,9 @@ limitations under the License. */
 #include <type_traits>
 #include <vector>
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/unique_op.h"
@@ -35,6 +35,14 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using TensorList = std::vector<framework::Tensor>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 #define DEFINE_MODE_DETECTOR(MODE_NAME, MODE_STR)                      \
   inline bool is_##MODE_NAME(const framework::ExecutionContext& ctx) { \

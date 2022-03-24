@@ -147,8 +147,8 @@ class AddMMOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(addmm, AddmmInferShapeFunctor,
-                            PT_INFER_META(phi::AddmmInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(addmm, AddmmInferShapeFunctor,
+                            PD_INFER_META(phi::AddmmInferMeta));
 REGISTER_OPERATOR(addmm, ops::AddMMOp, ops::AddMMOpMaker,
                   ops::AddMMOpGradMaker<paddle::framework::OpDesc>,
                   ops::AddMMOpGradMaker<paddle::imperative::OpBase>,
