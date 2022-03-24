@@ -1482,8 +1482,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const float* float_feas, const int* float_offsets,
                      const int* float_ins_lens, const int float_slot_size,
                      const UsedSlotGpuType* used_slots);
-  float sample_rate_ = 1.0f;
 #endif
+  float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
   int float_use_slot_size_ = 0;
   int uint64_use_slot_size_ = 0;

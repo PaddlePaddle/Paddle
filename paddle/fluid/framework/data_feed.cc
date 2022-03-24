@@ -1220,7 +1220,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
-          instance->float_offset_.push_back(instance->float_feasigns_.size());
+          instance->float_offset_.push_back(
+              instance->float_feasign_values_.size());
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
             // if float feasign is equal to zero, ignore it
@@ -1228,18 +1229,19 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
               continue;
             }
-            FeatureFeasign f;
-            f.float_feasign_ = feasign;
-            instance->float_feasigns_.push_back(FeatureItem(f, idx));
+            // FeatureFeasign f;
+            // f.float_feasign_ = feasign;
+            // instance->float_feasigns_.push_back(FeatureItem(f, idx));
             instance->float_feasign_values_.push_back(feasign);
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
-          instance->uint64_offset_.push_back(instance->uint64_feasigns_.size());
+          instance->uint64_offset_.push_back(
+              instance->uint64_feasign_values_.size());
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-            FeatureFeasign f;
-            f.uint64_feasign_ = feasign;
-            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+            // FeatureFeasign f;
+            // f.uint64_feasign_ = feasign;
+            // instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
             instance->uint64_feasign_values_.push_back(feasign);
           }
         }
@@ -1254,8 +1256,13 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       }
     }
 
-    instance->uint64_offset_.push_back(instance->uint64_feasigns_.size());
-    instance->float_offset_.push_back(instance->float_feasigns_.size());
+    instance->uint64_offset_.push_back(instance->uint64_feasign_values_.size());
+    instance->float_offset_.push_back(instance->float_feasign_values_.size());
+    instance->uint64_offset_.shrink_to_fit();
+    instance->float_offset_.shrink_to_fit();
+    instance->float_feasign_values_.shrink_to_fit();
+    instance->uint64_feasign_values_.shrink_to_fit();
+    fea_num_ += instance->uint64_feasign_values_.size();
 #else
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
@@ -1294,10 +1301,10 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         }
       }
     }
-#endif
     instance->float_feasigns_.shrink_to_fit();
     instance->uint64_feasigns_.shrink_to_fit();
     fea_num_ += instance->uint64_feasigns_.size();
+#endif
     return true;
   }
 #else
@@ -1575,10 +1582,10 @@ void MultiSlotInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  paddle::platform::SetDeviceId(place_.GetDeviceId());
   pack_->pack_instance(ins_vec);
   BuildSlotBatchGPU(pack_->ins_num());
 #else
-
   for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
     batch_float_feasigns_[i].clear();
     batch_uint64_feasigns_[i].clear();
@@ -3139,7 +3146,7 @@ void MiniBatchGpuPack::pack_uint64_data(const std::vector<Record>& ins_vec) {
 
   for (size_t i = 0; i < num; ++i) {
     auto& r = ins_vec[i];
-    uint64_total_num += r.uint64_feasigns_.size();
+    uint64_total_num += r.uint64_feasign_values_.size();
     buf_.h_uint64_lens[i + 1] = uint64_total_num;
   }
 
@@ -3151,7 +3158,7 @@ void MiniBatchGpuPack::pack_uint64_data(const std::vector<Record>& ins_vec) {
   uint64_total_num = 0;
   for (size_t i = 0; i < num; ++i) {
     auto& r = ins_vec[i];
-    fea_num = r.uint64_feasigns_.size();
+    fea_num = r.uint64_feasign_values_.size();
     if (fea_num > 0) {
       memcpy(&buf_.h_uint64_keys[uint64_total_num],
              r.uint64_feasign_values_.data(), fea_num * sizeof(uint64_t));
@@ -3179,7 +3186,7 @@ void MiniBatchGpuPack::pack_float_data(const std::vector<Record>& ins_vec) {
 
   for (size_t i = 0; i < num; ++i) {
     auto& r = ins_vec[i];
-    float_total_num += r.float_feasigns_.size();
+    float_total_num += r.float_feasign_values_.size();
     buf_.h_float_lens[i + 1] = float_total_num;
   }
 
@@ -3191,7 +3198,7 @@ void MiniBatchGpuPack::pack_float_data(const std::vector<Record>& ins_vec) {
   float_total_num = 0;
   for (size_t i = 0; i < num; ++i) {
     auto& r = ins_vec[i];
-    fea_num = r.float_feasigns_.size();
+    fea_num = r.float_feasign_values_.size();
     memcpy(&buf_.h_float_keys[float_total_num], r.float_feasign_values_.data(),
            fea_num * sizeof(float));
     float_total_num += fea_num;
@@ -3217,9 +3224,9 @@ void MiniBatchGpuPack::pack_all_data(const std::vector<Record>& ins_vec) {
 
   for (size_t i = 0; i < num; ++i) {
     auto& r = ins_vec[i];
-    uint64_total_num += r.uint64_feasigns_.size();
+    uint64_total_num += r.uint64_feasign_values_.size();
     buf_.h_uint64_lens[i + 1] = uint64_total_num;
-    float_total_num += r.float_feasigns_.size();
+    float_total_num += r.float_feasign_values_.size();
     buf_.h_float_lens[i + 1] = float_total_num;
   }
 
@@ -3236,14 +3243,14 @@ void MiniBatchGpuPack::pack_all_data(const std::vector<Record>& ins_vec) {
   float_total_num = 0;
   for (size_t i = 0; i < num; ++i) {
     auto& r = ins_vec[i];
-    fea_num = r.uint64_feasigns_.size();
+    fea_num = r.uint64_feasign_values_.size();
     if (fea_num > 0) {
       memcpy(&buf_.h_uint64_keys[uint64_total_num],
              r.uint64_feasign_values_.data(), fea_num * sizeof(uint64_t));
     }
     uint64_total_num += fea_num;
 
-    fea_num = r.float_feasigns_.size();
+    fea_num = r.float_feasign_values_.size();
     memcpy(&buf_.h_float_keys[float_total_num], r.float_feasign_values_.data(),
            fea_num * sizeof(float));
     float_total_num += fea_num;
