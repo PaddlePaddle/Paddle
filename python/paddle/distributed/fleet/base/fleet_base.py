@@ -46,7 +46,7 @@ _grad_scalar = None
 
 
 class _RecomputeModelWrapper(paddle.nn.Layer):
-    def __init__(self, model, segments=1, preserve_rng_state=True):
+    def __init__(self, model, segments=2, preserve_rng_state=True):
         super(_RecomputeModelWrapper, self).__init__()
         assert isinstance(model, paddle.nn.Sequential), (
             "The model passed to RecomputeModelWrapper must be of type "
@@ -1024,7 +1024,7 @@ class Fleet(object):
             model = _RecomputeModelWrapper(model)
 
         if self._user_defined_strategy.heter_ccl_mode == True:
-            model = paddle.DataParallel(
+            distributed_model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
                 fuse_grad_size_in_MB,
@@ -1032,7 +1032,7 @@ class Fleet(object):
                 last_comm_group_size_MB,
                 find_unused_parameters=self._user_defined_strategy.
                 find_unused_parameters)
-            return model
+            return distributed_model
 
         if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
             model = ShardingParallel(
