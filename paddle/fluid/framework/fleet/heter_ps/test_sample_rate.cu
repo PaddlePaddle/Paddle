@@ -163,6 +163,11 @@ void testSampleRate() {
         std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
     std::cerr << "total time cost without cache is " << tt.count() << " us"
               << std::endl;
+    int64_t tot = 0;
+    for (int i = 0; i < 10; i++) {
+      for (auto x : sample_id[i]) tot += x;
+    }
+    VLOG(0) << "sum = " << tot;
   }
   const int gpu_num = 8;
   ::paddle::distributed::GraphParameter table_proto;
@@ -209,17 +214,15 @@ void testSampleRate() {
     auto q = g.query_node_list(0, st, ids.size() / 20);
     VLOG(0) << " the " << i << "th iteration size = " << q->actual_sample_size;
   }
-// NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
+  // NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
 
-/*
-  void *key;
+  int64_t *key;
   cudaMalloc((void **)&key, ids.size() * sizeof(int64_t));
   cudaMemcpy(key, ids.data(), ids.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
   std::vector<NeighborSampleResult *> res[gpu_num];
   start = 0;
-  auto func = [&rwlock, &g, &res, &start,
-               &gpu_num, &ids, &key](int i) {
+  auto func = [&rwlock, &g, &res, &start, &gpu_num, &ids, &key](int i) {
     while (true) {
       int s, sn;
       bool exit = false;
@@ -240,17 +243,17 @@ void testSampleRate() {
     }
   };
   auto start1 = std::chrono::steady_clock::now();
-  std::thread thr[gpu_num];
-  for (int i = 0; i < gpu_num; i++) {
+  int gpu_num1 = 8;
+  std::thread thr[gpu_num1];
+  for (int i = 0; i < gpu_num1; i++) {
     thr[i] = std::thread(func, i);
   }
-  for (int i = 0; i < gpu_num; i++) thr[i].join();
+  for (int i = 0; i < gpu_num1; i++) thr[i].join();
   auto end1 = std::chrono::steady_clock::now();
   auto tt =
       std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
   std::cerr << "total time cost without cache is " << tt.count() << " us"
             << std::endl;
-*/
 #endif
 }
 

@@ -41,13 +41,18 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
                                               int sample_size, int len);
   NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
-  void move_neighbor_sample_result_to_source_gpu(
-      int gpu_id, int gpu_num, int *h_left, int *h_right,
-      int64_t *src_sample_res, thrust::host_vector<int> &total_sample_size);
-  void move_neighbor_sample_size_to_source_gpu(int gpu_id, int gpu_num,
-                                               int *h_left, int *h_right,
-                                               int *actual_sample_size,
-                                               int *total_sample_size);
+  void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
+                                                 int sample_size, int *h_left,
+                                                 int *h_right,
+                                                 int64_t *src_sample_res,
+                                                 int *actual_sample_size);
+  // void move_neighbor_sample_result_to_source_gpu(
+  //     int gpu_id, int gpu_num, int *h_left, int *h_right,
+  //     int64_t *src_sample_res, thrust::host_vector<int> &total_sample_size);
+  // void move_neighbor_sample_size_to_source_gpu(int gpu_id, int gpu_num,
+  //                                              int *h_left, int *h_right,
+  //                                              int *actual_sample_size,
+  //                                              int *total_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
   int load(const std::string &path, const std::string &param);
   virtual int32_t end_graph_sampling() {
