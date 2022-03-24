@@ -252,7 +252,7 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
-set vcvars64_dir="D:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+set vcvars64_dir="D:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -383,15 +383,6 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
 
 set /p md5=< md5.txt
-echo %task_name%|findstr build >nul && (
-    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
-    set THIRD_PARTY_PATH=!THIRD_PARTY_HOME!/%md5%
-    echo %task_name% is a whl-build task, will only reuse local third_party cache.
-    goto :cmake_impl
-) || ( 
-    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
-)
-
 if "%WITH_GPU%"=="ON" (
     set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
     set sub_dir=cuda!cuda_version:.=!
@@ -400,6 +391,13 @@ if "%WITH_GPU%"=="ON" (
 )
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+
+echo %task_name%|findstr build >nul && (
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || ( 
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
+)
 
 if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
