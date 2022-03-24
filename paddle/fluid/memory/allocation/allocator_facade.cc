@@ -84,7 +84,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth, false,
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
-PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, false,
+PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator, true,
                             "Enable StreamSafeCUDAAllocator");
 
 PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory, false,
@@ -166,12 +166,6 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        PADDLE_ENFORCE_EQ(
-            FLAGS_use_stream_safe_cuda_allocator, false,
-            paddle::platform::errors::Unimplemented(
-                "StreamSafeCUDAAllocator is only implemented for auto_growth "
-                "strategy, not support naive_best_fit strategy"));
-
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
@@ -283,12 +277,6 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        PADDLE_ENFORCE_EQ(
-            FLAGS_use_stream_safe_cuda_allocator, false,
-            paddle::platform::errors::Unimplemented(
-                "StreamSafeCUDAAllocator is only implemented for auto_growth "
-                "strategy, not support thread_local strategy"));
-
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
         }
@@ -317,7 +305,9 @@ class AllocatorFacadePrivate {
     CheckAllocThreadSafe();
 
 #ifdef PADDLE_WITH_CUDA
-    if (FLAGS_use_stream_safe_cuda_allocator == false &&
+    // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
+    if (!(strategy_ == AllocatorStrategy::kAutoGrowth &&
+          FLAGS_use_stream_safe_cuda_allocator) &&
         UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
       WrapCUDAGraphAllocator();
     }
@@ -880,7 +870,8 @@ class AllocatorFacadePrivate {
     CheckAllocThreadSafe(zero_size_allocators_);
     CheckAllocThreadSafe(system_allocators_);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (FLAGS_use_stream_safe_cuda_allocator) {
+    if (strategy_ == AllocatorStrategy::kAutoGrowth &&
+        FLAGS_use_stream_safe_cuda_allocator) {
       CheckCUDAAllocThreadSafe(cuda_allocators_);
     }
 #endif
@@ -986,26 +977,24 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, const phi::Stream& stream) {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'AllocaShared' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
+  if (FLAGS_use_stream_safe_cuda_allocator == false ||
+      GetAllocatorStrategy() != AllocatorStrategy::kAutoGrowth) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is disabled!";
+    return AllocShared(place, size);
+  }
+
   return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'Alloc' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
+
+  if (FLAGS_use_stream_safe_cuda_allocator == false ||
+      GetAllocatorStrategy() != AllocatorStrategy::kAutoGrowth) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is disabled!";
+    return Alloc(place, size);
+  }
 
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
@@ -1032,6 +1021,14 @@ bool AllocatorFacade::InSameStream(
           "multi-stream 'InSameStream' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
+
+  PADDLE_ENFORCE_EQ(
+      GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
+      platform::errors::Unimplemented(
+          "Only support auto-growth strategey for StreamSafeCUDAAllocator, "
+          "the allocator strategy %d is unsupported for multi-stream",
+          static_cast<int>(GetAllocatorStrategy())));
+
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
   return s == GetStream(allocation);
 #else
@@ -1042,13 +1039,12 @@ bool AllocatorFacade::InSameStream(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
                                   const gpuStream_t& stream) {
-  PADDLE_ENFORCE_EQ(
-      FLAGS_use_stream_safe_cuda_allocator, true,
-      platform::errors::Unimplemented(
-          "StreamSafeCUDAAllocator is disabled, you should not call this "
-          "multi-stream 'Release' function. To enable it, you can enter"
-          "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
-          "terminal."));
+  if (FLAGS_use_stream_safe_cuda_allocator == false ||
+      GetAllocatorStrategy() != AllocatorStrategy::kAutoGrowth) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is disabled!";
+    return Release(place);
+  }
+
   return GetPrivate()->GetAllocator(place, stream)->Release(place);
 }
 
@@ -1061,13 +1057,26 @@ void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
           "'RecordStream' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
+
+  PADDLE_ENFORCE_EQ(
+      GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
+      platform::errors::Unimplemented(
+          "Only support auto-growth strategey for StreamSafeCUDAAllocator, "
+          "the allocator strategy %d is unsupported for multi-stream",
+          static_cast<int>(GetAllocatorStrategy())));
+
   GetPrivate()->RecordStream(allocation, stream);
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, const gpuStream_t& stream) {
-  if (FLAGS_use_stream_safe_cuda_allocator && platform::is_gpu_place(place) &&
-      FLAGS_use_system_allocator == false) {
+  if (FLAGS_use_stream_safe_cuda_allocator == false ||
+      GetAllocatorStrategy() != AllocatorStrategy::kAutoGrowth) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator is disabled!";
+    return GetAllocator(place);
+  }
+
+  if (platform::is_gpu_place(place) && FLAGS_use_system_allocator == false) {
     return GetPrivate()->GetAllocator(place, stream,
                                       /*create_if_not_found=*/true);
   }
@@ -1084,12 +1093,19 @@ const gpuStream_t& AllocatorFacade::GetStream(
           "'GetStream' function. To enable it, you can enter"
           "'export FLAGS_use_stream_safe_cuda_allocator=true' in the "
           "terminal."));
+  PADDLE_ENFORCE_EQ(
+      GetAllocatorStrategy(), AllocatorStrategy::kAutoGrowth,
+      platform::errors::Unimplemented(
+          "Only support auto-growth strategey for StreamSafeCUDAAllocator, "
+          "the allocator strategy %d is unsupported for multi-stream",
+          static_cast<int>(GetAllocatorStrategy())));
   return GetPrivate()->GetStream(allocation);
 }
 
 void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
                                        const gpuStream_t& stream) {
-  if (FLAGS_use_stream_safe_cuda_allocator) {
+  if (FLAGS_use_stream_safe_cuda_allocator &&
+      GetAllocatorStrategy() == AllocatorStrategy::kAutoGrowth) {
     GetPrivate()->SetDefaultStream(place, stream);
   }
 }
