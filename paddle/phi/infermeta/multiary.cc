@@ -251,7 +251,7 @@ void AdamwInferMeta(const MetaTensor& param,
                 beta1_pow_out,
                 beta2_pow_out,
                 master_param_outs);
- }
+}
 
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
@@ -332,7 +332,6 @@ void AucInferMeta(const MetaTensor& input,
     stat_neg_out->set_dtype(DataType::INT64);
   }
 }
-
 
 void BatchNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
