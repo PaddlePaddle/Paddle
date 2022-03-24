@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
-#if defined(PADDLE_WITH_PSLIB)
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
 namespace paddle {
 
 namespace framework {
