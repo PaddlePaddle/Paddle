@@ -32,7 +32,7 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
     if (ctx.InputSize("ShapeTensor") > 0) {
       return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
     } else if (ctx.HasInput("Shape")) {
-      return KernelSignature("reshape_", {"X"}, {"Shape"}, {"Out"});
+      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
     } else {
       return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
     }
