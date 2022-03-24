@@ -55,7 +55,6 @@ wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
-if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
@@ -70,7 +69,6 @@ if not defined WITH_ONNXRUNTIME set WITH_ONNXRUNTIME=OFF
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
-if not defined WITH_CLCACHE set WITH_CLCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
@@ -145,17 +143,6 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir %BUILD_DIR% /s/q
-
-    : clear third party cache every once in a while
-    if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party /s/q
-    )
     goto :mkbuild
 )
 
@@ -212,6 +199,7 @@ echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
 xcopy sccache.exe %PYTHON_ROOT%\ /Y
+del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
 
@@ -232,13 +220,12 @@ set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
 set WITH_TENSORRT=ON
+set WITH_INFERENCE_API_TEST=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-:: call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
@@ -254,8 +241,6 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-:: call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem ------PR CI windows check for unittests and inference in CUDA11-MKL-AVX----------
@@ -265,7 +250,6 @@ set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
-set WITH_TESTING=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
 
@@ -274,7 +258,8 @@ call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
 ::call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
+::call :test_inference_ut || goto test_inference_ut_error
+call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem ------Build windows avx whl package------
@@ -365,23 +350,30 @@ if "%WITH_GPU%"=="ON" (
     nvidia-smi 2>NUL
 )
 
-rem ------pre install clcache and init config----------
-rem pip install clcache --user
-pip uninstall -y clcache
-:: set USE_CLCACHE to enable clcache
-rem set USE_CLCACHE=1
-:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-rem set CLCACHE_HARDLINK=1
-:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
-:: set maximum cache size to 20G
-rem clcache.exe -M 21474836480
-
 rem ------set third_party cache dir------
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
     goto :cmake_impl
+)
+
+rem clear third party cache every ten days
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day_third_party.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day_third_party.txt
+    type %cache_dir%\day_third_party.txt
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
 )
 
 echo set -ex > cache.sh
@@ -535,11 +527,7 @@ echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
     ninja all
 ) else (
-    if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
-    ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
-    )
+    MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
 )
 
 if %ERRORLEVEL% NEQ 0 (
@@ -774,77 +762,8 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
-cd /d %work_dir%\%BUILD_DIR%
-echo set -e>  check_change_of_unittest.sh
-echo set +x>> check_change_of_unittest.sh
-echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
-echo GIT_PR_ID=%AGILE_PULL_ID% >>  check_change_of_unittest.sh
-echo BRANCH=%BRANCH%>>  check_change_of_unittest.sh
-echo if [ "${GITHUB_API_TOKEN}" == "" ] ^|^| [ "${GIT_PR_ID}" == "" ];then>> check_change_of_unittest.sh
-echo     exit 0 >>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo set -x>> check_change_of_unittest.sh
-echo cat ^<^<EOF>>  check_change_of_unittest.sh
-echo     ============================================ >>  check_change_of_unittest.sh
-echo     Generate unit tests.spec of this PR.         >>  check_change_of_unittest.sh
-echo     ============================================ >>  check_change_of_unittest.sh
-echo EOF>>  check_change_of_unittest.sh
-echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
-echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
-echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
-echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
-echo echo ipipe_log_param_Windows_1_Card_TestCases_Count: $num>> check_change_of_unittest.sh
-echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
-echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
-echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
-echo     git remote add upstream $UPSTREAM_URL.git>>  check_change_of_unittest.sh
-echo elif [ "$origin_upstream_url" ^!= "$UPSTREAM_URL" ] ^\>>  check_change_of_unittest.sh
-echo         ^&^& [ "$origin_upstream_url" ^!= "$UPSTREAM_URL.git" ]; then>>  check_change_of_unittest.sh
-echo     git remote remove upstream>>  check_change_of_unittest.sh
-echo     git remote add upstream $UPSTREAM_URL.git>>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo if [ ! -e "$(pwd)/../.git/refs/remotes/upstream/$BRANCH" ]; then>>  check_change_of_unittest.sh
-echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo git checkout -b origin_pr >>  check_change_of_unittest.sh
-echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
--DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%  >>  check_change_of_unittest.sh
-echo cat ^<^<EOF>>  check_change_of_unittest.sh
-echo     ============================================       >>  check_change_of_unittest.sh
-echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
-echo     ============================================       >>  check_change_of_unittest.sh
-echo EOF>>  check_change_of_unittest.sh
-echo spec_path=$(pwd)/UNITTEST_DEV.spec>>  check_change_of_unittest.sh
-echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
-echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST_DEV.spec $(pwd)/UNITTEST_PR.spec`>>  check_change_of_unittest.sh
-echo if [ "$unittest_spec_diff" ^!= "" ]; then>>  check_change_of_unittest.sh
-echo     set +x>> check_change_of_unittest.sh
-echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
-echo     set -x>> check_change_of_unittest.sh
-echo     if [ "$approval_line" ^!= "" ]; then>>  check_change_of_unittest.sh
-echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
-echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
-echo         if [ "${APPROVALS}" == "FALSE" ]; then>>  check_change_of_unittest.sh
-echo             echo "************************************"                >>  check_change_of_unittest.sh
-echo             echo -e "It is forbidden to disable or delete the unit-test.\n"        >>  check_change_of_unittest.sh
-echo             echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."     >>  check_change_of_unittest.sh
-echo             echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25) approval for the deletion of unit-test. \n"                 >>  check_change_of_unittest.sh
-echo             echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"   >>  check_change_of_unittest.sh
-echo             echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"     >>  check_change_of_unittest.sh
-echo             echo "************************************"                >>  check_change_of_unittest.sh
-echo             exit 1 >>  check_change_of_unittest.sh
-echo          fi>>  check_change_of_unittest.sh
-echo     else>>  check_change_of_unittest.sh
-echo          exit 1 >>  check_change_of_unittest.sh
-echo     fi>>  check_change_of_unittest.sh
-echo fi>>  check_change_of_unittest.sh
-echo git checkout -f origin_pr >>  check_change_of_unittest.sh
-%cache_dir%\tools\busybox64.exe bash check_change_of_unittest.sh
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\check_change_of_unittest.sh
+
 goto:eof
 
 :check_change_of_unittest_error

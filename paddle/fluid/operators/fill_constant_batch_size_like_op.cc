@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_batch_size_like_op.h"
 #include "paddle/fluid/operators/batch_size_like.h"
 
 namespace paddle {
@@ -23,9 +22,13 @@ class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
   using BatchSizeLikeOp::BatchSizeLikeOp;
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    framework::OpKernelType kernel_type = framework::OpKernelType(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.device_context());
+    if (ctx.Attr<bool>("force_cpu")) {
+      kernel_type.place_ = platform::CPUPlace();
+    }
+    return kernel_type;
   }
 };
 
@@ -64,15 +67,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillConstantBatchSizeLikeOpMaker,
     ops::BatchSizeLikeNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    fill_constant_batch_size_like,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           double>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           int>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           int64_t>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           bool>);

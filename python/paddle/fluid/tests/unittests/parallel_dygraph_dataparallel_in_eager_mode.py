@@ -19,6 +19,7 @@ import unittest
 import os
 import numpy as np
 import random
+import socket
 
 import paddle
 import paddle.nn as nn
@@ -31,13 +32,26 @@ from paddle.optimizer import SGD
 from paddle.fluid.initializer import NumpyArrayInitializer
 
 
+def net_is_used(port, ip='127.0.0.1'):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.connect((ip, port))
+        s.shutdown(2)
+        return True
+    except Exception as e:
+        return False
+
+
 def init_process_group(strategy=None):
     nranks = ParallelEnv().nranks
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
-    store = paddle.fluid.core.TCPStore("127.0.0.1", 6172, is_master, nranks)
-    group = core.ProcessGroupNCCL(store, rank, nranks)
-    return group
+    for port in range(20000, 21000):
+        if not net_is_used(port):
+            store = paddle.fluid.core.TCPStore("127.0.0.1", port, is_master,
+                                               nranks)
+            group = core.ProcessGroupNCCL(store, rank, nranks)
+            return group
 
 
 class LinearModel(nn.Layer):

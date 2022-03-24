@@ -2986,6 +2986,12 @@ class GroupNorm(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
+        if in_dygraph_mode():
+            attrs = ('epsilon', self._epsilon, 'groups', self._groups)
+            out, _, _ = _C_ops.group_norm(input, self.weight, self.bias, *attrs)
+
+            return dygraph_utils._append_activation_in_dygraph(out, self._act)
+
         inputs = {'X': input}
         if self.bias is not None:
             inputs['Bias'] = self.bias

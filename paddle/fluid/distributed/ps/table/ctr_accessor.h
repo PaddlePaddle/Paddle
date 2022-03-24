@@ -24,6 +24,7 @@
 namespace paddle {
 namespace distributed {
 
+// DownpourUnitAccessor
 class CtrCommonAccessor : public ValueAccessor {
  public:
   struct CtrCommonFeatureValue {
@@ -106,15 +107,25 @@ class CtrCommonAccessor : public ValueAccessor {
 
   struct CtrCommonPullValue {
     /*
+       float show;
+       float click;
        float embed_w;
        std::vector<float> embedx_w;
        */
 
-    static int dim(int embedx_dim) { return 1 + embedx_dim; }
+    static int dim(int embedx_dim) { return 3 + embedx_dim; }
     static int dim_size(size_t dim) { return sizeof(float); }
     static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
-    static int embed_w_index() { return 0; }
-    static int embedx_w_index() { return 1; }
+    static int show_index() { return 0; }
+    static int click_index() { return 1; }
+    static int embed_w_index() { return 2; }
+    static int embedx_w_index() { return 3; }
+    static float& show(float* val) {
+      return val[CtrCommonPullValue::show_index()];
+    }
+    static float& click(float* val) {
+      return val[CtrCommonPullValue::click_index()];
+    }
     static float& embed_w(float* val) {
       return val[CtrCommonPullValue::embed_w_index()];
     }
@@ -126,6 +137,7 @@ class CtrCommonAccessor : public ValueAccessor {
   virtual int initialize();
   virtual ~CtrCommonAccessor() {}
 
+  virtual void GetTableInfo(AccessorInfo& info);
   // value维度
   virtual size_t dim();
   // value各个维度的size

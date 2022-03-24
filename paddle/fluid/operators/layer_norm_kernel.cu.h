@@ -758,12 +758,14 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
 */
 template <typename T, typename U, typename ScaleT = U,
           typename MaskType = uint8_t>
-void ln_bwd_1024_kernel_driver(
-    const platform::CUDADeviceContext &dev_ctx, const int rows, const int cols,
-    float epsilon, const T *x_ptr, const ScaleT *scale_ptr, const U *mean_ptr,
-    const U *var_ptr, const T *dout_ptr, T *dx_ptr, ScaleT *dscale_ptr,
-    ScaleT *dbias_ptr, const MaskType *mask_ptr = nullptr,
-    T factor = static_cast<T>(0), T *d_dropout_src_ptr = nullptr) {
+void ln_bwd_1024_kernel_driver(const phi::GPUContext &dev_ctx, const int rows,
+                               const int cols, float epsilon, const T *x_ptr,
+                               const ScaleT *scale_ptr, const U *mean_ptr,
+                               const U *var_ptr, const T *dout_ptr, T *dx_ptr,
+                               ScaleT *dscale_ptr, ScaleT *dbias_ptr,
+                               const MaskType *mask_ptr = nullptr,
+                               T factor = static_cast<T>(0),
+                               T *d_dropout_src_ptr = nullptr) {
   auto stream = dev_ctx.stream();
   if (cols == 1024) {
     // step-1: compute dx and reduced part results of dscale and dbias.
@@ -1334,8 +1336,7 @@ static void LayerNormBackward(
     const U *mean, const U *var, T *d_x,
     LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
     LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_bias, float epsilon,
-    int64_t batch_size, int64_t feature_size,
-    const platform::CUDADeviceContext &dev_ctx) {
+    int64_t batch_size, int64_t feature_size, const phi::GPUContext &dev_ctx) {
   auto stream = dev_ctx.stream();
 #ifdef __HIPCC__
   const int kMaxBlockDim = 256;

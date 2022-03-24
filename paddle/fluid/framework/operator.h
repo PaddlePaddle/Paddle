@@ -483,6 +483,10 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return ctx_.InputVar(name)->IsType<phi::SelectedRows>();
   }
 
+  bool IsDenseTensorVectorInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::LoDTensorArray>();
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
   }

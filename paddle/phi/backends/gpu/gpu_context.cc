@@ -741,6 +741,10 @@ struct GPUContext::Impl {
 
 GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
 
+GPUContext::GPUContext(GPUContext&&) = default;
+
+GPUContext& GPUContext::operator=(GPUContext&&) = default;
+
 GPUContext::GPUContext(const GPUPlace& place)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
 
