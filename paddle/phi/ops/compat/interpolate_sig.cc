@@ -90,6 +90,85 @@ KernelSignature BicubicInterpOpArgumentMapping(
                          {"Out"});
 }
 
+KernelSignature BilinearInterpGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "bilinear_interp_v2_grad",
+      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
+      {"data_layout",
+       "out_d",
+       "out_h",
+       "out_w",
+       "scale",
+       "interp_method",
+       "align_corners",
+       "align_mode"},
+      {"Out"});
+}
+
+KernelSignature NearestInterpGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "nearest_interp_v2_grad",
+      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
+      {"data_layout",
+       "out_d",
+       "out_h",
+       "out_w",
+       "scale",
+       "interp_method",
+       "align_corners",
+       "align_mode"},
+      {"Out"});
+}
+KernelSignature TrilinearInterpGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "trilinear_interp_v2_grad",
+      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
+      {"data_layout",
+       "out_d",
+       "out_h",
+       "out_w",
+       "scale",
+       "interp_method",
+       "align_corners",
+       "align_mode"},
+      {"Out"});
+}
+
+KernelSignature LinearInterpGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "linear_interp_v2_grad",
+      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
+      {"data_layout",
+       "out_d",
+       "out_h",
+       "out_w",
+       "scale",
+       "interp_method",
+       "align_corners",
+       "align_mode"},
+      {"Out"});
+}
+
+KernelSignature BicubicInterpGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "bicubic_interp_v2_grad",
+      {"X", "OutSize", "SizeTensor", "Scale", GradVarName("Out")},
+      {"data_layout",
+       "out_d",
+       "out_h",
+       "out_w",
+       "scale",
+       "interp_method",
+       "align_corners",
+       "align_mode"},
+      {"Out"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(bilinear_interp_v2,
@@ -102,3 +181,14 @@ PD_REGISTER_ARG_MAPPING_FN(linear_interp_v2,
                            phi::LinearInterpOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(bicubic_interp_v2,
                            phi::BicubicInterpOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(bilinear_interp_v2_grad,
+                           phi::BilinearInterpGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(nearest_interp_v2_grad,
+                           phi::NearestInterpGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(trilinear_interp_v2_grad,
+                           phi::TrilinearInterpGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(linear_interp_v2_grad,
+                           phi::LinearInterpGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(bicubic_interp_v2_grad,
+                           phi::BicubicInterpGradOpArgumentMapping);

@@ -22,23 +22,9 @@
 namespace phi {
 
 template <typename T>
-HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
-
-  T x1 = t;
-  coeffs[0] = funcs::cubic_convolution2<T>(x1 + 1.0, A);
-  coeffs[1] = funcs::cubic_convolution1<T>(x1, A);
-
-  // opposite coefficients
-  T x2 = 1.0 - t;
-  coeffs[2] = funcs::cubic_convolution1<T>(x2, A);
-  coeffs[3] = funcs::cubic_convolution2<T>(x2 + 1.0, A);
-}
-
-template <typename T>
 static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
   T coeffs[4];
-  get_cubic_upsample_coefficients<T>(coeffs, t);
+  funcs::get_cubic_upsample_coefficients<T>(coeffs, t);
 
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }

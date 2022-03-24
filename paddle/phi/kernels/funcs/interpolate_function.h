@@ -19,6 +19,11 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/platform/fast_divmod.h"
+#endif
+
 namespace phi {
 namespace funcs {
 
@@ -30,6 +35,20 @@ HOSTDEVICE inline T cubic_convolution1(T x, T A) {
 template <typename T>
 HOSTDEVICE inline T cubic_convolution2(T x, T A) {
   return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+}
+
+template <typename T>
+HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
+  T A = -0.75;
+
+  T x1 = t;
+  coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
+  coeffs[1] = cubic_convolution1<T>(x1, A);
+
+  // opposite coefficients
+  T x2 = 1.0 - t;
+  coeffs[2] = cubic_convolution1<T>(x2, A);
+  coeffs[3] = cubic_convolution2<T>(x2 + 1.0, A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,
@@ -112,6 +131,25 @@ inline std::vector<T> get_new_data_from_tensor(
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
   return vec_new_data;
 }
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+using paddle::platform::FastDivMod;
+
+struct FastDivModForInterpolate {
+ public:
+  FastDivMod channels_div;
+  FastDivMod output_w_div;
+  FastDivMod output_wc_div;
+
+  explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
+                                               const int output_w,
+                                               const int outout_wc)
+      : channels_div(FastDivMod(channels)),
+        output_w_div(FastDivMod(output_w)),
+        output_wc_div(FastDivMod(outout_wc)) {}
+};
+
+#endif
 
 }  // namespace funcs
 }  // namespace phi
