@@ -282,7 +282,7 @@ PD_REGISTER_KERNEL(multiply_triple_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(elementwise_fmax_grad,
+PD_REGISTER_KERNEL(fmax_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ElementwiseFMaxGradKernel,
@@ -291,7 +291,7 @@ PD_REGISTER_KERNEL(elementwise_fmax_grad,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(elementwise_fmin_grad,
+PD_REGISTER_KERNEL(fmin_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ElementwiseFMinGradKernel,
