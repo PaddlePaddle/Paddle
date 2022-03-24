@@ -959,11 +959,11 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   EAGER_TRY
   auto var_type = pybind::CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensor =
-      egr::EagerUtils::unsafe_autograd_meta(self->tensor)->Grad();
+      egr::EagerUtils::unsafe_autograd_meta(self->tensor)->MutableGrad();
   if (var_type == framework::proto::VarType::LOD_TENSOR) {
-    grad_tensor.set_impl(std::make_shared<phi::DenseTensor>());
+    grad_tensor->set_impl(std::make_shared<phi::DenseTensor>());
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
-    grad_tensor.set_impl(std::make_shared<phi::SelectedRows>());
+    grad_tensor->set_impl(std::make_shared<phi::SelectedRows>());
   }
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL

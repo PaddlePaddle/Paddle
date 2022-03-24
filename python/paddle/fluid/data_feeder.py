@@ -22,7 +22,7 @@ from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode
+from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
@@ -105,7 +105,8 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type, )
         expected_type += (core.VarBase, )
-        #  TODO(jiabin): uncomment it when we support declarative mode in eager
+        if _in_eager_without_dygraph_check():
+            expected_type += (core.eager.Tensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
