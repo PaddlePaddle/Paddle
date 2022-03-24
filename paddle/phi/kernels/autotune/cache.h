@@ -63,53 +63,42 @@ class AlgorithmsCache {
 
   TAlgorithm Get(size_t key) {
     std::lock_guard<std::mutex> lock(cache_mutex);
-    PADDLE_ENFORCE_NE(hash_.find(key), hash_.end());
+    PADDLE_ENFORCE_NE(
+        hash_.find(key),
+        hash_.end(),
+        phi::errors::PreconditionNotMet("The key does not exist."));
     return hash_[key];
   }
 
   bool Find(size_t key) {
+    bool ret = false;
     std::lock_guard<std::mutex> lock(cache_mutex);
-    return hash_.find(key) != hash_.end();
+    if (hash_.find(key) != hash_.end()) {
+      cache_hits_++;
+      ret = true;
+    } else {
+      cache_misses_++;
+    }
+    return ret;
   }
 
   void Set(size_t key, TAlgorithm algo) {
-    auto it = hash_.end();
-    bool have_found = false;
-    {
-      std::lock_guard<std::mutex> lock(cache_mutex);
-      it = hash_.find(key);
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    hash_[key] = algo;
+  }
 
-      if (it != hash_.end()) {
-        have_found = true;
-      }
-    }
-
-    if (!have_found) {
-      std::lock_guard<std::mutex> lock(cache_mutex);
-      hash_[key] = algo;
-    }
+  float CacheHitRate() const {
+    int64_t num_accesses = cache_hits_ + cache_misses_;
+    float cache_hit_rate =
+        static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    return cache_hit_rate;
   }
 
  private:
   std::unordered_map<size_t, TAlgorithm> hash_;
   std::mutex cache_mutex;
+  int64_t cache_hits_ = 0;
+  int64_t cache_misses_ = 0;
 };
-
-/*
-class AutoTuneCache {
- public:
-  // AlgoType->AlgorithmsCache
-  AutoTuneCache& AutoTuneCache::Instance() {
-  static AutoTuneCache g_auto_tune_map_;
-  return g_auto_tune_map_;
-}
-
- private:
-  int64_t cache_hits_;
-  int64_t cache_misses_;
-  std::vector<float> cache_hit_rates_;
-  std::unordered_map<std::string, AlgorithmsCache> g_auto_tune_map_;
-};
-*/
 
 }  // namespace phi

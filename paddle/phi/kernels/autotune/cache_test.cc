@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/autotune/cache.h"
 #include <gtest/gtest.h>
+#include <cmath>
 #include <functional>
 #include "glog/logging.h"
 
@@ -36,6 +37,7 @@ TEST(AlgosCache, AlgosCache) {
                           dilations,
                           algorithmFlags,
                           cudnn_dtype);
+  EXPECT_EQ(cache.Find(key), false);
   cache.Set(key, Algo);
   EXPECT_EQ(cache.Find(key), true);
   auto algo = cache.Get(key);
@@ -50,4 +52,6 @@ TEST(AlgosCache, AlgosCache) {
                      algorithmFlags,
                      cudnn_dtype);
   EXPECT_EQ(cache.Find(key), false);
+  float cache_hit_rate = static_cast<float>(1) / static_cast<float>(3);
+  EXPECT_LT(std::abs(cache_hit_rate - cache.CacheHitRate()), 1e-5);
 }
