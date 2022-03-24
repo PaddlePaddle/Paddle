@@ -220,6 +220,8 @@ def monkey_patch_math_varbase():
                 pass
 
             # 2. create varbase for scalar
+            if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
             lhs_dtype = self.dtype
             if _in_eager_mode():
                 other_var_should_be = core.eager.Tensor
