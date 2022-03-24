@@ -366,6 +366,10 @@ bool InMemoryDataFeed<T>::Start() {
     this->offset_index_ = 0;
   }
   this->finish_start_ = true;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  CHECK(paddle::platform::is_gpu_place(this->place_));
+  pack_ = BatchGpuPackMgr().get(this->GetPlace(), slot_conf_);
+#endif
   return true;
 }
 
@@ -1082,28 +1086,6 @@ void MultiSlotInMemoryDataFeed::Init(
   input_type_ = data_feed_desc.input_type();
 }
 
-bool MultiSlotInMemoryDataFeed::Start() {
-#ifdef _LINUX
-  this->CheckSetFileList();
-  if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
-    std::vector<Record> data;
-    input_channel_->Read(data);
-    output_channel_->Write(std::move(data));
-  }
-#endif
-  if (batch_offsets_.size() > 0) {
-    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
-    enable_heterps_ = true;
-    this->offset_index_ = 0;
-  }
-  this->finish_start_ = true;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
-  pack_ = BatchGpuPackMgr().get(this->GetPlace(), slot_conf_);
-#endif
-  return true;
-}
-
 void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
                                                  uint64_t* search_id,
                                                  uint32_t* cmatch,
@@ -1224,14 +1206,9 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               instance->float_feasign_values_.size());
           for (int j = 0; j < num; ++j) {
             float feasign = strtof(endptr, &endptr);
-            // if float feasign is equal to zero, ignore it
-            // except when slot is dense
             if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
               continue;
             }
-            // FeatureFeasign f;
-            // f.float_feasign_ = feasign;
-            // instance->float_feasigns_.push_back(FeatureItem(f, idx));
             instance->float_feasign_values_.push_back(feasign);
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
@@ -1239,9 +1216,6 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               instance->uint64_feasign_values_.size());
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-            // FeatureFeasign f;
-            // f.uint64_feasign_ = feasign;
-            // instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
             instance->uint64_feasign_values_.push_back(feasign);
           }
         }
@@ -1280,7 +1254,6 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
-
             // if uint64 feasign is equal to zero, ignore it
             // except when slot is dense
             if (feasign == 0 && !use_slots_is_dense_[i]) {

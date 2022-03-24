@@ -103,7 +103,6 @@ struct SlotValues {
     slot_values.reserve(fea_num);
     int slot_num = static_cast<int>(slot_feasigns.size());
     slot_offsets.resize(slot_num + 1);
-
     for (int i = 0; i < slot_num; ++i) {
       auto& slot_val = slot_feasigns[i];
       slot_offsets[i] = static_cast<uint32_t>(slot_values.size());
@@ -556,8 +555,6 @@ class MiniBatchGpuPack {
                                              this->place_);
       }
     }
-    //    fprintf(stdout, "float total: %d, uint64: %d\n", float_total_len,
-    //          uint64_total_len);
   }
   LoDTensor& float_tensor(void) { return float_tensor_; }
   LoDTensor& uint64_tensor(void) { return uint64_tensor_; }
@@ -565,17 +562,9 @@ class MiniBatchGpuPack {
   HostBuffer<size_t>& offsets(void) { return offsets_; }
   HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
 
-  void* gpu_slot_offsets(void) {
-    return gpu_slot_offsets_->ptr();
-    // return
-    // reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(gpu_slot_offsets_->ptr()));
-  }
+  void* gpu_slot_offsets(void) { return gpu_slot_offsets_->ptr(); }
 
-  void* slot_buf_ptr(void) {
-    return slot_buf_ptr_->ptr();
-    // return
-    // reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(slot_buf_ptr_->ptr()));
-  }
+  void* slot_buf_ptr(void) { return slot_buf_ptr_->ptr(); }
 
   void resize_gpu_slot_offsets(const size_t slot_total_bytes) {
     if (gpu_slot_offsets_ == nullptr) {
@@ -634,8 +623,6 @@ class MiniBatchGpuPack {
   std::vector<UsedSlotGpuType> gpu_used_slots_;
   std::vector<SlotRecord> ins_vec_;
   const SlotRecord* batch_ins_ = nullptr;
-  // std::vector<int> float_slot_offsets_;
-  // std::vector<int> uint64_slot_offsets_;
 
   // uint64 tensor
   LoDTensor uint64_tensor_;
@@ -1398,7 +1385,6 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
 #endif
   }
   virtual void Init(const DataFeedDesc& data_feed_desc);
-  virtual bool Start();
   // void SetRecord(Record* records) { records_ = records; }
 
  protected:
