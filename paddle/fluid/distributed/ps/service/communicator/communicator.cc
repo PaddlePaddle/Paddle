@@ -224,7 +224,9 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
       });
   auto status = _worker_ptr->push_dense_raw_gradient(
       table_id, data, dense_data->size(), closure);
+  std::cout << "debug zcb push dense done, begin wait\n";
   status.wait();
+  std::cout << "debug zcb push dense wait done\n";
   return;
 }
 
@@ -316,7 +318,9 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   auto status = _worker_ptr->push_sparse_raw_gradient(
       table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
       sparse_push_keys.size(), closure);
+  std::cout << "debug zcb push sparse done, begin wait\n";
   status.wait();
+  std::cout << "debug zcb push sparse wait done\n";
   return;
 }
 
@@ -961,6 +965,7 @@ void HalfAsyncCommunicator::SendByCommunicator() {
   for (auto &task : tasks) {
     task.wait();
   }
+  std::cout << "debug zcb send by comm done\n";
   return;
 }
 
@@ -972,14 +977,14 @@ void HalfAsyncCommunicator::BarrierWeakUp() {
 void SyncCommunicator::BarrierSend() {
   if (!running_) return;
   BarrierWithTable(0);
-  VLOG(4) << "BarrierSend with SyncCommunicator";
+  VLOG(1) << "BarrierSend with SyncCommunicator";
 }
 
 void SyncCommunicator::BarrierRecv() {
   if (!running_) return;
   BarrierWithTable(1);
 
-  VLOG(4) << "BarrierRecv with SyncCommunicator";
+  VLOG(1) << "BarrierRecv with SyncCommunicator";
 }
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
