@@ -48,6 +48,7 @@ struct hash<std::vector<T>> {
 }  // namespace std
 
 namespace phi {
+namespace autotune {
 
 template <typename TAlgorithm>
 class AlgorithmsCache {
@@ -62,7 +63,7 @@ class AlgorithmsCache {
   }
 
   TAlgorithm Get(size_t key) {
-    std::lock_guard<std::mutex> lock(cache_mutex);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     PADDLE_ENFORCE_NE(
         hash_.find(key),
         hash_.end(),
@@ -72,7 +73,7 @@ class AlgorithmsCache {
 
   bool Find(size_t key) {
     bool ret = false;
-    std::lock_guard<std::mutex> lock(cache_mutex);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     if (hash_.find(key) != hash_.end()) {
       cache_hits_++;
       ret = true;
@@ -83,7 +84,7 @@ class AlgorithmsCache {
   }
 
   void Set(size_t key, TAlgorithm algo) {
-    std::lock_guard<std::mutex> lock(cache_mutex);
+    std::lock_guard<std::mutex> lock(cache_mutex_);
     hash_[key] = algo;
   }
 
@@ -94,11 +95,29 @@ class AlgorithmsCache {
     return cache_hit_rate;
   }
 
+  // Define the cache key of operator
+  size_t ConvKey(const std::vector<int64_t>& x_dims,
+                 const std::vector<int64_t>& w_dims,
+                 const std::vector<int>& strides,
+                 const std::vector<int>& paddings,
+                 const std::vector<int>& dilations,
+                 int algorithmFlags,
+                 int64_t cudnn_dtype) {
+    return GetKey(x_dims,
+                  w_dims,
+                  strides,
+                  paddings,
+                  dilations,
+                  algorithmFlags,
+                  cudnn_dtype);
+  }
+
  private:
   std::unordered_map<size_t, TAlgorithm> hash_;
-  std::mutex cache_mutex;
+  std::mutex cache_mutex_;
   int64_t cache_hits_ = 0;
   int64_t cache_misses_ = 0;
 };
 
+}  // namespace autotune
 }  // namespace phi

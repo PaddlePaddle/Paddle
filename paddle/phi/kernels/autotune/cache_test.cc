@@ -21,22 +21,22 @@
 void Algo() { VLOG(3) << "algo test"; }
 
 TEST(AlgosCache, AlgosCache) {
-  phi::AlgorithmsCache<std::function<void()>> cache;
-  std::vector<int> x_shape = {4, 224, 224, 3};
-  std::vector<int> w_shape = {32, 3, 3, 3};
+  phi::autotune::AlgorithmsCache<std::function<void()>> cache;
+  std::vector<int64_t> x_shape = {4, 224, 224, 3};
+  std::vector<int64_t> w_shape = {32, 3, 3, 3};
   std::vector<int> paddings = {0, 0};
   std::vector<int> strides = {2, 2};
   std::vector<int> dilations = {1, 1};
   int algorithmFlags = 2;
-  int cudnn_dtype = 0;
+  int64_t cudnn_dtype = 0;
 
-  auto key = cache.GetKey(x_shape,
-                          w_shape,
-                          paddings,
-                          strides,
-                          dilations,
-                          algorithmFlags,
-                          cudnn_dtype);
+  auto key = cache.ConvKey(x_shape,
+                           w_shape,
+                           paddings,
+                           strides,
+                           dilations,
+                           algorithmFlags,
+                           cudnn_dtype);
   EXPECT_EQ(cache.Find(key), false);
   cache.Set(key, Algo);
   EXPECT_EQ(cache.Find(key), true);
@@ -44,13 +44,13 @@ TEST(AlgosCache, AlgosCache) {
   algo();
 
   x_shape = {4, 128, 128, 3};
-  key = cache.GetKey(x_shape,
-                     w_shape,
-                     paddings,
-                     strides,
-                     dilations,
-                     algorithmFlags,
-                     cudnn_dtype);
+  key = cache.ConvKey(x_shape,
+                      w_shape,
+                      paddings,
+                      strides,
+                      dilations,
+                      algorithmFlags,
+                      cudnn_dtype);
   EXPECT_EQ(cache.Find(key), false);
   float cache_hit_rate = static_cast<float>(1) / static_cast<float>(3);
   EXPECT_LT(std::abs(cache_hit_rate - cache.CacheHitRate()), 1e-5);
