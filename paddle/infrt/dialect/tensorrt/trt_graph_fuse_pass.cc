@@ -55,8 +55,8 @@ bool reverseDfs(std::vector<mlir::Operation *> source,
 
 // merge the first&second graph op to a new graph op.
 void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
-                             mlir::pd::GraphOp first,
-                             mlir::pd::GraphOp second) {
+                             infrt::pd::GraphOp first,
+                             infrt::pd::GraphOp second) {
   // comput inputs and outputs
   ::llvm::SmallVector<mlir::Value, 4> inputs(first.getOperands()), outputs;
   for (mlir::Value input : second.getOperands()) {
@@ -85,7 +85,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   // create the new graph op
   builder.setInsertionPoint(first);
   auto loc = first.getLoc();
-  auto graph_op = builder.create<mlir::pd::GraphOp>(loc, return_types, inputs);
+  auto graph_op = builder.create<infrt::pd::GraphOp>(loc, return_types, inputs);
   mlir::Block *block = new mlir::Block;
   auto copy_range = second.getBody()->without_terminator();
   block->getOperations().splice(block->begin(),
@@ -150,13 +150,13 @@ void TRTGraphFusePass::runOnFunction() {
   do {
     changed = false;
     for (auto &op : body) {
-      mlir::pd::GraphOp graph_op =
-          ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
+      infrt::pd::GraphOp graph_op =
+          ::llvm::dyn_cast_or_null<infrt::pd::GraphOp>(&op);
       if (nullptr == graph_op) continue;
 
       for (auto user_op : op.getUsers()) {
-        mlir::pd::GraphOp user_graph_op =
-            ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(user_op);
+        infrt::pd::GraphOp user_graph_op =
+            ::llvm::dyn_cast_or_null<infrt::pd::GraphOp>(user_op);
         if (nullptr == user_graph_op) continue;
         // get all dst input nodes except src.
         std::vector<mlir::Operation *> source_nodes;

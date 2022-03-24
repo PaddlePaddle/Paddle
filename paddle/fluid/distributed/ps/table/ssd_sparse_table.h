@@ -42,6 +42,9 @@ class SSDSparseTable : public CommonSparseTable {
   // exchange data
   virtual int32_t update_table();
 
+  virtual int32_t Pull(TableContext& context);
+  virtual int32_t Push(TableContext& context);
+
   virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
 
   virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,

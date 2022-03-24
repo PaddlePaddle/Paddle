@@ -17,7 +17,7 @@ import paddle
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -123,7 +123,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim(bool, optional): Keep the axis that selecting max. The defalut value is False.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         dtype(str|np.dtype, optional): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
@@ -144,12 +144,15 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
                                      [6,9,2,4]])
             out1 = paddle.argmax(x)
             print(out1) # 2
-            out2 = paddle.argmax(x, axis=1)
+            out2 = paddle.argmax(x, axis=0)
             print(out2) 
-            # [2 3 1]
+            # [2, 2, 0, 1]
             out3 = paddle.argmax(x, axis=-1)
             print(out3) 
-            # [2 3 1]
+            # [2, 3, 1]
+            out4 = paddle.argmax(x, axis=0, keepdim=True)
+            print(out4)
+            # [[2, 2, 0, 1]]
     """
     if axis is not None and not isinstance(axis, int):
         raise TypeError(
@@ -200,7 +203,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim(bool, optional): Keep the axis that selecting min. The defalut value is False.
+        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         dtype(str): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
@@ -221,12 +224,15 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
                                      [6,9,2,4]])
             out1 = paddle.argmin(x)
             print(out1) # 4
-            out2 = paddle.argmin(x, axis=1)
+            out2 = paddle.argmin(x, axis=0)
             print(out2) 
-            # [0 0 2]
+            # [1, 1, 1, 2]
             out3 = paddle.argmin(x, axis=-1)
             print(out3) 
-            # [0 0 2]
+            # [0, 0, 2]
+            out4 = paddle.argmin(x, axis=0, keepdim=True)
+            print(out4)
+            # [[1, 1, 1, 2]]
     """
     if axis is not None and not isinstance(axis, int):
         raise TypeError(
@@ -621,6 +627,9 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_where(broadcast_condition, broadcast_x,
+                                            broadcast_y)
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         helper = LayerHelper("where", **locals())
@@ -712,6 +721,8 @@ def index_sample(x, index):
 
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_index_sample(x, index)
         return _C_ops.index_sample(x, index)
 
     helper = LayerHelper("index_sample", **locals())

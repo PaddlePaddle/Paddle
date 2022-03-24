@@ -72,6 +72,12 @@ DEFINE_CPU_ACTIVATION_KERNEL(Relu, ReluCPUFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Tanh, TanhFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(TanhShrink, TanhShrinkFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Silu, SiluFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Log, LogFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Log2, Log2Functor)
+DEFINE_CPU_ACTIVATION_KERNEL(Log10, Log10Functor)
+DEFINE_CPU_ACTIVATION_KERNEL(Log1p, Log1pFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -82,6 +88,10 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, ELUFunctor, alpha)
 
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
+                                     HardSigmoidFunctor,
+                                     slope,
+                                     offset)
 
 }  // namespace phi
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
@@ -109,3 +119,10 @@ PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
+PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)

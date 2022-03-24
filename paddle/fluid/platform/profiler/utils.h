@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <ctime>
 #include <string>
+#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 

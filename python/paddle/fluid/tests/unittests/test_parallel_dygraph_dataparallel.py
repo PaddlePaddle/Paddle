@@ -205,5 +205,10 @@ class TestDataParallelInEagerMode(TestMultipleGpus):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
 
 
+class TestGradientCheckInEagerMode(TestMultipleGpus):
+    def test_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('parallel_dygraph_gradient_check_in_eager_mode.py')
+
+
 if __name__ == "__main__":
     unittest.main()

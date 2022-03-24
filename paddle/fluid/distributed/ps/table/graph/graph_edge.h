@@ -24,19 +24,20 @@ class GraphEdgeBlob {
   GraphEdgeBlob() {}
   virtual ~GraphEdgeBlob() {}
   size_t size() { return id_arr.size(); }
-  virtual void add_edge(uint64_t id, float weight);
-  uint64_t get_id(int idx) { return id_arr[idx]; }
+  virtual void add_edge(int64_t id, float weight);
+  int64_t get_id(int idx) { return id_arr[idx]; }
   virtual float get_weight(int idx) { return 1; }
+  std::vector<int64_t>& export_id_array() { return id_arr; }
 
  protected:
-  std::vector<uint64_t> id_arr;
+  std::vector<int64_t> id_arr;
 };
 
 class WeightedGraphEdgeBlob : public GraphEdgeBlob {
  public:
   WeightedGraphEdgeBlob() {}
   virtual ~WeightedGraphEdgeBlob() {}
-  virtual void add_edge(uint64_t id, float weight);
+  virtual void add_edge(int64_t id, float weight);
   virtual float get_weight(int idx) { return weight_arr[idx]; }
 
  protected:

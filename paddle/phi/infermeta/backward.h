@@ -17,6 +17,9 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
@@ -33,6 +36,37 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dy,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
+
+void ConvTransposeGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& dout,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& output_padding,
+                                const std::vector<int>& output_size,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format,
+                                MetaTensor* dx,
+                                MetaTensor* dfilter);
+
+void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
+                                        const MetaTensor& filter,
+                                        const MetaTensor& dout,
+                                        const MetaTensor& ddx,
+                                        const MetaTensor& ddfilter,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        const std::vector<int>& output_padding,
+                                        const std::vector<int>& output_size,
+                                        const std::string& padding_algorithm,
+                                        int groups,
+                                        const std::vector<int>& dilations,
+                                        const std::string& data_format,
+                                        MetaTensor* dx,
+                                        MetaTensor* dfilter,
+                                        MetaTensor* ddout);
 
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,

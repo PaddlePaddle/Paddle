@@ -56,9 +56,18 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(SoftShrink, "soft_shrink", "lambda");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardShrink, "hard_shrink", "threshold");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(TanhShrink, "tanh_shrink", );  // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Silu, "silu", );               // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LogSigmoid, "logsigmoid", );   // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log, "log", );                 // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log2, "log2", );               // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log10, "log10", );             // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log1p, "log1p", );             // NOLINT
 
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );  // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );  // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );        // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );        // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );  // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
+                                 "hard_sigmoid",
+                                 "slope" comma "offset");  // NOLINT
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -74,6 +83,20 @@ KernelSignature TanhDoubleGradOpArgumentMapping(
 KernelSignature TanhTripleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("tanh_triple_grad",
+                         {"Out", "DDX", "DOut", "D_DDOut", "D_DOut_New"},
+                         {},
+                         {"D_OutNew", "D_DOut", "D_DDx"});
+}
+
+KernelSignature SigmoidDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "sigmoid_double_grad", {"Out", "DDX", "DOut"}, {}, {"DOutNew", "DDOut"});
+}
+
+KernelSignature SigmoidTripleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("sigmoid_triple_grad",
                          {"Out", "DDX", "DOut", "D_DDOut", "D_DOut_New"},
                          {},
                          {"D_OutNew", "D_DOut", "D_DDx"});
@@ -106,6 +129,12 @@ KernelSignature EluDoubleGradOpArgumentMapping(
       "elu_double_grad", {"X", "DOut", "DDX"}, {"alpha"}, {"DX", "DDOut"});
 }
 
+KernelSignature LogDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "log_double_grad", {"X", "DOut", "DDX"}, {}, {"DX", "DDOut"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
@@ -114,6 +143,8 @@ PD_REGISTER_BASE_KERNEL_NAME(leaky_relu_grad_grad, leaky_relu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(softshrink, soft_shrink);
 PD_REGISTER_BASE_KERNEL_NAME(softshrink_grad, soft_shrink_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elu_grad_grad, elu_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(sigmoid_grad_grad, sigmoid_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(log_grad_grad, log_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
@@ -152,3 +183,17 @@ PD_REGISTER_ARG_MAPPING_FN(elu, phi::EluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elu_grad, phi::EluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elu_grad_grad, phi::EluDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(silu_grad, phi::SiluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sigmoid_grad, phi::SigmoidGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sigmoid_grad_grad,
+                           phi::SigmoidDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sigmoid_triple_grad,
+                           phi::SigmoidTripleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(logsigmoid_grad,
+                           phi::LogSigmoidGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(hard_sigmoid_grad,
+                           phi::HardSigmoidGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(log_grad, phi::LogGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(log_grad_grad, phi::LogDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(log2_grad, phi::Log2GradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(log10_grad, phi::Log10GradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(log1p_grad, phi::Log1pGradOpArgumentMapping);

@@ -72,6 +72,39 @@ void AucInferMeta(const MetaTensor& input,
                   MetaTensor* stat_neg_out,
                   MetaConfig config = MetaConfig());
 
+void BatchNormInferMeta(const MetaTensor& x,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
+                        const MetaTensor& mean,
+                        const MetaTensor& variance,
+                        float momentum,
+                        float epsilon,
+                        const std::string& data_layout,
+                        bool is_test,
+                        bool use_global_stats,
+                        bool trainable_statistics,
+                        bool fuse_with_relu,
+                        MetaTensor* y,
+                        MetaTensor* mean_out,
+                        MetaTensor* variance_out,
+                        MetaTensor* saved_mean,
+                        MetaTensor* saved_variance,
+                        MetaTensor* reserve_space,
+                        MetaConfig config = MetaConfig());
+
+void BatchNormInferInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             const MetaTensor& mean,
+                             const MetaTensor& variance,
+                             float momentum,
+                             float epsilon,
+                             const std::string& data_layout,
+                             MetaTensor* y,
+                             MetaTensor* mean_out,
+                             MetaTensor* variance_out,
+                             MetaConfig config = MetaConfig());
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
@@ -87,7 +120,41 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void DeformableConvInferMeta(const MetaTensor& x,
+                             const MetaTensor& offset,
+                             const MetaTensor& filter,
+                             paddle::optional<const MetaTensor&> mask,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::vector<int>& dilations,
+                             int deformable_groups,
+                             int groups,
+                             int im2col_step,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out);
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out);
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
