@@ -13,25 +13,29 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_GLOO)
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
+namespace phi {
+namespace funcs {
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class NumberCountOpCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support expert count op for cpu kernel now."));
+static inline std::tuple<bool, bool> ParseQrMode(const std::string& mode) {
+  bool compute_q;
+  bool reduced;
+  if (mode == "reduced") {
+    compute_q = true;
+    reduced = true;
+  } else if (mode == "complete") {
+    compute_q = true;
+    reduced = false;
+  } else if (mode == "r") {
+    compute_q = false;
+    reduced = true;
+  } else {
+    PADDLE_THROW(errors::InvalidArgument(
+        "QR received unrecognized mode '%s'"
+        " but expected one of 'reduced' (default), 'r', or 'complete'",
+        mode));
   }
-};
-
-}  // namespace operators
-}  // namespace paddle
+  return std::make_tuple(compute_q, reduced);
+}
+}  // namespace funcs
+}  // namespace phi
