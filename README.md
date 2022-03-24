@@ -1,4 +1,3 @@
-# test=mac
 # test=win
 # test=coverage
 # test=coverage
