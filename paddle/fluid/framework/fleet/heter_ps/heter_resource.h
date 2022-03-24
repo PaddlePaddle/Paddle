@@ -17,23 +17,25 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <vector>
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_HETERPS
-
 namespace paddle {
 namespace framework {
 
 class GPUResource {
  public:
-  GPUResource(std::vector<int>& device_id, int index);
+  GPUResource(std::vector<int>& device_id, int index);  // NOLINT
   virtual ~GPUResource();
   GPUResource(const GPUResource&) = delete;
   GPUResource& operator=(const GPUResource&) = delete;
 
   int dev_id() const { return dev_id_; }
   int index() const { return index_; }
+#ifdef PADDLE_WITH_CUDA
   gpuStream_t local_stream(int num) { return local_streams_[num]; }
   gpuStream_t remote_stream(int num) { return remote_streams_[num]; }
   gpuStream_t comm_stream(int num) { return comm_streams_[num]; }
@@ -44,11 +46,24 @@ class GPUResource {
   std::vector<gpuStream_t> remote_streams_;
   std::vector<gpuStream_t> local_streams_;
   std::vector<gpuStream_t> comm_streams_;
+#endif
+#ifdef PADDLE_WITH_XPU
+  XPUStream local_stream(int num) { return local_streams_[num]; }
+  XPUStream remote_stream(int num) { return remote_streams_[num]; }
+  XPUStream comm_stream(int num) { return comm_streams_[num]; }
+
+  int dev_id_;
+  int index_;
+  std::vector<int> dev_ids_;
+  std::vector<XPUStream> remote_streams_;
+  std::vector<XPUStream> local_streams_;
+  std::vector<XPUStream> comm_streams_;
+#endif
 };
 
 class HeterPsResource {
  public:
-  HeterPsResource(const std::vector<int>& dev_ids);
+  explicit HeterPsResource(const std::vector<int>& dev_ids);
   HeterPsResource(const HeterPsResource&) = delete;
   HeterPsResource& operator=(const HeterPsResource&) = delete;
   virtual ~HeterPsResource() {}
@@ -57,10 +72,16 @@ class HeterPsResource {
   int get_index_by_devid(int devid);
   int dev_id(int num);
   void set_multi_mf(int multi_mf_dim, int max_mf_dim);
+#ifdef PADDLE_WITH_CUDA
   gpuStream_t local_stream(int gpu_num, int stream_num);
   gpuStream_t remote_stream(int gpu_num, int stream_num);
   gpuStream_t comm_stream(int gpu_num, int stream_num);
-
+#endif
+#ifdef PADDLE_WITH_XPU
+  XPUStream local_stream(int gpu_num, int stream_num);
+  XPUStream remote_stream(int gpu_num, int stream_num);
+  XPUStream comm_stream(int gpu_num, int stream_num);
+#endif
   std::vector<std::shared_ptr<GPUResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;

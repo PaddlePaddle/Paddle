@@ -117,7 +117,9 @@ class PSGPUWrapper {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
+#ifdef PADDLE_WITH_CUDA
       resource_->enable_p2p();
+#endif
       keys_tensor.resize(resource_->total_gpu());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();

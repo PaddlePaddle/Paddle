@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
-#include "heter_resource.h"
+#include "heter_resource.h"  //NOLINT
+#include "xpu/runtime.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -24,6 +28,7 @@ GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
   dev_ids_ = dev_ids;
   dev_id_ = dev_ids_[index];
 
+#ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceGuard guard(dev_id_);
   local_streams_.resize(dev_ids_.size());
   comm_streams_.resize(dev_ids_.size());
@@ -37,9 +42,23 @@ GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaStreamCreateWithFlags(&remote_streams_[i], cudaStreamNonBlocking));
   }
+#endif
+#ifdef PADDLE_WITH_XPU
+  platform::XPUDeviceGuard guard(dev_id_);
+  local_streams_.resize(dev_ids_.size());
+  comm_streams_.resize(dev_ids_.size());
+  remote_streams_.resize(dev_ids_.size());
+
+  for (size_t i = 0; i < dev_ids_.size(); ++i) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&local_streams_[i]));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&comm_streams_[i]));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&remote_streams_[i]));
+  }
+#endif
 }
 
 GPUResource::~GPUResource() {
+#ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
@@ -50,6 +69,19 @@ GPUResource::~GPUResource() {
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
+#endif
+#ifdef PADDLE_WITH_XPU
+  platform::XPUDeviceGuard guard(dev_id_);
+  for (size_t i = 0; i < local_streams_.size(); ++i) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(local_streams_[i]));
+  }
+  for (size_t i = 0; i < comm_streams_.size(); ++i) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(comm_streams_[i]));
+  }
+  for (size_t i = 0; i < remote_streams_.size(); ++i) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(remote_streams_[i]));
+  }
+#endif
 }
 
 void HeterPsResource::enable_p2p() {
@@ -84,6 +116,7 @@ HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 cudaStream_t HeterPsResource::comm_stream(int gpu_num, int stream_num) {
   return resources_[gpu_num]->comm_stream(stream_num);
 }
@@ -95,6 +128,20 @@ cudaStream_t HeterPsResource::local_stream(int gpu_num, int stream_num) {
 cudaStream_t HeterPsResource::remote_stream(int gpu_num, int stream_num) {
   return resources_[gpu_num]->remote_stream(stream_num);
 }
+#endif
+#ifdef PADDLE_WITH_XPU
+XPUStream HeterPsResource::comm_stream(int gpu_num, int stream_num) {
+  return resources_[gpu_num]->comm_stream(stream_num);
+}
+
+XPUStream HeterPsResource::local_stream(int gpu_num, int stream_num) {
+  return resources_[gpu_num]->local_stream(stream_num);
+}
+
+XPUStream HeterPsResource::remote_stream(int gpu_num, int stream_num) {
+  return resources_[gpu_num]->remote_stream(stream_num);
+}
+#endif
 
 int HeterPsResource::dev_id(int num) { return dev_ids_[num]; }
 
