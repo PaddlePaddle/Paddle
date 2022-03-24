@@ -153,6 +153,8 @@ DataType String2DataType(const std::string& str) {
     return DataType::COMPLEX128;
   } else if (str == "pstring") {
     return DataType::PSTRING;
+  } else if (str == "bfloat16") {
+    return DataType::BFLOAT16;
   } else {
     return DataType::UNDEFINED;
   }
@@ -184,6 +186,8 @@ std::string DataType2String(DataType dtype) {
       return "complex128";
     case DataType::PSTRING:
       return "pstring";
+    case DataType::BFLOAT16:
+      return "bfloat16";
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",

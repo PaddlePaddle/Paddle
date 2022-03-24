@@ -120,6 +120,19 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void DeformableConvInferMeta(const MetaTensor& x,
+                             const MetaTensor& offset,
+                             const MetaTensor& filter,
+                             paddle::optional<const MetaTensor&> mask,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::vector<int>& dilations,
+                             int deformable_groups,
+                             int groups,
+                             int im2col_step,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
@@ -138,6 +151,10 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* w_out);
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out);
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
