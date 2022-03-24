@@ -163,8 +163,12 @@ bool Tensor::is_cpu() const {
   return paddle::platform::is_cpu_place(inner_place());
 }
 
-bool Tensor::is_cuda() const {
+bool Tensor::is_gpu() const {
   return paddle::platform::is_gpu_place(inner_place());
+}
+
+bool Tensor::is_gpu_pinned() const {
+  return paddle::platform::is_cuda_pinned_place(inner_place());
 }
 
 /* Part 4: Data Access methods */

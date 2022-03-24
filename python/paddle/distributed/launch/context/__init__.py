@@ -82,6 +82,12 @@ class Context(object):
         logger.addHandler(ch)
         return logger
 
+    def continous_log(self) -> bool:
+        if self.args.log_level.upper() in ['DEBUG', 'ERROR']:
+            return True
+        else:
+            return False
+
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             if k in self.envs:

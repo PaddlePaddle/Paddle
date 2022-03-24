@@ -33,7 +33,7 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              DataType out_dtype,
                              DenseTensor* dx) {
   ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
-      ctx, x, dout, out, axis, keep_dim, reduce_all, in_dtype, out_dtype, dx);
+      ctx, x, out, dout, axis, keep_dim, reduce_all, in_dtype, out_dtype, dx);
 }
 
 }  // namespace phi

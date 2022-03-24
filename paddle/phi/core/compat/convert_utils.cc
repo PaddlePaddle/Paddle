@@ -26,13 +26,14 @@ limitations under the License. */
 namespace phi {
 
 Backend TransToPhiBackend(const phi::Place& place) {
-  if (place.GetType() == phi::AllocationType::CPU) {
+  auto allocation_type = place.GetType();
+  if (allocation_type == phi::AllocationType::CPU) {
     return Backend::CPU;
-  } else if (place.GetType() == phi::AllocationType::GPU) {
+  } else if (allocation_type == phi::AllocationType::GPU) {
     return Backend::GPU;
-  } else if (place.GetType() == phi::AllocationType::XPU) {
+  } else if (allocation_type == phi::AllocationType::XPU) {
     return Backend::XPU;
-  } else if (place.GetType() == phi::AllocationType::CUSTOM) {
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
         GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
