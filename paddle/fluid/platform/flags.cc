@@ -1,4 +1,5 @@
 // Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,13 +113,14 @@ PADDLE_DEFINE_EXPORTED_string(
  * Value Range: int64_t, default=0
  * Example:
  * Note: Represents times of exhaustive search to evaluate performance of
- *       cuBlasLt matmul algorithm (with/without epilogue). There are two
- *       search methods in cuBlasLt, heuristic search and exhaustive search.
- *       Exhaustive search attempts all cuBlasLt algorithms to select the
- *       fastest, which is very time-consuming, and the selected algorithm
- *       will be cached for a given layer specification Once you change the
- *       layer specifications (such as M, N and K), it will search again.
- *       Default is 0, which means getting algorithms via heuristic search.
+ *       cuBlasLt matmul algorithm (with/without epilogue). Set this flag
+ *       with value > 0 to enable exhaustive search. Default is 0, means
+ *       getting algorithms via heuristic search. There are two search methods
+ *       in cuBlasLt, heuristic search and exhaustive search. Exhaustive search
+ *       attempts all cuBlasLt algorithms to select the fastest, which is very
+ *       time-consuming, and the selected algorithm will be cached for a given
+ *       layer specification Once you change the layer specifications
+ *       (such as M, N and K), it will re-search again.
  */
 PADDLE_DEFINE_EXPORTED_int64(
     cublaslt_exhaustive_search_times, 0,

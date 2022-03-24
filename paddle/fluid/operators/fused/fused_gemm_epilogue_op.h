@@ -107,7 +107,6 @@ class GemmEpilogueAlgoCache {
             if (warmup_algo_idx == requested_algo_count_) {
               PADDLE_THROW(platform::errors::Unavailable(
                   "No GEMM epilogue algorithm support!"));
-              break;
             }
           }
         }
