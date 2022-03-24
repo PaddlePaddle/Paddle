@@ -121,7 +121,7 @@ class XPUTestTransposeOp(XPUOpTestWrapper):
             self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
-support_types = get_xpu_op_support_types("transpose2")
+support_types = get_xpu_op_support_types("transpose")
 for stype in support_types:
     create_test_class(globals(), XPUTestTransposeOp, stype)
 
