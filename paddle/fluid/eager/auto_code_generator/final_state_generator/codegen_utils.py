@@ -21,7 +21,7 @@ import os
 ########################
 ### Global Variables ###
 ########################
-ops_to_fill_zero_for_empty_grads = set(list("split"))
+ops_to_fill_zero_for_empty_grads = set(["split", "rnn"])
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }

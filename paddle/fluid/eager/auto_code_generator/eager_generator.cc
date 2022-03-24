@@ -48,7 +48,7 @@ static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
 static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
-    "split"};
+    "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
 static std::unordered_set<std::string> black_ops_list = {"run_program"};

@@ -367,6 +367,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
         paddle::platform::errors::InvalidArgument(
             "The out_grads.size() of RunProgramGradOp should be equal to 1."));
 
+    egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());
     VLOG(3) << "out_grads[0].size() : " << grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
