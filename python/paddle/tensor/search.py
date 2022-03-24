@@ -510,6 +510,8 @@ def mode(x, axis=-1, keepdim=False, name=None):
            
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_mode(x, axis, keepdim)
         return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
 
     helper = LayerHelper("mode", **locals())

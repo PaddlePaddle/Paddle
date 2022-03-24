@@ -640,7 +640,6 @@
     func : UnchangedInferMeta
   kernel :
     func : log
-  inplace : (x -> out)
   backward: log_grad
 
 - api : log2
@@ -650,7 +649,6 @@
     func : UnchangedInferMeta
   kernel :
     func : log2
-  inplace : (x -> out)
   backward: log2_grad
 
 - api : log10
@@ -660,7 +658,6 @@
     func : UnchangedInferMeta
   kernel :
     func : log10
-  inplace : (x -> out)
   backward: log10_grad
 
 - api : log1p
@@ -670,7 +667,6 @@
     func : UnchangedInferMeta
   kernel :
     func : log1p
-  inplace : (x -> out)
   backward: log1p_grad
 
 - api : isclose
@@ -681,5 +677,71 @@
     param: [x, y]
   kernel : 
     func : isclose
+
+- api : gelu
+  args : (Tensor x,  bool approximate)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : gelu
+  backward : gelu_grad
+
+- api : prelu
+  args : (Tensor x, Tensor alpha, str data_format, str mode)
+  output : Tensor(out)
+  infer_meta : 
+    func : PReluInferMeta
+  kernel : 
+    func : prelu
+  backward : prelu_grad
+
+- api : lgamma
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+  kernel : 
+    func : lgamma
+  backward : lgamma_grad
+
+- api : log_softmax
+  args : (Tensor x,  int axis)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMetaCheckAxis
+  kernel : 
+    func : log_softmax
+  backward : log_softmax_grad
+
+- api : mode
+  args : (Tensor x,  int axis,  bool keepdim)
+  output : Tensor(out), Tensor(indices)
+  infer_meta : 
+    func : ModeInferMeta
+  kernel : 
+    func : mode
+  backward : mode_grad
+
+- api : pad3d
+  args : (Tensor x, ScalarArray paddings, str mode,  float pad_value, str data_format)
+  output : Tensor(out)
+  infer_meta : 
+    func : Pad3dInferMeta
+  kernel : 
+    func : pad3d
+  backward : pad3d_grad
+
+- api : soft_shrink
+  args : (Tensor x, float a)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : soft_shrink
+  backward: soft_shrink_grad
+
 
 #  =================================== sep3

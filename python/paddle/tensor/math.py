@@ -2059,6 +2059,8 @@ def log1p(x, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_log1p(x)
         return _C_ops.log1p(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
@@ -2108,6 +2110,8 @@ def log2(x, name=None):
             print(res) # [1.0]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_log2(x)
         return _C_ops.log2(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log2")
@@ -2158,6 +2162,8 @@ def log10(x, name=None):
             print(res) # [1.0]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_log10(x)
         return _C_ops.log10(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")

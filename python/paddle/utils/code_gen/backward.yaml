@@ -417,4 +417,74 @@
   kernel :
     func : log1p_grad
 
+- backward_api : gelu_grad
+  forward : gelu(Tensor x,  bool approximate) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad,  bool approximate)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : gelu_grad
+
+- backward_api : prelu_grad
+  forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
+  args : (Tensor x, Tensor alpha, Tensor out_grad, str data_format, str mode)
+  output : Tensor(x_grad), Tensor(alpha_grad)
+  infer_meta : 
+    func : GeneralBinaryGradInferMeta
+    param: [x, alpha]
+  kernel : 
+    func : prelu_grad
+
+- backward_api : lgamma_grad
+  forward : lgamma(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : lgamma_grad
+
+- backward_api : log_softmax_grad
+  forward : log_softmax(Tensor x,  int axis) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad,  int axis)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [out]
+  kernel : 
+    func : log_softmax_grad
+
+- backward_api : mode_grad
+  forward : mode(Tensor x,  int axis,  bool keepdim) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad,  int axis,  bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : mode_grad
+
+- backward_api : pad3d_grad
+  forward : pad3d(Tensor x, ScalarArray paddings, str mode,  float pad_value, str data_format) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, ScalarArray paddings, str mode,  float pad_value, str data_format)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : pad3d_grad
+
+- backward_api : soft_shrink_grad
+  forward : soft_shrink (Tensor x, float a) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float a)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : soft_shrink_grad
+
 #  =================================== sep3

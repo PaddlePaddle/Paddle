@@ -876,6 +876,7 @@ def ref_softshrink(x, threshold=0.5):
 class TestSoftshrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
+        self.python_api = paddle.nn.functional.softshrink
         self.init_dtype()
 
         threshold = 0.8
@@ -890,7 +891,7 @@ class TestSoftshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSoftshrinkAPI(unittest.TestCase):
@@ -2066,6 +2067,7 @@ class TestReciprocal(TestActivation):
 class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
+        self.python_api = paddle.log
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2078,7 +2080,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = fluid.layers.data(
@@ -2093,6 +2095,7 @@ class TestLog(TestActivation):
 class TestLog2(TestActivation):
     def setUp(self):
         self.op_type = "log2"
+        self.python_api = paddle.log2
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -2104,7 +2107,7 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2142,6 +2145,7 @@ class TestLog2(TestActivation):
 class TestLog10(TestActivation):
     def setUp(self):
         self.op_type = "log10"
+        self.python_api = paddle.log10
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -2153,7 +2157,7 @@ class TestLog10(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2191,6 +2195,7 @@ class TestLog10(TestActivation):
 class TestLog1p(TestActivation):
     def setUp(self):
         self.op_type = "log1p"
+        self.python_api = paddle.log1p
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2203,7 +2208,7 @@ class TestLog1p(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):

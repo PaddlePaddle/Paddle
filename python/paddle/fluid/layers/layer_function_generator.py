@@ -258,6 +258,10 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
+            if _in_eager_mode():
+                if hasattr(_C_ops, "final_state_" + op_type):
+                    op = getattr(_C_ops, "final_state_" + op_type)
+                    return op(x)
             op = getattr(_C_ops, op_type)
             return op(x)
 

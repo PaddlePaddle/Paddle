@@ -519,6 +519,8 @@ def prelu(x, weight, data_format="NCHW", name=None):
         mode = 'channel'
 
     if in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_prelu(x, weight, data_format, mode)
         return _C_ops.prelu(x, weight, 'mode', mode, 'data_format', data_format)
 
     helper = LayerHelper('prelu', **locals())
@@ -1084,6 +1086,8 @@ def softshrink(x, threshold=0.5, name=None):
                 threshold))
 
     if in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_soft_shrink(x, threshold)
         return _C_ops.softshrink(x, 'lambda', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1365,6 +1369,8 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     if in_dynamic_mode():
         if dtype is not None:
             x = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        if _in_eager_mode():
+            return _C_ops.final_state_log_softmax(x, axis)
         return _C_ops.log_softmax(x, 'axis', axis)
 
     if dtype is None:

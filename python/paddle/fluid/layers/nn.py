@@ -8882,6 +8882,8 @@ def log(x, name=None):
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_log(x)
         return _C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
