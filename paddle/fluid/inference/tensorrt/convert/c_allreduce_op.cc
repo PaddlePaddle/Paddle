@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
 
+#define RedType paddle::inference::tensorrt::plugin::kRedSum
+
 namespace nvinfer1 {
 class ILayer;
 }  // namespace nvinfer1
@@ -32,7 +34,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-template <ReduceType red_type>
 class CAllReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -58,7 +59,8 @@ class CAllReduceOpConverter : public OpConverter {
             output_num));
     // Get attrs
     int ring_id = BOOST_GET_CONST(int, op_desc.GetAttr("ring_id"));
-    bool use_calc_stream = BOOST_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
+    bool use_calc_stream =
+        BOOST_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
@@ -66,8 +68,8 @@ class CAllReduceOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::CAllReducePluginDynamic* plugin =
-          new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream,
-			  red_type, with_fp16);
+          new plugin::CAllReducePluginDynamic(ring_id, use_calc_stream, RedType,
+                                              with_fp16);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
@@ -77,33 +79,33 @@ class CAllReduceOpConverter : public OpConverter {
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::CAllReducePlugin* plugin = new plugin::CAllReducePlugin(ring_id,
-		      use_calc_stream, red_type, with_fp16);
+      plugin::CAllReducePlugin* plugin = new plugin::CAllReducePlugin(
+          ring_id, use_calc_stream, RedType, with_fp16);
       layer = engine_->AddPlugin(&input, input_num, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];
     std::string name = "c_allreduce_sum";
-    switch (red_type) {
-      case kRedSum:
+    switch (RedType) {
+      case paddle::inference::tensorrt::plugin::kRedSum:
         name = "c_allreduce_sum";
         break;
 
-      case kRedMax:
+      case paddle::inference::tensorrt::plugin::kRedMax:
         name = "c_allreduce_max";
         break;
 
-      case kRedMin:
+      case paddle::inference::tensorrt::plugin::kRedMin:
         name = "c_allreduce_min";
         break;
 
-      case kRedProd:
+      case paddle::inference::tensorrt::plugin::kRedProd:
         name = "c_allreduce_prod";
         break;
 
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
+            "Invalid reduce type: %d", RedType));
     }
     RreplenishLayerAndOutput(layer, name, {output_name}, test_mode);
   }
@@ -113,5 +115,4 @@ class CAllReduceOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(c_allreduce_sum,
-		CAllReduceOpConverter<paddle::inference::tensorrt::plugin::kRedSum>);
+REGISTER_TRT_OP_CONVERTER(c_allreduce_sum, CAllReduceOpConverter);

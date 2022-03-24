@@ -35,8 +35,8 @@ class CAllReducePlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return getBaseSerializationSize() + SerializedSize(ring_id_)
-	    + SerializedSize(use_calc_stream_) + SerializedSize(red_type_);
+    return getBaseSerializationSize() + SerializedSize(ring_id_) +
+           SerializedSize(use_calc_stream_) + SerializedSize(red_type_);
   }
 
   // TRT will call this func  to serialize the configuration of TRT
@@ -50,8 +50,10 @@ class CAllReducePlugin : public PluginTensorRT {
 
  public:
   explicit CAllReducePlugin(const int ring_id, const bool use_calc_stream,
-		  ReduceType red_type, const bool with_fp16)
-      : ring_id_(ring_id), use_calc_stream_(use_calc_stream), red_type_(red_type) {
+                            ReduceType red_type, const bool with_fp16)
+      : ring_id_(ring_id),
+        use_calc_stream_(use_calc_stream),
+        red_type_(red_type) {
     with_fp16_ = with_fp16;
   }
 
@@ -66,8 +68,8 @@ class CAllReducePlugin : public PluginTensorRT {
 
   ~CAllReducePlugin() {}
   CAllReducePlugin* clone() const TRT_NOEXCEPT override {
-    return new CAllReducePlugin(ring_id_, use_calc_stream_,
-		    red_type_, with_fp16_);
+    return new CAllReducePlugin(ring_id_, use_calc_stream_, red_type_,
+                                with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -104,18 +106,17 @@ class CAllReducePluginCreator : public TensorRTPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(CAllReducePluginCreator);
 
-
 class CAllReducePluginDynamic : public DynamicPluginTensorRT {
- protect:
-   int ring_id_;
-   bool use_calc_stream_;
-   ReduceType red_type_;
+ private:
+  int ring_id_;
+  bool use_calc_stream_;
+  ReduceType red_type_;
 
  public:
   explicit CAllReducePluginDynamic(const int ring_id,
-		  const bool use_calc_stream,
-		  const ReduceType red_type,
-		  const bool with_fp16) {
+                                   const bool use_calc_stream,
+                                   const ReduceType red_type,
+                                   const bool with_fp16) {
     ring_id_ = ring_id;
     use_calc_stream_ = use_calc_stream;
     red_type_ = red_type;
@@ -128,8 +129,8 @@ class CAllReducePluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new CAllReducePluginDynamic(ring_id_, use_calc_stream_,
-		    red_type_, with_fp16_);
+    return new CAllReducePluginDynamic(ring_id_, use_calc_stream_, red_type_,
+                                       with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {

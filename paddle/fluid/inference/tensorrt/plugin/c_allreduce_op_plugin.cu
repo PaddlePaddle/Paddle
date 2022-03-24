@@ -51,9 +51,8 @@ bool CAllReducePlugin::supportsFormat(
   }
 }
 
-nvinfer1::Dims CAllReducePlugin::getOutputDimensions(int index,
-                                               const nvinfer1::Dims* in_dims,
-                                               int nb_inputs) TRT_NOEXCEPT {
+nvinfer1::Dims CAllReducePlugin::getOutputDimensions(
+    int index, const nvinfer1::Dims* in_dims, int nb_inputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nb_inputs, 1, platform::errors::InvalidArgument(
                                       "We expect [number of inputs] == 1"
                                       "in TRT CAllReduce op plugin, but got "
@@ -72,74 +71,25 @@ nvinfer1::Dims CAllReducePlugin::getOutputDimensions(int index,
 
 #if IS_TRT_VERSION_LT(8000)
 int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
-                        void** outputs,
+                              void** outputs,
 #else
 int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
-                        void* const* outputs,
+                              void* const* outputs,
 #endif
-                        void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
-
-  auto input_dims = this->getInputDims(0);
-  size_t numel = ProductDim(input_dims);
-
-  void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(inputs));
-  void* recvbuff = reinterpret_cast<void*>(outputs);
-
-  auto type = getDataType();
-  ncclDataType_t dtype = NvInferDtypeToNCCLDType(type);
-
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
-  cudaStream_t custream = nullptr;
-  if (use_calc_stream_) {
-    custream = stream;
-  } else {
-    custream = comm->stream();
-  }
-
-  ncclRedOp_t nccl_red_type = ncclSum;
-  switch (red_type_) {
-    case kRedSum:
-      nccl_red_type = ncclSum;
-      break;
-
-    case kRedMax:
-      nccl_red_type = ncclMax;
-      break;
-
-    case kRedMin:
-      nccl_red_type = ncclMin;
-      break;
-
-    case kRedProd:
-      nccl_red_type = ncclProd;
-      break;
-
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid reduce type: %d", red_type));
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-#else
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "PaddlePaddle should compile with MLU."));
-#endif
-  return cudaGetLastError() != cudaSuccess;
+                              void* workspace,
+                              cudaStream_t stream) TRT_NOEXCEPT {
 }
-
-
 
 // Dynamic Plugin below.
-int CAllReducePluginDynamic::initialize() TRT_NOEXCEPT {
-  getPluginNamespace();
-  return 0;
-}
+// int CAllReducePluginDynamic::initialize() TRT_NOEXCEPT {
+//  getPluginNamespace();
+//  return 0;
+//}
 
 size_t CAllReducePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
-  return SerializedSize(ring_id_)
-	 + SerializedSize(use_calc_stream_)
-	 + SerializedSize(red_type_);
-	 + SerializedSize(with_fp16_);
+  return SerializedSize(ring_id_) + SerializedSize(use_calc_stream_) +
+         SerializedSize(red_type_);
+  +SerializedSize(with_fp16_);
 }
 
 void CAllReducePluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
@@ -187,27 +137,33 @@ bool CAllReducePluginDynamic::supportsFormatCombination(
 nvinfer1::DataType CAllReducePluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The CAllReduce Plugin only has one input, so the "
-                                  "index value should be 0, but get %d.",
-                                  index));
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The CAllReduce Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
-int CAllReducePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
-                               const nvinfer1::PluginTensorDesc* output_desc,
-                               const void* const* inputs, void* const* outputs,
-                               void* workspace,
-                               cudaStream_t stream) TRT_NOEXCEPT {
+int CAllReducePluginDynamic::enqueue(
+    const nvinfer1::PluginTensorDesc* input_desc,
+    const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
+    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   size_t numel = ProductDim(input_dims);
 
-  void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(inputs));
-  void* recvbuff = reinterpret_cast<void*>(outputs);
+  auto input_type = input_desc[0].type;
+  void* sendbuff;
+  void* recvbuff = outputs[0];
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp32";
+    sendbuff = const_cast<void*>(inputs[0]);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp16";
+    sendbuff = const_cast<void*>(inputs[0]);
+  }
 
-  auto type = getDataType();
-  ncclDataType_t dtype = NvInferDtypeToNCCLDType(type);
-
+  ncclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
   auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
   cudaStream_t custream = nullptr;
   if (use_calc_stream_) {
@@ -235,15 +191,11 @@ int CAllReducePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_des
       break;
 
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid reduce type: %d", red_type));
+      PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
+                                                     red_type_));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-#else
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "PaddlePaddle should compile with MLU."));
-#endif
   return cudaGetLastError() != cudaSuccess;
 }
 
