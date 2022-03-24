@@ -754,7 +754,7 @@
   kernel :
     func : is_empty
 
-# isinf selected rows??? involk
+# isinf
 - api : isinf
   args : (Tensor x)
   output : Tensor
@@ -763,7 +763,7 @@
   kernel :
     func : isinf, isinf_sr
 
-# isnan selected rows??? involk
+# isnan
 - api : isnan
   args : (Tensor x)
   output : Tensor
@@ -772,7 +772,7 @@
   kernel :
     func : isnan, isnan_sr
 
-# isfinite selected rows??? involk
+# isfinite
 - api : isfinite
   args : (Tensor x)
   output : Tensor
@@ -781,7 +781,7 @@
   kernel :
     func : isfinite, infinite_sr
 
-# label_smooth  ?? optional
+# label_smooth
 - api : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon)
   output : Tensor
