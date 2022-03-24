@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/include/api.h"
@@ -25,61 +26,6 @@ constexpr int64_t kWaitBlockTImeout = 10;
 
 namespace paddle {
 namespace distributed {
-
-static ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
-  static const std::map<ReduceOp, ncclRedOp_t> red_type = {
-      {ReduceOp::MIN, ncclMin},
-      {ReduceOp::MAX, ncclMax},
-      {ReduceOp::SUM, ncclSum},
-      {ReduceOp::PRODUCT, ncclProd},
-  };
-  auto it = red_type.find(reduction);
-  PADDLE_ENFORCE_EQ(it != red_type.end(), true,
-                    platform::errors::InvalidArgument(
-                        "Invalid nccl reduction. Must be ncclMin | ncclMax | "
-                        "ncclProd | ncclSum"));
-  return it->second;
-}
-
-std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {
-  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&ncclID);
-  std::ostringstream oss;
-  for (auto i = 0; i < NCCL_UNIQUE_ID_BYTES; ++i) {
-    oss << std::hex << static_cast<int>(bytes[i]);
-  }
-  return oss.str();
-}
-
-// Get the list of devices from list of tensors
-std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors) {
-  std::vector<Place> places;
-  places.reserve(tensors.size());
-  for (auto& tensor : tensors) {
-    places.push_back(tensor.inner_place());
-  }
-  return places;
-}
-
-// Get the deviceList String from the list of devices
-std::string GetKeyFromPlaces(const std::vector<Place>& places) {
-  std::string placeList;
-  for (auto& place : places) {
-    std::stringstream tmp;
-    tmp << place;
-    if (placeList.empty()) {
-      placeList += tmp.str();
-    } else {
-      placeList += "," + tmp.str();
-    }
-  }
-  return placeList;
-}
-
-bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors) {
-  return std::all_of(tensors.cbegin(), tensors.cend(), [&](const Tensor& t) {
-    return t.place() == PlaceType::kGPU;
-  });
-}
 
 void SyncDefaultStream(
     const std::vector<Place>& places,
