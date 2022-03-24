@@ -24,10 +24,10 @@
 namespace paddle {
 namespace distributed {
 
-// DownpourUnitAccessor
-class CtrCommonAccessor : public ValueAccessor {
+// no show click, for word2vec(DownpourSparseValueAccessor)
+class SparseAccessor : public ValueAccessor {
  public:
-  struct CtrCommonFeatureValue {
+  struct SparseFeatureValue {
     /*
        float slot;
        float unseen_days;
@@ -68,7 +68,7 @@ class CtrCommonAccessor : public ValueAccessor {
     int embedx_sgd_dim;
   };
 
-  struct CtrCommonPushValue {
+  struct SparsePushValue {
     /*
        float slot;
        float show;
@@ -82,62 +82,50 @@ class CtrCommonAccessor : public ValueAccessor {
     static int dim_size(int dim, int embedx_dim) { return sizeof(float); }
     static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
     static int slot_index() { return 0; }
-    static int show_index() { return CtrCommonPushValue::slot_index() + 1; }
-    static int click_index() { return CtrCommonPushValue::show_index() + 1; }
-    static int embed_g_index() { return CtrCommonPushValue::click_index() + 1; }
-    static int embedx_g_index() {
-      return CtrCommonPushValue::embed_g_index() + 1;
-    }
+    static int show_index() { return SparsePushValue::slot_index() + 1; }
+    static int click_index() { return SparsePushValue::show_index() + 1; }
+    static int embed_g_index() { return SparsePushValue::click_index() + 1; }
+    static int embedx_g_index() { return SparsePushValue::embed_g_index() + 1; }
     static float& slot(float* val) {
-      return val[CtrCommonPushValue::slot_index()];
+      return val[SparsePushValue::slot_index()];
     }
     static float& show(float* val) {
-      return val[CtrCommonPushValue::show_index()];
+      return val[SparsePushValue::show_index()];
     }
     static float& click(float* val) {
-      return val[CtrCommonPushValue::click_index()];
+      return val[SparsePushValue::click_index()];
     }
     static float& embed_g(float* val) {
-      return val[CtrCommonPushValue::embed_g_index()];
+      return val[SparsePushValue::embed_g_index()];
     }
     static float* embedx_g(float* val) {
-      return val + CtrCommonPushValue::embedx_g_index();
+      return val + SparsePushValue::embedx_g_index();
     }
   };
 
-  struct CtrCommonPullValue {
+  struct SparsePullValue {
     /*
-       float show;
-       float click;
        float embed_w;
        std::vector<float> embedx_w;
        */
 
-    static int dim(int embedx_dim) { return 3 + embedx_dim; }
+    static int dim(int embedx_dim) { return 1 + embedx_dim; }
     static int dim_size(size_t dim) { return sizeof(float); }
     static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
-    static int show_index() { return 0; }
-    static int click_index() { return 1; }
-    static int embed_w_index() { return 2; }
-    static int embedx_w_index() { return 3; }
-    static float& show(float* val) {
-      return val[CtrCommonPullValue::show_index()];
-    }
-    static float& click(float* val) {
-      return val[CtrCommonPullValue::click_index()];
-    }
+    static int embed_w_index() { return 0; }
+    static int embedx_w_index() { return 1; }
     static float& embed_w(float* val) {
-      return val[CtrCommonPullValue::embed_w_index()];
+      return val[SparsePullValue::embed_w_index()];
     }
     static float* embedx_w(float* val) {
-      return val + CtrCommonPullValue::embedx_w_index();
+      return val + SparsePullValue::embedx_w_index();
     }
   };
-  CtrCommonAccessor() {}
+  SparseAccessor() {}
   virtual int initialize();
-  virtual ~CtrCommonAccessor() {}
-
   virtual void GetTableInfo(AccessorInfo& info);
+  virtual ~SparseAccessor() {}
+
   // value维度
   virtual size_t dim();
   // value各个维度的size
@@ -195,7 +183,7 @@ class CtrCommonAccessor : public ValueAccessor {
   float get_field(float* value, const std::string& name) override {
     // CHECK(name == "show");
     if (name == "show") {
-      return common_feature_value.show(value);
+      return sparse_feature_value.show(value);
     }
     return 0.0;
   }
@@ -205,13 +193,13 @@ class CtrCommonAccessor : public ValueAccessor {
 
   // SparseValueSGDRule* _embed_sgd_rule;
   // SparseValueSGDRule* _embedx_sgd_rule;
-  // CtrCommonFeatureValue common_feature_value;
+  // SparseFeatureValue sparse_feature_value;
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
 
  public:  // TODO(zhaocaibei123): it should be private, but we make it public
           // for unit test
-  CtrCommonFeatureValue common_feature_value;
+  SparseFeatureValue sparse_feature_value;
   float show_click_score(float show, float click);
   SparseValueSGDRule* _embed_sgd_rule;
   SparseValueSGDRule* _embedx_sgd_rule;

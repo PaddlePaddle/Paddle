@@ -578,7 +578,7 @@ class Fleet(object):
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_worker(self):
+    def init_worker(self, scopes=None):
         """
         initialize `Communicator` for parameter server training.
 
@@ -599,7 +599,7 @@ class Fleet(object):
                 fleet.init_worker()
 
         """
-        self._runtime_handle._init_worker()
+        self._runtime_handle._init_worker(scopes)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1419,6 +1419,21 @@ class Fleet(object):
                 # for more examples, please reference https://github.com/PaddlePaddle/FleetX
 
         """
+        if not isinstance(loss, list):
+            return self._minimize_impl(loss, startup_program, parameter_list,
+                                       no_grad_set)
+        else:
+            if paddle.fluid.framework.in_dygraph_mode(
+            ) or self._role_maker._is_non_distributed() or self._is_collective:
+                raise ValueError("loss can be list only in PS mode")
+            return self._minimize_losses_impl(loss, startup_program,
+                                              parameter_list, no_grad_set)
+
+    def _minimize_impl(self,
+                       loss,
+                       startup_program=None,
+                       parameter_list=None,
+                       no_grad_set=None):
         context = {}
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy)
@@ -1447,6 +1462,7 @@ class Fleet(object):
                     "sharding_degree"]
 
         context["origin_main_program"] = self.origin_main_program
+        context["origin_main_programs"] = [self.origin_main_program]
         context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
@@ -1457,6 +1473,7 @@ class Fleet(object):
                 startup_program.clone(for_test=False)
 
         context["origin_startup_program"] = startup_program
+        context["origin_startup_programs"] = [startup_program]
         context["role_maker"] = self._role_maker
 
         # Use the auto-parallel's routines instead
@@ -1512,6 +1529,8 @@ class Fleet(object):
             copy_user_defined_strategy, can_not_apply_optimizer_list)
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
+        # print("valid_strategy:", context["valid_strategy"])
+        # print("user_defined_strategy:", context["user_defined_strategy"])
 
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
@@ -1539,13 +1558,17 @@ class Fleet(object):
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         if meta_optimizer:
+            # print("before minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
+            # print("after minimize program id:", id(loss.block.program))
 
             default_program = paddle.static.default_main_program()
+            # print("default program id:", id(default_program))
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)
+            # print("default program id after switch:", id(default_program))
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
@@ -1555,6 +1578,7 @@ class Fleet(object):
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
+            # print("before graph minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
@@ -1568,13 +1592,90 @@ class Fleet(object):
 
         if not self._role_maker._is_heter_parameter_server_mode:
             program = paddle.static.default_main_program()
-            opt_info = {}
+            opt_info = {} if program._fleet_opt is None else program._fleet_opt
             opt_info["mpi_size"] = self.worker_num()
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
                 opt_info[k] = v
             program._fleet_opt = opt_info
+
+        if self._runtime_handle is None:
+            self._runtime_handle = RuntimeFactory()._create_runtime(context)
+
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_strategy(context["valid_strategy"])
+
+        return optimize_ops, params_grads
+
+    def _minimize_losses_impl(self,
+                              losses,
+                              startup_programs=None,
+                              parameter_list=None,
+                              no_grad_set=None):
+        context = {}
+
+        # cache original feed forward program
+        self.origin_main_program = losses[0].block.program
+        context["origin_main_program"] = self.origin_main_program
+        context["origin_main_programs"] = []
+        for loss in losses:
+            context["origin_main_programs"].append(loss.block.program)
+        context["loss"] = losses
+
+        if startup_programs is None:
+            if len(losses) == 1:
+                startup_programs = [paddle.static.default_startup_program()]
+            else:
+                raise ValueError(
+                    "startup_program can't be None when loss is list.")
+        self.origin_startup_program = startup_programs[0].clone(for_test=False)
+        context["origin_startup_program"] = startup_programs[0]
+        context["origin_startup_programs"] = []
+        for program in startup_programs:
+            context["origin_startup_programs"].append(program)
+
+        context["role_maker"] = self._role_maker
+
+        context["user_defined_strategy"] = copy.deepcopy(
+            self._user_defined_strategy)
+
+        context["valid_strategy"] = copy.deepcopy(self._user_defined_strategy)
+
+        self._context = context
+
+        self.valid_strategy = context["valid_strategy"]
+        self.valid_strategy._enable_env()
+
+        optimize_ops = []
+        params_grads = []
+
+        from ..meta_optimizers import ParameterServerOptimizer
+        ps_optimizer = ParameterServerOptimizer(self.user_defined_optimizer)
+        ps_optimizer._set_basic_info(losses, self._role_maker,
+                                     self.user_defined_optimizer,
+                                     self._user_defined_strategy)
+        optimize_ops, params_grads = ps_optimizer.minimize_losses_impl(
+            losses, startup_programs, parameter_list, no_grad_set=no_grad_set)
+
+        # default_program = paddle.static.default_main_program()
+
+        # if id(default_program) != id(losses[0].block.program):
+        #     paddle.fluid.framework.switch_main_program(losses[0].block.program)
+
+        context["program_optimize_ops"] = optimize_ops
+        context["program_params_grads"] = params_grads
+
+        for loss in losses:
+            program = loss.block.program
+            opt_info = {} if program._fleet_opt is None else program._fleet_opt
+            opt_info["mpi_size"] = self.worker_num()
+            opt_info["mpi_rank"] = self.worker_index()
+            for k, v in self._user_defined_strategy.trainer_desc_configs.items(
+            ):
+                opt_info[k] = v
+            program._fleet_opt = opt_info
+            # print("fleet base opt info:", id(program), program._fleet_opt)
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
