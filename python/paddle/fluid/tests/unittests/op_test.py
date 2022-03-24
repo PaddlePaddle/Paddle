@@ -512,16 +512,13 @@ class OpTest(unittest.TestCase):
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
-
         return op
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
         for name, value in six.iteritems(numpy_inputs):
             if isinstance(value, list):
-                var_list = [
-                    block.var(sub_name) for sub_name, sub_value in value
-                ]
+                var_list = [block.var(sub_name) for sub_name, sub_value in value]
                 inputs[name] = var_list
             else:
                 inputs[name] = block.var(name)
