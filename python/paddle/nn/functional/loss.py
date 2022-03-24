@@ -1119,14 +1119,14 @@ def margin_cross_entropy(logits,
     r"""
     .. math::
 
-        L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
+        L=-\frac{1}{N}\sum^N_{i=1}\log\frac{e^{s(cos(m_{1}\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\neq y_i} e^{scos\theta_{y_i}}}
 
-    where the :math:`\\theta_{y_i}` is the angle between the feature :math:`x` and
+    where the :math:`\theta_{y_i}` is the angle between the feature :math:`x` and
     the representation of class :math:`i`. The details of ArcFace loss
     could be referred to https://arxiv.org/abs/1801.07698.
 
     .. hint::
-        The API single GPU and multi GPU, and don't supports CPU.
+        The API supports single GPU and multi GPU, and don't supports CPU.
 
         For data parallel mode, set ``group=False``.
 
