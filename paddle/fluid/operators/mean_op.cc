@@ -89,6 +89,7 @@ REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
                   ops::MeanGradMaker<paddle::framework::OpDesc>,
                   ops::MeanGradMaker<paddle::imperative::OpBase>,
                   MeanInferShapeFunctor);
+
 DECLARE_INFER_SHAPE_FUNCTOR(mean_grad, MeanGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
