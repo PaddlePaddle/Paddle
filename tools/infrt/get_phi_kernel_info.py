@@ -91,11 +91,10 @@ def merge(infer_meta_data, kernel_data, wrap_data):
     full_kernel_data = []
     for l in kernel_data:
         key = l.split()[0]
-        if key in meta_map:
-            if key in meta_map:
-                full_kernel_data.append((l + " " + wrap_map[key]).split())
-            else:
-                full_kernel_data.append((l + " " + meta_map[key]).split())
+        if key in wrap_map:
+            full_kernel_data.append((l + " " + wrap_map[key]).split())
+        elif key in meta_map:
+            full_kernel_data.append((l + " " + meta_map[key]).split())
         else:
             full_kernel_data.append((l + " unknown").split())
 
@@ -246,15 +245,10 @@ def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
 registry->AddKernelWithAttrs("{ir_name}","""
 
             res += f"""
-    std::bind(&KernelLauncherFunc<decltype({kernel_func}),
+    &KernelLauncherFunc<decltype({kernel_func}),
                                   {kernel_func},
                                   decltype({infer_shape_func}),
                                   {infer_shape_func}>,
-              KernelLauncher<decltype({kernel_func}),
-                                  {kernel_func},
-                                  decltype({infer_shape_func}),
-                                  {infer_shape_func}>(),
-              std::placeholders::_1),
     {{{attr_names}}});
 """
 
@@ -263,15 +257,10 @@ registry->AddKernelWithAttrs("{ir_name}","""
 registry->AddKernel("{ir_name}","""
 
             res += f"""
-    std::bind(&KernelLauncherFunc<decltype({kernel_func}),
+    &KernelLauncherFunc<decltype({kernel_func}),
                                   {kernel_func},
                                   decltype({infer_shape_func}),
-                                  {infer_shape_func}>,
-              KernelLauncher<decltype({kernel_func}),
-                                  {kernel_func},
-                                  decltype({infer_shape_func}),
-                                  {infer_shape_func}>(),
-              std::placeholders::_1));
+                                  {infer_shape_func}>);
 """
 
     return res
