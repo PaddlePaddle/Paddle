@@ -27,6 +27,7 @@ add_custom_target(eager_final_state_codegen
 
 set(tmp_python_c_output_path "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h")
 set(python_c_output_path "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function_impl.h")
+
 add_custom_target(eager_final_state_python_c_codegen
     COMMAND "${PYTHON_EXECUTABLE}" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/final_state_generator/python_c_gen.py" 
             "--api_yaml_path=${api_yaml_path}"

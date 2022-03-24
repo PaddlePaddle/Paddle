@@ -912,7 +912,6 @@ def _device2cpu(trans_param, convert_dtype=False):
 
 def _cpu2device(param):
     tmp_p = param.fw_storage.cuda(DEV_ID)
-    param.fw_storage._clear()
     if tmp_p.dtype == Type.fp32.value and param2dtype[
             param.name] == Type.fp16.value:
         tmp_p = paddle.cast(tmp_p, Type.fp16.value)

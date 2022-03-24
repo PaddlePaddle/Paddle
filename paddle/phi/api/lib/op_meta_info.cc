@@ -51,7 +51,8 @@ void CustomOpKernelContext::EmplaceBackInput(Tensor&& input) {
   input_range_.emplace_back(std::make_pair(index, index + 1));
 }
 
-void CustomOpKernelContext::EmplaceBackInputs(std::vector<Tensor>&& inputs) {
+void CustomOpKernelContext::EmplaceBackInputs(
+    const std::vector<Tensor>& inputs) {
   size_t index = inputs_.size();
   input_range_.emplace_back(std::make_pair(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -65,7 +66,8 @@ void CustomOpKernelContext::EmplaceBackOutput(Tensor&& output) {
   output_range_.emplace_back(std::make_pair(index, index + 1));
 }
 
-void CustomOpKernelContext::EmplaceBackOutputs(std::vector<Tensor>&& outputs) {
+void CustomOpKernelContext::EmplaceBackOutputs(
+    const std::vector<Tensor>& outputs) {
   size_t index = outputs_.size();
   output_range_.emplace_back(std::make_pair(index, index + outputs.size()));
   outputs_.insert(outputs_.end(),
@@ -75,6 +77,8 @@ void CustomOpKernelContext::EmplaceBackOutputs(std::vector<Tensor>&& outputs) {
 
 void CustomOpKernelContext::EmplaceBackAttr(paddle::any attr) {
   attrs_.emplace_back(std::move(attr));
+  VLOG(7) << "attrs_ No." << attrs_.size() - 1
+          << " has value of type: " << attrs_[attrs_.size() - 1].type().name();
 }
 
 const Tensor& CustomOpKernelContext::InputAt(size_t idx) const {
@@ -98,6 +102,15 @@ std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetweeen(size_t start,
   std::vector<Tensor*> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(&(outputs_.at(i)));
+  }
+  return rlt;
+}
+
+std::vector<Tensor> CustomOpKernelContext::OutputsBetweeen(size_t start,
+                                                           size_t end) {
+  std::vector<Tensor> rlt;
+  for (size_t i = start; i < end; ++i) {
+    rlt.emplace_back(outputs_.at(i));
   }
   return rlt;
 }

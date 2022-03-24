@@ -65,9 +65,10 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
     for (decltype(rank) i = 0; i < rank; ++i) {
       reduce_dims.push_back(i);
     }
-    TensorReduceImpl<T, T, kernel_primitives::AddFunctor, Div>(
-        context.cuda_device_context(), *input, output, Div(numel), reduce_dims,
-        stream);
+    TensorReduceImpl<T, T, kernel_primitives::AddFunctor,
+                     kps::IdentityFunctor<T>>(
+        context.cuda_device_context(), *input, output,
+        kps::IdentityFunctor<T>(), reduce_dims, stream, true);
   }
 };
 
@@ -102,10 +103,17 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     mean, ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     mean_grad,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext,
-                            plat::float16>);
+                            paddle::platform::complex<float>>,
+    ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex<double>>);

@@ -37,6 +37,13 @@ void KernelContext::EmplaceBackInputs(
                  std::make_move_iterator(inputs.end()));
 }
 
+void KernelContext::EmplaceBackInputsWithoutSetRange(
+    paddle::SmallVector<const TensorBase*> inputs) {
+  inputs_.insert(inputs_.end(),
+                 std::make_move_iterator(inputs.begin()),
+                 std::make_move_iterator(inputs.end()));
+}
+
 void KernelContext::EmplaceBackOutput(TensorBase* output) {
   int index = outputs_.size();
   outputs_.emplace_back(output);
@@ -54,6 +61,13 @@ void KernelContext::EmplaceBackOutputs(
   // Record the start and end index of the input
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
+  outputs_.insert(outputs_.end(),
+                  std::make_move_iterator(outputs.begin()),
+                  std::make_move_iterator(outputs.end()));
+}
+
+void KernelContext::EmplaceBackOutputsWithoutSetRange(
+    paddle::SmallVector<TensorBase*> outputs) {
   outputs_.insert(outputs_.end(),
                   std::make_move_iterator(outputs.begin()),
                   std::make_move_iterator(outputs.end()));

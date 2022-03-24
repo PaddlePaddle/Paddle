@@ -22,6 +22,7 @@ import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
 
 
 class TestVarBase(unittest.TestCase):
@@ -874,7 +875,7 @@ class TestVarBase(unittest.TestCase):
         col = np.array([2, 1, 3])
         self.assertTrue(np.array_equal(array[row, col], x[row, col].numpy()))
 
-    def test_slice(self):
+    def func_test_slice(self):
         with fluid.dygraph.guard():
             self._test_slice()
             self._test_slice_for_tensor_attr()
@@ -898,6 +899,11 @@ class TestVarBase(unittest.TestCase):
             with self.assertRaises(IndexError):
                 mask = np.array([1, 0, 1, 0], dtype=bool)
                 var[paddle.to_tensor([0, 1]), mask]
+
+    def test_slice(self):
+        with _test_eager_guard():
+            self.func_test_slice()
+        self.func_test_slice()
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
@@ -1125,7 +1131,6 @@ class TestVarBase(unittest.TestCase):
 
 class TestVarBaseSetitem(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static()
         self.set_dtype()
         self.tensor_x = paddle.to_tensor(np.ones((4, 2, 3)).astype(self.dtype))
         self.np_value = np.random.random((2, 3)).astype(self.dtype)
@@ -1135,12 +1140,13 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.dtype = "int32"
 
     def _test(self, value):
-        paddle.disable_static()
-        self.assertEqual(self.tensor_x.inplace_version, 0)
+        if not _in_eager_mode():
+            self.assertEqual(self.tensor_x.inplace_version, 0)
 
         id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
-        self.assertEqual(self.tensor_x.inplace_version, 1)
+        if not _in_eager_mode():
+            self.assertEqual(self.tensor_x.inplace_version, 1)
 
         if isinstance(value, (six.integer_types, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
@@ -1152,26 +1158,46 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
-        self.assertEqual(self.tensor_x.inplace_version, 2)
+        if not _in_eager_mode():
+            self.assertEqual(self.tensor_x.inplace_version, 2)
         self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
-        self.assertEqual(self.tensor_x.inplace_version, 3)
+        if not _in_eager_mode():
+            self.assertEqual(self.tensor_x.inplace_version, 3)
         self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
-    def test_value_tensor(self):
-        paddle.disable_static()
+    def func_test_value_tensor(self):
         self._test(self.tensor_value)
 
-    def test_value_numpy(self):
-        paddle.disable_static()
+    def test_value_tensor(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_test_value_tensor()
+        self.setUp()
+        self.func_test_value_tensor()
+
+    def func_test_value_numpy(self):
         self._test(self.np_value)
 
-    def test_value_int(self):
-        paddle.disable_static()
+    def test_value_numpy(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_test_value_numpy()
+        self.setUp()
+        self.func_test_value_numpy()
+
+    def func_test_value_int(self):
         self._test(10)
+
+    def test_value_int(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_test_value_int()
+        self.setUp()
+        self.func_test_value_int()
 
 
 class TestVarBaseSetitemInt64(TestVarBaseSetitem):
@@ -1361,4 +1387,5 @@ class TestVarBaseCopyGradientFrom(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

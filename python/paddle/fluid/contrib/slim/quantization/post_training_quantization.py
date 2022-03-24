@@ -979,8 +979,6 @@ class PostTrainingQuantization(object):
                 if op.type in (
                         self._quantizable_op_type + self._out_scale_op_list):
                     out_var_names = _get_op_output_var_names(op)
-                    assert len(out_var_names) == 1, "Post training " + \
-                        "quantization only support one output for " + op.type
                     for var_name in out_var_names:
                         analysis_and_save_info(op, var_name)
 

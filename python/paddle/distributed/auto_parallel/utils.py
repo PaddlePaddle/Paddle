@@ -1271,7 +1271,6 @@ def get_all_distributed_main_program(serial_program_info, dist_context,
         used_dist_context._dist_op_context = DistributedOperatorContext()
         _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
             rank_id, used_dist_context)
-        # print("dist_main_program: ", dist_main_program)
         all_dist_main_program.append(dist_main_program)
 
     return all_dist_main_program
@@ -1417,3 +1416,11 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     # Third, print error infomation if we cannot find the original id
     else:
         assert False, "Cannot find the original id in the distributed context"
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]

@@ -17,7 +17,9 @@ from ..dist_attribute import OperatorDistributedAttribute
 
 _g_distributed_operator_impl_containers = {}
 
-_g_elementwise_ops = ["elementwise_add", "gelu", "dropout", "cast"]
+_g_elementwise_ops = [
+    "elementwise_add", "gelu", "dropout", "cast", "gather", "concat"
+]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 

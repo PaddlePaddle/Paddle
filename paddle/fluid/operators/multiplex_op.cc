@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/multiplex_op.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -169,15 +169,3 @@ REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
                   ops::MultiplexGradMaker<paddle::framework::OpDesc>,
                   ops::MultiplexGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
-REGISTER_OP_CPU_KERNEL(
-    multiplex,
-    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    multiplex_grad,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, int64_t>);

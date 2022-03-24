@@ -24,7 +24,7 @@
 
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/host_context/core_runtime.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
@@ -129,7 +129,7 @@ class PredictExecutor : public MlirToRuntimeTranslator {
       auto arg = predict_func.getArgument(i);
       auto type = arg.getType();
       // this param is TensorMap
-      if (type.isa<infrt::DenseTensorMapType>()) {
+      if (type.isa<infrt::DenseHostTensorMapType>()) {
         auto* value = new host_context::Value(std::move(*map));
         arguments_.push_back(value);
         AddValue(predict_func.getArgument(i), value);
@@ -144,7 +144,7 @@ class PredictExecutor : public MlirToRuntimeTranslator {
 
     // process results
     auto& last_op = predict_func.front().back();
-    if (last_op.getName().getStringRef() == "Infrt.return") {
+    if (last_op.getName().getStringRef() == "infrt.return") {
       for (size_t i = 0; i < last_op.getNumOperands(); ++i) {
         auto* value = AddValue(mlir::Value(last_op.getOperand(i)));
         results_.push_back(ValueRef(value));

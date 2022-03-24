@@ -27,7 +27,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/phi/include dirs
 #include "paddle/phi/kernels/elementwise_grad_kernel.h"
-#include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/elementwise_kernel.h"
 #endif
 
 namespace paddle {
