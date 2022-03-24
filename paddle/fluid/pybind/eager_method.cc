@@ -673,13 +673,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     }
   });
 
-  // Increase the version of Tensor self because __setitem__ is an
-  // inplace operator for the Tensor self.
-  // auto &inplace_version_counter = self_tensor->InplaceVersionCounter();
-  // inplace_version_counter.Bump();
-
-  self->tensor.bump_inplace_version();
-
   // 1. Check argumnets
   bool parse_index = true;
 
@@ -827,6 +820,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     {
       // Release gil and do tracing
       py::gil_scoped_release release;
+      // use inplace set_value_ operator
       self->tensor = set_value__dygraph_function(self->tensor, value_tensor, {},
                                                  {}, {}, attrs);
     }
