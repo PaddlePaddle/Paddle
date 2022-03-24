@@ -10,10 +10,16 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/interpolate_v2_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -722,33 +728,51 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateV2GradNoNeedBufferVarsInferer,
 // not
 // compatible with interp_op, so a new one is added in paddle2.0
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(bilinear_interp_v2, BilinearInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(nearest_interp_v2, NearestInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(trilinear_interp_v2,
+                            TrilinearInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(bicubic_interp_v2, BicubicInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(linear_interp_v2, LinearInterpInferShapeFunctor,
+                            PD_INFER_META(phi::InterpolateInferMeta));
+
 REGISTER_OPERATOR(bilinear_interp_v2, ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  BilinearInterpInferShapeFunctor);
 REGISTER_OPERATOR(bilinear_interp_v2_grad, ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(nearest_interp_v2, ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  NearestInterpInferShapeFunctor);
 REGISTER_OPERATOR(nearest_interp_v2_grad, ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(trilinear_interp_v2, ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  TrilinearInterpInferShapeFunctor);
 REGISTER_OPERATOR(trilinear_interp_v2_grad, ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(bicubic_interp_v2, ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  BicubicInterpInferShapeFunctor);
 REGISTER_OPERATOR(bicubic_interp_v2_grad, ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(linear_interp_v2, ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
-                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>);
+                  ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
+                  LinearInterpInferShapeFunctor);
 REGISTER_OPERATOR(linear_interp_v2_grad, ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
