@@ -182,6 +182,8 @@ def batch_norm(x,
 
     if in_dynamic_mode():
         # for dygraph need tuple
+        # if _in_eager_mode():
+
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,

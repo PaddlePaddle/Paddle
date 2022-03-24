@@ -568,7 +568,8 @@
     func : UnchangedInferMeta
     param : [out_grad]
   kernel :
-    func : label_smooth_grad
+    func : label_smooth_grad    
+  optional : prior_dist
   
 - backward_api : log_loss_grad
   forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
@@ -635,7 +636,7 @@
 
 - backward_api : nll_loss_grad
   forward : nll_loss (Tensor x, Tensor label, Tensor weight, int64 ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)
-  args : (Tensor x, Tensor label, Tensor total_weight, Tensor weight, Tensor out_grad, int64 ignore_index, str reduction)
+  args : (Tensor x, Tensor label,  Tensor weight, Tensor total_weight, Tensor out_grad, int64 ignore_index, str reduction)
   output : Tensor (x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -643,6 +644,7 @@
   kernel :
     func : nll_loss_grad
     data_type : out_grad
+  optional : weight
   
 # - backward_api : pad_grad
 #   forward : pad (Tensor x, int[] paddings, float pad_value) -> Tensor(out)

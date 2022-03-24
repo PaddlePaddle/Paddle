@@ -639,7 +639,8 @@ class {} : public egr::GradNodeBase {{
 
 def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
                            backward_grad_input_map, backward_grad_output_map,
-                           backward_attrs_list, forward_inputs_position_map):
+                           backward_attrs_list, forward_inputs_position_map,
+                           optional_inputs):
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
@@ -653,9 +654,14 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     grad_api_args = ["" for i in range(grad_api_args_len)]
     for name, (_, is_fwd_input,
                grad_api_position), in backward_fwd_input_map.items():
+        is_optional = (name in optional_inputs)
         tensor_wrapper_name = GetSavedName(name)
-        grad_api_args[
-            grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
+        if is_optional:
+            grad_api_args[
+                grad_api_position] = f"egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
+        else:
+            grad_api_args[
+                grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
 
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_input_map.items():
@@ -801,8 +807,8 @@ def GenerateNodeCreationCodes(
 """
 
     # Node Construction
-    num_bwd_inputs = len(backward_grad_input_map.keys())
-    #  num_bwd_outputs = len(backward_grad_output_map.keys())
+    #num_bwd_inputs = len(backward_grad_input_map.keys())    
+    num_bwd_inputs = len(forward_outputs_position_map.keys())
     num_bwd_outputs = len(forward_inputs_position_map.keys())
     grad_node_name = GetGradNodeName(
         RecoverBaseNameOfInplaceFunction(
@@ -1355,7 +1361,8 @@ if __name__ == "__main__":
             yaml_node_definition_str += GenerateNodeDefinition(
                 fwd_api_name, bwd_api_name, backward_fwd_input_map,
                 backward_grad_input_map, backward_grad_output_map,
-                backward_attrs_list, forward_inputs_position_map)
+                backward_attrs_list, forward_inputs_position_map,
+                optional_inputs)
             print("Generated Node Definition: ", node_definition_str)
 
             # Node Definition Generation

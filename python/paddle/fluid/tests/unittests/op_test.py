@@ -754,6 +754,8 @@ class OpTest(unittest.TestCase):
             return results
 
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
+            if hasattr(self, "python_out_sig"):
+                output_sig = self.python_out_sig
             if not isinstance(ret_tuple, (tuple, list)):
                 ret_tuple = [ret_tuple]
             if len(output_sig) == len(ret_tuple):

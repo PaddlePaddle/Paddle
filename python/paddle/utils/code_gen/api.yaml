@@ -790,8 +790,9 @@
     param : [label]
   kernel :
     func : label_smooth
+    data_type : label
   optional : prior_dist
-  # backward : label_smooth_grad
+  backward : label_smooth_grad
   # 
 
 # linspace ???? start stop number
@@ -891,8 +892,7 @@
     func : nll_loss
     data_type : x
   optional : weight
-  backward : nll_loss_grad
-  # optional : weight
+  backward : nll_loss_grad  
 
 # pad
 - api : pad

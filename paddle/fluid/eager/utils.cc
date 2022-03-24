@@ -334,6 +334,18 @@ paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
   return tw->recover(grad_node);
 }
 
+paddle::optional<const paddle::experimental::Tensor&>
+EagerUtils::RecoverOptionalTensorWrapper(
+    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
+  auto tmp = tw->recover(grad_node);
+
+  paddle::optional<const paddle::experimental::Tensor&> res = paddle::none;
+  if (tmp.initialized()) {
+    res = tmp;
+  }
+  return res;
+}
+
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
     std::vector<TensorWrapper>* tw,
     const std::shared_ptr<GradNodeBase>& grad_node) {
