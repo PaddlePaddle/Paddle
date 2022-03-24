@@ -74,13 +74,22 @@ TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
   // Run ops and check the computation results
   auto run_and_check_fn = [&](const platform::Place& place) {
     framework::Scope scope;
-    InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
     scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
     scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
+    // check on type float
+    InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
     cinn_instruction_run_op->Run(scope, place);
     elementwise_add_op->Run(scope, place);
     CompareOpResult<float>(scope.GetVar(test_op_out_name),
                            scope.GetVar(add_op_out_name));
+
+    // check on type int to indicate cinn_instruction_run op
+    // can mutable data according compiled result
+    InitVariablesWithRandomValue<int>({"x", "y"}, {10, 20}, place, &scope);
+    cinn_instruction_run_op->Run(scope, place);
+    elementwise_add_op->Run(scope, place);
+    CompareOpResult<int>(scope.GetVar(test_op_out_name),
+                         scope.GetVar(add_op_out_name));
   };
 
   // CPU
