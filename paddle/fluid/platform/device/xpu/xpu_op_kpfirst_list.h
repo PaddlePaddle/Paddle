@@ -79,7 +79,6 @@ XPUOpMap& get_kp_ops() {
       {"equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"not_equal", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"equal_all", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-
   };
 
   return s_xpu_kp_kernels;

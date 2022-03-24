@@ -15,7 +15,8 @@
 #pragma once
 
 // CUDA, XPU and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(__xpu__)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU_KP)
 
 #include <algorithm>
 #include <cmath>
@@ -33,7 +34,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/fast_divmod.h"
+// #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -43,15 +44,20 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"  // struct dim3
 #include "paddle/utils/string/string_helper.h"
+
+// #include "paddle/phi/kernels/primitive/compute_primitives.h" //
+// 不应该在xpu中include
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
 namespace kps = phi::kps;
-
+#ifdef PADDLE_WITH_XPU_KP
+using dim3 = phi::kps::dim3;
+#endif
 namespace phi {
 namespace funcs {
 
@@ -82,11 +88,13 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 }
 
 // get blockDim for reduceLastDim and reduceAny
-static inline int GetBlockDim(int block_dim) {
+#ifndef PADDLE_WITH_XPU_KP
+static inline int GetBlockDim(int block_dim) {  // 不应该在XPU时编译到
   return block_dim >= kps::details::kReduceMaxThread
              ? kps::details::kReduceMaxThread
              : GetLastPow2(block_dim);
 }
+#endif
 
 // check reduce rand is valid
 static inline void CheckReduceRank(int reduce_rank, int rank) {
@@ -179,12 +187,12 @@ struct IndexCalculator {
     strides = details::VectorToArray<int, kMaxRank>(full_strides);
     reduce_strides = details::VectorToArray<int, kMaxRank>(cal_strides);
 #ifndef PADDLE_WITH_XPU_KP
-    std::vector<paddle::platform::FastDivMod> cal_divmoders;
+    std::vector<kps::details::FastDivMod> cal_divmoders;  // namespace
     // fast divmod
     for (auto i : cal_strides) {
-      cal_divmoders.push_back(paddle::platform::FastDivMod(i));
+      cal_divmoders.push_back(kps::details::FastDivMod(i));
     }
-    divmoders = details::VectorToArray<paddle::platform::FastDivMod, kMaxRank>(
+    divmoders = details::VectorToArray<kps::details::FastDivMod, kMaxRank>(
         cal_divmoders);
 #endif
   }
@@ -221,7 +229,7 @@ struct IndexCalculator {
   phi::Array<int, kMaxRank> strides;
   phi::Array<int, kMaxRank> reduce_strides;
 #ifndef PADDLE_WITH_XPU_KP
-  phi::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
+  phi::Array<kps::details::FastDivMod, kMaxRank> divmoders;
 #endif
 };
 
@@ -576,15 +584,16 @@ struct ReduceConfig {
       grid_dim->y = details::AlignUp(reduce_num, blocking_size);
     }
   }
-#endif
+#endif  // SetBlockDimForReduceAny() #ifndef PADDLE_WITH_XPU_KP
 
   void SetBlockDim() {
     // init
-    int block_num = details::GetBlockDim(reduce_num);
+    // int block_num = details::GetBlockDim(reduce_num);
     should_reduce_again = false;
-    dim3 block_dim(block_num, 1, 1);
+    dim3 block_dim;
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
+
 #ifdef PADDLE_WITH_XPU_KP
     if (reduce_last_dim) {
       block_dim.x = 64;
@@ -950,15 +959,18 @@ static void LaunchReduceKernel(const Tx* x_data,
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.SetRem(config.left_num % block.x, 0, 0);
 #ifdef PADDLE_WITH_XPU_KP
-    grid = 8;
-    block = 64;
+    int grid_num = 8;
+    int block_num = 64;
+#else
+    dim3 grid_num = grid;
+    dim3 block_num = block;
 #endif
     ReduceHigherDimKernel<
         Ty,
         Ty,
         MPType,
         ReduceOp,
-        kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+        kps::IdentityFunctor<Ty, MPType>><<<grid_num, block_num, 0, stream>>>(
         config.output_data,
         y_data,
         reducer,
@@ -971,6 +983,7 @@ static void LaunchReduceKernel(const Tx* x_data,
   }
 }
 
+#if !defined(PADDLE_WITH_XPU_KP)
 template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
@@ -1025,6 +1038,7 @@ CubTensorReduceImpl(const Tx* x_data,
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
+#endif  // PADDLE_WITH_XPU_KP
 
 template <typename Tx,
           typename Ty,
@@ -1125,15 +1139,18 @@ void ReduceKernel(const KPDevice& dev_ctx,
       dim2.SetRem(config.left_num % config.block.x, 0, 0);
 
 #ifdef PADDLE_WITH_XPU_KP
-      grid = 8;
-      block = 64;
+      int grid_num = 8;
+      int block_num = 64;
+#else
+      dim3 grid_num = grid;
+      dim3 block_num = block;
 #endif
       ReduceHigherDimKernel<
           Ty,
           Ty,
           MPType,
           ReduceOp<MPType>,
-          kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+          kps::IdentityFunctor<Ty, MPType>><<<grid_num, block_num, 0, stream>>>(
           config.output_data,
           y_data,
           reducer,
