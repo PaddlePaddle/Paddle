@@ -91,11 +91,13 @@ DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm), SquaredL2NormInferShapeFunctor,
 REGISTER_OPERATOR(squared_l2_norm, ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
                   ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>,
+                  SquaredL2NormInferShapeFunctor);
 DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm_grad,
                             SquaredL2NormGradInferShapeFunctor,
                             PD_INFER_META(phi::SquaredL2NormGradInferMeta));
-REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
+REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp,
+                  SquaredL2NormGradInferShapeFunctor);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,
     ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, float>,
