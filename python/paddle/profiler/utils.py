@@ -38,7 +38,7 @@ class RecordEvent(ContextDecorator):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+            :name: code-example1
 
             import paddle
             import paddle.profiler as profiler
@@ -56,7 +56,7 @@ class RecordEvent(ContextDecorator):
             record_event.end()
 
     **Note**:
-        RecordEvent will take effect only when :ref:`Profiler <cn_api_profiler_profiler>` is on and at the state of RECORD.
+        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of RECORD.
     """
 
     def __init__(self,
@@ -78,7 +78,7 @@ class RecordEvent(ContextDecorator):
         Record the time of begining.
 
         .. code-block:: python
-          :name: code-example1
+            :name: code-example2
 
             import paddle
             import paddle.profiler as profiler
@@ -103,7 +103,7 @@ class RecordEvent(ContextDecorator):
         Record the time of ending.
 
         .. code-block:: python
-          :name: code-example1
+            :name: code-example3
 
             import paddle
             import paddle.profiler as profiler
@@ -130,7 +130,7 @@ def load_profiler_result(filename: str):
 
     Examples:
         .. code-block:: python
-          :name: code-example1
+            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler

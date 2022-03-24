@@ -35,7 +35,7 @@ class SortedKeys(Enum):
     r"""
     SortedKeys is used to specify how to sort items when printing :ref:`summary <api_profiler_profiler_summary>` table.
 
-    The meaning of each SortedKeys is as following:
+    The meaning of each SortedKeys is as following
         - **SortedKeys.CPUTotal** :  Sorted by CPU total time.
         - **SortedKeys.CPUAvg**  : Sorted by CPU average time.
         - **SortedKeys.CPUMax**  : Sorted by CPU max time.
