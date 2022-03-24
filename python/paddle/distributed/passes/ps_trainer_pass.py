@@ -84,7 +84,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         logger.info("send_ctx: {}".format(send_ctx))
         dummys = []
         for merged_name, send in send_ctx.items():
-            if send.is_sparse() and ps_mode != DistributedMode.GEO:
+            if send.is_sparse(
+            ) and ps_mode != DistributedMode.GEO and ps_mode != DistributedMode.SYNC:
                 continue
             if send.program_id() != id(attrs['loss'].block.program):
                 continue
@@ -446,12 +447,14 @@ class DistributedOpsPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
+        ps_mode = attrs['ps_mode']
         pull_sparse_ops, push_sparse_ops = self._get_pull_sparse_ops(
             main_program, attrs)
         send_ctx = get_the_one_send_context(
             attrs, split_dense_table=attrs['is_heter_ps_mode'])
         self._pull_sparse_fuse(main_program, pull_sparse_ops, attrs, send_ctx)
-        self._push_sparse_fuse(main_program, push_sparse_ops, attrs)
+        if ps_mode == DistributedMode.ASYNC:
+            self._push_sparse_fuse(main_program, push_sparse_ops, attrs)
 
 
 @register_pass("delete_optimizer_pass")
