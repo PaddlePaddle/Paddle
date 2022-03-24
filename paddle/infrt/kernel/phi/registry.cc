@@ -52,6 +52,9 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
       "phi_dt.create_dense_tensor.gpu",
       INFRT_KERNEL(infrt::kernel::phi::CreateGPUDenseTensor),
       {"dims", "lod", "layout", "precision"});
+  registry->AddKernelWithAttrs("phi_dt.memcpy.gpu",
+                               INFRT_KERNEL(infrt::kernel::phi::GpuMemCpy),
+                               {"d2h"});
 #endif
   registry->AddKernelWithAttrs("phi_dt.load_params",
                                INFRT_KERNEL(infrt::kernel::phi::LoadParams),

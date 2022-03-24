@@ -309,7 +309,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
           arg_value = GetOpResult(upstream_op);
         }
       }
-      if (arg_value->is_type<phi::DenseTensor>()) {
+      if (arg_value->is_type<::phi::DenseTensor>()) {
         impl_->runtime->FeedInArgs(
             std::make_pair(std::to_string(i), ValueRef(arg_value)));
       }

@@ -12,30 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#pragma once
+
+#include <mlir/Pass/Pass.h>
 
 namespace infrt {
-namespace kernel {
-namespace phi {
+namespace trt {
 
-::phi::CPUContext CreateCPUContext() {
-  ::phi::CPUContext ctx{};
-  ctx.Init();
-  ctx.SetAllocator(new backends::CpuPhiAllocator{});
-  return ctx;
-}
+std::unique_ptr<mlir::Pass> createTrtTypeConvertPass();
 
-#ifdef INFRT_WITH_GPU
-::phi::GPUContext CreateGPUContext() {
-  ::phi::GPUContext context;
-  context.PartialInitWithoutAllocator();
-  context.SetAllocator(new ::infrt::backends::GpuPhiAllocator{});
-  context.SetHostAllocator(new backends::CpuPhiAllocator{});
-  context.PartialInitWithAllocator();
-  return context;
-}
-#endif
-
-}  // namespace phi
-}  // namespace kernel
+}  // namespace trt
 }  // namespace infrt
