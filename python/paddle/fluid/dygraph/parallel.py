@@ -574,9 +574,7 @@ class DataParallel(layers.Layer):
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
                  find_unused_parameters=False,
-                 process_group=None,
-                 gradient_as_buffer_view=False,
-                 static_graph=False):
+                 process_group=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -584,8 +582,6 @@ class DataParallel(layers.Layer):
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
         self.process_group = process_group
-        self.gradient_as_buffer_view = gradient_as_buffer_view
-        self.static_graph = static_graph
         self.var_dtype = core.eager.Tensor if _in_eager_mode() else core.VarBase
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
