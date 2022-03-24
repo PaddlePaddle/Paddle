@@ -52,7 +52,9 @@ using DDim = phi::DDim;
 template <typename T>
 void LimitGridDim(const GPUContext &ctx, T *grid_dim) {
   auto max_grid_dim = ctx.GetCUDAMaxGridDimSize()[0];
-  if (*grid_dim > max_grid_dim) *grid_dim = max_grid_dim;
+  if (*grid_dim > max_grid_dim) {
+    *grid_dim = max_grid_dim;
+  }
 }
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>

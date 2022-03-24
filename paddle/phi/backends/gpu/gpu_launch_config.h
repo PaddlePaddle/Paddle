@@ -133,7 +133,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
   threads = std::max(64, threads);
   int blocks = DivUp(DivUp(numel, vec_size), threads);
   int limit_blocks = context.GetCUDAMaxGridDimSize()[0];
-  if (blocks > limit_blocks) blocks = limit_blocks;
+  if (blocks > limit_blocks) {
+    blocks = limit_blocks;
+  }
 
   GpuLaunchConfig config;
   config.thread_per_block.x = threads;
