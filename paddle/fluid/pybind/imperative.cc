@@ -655,6 +655,7 @@ void BindImperative(py::module *m_ptr) {
              } else {
                act_name = name.cast<std::string>();
              }
+             VLOG(4) << "Init VarBase :" << act_name;
              new (&self) imperative::VarBase(act_name);
              self.SetPersistable(persistable);
              self.SetType(type);

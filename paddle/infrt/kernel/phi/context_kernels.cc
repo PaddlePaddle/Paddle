@@ -30,6 +30,7 @@ namespace phi {
   ::phi::GPUContext context;
   context.PartialInitWithoutAllocator();
   context.SetAllocator(new ::infrt::backends::GpuPhiAllocator{});
+  context.SetHostAllocator(new backends::CpuPhiAllocator{});
   context.PartialInitWithAllocator();
   return context;
 }
