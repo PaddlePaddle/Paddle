@@ -22,6 +22,7 @@ limitations under the License. */
 namespace phi {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
+  LOG(ERROR) << from << "\t" << to;
   PADDLE_ENFORCE_NE(
       from,
       to,

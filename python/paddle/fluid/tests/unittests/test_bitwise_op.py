@@ -348,6 +348,7 @@ class TestBitwiseNotInt64(TestBitwiseNot):
 class TestBitwiseNotBool(TestBitwiseNot):
     def setUp(self):
         self.op_type = "bitwise_not"
+        self.python_api = paddle.bitwise_not
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
