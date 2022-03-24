@@ -51,6 +51,7 @@ class BaseAPI(object):
                 'func']) == 1 else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
             self.inplace_map = self.parse_inplace(api_item_yaml)
+            self.view_map = self.parse_view(api_item_yaml)
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['api']
@@ -292,6 +293,25 @@ class BaseAPI(object):
                 inplace_map[out_val] = in_val
 
             return inplace_map
+        else:
+            return None
+
+    def parse_view(self, api_item_yaml):
+        if 'view' in api_item_yaml:
+            view_map = {}
+            view_list = api_item_yaml['view'].split(',')
+            for item in view_list:
+                result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
+                in_val = result.group('in')
+                out_val = result.group('out')
+                assert in_val in self.inputs['names'], \
+                    f"{self.api} : View input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                assert out_val in self.outputs['names'], \
+                    f"{self.api} : View output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+
+                view_map[out_val] = in_val
+
+            return view_map
         else:
             return None
 
