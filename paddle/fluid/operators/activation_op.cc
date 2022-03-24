@@ -1496,6 +1496,9 @@ REGISTER_ACTIVATION_OP(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,
                        HardSigmoidGradFunctor);
 REGISTER_ACTIVATION_OP(logsigmoid, LogSigmoid, LogSigmoidFunctor,
                        LogSigmoidGradFunctor);
+REGISTER_ACTIVATION_OP(log2, Log2, Log2Functor, Log2GradFunctor);
+REGISTER_ACTIVATION_OP(log10, Log10, Log10Functor, Log10GradFunctor);
+REGISTER_ACTIVATION_OP(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */
@@ -1867,15 +1870,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
-
-REGISTER_OP_CPU_KERNEL(
-    log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                                            ops::LogGradGradFunctor<float>>,
-    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                             ops::LogGradGradFunctor<double>>,
-    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                             ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/

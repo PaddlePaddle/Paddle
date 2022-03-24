@@ -114,6 +114,7 @@ function create_fake_models() {
     python3 -m pip install  *whl
     cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
+    python3 ${PADDLE_ROOT}/paddle/infrt/tests/model/linear.py
 }
 
 function test_infrt() {

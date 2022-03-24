@@ -22,8 +22,10 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 
 namespace phi {
 
@@ -351,6 +353,14 @@ void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out) {
+  FlattenWithXShapeInferMeta(x, start_axis, stop_axis, out, nullptr);
+}
+
+void FlattenWithXShapeInferMeta(const MetaTensor& x,
+                                int start_axis,
+                                int stop_axis,
+                                MetaTensor* out,
+                                MetaTensor* xshape) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
   if (start_axis < 0) {
@@ -393,6 +403,14 @@ void FlattenInferMeta(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+  if (xshape == nullptr) return;
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
 }
 
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
@@ -1112,6 +1130,44 @@ void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void QrInferMeta(const MetaTensor& x,
+                 const std::string& mode,
+                 MetaTensor* q,
+                 MetaTensor* r) {
+  auto x_dims = x.dims();
+  int x_rank = x_dims.size();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+  bool compute_q;
+  bool reduced_mode;
+  int m = x_dims[x_rank - 2];
+  int n = x_dims[x_rank - 1];
+  int min_mn = std::min(m, n);
+  std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
+
+  if (compute_q) {
+    int k = reduced_mode ? min_mn : m;
+    auto q_dims_vec = phi::vectorize(x_dims);
+    q_dims_vec[q_dims_vec.size() - 1] = k;
+    q->set_dims(phi::make_ddim(q_dims_vec));
+  } else {
+    q->set_dims(phi::make_ddim({0}));
+  }
+
+  int k = reduced_mode ? min_mn : m;
+  auto r_dims_vec = phi::vectorize(x_dims);
+  r_dims_vec[r_dims_vec.size() - 2] = k;
+  r_dims_vec[r_dims_vec.size() - 1] = n;
+  r->set_dims(phi::make_ddim(r_dims_vec));
+
+  q->share_lod(x);
+  r->share_lod(x);
+  q->set_dtype(x.dtype());
+  r->set_dtype(x.dtype());
+}
+
 DDim ReduceInferDim(const MetaTensor& x,
                     const std::vector<int64_t>& axis,
                     bool keep_dim,
@@ -1497,6 +1553,40 @@ void SplitInferMeta(const MetaTensor& x,
   }
 }
 
+void SqueezeInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axes,
+                      MetaTensor* xshape,
+                      MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  // Check input tensor dims (<6) Eigen limit.
+  PADDLE_ENFORCE_LE(x_dims.size(),
+                    6,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) "
+                        "should be in the range of [1, 6] (Eigen limit)."
+                        "But received X's dimensions = %d, X's shape = [%s].",
+                        x_dims.size(),
+                        x_dims));
+
+  auto out_dims = funcs::GetOutputSqueezeShape(axes, x_dims, false);
+  out->set_dims(out_dims);
+  if (x_dims[0] == out_dims[0]) {
+    // Only pass LoD when the first dimension of output and Input(X)
+    // are the same.
+    out->share_lod(x);
+  }
+
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  xshape->set_dtype(x.dtype());
+  out->set_dtype(x.dtype());
+}
+
 /*  Why not use SumRawInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
@@ -1796,6 +1886,20 @@ void UnbindInferMeta(const MetaTensor& x,
   }
 }
 
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  PADDLE_ENFORCE_GE(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(X)'s rank must be at least 2 in TrilTriuOp."));
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
@@ -1982,6 +2086,41 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void UnsqueezeInferMeta(const MetaTensor& x,
+                        const ScalarArray& axes,
+                        MetaTensor* xshape,
+                        MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  // Validity Check: input tensor dims (<6).
+  PADDLE_ENFORCE_LE(x_dims.size(),
+                    6,
+                    phi::errors::InvalidArgument(
+                        "Invalid "
+                        "dimensions, the rank of Input(X) "
+                        "should be in the range of [1, 6] (Eigen limit)"));
+  if (!axes.GetData().empty()) {
+    std::vector<int32_t> tmp;
+    tmp.reserve(axes.GetData().size());
+    std::for_each(axes.GetData().begin(),
+                  axes.GetData().end(),
+                  [&tmp](const int64_t& t) { tmp.push_back(t); });
+    auto out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
+    out->set_dims(out_dims);
+    if (x_dims[0] == out_dims[0]) {
+      out->share_lod(x);
+    }
+  }
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  out->set_dtype(x.dtype());
+  xshape->set_dtype(x.dtype());
+}
+
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
                         DataType dtype,
@@ -1992,7 +2131,6 @@ void OneHotRawInferMeta(const MetaTensor& x,
       x_dims.size(),
       1,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
-
   auto out_dims_vec = phi::vectorize(x_dims);
   out_dims_vec.push_back(depth);
   auto out_dims = phi::make_ddim(out_dims_vec);
