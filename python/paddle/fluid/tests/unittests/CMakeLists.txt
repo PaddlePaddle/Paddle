@@ -131,7 +131,6 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
     LIST(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
-    LIST(REMOVE_ITEM TEST_OPS test_fused_seqpool_cvm_op)
 
 endif()
 
