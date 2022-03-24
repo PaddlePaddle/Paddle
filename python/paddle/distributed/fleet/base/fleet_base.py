@@ -1423,7 +1423,7 @@ class Fleet(object):
             return self._minimize_impl(loss, startup_program, parameter_list,
                                        no_grad_set)
         else:
-            if paddle.fluid.framework.in_dygraph_mode(
+            if paddle.fluid.framework._non_static_mode(
             ) or self._role_maker._is_non_distributed() or self._is_collective:
                 raise ValueError("loss can be list only in PS mode")
             return self._minimize_losses_impl(loss, startup_program,

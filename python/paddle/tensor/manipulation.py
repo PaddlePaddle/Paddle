@@ -17,7 +17,7 @@ from collections import Counter
 
 from ..static import Variable, device_guard
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -264,7 +264,7 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
 
 setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
-if in_dygraph_mode():
+if _in_eager_without_dygraph_check():
     setattr(core.eager.Tensor, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
 
