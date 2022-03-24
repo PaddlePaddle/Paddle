@@ -13,25 +13,19 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_GLOO)
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-template <typename T>
-class NumberCountOpCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support expert count op for cpu kernel now."));
-  }
-};
+template <typename T, typename Context>
+void PNormKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float porder,
+                 int axis,
+                 float epsilon,
+                 bool keepdim,
+                 bool asvector,
+                 DenseTensor* out);
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
