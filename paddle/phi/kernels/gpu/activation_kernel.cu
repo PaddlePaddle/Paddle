@@ -98,7 +98,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, CudaRsqrtFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Softsign, CudaSoftsignFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Log, CudaLogFunctor)
@@ -181,7 +180,6 @@ PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 
 PD_REGISTER_KERNEL(exp,
                    GPU,

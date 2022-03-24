@@ -297,7 +297,6 @@ USE_PHI_FUNCTOR(Square)
 USE_PHI_FUNCTOR(Sqrt)
 USE_PHI_FUNCTOR(Rsqrt)
 USE_PHI_FUNCTOR(Softplus)
-USE_PHI_FUNCTOR(Softsign)
 
 template <typename T>
 using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
@@ -829,6 +828,32 @@ class SquareDoubleGradKernel
   }
 };
 
+template <typename T>
+struct SoftsignFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
+// d(softsign(x))/dx = 1 / (1 + |x|)^2
+// Taken from https://en.wikipedia.org/wiki/Activation_function
+
+template <typename T>
+struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 template <typename DeviceContext, typename Functor>
 class CELUDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -1090,4 +1115,5 @@ class PowGradKernel
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);        \
   __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                     \
   __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                     \
-  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);
+  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);    \
+  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);         

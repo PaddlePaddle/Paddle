@@ -995,32 +995,6 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct SoftsignFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x / (static_cast<T>(1) + x.abs());
-  }
-};
-
-// d(softsign(x))/dx = 1 / (1 + |x|)^2
-// Taken from https://en.wikipedia.org/wiki/Activation_function
-
-template <typename T>
-struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device,
-            typename X,
-            typename Out,
-            typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) =
-        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct LeakyReluFunctor : public BaseActivationFunctor<T> {
   float alpha;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -1836,29 +1810,6 @@ struct CudaSinFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(sin(x));
   }
-};
-
-template <typename T>
-struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // softsign(x) = x / (1 + abs(x))
-  __device__ __forceinline__ T operator()(const T x) const {
-    return x / (one + abs(x));
-  }
-};
-
-template <typename T>
-struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // dx = dout / (1 + abs(x))^2
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    T temp = one + abs(x);
-    return dout / (temp * temp);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>

@@ -78,7 +78,6 @@ DEFINE_CPU_ACTIVATION_KERNEL(Expm1, Expm1Functor)
 DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, ReciprocalFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Square, SquareFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, SqrtFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
@@ -136,7 +135,6 @@ PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 
 PD_REGISTER_KERNEL(
     exp, CPU, ALL_LAYOUT, phi::ExpKernel, float, double, int, int64_t) {}

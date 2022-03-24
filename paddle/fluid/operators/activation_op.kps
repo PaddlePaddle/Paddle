@@ -194,6 +194,29 @@ struct CudaSwishGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // softsign(x) = x / (1 + abs(x))
+  __device__ __forceinline__ T operator()(const T x) const {
+    return x / (one + abs(x));
+  }
+};
+
+template <typename T>
+struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout / (1 + abs(x))^2
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    T temp = one + abs(x);
+    return dout / (temp * temp);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct CudaHardSwishFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float threshold;
@@ -399,7 +422,6 @@ USE_PHI_FUNCTOR(CudaSquare)
 USE_PHI_FUNCTOR(CudaSqrt)
 USE_PHI_FUNCTOR(CudaRsqrt)
 USE_PHI_FUNCTOR(CudaSoftplus)
-USE_PHI_FUNCTOR(CudaSoftsign)
 
 
 template <typename T>
@@ -565,6 +587,7 @@ namespace ops = paddle::operators;
   __macro(round, Round, CudaRoundFunctor, CudaZeroGradFunctor);               \
   __macro(soft_relu, SoftRelu, CudaSoftReluFunctor, CudaSoftReluGradFunctor); \
   __macro(relu6, Relu6, CudaRelu6Functor, CudaRelu6GradFunctor);              \
+  __macro(softsign, Softsign, CudaSoftsignFunctor, CudaSoftsignGradFunctor);  \
   __macro(tanh_shrink, TanhShrink, CudaTanhShrinkFunctor,                     \
           CudaTanhShrinkGradFunctor);                                         \
   __macro(hard_shrink, HardShrink, CudaHardShrinkFunctor,                     \

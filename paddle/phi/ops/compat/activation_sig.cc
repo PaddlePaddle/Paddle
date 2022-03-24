@@ -48,7 +48,6 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asinh, "asinh", );        // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );        // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );        // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softsign, "softsign", );  // NOLINT
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(BRelu, "brelu", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LeakyRelu, "leaky_relu", "alpha");
@@ -86,6 +85,27 @@ DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Rsqrt, "rsqrt", );            // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
                                  "hard_sigmoid",
                                  "slope" comma "offset");  // NOLINT
+KernelSignature SqrtActiOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if ( ctx.IsDenseTensorInput("X"))
+  {
+  return KernelSignature(
+      "sqrt", {"X"}, {}, {"Out"});
+  }
+
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
+KernelSignature SquareActiOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if ( ctx.IsDenseTensorInput("X"))
+  {
+  return KernelSignature(
+      "square", {"X"}, {}, {"Out"});
+  }
+
+  return KernelSignature("unregistered", {}, {}, {});
+}
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -185,7 +205,6 @@ PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(exp_grad, phi::ExpGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(expm1_grad, phi::Expm1GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(square_grad, phi::SquareGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(softsign_grad, phi::SoftsignGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reciprocal_grad,
                            phi::ReciprocalGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(sqrt_grad, phi::SqrtGradOpArgumentMapping);
@@ -235,3 +254,6 @@ PD_REGISTER_ARG_MAPPING_FN(log_grad_grad, phi::LogDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log2_grad, phi::Log2GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log10_grad, phi::Log10GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log1p_grad, phi::Log1pGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(sqrt, phi::SqrtActiOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(square, phi::SquareActiOpArgumentMapping);
