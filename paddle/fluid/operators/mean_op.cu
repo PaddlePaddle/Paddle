@@ -65,9 +65,10 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
     for (decltype(rank) i = 0; i < rank; ++i) {
       reduce_dims.push_back(i);
     }
-    TensorReduceImpl<T, T, kernel_primitives::AddFunctor, Div>(
-        context.cuda_device_context(), *input, output, Div(numel), reduce_dims,
-        stream);
+    TensorReduceImpl<T, T, kernel_primitives::AddFunctor,
+                     kps::IdentityFunctor<T>>(
+        context.cuda_device_context(), *input, output,
+        kps::IdentityFunctor<T>(), reduce_dims, stream, true);
   }
 };
 

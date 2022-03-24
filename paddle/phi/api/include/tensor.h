@@ -518,6 +518,30 @@ class PADDLE_API Tensor final {
 
   /* Part 10: Auto generated Tensor methods */
 
+  /* Part 11: Methods of converting SparseTensor and DenseTensor to each other
+   */
+  /**
+   * @brief Convert DenseTensor or SparseCsrTensor to SparseCooTensor
+   *
+   * @param sparse_dim, The number of sparse dimensions
+   * @return Tensor
+   */
+  Tensor to_sparse_coo(const int64_t sparse_dim) const;
+
+  /**
+   * @brief Convert DenseTensor or SparseCooTensor to SparseCsrTensor
+   *
+   * @return Tensor
+   */
+  Tensor to_sparse_csr() const;
+
+  /**
+   * @brief Convert SparseCooTensor or SparseCsrTensor to DenseTensor
+   *
+   * @return Tensor
+   */
+  Tensor to_dense() const;
+
  private:
   /**
    * [ Why use abstract TensorImpl interface here? ]
