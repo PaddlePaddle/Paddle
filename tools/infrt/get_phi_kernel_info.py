@@ -62,7 +62,7 @@ def get_kernel_info(file_path):
     prev = []
     for line in cont:
         info = line.strip().split()
-        if info == '':
+        if not info:
             continue
 
         if len(prev) == 0:
@@ -80,7 +80,7 @@ def get_kernel_info(file_path):
 def get_infermeta_info(file_path):
     f = open(file_path, "r")
     cont = f.readlines()
-    return [l.strip() for l in cont if l.strip() != '']
+    return [l.strip() for l in cont if l.strip() != ""]
 
 
 def get_attr_info(file_path):

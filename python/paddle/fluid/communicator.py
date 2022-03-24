@@ -97,7 +97,9 @@ class Communicator(object):
                       recv_ctx,
                       proto_txt,
                       unit64_hosts,
-                      scope=global_scope()):
+                      scope=None):
+        if scope == None:
+            scope = global_scope()
         self.communicator_ = core.DistCommunicator(self.mode, proto_txt,
                                                    unit64_hosts, send_ctx,
                                                    recv_ctx, scope, self.envs)
@@ -191,7 +193,9 @@ class Communicator(object):
     def pull_dense(self, context):
         self.communicator_.pull_dense(context)
 
-    def push_sparse_param(self, var_name, table_id=-1, scope=global_scope()):
+    def push_sparse_param(self, var_name, table_id=-1, scope=None):
+        if scope == None:
+            scope = global_scope()
         if not self.is_running():
             raise ValueError(
                 "Communicator should init first. Using fleet.init_worker() before push_sparse_param()"
