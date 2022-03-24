@@ -124,6 +124,10 @@ class OpUtilsMap {
         {std::move(op_type), std::move(base_kernel_name)});
   }
 
+  bool HasArgumentMappingFn(const std::string& op_type) const {
+    return arg_mapping_fn_map_.count(op_type);
+  }
+
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
