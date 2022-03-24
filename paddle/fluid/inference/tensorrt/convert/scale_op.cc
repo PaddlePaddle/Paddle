@@ -137,6 +137,11 @@ class ScaleOpConverter : public OpConverter {
           ("Scale: Shuffle_reshape (Output: " + out_name + ")").c_str());
     }
     RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
+
+    LOG(INFO) << " scale in dim ";
+    for (int k = 0; k < input_dim.nbDims; ++k) {
+      LOG(INFO) << input_dim.d[k];
+    }
   }
 };
 

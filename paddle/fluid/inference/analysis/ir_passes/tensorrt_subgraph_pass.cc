@@ -396,8 +396,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       return;
     }
   }
-
-  // the following code will NOT run in following situation:
+// the following code will NOT run in following situation:
   // 1. calibraion mode (generate trt int8 calibraiton table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
@@ -406,12 +405,24 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto *scope = param_scope();
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
   std::unordered_set<std::string> param_set(params.begin(), params.end());
+
+  for(size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
+    LOG(INFO) << "========One Op Begin======";
+    LOG(INFO) << block_desc_temp.Op(i)->Type();
+    auto ins = block_desc_temp.Op(i)->InputArgumentNames();
+    for (size_t j = 0; j < ins.size(); ++j) {
+      LOG(INFO) << ins[j];
+    }
+    LOG(INFO) << "========One Op End======";
+  }
+
   inference::Singleton<inference::tensorrt::OpConverter>::Global()
       .ConvertBlockToTRTEngine(
           &block_desc_temp, *scope,
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set, output_mapping, trt_engine);
 
+  LOG(INFO) << "===========ConvertBlockToTRTEngine end==========";
   if (use_static_engine) {
     nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
     trt_engine_serialized_data =

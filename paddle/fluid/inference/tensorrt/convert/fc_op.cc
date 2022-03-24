@@ -313,6 +313,12 @@ class FcOpConverter : public OpConverter {
       }
       regist_fc(reshape_itensor, n_output, weight, bias);
     }
+
+    LOG(INFO) << "========W=======" << weight_h << " " << weight_w << " , x_nbD " << x_dim.nbDims;
+    for (int k = 0; k < x_dim.nbDims; ++k) {
+        LOG(INFO) << x_dim.d[k];
+    }
+
   }
 };
 
