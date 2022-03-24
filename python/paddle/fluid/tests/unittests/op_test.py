@@ -698,7 +698,10 @@ class OpTest(unittest.TestCase):
                 + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
                 self.__class__.__name__)
 
-    def _calc_python_api_output(self, place):
+    def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
+        """ set egr_inps and egr_oups = None if you want to create it by yourself.
+        """
+
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
@@ -753,10 +756,15 @@ class OpTest(unittest.TestCase):
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
             if not isinstance(ret_tuple, (tuple, list)):
                 ret_tuple = [ret_tuple]
-            assert len(output_sig) == len(
-                ret_tuple), "expect %d outputs, but get %d outputs" % (
-                    len(output_sig), len(ret_tuple))
-            return {a: b for a, b in zip(output_sig, ret_tuple)}
+            if len(output_sig) == len(ret_tuple):
+                # [assumption]: we assume {"Out": [Tensor]}
+                return {a: [b] for a, b in zip(output_sig, ret_tuple)}
+            else:
+                # [assumption]: return multi-Tensor in a single output. such as paddle.split()
+                assert len(
+                    output_sig
+                ) == 1, "Don't support multi-output with multi-tensor output."
+                return {output_sig[0]: ret_tuple}
 
         def assumption_assert_and_transform(args, inp_num):
             """
@@ -775,6 +783,18 @@ class OpTest(unittest.TestCase):
             ] + args[inp_num:]
             return args
 
+        def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
+                                  attrs_outputs):
+            try:
+                kernel_sig = _dygraph_tracer()._get_kernel_signature(
+                    self.op_type, eager_tensor_inputs, eager_tensor_outputs,
+                    attrs_outputs)
+            except RuntimeError as re:
+                """ we think the kernel_sig is missing.
+                """
+                kernel_sig = None
+            return kernel_sig
+
         def cal_python_api(python_api, args, kernel_sig):
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             args = assumption_assert_and_transform(args, len(inputs_sig))
@@ -785,10 +805,10 @@ class OpTest(unittest.TestCase):
             block = fluid.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
-            eager_tensor_inputs = self.append_input_output_for_dygraph(
+            eager_tensor_inputs = egr_inps if egr_inps else self.append_input_output_for_dygraph(
                 op_proto, self.inputs, True, False, block)
             # prepare output variable
-            eager_tensor_outputs = self.append_input_output_for_dygraph(
+            eager_tensor_outputs = egr_oups if egr_oups else self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
             # prepare attrbutes
@@ -798,13 +818,13 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            kernel_sig = _dygraph_tracer()._get_kernel_signature(
-                self.op_type, eager_tensor_inputs, eager_tensor_outputs,
-                attrs_outputs)
-
+            kernel_sig = _get_kernel_signature(
+                eager_tensor_inputs, eager_tensor_outputs, attrs_outputs)
+            if not kernel_sig:
+                return None
             assert hasattr(
                 self, "python_api"
-            ), "Please set the `self.python_api` if you want to compare python api output."
+            ), "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_eager = True" % self.op_type
             args = prepare_python_api_arguments(
                 self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig)
             """ we directly return the cal_python_api value because the value is already tensor. 
@@ -1285,14 +1305,13 @@ class OpTest(unittest.TestCase):
                 place, no_check_set=no_check_set)
 
         if check_eager:
+            # we only check end2end api when check_eager=True
             with _test_eager_guard():
-                eager_dygraph_outs = self._calc_dygraph_output(
-                    place, no_check_set=no_check_set)
-                # we only check end2end api when check_eager=True
-                if hasattr(self, "python_api"):
-                    api_outs = self._calc_python_api_output(place)
-                    self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
-                                                         place)
+                eager_dygraph_outs = self._calc_python_api_output(place)
+                if eager_dygraph_outs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    eager_dygraph_outs = self._calc_dygraph_output(
+                        place, no_check_set=no_check_set)
 
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
@@ -1826,7 +1845,7 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
-                no_grad_set)
+                no_grad_set, False)
             fp32_grads = []
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
@@ -1842,7 +1861,7 @@ class OpTest(unittest.TestCase):
             with _test_eager_guard():
                 eager_dygraph_grad = self._get_dygraph_grad(
                     inputs_to_check, place, output_names,
-                    user_defined_grad_outputs, no_grad_set)
+                    user_defined_grad_outputs, no_grad_set, check_eager)
                 fp32_grads = []
                 for grad in eager_dygraph_grad:
                     if grad.dtype == np.uint16:
@@ -1868,7 +1887,8 @@ class OpTest(unittest.TestCase):
                           place,
                           output_names,
                           user_defined_grad_outputs=None,
-                          no_grad_set=None):
+                          no_grad_set=None,
+                          check_eager=False):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1889,11 +1909,16 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            block.append_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=attrs_outputs if hasattr(self, "attrs") else None)
+            if check_eager:
+                outputs = self._calc_python_api_output(place, inputs, outputs)
+
+            # if outputs is None, kernel sig is empty or other error is happens.
+            if not check_eager or outputs is None:
+                block.append_op(
+                    type=self.op_type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(outputs,

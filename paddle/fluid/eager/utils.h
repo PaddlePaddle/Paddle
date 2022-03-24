@@ -217,6 +217,13 @@ class EagerUtils {
       const std::vector<paddle::experimental::Tensor>& tensors);
   static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
       const paddle::experimental::Tensor& tensor);
+
+  /**
+    * Fill Zero
+    * **/
+  static void FillZeroForEmptyGradInputs(
+      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads,
+      const std::vector<std::vector<GradSlotMeta>>& grad_out_metas);
 };
 
 }  // namespace egr

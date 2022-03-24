@@ -454,6 +454,9 @@ class GraphTable : public SparseTable {
   int32_t get_server_index_by_id(int64_t id);
   Node *find_node(int64_t id);
 
+  virtual int32_t Pull(TableContext &context) { return 0; }
+  virtual int32_t Push(TableContext &context) { return 0; }
+
   virtual int32_t pull_sparse(float *values,
                               const PullSparseValue &pull_value) {
     return 0;

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/impl/activation_grad_impl.h"
+#include "paddle/phi/kernels/impl/activation_impl.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
@@ -93,6 +93,10 @@ DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log, CudaLogFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log2, CudaLog2Functor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log10, CudaLog10Functor)
+DEFINE_GPU_ACTIVATION_KERNEL(Log1p, CudaLog1pFunctor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -164,3 +168,7 @@ PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
+PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)
