@@ -2289,6 +2289,10 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dims(phi::make_ddim({-1, rank}));
   out->set_dtype(DataType::INT64);
 }
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({1});
+  out->set_dtype(x.dtype());
+}
 
 }  // namespace phi
 

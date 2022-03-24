@@ -139,5 +139,8 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                const MetaTensor& out_grad,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
+void SquaredL2NormGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& out_grad,
+                                MetaTensor* x_grad);
 
 }  // namespace phi

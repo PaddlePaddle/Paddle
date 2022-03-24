@@ -86,10 +86,15 @@ $$Out = \sum_{i} X_{i}^2$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm), SquaredL2NormInferShapeFunctor,
+                            PD_INFER_META(phi::SquaredL2NormInferMeta));
 REGISTER_OPERATOR(squared_l2_norm, ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
                   ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
                   ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
+DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm_grad,
+                            SquaredL2NormGradInferShapeFunctor,
+                            PD_INFER_META(phi::SquaredL2NormGradInferMeta));
 REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,
