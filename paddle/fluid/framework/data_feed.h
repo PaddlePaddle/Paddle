@@ -390,7 +390,10 @@ class CustomParser {
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
-  virtual int ParseInstance(int len, const char* str, std::vector<Record>* instances) {return 0;};
+  virtual int ParseInstance(int len, const char* str,
+                            std::vector<Record>* instances) {
+    return 0;
+  };
   virtual bool ParseOneInstance(
       const std::string& line,
       std::function<void(std::vector<SlotRecord>&, int)>
@@ -731,8 +734,11 @@ class InMemoryDataFeed : public DataFeed {
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   virtual void ParseOneInstanceFromSo(const char* str, T* instance,
                                       CustomParser* parser) {}
-  virtual int ParseInstanceFromSo(int len, const char* str, std::vector<T>* instances,
-                                      CustomParser* parser) { return 0; }
+  virtual int ParseInstanceFromSo(int len, const char* str,
+                                  std::vector<T>* instances,
+                                  CustomParser* parser) {
+    return 0;
+  }
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
   virtual void PutToFeedVec(const T* ins_vec, int num) = 0;
 
@@ -1107,9 +1113,10 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
   virtual void ParseOneInstanceFromSo(const char* str, Record* instance,
-                                      CustomParser* parser) {};
-  virtual int ParseInstanceFromSo(int len, const char* str, std::vector<Record>* instances,
-                                      CustomParser* parser);
+                                      CustomParser* parser){};
+  virtual int ParseInstanceFromSo(int len, const char* str,
+                                  std::vector<Record>* instances,
+                                  CustomParser* parser);
   virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);

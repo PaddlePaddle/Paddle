@@ -305,15 +305,19 @@ class PSGPUWrapper {
   }
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
-  
+
   int UseAfsApi() { return use_afs_api_; }
 
 #ifdef PADDLE_WITH_PSLIB
-  std::shared_ptr<paddle::ps::AfsReader> OpenReader(const std::string& filename) { return afs_handler_.open_reader(filename); }
+  std::shared_ptr<paddle::ps::AfsReader> OpenReader(
+      const std::string& filename) {
+    return afs_handler_.open_reader(filename);
+  }
 
-  void InitAfsApi(const std::string& fs_name, const std::string& fs_user, const std::string& pass_wd, const std::string& conf);
+  void InitAfsApi(const std::string& fs_name, const std::string& fs_user,
+                  const std::string& pass_wd, const std::string& conf);
 #endif
- 
+
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;

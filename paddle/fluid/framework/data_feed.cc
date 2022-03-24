@@ -556,12 +556,13 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
   char* buf = (char*)malloc(buf_len + 10);
   auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
-  
+
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
 
@@ -572,21 +573,21 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
     platform::Timer timeline;
     timeline.Start();
     if (ps_gpu_ptr->UseAfsApi()) {
-        auto afs_reader = ps_gpu_ptr->OpenReader(filename);
-        int read_len = 0;
-        char* cursor = buf;
-        int remain = 0;
-        while ((read_len = afs_reader->read(cursor, buf_len - remain)) > 0) {
-            std::vector<T> instances;
-            read_len += remain;
-            remain = ParseInstanceFromSo(read_len, buf, &instances, parser);
-            input_channel_->Write(std::move(instances));
-            instances = std::vector<T>();
-            if (remain) {
-                memmove(buf, buf + read_len - remain, remain);
-            }
-            cursor = buf + remain;
+      auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+      int read_len = 0;
+      char* cursor = buf;
+      int remain = 0;
+      while ((read_len = afs_reader->read(cursor, buf_len - remain)) > 0) {
+        std::vector<T> instances;
+        read_len += remain;
+        remain = ParseInstanceFromSo(read_len, buf, &instances, parser);
+        input_channel_->Write(std::move(instances));
+        instances = std::vector<T>();
+        if (remain) {
+          memmove(buf, buf + read_len - remain, remain);
         }
+        cursor = buf + remain;
+      }
     } else {
       VLOG(0) << "Should Call InitAfsApi First";
     }
@@ -1091,10 +1092,10 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
   *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
 }
 
-int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(int len, const char* str,
-                                                    std::vector<Record>* instances,
-                                                    CustomParser* parser) {
-  //VLOG(0) << "parser: " << parser;
+int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(
+    int len, const char* str, std::vector<Record>* instances,
+    CustomParser* parser) {
+  // VLOG(0) << "parser: " << parser;
   return parser->ParseInstance(len, str, instances);
 }
 
@@ -2082,7 +2083,8 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
+    (defined PADDLE_WITH_PSLIB)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
