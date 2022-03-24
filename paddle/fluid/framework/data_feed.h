@@ -415,7 +415,7 @@ struct UsedSlotGpuType {
   int is_uint64_value;
   int slot_value_idx;
 };
-#define CUDA_CHECK(val) CHECK(val == cudaSuccess)
+
 template <typename T>
 struct CudaBuffer {
   T* cu_buffer;
@@ -430,12 +430,12 @@ struct CudaBuffer {
   uint64_t size() { return buf_size; }
   void malloc(uint64_t size) {
     buf_size = size;
-    CUDA_CHECK(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMalloc(reinterpret_cast<void**>(&cu_buffer), size * sizeof(T)));
   }
   void free() {
     if (cu_buffer != NULL) {
-      CUDA_CHECK(cudaFree(cu_buffer));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaFree(cu_buffer));
       cu_buffer = NULL;
     }
     buf_size = 0;
@@ -471,13 +471,14 @@ struct HostBuffer {
   const T& operator[](size_t i) const { return host_buffer[i]; }
   void malloc(size_t len) {
     buf_size = len;
-    CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
-                             buf_size * sizeof(T), cudaHostAllocDefault));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
+                      buf_size * sizeof(T), cudaHostAllocDefault));
     CHECK(host_buffer != NULL);
   }
   void free() {
     if (host_buffer != NULL) {
-      CUDA_CHECK(cudaFreeHost(host_buffer));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaFreeHost(host_buffer));
       host_buffer = NULL;
     }
     buf_size = 0;
@@ -598,8 +599,8 @@ class MiniBatchGpuPack {
       return;
     }
     buf->resize(size);
-    CUDA_CHECK(cudaMemcpyAsync(buf->data(), val, size * sizeof(T),
-                               cudaMemcpyHostToDevice, stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+        buf->data(), val, size * sizeof(T), cudaMemcpyHostToDevice, stream_));
   }
   template <typename T>
   void copy_host2device(CudaBuffer<T>* buf, const HostBuffer<T>& val) {
