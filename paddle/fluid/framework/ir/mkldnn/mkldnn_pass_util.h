@@ -21,11 +21,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SaveQuantInfo(
-    ir::Graph* graph, const std::string& flag, const std::string key_suffix,
-    std::unordered_map<std::string, std::vector<float>>* var_quant_scales) {
+static void SaveInfoInTheFirstOp(
+    ir::Graph* graph, const std::string& flag, const std::string& key_suffix,
+    std::unordered_map<std::string, std::vector<float>>* info_map) {
   VLOG(3) << "save variables in the first op's attr";
 
+  const std::string suffix = "_" + key_suffix + "_" + flag;
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
@@ -33,11 +34,39 @@ void SaveQuantInfo(
       continue;
     op_node->Op()->SetAttr(flag, true);
 
-    for (auto iter = var_quant_scales->begin(); iter != var_quant_scales->end();
-         ++iter) {
-      op_node->Op()->SetAttr(iter->first + key_suffix, iter->second);
+    for (auto iter = info_map->begin(); iter != info_map->end(); ++iter) {
+      op_node->Op()->SetAttr(iter->first + suffix, iter->second);
     }
     break;
+  }
+}
+
+static void GetInfoFromTheFirstOp(
+    ir::Graph* graph, const std::string& flag, const std::string& key_suffix,
+    std::unordered_map<std::string, std::vector<float>>* info_map) {
+  VLOG(3) << "get variables from the first op's attr";
+
+  const std::string suffix = "_" + key_suffix + "_" + flag;
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp()) continue;
+
+    auto* op_desc = op_node->Op();
+    if (op_desc->GetAttrIfExists<bool>(flag)) {
+      op_desc->RemoveAttr(flag);
+      std::vector<std::string> attr_names = op_desc->AttrNames();
+      for (auto fake_name : attr_names) {
+        if (fake_name.find(suffix) != std::string::npos) {
+          size_t pos = fake_name.find(suffix);
+          std::string name = fake_name.substr(0, pos);
+          auto scales_vector =
+              BOOST_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
+          info_map->insert(std::make_pair(name, scales_vector));
+          op_desc->RemoveAttr(fake_name);
+        }
+      }
+      break;
+    }
   }
 }
 

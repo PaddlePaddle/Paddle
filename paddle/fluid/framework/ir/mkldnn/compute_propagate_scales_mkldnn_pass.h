@@ -21,7 +21,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using StringTensorMap = std::unordered_map<std::string, Tensor>;
 using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor>>;
 
 class ComputePropagateScalesMkldnnPass : public FusePassBase {
@@ -37,7 +36,6 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
                            Tensor* tensor) const;
 
   void GetQuantInfo(ir::Graph* graph, Scope* scope,
-                    StringTensorMap* weight_thresholds,
                     StringPairMap* var_quant_scales) const;
 
   std::vector<float> GetScales(Tensor* tensor, int axis) const;
@@ -81,6 +79,10 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   void PropagateScales(
       ir::Graph* graph, StringPairMap* var_quant_scales,
       const std::unordered_set<std::string> scale_immutable_ops) const;
+
+  void ConvertStringPairMap(
+      StringPairMap* var_quant_scales,
+      std::unordered_map<std::string, std::vector<float>>* info_map) const;
 };
 }  // namespace ir
 }  // namespace framework

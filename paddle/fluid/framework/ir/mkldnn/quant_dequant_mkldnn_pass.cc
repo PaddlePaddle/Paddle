@@ -526,8 +526,8 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
   // save var_quant_scales in the first op's attr
   // for compute_propagate_scales_mkldnn_pass
-  SaveQuantInfo(graph, "has_quant_info", "_var_quant_scales",
-                &var_quant_scales);
+  SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales",
+                       &var_quant_scales);
 }
 
 }  // namespace ir

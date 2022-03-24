@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -32,44 +33,15 @@ void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
 }
 
 void ComputePropagateScalesMkldnnPass::GetQuantInfo(
-    ir::Graph* graph, Scope* scope, StringTensorMap* weight_thresholds,
-    StringPairMap* var_quant_scales) const {
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp()) continue;
+    ir::Graph* graph, Scope* scope, StringPairMap* var_quant_scales) const {
+  std::unordered_map<std::string, std::vector<float>> info_map{};
+  GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
-    auto* op_desc = op_node->Op();
-    if (op_desc->GetAttrIfExists<bool>("has_quant_info")) {
-      op_desc->RemoveAttr("has_quant_info");
-      std::vector<std::string> attr_names = op_desc->AttrNames();
-      for (auto fake_name : attr_names) {
-        if (fake_name.find("_weight_thresholds") != std::string::npos) {
-          size_t pos = fake_name.find("_weight_thresholds");
-          std::string name = fake_name.substr(0, pos);
-          auto thresholds_vector =
-              BOOST_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
-
-          Tensor tensor;
-          GetTensorFromVector(thresholds_vector, &tensor);
-          weight_thresholds->insert(std::make_pair(name, tensor));
-          op_desc->RemoveAttr(fake_name);
-        }
-
-        if (fake_name.find("_var_quant_scales") != std::string::npos) {
-          size_t pos = fake_name.find("_var_quant_scales");
-          std::string name = fake_name.substr(0, pos);
-          auto scales_vector =
-              BOOST_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
-
-          Tensor tensor;
-          GetTensorFromVector(scales_vector, &tensor);
-          auto pair = std::make_pair(false, tensor);
-          var_quant_scales->insert(std::make_pair(name, pair));
-          op_desc->RemoveAttr(fake_name);
-        }
-      }
-      break;
-    }
+  for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
+    Tensor tensor;
+    GetTensorFromVector(iter->second, &tensor);
+    auto pair = std::make_pair(false, tensor);
+    var_quant_scales->insert(std::make_pair(iter->first, pair));
   }
 }
 
@@ -396,6 +368,21 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
   }
 }
 
+void ComputePropagateScalesMkldnnPass::ConvertStringPairMap(
+    StringPairMap* var_quant_scales,
+    std::unordered_map<std::string, std::vector<float>>* info_map) const {
+  for (auto iter = var_quant_scales->begin(); iter != var_quant_scales->end();
+       iter++) {
+    auto* data = iter->second.second.mutable_data<float>(platform::CPUPlace());
+    std::vector<float> data_v;
+    for (int i = 0; i < iter->second.second.numel(); i++) {
+      data_v.push_back(data[i]);
+    }
+
+    info_map->insert(std::make_pair(iter->first, data_v));
+  }
+}
+
 void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle model to mkldnn quantized model.";
   const std::string pattern_name = "compute_propagate_scales_mkldnn_pass";
@@ -405,13 +392,18 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       "transpose2", "reshape2",       "pool2d",
       "slice",      "nearest_interp", "nearest_interp_v2"};
 
-  StringTensorMap weight_thresholds{};
   StringPairMap var_quant_scales{};
 
   auto* scope = param_scope();
-  GetQuantInfo(graph, scope, &weight_thresholds, &var_quant_scales);
+  GetQuantInfo(graph, scope, &var_quant_scales);
   ComputeWeightScales(graph, scope, &var_quant_scales);
   PropagateScales(graph, &var_quant_scales, scale_immutable_ops);
+
+  // save var_quant_scales in the first op's attr
+  // for cpu_quantize_pass
+  std::unordered_map<std::string, std::vector<float>> info_map;
+  ConvertStringPairMap(&var_quant_scales, &info_map);
+  SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 }
 
 }  // namespace ir
