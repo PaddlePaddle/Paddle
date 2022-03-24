@@ -119,7 +119,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if frame_length > x.shape[axis]:
             raise ValueError(
                 f'Attribute frame_length should be less equal than sequence length, '
@@ -325,7 +325,7 @@ def stft(x,
     if win_length is None:
         win_length = n_fft
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert 0 < n_fft <= x.shape[-1], \
             f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
 
@@ -496,7 +496,7 @@ def istft(x,
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if onesided:
             assert (fft_size == n_fft // 2 + 1), \
                 'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
@@ -566,7 +566,7 @@ def istft(x,
         window_envelop = window_envelop[start:start + length]
 
     # Check whether the Nonzero Overlap Add (NOLA) constraint is met.
-    if in_dygraph_mode() and window_envelop.abs().min().item() < 1e-11:
+    if _non_static_mode() and window_envelop.abs().min().item() < 1e-11:
         raise ValueError(
             'Abort istft because Nonzero Overlap Add (NOLA) condition failed. For more information about NOLA constraint please see `scipy.signal.check_NOLA`(https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.check_NOLA.html).'
         )

@@ -826,7 +826,7 @@ def monkey_patch_varbase():
             res.persistable = self.persistable
             return res
 
-    if core._in_eager_mode() and not hasattr(core, "eager"):
+    if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
     for method_name, method in (
