@@ -250,6 +250,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/eager/amp_utils.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 
 {}
 {}
