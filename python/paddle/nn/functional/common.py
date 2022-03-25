@@ -28,7 +28,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import _varbase_creator, _in_eager_mode
+from ...fluid.framework import _varbase_creator
 
 from ...fluid import dygraph_utils
 from ...fluid import layers
