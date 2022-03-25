@@ -158,6 +158,11 @@ class EagerUtils {
     }
   }
 
+  // View Strategy
+  static void HandleViewBetweenInputAndOutput(
+      const std::shared_ptr<EagerVariable>& input_var,
+      const std::shared_ptr<EagerVariable>& view_output_var);
+
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
       TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
