@@ -27,6 +27,7 @@
 #endif
 #include "paddle/fluid/distributed/ps/table/ctr_accessor.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
+#include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
 #include "paddle/fluid/distributed/ps/table/tensor_accessor.h"
 #include "paddle/fluid/distributed/ps/table/tensor_table.h"
 
@@ -49,6 +50,7 @@ REGISTER_PSCORE_CLASS(Table, MemorySparseTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseGeoTable);
 REGISTER_PSCORE_CLASS(ValueAccessor, CommMergeAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, CtrCommonAccessor);
+REGISTER_PSCORE_CLASS(ValueAccessor, SparseAccessor);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
