@@ -14,7 +14,7 @@
 
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 
 
@@ -40,7 +40,7 @@ def _number_count(numbers, upper_range):
             number_count = paddle.distributed.utils.number_count(numbers, upper_range)
             print(number_count) # the result: [2, 0, 2, 0, 0, 0]
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return core.ops.number_count(numbers, 'upper_range', upper_range)
     else:
         op_type = 'number_count'
@@ -86,7 +86,7 @@ def _assign_pos(x, cum_count):
             pos = paddle.distributed.utils.assign_pos(x=numbers, cum_count=num_cum)
             print(pos) # the result: (2, 0, 3, 1)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return core.ops.assign_pos(x, cum_count, cum_count[-1])
     else:
         op_type = 'assign_pos'
@@ -103,6 +103,29 @@ def _assign_pos(x, cum_count):
             },
             outputs={'Out': [out]})
         return out
+
+
+def _random_routing(topk_idx, topk_value, prob, topk=2):
+    r"""
+        random routing topk gate idx
+        ```
+            out = topk_idx
+            for i in len(topk_idx):
+                if topk * value[i][topk-1] < prob[i]:
+                    out[i][topk-1] = -1
+        ```
+        Args:
+            topk_idx: gate idx, shape=(N, topk)
+            topk_value: values, shape = topk_idx.shape
+            prob: random prob, shape=(topk_idx.shape[0],)
+    """
+    if topk == 2:
+        if _non_static_mode():
+            return core.ops.random_routing(prob, topk_value, topk_idx)
+        else:
+            raise RuntimeError("Not supporting static mode now")
+    else:
+        raise RuntimeError("only topk=2 is supported now")
 
 
 def _limit_by_capacity(expert_count, capacity, n_worker):
@@ -126,7 +149,7 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             out = paddle.distributed.utils.limit_by_capacity(expert_count, capacity, n_work)
             print(out) # the result: [1, 2, 2, 4, 3, 3]
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return core.ops.limit_by_capacity(expert_count, capacity, 'n_worker',
                                           n_worker)
     else:
@@ -170,7 +193,7 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
               [1, 3, 3, 3, -1, 2, 1, 1])
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return core.ops.prune_gate_by_capacity(
             gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker)
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
@@ -190,26 +213,3 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
                "n_worker": n_worker})
 
     return new_gate_idx
-
-
-def _random_routing(topk_idx, topk_value, prob, topk=2):
-    r"""
-        random routing topk gate idx
-        ```
-            out = topk_idx
-            for i in len(topk_idx):
-                if topk * value[i][topk-1] < prob[i]:
-                    out[i][topk-1] = -1
-        ```
-        Args:
-            topk_idx: gate idx, shape=(N, topk)
-            topk_value: values, shape = topk_idx.shape
-            prob: random prob, shape=(topk_idx.shape[0],)
-    """
-    if topk == 2:
-        if in_dygraph_mode():
-            return core.ops.random_routing(prob, topk_value, topk_idx)
-        else:
-            raise RuntimeError("Not supporting static mode now")
-    else:
-        raise RuntimeError("only topk=2 is supported now")

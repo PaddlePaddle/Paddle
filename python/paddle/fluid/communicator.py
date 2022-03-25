@@ -62,13 +62,18 @@ class Communicator(object):
         """
         # set all recv op to not_run mode
 
-        if mode == DistributedMode.SYNC:
-            envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
+        if kwargs == None:
+            if envs == None:
+                envs = {}
+        else:
+            if mode == DistributedMode.SYNC:
+                envs["pserver_endpoints"] = ','.join(kwargs[
+                    "pserver_endpoints"])
 
-        envs["trainers"] = str(kwargs["trainers"])
-        envs["trainer_id"] = str(kwargs["trainer_id"])
-        envs["need_global_step"] = str(kwargs["need_global_step"])
-        envs["barrier_table_id"] = str(kwargs["barrier_table_id"])
+            envs["trainers"] = str(kwargs["trainers"])
+            envs["trainer_id"] = str(kwargs["trainer_id"])
+            envs["need_global_step"] = str(kwargs["need_global_step"])
+            envs["barrier_table_id"] = str(kwargs["barrier_table_id"])
 
         mode_str = None
 
@@ -92,7 +97,9 @@ class Communicator(object):
                       recv_ctx,
                       proto_txt,
                       unit64_hosts,
-                      scope=global_scope()):
+                      scope=None):
+        if scope == None:
+            scope = global_scope()
         self.communicator_ = core.DistCommunicator(self.mode, proto_txt,
                                                    unit64_hosts, send_ctx,
                                                    recv_ctx, scope, self.envs)
@@ -129,6 +136,9 @@ class Communicator(object):
                 comm.start()
                 comm.stop()
         """
+        if self.communicator_ == None:
+            print('you must call init_with_ctx first to init comm before start')
+            return
         self.communicator_.start()
 
     def stop(self):
@@ -148,6 +158,9 @@ class Communicator(object):
                 comm.start()
                 comm.stop()
         """
+        if self.communicator_ == None:
+            print('you must call init_with_ctx first to init comm before stop')
+            return
         self.communicator_.stop()
 
     def is_running(self):
@@ -166,6 +179,9 @@ class Communicator(object):
                 comm = fluid.communicator.Communicator(prog)
                 comm.is_running()
         """
+        if self.communicator_ == None:
+            print('you must call init_with_ctx first to init comm before stop')
+            return
         self.communicator_.is_running()
 
     def recv(self):
@@ -177,7 +193,9 @@ class Communicator(object):
     def pull_dense(self, context):
         self.communicator_.pull_dense(context)
 
-    def push_sparse_param(self, var_name, table_id=-1, scope=global_scope()):
+    def push_sparse_param(self, var_name, table_id=-1, scope=None):
+        if scope == None:
+            scope = global_scope()
         if not self.is_running():
             raise ValueError(
                 "Communicator should init first. Using fleet.init_worker() before push_sparse_param()"

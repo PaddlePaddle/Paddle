@@ -19,6 +19,7 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 
@@ -37,13 +38,12 @@ class EventsWaiter {
   // Make sure EventsWaiter has a longer lifetime than EventNotifier.
   class EventNotifier {
    public:
+    ~EventNotifier() { waiter_.UnregisterEvent(id_); }
+
     void NotifyEvent() { waiter_.TriggerEvent(id_); }
 
-    void UnregisterEvent() { waiter_.UnregisterEvent(id_); }
+    void CancelEvent() { waiter_.CancelEvent(id_); }
 
-    EventId GetEventId() { return id_; }
-
-    // return "Unregistered" if the corresponding event was unregistered.
     std::string GetEventName() { return waiter_.GetEventName(id_); }
 
    private:
@@ -97,12 +97,16 @@ class EventsWaiter {
 
   void TriggerEvent(const EventId& id);
 
+  void CancelEvent(const EventId& id);
+
   std::string GetEventName(const EventId& id);
 
   std::unordered_map<EventId, EventInfo> events_;
+  std::unordered_set<EventId> deleted_events_;
   paddle::memory::SpinLock events_lock_;
-  std::atomic<std::string*> trigger_event_;
+  std::atomic<EventId> trigger_event_;
   std::atomic<uint64_t> counter_;
+  std::atomic<bool> eof_;
   std::atomic<bool> waiting_;
   EventCount cv_;
 };

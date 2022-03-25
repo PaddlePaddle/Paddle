@@ -77,6 +77,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
       .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
+      .def("set_clients", &FleetWrapper::SetClients)
+      .def("get_client_info", &FleetWrapper::GetClientsInfo)
       .def("create_client2client_connection",
            &FleetWrapper::CreateClient2ClientConnection);
 }

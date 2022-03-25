@@ -36,22 +36,28 @@ def limit_by_capacity(expert_count, _capacity, n_worker):
     return output.reshape(old_shape)
 
 
+def all_close(exp, out, n_worker):
+    exp = exp.reshape(n_worker, -1)
+    out = out.reshape(n_worker, -1)
+    return np.allclose(exp.sum(0), out.sum(0))
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestLimitByCapacityInt64API(unittest.TestCase):
     def init_test_case(self):
-        self.capacity = np.array([100, 12000, 1200, 800, 4700, 10000, 57, 99])
-        self.n_worker = 24
         self.expert_count = np.random.randint(
             0, 1000, size=(len(self.capacity) * self.n_worker))
         self.out = limit_by_capacity(self.expert_count, self.capacity,
                                      self.n_worker)
+        self.expert_count = self.expert_count.astype("int64")
+        self.capacity = self.capacity.astype("int64")
         self.place = paddle.CUDAPlace(0)
 
     def setUp(self):
+        self.capacity = np.array([100, 12000, 1200, 800, 4700, 10000, 57, 99])
+        self.n_worker = 1024 * 8
         self.init_test_case()
-        self.expert_count = self.expert_count.astype("int64")
-        self.capacity = self.capacity.astype("int64")
 
     def test_static_api(self):
         paddle.enable_static()
@@ -68,7 +74,8 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
                 'ExpertCount': self.expert_count,
             },
                           fetch_list=out)
-        assert np.allclose(self.out, res[0])
+
+        assert all_close(self.out, res[0], self.n_worker)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -76,7 +83,16 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
         expert_count_tensor = paddle.to_tensor(self.expert_count)
         out = utils._limit_by_capacity(expert_count_tensor, capacity,
                                        self.n_worker)
-        assert np.allclose(self.out, out.numpy())
+        assert all_close(self.out, out.numpy(), self.n_worker)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLimitByCapacityInt64API_SmallWorker(TestLimitByCapacityInt64API):
+    def setUp(self):
+        self.capacity = np.array([100, 12000, 1200, 0, 4700, 1000, 57, 200])
+        self.n_worker = 1
+        self.init_test_case()
 
 
 if __name__ == '__main__':

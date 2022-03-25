@@ -340,8 +340,8 @@ def convert_op_proto_into_mlir(op_descs):
                         attr_type_ = attr_mlir_converter[op_proto[ATTRS][attr][
                             TYPE]]
                         if (attr_type_ in [
-                                'I32ArrayAttr', 'F32ArrayAttr', 'StrArrayAttr',
-                                'BoolArrayAttr', 'I64ArrayAttr'
+                                'StrAttr', 'I32ArrayAttr', 'F32ArrayAttr',
+                                'StrArrayAttr', 'BoolArrayAttr', 'I64ArrayAttr'
                         ]):
                             attr_list = attr_type_ + ":$" + attr + ","
                             ARGUMENTS += attr_list
