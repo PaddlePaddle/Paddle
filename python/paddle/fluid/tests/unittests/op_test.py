@@ -1309,15 +1309,14 @@ class OpTest(unittest.TestCase):
                     res[op_desc] = self._calc_grad_output(place, fwd_res,
                                                           op_desc)
 
-    def check_output_with_place(
-            self,  # {{{
-            place,
-            atol=0,
-            no_check_set=None,
-            equal_nan=False,
-            check_dygraph=True,
-            inplace_atol=None,
-            check_eager=False):
+    def check_output_with_place(self,
+                                place,
+                                atol=0,
+                                no_check_set=None,
+                                equal_nan=False,
+                                check_dygraph=True,
+                                inplace_atol=None,
+                                check_eager=False):
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1377,17 +1376,17 @@ class OpTest(unittest.TestCase):
             def _compare_numpy(self, name, actual_np, expect_np):
                 self.op_test.assertTrue(
                     np.allclose(
-                        actual_np, expect_np, atol=atol, equal_nan=equal_nan),
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan),
                     "Output (" + name + ") has diff at " + str(place) + " in " +
                     self.checker_name + " checker")
 
             def _compare_list(self, name, actual, expect):
                 """ if expect is a tuple, we need to compare list.
                 """
-                #self.op_test.assertListEqual(
-                #actual.recursive_sequence_lengths(), expect[1],
-                #"Output (" + name +
-                #") has different lod at " + str(place))
                 raise NotImplemented("base class, not implement!")
 
             def compare_single_output_with_expect(self, name, expect):
@@ -1452,14 +1451,22 @@ class OpTest(unittest.TestCase):
                         np.float32, np.float64
                 ]:
                     actual_t = convert_uint16_to_float(actual_t)
-                    rtol = 1.e-2
+                    self.rtol = 1.e-2
                 else:
-                    rtol = 1.e-5
+                    self.rtol = 1.e-5
                 if expect_np.dtype == np.uint16 and actual_np.dtype == np.uint16:
+                    nonlocal atol
                     expect_np = convert_uint16_to_float(expect_np)
                     actual_np = convert_uint16_to_float(actual_np)
                     atol = max(atol, 0.03)
                 return actual_np, expect_np
+
+            def _compare_list(self, name, actual, expect):
+                """ if expect is a tuple, we need to compare list.
+                """
+                self.op_test.assertListEqual(
+                    actual.recursive_sequence_lengths(), expect[1],
+                    "Output (" + name + ") has different lod at " + str(place))
 
         class DygraphChecker(Checker):
             def calculate_output(self):
@@ -1482,6 +1489,16 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)  # }}}
                 return actual_np, expect_np
 
+            def _compare_list(self, name, actual, expect):
+                """ if expect is a tuple, we need to compare list.
+                """
+                with fluid.dygraph.base.guard(place=place):
+                    self.op_test.assertListEqual(
+                        actual.value().get_tensor()
+                        .recursive_sequence_lengths(), expect[1],
+                        "Output (" + name + ") has different lod at " +
+                        str(place) + " in dygraph mode")
+
             def _compare_numpy(self, name, actual_np, expect_np):
                 if six.moves.reduce(lambda x, y: x * y, actual_np.shape,
                                     1) == 0 and six.moves.reduce(
@@ -1494,6 +1511,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                             equal_nan=equal_nan),
                         "Output (" + name + ") has diff at " + str(place) +
                         " in " + self.checker_name + " checker")
@@ -1522,6 +1540,12 @@ class OpTest(unittest.TestCase):
             def find_actual_value(self, name):
                 with _test_eager_guard():
                     return super().find_actual_value(name)
+
+            def _compare_list(self, name, actual, expect):
+                """ if expect is a tuple, we need to compare list.
+                """
+                with _test_eager_guard():
+                    super()._compare_list(name, actual, expect)
 
 # set some flags by the combination of arguments. 
 
