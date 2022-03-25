@@ -601,18 +601,18 @@
   backward : hard_sigmoid_grad
 
 
-# arg_min  # int64 dtype
+# arg_min  # int64_t dtype
 - api : argmin
-  args : (Tensor x, int64 axis, bool keepdims, bool flatten, int dtype)
+  args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
   output : Tensor
   infer_meta :
     func : ArgMinMaxInferMeta
   kernel :
     func : arg_min
 
-# arg_max  # int64 dtype
+# arg_max  # int64_t dtype
 - api : argmax
-  args : (Tensor x, int64 axis, bool keepdims, bool flatten, int dtype)
+  args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
   output : Tensor
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -816,7 +816,7 @@
 
 # eye
 # - api : eye
-#   args : (int64 num_rows, int64 num_colums, DataType dtype = DataType::FLOAT32)
+#   args : (int64_t num_rows, int64_t num_colums, DataType dtype = DataType::FLOAT32)
 #   output : Tensor
 #   infer_meta :
 #     func : EyeInferMeta
@@ -853,9 +853,9 @@
 #     func : graph_send_recv
 #   backward : graph_send_recv_grad
 
-# # histogram int64 
+# # histogram int64_t 
 # - api : histogram
-#   args : (Tensor x, int64 bins, int min, int max)
+#   args : (Tensor x, int64_t bins, int min, int max)
 #   output : Tensor
 #   infer_meta :
 #     func : HistogramInferMeta
@@ -1007,7 +1007,7 @@
 
 # nll_loss  ?? optional
 # - api : nll_loss
-#   args : (Tensor x, Tensor label, Tensor weight, int64 ignore_index, str reduction)
+#   args : (Tensor x, Tensor label, Tensor weight, int64_t ignore_index, str reduction)
 #   output : Tensor(out), Tensor(total_weight)
 #   infer_meta :
 #     func : NllLossRawInferMeta
