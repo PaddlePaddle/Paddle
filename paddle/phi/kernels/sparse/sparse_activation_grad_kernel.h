@@ -20,10 +20,10 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void ReluGradKernel(const Context& dev_ctx,
-                    const SparseCooTensor& x,
-                    const SparseCooTensor& out_grad,
-                    SparseCooTensor* x_grad);
+void SparseReluGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const SparseCooTensor& out_grad,
+                          SparseCooTensor* x_grad);
 
 }  // namespace sparse
 }  // namespace phi

@@ -24,9 +24,9 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void ReluKernel(const Context& dev_ctx,
-                const SparseCooTensor& x,
-                SparseCooTensor* out) {
+void SparseReluKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      SparseCooTensor* out) {
   DenseTensor non_zero_indices =
       phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_indices());
   DenseTensor non_zero_elements =
@@ -44,8 +44,12 @@ void ReluKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    sparse_relu, CPU, ALL_LAYOUT, phi::sparse::ReluKernel, float, double) {
+PD_REGISTER_KERNEL(sparse_relu,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SparseReluKernel,
+                   float,
+                   double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -53,7 +57,7 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(sparse_relu,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::ReluKernel,
+                   phi::sparse::SparseReluKernel,
                    float,
                    double,
                    phi::dtype::float16) {
