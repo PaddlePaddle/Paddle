@@ -56,6 +56,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
                 "send_varnames": [queue],
                 "is_sparse": is_sparse,
                 "table_id": table_id,
+                "ps_mode": ps_mode,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 

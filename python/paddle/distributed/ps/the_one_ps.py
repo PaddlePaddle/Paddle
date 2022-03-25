@@ -948,7 +948,8 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
 
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                'ps_mode'] == DistributedMode.SYNC:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
@@ -1013,7 +1014,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                'ps_mode'] == DistributedMode.SYNC:
             if not self._communicator.is_running():
                 self._communicator.start()
             else:
@@ -1083,7 +1085,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.run_server(host, int(port))
 
     def _stop_worker(self):
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                'ps_mode'] == DistributedMode.SYNC:
             self._communicator.stop()
         self._worker.stop_worker()
         if self.is_heter_ps_mode:

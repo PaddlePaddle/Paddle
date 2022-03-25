@@ -44,12 +44,13 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
     auto is_sparse = Attr<int>("is_sparse");
     auto table_id = Attr<int>("table_id");
+    auto ps_mode = Attr<int>("ps_mode");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
     // for common_dense_table, distributed_push_sparse op for push sparse in
     // async
-    if (is_sparse == 0 && send_varnames.size() >= 1 &&
+    if (is_sparse == 0 && ps_mode == 1 && send_varnames.size() >= 1 &&
         send_varnames[0] != "@PS_STEP_COUNTER@") {
       auto fleet = paddle::distributed::FleetWrapper::GetInstance();
       std::vector<::std::future<int32_t>> status;
@@ -85,6 +86,8 @@ Send operator
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
     AddAttr<int>("table_id", "table_id for send").SetDefault(0);
+    AddAttr<int>("ps_mode", "0->SYNC, 1->ASYNC, 2->HALF_ASYNC, 3->GEO, 4->FL")
+        .SetDefault(1);
     AddAttr<int>("is_sparse",
                  "(int, default 0->Dense, 1->Sparse, 2->Distributed)")
         .SetDefault(0);

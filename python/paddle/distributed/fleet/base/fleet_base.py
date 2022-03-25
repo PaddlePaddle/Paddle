@@ -1658,10 +1658,10 @@ class Fleet(object):
         optimize_ops, params_grads = ps_optimizer.minimize_losses_impl(
             losses, startup_programs, parameter_list, no_grad_set=no_grad_set)
 
-        # default_program = paddle.static.default_main_program()
+        default_program = paddle.static.default_main_program()
 
-        # if id(default_program) != id(losses[0].block.program):
-        #     paddle.fluid.framework.switch_main_program(losses[0].block.program)
+        if id(default_program) != id(losses[0].block.program):
+            paddle.fluid.framework.switch_main_program(losses[0].block.program)
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
@@ -1711,13 +1711,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
