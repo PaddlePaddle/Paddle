@@ -38,7 +38,7 @@ void SplitKernel(const Context& dev_ctx,
       out_metas_ptr.push_back(&out_metas.back());
     }
 
-    phi::SplitInferMeta(x, num_or_sections, axis_scalar, out_metas_ptr, true);
+    phi::SplitInferMeta(x, num_or_sections, axis_scalar, out_metas_ptr);
 
     for (size_t i = 0; i < out_metas.size(); ++i) {
       outs[i]->Resize(out_metas[i].dims());

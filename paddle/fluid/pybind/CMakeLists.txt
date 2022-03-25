@@ -44,6 +44,9 @@ endif()
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
+  if (WITH_GPU)
+    set(PYBIND_DEPS ${PYBIND_DEPS} cuda_ipc_allocator)
+  endif()
   if (WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
@@ -80,6 +83,10 @@ set(PYBIND_SRCS
   communication.cc
   cuda_streams_py.cc)
 
+if (WITH_ONNXRUNTIME)
+  set(PYBIND_DEPS ${PYBIND_DEPS} onnxruntime_predictor)
+endif()
+
 if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if (WITH_NCCL)
@@ -88,7 +95,7 @@ if(NOT ON_INFER)
   if (WITH_GLOO)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
-  if(WITH_ASCEND)
+  if(WITH_ASCEND_CL)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
@@ -151,6 +158,10 @@ if(WITH_PYTHON)
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
+
+  if (WITH_ONNXRUNTIME)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS onnxruntime_predictor)
+  endif()
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
@@ -242,6 +253,19 @@ if(WITH_PYTHON)
         list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
         list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
+    if(WITH_ONNXRUNTIME)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS paddle2onnx)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
+        DEPENDS onnxruntime)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
+    endif()
 
     add_custom_command(OUTPUT ${impl_file}
       COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
@@ -260,6 +284,28 @@ if(WITH_PYTHON)
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
+    if(WITH_ONNXRUNTIME)
+      if (APPLE)
+        set(PADDLE2ONNX_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
+        set(ONNXRUNTIME_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
+      else()
+        set(PADDLE2ONNX_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
+        set(ONNXRUNTIME_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+      endif()
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS paddle2onnx)
+      list(APPEND OP_IMPL_DEPS ${PADDLE2ONNX_PYBIND_OUT})
+      list(APPEND EAGER_OP_IMPL_DEPS ${PADDLE2ONNX_PYBIND_OUT})
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${ONNXRUNTIME_PYBIND_OUT}
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
+        DEPENDS onnxruntime)
+      list(APPEND OP_IMPL_DEPS ${ONNXRUNTIME_PYBIND_OUT})
+      list(APPEND EAGER_OP_IMPL_DEPS ${ONNXRUNTIME_PYBIND_OUT})
+    endif()
+
     if(WITH_MKLML)
       ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
@@ -305,7 +351,7 @@ if(WITH_PYTHON)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python custom_operator custom_operator_node)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)

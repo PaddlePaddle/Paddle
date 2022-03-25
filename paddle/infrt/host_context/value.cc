@@ -59,6 +59,10 @@ void CopyTo(const Value& from, Value* to) {
           to->data = reinterpret_cast<std::vector<int64_t> const&>(arg);
         else if (std::is_same<T, tensor::TensorMap>::value)
           to->data = reinterpret_cast<tensor::TensorMap const&>(arg);
+#ifdef INFRT_WITH_PHI
+        else if (std::is_same<T, ::phi::DenseTensor>::value)
+          to->data = reinterpret_cast<::phi::DenseTensor const&>(arg);
+#endif
         else
           LOG(FATAL) << "Not supported Value copy: " << typeid(T).name();
       },

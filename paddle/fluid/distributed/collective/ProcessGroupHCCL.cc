@@ -139,11 +139,9 @@ bool ProcessGroupHCCL::HCCLTask::IsCompleted() {
 // TODO(sandyhouse): Add timeout for wait, now timeout unused
 bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
   SynchronizeStreams();
-  if (FLAGS_hccl_blocking_wait) {
-    // NOTE(sandyhouse): It will block host for sync
-    while (!IsCompleted()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(kWaitBlockTImeout));
-    }
+  // NOTE(sandyhouse): It will block host for sync
+  while (!IsCompleted()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(kWaitBlockTImeout));
   }
   return true;
 }

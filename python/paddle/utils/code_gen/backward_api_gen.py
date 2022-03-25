@@ -146,7 +146,6 @@ def source_include(header_file_path):
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -154,6 +153,8 @@ def source_include(header_file_path):
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
+
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
 

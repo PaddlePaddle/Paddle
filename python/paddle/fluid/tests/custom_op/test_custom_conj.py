@@ -21,6 +21,7 @@ import paddle.static as static
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -116,10 +117,15 @@ class TestCustomConjJit(unittest.TestCase):
         self.check_output(out, pd_out, "out")
         self.check_output(x_grad, pd_x_grad, "x's grad")
 
-    def test_dynamic(self):
+    def func_dynamic(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)
             self.run_dynamic(dtype, np_input)
+
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_dynamic()
+        self.func_dynamic()
 
     def test_static(self):
         for dtype in self.dtypes:

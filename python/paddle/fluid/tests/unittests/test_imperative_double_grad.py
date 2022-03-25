@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,14 @@ from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
+import paddle.compat as cpt
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+import paddle.fluid.core as core
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
@@ -38,6 +41,128 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 def random_var(size, low=-1, high=1, dtype='float32'):
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
     return fluid.dygraph.to_variable(x_np)
+
+
+class TestEagerGrad(TestCase):
+    def func_simple_example_eager_grad(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        out = paddle.matmul(x, y)
+        dx = fluid.dygraph.grad(out, x)
+
+        dout = np.ones_like(np_y)
+        expected_dx = np.matmul(dout, np.transpose(np_y))
+
+        # stop_gradient = !create_graph, create_graph default false
+        self.assertEqual(dx[0].stop_gradient, True)
+        self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+
+    def test_simple_example_eager_grad(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad()
+        self.func_simple_example_eager_grad()
+
+    def func_simple_example_eager_grad_allow_unused(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        dx = fluid.dygraph.grad(out, [x, z], allow_unused=True)
+        dout = np.ones_like(np_y)
+        expected_dx = np.matmul(dout, np.transpose(np_y))
+        self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+        # stop_gradient = !create_graph, create_graph default false
+        self.assertEqual(dx[0].stop_gradient, True)
+        # x is unused input in the graph
+        self.assertEqual(dx[1], None)
+
+    def test_simple_example_eager_grad_allow_unused(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_allow_unused()
+        self.func_simple_example_eager_grad_allow_unused()
+
+    def func_simple_example_eager_grad_not_allow_unused(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        try:
+            # allow_unused is false in default
+            dx = fluid.dygraph.grad(out, [x, z])
+        except ValueError as e:
+            error_msg = cpt.get_exception_message(e)
+            assert error_msg.find("allow_unused") > 0
+
+    def test_simple_example_eager_grad_not_allow_unused(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_not_allow_unused()
+        self.func_simple_example_eager_grad_not_allow_unused()
+
+    def func_simple_example_eager_grad_duplicate_input(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        try:
+            # duplicate input will arise RuntimeError errors
+            dx = fluid.dygraph.grad(out, [x, x])
+        except RuntimeError as e:
+            error_msg = cpt.get_exception_message(e)
+            assert error_msg.find("duplicate") > 0
+
+    def test_simple_example_eager_grad_duplicate_input(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_duplicate_input()
+        self.func_simple_example_eager_grad_duplicate_input()
+
+    def func_simple_example_eager_grad_duplicate_output(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        try:
+            # duplicate output will arise RuntimeError errors
+            dx = fluid.dygraph.grad([out, out], [x])
+        except RuntimeError as e:
+            error_msg = cpt.get_exception_message(e)
+            assert error_msg.find("duplicate") > 0
+
+    def test_simple_example_eager_grad_duplicate_output(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_duplicate_output()
+        self.func_simple_example_eager_grad_duplicate_output()
 
 
 class TestDygraphDoubleGrad(TestCase):
@@ -64,7 +189,7 @@ class TestDygraphDoubleGrad(TestCase):
             allow_unused=allow_unused)
 
     @dygraph_guard
-    def test_exception(self):
+    def func_exception(self):
         with self.assertRaises(AssertionError):
             self.grad(None, None)
 
@@ -93,8 +218,13 @@ class TestDygraphDoubleGrad(TestCase):
         with self.assertRaises(AssertionError):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
+    def test_exception(self):
+        with _test_eager_guard():
+            self.func_exception()
+        self.func_exception()
+
     @dygraph_guard
-    def test_simple_example(self):
+    def func_simple_example(self):
         x = random_var(self.shape)
         x.stop_gradient = False
         y = x + 1
@@ -123,8 +253,44 @@ class TestDygraphDoubleGrad(TestCase):
             self.assertNotEqual(grad_with_none_and_not_none.stop_gradient,
                                 create_graph)
 
+    def test_simple_example(self):
+        with _test_eager_guard():
+            self.func_simple_example()
+        self.func_simple_example()
+
     @dygraph_guard
-    def test_none_one_initial_gradient(self):
+    def func_example_no_grad_vars(self):
+        x = random_var(self.shape)
+        x_np = x.numpy()
+        numel = x_np.size
+        x.stop_gradient = False
+
+        y1 = fluid.layers.relu(x)
+        y2 = fluid.layers.relu(x)
+        z = y1 + y2
+        w = z * z
+
+        w_mean = fluid.layers.reduce_mean(w)
+        del y1, z, w
+
+        dx_actual, = self.grad(
+            [w_mean], [x], create_graph=True, no_grad_vars=[y2])
+
+        self.assertFalse(y2.stop_gradient)
+        self.assertFalse(dx_actual.stop_gradient)
+
+        dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + y2.numpy()) *
+                       (x_np > 0) * 2).astype('float32')
+
+        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+
+    def test_example_no_grad_vars(self):
+        with _test_eager_guard():
+            self.func_example_no_grad_vars()
+        self.func_example_no_grad_vars()
+
+    @dygraph_guard
+    def func_none_one_initial_gradient(self):
         numel = 1
         for s in self.shape:
             numel *= s
@@ -190,8 +356,13 @@ class TestDygraphDoubleGrad(TestCase):
                             np.array_equal(grad_z.numpy(),
                                            original_random_grad_z))
 
+    def test_none_one_initial_gradient(self):
+        with _test_eager_guard():
+            self.func_none_one_initial_gradient()
+        self.func_none_one_initial_gradient()
+
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_create_graph(self):
+    def func_example_with_gradient_accumulation_and_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -214,25 +385,33 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward(retain_graph=True)
-
-        x_grad_actual = x.gradient()
-        x_grad_expected = (2.0 / float(numel) *
-                           (x_np + dx_expected *
-                            (x_np > 0) * 2 / float(numel))).astype('float32')
-        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
-
-        for i in range(5):
+        if not _in_legacy_dygraph():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
             loss.backward(retain_graph=True)
+
             x_grad_actual = x.gradient()
-            x_grad_expected = (i + 2) * (2.0 / float(numel) * (
+            x_grad_expected = (2.0 / float(numel) * (
                 x_np + dx_expected *
                 (x_np > 0) * 2 / float(numel))).astype('float32')
             self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
+            for i in range(5):
+                loss.backward(retain_graph=True)
+                x_grad_actual = x.gradient()
+                x_grad_expected = (i + 2) * (2.0 / float(numel) * (
+                    x_np + dx_expected *
+                    (x_np > 0) * 2 / float(numel))).astype('float32')
+                self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+    def test_example_with_gradient_accumulation_and_create_graph(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_create_graph()
+        self.func_example_with_gradient_accumulation_and_create_graph()
+
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
+    def func_example_with_gradient_accumulation_and_no_grad_vars(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -256,17 +435,25 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward()
+        if not _in_legacy_dygraph():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
 
-        x_grad_actual = x.gradient()
-        x_grad_expected = (2.0 / float(numel) *
-                           (x_np + dx_expected *
-                            (x_np > 0) * 4 / float(numel))).astype('float32')
-        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            x_grad_actual = x.gradient()
+            x_grad_expected = (2.0 / float(numel) * (
+                x_np + dx_expected *
+                (x_np > 0) * 4 / float(numel))).astype('float32')
+            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_no_grad_vars()
+        self.func_example_with_gradient_accumulation_and_no_grad_vars()
 
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_not_create_graph(self):
+    def func_example_with_gradient_accumulation_and_not_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -289,12 +476,20 @@ class TestDygraphDoubleGrad(TestCase):
 
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward()
+        if not _in_legacy_dygraph():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
 
-        x_grad_actual = x.gradient()
-        x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
-        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            x_grad_actual = x.gradient()
+            x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
+            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+    def test_example_with_gradient_accumulation_and_not_create_graph(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_not_create_graph()
+        self.func_example_with_gradient_accumulation_and_not_create_graph()
 
 
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
@@ -304,7 +499,7 @@ class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
 
 
 class TestDygraphDoubleGradVisitedUniq(TestCase):
-    def test_compare(self):
+    def func_compare(self):
         value = np.random.uniform(-0.5, 0.5, 100).reshape(10, 2,
                                                           5).astype("float32")
 
@@ -348,6 +543,11 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
             grad_2 = a.gradient()
 
         self.assertTrue(np.array_equal(grad_1, grad_2))
+
+    def test_compare(self):
+        with _test_eager_guard():
+            self.func_compare()
+        self.func_compare()
 
 
 class TestRaiseNoDoubleGradOp(TestCase):

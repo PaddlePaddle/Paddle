@@ -209,6 +209,9 @@ function cmake_base() {
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
@@ -229,6 +232,7 @@ function cmake_base() {
         -DWITH_CNCL=${WITH_CNCL:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
         -DWITH_MLU=${WITH_MLU:-OFF}
+        -DWITH_IPU=${WITH_IPU:-OFF}
         -DLITE_GIT_TAG=release/v2.10
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
@@ -242,6 +246,7 @@ function cmake_base() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -260,6 +265,9 @@ EOF
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
+        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
+        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -279,6 +287,7 @@ EOF
         -DLITE_GIT_TAG=release/v2.10 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DWITH_MLU=${WITH_MLU:-OFF} \
+        -DWITH_IPU=${WITH_IPU:-OFF} \
         -DWITH_CNCL=${WITH_CNCL:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
@@ -293,7 +302,9 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
-        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+        
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -769,12 +780,12 @@ set +x
         get_precision_ut_mac
         ut_actual_total_startTime_s=`date +%s`
         if [[ "$on_precision" == "0" ]];then
-            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         else
-            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
@@ -843,7 +854,7 @@ set +x
                                 fi
                             done
                         failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --output-on-failure -j 2 | tee $tmpfile
+                        ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
@@ -945,8 +956,17 @@ function generate_upstream_develop_api_spec() {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     startTime_firstBuild=`date +%s`
-    cmake_gen $1
-    build $2
+
+    dev_commit=`git log -1|head -1|awk '{print $2}'`
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+    if [ "$url_return" == '200' ];then
+        mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
+    else
+        cmake_gen $1
+        build $2
+    fi
+
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
@@ -1004,6 +1024,9 @@ function generate_api_spec() {
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
     deactivate
+
+    cd ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/.check_api_workspace
 }
 
 function check_approvals_of_unittest() {
@@ -1270,6 +1293,8 @@ function card_test() {
     elif [ "${WITH_ROCM}" == "ON" ];then
         CUDA_DEVICE_COUNT=$(rocm-smi -i | grep GPU | wc -l)
     elif [ "${WITH_MLU}" == "ON" ];then
+        CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_IPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
@@ -2228,6 +2253,130 @@ set -ex
     fi   
 }
 
+function parallel_test_base_ipu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/ipu
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit ipu tests ...
+    ========================================
+EOF
+
+set +x
+        test_cases=$(ctest -N -V) # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            if [[ "$single_card_tests" == "" ]]; then
+                single_card_tests="^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+        done <<< "$test_cases";
+
+        ut_actual_total_startTime_s=`date +%s`
+
+        card_test "$single_card_tests" 1 # run cases 1 job each time with single IPU
+        collect_failed_tests
+
+        # add unit test retry for IPU
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
+        is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
+        if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"                    
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
+
+                                if [[ "$tmp_one_tmp" != ""  ]]; then
+                                    if [[ "$one_card_retry" == "" ]]; then
+                                        one_card_retry="^$line$"
+                                    else
+                                        one_card_retry="$one_card_retry|^$line$"
+                                    fi
+                                fi
+
+                            done
+
+                        if [[ "$one_card_retry" != "" ]]; then
+                            card_test "$one_card_retry" 1 # run cases 1 job each time with single GPU
+                        fi
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                    else 
+                        break
+                    fi
+
+                done
+        fi
+
+        rerun_ut_endTime_s=`date +%s`
+        
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi   
+}
+
 function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -2245,6 +2394,8 @@ function parallel_test() {
         parallel_test_base_npu
     elif [ "$WITH_MLU" == "ON" ];then
         parallel_test_base_mlu
+    elif [ "$WITH_IPU" == "ON" ];then
+        parallel_test_base_ipu
     else
         parallel_test_base_cpu ${PROC_RUN:-1}
     fi
@@ -2504,7 +2655,8 @@ EOF
     fi
     startTime_s=`date +%s`
     set +e
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON};build_error=$?
+
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
@@ -2548,7 +2700,7 @@ EOF
     demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr}
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     demo_ci_endTime_s=`date +%s`
@@ -2558,7 +2710,7 @@ EOF
     infer_ut_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_ROOT_DIR:-/usr}
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     TEST_EXIT_CODE=$?
     infer_ut_endTime_s=`date +%s`
     echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
@@ -2775,6 +2927,41 @@ function build_develop() {
     cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
 }
 
+function check_coverage_build() {
+    if [ ! "${buildSize}" ];then
+        echo "build size not found"
+        exit 1
+    fi
+
+    if [ ${WITH_COVERAGE} != "ON" ];then
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+        exit 1
+    fi
+
+    rm -f build_size
+    curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
+    dev_coverage_build_size=`cat build_size|sed 's#G##g'`
+    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
+
+    diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
+
+    set +x
+    if [ ${diff_coverage_build_size} -gt 3 ]; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 29832297 6836917 43953930`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com."
+           echo "Then you must have one RD (tianshuo78520a (Recommend) or luotao1 or phlrain) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2901,6 +3088,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         check_approvals_of_unittest 1
@@ -3005,6 +3193,11 @@ function main() {
         check_coverage
         ;;
       check_mlu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_ipu_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage

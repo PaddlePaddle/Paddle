@@ -327,12 +327,17 @@ class ToTensor(BaseTransform):
             import paddle.vision.transforms as T
             import paddle.vision.transforms.functional as F
 
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            fake_img = Image.fromarray((np.random.rand(4, 5, 3) * 255.).astype(np.uint8))
 
             transform = T.ToTensor()
 
             tensor = transform(fake_img)
-
+            
+            print(tensor.shape)
+            # [3, 4, 5]
+    
+            print(tensor.dtype)
+            # paddle.float32
     """
 
     def __init__(self, data_format='CHW', keys=None):
@@ -390,12 +395,17 @@ class Resize(BaseTransform):
             from PIL import Image
             from paddle.vision.transforms import Resize
 
+            fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
+
             transform = Resize(size=224)
+            converted_img = transform(fake_img)
+            print(converted_img.size)
+            # (262, 224)
 
-            fake_img = Image.fromarray((np.random.rand(100, 120, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            transform = Resize(size=(200,150))
+            converted_img = transform(fake_img)
+            print(converted_img.size)
+            # (150, 200)
     """
 
     def __init__(self, size, interpolation='bilinear', keys=None):

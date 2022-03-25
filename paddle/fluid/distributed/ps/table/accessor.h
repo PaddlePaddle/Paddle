@@ -45,6 +45,17 @@ struct DataConverter {
   std::string deconverter;
 };
 
+struct AccessorInfo {
+  size_t dim;
+  size_t size;
+  size_t select_size;
+  size_t select_dim;
+  size_t update_size;
+  size_t update_dim;
+  size_t mf_size;
+  size_t fea_dim;
+};
+
 class ValueAccessor {
  public:
   ValueAccessor() {}
@@ -67,6 +78,8 @@ class ValueAccessor {
     return 0;
   }
   virtual int initialize() = 0;
+
+  virtual void GetTableInfo(AccessorInfo& info) = 0;
 
   // value维度
   virtual size_t dim() = 0;
@@ -163,6 +176,7 @@ class ValueAccessor {
   TableAccessorParameter _config;
   std::unordered_map<int, std::shared_ptr<struct DataConverter>>
       _data_coverter_map;
+  AccessorInfo _accessor_info;
 };
 REGISTER_PSCORE_REGISTERER(ValueAccessor);
 }  // namespace distributed

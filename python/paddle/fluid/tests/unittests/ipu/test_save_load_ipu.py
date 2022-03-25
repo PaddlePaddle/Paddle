@@ -95,12 +95,9 @@ class TestBase(IPUOpTest):
                     is_training=self.attrs['is_training'])
                 ipu_strategy.set_precision_config(
                     enable_fp16=self.attrs['enable_fp16'])
-                ipu_strategy.set_options({
-                    'save_per_n_step': self.attrs['save_at_step']
-                })
-                program = paddle.static.IpuCompiledProgram(
-                    main_prog, ipu_strategy=ipu_strategy).compile(
-                        self.feed_list, fetch_list)
+                ipu_program = paddle.static.IpuCompiledProgram(
+                    main_prog, ipu_strategy=ipu_strategy)
+                program = ipu_program.compile(self.feed_list, fetch_list)
 
                 result = []
                 run_steps = self.attrs['steps'] if save_otherwise_load \
@@ -111,10 +108,9 @@ class TestBase(IPUOpTest):
                 for i in range(run_steps):
                     tmp = exe.run(program, feed=feed, fetch_list=fetch_list)
 
-                    # currently, we update opt state every sess.run,
-                    # will optimize
                     if save_otherwise_load and \
                         i == self.attrs['save_at_step'] - 1:
+                        ipu_program._backend.weights_to_host()
                         paddle.static.save(main_prog,
                                            self.attrs['model_path'].name)
 

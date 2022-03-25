@@ -25,9 +25,6 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def __init__(self, bw_api_item_yaml):
         BackwardAPI.__init__(self, bw_api_item_yaml)
 
-    def get_api_name(self, api_item_yaml):
-        return api_item_yaml['sparse_bw_api']
-
     def get_api_func_name(self):
         return self.api
 
@@ -109,18 +106,10 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/declarations.h"
-"""
-
-
-def api_register():
-    return """
-PD_REGISTER_API(Test);
 """
 
 
@@ -162,8 +151,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    source_file.write(api_register())
 
     header_file.close()
     source_file.close()

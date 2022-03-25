@@ -16,6 +16,14 @@ limitations under the License. */
 
 namespace phi {
 
+KernelSignature GraphSendRecvOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("graph_send_recv",
+                         {"X", "Src_index", "Dst_index"},
+                         {"pool_type", "out_size"},
+                         {"Out", "Dst_count"});
+}
+
 KernelSignature GraphSendRecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -26,6 +34,9 @@ KernelSignature GraphSendRecvGradOpArgumentMapping(
 }
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(graph_send_recv,
+                           phi::GraphSendRecvOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(graph_send_recv_grad,
                            phi::GraphSendRecvGradOpArgumentMapping);

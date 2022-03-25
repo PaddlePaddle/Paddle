@@ -152,6 +152,34 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigDisableGpu(
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseGpu(
     __pd_keep PD_Config* pd_config);
 ///
+/// \brief Turn on ONNXRuntime.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONNXRuntime(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Turn off ONNXRuntime.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigDisableONNXRuntime(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether the ONNXRutnime is turned on.
+///
+/// \return Whether the ONNXRuntime is turned on.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigONNXRuntimeEnabled(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Turn on ONNXRuntime Optimization.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableORTOptimization(
+    __pd_keep PD_Config* pd_config);
+///
 /// \brief Turn on XPU.
 ///
 /// \param[in] pd_onfig config

@@ -25,6 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
@@ -35,7 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/api_declare.h"
 #include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -946,15 +946,16 @@ void RegisterOperatorWithMetaInfoMap(
 ////////////////////// User APIs ///////////////////////
 
 // load op api
-void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
+const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
-
   RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
+  return op_meta_info_map.GetMap();
 }
 
 }  // namespace framework

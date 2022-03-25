@@ -56,6 +56,9 @@ XPUOpMap& get_kp_ops() {
       {"hard_shrink", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"hard_sigmoid",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"swish", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"thresholded_relu",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu_kp_kernels;
