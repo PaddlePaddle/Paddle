@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from functools import reduce
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestSetValueBase(unittest.TestCase):

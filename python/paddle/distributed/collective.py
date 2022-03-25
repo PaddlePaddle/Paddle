@@ -18,7 +18,7 @@ from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from ..fluid.framework import convert_np_dtype_to_dtype_
 from ..fluid.framework import _varbase_creator
 from ..fluid.data_feeder import convert_dtype
@@ -417,7 +417,7 @@ def barrier(group=None):
     ring_id = 0 if group is None else group.id
 
     temp = fill_constant([1], dtype="int32", value="1")
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
 
     op_type = 'barrier'
@@ -506,7 +506,7 @@ def new_group(ranks=None, backend=None):
     # TODO(shenliang03): This is a temporary solution to solve the problem of 
     # hang caused by cross-creation of new_group
     tmp = paddle.to_tensor(
-        [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+        [1], dtype="int32") if _non_static_mode() else fill_constant(
             [0], dtype="int32", value="1")
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
@@ -552,7 +552,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 
 def _sync_calc_stream(tensor):
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_sync_calc_stream(tensor, tensor)
 
     op_type = 'c_sync_calc_stream'
@@ -566,7 +566,7 @@ def _sync_calc_stream(tensor):
 
 def _sync_comm_stream(tensor, ring_id=0):
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id', ring_id)
 
     op_type = 'c_sync_comm_stream'
@@ -632,7 +632,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     gsrc = src if group is None else group.get_group_rank(src)
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
                                   'use_calc_stream', use_calc_stream, 'ring_id',
                                   ring_id)
@@ -702,7 +702,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     ring_id = 0 if group is None else group.id
-    if in_dygraph_mode():
+    if _non_static_mode():
         if op == ReduceOp.SUM:
             return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
                                            use_calc_stream, 'ring_id', ring_id)
@@ -796,7 +796,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     gdst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, ("dst rank out of group, need global rank")
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if op == ReduceOp.SUM:
             return _C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
                                        use_calc_stream, 'ring_id', ring_id,
@@ -900,7 +900,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
                                  'ring_id', ring_id, 'nranks', nranks)
     else:
@@ -996,7 +996,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         for _ in range(nranks):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_scatter(temp, tensor, 'use_calc_stream',
                                 use_calc_stream, 'ring_id', ring_id, 'nranks',
                                 nranks, 'root', gsrc)
@@ -1033,7 +1033,7 @@ def _c_identity(tensor, group=None):
         return
     ring_id = 0 if group is None else group.id
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
                                  ring_id, 'use_model_parallel', True)
     op_type = 'c_identity'
@@ -1076,7 +1076,7 @@ def _c_concat(tensor, group=None):
     rank = global_rank if group is None else group.get_group_rank(global_rank)
     nranks = _get_global_env().world_size if group is None else group.nranks
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
                                True, 'rank', rank, 'nranks', nranks,
                                'use_model_parallel', True)
@@ -1124,7 +1124,7 @@ def _c_split(tensor, group=None):
     rank = global_rank if group is None else group.get_group_rank(global_rank)
     nranks = _get_global_env().world_size if group is None else group.nranks
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
                               ring_id, 'rank', rank, 'nranks', nranks,
                               'use_model_parallel', True)
@@ -1162,7 +1162,7 @@ def _mp_allreduce(tensor,
         return
     ring_id = 0 if group is None else group.id
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if op == ReduceOp.SUM:
             return _C_ops.c_allreduce_sum_(
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
@@ -1204,7 +1204,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     Returns:
         Tensor.
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.c_embedding(table, index, "start_index", start_index)
 
     op_type = 'c_embedding'
@@ -1279,7 +1279,7 @@ def _c_softmax_with_cross_entropy(logits,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         softmax, loss = _C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
         if not return_softmax:
@@ -1313,7 +1313,7 @@ def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
         _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
                       False, "alpha", 1)
@@ -1646,7 +1646,7 @@ def split(x,
         "The operation for "
         "paddle.distributed.split must be one of {}.".format(
             supported_operations))
-    if in_dygraph_mode():
+    if _non_static_mode():
         raise ValueError(
             "paddle.distributed.split cannot be used in dynamic "
             "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "
@@ -1768,7 +1768,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
                               'ring_id', ring_id)
     else:
@@ -1836,7 +1836,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         return
     ring_id = 0 if group is None else group.id
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
                               'ring_id', ring_id, 'peer', dst)
     op_type = 'send_v2'
@@ -1889,7 +1889,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         return
     ring_id = 0 if group is None else group.id
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
                               'ring_id', ring_id, 'peer', src, 'dtype',
                               tensor.dtype, 'out_shape', tensor.shape)
