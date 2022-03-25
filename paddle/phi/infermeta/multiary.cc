@@ -731,9 +731,7 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
-                           MetaTensor* out_nodes,
-                           MetaTensor* hashtable_value_out,
-                           MetaTensor* hashtable_index_out) {
+                           MetaTensor* out_nodes) {
   auto GraphReindexShapeCheck = [](const phi::DDim& dims,
                                    std::string tensor_name) {
     if (dims.size() == 2) {
@@ -761,10 +759,6 @@ void GraphReindexInferMeta(const MetaTensor& x,
   if (flag_buffer_hashtable) {
     GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
     GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
-    hashtable_value_out->set_dims(hashtable_value.dims());
-    hashtable_value_out->set_dtype(hashtable_value.dtype());
-    hashtable_index_out->set_dims(hashtable_index.dims());
-    hashtable_index_out->set_dtype(hashtable_index.dtype());
   }
 
   reindex_src->set_dims({-1});

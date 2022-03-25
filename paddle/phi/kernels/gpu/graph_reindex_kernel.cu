@@ -245,9 +245,7 @@ void GraphReindexKernel(const Context& dev_ctx,
                         bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
-                        DenseTensor* out_nodes,
-                        DenseTensor* hashtable_value_out,
-                        DenseTensor* hashtable_index_out) {
+                        DenseTensor* out_nodes) {
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
@@ -263,14 +261,16 @@ void GraphReindexKernel(const Context& dev_ctx,
 
   if (flag_buffer_hashtable) {
     // Here we directly use buffer tensor to act as a hash table.
+    DenseTensor hashtable_value_out(hashtable_value.type());
     const auto* ph_value = &hashtable_value;
-    hashtable_value_out->ShareDataWith(*ph_value);
+    hashtable_value_out.ShareDataWith(*ph_value);
+    DenseTensor hashtable_index_out(hashtable_index.type());
     const auto* ph_index = &hashtable_index;
-    hashtable_index_out->ShareDataWith(*ph_index);
+    hashtable_index_out.ShareDataWith(*ph_index);
     int* hashtable_value_data =
-        hashtable_value_out->mutable_data<int>(dev_ctx.GetPlace());
+        hashtable_value_out.mutable_data<int>(dev_ctx.GetPlace());
     int* hashtable_index_data =
-        hashtable_index_out->mutable_data<int>(dev_ctx.GetPlace());
+        hashtable_index_out.mutable_data<int>(dev_ctx.GetPlace());
     cudaMemset(
         hashtable_value_data, -1, hashtable_value.dims()[0] * sizeof(int));
     cudaMemset(

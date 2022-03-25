@@ -54,8 +54,6 @@ class GraphReindexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Reindex_Dst",
               "The destination node index of graph edges after reindex.");
     AddOutput("Out_Nodes", "The original index of graph nodes before reindex");
-    AddOutput("HashTable_Value_Out", "");
-    AddOutput("HashTable_Index_Out", "");
 
     AddComment(R"DOC(
 Graph Reindex operator.

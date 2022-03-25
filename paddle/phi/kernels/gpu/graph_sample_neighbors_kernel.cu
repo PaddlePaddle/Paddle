@@ -131,13 +131,12 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 }
 
 template <typename T, typename Context>
-int GetTotalSampleNum(thrust::device_vector<T>* input,
+int GetTotalSampleNum(const thrust::device_ptr<const T> input,
                       const T* col_ptr,
                       thrust::device_ptr<int> output_count,
                       int sample_size,
                       int bs) {
-  thrust::transform(
-      input->begin(), input->end(), output_count, DegreeFunctor<T>(col_ptr));
+  thrust::transform(input, input + bs, output_count, DegreeFunctor<T>(col_ptr));
   if (sample_size >= 0) {
     thrust::transform(
         output_count, output_count + bs, output_count, MaxFunctor(sample_size));
@@ -150,7 +149,7 @@ template <typename T, typename Context>
 void SampleNeighbors(const Context& dev_ctx,
                      const T* row,
                      const T* col_ptr,
-                     thrust::device_vector<T>* input,
+                     const thrust::device_ptr<const T> input,
                      thrust::device_ptr<T> output,
                      thrust::device_ptr<int> output_count,
                      int sample_size,
@@ -171,7 +170,7 @@ void SampleNeighbors(const Context& dev_ctx,
       0,
       sample_size,
       bs,
-      thrust::raw_pointer_cast(input->data()),
+      thrust::raw_pointer_cast(input),
       row,
       col_ptr,
       thrust::raw_pointer_cast(output),
@@ -192,15 +191,14 @@ void GraphSampleNeighborsKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   int bs = x.dims()[0];
 
-  thrust::device_vector<T> input(bs);
-  thrust::copy(x_data, x_data + bs, input.begin());
+  const thrust::device_ptr<const T> input(x_data);
 
   out_count->Resize({bs});
   int* out_count_data = dev_ctx.template Alloc<int>(out_count);
   thrust::device_ptr<int> output_count(out_count_data);
 
   int total_sample_size = GetTotalSampleNum<T, Context>(
-      &input, col_ptr_data, output_count, sample_size, bs);
+      input, col_ptr_data, output_count, sample_size, bs);
 
   out->Resize({static_cast<int>(total_sample_size)});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -209,7 +207,7 @@ void GraphSampleNeighborsKernel(const Context& dev_ctx,
   SampleNeighbors<T, Context>(dev_ctx,
                               row_data,
                               col_ptr_data,
-                              &input,
+                              input,
                               output,
                               output_count,
                               sample_size,

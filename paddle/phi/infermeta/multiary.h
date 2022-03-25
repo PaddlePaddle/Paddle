@@ -161,8 +161,6 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
-                           MetaTensor* out_nodes,
-                           MetaTensor* hashtable_value_out,
-                           MetaTensor* hashtable_index_out);
+                           MetaTensor* out_nodes);
 
 }  // namespace phi

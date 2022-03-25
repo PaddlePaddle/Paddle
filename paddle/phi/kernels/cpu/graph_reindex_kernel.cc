@@ -32,9 +32,7 @@ void GraphReindexKernel(const Context& dev_ctx,
                         bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
-                        DenseTensor* out_nodes,
-                        DenseTensor* hashtable_value_out,
-                        DenseTensor* hashtable_index_out) {
+                        DenseTensor* out_nodes) {
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();

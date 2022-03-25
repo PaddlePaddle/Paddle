@@ -28,8 +28,6 @@ void GraphReindexKernel(const Context& dev_ctx,
                         bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
-                        DenseTensor* out_nodes,
-                        DenseTensor* hashtable_value_out,
-                        DenseTensor* hashtable_index_out);
+                        DenseTensor* out_nodes);
 
 }  // namespace phi
