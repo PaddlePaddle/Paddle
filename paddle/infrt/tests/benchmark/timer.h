@@ -27,14 +27,12 @@ class ChronoTimer {
   void Clear() { start_ = TimePoint::min(); }
   void Start() { start_ = ClockT::now(); }
 
-  uint32_t GetMs() {
-    if (start_ != TimePoint::min()) {
-      typename ClockT::duration diff = ClockT::now() - start_;
-      return static_cast<uint32_t>(
-          std::chrono::duration_cast<std::chrono::milliseconds>(diff).count());
-    } else {
-      return 0;
-    }
+  double GetMs() {
+    auto diff = ClockT::now() - start_;
+    return static_cast<double>(
+               std::chrono::duration_cast<std::chrono::duration<double>>(diff)
+                   .count()) *
+           1000.0;
   }
 
  private:
@@ -48,13 +46,9 @@ class CpuClockTimer {
   CpuClockTimer() = default;
   void Clear() { start_ = 0; }
   void Start() { start_ = std::clock(); }
-  uint32_t GetMs() {
-    if (start_ != 0) {
-      std::clock_t diff = std::clock() - start_;
-      return static_cast<uint32_t>(diff * 1000 / CLOCKS_PER_SEC);
-    } else {
-      return 0;
-    }
+  double GetMs() {
+    std::clock_t diff = std::clock() - start_;
+    return static_cast<double>(diff * 1000.0 / CLOCKS_PER_SEC);
   }
 
  private:
