@@ -252,7 +252,7 @@ HOSTDEVICE static inline void *PD_Memmove(void *dest,
     }
     return dest;
   }
-  PD_Memcpy(dest, src, size);
+  dest = PD_Memcpy(dest, src, size);
   return dest;
 }
 

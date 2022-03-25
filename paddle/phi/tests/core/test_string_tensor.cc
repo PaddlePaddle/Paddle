@@ -81,6 +81,8 @@ TEST(string_tensor, ctor) {
   tensor_3 = std::move(tensor_1);
   CHECK_EQ(tensor_3.data()[0], plong_str);
   CHECK_EQ(tensor_3.data()[1], pshort_str);
+
+  tensor_3.set_meta(meta);
 }
 
 TEST(pstring, func) {
@@ -92,6 +94,7 @@ TEST(pstring, func) {
   CHECK_EQ(nchar_str, "AAAAA");
   CHECK_EQ(copy_nchar_str, "AAAAA");
 
+  // Test Move Ctor
   pstring move_nchar_str(std::move(nchar_str));
   CHECK_EQ(move_nchar_str, "AAAAA");
   pstring std_str(std::string("BBBB"));
@@ -127,6 +130,16 @@ TEST(pstring, func) {
   // Test capacity
   CHECK_EQ(short_str.capacity(), 22UL);
 
+  // Test reserve
+  pstring reserve_str;
+  CHECK_EQ(reserve_str.capacity(), 22UL);
+  // small -> large
+  reserve_str.reserve(100);
+  CHECK_EQ(reserve_str.capacity(), 111UL);  // align(100) - 1 = 111
+  // reserve more memory
+  reserve_str.reserve(200);
+  CHECK_EQ(reserve_str.capacity(), 207UL);  // align(200) - 1 = 207
+
   // Test operator<<
   std::ostringstream oss1, oss2;
   oss1 << long_str;
@@ -143,14 +156,10 @@ TEST(pstring, func) {
   CHECK_EQ((long_str > short_str), false);
   CHECK_EQ((long_str == short_str), false);
   CHECK_EQ((long_str != short_str), true);
-
-  // Test operator =
-  long_str = short_str;
-  CHECK_EQ(short_str, long_str);
-  short_str = 'A';
-  CHECK_EQ(short_str, "A");
-  short_str = std::move(copy_nchar_str);
-  CHECK_EQ(short_str, "AAAAA");
+  CHECK_EQ((short_str < long_str), false);
+  CHECK_EQ((short_str > long_str), true);
+  CHECK_EQ((move_nchar_str < plus_str), true);
+  CHECK_EQ((plus_str > move_nchar_str), true);
 
   // Test empty
   CHECK_EQ(empty_str.empty(), true);
@@ -160,6 +169,16 @@ TEST(pstring, func) {
   // Test Resize
   nchar_str.resize(6, 'B');
   CHECK_EQ(nchar_str, "AAAAAB");
+
+  // Test operator =
+  long_str = short_str;
+  CHECK_EQ(short_str, long_str);
+  short_str = 'A';
+  CHECK_EQ(short_str, "A");
+  short_str = std::move(copy_nchar_str);
+  CHECK_EQ(short_str, "AAAAA");
+  long_str = std::move(nchar_str);
+  CHECK_EQ(long_str, "AAAAAB");
 }
 
 }  // namespace tests
