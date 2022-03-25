@@ -16,12 +16,13 @@ import numpy as np
 import os
 from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
+import paddle.fluid.framework as framework
 from ..fluid.framework import Variable
+from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
 from ..fluid.framework import convert_np_dtype_to_dtype_
 from ..fluid.framework import _varbase_creator
-from ..fluid.framework import _in_eager_mode_
 from ..fluid.data_feeder import convert_dtype
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.data_feeder import check_type
@@ -252,7 +253,7 @@ def new_group(ranks=None, backend=None):
 
     """
     global _group_map
-    if _in_eager_mode_:
+    if framework._in_eager_mode_:
         global _default_group_name
         gid = _new_ring_id()
         group_name = _default_group_name + str(gid)
@@ -365,7 +366,7 @@ def barrier(group=None):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.process_group.barrier()
         task.wait()
@@ -504,7 +505,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     if not isinstance(src, int):
         raise ValueError("src should be int.")
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         gsrc = group.get_group_rank(src)
         assert gsrc >= 0, ("src rank out of group, need global rank")
@@ -588,7 +589,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         if op == ReduceOp.SUM:
             op_type = core.ReduceOp.SUM
         elif op == ReduceOp.MAX:
@@ -690,7 +691,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         if op == ReduceOp.SUM:
             op_type = core.ReduceOp.SUM
         elif op == ReduceOp.MAX:
@@ -811,7 +812,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         out = paddle.concat(tensor_list)
         wait(out, group, use_calc_stream=True)
@@ -909,7 +910,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     if not isinstance(src, int):
         raise ValueError("src should be int.")
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         gsrc = group.get_group_rank(src)
         rank = group.rank
@@ -927,7 +928,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
     wait(temp, group, use_calc_stream=True)
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         task = group.process_group.scatter(temp, tensor, gsrc)
         if use_calc_stream:
             task.wait()
@@ -1710,7 +1711,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
     else:
         ring_id = 0 if group is None else group.id
@@ -1718,7 +1719,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
     wait(temp, group, use_calc_stream=True)
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         out = paddle.concat(out_tensor_list, axis=0)
         wait(out, group, use_calc_stream=True)
         task = group.process_group.alltoall(temp, out)
@@ -1797,7 +1798,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.send(tensor, dst)
         if use_calc_stream:
@@ -1860,7 +1861,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if _in_eager_mode_ and in_dygraph_mode():
+    if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         task = group.recv(tensor, src)
         if use_calc_stream:

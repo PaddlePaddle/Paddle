@@ -24,8 +24,8 @@ from paddle import compat as cpt
 
 # deprecated module import
 from paddle.fluid import core
+import paddle.fluid.framework as framework
 from paddle.fluid.framework import _set_expected_place
-from paddle.fluid.framework import _in_eager_mode_
 from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
@@ -204,7 +204,7 @@ def init_parallel_env():
     _set_expected_place(place)
 
     group = None
-    if backend in _valid_backend_list and _in_eager_mode_:
+    if backend in _valid_backend_list and framework._in_eager_mode_:
         if _default_group_name in _group_map_by_name:
             return _group_map_by_name[_default_group_name]
         _default_backend = backend
