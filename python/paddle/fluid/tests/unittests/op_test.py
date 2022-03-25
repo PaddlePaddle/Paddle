@@ -518,12 +518,15 @@ class OpTest(unittest.TestCase):
         inputs = {}
         for name, value in six.iteritems(numpy_inputs):
             if isinstance(value, list):
-                var_list = [block.var(sub_name) for sub_name, sub_value in value]
+                var_list = [
+                    block.var(sub_name) for sub_name, sub_value in value
+                ]
                 inputs[name] = var_list
             else:
                 inputs[name] = block.var(name)
         return inputs
 
+    #get the value of input 
     def _get_inputs(self, block):
         return self._get_io_vars(block, self.inputs)
 
