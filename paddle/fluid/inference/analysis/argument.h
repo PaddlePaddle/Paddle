@@ -183,10 +183,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(bfloat16_enabled_op_types, Bfloat16EnabledOpTypes,
                       std::unordered_set<std::string>);
 
-  DECL_ARGUMENT_FIELD(use_mkldnn_int8, UseMLDNNInt8, bool);
+  DECL_ARGUMENT_FIELD(use_mkldnn_int8, UseMkldnnInt8, bool);
 
-  DECL_ARGUMENT_FIELD(int8_enabled_op_types, Int8EnabledOpTypes,
-                      std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(enable_mkldnn_fc_related_pass, EnableMkldnnFcRelatedPass,
+                      bool);
 #endif
 
   // Passed from config.

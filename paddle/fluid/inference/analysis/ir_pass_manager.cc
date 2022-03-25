@@ -99,15 +99,9 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::unordered_set<std::string>());
 #ifdef PADDLE_WITH_MKLDNN
     } else if (pass_name == "cpu_quantize_placement_pass") {
-      if (!argument->int8_enabled_op_types().empty()) {
-        pass->Set("quantize_enabled_op_types",
-                  new std::unordered_set<std::string>(
-                      argument->int8_enabled_op_types()));
-      } else {
-        pass->Set("quantize_enabled_op_types",
-                  new std::unordered_set<std::string>(
-                      argument->quantize_enabled_op_types()));
-      }
+      pass->Set("quantize_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->quantize_enabled_op_types()));
       pass->Set(
           "quantize_excluded_op_ids",
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));

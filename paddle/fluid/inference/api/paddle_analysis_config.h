@@ -995,7 +995,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
   bool use_mkldnn_int8_{false};
-  std::unordered_set<std::string> int8_enabled_op_types_;
+  std::unordered_set<std::string> quantize_enabled_op_types_;
+  bool enable_mkldnn_fc_related_pass_{false};
 
   // ipu related.
   bool use_ipu_{false};

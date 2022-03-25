@@ -945,6 +945,10 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
+  if (config_.use_mkldnn_int8_) {
+    LOG(INFO) << "Int8 is enabled";
+    argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
+  }
 #endif
 
   auto passes = config_.pass_builder()->AllPasses();

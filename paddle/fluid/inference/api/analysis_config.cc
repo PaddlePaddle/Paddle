@@ -262,7 +262,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_int8_);
-  CP_MEMBER(int8_enabled_op_types_);
+  CP_MEMBER(quantize_enabled_op_types_);
+  CP_MEMBER(enable_mkldnn_fc_related_pass_);
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
   CP_MEMBER(min_input_shape_);
@@ -440,7 +441,7 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 void AnalysisConfig::EnableMkldnnInt8(std::unordered_set<std::string> op_list) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
-  int8_enabled_op_types_.insert(op_list.begin(), op_list.end());
+  quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
   use_fc_padding_ = false;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
@@ -761,7 +762,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_mkldnn_bfloat16_;
   for (auto &item : bfloat16_enabled_op_types_) ss << item;
   ss << use_mkldnn_int8_;
-  for (auto &item : int8_enabled_op_types_) ss << item;
+  for (auto &item : quantize_enabled_op_types_) ss << item;
   ss << ";";
   ss << model_from_memory_;
 
