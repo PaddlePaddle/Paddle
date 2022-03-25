@@ -87,7 +87,7 @@ void ImageDecoder::CPUDecodeRandomCrop(
   cv::Mat image =
       cv::imdecode(cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)), cv::IMREAD_COLOR);
   
-  auto* image_data = image.data;
+  cv::Mat cropped;
   int height = image.rows;
   int width = image.cols;
   if (roi_generator) {
@@ -101,20 +101,21 @@ void ImageDecoder::CPUDecodeRandomCrop(
     height = roi.h;
     width = roi.w;
 
-    // todo jianglielin: why not work?
-    // cropped.data = data;
-    cv::Mat cropped;
     image(cv_roi).copyTo(cropped);
-    image_data = cropped.data;
+  } else {
+    cropped = image;
   }
 
+  // allocate cpu tensor and memory
   framework::LoDTensor cpu_tensor;
   std::vector<int64_t> out_shape = {height, width, 3};
   cpu_tensor.Resize(framework::make_ddim(out_shape));
-  // allocate memory and assign to out_image
   auto* cpu_data = cpu_tensor.mutable_data<uint8_t>(platform::CPUPlace());
 
-  std::memcpy(cpu_data, image_data, 3 * height * width);
+  cv::Mat cpu_mat(height, width, CV_8UC3, const_cast<unsigned char*>(cpu_data), cv::Mat::AUTO_STEP);
+  cv::cvtColor(cropped, cpu_mat, cv::COLOR_BGR2RGB);
+
+  // copy cpu tensor to output gpu tensor
   TensorCopySync(cpu_tensor, place, out);
 #else
   PADDLE_THROW(platform::errors::Fatal(

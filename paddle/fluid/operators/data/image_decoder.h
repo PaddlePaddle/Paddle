@@ -166,7 +166,6 @@ class ImageDecoderThreadPoolManager {
       const size_t device_memory_padding) {
     auto iter = prog_id_to_pool_.find(program_id);
     if (iter == prog_id_to_pool_.end()) {
-      LOG(ERROR) << "GetDecoderThreadPool new";
       prog_id_to_pool_[program_id] = 
         std::unique_ptr<ImageDecoderThreadPool>(
             new ImageDecoderThreadPool(num_threads, mode, dev_id,
