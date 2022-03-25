@@ -21,7 +21,7 @@ import os
 ########################
 ### Global Variables ###
 ########################
-ops_to_fill_zero_for_empty_grads = set(list("split"))
+ops_to_fill_zero_for_empty_grads = set(["split", "rnn"])
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -30,15 +30,19 @@ core_ops_args_info = {}
 core_ops_args_type_info = {}
 
 yaml_types_mapping = {
-    'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
+    'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
     'Place' : 'paddle::experimental::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
-    'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
     'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
     'Scalar' : 'paddle::experimental::Scalar',
+    'Scalar(int)' : 'paddle::experimental::Scalar',
+    'Scalar(int64_t)' : 'paddle::experimental::Scalar',
+    'Scalar(float)' : 'paddle::experimental::Scalar',
+    'Scalar(double)' : 'paddle::experimental::Scalar',
     'ScalarArray' : 'paddle::experimental::ScalarArray'
 }
 
@@ -258,8 +262,8 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
-    args_str = re.search(args_pattern, args_str).group(1)
+    args_pattern = f'^\({fargs}\)$'
+    args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
     returns_list = ParseYamlReturns(returns_str)
