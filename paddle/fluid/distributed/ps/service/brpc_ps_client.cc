@@ -154,7 +154,7 @@ int32_t BrpcPsClient::create_client2client_connection(
 
 int32_t BrpcPsClient::initialize() {
   std::cout << "debug zcb BrpcPsClient::initialize begin\n";
-//  _async_call_num = 0;
+  //  _async_call_num = 0;
 
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
@@ -196,20 +196,20 @@ int32_t BrpcPsClient::initialize() {
   start_client_service();
 
   // 异步push 请求队列初始化
-//  const auto &worker_param = _config.worker_param().downpour_worker_param();
-//  for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
-//    auto type = worker_param.downpour_table_param(i).type();
-//    auto table_id = worker_param.downpour_table_param(i).table_id();
-//    if (type == PS_DENSE_TABLE) {
-//      _push_dense_task_queue_map[table_id] =
-//          paddle::framework::MakeChannel<DenseAsyncTask *>();
-//    }
-//    if (type == PS_SPARSE_TABLE) {
-//      _push_sparse_task_queue_map[table_id] =
-//          paddle::framework::MakeChannel<SparseAsyncTask *>();
-//      _push_sparse_merge_count_map[table_id] = 0;
-//    }
-//  }
+  //  const auto &worker_param = _config.worker_param().downpour_worker_param();
+  //  for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
+  //    auto type = worker_param.downpour_table_param(i).type();
+  //    auto table_id = worker_param.downpour_table_param(i).table_id();
+  //    if (type == PS_DENSE_TABLE) {
+  //      _push_dense_task_queue_map[table_id] =
+  //          paddle::framework::MakeChannel<DenseAsyncTask *>();
+  //    }
+  //    if (type == PS_SPARSE_TABLE) {
+  //      _push_sparse_task_queue_map[table_id] =
+  //          paddle::framework::MakeChannel<SparseAsyncTask *>();
+  //      _push_sparse_merge_count_map[table_id] = 0;
+  //    }
+  //  }
 
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_client_pull_dense");
@@ -217,26 +217,26 @@ int32_t BrpcPsClient::initialize() {
   profiler.register_profiler("pserver_client_pull_sparse_param");
   profiler.register_profiler("pserver_client_pull_sparse_local");
   profiler.register_profiler("pserver_client_push_sparse");
-//  profiler.register_profiler("pserver_client_push_sparse_parse");
-//  profiler.register_profiler("client_push_sparse_put");
-//  profiler.register_profiler("pserver_client_push_sparse");
-//  profiler.register_profiler("pserver_client_push_sparse_merge");
-//  profiler.register_profiler("pserver_client_push_sparse_rpc");
-//  profiler.register_profiler("pserver_client_push_dense");
-//  profiler.register_profiler("pserver_client_push_dense_parse");
-//  profiler.register_profiler("push_dense_put");
-//  profiler.register_profiler("pserver_client_push_dense_merge");
+  //  profiler.register_profiler("pserver_client_push_sparse_parse");
+  //  profiler.register_profiler("client_push_sparse_put");
+  //  profiler.register_profiler("pserver_client_push_sparse");
+  //  profiler.register_profiler("pserver_client_push_sparse_merge");
+  //  profiler.register_profiler("pserver_client_push_sparse_rpc");
+  //  profiler.register_profiler("pserver_client_push_dense");
+  //  profiler.register_profiler("pserver_client_push_dense_parse");
+  //  profiler.register_profiler("push_dense_put");
+  //  profiler.register_profiler("pserver_client_push_dense_merge");
   profiler.register_profiler("pserver_client_push_dense_rpc");
   profiler.register_profiler("pserver_client_push_dense_send");
 
   _running = true;
-//  _flushing = false;
-//  // 启动异步push线程
-//  _async_push_sparse_thread =
-//      std::thread(std::bind(&BrpcPsClient::push_sparse_task_consume, this));
-//  // _async_push_sparse_thread.detach();
-//  _async_push_dense_thread =
-//      std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
+  //  _flushing = false;
+  //  // 启动异步push线程
+  //  _async_push_sparse_thread =
+  //      std::thread(std::bind(&BrpcPsClient::push_sparse_task_consume, this));
+  //  // _async_push_sparse_thread.detach();
+  //  _async_push_dense_thread =
+  //      std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
   // for debug
   // _print_thread =
   //    std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
@@ -458,13 +458,12 @@ std::future<int32_t> BrpcPsClient::clear(uint32_t table_id) {
   return send_cmd(table_id, PS_CLEAR_ONE_TABLE, {});
 }
 
-
 void BrpcPsClient::finalize_worker() {
   flush();
-//  VLOG(0) << "BrpcPsClient::finalize_worker begin join thread";
+  //  VLOG(0) << "BrpcPsClient::finalize_worker begin join thread";
   _running = false;
-//  _async_push_dense_thread.join();
-//  _async_push_sparse_thread.join();
+  //  _async_push_dense_thread.join();
+  //  _async_push_sparse_thread.join();
   // _print_thread.join();
   VLOG(0) << "BrpcPsClient::finalize_worker begin join server";
   _server.Stop(1000);
@@ -528,6 +527,7 @@ std::future<int32_t> BrpcPsClient::Push(RequestContext &push_context) {
   }
 }
 
+// GEO
 std::future<int32_t> BrpcPsClient::pull_geo_param(size_t table_id,
                                                   std::vector<float> *values,
                                                   std::vector<uint64_t> *keys,
@@ -1157,6 +1157,7 @@ std::future<int32_t> BrpcPsClient::send_client2client_msg(
   return fut;
 }
 
+// GEO
 std::future<int32_t> BrpcPsClient::push_sparse_raw_gradient_partial(
     size_t table_id, const uint64_t *keys, const float **update_values,
     uint32_t num, void *done, int pserver_idx) {
@@ -1280,7 +1281,8 @@ std::future<int32_t> BrpcPsClient::flush() {
 int32_t AsyncPsClient::initialize() {
   std::cout << "debug zcb AsyncPsClient::initialize begin\n";
   BrpcPsClient::initialize();
-  std::cout << "debug zcb AsyncPsClient::initialize call BrpcPsClient::initialize done\n";
+  std::cout << "debug zcb AsyncPsClient::initialize call "
+               "BrpcPsClient::initialize done\n";
 
   _async_call_num = 0;
 
@@ -1397,9 +1399,9 @@ void AsyncPsClient::print_queue_size_thread() {
 }
 
 std::future<int32_t> AsyncPsClient::push_sparse(size_t table_id,
-                                               const uint64_t *keys,
-                                               const float **update_values,
-                                               size_t num) {
+                                                const uint64_t *keys,
+                                                const float **update_values,
+                                                size_t num) {
   auto push_timer = std::make_shared<CostTimer>("pserver_client_push_sparse");
   CostTimer parse_timer("pserver_client_push_sparse_parse");
   int push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
@@ -1569,8 +1571,8 @@ void AsyncPsClient::push_sparse_task_consume() {
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx] =
               async_push_sparse_shard_threads.enqueue(std::bind(
-                  &AsyncPsClient::push_sparse_async_shard_merge, this, task_list,
-                  request_kv_num, table_id, shard_idx, accessor));
+                  &AsyncPsClient::push_sparse_async_shard_merge, this,
+                  task_list, request_kv_num, table_id, shard_idx, accessor));
         }
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx].wait();
@@ -1740,8 +1742,8 @@ int AsyncPsClient::push_sparse_async_shard_push(
 }
 
 std::future<int32_t> AsyncPsClient::push_dense(const Region *regions,
-                                              size_t region_num,
-                                              size_t table_id) {
+                                               size_t region_num,
+                                               size_t table_id) {
   auto *accessor = table_accessor(table_id);
   auto push_timer = std::make_shared<CostTimer>("pserver_client_push_dense");
   auto parse_timer =
@@ -1915,6 +1917,274 @@ void AsyncPsClient::push_dense_raw_gradient(
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }
+}
+
+int32_t GeoPsClient::initialize() {
+  std::cout << "debug zcb GeoPsClient::initialize begin\n";
+  BrpcPsClient::initialize();
+  std::cout << "debug zcb GeoPsClient::initialize call "
+               "BrpcPsClient::initialize done\n";
+  return 0;
+}
+
+// for GEO
+std::future<int32_t> GeoPsClient::push_sparse_param(size_t table_id,
+                                                    const uint64_t *keys,
+                                                    const float **update_values,
+                                                    size_t num, void *done) {
+  std::cout << "debug zcb GeoPsClient::push_sparse_param\n";
+  auto *accessor = table_accessor(table_id);
+  // 发送RPC请求
+  DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  size_t request_call_num = _server_channels.size();
+  std::vector<std::vector<uint64_t>> ids;
+  std::vector<std::vector<const float *>> value_ptrs;
+  ids.resize(request_call_num);
+  value_ptrs.resize(request_call_num);
+
+  for (size_t i = 0; i < num; ++i) {
+    size_t pserver_idx = keys[i] % request_call_num;
+    ids[pserver_idx].push_back(keys[i]);
+    value_ptrs[pserver_idx].push_back(update_values[i]);
+  }
+  for (size_t shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
+    auto kvs = ids[shard_idx];
+    auto value_ptr = value_ptrs[shard_idx];
+    size_t kv_size = kvs.size();
+    uint32_t value_size = accessor->update_size();
+    // 发送RPC请求
+    auto *push_request = closure->request(shard_idx);
+    push_request->set_cmd_id(PS_PUSH_SPARSE_PARAM);
+    push_request->set_table_id(table_id);
+    push_request->set_client_id(_client_id);
+    push_request->add_params((char *)&kv_size, sizeof(uint32_t));  // NOLINT
+    auto *push_data = push_request->mutable_data();
+    push_data->resize(kv_size * (sizeof(uint64_t) + accessor->update_size()));
+    char *push_data_ptr = const_cast<char *>(push_data->data());
+    memcpy(push_data_ptr, kvs.data(), kv_size * sizeof(uint64_t));
+    push_data_ptr += kv_size * sizeof(uint64_t);
+    for (int i = 0; i < kv_size; ++i) {
+      memcpy(push_data_ptr, value_ptr[i], accessor->update_size());
+      push_data_ptr += accessor->update_size();
+    }
+    PsService_Stub rpc_stub(get_sparse_channel(shard_idx));
+    closure->cntl(shard_idx)->set_request_compress_type(
+        (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+    rpc_stub.service(closure->cntl(shard_idx), closure->request(shard_idx),
+                     closure->response(shard_idx), closure);
+  }
+  return fut;
+}
+
+// for GEO
+std::future<int32_t> GeoPsClient::pull_sparse_param(float **select_values,
+                                                    size_t table_id,
+                                                    const uint64_t *keys,
+                                                    size_t num,
+                                                    bool is_training) {
+  std::cout << "debug zcb GeoPsClient::pull_sparse_param\n";
+  auto timer = std::make_shared<CostTimer>("pserver_client_pull_sparse_param");
+  size_t request_call_num = _server_channels.size();
+
+  auto shard_sorted_kvs = std::make_shared<
+      std::vector<std::vector<std::pair<uint64_t, float *>>>>();
+  shard_sorted_kvs->resize(request_call_num);
+
+  for (size_t i = 0; i < num; ++i) {
+    size_t shard_id = keys[i] % request_call_num;
+    shard_sorted_kvs->at(shard_id).push_back({keys[i], select_values[i]});
+  }
+
+  auto *accessor = table_accessor(table_id);
+  size_t value_size = accessor->select_size();
+
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num, [shard_sorted_kvs, value_size](void *done) {
+        int ret = 0;
+        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        for (size_t i = 0; i < shard_sorted_kvs->size(); ++i) {
+          if (closure->check_response(i, PS_PULL_SPARSE_TABLE) != 0) {
+            ret = -1;
+            break;
+          }
+
+          auto &request_kvs = shard_sorted_kvs->at(i);
+          auto &res_io_buffer = closure->cntl(i)->response_attachment();
+          butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
+          uint64_t last_key = UINT64_MAX;
+          float *last_value_data = NULL;
+
+          // can remove sort&unique
+          for (size_t kv_idx = 0; kv_idx < request_kvs.size(); ++kv_idx) {
+            auto *kv_pair = &(request_kvs[kv_idx]);
+            if (kv_pair->first == last_key) {
+              memcpy(reinterpret_cast<void *>(kv_pair->second),
+                     reinterpret_cast<void *>(last_value_data), value_size);
+            } else {
+              last_key = kv_pair->first;
+              last_value_data = kv_pair->second;
+              if (value_size !=
+                  io_buffer_itr.copy_and_forward(
+                      reinterpret_cast<void *>(last_value_data), value_size)) {
+                LOG(WARNING) << "res data is lack or not in format";
+                ret = -1;
+                break;
+              }
+            }
+          }
+        }
+        closure->set_promise_value(ret);
+      });
+  closure->add_timer(timer);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  for (size_t i = 0; i < request_call_num; ++i) {
+    auto &sorted_kvs = shard_sorted_kvs->at(i);
+    std::sort(sorted_kvs.begin(), sorted_kvs.end(),
+              [](const std::pair<uint64_t, float *> &k1,
+                 const std::pair<uint64_t, float *> &k2) {
+                return k1.first < k2.first;
+              });
+
+    uint64_t last_key = UINT64_MAX;
+    uint32_t kv_request_count = 0;
+    size_t sorted_kv_size = sorted_kvs.size();
+    auto &request_buffer = closure->cntl(i)->request_attachment();
+
+    request_buffer.append(reinterpret_cast<void *>(&is_training), sizeof(bool));
+    std::vector<uint32_t> keys_counter;
+    keys_counter.reserve(sorted_kv_size);
+
+    for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
+      ++kv_request_count;
+      uint32_t keys = 1;
+      last_key = sorted_kvs[kv_idx].first;
+      request_buffer.append(reinterpret_cast<void *>(&last_key),
+                            sizeof(uint64_t));
+      while (kv_idx < sorted_kv_size - 1 &&
+             last_key == sorted_kvs[kv_idx + 1].first) {
+        ++kv_idx;
+        ++keys;
+      }
+      keys_counter.push_back(keys);
+    }
+
+    request_buffer.append(reinterpret_cast<void *>(keys_counter.data()),
+                          sizeof(uint32_t) * keys_counter.size());
+
+    if (kv_request_count == 0) {
+      closure->Run();
+    } else {
+      closure->request(i)->set_cmd_id(PS_PULL_SPARSE_TABLE);
+      closure->request(i)->set_table_id(table_id);
+      closure->request(i)->set_client_id(_client_id);
+      closure->request(i)->add_params((char *)&kv_request_count,  // NOLINT
+                                      sizeof(uint32_t));
+      PsService_Stub rpc_stub(get_cmd_channel(i));
+      closure->cntl(i)->set_log_id(butil::gettimeofday_ms());
+      rpc_stub.service(closure->cntl(i), closure->request(i),
+                       closure->response(i), closure);
+    }
+  }
+  return fut;
+}
+
+// GEO
+std::future<int32_t> GeoPsClient::pull_geo_param(size_t table_id,
+                                                 std::vector<float> *values,
+                                                 std::vector<uint64_t> *keys,
+                                                 int pserver_idx) {
+  std::cout << "debug zcb GeoPsClient::pull_geo_param\n";
+  auto *accessor = table_accessor(table_id);
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(1, [keys, values, accessor](void *done) {
+        int ret = 0;
+        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+        uint32_t shard_nums;
+        if (closure->check_response(0, PS_PULL_GEO_PARAM) != 0) {
+          ret = -1;
+        }
+        auto &res_io_buffer = closure->cntl(0)->response_attachment();
+        butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
+        io_buffer_itr.copy_and_forward(reinterpret_cast<void *>(&shard_nums),
+                                       sizeof(uint32_t));
+        keys->resize(shard_nums);
+        values->resize(shard_nums * accessor->update_dim());
+        io_buffer_itr.copy_and_forward((void *)(keys->data()),  // NOLINT
+                                       sizeof(uint64_t) * shard_nums);
+        io_buffer_itr.copy_and_forward((void *)(values->data()),  // NOLINT
+                                       shard_nums * accessor->update_size());
+        closure->set_promise_value(ret);
+      });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  closure->request(0)->set_cmd_id(PS_PULL_GEO_PARAM);
+  closure->request(0)->set_table_id(table_id);
+  closure->request(0)->set_client_id(_client_id);
+  PsService_Stub rpc_stub(get_cmd_channel(pserver_idx));
+  closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
+  rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
+                   closure);
+  return fut;
+}
+
+std::future<int32_t> GeoPsClient::push_sparse_raw_gradient_partial(
+    size_t table_id, const uint64_t *keys, const float **update_values,
+    uint32_t num, void *done, int pserver_idx) {
+  std::cout << "debug zcb GeoPsClient::push_sparse_raw_gradient_partial\n";
+  auto *accessor = table_accessor(table_id);
+  size_t value_size = accessor->update_size();
+  DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  // 发送RPC请求
+  auto *push_request = closure->request(0);
+  push_request->set_cmd_id(PS_PUSH_SPARSE_TABLE);
+  push_request->set_table_id(table_id);
+  push_request->set_client_id(_client_id);
+  push_request->add_params((char *)&num, sizeof(uint32_t));  // NOLINT
+  auto *push_data = push_request->mutable_data();
+  push_data->resize(num * (sizeof(uint64_t) + value_size));
+  char *push_data_ptr = const_cast<char *>(push_data->data());
+  memcpy(push_data_ptr, keys, num * sizeof(uint64_t));
+  push_data_ptr += num * sizeof(uint64_t);
+  for (int i = 0; i < num; ++i) {
+    memcpy(push_data_ptr, update_values[i], value_size);
+    push_data_ptr += value_size;
+  }
+  PsService_Stub rpc_stub(get_sparse_channel(pserver_idx));
+  closure->cntl(0)->set_request_compress_type(
+      (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+  rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
+                   closure);
+  return fut;
+}
+
+std::future<int32_t> GeoPsClient::Push(RequestContext &push_context) {
+  // TODO
+  VLOG(0) << "GeoPsClient::push_dense";
+  std::promise<int32_t> prom;
+  prom.set_value(0);
+  std::future<int32_t> fut = prom.get_future();
+  return fut;
+}
+
+std::future<int32_t> GeoPsClient::Pull(RequestContext &pull_context) {
+  // TODO
+  VLOG(0) << "GeoPsClient::push_dense";
+  std::promise<int32_t> prom;
+  prom.set_value(0);
+  std::future<int32_t> fut = prom.get_future();
+  return fut;
 }
 
 }  // namespace distributed

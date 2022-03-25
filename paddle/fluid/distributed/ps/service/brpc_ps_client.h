@@ -142,12 +142,12 @@ class BrpcPsClient : public PSClient {
       flush();
       _running = false;
     }
-//    if (_async_push_dense_thread.joinable()) {
-//      _async_push_dense_thread.join();
-//    }
-//    if (_async_push_sparse_thread.joinable()) {
-//      _async_push_sparse_thread.join();
-//    }
+    //    if (_async_push_dense_thread.joinable()) {
+    //      _async_push_dense_thread.join();
+    //    }
+    //    if (_async_push_sparse_thread.joinable()) {
+    //      _async_push_sparse_thread.join();
+    //    }
     if (_server_started) {
       _server.Stop(1000);
       _server.Join();
@@ -171,8 +171,7 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> save(uint32_t table_id, const std::string &epoch,
                             const std::string &mode) override;
 
-  virtual std::future<int32_t> Save(
-      const LoadSaveContext &save_context) override;
+  std::future<int32_t> Save(const LoadSaveContext &save_context) override;
 
   std::future<int32_t> clear() override;
 
@@ -200,11 +199,12 @@ class BrpcPsClient : public PSClient {
     std::future<int32_t> fut = prom.get_future();
     return fut;
   }
-//  void push_dense_task_consume();
+  //  void push_dense_task_consume();
   virtual std::future<int32_t> pull_sparse(float **select_values,
                                            size_t table_id,
                                            const uint64_t *keys, size_t num,
                                            bool is_training);
+  // GEO
   virtual std::future<int32_t> pull_sparse_param(float **select_values,
                                                  size_t table_id,
                                                  const uint64_t *keys,
@@ -218,6 +218,7 @@ class BrpcPsClient : public PSClient {
 
   virtual std::future<int32_t> barrier(size_t table_id, uint32_t barrier_type);
 
+  // GEO
   virtual std::future<int32_t> pull_geo_param(size_t table_id,
                                               std::vector<float> *values,
                                               std::vector<uint64_t> *keys,
@@ -234,8 +235,8 @@ class BrpcPsClient : public PSClient {
   virtual int32_t recv_and_save_table(const uint64_t table_id,
                                       const std::string &path);
 
-//  void print_queue_size();
-//  void print_queue_size_thread();
+  //  void print_queue_size();
+  //  void print_queue_size_thread();
 
  protected:
   virtual size_t get_server_nums() { return _server_channels.size(); }
@@ -264,35 +265,42 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
 
-//  bool _running = false;
-//  bool _flushing = false;
-//  std::atomic<uint32_t> _async_call_num;  // 异步请求计数
+  //  bool _running = false;
+  //  bool _flushing = false;
+  //  std::atomic<uint32_t> _async_call_num;  // 异步请求计数
 
-//  // 异步push dense task
-//  std::thread _async_push_dense_thread;
-//  typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>> DenseAsyncTask;
-//  std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
-//      _push_dense_task_queue_map;
-//  // 异步push sparse task
-//  std::thread _async_push_sparse_thread;
-//  typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>> SparseAsyncTask;
-//  std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask *>>
-//      _push_sparse_task_queue_map;
-//  std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
+  //  // 异步push dense task
+  //  std::thread _async_push_dense_thread;
+  //  typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>>
+  //  DenseAsyncTask;
+  //  std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
+  //      _push_dense_task_queue_map;
+  //  // 异步push sparse task
+  //  std::thread _async_push_sparse_thread;
+  //  typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>>
+  //  SparseAsyncTask;
+  //  std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask
+  //  *>>
+  //      _push_sparse_task_queue_map;
+  //  std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
 
-//  std::thread _print_thread;
+  //  std::thread _print_thread;
 
-//  int push_sparse_async_shard_merge(
-//      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
-//      std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
-//      ValueAccessor *accessor);
-//
-//  int push_sparse_async_shard_push(
-//      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
-//      std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
-//      DownpourBrpcClosure *closure, ValueAccessor *accessor);
+  //  int push_sparse_async_shard_merge(
+  //      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       //
+  //      NOLINT
+  //      std::vector<int> &request_kv_num, int table_id, int shard_idx,  //
+  //      NOLINT
+  //      ValueAccessor *accessor);
+  //
+  //  int push_sparse_async_shard_push(
+  //      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       //
+  //      NOLINT
+  //      std::vector<int> &request_kv_num, int table_id, int shard_idx,  //
+  //      NOLINT
+  //      DownpourBrpcClosure *closure, ValueAccessor *accessor);
 
-//  SparseTaskPool _sparse_task_pool;
+  //  SparseTaskPool _sparse_task_pool;
 
   std::vector<std::shared_ptr<brpc::Channel>>
       _client_channels;  // client2client
@@ -309,30 +317,34 @@ class BrpcPsClient : public PSClient {
                                                 size_t num,
                                                 void *done) override;
 
+  // GEO
   std::future<int32_t> push_sparse_raw_gradient_partial(
       size_t table_id, const uint64_t *keys, const float **update_values,
       uint32_t num, void *done, int pserver_idx) override;
 
+  // GEO
   std::future<int32_t> push_sparse_param(size_t table_id, const uint64_t *keys,
                                          const float **update_values,
                                          size_t num, void *done) override;
-  virtual std::future<int32_t> push_sparse(size_t table_id, const uint64_t *keys,
-                                   const float **update_values,
-                                   size_t num) {
+  virtual std::future<int32_t> push_sparse(size_t table_id,
+                                           const uint64_t *keys,
+                                           const float **update_values,
+                                           size_t num) {
     VLOG(0) << "BrpcPsClient::push_sparse";
     std::promise<int32_t> prom;
     prom.set_value(0);
     std::future<int32_t> fut = prom.get_future();
     return fut;
   }
-//  void push_sparse_task_consume();
+  //  void push_sparse_task_consume();
 
   int32_t start_client_service();
 
-//  void push_dense_raw_gradient(std::shared_ptr<DenseAsyncTask> &task,  // NOLINT
-//                               float *total_send_data,
-//                               size_t total_send_data_size,
-//                               DownpourBrpcClosure *closure);
+  //  void push_dense_raw_gradient(std::shared_ptr<DenseAsyncTask> &task,  //
+  //  NOLINT
+  //                               float *total_send_data,
+  //                               size_t total_send_data_size,
+  //                               DownpourBrpcClosure *closure);
   // float _mae = 0;
   // float _mse = 0;
   // uint16_t _push_times = 0;
@@ -341,7 +353,6 @@ class BrpcPsClient : public PSClient {
   bool _server_started = false;
   // std::atomic_uint grad_num_{0};
 };
-
 
 class AsyncPsClient : public BrpcPsClient {
  public:
@@ -357,11 +368,6 @@ class AsyncPsClient : public BrpcPsClient {
     if (_async_push_sparse_thread.joinable()) {
       _async_push_sparse_thread.join();
     }
-    if (_server_started) {
-      _server.Stop(1000);
-      _server.Join();
-      _server_started = false;
-    }
   }
 
   int32_t initialize() override;
@@ -375,16 +381,15 @@ class AsyncPsClient : public BrpcPsClient {
   std::future<int32_t> flush() override;
 
  private:
-//  bool _running = false;
+  //  bool _running = false;
   bool _flushing = false;
   std::atomic<uint32_t> _async_call_num;  // 异步请求计数
 
   std::future<int32_t> push_sparse(size_t table_id, const uint64_t *keys,
-                                   const float **update_values,
-                                   size_t num);
- 
-  std::future<int32_t> push_dense(const Region *regions,
-                                          size_t region_num, size_t table_id);
+                                   const float **update_values, size_t num);
+
+  std::future<int32_t> push_dense(const Region *regions, size_t region_num,
+                                  size_t table_id);
 
   // 异步push dense task
   std::thread _async_push_dense_thread;
@@ -399,7 +404,7 @@ class AsyncPsClient : public BrpcPsClient {
   std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
 
   void push_sparse_task_consume();
-  
+
   int push_sparse_async_shard_merge(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
       std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
@@ -409,15 +414,51 @@ class AsyncPsClient : public BrpcPsClient {
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       // NOLINT
       std::vector<int> &request_kv_num, int table_id, int shard_idx,  // NOLINT
       DownpourBrpcClosure *closure, ValueAccessor *accessor);
-  
+
+  SparseTaskPool _sparse_task_pool;
+
   void push_dense_task_consume();
 
   void push_dense_raw_gradient(std::shared_ptr<DenseAsyncTask> &task,  // NOLINT
                                float *total_send_data,
                                size_t total_send_data_size,
                                DownpourBrpcClosure *closure);
-  SparseTaskPool _sparse_task_pool;
-
 };
+
+class GeoPsClient : public BrpcPsClient {
+ public:
+  GeoPsClient() {}
+  virtual ~GeoPsClient() {
+    if (_running) {
+      _running = false;
+    }
+  }
+
+  int32_t initialize() override;
+
+  virtual std::future<int32_t> Pull(RequestContext &pull_context) override;
+
+  virtual std::future<int32_t> Push(RequestContext &push_context) override;
+
+ private:
+  std::future<int32_t> push_sparse_param(size_t table_id, const uint64_t *keys,
+                                         const float **update_values,
+                                         size_t num, void *done) override;
+
+  virtual std::future<int32_t> pull_sparse_param(float **select_values,
+                                                 size_t table_id,
+                                                 const uint64_t *keys,
+                                                 size_t num, bool is_training);
+
+  virtual std::future<int32_t> pull_geo_param(size_t table_id,
+                                              std::vector<float> *values,
+                                              std::vector<uint64_t> *keys,
+                                              int pserver_idx);
+
+  std::future<int32_t> push_sparse_raw_gradient_partial(
+      size_t table_id, const uint64_t *keys, const float **update_values,
+      uint32_t num, void *done, int pserver_idx) override;
+};
+
 }  // namespace distributed
 }  // namespace paddle

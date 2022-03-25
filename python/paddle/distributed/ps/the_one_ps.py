@@ -100,7 +100,7 @@ class Service:
 
     def _set(self, service_proto):
         service_proto.server_class = "BrpcPsServer"
-        service_proto.client_class = "AsyncPsClient"
+        service_proto.client_class = "BrpcPsClient"
         service_proto.service_class = "BrpcPsService"
         service_proto.start_server_port = 0
         service_proto.server_thread_num = 12
@@ -113,6 +113,30 @@ class GpuService(Service):
     def _set(self, service_proto):
         service_proto.server_class = 'PsLocalServer'
         service_proto.client_class = 'PsLocalClient'
+
+
+class AsyncService(Service):
+    def __init__(self):
+        super(AsyncService, self).__init__()
+
+    def _set(self, service_proto):
+        service_proto.server_class = "BrpcPsServer"
+        service_proto.client_class = "AsyncPsClient"
+        service_proto.service_class = "BrpcPsService"
+        service_proto.start_server_port = 0
+        service_proto.server_thread_num = 12
+
+
+class GeoService(Service):
+    def __init__(self):
+        super(GeoService, self).__init__()
+
+    def _set(self, service_proto):
+        service_proto.server_class = "BrpcPsServer"
+        service_proto.client_class = "GeoPsClient"
+        service_proto.service_class = "BrpcPsService"
+        service_proto.start_server_port = 0
+        service_proto.server_thread_num = 12
 
 
 class Accessor:
@@ -777,6 +801,10 @@ class PsDescBuilder(object):
     def _get_service(self):
         if self.use_ps_gpu:
             return GpuService()
+        elif self.ps_mode == DistributedMode.GEO:
+            return GeoService()
+        elif self.ps_mode == DistributedMode.ASYNC:
+            return AsyncService()
         else:
             return Service()
 
@@ -947,15 +975,18 @@ class TheOnePSRuntime(RuntimeBase):
 
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+        print('debug zcb fleet init_worker done')
 
         if self.context['ps_mode'] == DistributedMode.GEO or self.context[
                 'ps_mode'] == DistributedMode.SYNC:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
+            print('debug zcb create comm done')
             self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
                                              self.string_hosts,
                                              fluid.global_scope())
+            print('debug zcb comm init_with_ctx done')
         fleet.util.barrier()
 
         # info = self._communicator.get_client_info()

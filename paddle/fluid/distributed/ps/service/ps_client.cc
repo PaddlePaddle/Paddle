@@ -23,6 +23,7 @@ namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, AsyncPsClient);
+REGISTER_PSCORE_CLASS(PSClient, GeoPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 
@@ -52,6 +53,7 @@ int32_t PSClient::configure(
     _table_accessors[work_param.downpour_table_param(i).table_id()].reset(
         accessor);
   }
+  VLOG(0) << "debug zcb PSClient::configure begin initialize";
   return initialize();
 }
 
