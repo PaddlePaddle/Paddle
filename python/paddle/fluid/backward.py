@@ -1309,8 +1309,8 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if grad_var_ins:
                 existing_grad_var_ins = [
                     var for var in grad_var_ins
-                    if block.desc.has_var_recursive(cpt.to_bytes(var)) or
-                    var in parent_op_vars
+                    if block.desc.has_var_recursive(cpt.to_bytes(var)) or var in
+                    parent_op_vars
                 ]
                 if not existing_grad_var_ins:
                     '''
