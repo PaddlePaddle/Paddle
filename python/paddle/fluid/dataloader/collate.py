@@ -15,7 +15,7 @@
 import paddle
 import numbers
 import numpy as np
-from ..framework import in_dygraph_mode
+from ..framework import _non_static_mode
 from .. import core, layers
 
 try:

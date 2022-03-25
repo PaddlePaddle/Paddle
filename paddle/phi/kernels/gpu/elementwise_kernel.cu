@@ -49,6 +49,12 @@ DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
 DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
 // Create the definition of Divide
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
+// Create the definition of Maximum
+DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
+// Create the definition of Minimum
+DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
+// Create the definition of Modulo
+DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
 
 }  // namespace phi
 
@@ -57,23 +63,11 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(elementwise_fmax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmax, GPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(elementwise_fmin,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMinKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmin, GPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(add_raw,
                    GPU,
@@ -126,3 +120,31 @@ PD_REGISTER_KERNEL(multiply_raw,
                    complex64,
                    complex128,
                    bfloat16) {}
+PD_REGISTER_KERNEL(maximum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MaximumRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   bfloat16) {}
+PD_REGISTER_KERNEL(minimum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MinimumRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   bfloat16) {}
+PD_REGISTER_KERNEL(modulo_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ModuloRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

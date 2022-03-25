@@ -71,11 +71,22 @@ class FleetWrapper : public PSWrapper {
   }
   virtual int32_t Initialize(InitContext& context) { return 0; }
 
+  // TODO(zhaocaibei123: later)
+  int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
+
+  int32_t CopyTableByFeasign(const uint64_t src_table_id,
+                             const uint64_t dest_table_id,
+                             const std::vector<uint64_t>& feasign_list);
+
+  typedef std::function<void(int, int)> HeterCallBackFunc;
+  int RegisterHeterCallback(HeterCallBackFunc handler);
+
   virtual void Stop() override;
 
   virtual void Load(WrapperContext& context) override;
 
   virtual void Save(WrapperContext& context) override;
+
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);
@@ -168,7 +179,8 @@ class FleetWrapper : public PSWrapper {
                                  std::vector<const LoDTensor*>* inputs,
                                  const LoDTensor* shows,
                                  const LoDTensor* clicks,
-                                 std::vector<LoDTensor*>* outputs);
+                                 std::vector<LoDTensor*>* outputs,
+                                 bool use_cvm_op = false);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status
@@ -185,12 +197,7 @@ class FleetWrapper : public PSWrapper {
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   // init trainer
   void InitWorker(const std::string& dist_desc,
-                  const std::vector<std::string>& host_sign_list, Scope* scope,
-                  const RpcCtxMap& send_ctx,
-                  const std::unordered_map<uint64_t, std::vector<std::string>>&
-                      dense_varnames,
-                  const std::map<std::string, std::string>& envs, int node_num,
-                  int index);
+                  const std::vector<std::string>& host_sign_list, int index);
 
   // stop server
   void StopServer();
@@ -200,6 +207,8 @@ class FleetWrapper : public PSWrapper {
   uint64_t RunServer(const std::string& ip, uint32_t port);
   // get client info
   std::vector<uint64_t> GetClientsInfo();
+  // set client info
+  int SetClients(std::vector<uint64_t>& host_sign_list);  // NOLINT
   // create client to client connection
   void CreateClient2ClientConnection();
   // flush all push requests
@@ -255,10 +264,15 @@ class FleetWrapper : public PSWrapper {
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
 
+  // for init worker
+  void InitGFlag(const std::string& gflags);
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
+  static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  paddle::distributed::PaddlePSEnvironment ps_env_;
   size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
                         const framework::LoD& lod);
 
