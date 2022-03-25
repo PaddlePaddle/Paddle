@@ -182,7 +182,7 @@ class Accuracy(Metric):
     Encapsulates accuracy metric logic.
 
     Args:
-        topk (int|list[int]|tuple[int]): Number of top elements to look at
+        topk (list[int]|tuple[int]): Number of top elements to look at
             for computing accuracy. Default is (1,).
         name (str, optional): String name of the metric instance. Default
             is `acc`.
