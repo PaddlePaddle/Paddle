@@ -135,7 +135,7 @@ function compile_test() {
     cd ${build_dir}
     TEST_NAME=$1
     if [ $WIN_DETECT != "" ]; then
-        cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+        cmake .. -G "Visual Studio 16 2019" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
              -DWITH_GPU=$TEST_GPU_CPU \
