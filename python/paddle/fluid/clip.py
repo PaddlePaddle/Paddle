@@ -17,6 +17,7 @@ from __future__ import print_function
 import copy
 import six
 import warnings
+import numpy as np
 
 import functools
 import paddle
@@ -519,6 +520,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
 
         # only when global_norm_var > max_global_norm, grad need clip
+        '''
         need_clip = False
         if global_norm_var > max_global_norm:
             need_clip = True
@@ -541,7 +543,19 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))
-
+        '''
+        clip_var = layers.elementwise_div(
+            x=max_global_norm, y=global_norm_var + 1e-6)
+     
+        clip_var_clipped = layers.clip(clip_var, min=float(np.finfo(np.float32).min), max=1.0)
+        for p, g in params_grads:
+            if g is None:
+                continue
+            clip_input = (clip_var_clipped.astype('float16')
+                          if g.dtype == core.VarDesc.VarType.FP16 else
+                          clip_var_clipped)
+            new_grad = layers.elementwise_mul(x=g, y=clip_input)
+            params_and_grads.append((p, new_grad))
         return params_and_grads
 
     def _static_clip(self, params_grads):

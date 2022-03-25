@@ -31,6 +31,7 @@ void GatherNdGradKernel(const Context &ctx,
   auto &place = *ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
+  if (index.numel() == 0) return;
 
   const auto &index_type = index.dtype();
   bool index_type_match =
