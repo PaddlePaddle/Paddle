@@ -22,6 +22,7 @@
 namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
+REGISTER_PSCORE_CLASS(PSClient, AsyncPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 

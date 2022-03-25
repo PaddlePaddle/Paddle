@@ -100,7 +100,7 @@ class Service:
 
     def _set(self, service_proto):
         service_proto.server_class = "BrpcPsServer"
-        service_proto.client_class = "BrpcPsClient"
+        service_proto.client_class = "AsyncPsClient"
         service_proto.service_class = "BrpcPsService"
         service_proto.start_server_port = 0
         service_proto.server_thread_num = 12
