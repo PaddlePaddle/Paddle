@@ -33,15 +33,13 @@ class ProfilerState(Enum):
 
     The meaning of each ProfilerState is as following
 
-    **ProfilerState.CLOSED** : The profiler is closed, and no profiling data will be recorded.
+    - **ProfilerState.CLOSED** : The profiler is closed, and no profiling data will be recorded.
 
-    **ProfilerState.READY** : The profiler is open, but the data will not be recorded.
-    This state is used for reducing overhead influence when profiler starts.
+    - **ProfilerState.READY** : The profiler is open, but the data will not be recorded. This state is used for reducing overhead influence when profiler starts.
 
-    **ProfilerState.RECORD** : The profiler is open, and the data will be recorded.
+    - **ProfilerState.RECORD** : The profiler is open, and the data will be recorded.
 
-    **ProfilerState.RECORD_AND_RETURN** : The profiler is open, and this state stands for the last batch of "RECORD" state in current profiling period.
-    The collected data will be returned in this state.
+    - **ProfilerState.RECORD_AND_RETURN** : The profiler is open, and this state stands for the last batch of "RECORD" state in current profiling period. The collected data will be returned in this state.
     """
     CLOSED = 0
     READY = 1
@@ -55,9 +53,9 @@ class ProfilerTarget(Enum):
 
     The meaning of each ProfilerState is as following
 
-    **ProfilerTarget.CPU** : Profile events on CPU.
+    - **ProfilerTarget.CPU** : Profile events on CPU.
 
-    **ProfilerTarget.GPU** : Profile events on GPU.
+    - **ProfilerTarget.GPU** : Profile events on GPU.
     """
     CPU = 0
     GPU = 1

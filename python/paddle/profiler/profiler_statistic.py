@@ -37,21 +37,21 @@ class SortedKeys(Enum):
 
     The meaning of each SortedKeys is as following
 
-    **SortedKeys.CPUTotal** :  Sorted by CPU total time.
+    - **SortedKeys.CPUTotal** :  Sorted by CPU total time.
 
-    **SortedKeys.CPUAvg**  : Sorted by CPU average time.
+    - **SortedKeys.CPUAvg**  : Sorted by CPU average time.
 
-    **SortedKeys.CPUMax**  : Sorted by CPU max time.
+    - **SortedKeys.CPUMax**  : Sorted by CPU max time.
 
-    **SortedKeys.CPUMin**  : Sorted by CPU min time.
+    - **SortedKeys.CPUMin**  : Sorted by CPU min time.
 
-    **SortedKeys.GPUTotal**  : Sorted by GPU total time.
+    - **SortedKeys.GPUTotal**  : Sorted by GPU total time.
 
-    **SortedKeys.GPUAvg**  : Sorted by GPU average time.
+    - **SortedKeys.GPUAvg**  : Sorted by GPU average time.
 
-    **SortedKeys.GPUMax**  : Sorted by GPU max time.
+    - **SortedKeys.GPUMax**  : Sorted by GPU max time.
 
-    **SortedKeys.GPUMin**  : Sorted by GPU min time.
+    - **SortedKeys.GPUMin**  : Sorted by GPU min time.
     """
     CPUTotal = 0
     CPUAvg = 1
@@ -274,10 +274,8 @@ class DistributedSummary:
                     for device_node in device_nodes:
                         if device_node.type == TracerEventType.Kernel:
                             self.gpu_communication_range.append(
-                                (devicenode.start_ns, devicenode.end_ns))
-                        else:
-                            self.computation_range.append(
-                                (devicenode.start_ns, devicenode.end_ns))
+                                (device_node.start_ns, device_node.end_ns))
+
                 #case 2: TracerEventType is Operator but is communication op
                 elif hostnode.type == TracerEventType.Operator and any([
                         name in hostnode.name.lower()
@@ -289,10 +287,8 @@ class DistributedSummary:
                     for device_node in device_nodes:
                         if device_node.type == TracerEventType.Kernel:
                             self.gpu_communication_range.append(
-                                (devicenode.start_ns, devicenode.end_ns))
-                        else:
-                            self.computation_range.append(
-                                (devicenode.start_ns, devicenode.end_ns))
+                                (device_node.start_ns, device_node.end_ns))
+
                 #case 3: Others, filter kernels named with nccl
                 else:
                     for runtimenode in hostnode.runtime_node:
