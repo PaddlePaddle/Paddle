@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import copy
 import six
-from ..framework import Parameter, in_dygraph_mode, _global_flags
+from ..framework import Parameter, _non_static_mode, _global_flags
 from ..param_attr import ParamAttr
 from .. import core
 from six.moves import zip
@@ -163,7 +163,7 @@ class LayerObjectHelper(LayerHelperBase):
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-        if in_dygraph_mode():
+        if _non_static_mode():
             res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
                                                 use_mkldnn)
             return res

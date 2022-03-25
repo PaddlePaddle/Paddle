@@ -31,7 +31,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_eager_mode
+from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -617,7 +617,7 @@ class OpTest(unittest.TestCase):
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if _in_eager_mode():
+                    if not _in_legacy_dygraph():
                         v.retain_grads()
 
                 if has_lod:
@@ -1340,17 +1340,23 @@ class OpTest(unittest.TestCase):
                     "no_check_set of op %s must be set to None." % self.op_type)
 
         if check_dygraph:
-            dygraph_outs = self._calc_dygraph_output(
-                place, no_check_set=no_check_set)
-
+            if _in_eager_without_dygraph_check():
+                _enable_legacy_dygraph()
+                dygraph_outs = self._calc_dygraph_output(
+                    place, no_check_set=no_check_set)
+                _disable_legacy_dygraph()
+            else:
+                dygraph_outs = self._calc_dygraph_output(
+                    place, no_check_set=no_check_set)
         if check_eager:
             # we only check end2end api when check_eager=True
-            with _test_eager_guard():
-                eager_dygraph_outs = self._calc_python_api_output(place)
-                if eager_dygraph_outs is None:
-                    # missing KernelSignature, fall back to eager middle output.
-                    eager_dygraph_outs = self._calc_dygraph_output(
-                        place, no_check_set=no_check_set)
+            with fluid.dygraph.base.guard(place):
+                with _test_eager_guard():
+                    eager_dygraph_outs = self._calc_python_api_output(place)
+                    if eager_dygraph_outs is None:
+                        # missing KernelSignature, fall back to eager middle output.
+                        eager_dygraph_outs = self._calc_dygraph_output(
+                            place, no_check_set=no_check_set)
 
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
@@ -1390,16 +1396,25 @@ class OpTest(unittest.TestCase):
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
                     if check_dygraph:
-                        imperative_actual = find_imperative_actual(
-                            sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(imperative_actual.value()
-                                                       .get_tensor())
+                        if _in_eager_without_dygraph_check():
+                            _enable_legacy_dygraph()
+                            imperative_actual = find_imperative_actual(
+                                sub_out_name, dygraph_outs, place)
+                            imperative_actual_t = np.array(
+                                imperative_actual.value().get_tensor())
+                            _disable_legacy_dygraph()
+                        else:
+                            imperative_actual = find_imperative_actual(
+                                sub_out_name, dygraph_outs, place)
+                            imperative_actual_t = np.array(
+                                imperative_actual.value().get_tensor())
                     if check_eager:
-                        with _test_eager_guard():
-                            eager_imperative_actual = find_imperative_actual(
-                                sub_out_name, eager_dygraph_outs, place)
-                            eager_imperative_actual_t = eager_imperative_actual.numpy(
-                            )
+                        with fluid.dygraph.base.guard(place):
+                            with _test_eager_guard():
+                                eager_imperative_actual = find_imperative_actual(
+                                    sub_out_name, eager_dygraph_outs, place)
+                                eager_imperative_actual_t = eager_imperative_actual.numpy(
+                                )
 
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
@@ -1421,15 +1436,16 @@ class OpTest(unittest.TestCase):
                             "Output (" + sub_out_name + ") has diff at " +
                             str(place) + " in dygraph mode")
                     if check_eager:
-                        with _test_eager_guard():
-                            self.assertTrue(
-                                np.allclose(
-                                    eager_imperative_actual_t,
-                                    expect_t,
-                                    atol=atol,
-                                    equal_nan=equal_nan),
-                                "Output (" + sub_out_name + ") has diff at " +
-                                str(place) + " in eager dygraph mode")
+                        with fluid.dygraph.base.guard(place):
+                            with _test_eager_guard():
+                                self.assertTrue(
+                                    np.allclose(
+                                        eager_imperative_actual_t,
+                                        expect_t,
+                                        atol=atol,
+                                        equal_nan=equal_nan),
+                                    "Output (" + sub_out_name + ") has diff at "
+                                    + str(place) + " in eager dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
@@ -1443,25 +1459,30 @@ class OpTest(unittest.TestCase):
                                 ") has different lod at " + str(place) +
                                 " in dygraph mode")
                         if check_eager:
-                            with _test_eager_guard():
-                                self.assertListEqual(
-                                    eager_imperative_actual.value().get_tensor()
-                                    .recursive_sequence_lengths(), expect[1],
-                                    "Output (" + out_name +
-                                    ") has different lod at " + str(place) +
-                                    " in eager dygraph mode")
+                            with fluid.dygraph.base.guard(place):
+                                with _test_eager_guard():
+                                    self.assertListEqual(
+                                        eager_imperative_actual.value(
+                                        ).get_tensor()
+                                        .recursive_sequence_lengths(),
+                                        expect[1], "Output (" + out_name +
+                                        ") has different lod at " + str(place) +
+                                        " in eager dygraph mode")
             else:
                 if check_dygraph:
-                    imperative_actual = find_imperative_actual(
-                        out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(imperative_actual.value()
-                                                   .get_tensor())
+
+                    with fluid.dygraph.base.guard(place=place):
+                        imperative_actual = find_imperative_actual(
+                            out_name, dygraph_outs, place)
+                        imperative_actual_t = np.array(imperative_actual.value()
+                                                       .get_tensor())
                 if check_eager:
-                    with _test_eager_guard():
-                        eager_imperative_actual = find_imperative_actual(
-                            out_name, eager_dygraph_outs, place)
-                        eager_imperative_actual_t = eager_imperative_actual.numpy(
-                        )
+                    with fluid.dygraph.base.guard(place):
+                        with _test_eager_guard():
+                            eager_imperative_actual = find_imperative_actual(
+                                out_name, eager_dygraph_outs, place)
+                            eager_imperative_actual_t = eager_imperative_actual.numpy(
+                            )
 
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
@@ -1524,31 +1545,33 @@ class OpTest(unittest.TestCase):
                             "But Got" + str(imperative_actual_t) + " in class "
                             + self.__class__.__name__)
                 if check_eager:
-                    with _test_eager_guard():
-                        if self.is_bfloat16_op():
-                            if eager_imperative_actual_t.dtype == np.uint16:
-                                eager_imperative_actual_t = convert_uint16_to_float(
-                                    eager_imperative_actual_t)
-                            if expect_t.dtype == np.uint16:
-                                expect_t = convert_uint16_to_float(expect_t)
-                        if six.moves.reduce(lambda x, y: x * y,
-                                            eager_imperative_actual_t.shape,
-                                            1) == 0 and six.moves.reduce(
-                                                lambda x, y: x * y,
-                                                expect_t.shape, 1) == 0:
-                            pass
-                        else:
-                            self.assertTrue(
-                                np.allclose(
-                                    eager_imperative_actual_t,
-                                    expect_t,
-                                    atol=atol,
-                                    rtol=rtol,
-                                    equal_nan=equal_nan),
-                                "Output (" + out_name + ") has diff at " +
-                                str(place) + "\nExpect " + str(expect_t) + "\n"
-                                + "But Got" + str(eager_imperative_actual_t) +
-                                " in class " + self.__class__.__name__)
+                    with fluid.dygraph.base.guard(place):
+                        with _test_eager_guard():
+                            if self.is_bfloat16_op():
+                                if eager_imperative_actual_t.dtype == np.uint16:
+                                    eager_imperative_actual_t = convert_uint16_to_float(
+                                        eager_imperative_actual_t)
+                                if expect_t.dtype == np.uint16:
+                                    expect_t = convert_uint16_to_float(expect_t)
+                            if six.moves.reduce(lambda x, y: x * y,
+                                                eager_imperative_actual_t.shape,
+                                                1) == 0 and six.moves.reduce(
+                                                    lambda x, y: x * y,
+                                                    expect_t.shape, 1) == 0:
+                                pass
+                            else:
+                                self.assertTrue(
+                                    np.allclose(
+                                        eager_imperative_actual_t,
+                                        expect_t,
+                                        atol=atol,
+                                        rtol=rtol,
+                                        equal_nan=equal_nan),
+                                    "Output (" + out_name + ") has diff at " +
+                                    str(place) + "\nExpect " + str(expect_t) +
+                                    "\n" + "But Got" +
+                                    str(eager_imperative_actual_t) +
+                                    " in class " + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
@@ -1560,13 +1583,14 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in eager dygraph mode")
                     if check_eager:
-                        with _test_eager_guard():
-                            self.assertListEqual(
-                                eager_imperative_actual.value().get_tensor()
-                                .recursive_sequence_lengths(), expect[1],
-                                "Output (" + out_name +
-                                ") has different lod at " + str(place) +
-                                " in eager dygraph mode")
+                        with fluid.dygraph.base.guard(place):
+                            with _test_eager_guard():
+                                self.assertListEqual(
+                                    eager_imperative_actual.value().get_tensor()
+                                    .recursive_sequence_lengths(), expect[1],
+                                    "Output (" + out_name +
+                                    ") has different lod at " + str(place) +
+                                    " in eager dygraph mode")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -1897,20 +1921,21 @@ class OpTest(unittest.TestCase):
                                   "Gradient Check On %s" % str(place))
 
         if check_eager:
-            with _test_eager_guard():
-                eager_dygraph_grad = self._get_dygraph_grad(
-                    inputs_to_check, place, output_names,
-                    user_defined_grad_outputs, no_grad_set, check_eager)
-                fp32_grads = []
-                for grad in eager_dygraph_grad:
-                    if grad.dtype == np.uint16:
-                        grad = convert_uint16_to_float(grad)
-                        max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
-                    fp32_grads.append(grad)
-                eager_dygraph_grad = fp32_grads
-                self._assert_is_close(numeric_grads, eager_dygraph_grad,
-                                      inputs_to_check, max_relative_error,
-                                      "Gradient Check On %s" % str(place))
+            with fluid.dygraph.base.guard(place):
+                with _test_eager_guard():
+                    eager_dygraph_grad = self._get_dygraph_grad(
+                        inputs_to_check, place, output_names,
+                        user_defined_grad_outputs, no_grad_set, check_eager)
+                    fp32_grads = []
+                    for grad in eager_dygraph_grad:
+                        if grad.dtype == np.uint16:
+                            grad = convert_uint16_to_float(grad)
+                            max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                        fp32_grads.append(grad)
+                    eager_dygraph_grad = fp32_grads
+                    self._assert_is_close(numeric_grads, eager_dygraph_grad,
+                                          inputs_to_check, max_relative_error,
+                                          "Gradient Check On %s" % str(place))
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
@@ -2050,7 +2075,7 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                if _in_eager_mode():
+                if not _in_legacy_dygraph():
                     core.eager.run_backward(
                         fluid.layers.utils.flatten(outputs), grad_outputs,
                         False)
