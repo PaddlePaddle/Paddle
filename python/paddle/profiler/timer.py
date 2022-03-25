@@ -214,7 +214,9 @@ class TimerHook(Hook):
         avg_str = '%.5f' % (message_dict['avg'])
         max_str = '%.5f' % (message_dict['max'])
         min_str = '%.5f' % (message_dict['min'])
-        print('|', item.center(15), '|', avg_str.center(15), '|',
+        print('|',
+              item.center(15), '|',
+              avg_str.center(15), '|',
               max_str.center(15), '|', min_str.center(15), '|')
 
 
