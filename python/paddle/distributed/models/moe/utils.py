@@ -71,7 +71,7 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
             prob: random prob, shape=(topk_idx.shape[0],)
     """
     if topk == 2:
-        if in_dygraph_mode():
+        if _non_static_mode():
             return core.ops.random_routing(prob, topk_value, topk_idx)
         else:
             raise RuntimeError("Not supporting static mode now")
