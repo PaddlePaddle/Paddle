@@ -94,17 +94,27 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
     class TestTrilTriuOp3(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = 10
-            self.Xshape = (25, 25)
+            self.Xshape = (2, 25, 25)
 
     class TestTrilTriuOp4(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = -10
-            self.Xshape = (33, 11)
+            self.Xshape = (1, 2, 33, 11)
 
     class TestTrilTriuOp5(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = 11
-            self.Xshape = (1, 99)
+            self.Xshape = (1, 1, 99)
+
+    class TestTrilTriuOp6(TestTrilTriuOp):
+        def initTestCase(self):
+            self.diagonal = 5
+            self.Xshape = (1, 2, 3, 5, 99)
+
+    class TestTrilTriuOp7(TestTrilTriuOp):
+        def initTestCase(self):
+            self.diagonal = -100
+            self.Xshape = (2, 2, 3, 4, 5)
 
 
 class TestTrilTriuOpError(unittest.TestCase):
