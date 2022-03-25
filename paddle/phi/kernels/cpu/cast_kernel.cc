@@ -13,38 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cpu/cast_impl.h"
 
-#include "paddle/phi/api/ext/dispatch.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/transform.h"
-
 namespace phi {
-
-template <typename InT, typename OutT>
-struct CastOpTransformFunctor {
-  HOSTDEVICE OutT operator()(InT in) const { return static_cast<OutT>(in); }
-};
-
-template <typename InT, typename OutT>
-void CastKernelImpl(const CPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    DenseTensor* out) {
-  auto* in_begin = x.data<InT>();
-  auto numel = x.numel();
-  auto* in_end = in_begin + numel;
-
-  auto* out_begin = dev_ctx.Alloc<OutT>(out);
-
-  paddle::platform::Transform<CPUContext> trans;
-  trans(dev_ctx,
-        in_begin,
-        in_end,
-        out_begin,
-        CastOpTransformFunctor<InT, OutT>());
-}
 
 template <typename T, typename Context>
 void CastKernel(const Context& dev_ctx,
