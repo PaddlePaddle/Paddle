@@ -50,7 +50,9 @@ int main(int argc, char** argv) {
   std::string params_file_name;
   if (parse_inputs(argc, argv, &model_file_name, &params_file_name)) {
     MLIRModelGenImpl myGen;
-    auto module_ = myGen.ImportPaddleModel(model_file_name, params_file_name);
-    module_.dump();
+    myGen.ImportPaddleModel(model_file_name, params_file_name);
+
+//    auto module_ = myGen.ImportPaddleModel(model_file_name, params_file_name);
+//    module_.dump();
   }
 }

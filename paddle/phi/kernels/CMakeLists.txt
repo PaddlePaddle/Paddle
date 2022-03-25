@@ -34,7 +34,7 @@ set(MANUAL_BUILD_KERNELS deformable_conv_kernel deformable_conv_grad_kernel eigh
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
     triangular_solve_grad_kernel determinant_grad_kernel reduce_kernel)
 kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
-kernel_library(deformable_conv_grad_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
+#kernel_library(deformable_conv_grad_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
 kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
 kernel_library(hierarchical_sigmoid_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_bit_code)
 kernel_library(hierarchical_sigmoid_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_bit_code)

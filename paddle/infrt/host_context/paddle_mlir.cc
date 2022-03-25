@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include <stack>
 #include "paddle/infrt/host_context/paddle_mlir.h"
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
@@ -237,15 +237,34 @@ llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
   llvm::SmallVector<mlir::Value, 4> operands;
 
   std::unordered_map<std::string, uint8_t> inputs_info = {};
+  std::stack<std::string> input_names;
   if (pd_dialect_inputs_info_map_.count(op_.type()))
     inputs_info = pd_dialect_inputs_info_map_.at(op_.type());
-  for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
-    auto &var = op_.inputs(var_idx);
-    if (!var.arguments().empty()) {
-      if (!inputs_info.count(var.parameter())) continue;
-      operands.push_back((params_map_[var.arguments()[0]]));
-    }
+  LOG(INFO) << "---------------------------------";
+  LOG(INFO) << "Op inputs:"; 
+
+  for (auto input_ : inputs_info) {
+    LOG(INFO) << input_.first;
+    input_names.push(input_.first);
   }
+  LOG(INFO) << "done input_names.push stack\n";
+  while(!input_names.empty()){
+    std::cout << input_names.top(); 
+    for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
+      auto &var = op_.inputs(var_idx);
+      if (!var.arguments().empty()) {
+        if (input_names.top() == var.parameter()) {
+          operands.push_back((params_map_[var.arguments()[0]]));
+          input_names.pop();
+//          std::cout << var.arguments()[0];
+        break;
+        }
+        input_names.pop();
+      }
+    }
+}
+
+  std::cout << "\n";
   return operands;
 }
 
@@ -363,7 +382,7 @@ void MLIRModelGenImpl::RegisterOpOutputVars(
     mlir::Operation *mlir_op_) {
   std::unordered_map<std::string, uint8_t> pd_dialect_outputs_info =
       pd_dialect_outputs_info_map_.at(op_.type());
-
+  LOG(INFO) << "Op :" << op_.type()  << ",output var name:"  ;
   // op outputs
   for (int var_idx = 0; var_idx < op_.outputs_size(); ++var_idx) {
     if (!pd_dialect_outputs_info.count(op_.outputs(var_idx).parameter()))
@@ -372,8 +391,11 @@ void MLIRModelGenImpl::RegisterOpOutputVars(
     int index = pd_dialect_outputs_info[op_.outputs(var_idx).parameter()];
     // output name
     auto var_ = mlir_op_->getResult(index);
+
+    std::cout << var_name; 
     params_map_.insert(std::pair<std::string, mlir::Value>(var_name, var_));
   }
+  std::cout << "\n";
 }
 
 bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
