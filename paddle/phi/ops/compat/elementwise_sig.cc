@@ -204,9 +204,9 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("elementwise_heaviside_grad",
-                        {"X", "Y", GradVarName("Out")},
-                        {"axis"},
-                        {GradVarName("X"), GradVarName("Y")});
+                         {"X", "Y", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X"), GradVarName("Y")});
 }
 
 }  // namespace phi

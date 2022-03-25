@@ -35,7 +35,7 @@ class ElementwiseHeavisideOpMaker : public ElementwiseOpMaker {
 };
 
 template <typename T>
-class ElementwiseHeavisideGradOpMaker: public framework::SingleGradOpMaker<T> {
+class ElementwiseHeavisideGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -55,11 +55,9 @@ class ElementwiseHeavisideGradOpMaker: public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_heaviside, ops::ElementwiseOp,
-                  ops::ElementwiseHeavisideOpMaker,
-                  ops::ElementwiseHeavisideGradOpMaker<
-                      paddle::framework::OpDesc>,
-                  ops::ElementwiseHeavisideGradOpMaker<
-                      paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    elementwise_heaviside, ops::ElementwiseOp, ops::ElementwiseHeavisideOpMaker,
+    ops::ElementwiseHeavisideGradOpMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseHeavisideGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_heaviside_grad, ops::ElementwiseOpGrad);
