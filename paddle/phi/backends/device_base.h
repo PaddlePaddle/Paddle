@@ -14,6 +14,8 @@
 
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include <vector>
+
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 

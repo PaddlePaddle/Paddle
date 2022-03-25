@@ -319,9 +319,9 @@ __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
   }
 }
 
-template <typename T>
-struct MergeAdd<platform::CUDADeviceContext, T> {
-  phi::SelectedRows operator()(const platform::CUDADeviceContext& context,
+template <typename DeviceContext, typename T>
+struct MergeAddImpl {
+  phi::SelectedRows operator()(const DeviceContext& context,
                                const phi::SelectedRows& input,
                                const bool sorted_result = false) {
     phi::SelectedRows out;
@@ -329,9 +329,8 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     return out;
   }
 
-  void operator()(const platform::CUDADeviceContext& context,
-                  const phi::SelectedRows& input, phi::SelectedRows* output,
-                  const bool sorted_result = false) {
+  void operator()(const DeviceContext& context, const phi::SelectedRows& input,
+                  phi::SelectedRows* output, const bool sorted_result = false) {
     framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
@@ -350,7 +349,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -369,7 +368,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     mix_vector_out.CopyToCPU();
   }
 
-  void operator()(const platform::CUDADeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output, const bool sorted_result = false) {
     if (inputs.size() == 0) {
@@ -414,7 +413,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
         context.GetPlace());
 
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
@@ -441,15 +440,69 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct MergeAdd<platform::CUDADeviceContext, float>;
-template struct MergeAdd<platform::CUDADeviceContext, double>;
-template struct MergeAdd<platform::CUDADeviceContext, int>;
-template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
-template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
-template struct MergeAdd<platform::CUDADeviceContext, platform::bfloat16>;
-template struct MergeAdd<platform::CUDADeviceContext, platform::complex<float>>;
-template struct MergeAdd<platform::CUDADeviceContext,
-                         platform::complex<double>>;
+template <typename T>
+struct MergeAdd<platform::CUDADeviceContext, T> {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  phi::SelectedRows operator()(const platform::CUDADeviceContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result) {
+    return MergeAddImpl<platform::CUDADeviceContext, T>()(context, input,
+                                                          sorted_result);
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<platform::CUDADeviceContext, T>()(context, input, output,
+                                                   sorted_result);
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result) {
+    MergeAddImpl<platform::CUDADeviceContext, T>()(context, inputs, output,
+                                                   sorted_result);
+  }
+};
+
+template <typename T>
+struct MergeAdd<phi::GPUContext, T> {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  phi::SelectedRows operator()(const phi::GPUContext& context,
+                               const phi::SelectedRows& input,
+                               const bool sorted_result) {
+    return MergeAddImpl<phi::GPUContext, T>()(context, input, sorted_result);
+  }
+
+  void operator()(const phi::GPUContext& context,
+                  const phi::SelectedRows& input, phi::SelectedRows* output,
+                  const bool sorted_result) {
+    MergeAddImpl<phi::GPUContext, T>()(context, input, output, sorted_result);
+  }
+
+  void operator()(const phi::GPUContext& context,
+                  const std::vector<const phi::SelectedRows*>& inputs,
+                  phi::SelectedRows* output, const bool sorted_result) {
+    MergeAddImpl<phi::GPUContext, T>()(context, inputs, output, sorted_result);
+  }
+};
+
+#define TEMPLATE_SPECIALIZED_FOR_MERGEADD(dtype)                    \
+  template struct MergeAddImpl<platform::CUDADeviceContext, dtype>; \
+  template struct MergeAddImpl<phi::GPUContext, dtype>;             \
+  template struct MergeAdd<platform::CUDADeviceContext, dtype>;     \
+  template struct MergeAdd<phi::GPUContext, dtype>;
+
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(float)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(double)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(int)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(int64_t)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::float16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::complex<float>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(platform::complex<double>)
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,

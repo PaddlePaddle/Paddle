@@ -4,6 +4,7 @@
   kernel :
     func : sparse_conv3d
     layout : x
+  # intermediate : rulebook
   backward : conv3d_grad
 
 - api : to_dense
@@ -12,7 +13,7 @@
   invoke : to_dense_impl(x)
 
 - api : to_sparse_coo
-  args : (Tensor x, int64 sparse_dim)
+  args : (Tensor x, int64_t sparse_dim)
   output : Tensor(out@SparseCooTensor)
   invoke : to_sparse_coo_impl(x, sparse_dim)
 
