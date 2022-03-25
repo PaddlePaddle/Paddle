@@ -52,6 +52,7 @@ class TestCastOpFp16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -67,6 +68,7 @@ class TestCastOpFp32ToFp16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP16)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -82,6 +84,7 @@ class TestCastOpBf16ToFp32(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output()
@@ -97,6 +100,7 @@ class TestCastOpFp32ToBf16(OpTest):
             'out_dtype': int(core.VarDesc.VarType.BF16)
         }
         self.op_type = 'cast'
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output()

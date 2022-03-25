@@ -38,6 +38,7 @@ from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
 from white_list import op_threshold_white_list, no_grad_set_white_list
 from op_test import OpTest, _set_use_system_allocator, get_numeric_gradient
+from xpu.get_test_cover_info import is_empty_grad_op_type
 
 
 class XPUOpTest(OpTest):
@@ -108,6 +109,13 @@ class XPUOpTest(OpTest):
                               check_dygraph=True,
                               numeric_place=None,
                               check_eager=False):
+        if hasattr(self, 'op_type_need_check_grad'):
+            xpu_version = core.get_xpu_device_version(0)
+            if is_empty_grad_op_type(xpu_version, self.op_type,
+                                     self.in_type_str):
+                self._check_grad_helper()
+                return
+
         if place == None:
             place = paddle.XPUPlace(0)
 

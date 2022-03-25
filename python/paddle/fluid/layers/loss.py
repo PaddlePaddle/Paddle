@@ -21,7 +21,7 @@ from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
@@ -262,7 +262,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     if not soft_label:
         return cross_entropy2(input, label, ignore_index)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.cross_entropy(input, label, "soft_label", soft_label,
                                     "ignore_index", ignore_index)
 
@@ -279,7 +279,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
-    if in_dygraph_mode():
+    if _non_static_mode():
         loss, _, _ = _C_ops.cross_entropy2(input, label, 'ignore_index',
                                            ignore_index)
         return loss
@@ -336,7 +336,7 @@ def square_error_cost(input, label):
             # [0.01, 0.01]
 
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         minus_out = _C_ops.elementwise_sub(input, label)
         square_out = _C_ops.square(minus_out)
         return square_out
@@ -597,7 +597,7 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         if input_length is None or label_length is None:
             raise ValueError(
                 "input_length and label_length must not be None in dygraph mode!"
@@ -1260,7 +1260,7 @@ def softmax_with_cross_entropy(logits,
             out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
             print(out)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         if core.is_compiled_with_npu():
             softmax, backprop, loss = _C_ops.softmax_with_cross_entropy(
                 logits, label, 'soft_label', soft_label, 'ignore_index',
