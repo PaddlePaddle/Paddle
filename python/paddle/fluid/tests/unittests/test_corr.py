@@ -66,14 +66,21 @@ class Corr_Test(unittest.TestCase):
                 self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
 
-
+# Input(x) only support N-D (1<=N<=2) tensor
+# test normal input
 class Corr_Test2(Corr_Test):
     def setUp(self):
         self.shape = [10]
 
 
+class Corr_Test3(Corr_Test):
+    def setUp(self):
+        self.shape = [20, 10]
+
+
 # Input(x) only support N-D (1<=N<=2) tensor
-class Corr_Test3(unittest.TestCase):
+# test error input
+class Corr_Test4(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 5, 10]
 
@@ -86,7 +93,8 @@ class Corr_Test3(unittest.TestCase):
         self.assertRaises(ValueError, test_err)
 
 
-class Corr_Test4(unittest.TestCase):
+# Input(x) only support N-D (1<=N<=2) tensor
+class Corr_Test5(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 2, 5, 10]
 
@@ -99,18 +107,21 @@ class Corr_Test4(unittest.TestCase):
         self.assertRaises(ValueError, test_err)
 
 
-class Corr_Test5(unittest.TestCase):
+# test unsupported complex input
+class Corr_Test6(unittest.TestCase):
     def setUp(self):
-        self.shape = [2, 5, 10, 6, 7]
+        self.shape = [10]
 
     def test_errors(self):
-        def test_err():
-            np_arr = np.random.rand(*self.shape).astype('float64')
-            tensor = paddle.to_tensor(np_arr)
-            corr = paddle.linalg.corrcoef(tensor)
+        with program_guard(Program(), Program()):
+            def test_err():
+                np_arr = np.random.rand(*self.shape).astype('complex64')
+                tensor = paddle.to_tensor(np_arr)
+                covrr = paddle.linalg.corrcoef(tensor)
 
-        self.assertRaises(ValueError, test_err)
+            self.assertRaises(TypeError, test_err)
 
 
 if __name__ == '__main__':
     unittest.main()
+    
