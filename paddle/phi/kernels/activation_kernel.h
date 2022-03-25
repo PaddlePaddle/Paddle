@@ -89,6 +89,8 @@ void MishKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 float threshold,
                 DenseTensor* out);
+
+template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      float threshold,

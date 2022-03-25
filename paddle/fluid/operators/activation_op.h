@@ -872,8 +872,6 @@ class RsqrtDoubleGradKernel
 }  // namespace paddle
 
 #define FOR_EACH_ACTIVATION_OP(__macro)                               \
-  \  
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor); \
-  \    
   __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);  \
   __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);

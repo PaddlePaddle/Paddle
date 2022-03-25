@@ -63,6 +63,7 @@ void LogitKernel(const Context& dev_ctx,
   functor(place, eigen_in, eigen_out, eigen_p, eps);
 }
 
+template <typename T, typename Context>
 void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
