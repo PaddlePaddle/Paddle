@@ -37,7 +37,7 @@ struct IndexFunctor {
   explicit IndexFunctor(const phi::DDim &in_dims) {
     rank = in_dims.size();
     // Get strides according to in_dims
-    strides[rank - 1] = 1;
+    strides[0] = 1;
     for (IndexT i = 1; i < rank; i++) {
       strides[i] = strides[i - 1] * in_dims[rank - i];
     }
