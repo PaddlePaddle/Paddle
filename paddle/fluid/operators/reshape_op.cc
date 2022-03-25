@@ -597,15 +597,6 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
                        const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X@GRAD_GRAD) shouldn't be null."));
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("DOut", "DDOut");
-    }
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -664,9 +655,15 @@ REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeGradInplaceInferer);
+
+DECLARE_INFER_SHAPE_FUNCTOR(reshape2_grad_grad,
+                            Reshape2DoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
+
 REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
                   ops::ReshapeDoubleGradInplaceInferer,
-                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer);
+                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer,
+                  Reshape2DoubleGradInferShapeFunctor);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
