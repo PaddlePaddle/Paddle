@@ -267,6 +267,16 @@ void SqueezeInferMeta(const MetaTensor& x,
                       MetaTensor* xshape,
                       MetaTensor* out);
 
+void StridedSliceInferMeta(const MetaTensor& x,
+                           const std::vector<int>& axes,
+                           const ScalarArray& starts,
+                           const ScalarArray& ends,
+                           const ScalarArray& strides,
+                           const std::vector<int>& infer_flags,
+                           const std::vector<int>& decrease_axis,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
+
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
                   DataType dtype,
