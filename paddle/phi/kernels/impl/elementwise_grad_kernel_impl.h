@@ -628,4 +628,42 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
   }
 }
 
+/*
+******************************
+    Maximum Grad
+******************************
+*/
+
+template <typename T>
+struct MaxGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+
+template <typename T>
+struct MaxGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+/*
+******************************
+    Minimum Grad
+******************************
+*/
+template <typename T>
+struct MinGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x < y);
+  }
+};
+
+template <typename T>
+struct MinGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x >= y);
+  }
+};
 }  // namespace phi
