@@ -161,7 +161,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 """
     {} {}({}) {{
         {}
-        
+        {}
     {}
 
         // Returns
@@ -247,6 +247,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/eager/amp_utils.h"
 
 {}
 {}
@@ -299,6 +300,23 @@ BUMP_INPLACE_VERSION_TEMPLATE = \
     // Bump Inplace Version
     {}.bump_inplace_version();
     VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";\n
+"""
+
+
+AMP_LOGIC_TEMPLATE = \
+"""
+    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
+        VLOG(5) << "Check and Prepare For AMP";
+        {}
+        std::vector<std::vector<paddle::experimental::Tensor>> amp_tensors_vector = {};
+        {}
+        {}
+        {}
+        {{
+            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentTracer(), paddle::imperative::AmpLevel::O0);
+            {}
+        }}
+    }}
 """
 
 
@@ -734,26 +752,51 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         inputs_args_definition_list = ["" for i in range(num_inputs)]
         inputs_args_declaration_list = ["" for i in range(num_inputs)]
         inputs_call_list = ["" for i in range(num_inputs)]
+        amp_inputs_call_list = ["" for i in range(num_inputs)]
+        amp_tensors_vector_list = []
+        amp_tensors_vector_optional_list = []
+        amp_autocast_list = []
+        amp_autocast_optional_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
+            amp_inputs_call_list[pos] = f"NEW_{name}"
             is_optional = (name in optional_inputs)
             if IsPlainTensorType(ttype):
                 if is_optional:
                     arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+                    amp_tensors_vector_optional_list.append(
+                        f"if ({name}.is)initialized() amp_tensors_vector.push_back({name}.get()));\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = {name}.is_initialized() ? egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name) : {name};\n"
+                    )
                 else:
                     if inplace_map and name in inplace_map.keys():
                         arg_str = f"paddle::experimental::Tensor& {name}"
+                        amp_tensors_vector_list.append(f"{{{name}}}")
+                        amp_autocast_list.append(
+                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        )
                     else:
                         arg_str = f"const paddle::experimental::Tensor& {name}"
+                        amp_tensors_vector_list.append(f"{{{name}}}")
+                        amp_autocast_list.append(
+                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        )
             else:
                 assert IsVectorTensorType(ttype)
                 arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                amp_tensors_vector_list.append(f"{name}")
+                amp_autocast_list.append(
+                    f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                )
 
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
 
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
+            amp_inputs_call_list[pos] = name
             if default_val is not None:
                 inputs_args_declaration_list[
                     pos] = f"{atype} {name} = {default_val}"
@@ -808,9 +851,28 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
         forward_function_name = GetDygraphForwardFunctionName(forward_api_name)
 
+        # Forward amp logic
+        kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
+        amp_tensors_vector_list_str = "{ " + ",".join(
+            amp_tensors_vector_list) + " }"
+        amp_tensors_vector_optional_list_str = "".join(
+            amp_tensors_vector_optional_list)
+        amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_autocast_list_str = "        ".join(
+            amp_autocast_list) + "        ".join(amp_autocast_optional_list)
+        amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
+        amp_call_str = f"return {forward_function_name}({amp_inputs_call_args_str});"
+        if is_inplaced or (forward_api_name == "cast"):
+            amp_logic_str = ""
+        else:
+            amp_logic_str = AMP_LOGIC_TEMPLATE.format(
+                kernel_trans2_op_name_str, amp_tensors_vector_list_str,
+                amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
+                amp_autocast_list_str, amp_call_str)
+
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
             returns_type_str, forward_function_name, inputs_args_definition_str,
-            dygraph_event_str, node_creation_str, returns_str)
+            dygraph_event_str, amp_logic_str, node_creation_str, returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
         print("Generated Forward Definition: ", self.forward_definition_str)

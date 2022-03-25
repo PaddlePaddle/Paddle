@@ -15,6 +15,7 @@
 #pragma once
 #include <map>
 #include <string>
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -23,20 +24,20 @@
 namespace egr {
 
 static inline paddle::experimental::DataType GetPromoteType(
-    const std::string& api_name,
+    const std::string& op_name,
     const std::vector<std::vector<paddle::experimental::Tensor>>&
         amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
   if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
       "float16") {
-    if (api_name == "batch_norm" || api_name == "layer_norm" ||
-        api_name == "sync_batch_norm") {
+    if (op_name == "batch_norm" || op_name == "layer_norm" ||
+        op_name == "sync_batch_norm") {
       if (amp_tensors_vector[0][0].dtype() ==
           paddle::experimental::DataType::FLOAT32) {
         dst_type = paddle::experimental::DataType::FLOAT32;
       }
-    } else if (api_name == "fused_attention") {
+    } else if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i != 3 || i != 4 || i != 9 || i != 10) {
           if (amp_tensors_vector[i][0].dtype() ==
@@ -46,7 +47,7 @@ static inline paddle::experimental::DataType GetPromoteType(
           }
         }
       }
-    } else if (api_name == "fused_feedforward") {
+    } else if (op_name == "fused_feedforward") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i != 7 || i != 8 || i != 9 || i != 10) {
           if (amp_tensors_vector[i][0].dtype() ==
@@ -78,7 +79,7 @@ static inline paddle::experimental::DataType GetPromoteType(
   }
   // NOTE(juncai): moving_average_abs_max_scale only consider the dtype of
   // input(X)
-  if (api_name == "moving_average_abs_max_scale") {
+  if (op_name == "moving_average_abs_max_scale") {
     if (amp_tensors_vector[0][0].dtype() ==
         paddle::experimental::DataType::FLOAT16) {
       dst_type = paddle::experimental::DataType::FLOAT16;
@@ -87,33 +88,33 @@ static inline paddle::experimental::DataType GetPromoteType(
   return dst_type;
 }
 
-paddle::experimental::DataType GetAmpDestDtype(
-    const std::string& api_name,
+inline paddle::experimental::DataType GetAmpDestDtype(
+    const std::string& op_name,
     const std::vector<std::vector<paddle::experimental::Tensor>>&
         amp_tensors_vector) {
   auto amp_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype();
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
   VLOG(6) << "AMP GetAmpDestDtype:"
-          << " op(" << api_name << ") amp_dtype(" << amp_dtype << ") amp_level("
+          << " op(" << op_name << ") amp_dtype(" << amp_dtype << ") amp_level("
           << static_cast<int>(amp_level) << ").";
   if (amp_dtype == "float16") {
     if (amp_level == paddle::imperative::AmpLevel::O1) {
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableAllowOps()
-              ->count(api_name)) {
+              ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
-                     ->count(api_name)) {
+                     ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {
-        auto dst_type = GetPromoteType(api_name, amp_tensors_vector,
+        auto dst_type = GetPromoteType(op_name, amp_tensors_vector,
                                        paddle::experimental::DataType::FLOAT16);
         if (dst_type == paddle::experimental::DataType::FLOAT16 &&
             paddle::imperative::AmpOperators::Instance()
                 .GetMutableUnsupportedFp16Ops()
-                ->count(api_name)) {
+                ->count(op_name)) {
           dst_type = paddle::experimental::DataType::FLOAT32;
         }
         return dst_type;
@@ -122,10 +123,10 @@ paddle::experimental::DataType GetAmpDestDtype(
       auto dst_type = paddle::experimental::DataType::FLOAT16;
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableUnsupportedFp16Ops()
-              ->count(api_name) ||
+              ->count(op_name) ||
           paddle::imperative::AmpOperators::Instance()
               .GetMutableBlockOps()
-              ->count(api_name)) {
+              ->count(op_name)) {
         dst_type = paddle::experimental::DataType::FLOAT32;
       }
       return dst_type;
@@ -134,20 +135,20 @@ paddle::experimental::DataType GetAmpDestDtype(
     if (amp_level == paddle::imperative::AmpLevel::O1) {
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableAllowOps()
-              ->count(api_name)) {
+              ->count(op_name)) {
         return paddle::experimental::DataType::BFLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
-                     ->count(api_name)) {
+                     ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {
         auto dst_type =
-            GetPromoteType(api_name, amp_tensors_vector,
+            GetPromoteType(op_name, amp_tensors_vector,
                            paddle::experimental::DataType::BFLOAT16);
         if (dst_type == paddle::experimental::DataType::BFLOAT16 &&
             paddle::imperative::AmpOperators::Instance()
                 .GetMutableUnsupportedBf16Ops()
-                ->count(api_name)) {
+                ->count(op_name)) {
           dst_type = paddle::experimental::DataType::FLOAT32;
         }
         return dst_type;
@@ -156,10 +157,10 @@ paddle::experimental::DataType GetAmpDestDtype(
       auto dst_type = paddle::experimental::DataType::BFLOAT16;
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableUnsupportedBf16Ops()
-              ->count(api_name) ||
+              ->count(op_name) ||
           paddle::imperative::AmpOperators::Instance()
               .GetMutableBlockOps()
-              ->count(api_name)) {
+              ->count(op_name)) {
         dst_type = paddle::experimental::DataType::FLOAT32;
       }
       return dst_type;
@@ -189,10 +190,10 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
   return false;
 }
 
-std::vector<paddle::experimental::Tensor> AmpAutoCasts(
+inline std::vector<paddle::experimental::Tensor> AmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::experimental::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype, std::string api_name) {
+    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
@@ -211,22 +212,22 @@ std::vector<paddle::experimental::Tensor> AmpAutoCasts(
   return inputs_casted;
 }
 
-paddle::experimental::Tensor AmpAutoCast(
+inline paddle::experimental::Tensor AmpAutoCast(
     const std::string& input_name, const paddle::experimental::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype, std::string api_name) {
+    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << paddle::framework::DataType2String(dst_dtype) << ").";
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
-    if (api_name == "run_program") {
+    if (op_name == "run_program") {
       return input;
     }
-    if ((api_name == "batch_norm" || api_name == "layer_norm" ||
-         api_name == "sync_batch_norm") &&
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm") &&
         input_name != "X") {
       return input;
     }
-    if ((api_name == "fused_attention" || api_name == "fused_feedforward")) {
+    if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {
       if (input_name == "LnScale" || input_name == "LnBias" ||
           input_name == "Ln2Scale" || input_name == "Ln2Bias" ||
           input_name == "Ln1Scale" || input_name == "Ln1Bias") {
@@ -239,6 +240,54 @@ paddle::experimental::Tensor AmpAutoCast(
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
         {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
     return cast_dygraph_function(input, cast_attrs);
+  }
+  return input;
+}
+
+inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
+    const std::string& inputs_name,
+    const std::vector<paddle::experimental::Tensor>& inputs,
+    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+  VLOG(6) << "AMP AmpAutoCasts:"
+          << " inputs(" << inputs_name << ") dst_dtype("
+          << paddle::framework::DataType2String(dst_dtype) << ").";
+  std::vector<paddle::experimental::Tensor> inputs_casted;
+  for (auto& input : inputs) {
+    if (NeedCast(input, dst_dtype)) {
+      inputs_casted.emplace_back(
+          std::move(cast_final_state_dygraph_function(input, dst_dtype)));
+    } else {
+      inputs_casted.emplace_back(input);
+    }
+  }
+  return inputs_casted;
+}
+
+inline paddle::experimental::Tensor EagerAmpAutoCast(
+    const std::string& input_name, const paddle::experimental::Tensor& input,
+    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+  VLOG(6) << "AMP AmpAutoCasts:"
+          << " input(" << input_name << ") dst_dtype("
+          << paddle::framework::DataType2String(dst_dtype) << ").";
+  if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
+    if (op_name == "run_program") {
+      return input;
+    }
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm") &&
+        input_name != "x") {
+      return input;
+    }
+    if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {
+      if (input_name == "LnScale" || input_name == "LnBias" ||
+          input_name == "Ln2Scale" || input_name == "Ln2Bias" ||
+          input_name == "Ln1Scale" || input_name == "Ln1Bias") {
+        return input;
+      }
+    }
+  }
+  if (NeedCast(input, dst_dtype)) {
+    return cast_final_state_dygraph_function(input, dst_dtype);
   }
   return input;
 }
