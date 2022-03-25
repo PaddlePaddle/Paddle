@@ -31,6 +31,8 @@ import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle import _C_ops
 
+_grad_scalar = None
+
 
 class TensorHookRemoveHelper(object):
     """
@@ -265,6 +267,9 @@ def monkey_patch_varbase():
                     grad_tensor = []
                 else:
                     grad_tensor = [grad_tensor]
+            if _grad_scalar:
+                # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
+                self = _grad_scalar.scale(self)
             if paddle.is_compiled_with_xpu() or paddle.is_compiled_with_npu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)

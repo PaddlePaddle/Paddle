@@ -829,6 +829,15 @@ class TestVarBase(unittest.TestCase):
         with self.assertRaises(IndexError):
             var_tensor[paddle.to_tensor([[True, False, False, False]])]
 
+    def _test_scalar_bool_index(self):
+        shape = (1, 2, 5, 64)
+        np_value = np.random.random(shape).astype('float32')
+        var_tensor = paddle.to_tensor(np_value)
+        index = [True]
+        tensor_index = paddle.to_tensor(index)
+        var = [var_tensor[tensor_index].numpy(), ]
+        self.assertTrue(np.array_equal(var[0], np_value[index]))
+
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
         w = fluid.dygraph.to_variable(np_value)
@@ -883,6 +892,7 @@ class TestVarBase(unittest.TestCase):
             self._test_for_getitem_ellipsis_index()
             self._test_none_index()
             self._test_bool_index()
+            self._test_scalar_bool_index()
             self._test_numpy_index()
             self._test_list_index()
 
@@ -1217,6 +1227,88 @@ class TestVarBaseSetitemFp32(TestVarBaseSetitem):
 class TestVarBaseSetitemFp64(TestVarBaseSetitem):
     def set_dtype(self):
         self.dtype = "float64"
+
+
+class TestVarBaseSetitemBoolIndex(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.set_dtype()
+        self.set_input()
+
+    def set_input(self):
+        self.tensor_x = paddle.to_tensor(np.ones((4, 2, 3)).astype(self.dtype))
+        self.np_value = np.random.random((2, 3)).astype(self.dtype)
+        self.tensor_value = paddle.to_tensor(self.np_value)
+
+    def set_dtype(self):
+        self.dtype = "int32"
+
+    def _test(self, value):
+        paddle.disable_static()
+        self.assertEqual(self.tensor_x.inplace_version, 0)
+
+        id_origin = id(self.tensor_x)
+        index_1 = paddle.to_tensor(np.array([True, False, False, False]))
+        self.tensor_x[index_1] = value
+        self.assertEqual(self.tensor_x.inplace_version, 1)
+
+        if isinstance(value, (six.integer_types, float)):
+            result = np.zeros((2, 3)).astype(self.dtype) + value
+
+        else:
+            result = self.np_value
+
+        self.assertTrue(np.array_equal(self.tensor_x[0].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
+
+        index_2 = paddle.to_tensor(np.array([False, True, False, False]))
+        self.tensor_x[index_2] = value
+        self.assertEqual(self.tensor_x.inplace_version, 2)
+        self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
+
+        index_3 = paddle.to_tensor(np.array([True, True, True, True]))
+        self.tensor_x[index_3] = value
+        self.assertEqual(self.tensor_x.inplace_version, 3)
+        self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
+
+    def test_value_tensor(self):
+        paddle.disable_static()
+        self._test(self.tensor_value)
+
+    def test_value_numpy(self):
+        paddle.disable_static()
+        self._test(self.np_value)
+
+    def test_value_int(self):
+        paddle.disable_static()
+        self._test(10)
+
+
+class TestVarBaseSetitemBoolScalarIndex(unittest.TestCase):
+    def set_input(self):
+        self.tensor_x = paddle.to_tensor(np.ones((1, 2, 3)).astype(self.dtype))
+        self.np_value = np.random.random((2, 3)).astype(self.dtype)
+        self.tensor_value = paddle.to_tensor(self.np_value)
+
+    def _test(self, value):
+        paddle.disable_static()
+        self.assertEqual(self.tensor_x.inplace_version, 0)
+
+        id_origin = id(self.tensor_x)
+        index = paddle.to_tensor(np.array([True]))
+        self.tensor_x[index] = value
+        self.assertEqual(self.tensor_x.inplace_version, 1)
+
+        if isinstance(value, (six.integer_types, float)):
+            result = np.zeros((2, 3)).astype(self.dtype) + value
+
+        else:
+            result = self.np_value
+
+        self.assertTrue(np.array_equal(self.tensor_x[0].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
 
 
 class TestVarBaseInplaceVersion(unittest.TestCase):
