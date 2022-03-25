@@ -57,8 +57,10 @@ void Copy(const Context& dev_ctx,
 
   auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
-  if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
-      paddle::platform::is_cpu_place(dst_place)) {
+  if ((paddle::platform::is_cpu_place(src_place) ||
+       paddle::platform::is_cuda_pinned_place(src_place)) &&  // NOLINT
+      (paddle::platform::is_cpu_place(dst_place) ||
+       paddle::platform::is_cuda_pinned_place(dst_place))) {
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_cpu_place(dst_place)) {
