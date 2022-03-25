@@ -309,8 +309,7 @@ class AllocatorFacadePrivate {
 
 #ifdef PADDLE_WITH_CUDA
     // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
-    if (!(strategy_ == AllocatorStrategy::kAutoGrowth &&
-          is_stream_safe_cuda_allocator_used_) &&
+    if (!is_stream_safe_cuda_allocator_used_ &&
         UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
       WrapCUDAGraphAllocator();
     }

@@ -32,8 +32,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
 DECLARE_bool(fast_eager_deletion_mode);
-DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_string(allocator_strategy);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
