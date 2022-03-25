@@ -207,16 +207,6 @@ function(kernel_library TARGET)
             endif()
             list(APPEND kernel_deps ${all_kernel_name})
         endforeach()
-        
-        if (NOT "${kernel_library_SUB_DIR}" STREQUAL "")
-            foreach(include_dense_kernel ${include_dense_kernels})
-                string(REGEX REPLACE "#include \"paddle\/phi\/kernels\/" "" kernel_name ${include_dense_kernel})
-                string(REGEX REPLACE ".h\"" "" kernel_name ${kernel_name})
-                list(APPEND kernel_deps ${kernel_name})
-            endforeach()
-        endif()
-
-
     endforeach()
     list(REMOVE_DUPLICATES kernel_deps)
     list(REMOVE_ITEM kernel_deps ${TARGET}${target_suffix})
