@@ -323,3 +323,12 @@ PD_REGISTER_KERNEL(minimum_grad,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(elementwise_heaviside_grad,
+                    CPU,
+                    ALL_LAYOUT,
+                    phi::ElementwiseHeavisideGradKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t) {}
