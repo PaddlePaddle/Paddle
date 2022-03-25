@@ -44,13 +44,15 @@ class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& iou_threshold) {
           PADDLE_ENFORCE_LE(iou_threshold, 1.0f,
-                            "iou_threshold should less equal than 1.0 "
-                            "but got %f",
-                            iou_threshold);
+                            platform::errors::InvalidArgument(
+                                "iou_threshold should less equal than 1.0 "
+                                "but got %f",
+                                iou_threshold));
           PADDLE_ENFORCE_GE(iou_threshold, 0.0f,
-                            "iou_threshold should greater equal than 0.0 "
-                            "but got %f",
-                            iou_threshold);
+                            platform::errors::InvalidArgument(
+                                "iou_threshold should greater equal than 0.0 "
+                                "but got %f",
+                                iou_threshold));
         });
     AddComment(R"DOC(
                 NMS Operator.
