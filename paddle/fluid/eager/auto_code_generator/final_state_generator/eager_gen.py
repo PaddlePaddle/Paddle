@@ -780,7 +780,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         for name, (rtype, pos) in forward_outputs_position_map.items():
             if name in intermediate_outputs:
                 continue
-            if num_outputs == 1:
+            if num_outputs == 1 and len(intermediate_outputs) == 0:
                 returns_list[0] = f"api_result"
             else:
                 # Tuple api_result
