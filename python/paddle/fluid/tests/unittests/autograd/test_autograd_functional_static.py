@@ -320,6 +320,7 @@ class TestJacobianFloat32(unittest.TestCase):
             'eps')
         # self.rtol = config.TOLERANCE.get(self.dtype).get('first_order_grad').get('rtol')
         # self.atol = config.TOLERANCE.get(self.dtype).get('first_order_grad').get('atol')
+        # Do't use tolerance in config, which will cause this test case failed.
         self.rtol = 1e-2
         self.atol = 1e-2
 
@@ -472,7 +473,7 @@ class TestJacobianFloat64(TestJacobianFloat32):
             'first_order_grad').get('atol')
 
 
-class TestHessianFloat64(unittest.TestCase):
+class TestHessianFloat32(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
@@ -480,7 +481,7 @@ class TestHessianFloat64(unittest.TestCase):
             self.place = fluid.CUDAPlace(0)
         else:
             self.place = fluid.CPUPlace()
-        self.dtype = 'float64'
+        self.dtype = 'float32'
         prepare_data(self, all_data_shapes, self.dtype)
         self.eps = config.TOLERANCE.get(self.dtype).get(
             'second_order_grad').get('eps')
@@ -534,6 +535,24 @@ class TestHessianFloat64(unittest.TestCase):
 
             self.run_test_by_fullmatrix(
                 pd_f, self.E, np_hess(self.E), batch=True)
+
+
+class TestHessianFloat64(TestHessianFloat32):
+    @classmethod
+    def setUpClass(self):
+        paddle.enable_static()
+        if fluid.core.is_compiled_with_cuda():
+            self.place = fluid.CUDAPlace(0)
+        else:
+            self.place = fluid.CPUPlace()
+        self.dtype = 'float64'
+        prepare_data(self, all_data_shapes, self.dtype)
+        self.eps = config.TOLERANCE.get(self.dtype).get(
+            'second_order_grad').get('eps')
+        self.rtol = config.TOLERANCE.get(self.dtype).get(
+            'second_order_grad').get('rtol')
+        self.atol = config.TOLERANCE.get(self.dtype).get(
+            'second_order_grad').get('atol')
 
 
 if __name__ == "__main__":

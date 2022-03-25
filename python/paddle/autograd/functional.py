@@ -23,6 +23,9 @@ def vjp(func, xs, v=None):
     r"""Computes the Vector-Jacobian product, a functional form of
     reverse mode automatic differentiation.
 
+    Warning:
+        This API is in beta, the signatures maybe changed in future version.
+
     Args:
         func(Callable): A function that takes ``xs`` as inputs parameter and
             returns a sequence of Tensors or a Tensor.
@@ -91,6 +94,9 @@ def jvp(func, xs, v=None):
     Computes the Jacobian-Vector product for a function at the given
     inputs and a vector in the tangent space induced by the inputs.
 
+    Warning:
+        This API is in beta, the signatures maybe changed in future version.
+
     Args:
         func(Callable): The ``func`` takes as input a Tensor or a Sequence
             of Tensors and returns a Tensor or a Sequence of Tensors.
@@ -99,9 +105,8 @@ def jvp(func, xs, v=None):
             Sequence of Tensors.
         v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector invovled
             in the JVP computation. The ``v`` matches the size and shape of
-            ``inputs`` . ``v`` is optional if ``func`` returns a single tensor.
-            Default value is None and in this case is equivalent to all ones
-            the same size of ``inputs`` .
+            ``inputs`` . Default value is None and in this case is equivalent to 
+            all ones the same size of ``inputs`` .
 
     Returns:
         output(tuple):
@@ -147,19 +152,26 @@ def _double_backward_trick(ys, xs, v):
     see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
     """
     # The value of ys_grad is not important, it can be any random value in t
-    # heory, but it's required to set stop_gradient=False
-    if not isinstance(ys, typing.Sequence):
-        ys_grad = paddle.zeros_like(ys)
-        ys_grad.stop_gradient = False
-    else:
-        ys_grad = []
-        for y in ys:
-            y_grad = paddle.zeros_like(y)
-            y_grad.stop_gradient = False
-            ys_grad.append(y_grad)
-
+    # heory, but it's required to set stop_gradient=False.
+    ys_grad = _zeros_like_with_grad(ys, stop_gradient=False)
     xs_grad = _grad(ys, xs, ys_grad)
     return _grad(xs_grad, ys_grad, v)
+
+
+def _zeros_like_with_grad(xs, stop_gradient=False):
+    """Create a zero or zeros sequence Tensor like xs with a flag 
+    ``stop_graident``.
+    """
+    if not isinstance(xs, typing.Sequence):
+        ys = paddle.zeros_like()
+        ys.stop_gradient = stop_gradient
+    else:
+        ys = []
+        for x in xs:
+            y = paddle.zeros_like(x)
+            y.stop_gradient = False
+            ys.append(y)
+    return ys
 
 
 class Jacobian(object):
@@ -189,11 +201,14 @@ class Jacobian(object):
         * J[:, i, :], retrieving the partial derivatives w.r.t. the i'th output
             variable.
         * J[:, i, j], retrieving the partial derivatives w.r.t. the i'th output
-        variable and the j'th input variable.
+            variable and the j'th input variable.
 
     Notes:
 
         Eclipsis index is not supported currently.
+
+    Warning:
+        This API is in beta, the signatures maybe changed in future version.
 
     Args:
 
@@ -264,6 +279,9 @@ class Hessian(object):
     The submatrix is lazily evaluated, and can be retrieved with a 
     multidimensional indexes. See details ``Jacobian`` .
 
+    Warning:
+        This API is in beta, the signatures maybe changed in future version.
+
     Args:
         func (Callable): A python function that takes a Tensor or a Tensor
             sequence as inputs and returns a Tensor with shape 
@@ -302,6 +320,11 @@ class Hessian(object):
     def __init__(self, func, xs, is_batched=False):
         def _jac_func(*xs):
             jac = Jacobian(func, xs, is_batched=is_batched)
+            if (is_batched and jac.shape[1] != 1) or (not is_batched and
+                                                      jac.shape[0] != 1):
+                raise RuntimeError(
+                    "The function given to Hessian shoud return as single Tensor."
+                )
             return jac[:, 0, :] if is_batched else jac[0, :]
 
         self.symbolic = Jacobian(_jac_func, xs, is_batched=is_batched)

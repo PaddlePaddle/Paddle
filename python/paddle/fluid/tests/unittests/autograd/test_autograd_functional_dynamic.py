@@ -204,6 +204,19 @@ class TestVJP(TestAutogradFunctional):
         self.check_results(ref_result, aliased_result)
 
 
+@utils.place(config.DEVICES)
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'expected_exception'), (
+        ('v_shape_not_equal_ys', utils.square, np.random.rand(3),
+         np.random.rand(1), RuntimeError), ))
+class TestVJPException(unittest.TestCase):
+    def test_vjp(self):
+        with self.assertRaises(self.expected_exception):
+            paddle.autograd.vjp(self.fun,
+                                paddle.to_tensor(self.xs),
+                                paddle.to_tensor(self.v))
+
+
 def jac(grad_fn, f, inputs):
     assert grad_fn in [paddle.autograd.vjp, paddle.autograd.jvp]
     if grad_fn is paddle.autograd.jvp:
@@ -442,6 +455,13 @@ class TestHessianClassNoBatch(unittest.TestCase):
         np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
                                    self.rtol, self.atol)
 
+    def test_out_not_single(self):
+        def func(x):
+            return x * x
+
+        with self.assertRaises(RuntimeError):
+            paddle.autograd.Hessian(func, paddle.ones([3]))
+
 
 class TestHessianClassBatchFirst(unittest.TestCase):
     @classmethod
@@ -533,6 +553,13 @@ class TestHessianClassBatchFirst(unittest.TestCase):
         actual = actual.reshape((H.shape[1], -1))
 
         np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+
+    def test_out_not_single(self):
+        def func(x):
+            return (x * x)
+
+        with self.assertRaises(RuntimeError):
+            paddle.autograd.Hessian(func, paddle.ones((3, 3)), is_batched=True)
 
 
 class TestHessian(unittest.TestCase):
@@ -894,24 +921,6 @@ class TestVHP(unittest.TestCase):
         assert triple_grad is not None
 
 
-class TestVHPFloat64(TestVHP):
-    @classmethod
-    def setUpClass(self):
-        self.shape = (2, 2)
-        self.dtype = 'float64'
-        self.np_dtype = np.float64
-        self.numerical_delta = config.TOLERANCE.get(self.dtype).get(
-            "second_order_grad").get("eps")
-        self.rtol = config.TOLERANCE.get(self.dtype).get(
-            "second_order_grad").get("rtol")
-        self.atol = config.TOLERANCE.get(self.dtype).get(
-            "second_order_grad").get("atol")
-        self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
-        self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
-        self.vx = paddle.rand(shape=self.shape, dtype=self.dtype)
-        self.vy = paddle.rand(shape=self.shape, dtype=self.dtype)
-
-
 class TestJacobian(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -1200,9 +1209,12 @@ class TestJacobianBatchFloat64(TestJacobianBatch):
         self.y_shape = (12, 2)
         self.dtype = 'float64'
         self.np_dtype = np.float64
-        self.numerical_delta = 1e-7
-        self.rtol = 1e-7
-        self.atol = 1e-7
+        self.numerical_delta = config.TOLERANCE.get(self.dtype).get(
+            'second_order_grad').get('eps')
+        self.rtol = config.TOLERANCE.get(self.dtype).get(
+            'second_order_grad').get('rtol')
+        self.atol = config.TOLERANCE.get(self.dtype).get(
+            'second_order_grad').get('atol')
         self.x = paddle.rand(shape=self.x_shape, dtype=self.dtype)
         self.weight = paddle.rand(shape=self.weight_shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.y_shape, dtype=self.dtype)
