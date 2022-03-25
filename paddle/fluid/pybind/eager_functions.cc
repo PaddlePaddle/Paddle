@@ -40,6 +40,9 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+
 namespace paddle {
 namespace pybind {
 
@@ -159,7 +162,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
 
-  dst = src.copy_to(phi::TransToPhiBackend(place), blocking);
+  dst = src.copy_to(place, blocking);
   egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
       egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
@@ -468,6 +471,90 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_sparse_coo_tensor(PyObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto non_zero_indices = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto non_zero_elements = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 1), 1);
+  auto dense_shape = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 2), 2);
+  auto stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
+  PADDLE_ENFORCE(non_zero_indices.is_dense_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "the non-zero indices must be a DenseTensor."));
+  PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "the non-zero elements must be a DenseTensor."));
+  auto dense_indices =
+      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
+  auto dense_elements =
+      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+  // TODO(zhangkaihuo): After create SparseTensor, call coalesced() to sort and
+  // merge duplicate indices
+  std::shared_ptr<phi::SparseCooTensor> coo_tensor =
+      std::make_shared<phi::SparseCooTensor>(*dense_indices, *dense_elements,
+                                             phi::make_ddim(dense_shape));
+  paddle::experimental::Tensor tensor;
+  tensor.set_impl(coo_tensor);
+  auto name =
+      egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+  tensor.set_name(name);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+  autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  if (!autograd_meta->GetMutableGradNode()) {
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation for it.";
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  }
+  return ToPyObject(tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_sparse_csr_tensor(PyObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto non_zero_crows = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto non_zero_cols = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 1), 1);
+  auto non_zero_elements = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 2), 2);
+  auto dense_shape = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 3), 3);
+  auto stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+  PADDLE_ENFORCE(non_zero_crows.is_dense_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "the compressed non-zero rows must be a DenseTensor."));
+  PADDLE_ENFORCE(non_zero_cols.is_dense_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "the non-zero cols must be a DenseTensor."));
+  PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "the non-zero elements must be a DenseTensor."));
+
+  auto dense_crows =
+      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_crows.impl());
+  auto dense_cols =
+      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_cols.impl());
+  auto dense_elements =
+      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+  std::shared_ptr<phi::SparseCsrTensor> csr_tensor =
+      std::make_shared<phi::SparseCsrTensor>(*dense_crows, *dense_cols,
+                                             *dense_elements,
+                                             phi::make_ddim(dense_shape));
+  paddle::experimental::Tensor tensor;
+  tensor.set_impl(csr_tensor);
+  auto name =
+      egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+  tensor.set_name(name);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+  autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  if (!autograd_meta->GetMutableGradNode()) {
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation for it.";
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  }
+  return ToPyObject(tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
@@ -490,6 +577,14 @@ PyMethodDef variable_functions[] = {
     {"read_next_tensor_list",
      (PyCFunction)(void (*)(void))eager_api_read_next_tensor_list,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    /**sparse functions**/
+    {"sparse_coo_tensor",
+     (PyCFunction)(void (*)(void))eager_api_sparse_coo_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"sparse_csr_tensor",
+     (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    /**sparse functions**/
     {NULL, NULL, 0, NULL}};
 
 void BindFunctions(PyObject* module) {

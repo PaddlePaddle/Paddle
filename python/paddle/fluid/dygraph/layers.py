@@ -25,6 +25,7 @@ from copy import deepcopy
 import inspect
 
 import paddle
+import paddle.profiler as profiler
 
 from . import parallel_helper
 from .. import unique_name
@@ -905,7 +906,9 @@ class Layer(object):
 
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        with profiler.RecordEvent(self.full_name(),
+                                  profiler.TracerEventType.Forward):
+            outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)

@@ -304,6 +304,35 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                 "two value is\
                 {}\n{}, check diff!".format(np_res, ret_res))
 
+    def test_set_outsize_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            x = paddle.to_tensor(
+                np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="float32")
+            src_index = paddle.to_tensor(np.array([0, 0, 1]), dtype="int32")
+            dst_index = paddle.to_tensor(np.array([0, 1, 1]), dtype="int32")
+            res = paddle.incubate.graph_send_recv(x, src_index, dst_index,
+                                                  "sum")
+            out_size = paddle.max(dst_index) + 1
+            res_set_outsize = paddle.incubate.graph_send_recv(
+                x, src_index, dst_index, "sum", out_size)
+
+            np_res = np.array(
+                [[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
+            np_res_set_outsize = np.array(
+                [[0, 2, 3], [1, 6, 8]], dtype="float32")
+
+            self.assertTrue(
+                np.allclose(
+                    np_res, res, atol=1e-6),
+                "two value is\
+                {}\n{}, check diff!".format(np_res, res))
+            self.assertTrue(
+                np.allclose(
+                    np_res_set_outsize, res_set_outsize, atol=1e-6),
+                "two value is\
+                {}\n{}, check diff!"
+                .format(np_res_set_outsize, res_set_outsize))
+
 
 if __name__ == '__main__':
     unittest.main()

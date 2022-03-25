@@ -38,7 +38,7 @@ class GraphSendRecvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto in_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto in_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
   }
 
@@ -68,6 +68,12 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
                          "tensors of Dst_index.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
+    AddAttr<int64_t>(
+        "out_size",
+        "(int64_t, default 0)"
+        "Define the first dimension of Output tensor."
+        "If set default 0, then the shape of Out is the same with X.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 
@@ -93,6 +99,7 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("graph_send_recv_grad");
     op->SetInput("Src_index", this->Input("Src_index"));
     op->SetInput("Dst_index", this->Input("Dst_index"));
+    op->SetInput("X", this->Input("X"));
 
     if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
@@ -100,7 +107,6 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
         BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
-      op->SetInput("X", this->Input("X"));
       op->SetInput("Out", this->Output("Out"));
     }
 
