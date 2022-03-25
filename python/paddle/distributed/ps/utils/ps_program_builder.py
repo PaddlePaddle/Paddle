@@ -37,6 +37,37 @@ class PsProgramBuilder(object):
         self.server_endpoints = self.attrs['role_maker']._get_pserver_endpoints(
         )
 
+    def _build_trainer_desc(self):
+        opt_info = self.loss.block.program._fleet_opt
+        opt_info = {} if opt_info is None else opt_info
+        opt_info["trainer"] = opt_info.get("trainer", "DistMultiTrainer")
+        opt_info["device_worker"] = opt_info.get("device_worker",
+                                                 "DownpourLite")
+        pid = str(id(self.cloned_main))
+        program_configs = {
+            pid: {
+                'pull_dense': [],
+                'push_dense': [],
+                'pull_sparse': [],
+                'push_sparse': []
+            }
+        }
+        dense_table_config = {}
+        send_ctx = get_the_one_send_context(self.attrs)
+        recv_ctx = get_the_one_recv_context(self.attrs)
+        for name, ctx in send_ctx.items():
+            if ctx.program_id() != id(self.loss.block.program):
+                continue
+            if ctx.is_sparse():
+                continue
+            if not ctx.is_tensor_table():
+                program_configs[pid]['pull_dense'].append(ctx.table_id())
+                program_configs[pid]['push_dense'].append(ctx.table_id())
+            dense_table_config[ctx.table_id()] = recv_ctx[ctx.table_id()]
+        opt_info['program_configs'] = program_configs
+        opt_info['dense_table_config'] = dense_table_config
+        self.cloned_main._fleet_opt = opt_info
+
     def _optimize_programs(self):
         pass
 
@@ -63,7 +94,15 @@ class PsProgramBuilder(object):
             logger.info("start building trainer program")
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
+            # print("ps_program_build before =", id(self.loss.block.program))
+            self._build_trainer_desc()
             self.loss.block.program = self.cloned_main
+            # print("ps_program_build after =", id(self.loss.block.program))
+            # print("ps_program_build clone after =", id(self.cloned_main))
+            # print("ps_program_build after trainer_desc",
+            #       id(self.loss.block.program))
+            # print("ps_program build trainer desc",
+            #       self.loss.block.program._fleet_opt)
 
         elif self.attrs['is_server']:
             logger.info("start building pserver program")
@@ -92,6 +131,13 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
 
         return
 
+    def _build_pserver_programs(self):
+        add_listen_and_serv_pass = new_pass('add_listen_and_serv_pass',
+                                            self.attrs)
+        add_listen_and_serv_pass.apply([self.attrs['_main_server']], [None],
+                                       self.pass_ctx)
+        return
+
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
@@ -103,13 +149,13 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
                              format(self.ps_mode, "PsProgramBuilder"))
 
     def _build_trainer_programs(self):
-        print("build trainer program entry")
-        print("before ps program builder program:", self.cloned_main)
+        # print("build trainer program entry")
+        # print("before ps program builder program:", self.cloned_main)
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.attrs)
         add_lr_decay_table_pass.apply([], [], self.pass_ctx)
 
-        print("before distributed op pass")
+        # print("before distributed op pass")
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
         distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
@@ -129,7 +175,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
-        print("after ps program builder program:", self.cloned_main)
+        # print("after ps program builder program:", self.cloned_main)
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)

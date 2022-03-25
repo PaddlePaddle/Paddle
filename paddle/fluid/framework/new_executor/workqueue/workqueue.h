@@ -15,15 +15,41 @@
 #pragma once
 
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
 constexpr const char* kQueueEmptyEvent = "QueueEmpty";
 constexpr const char* kQueueDestructEvent = "QueueDestruct";
+
+// For std::function
+// https://stackoverflow.com/questions/25421346/how-to-create-an-stdfunction-from-a-move-capturing-lambda-expression
+template <typename OnlyMovable>
+class FakeCopyable {
+ public:
+  explicit FakeCopyable(OnlyMovable&& obj) : obj_(std::move(obj)) {
+    static_assert(std::is_copy_constructible<OnlyMovable>::value == false,
+                  "Need not to use FakeCopyable");
+  }
+
+  FakeCopyable(FakeCopyable&& other) : obj_(std::move(other.obj_)) {}
+
+  FakeCopyable(const FakeCopyable& other) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Never use the copy constructor of FakeCopyable."));
+  }
+
+  OnlyMovable& Get() { return obj_; }
+
+ private:
+  OnlyMovable obj_;
+};
 
 class EventsWaiter;
 
@@ -78,6 +104,22 @@ class WorkQueue {
 
   virtual void AddTask(std::function<void()> fn) = 0;
 
+  // Higher cost than AddTask
+  template <typename F, typename... Args>
+  std::future<typename std::result_of<F(Args...)>::type> AddAwaitableTask(
+      F&& f, Args&&... args) {
+    using ReturnType = typename std::result_of<F(Args...)>::type;
+    std::function<ReturnType()> task =
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+    std::promise<ReturnType> prom;
+    std::future<ReturnType> res = prom.get_future();
+    AddTask([
+      t = std::move(task),
+      p = FakeCopyable<std::promise<ReturnType>>(std::move(prom))
+    ]() mutable { p.Get().set_value(t()); });
+    return res;
+  }
+
   // See WorkQueueOptions.track_task for details
   // virtual void WaitQueueEmpty() = 0;
 
@@ -101,6 +143,22 @@ class WorkQueueGroup {
   virtual ~WorkQueueGroup() = default;
 
   virtual void AddTask(size_t queue_idx, std::function<void()> fn) = 0;
+
+  // Higher cost than AddTask
+  template <typename F, typename... Args>
+  std::future<typename std::result_of<F(Args...)>::type> AddAwaitableTask(
+      size_t queue_idx, F&& f, Args&&... args) {
+    using ReturnType = typename std::result_of<F(Args...)>::type;
+    std::function<ReturnType()> task =
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+    std::promise<ReturnType> prom;
+    std::future<ReturnType> res = prom.get_future();
+    AddTask(queue_idx, [
+      t = std::move(task),
+      p = FakeCopyable<std::promise<ReturnType>>(std::move(prom))
+    ]() mutable { p.Get().set_value(t()); });
+    return res;
+  }
 
   // See WorkQueueOptions.track_task for details
   // virtual void WaitQueueGroupEmpty() = 0;

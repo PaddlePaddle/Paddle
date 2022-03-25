@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.fluid as fluid
