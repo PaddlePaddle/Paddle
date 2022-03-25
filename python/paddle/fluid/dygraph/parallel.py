@@ -612,10 +612,10 @@ class DataParallel(layers.Layer):
             # TODO(liuyuhui) Currently not support xpu. xpu is 
             # still broadcasting parameters when calling layer
             if not paddle.is_compiled_with_xpu():
-                if _in_legacy_dygraph():
+                if in_dygraph_mode():
                     sync_eager_params(
                         self._layers, comm_group=self.process_group)
-                elif in_dygraph_mode():
+                elif _in_legacy_dygraph():
                     sync_params_buffers(self._layers)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
