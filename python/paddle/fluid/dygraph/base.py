@@ -140,7 +140,7 @@ def enabled():
 
     **Note**:
         ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
-        ``fluid.in_dygraph_mode`` is recommended to use.
+        ``fluid.in_dygraph_mode`` is recommended to use for now.
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
