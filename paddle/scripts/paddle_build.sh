@@ -2939,12 +2939,12 @@ function check_coverage_build() {
     set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 29832297 6836917`
        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
        if [ "${APPROVALS}" == "FALSE" ]; then
            echo "=========================================================================================="
-           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G."
-           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, Please explain why your PR exceeds 3G to ext_ppee@baidu.com."
+           echo "Then you must have one RD (tianshuo78520a (Recommend) or luotao1) approval for this PR\n"
            echo "=========================================================================================="
            exit 6
        fi
