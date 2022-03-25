@@ -24,7 +24,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
 #ifdef __HIPCC__
@@ -50,6 +50,19 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+inline void GetDims(const phi::DDim& dim, int axis, int* pre, int* n,
+                    int* post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
 
 struct SegmentOffsetIter {
   EIGEN_DEVICE_FUNC
@@ -391,7 +404,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
 
   Tensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
-  auto dim = framework::make_ddim(dims);
+  auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
   // input_indices.Resize(num_rows*num_cols);
   input_indices.mutable_data<int64_t>(ctx.GetPlace());
@@ -411,7 +424,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   };
   int block_size = ComputeBlockSize(num_cols);
 
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
@@ -568,7 +581,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
         static_cast<const Tensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
-    auto dim = framework::make_ddim(odims);
+    auto dim = phi::make_ddim(odims);
     auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
     auto e_tmp_values =
         framework::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));

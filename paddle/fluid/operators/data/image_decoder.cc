@@ -109,14 +109,14 @@ void ImageDecoder::CPUDecodeRandomCrop(
   // allocate cpu tensor and memory
   framework::LoDTensor cpu_tensor;
   std::vector<int64_t> out_shape = {height, width, 3};
-  cpu_tensor.Resize(framework::make_ddim(out_shape));
+  cpu_tensor.Resize(phi::make_ddim(out_shape));
   auto* cpu_data = cpu_tensor.mutable_data<uint8_t>(platform::CPUPlace());
 
   cv::Mat cpu_mat(height, width, CV_8UC3, const_cast<unsigned char*>(cpu_data), cv::Mat::AUTO_STEP);
   cv::cvtColor(cropped, cpu_mat, cv::COLOR_BGR2RGB);
 
   // copy cpu tensor to output gpu tensor
-  TensorCopySync(cpu_tensor, place, out);
+  framework::TensorCopySync(cpu_tensor, place, out);
 #else
   PADDLE_THROW(platform::errors::Fatal(
       "Nvjpeg decode failed and Paddle is not compiled with OpenCV"));
@@ -179,7 +179,7 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
   }
 
   std::vector<int64_t> out_shape = {height, width, output_components};
-  out->Resize(framework::make_ddim(out_shape));
+  out->Resize(phi::make_ddim(out_shape));
 
   // allocate memory and assign to out_image
   auto* data = out->mutable_data<uint8_t>(place);

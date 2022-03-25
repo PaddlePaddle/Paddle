@@ -25,7 +25,9 @@ enum ApiType {
   CUSOLVER = 4;
   NCCL = 5;
   CUFFT = 6;
-  NVJPEG = 7;
+  CU = 7;
+  CUSPARSE = 8;
+  NVJPEG = 9;
 }
 
 message MessageDesc {

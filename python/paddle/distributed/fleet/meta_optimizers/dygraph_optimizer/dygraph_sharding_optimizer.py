@@ -13,6 +13,7 @@
 # limitations under the License.
 
 ######
+
 from functools import reduce
 
 import paddle
@@ -20,7 +21,7 @@ from paddle import framework
 from ...utils.log_util import logger
 
 
-def _is_trainable(param: paddle.Tensor) -> bool:
+def _is_trainable(param):
     return not param.stop_gradient
 
 
@@ -41,13 +42,8 @@ class DygraphShardingOptimizer(object):
     # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
-    def __init__(
-            self,
-            hcg,
-            user_defined_strategy,
-            params,
-            inner_optimizer_class,
-            **inner_optimizer_kargs, ):
+    def __init__(self, hcg, user_defined_strategy, params,
+                 inner_optimizer_class, **inner_optimizer_kargs):
 
         if not isinstance(params, list):
             raise TypeError(

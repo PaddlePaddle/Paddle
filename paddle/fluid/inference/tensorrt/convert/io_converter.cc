@@ -45,7 +45,7 @@ class DefaultIOConverter : public EngineIOConverter {
             "the input max_size. But in's memory_size = %u, max_size = %u.",
             size, max_size));
     if (is_cpu_place(place)) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
           out, in.data<float>(), size, cudaMemcpyHostToDevice, *stream_));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(

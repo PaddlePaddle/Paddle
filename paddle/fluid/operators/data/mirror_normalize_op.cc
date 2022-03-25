@@ -54,7 +54,7 @@ class MirrorNormalizeOp : public framework::OperatorWithKernel {
     for (int i = 0; i < x_dims.size(); ++i) {
       output_dims[i] = x_dims[i];
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
     ctx->ShareLoD("X", "Out");
   }
 

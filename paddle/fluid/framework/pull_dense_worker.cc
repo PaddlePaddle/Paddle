@@ -14,10 +14,13 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Scope;
 class Variable;
 
@@ -58,7 +61,13 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     last_versions_[tid] = 0;
     current_version_[tid] = 0;
   }
+
+#if defined(PADDLE_WITH_PSCORE)
+  fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+#else
   fleet_ptr_ = FleetWrapper::GetInstance();
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   copy_streams_.clear();
 #endif
@@ -135,13 +144,11 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, places_[i]), w,
-                     platform::CUDAPinnedPlace(), pin_w,
+        memory::Copy(places_[i], w, platform::CUDAPinnedPlace(), pin_w,
                      sizeof(float) * tensor->numel(), copy_streams_[i]);
 #endif
 #ifdef PADDLE_WITH_XPU
-        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, places_[i]), w,
-                     platform::CPUPlace(), pin_w,
+        memory::Copy(places_[i], w, platform::CPUPlace(), pin_w,
                      sizeof(float) * tensor->numel());
 #endif
       }
@@ -169,6 +176,9 @@ void PullDenseWorker::PullDense(bool force_update) {
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
+#elif defined(PADDLE_WITH_PSCORE)
+      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
+                                     &pull_dense_status_, true);
 #else
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, true);

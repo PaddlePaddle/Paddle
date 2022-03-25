@@ -19,10 +19,13 @@ limitations under the License. */
 #include <boost/variant.hpp>
 #include "glog/logging.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
 class Variable;
 
 void SetFeedVariable(Scope* scope, const LoDTensor& input,

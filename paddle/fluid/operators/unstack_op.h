@@ -20,7 +20,6 @@ limitations under the License. */
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
-#include "paddle/fluid/framework/array.h"
 #endif
 
 namespace paddle {

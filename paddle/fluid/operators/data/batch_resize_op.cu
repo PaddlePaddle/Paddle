@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/data/batch_resize_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -244,7 +244,7 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
       out_dim = {static_cast<int64_t>(x->size()),
                                     img_c, size[0], size[1]};
     }
-    out->Resize(framework::make_ddim(out_dim));
+    out->Resize(phi::make_ddim(out_dim));
     out->mutable_data<T>(ctx.GetPlace());
 
     int img_h, img_w, idx_h, idx_w, crop_h, crop_w;

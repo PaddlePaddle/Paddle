@@ -16,12 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +40,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
       sequence_width = logits_dims[2];
     } else {
       sequence_width =
-          static_cast<int>(framework::product(logits_dims) / logits_dims[0]);
+          static_cast<int>(phi::product(logits_dims) / logits_dims[0]);
     }
 
     PADDLE_ENFORCE_GE(

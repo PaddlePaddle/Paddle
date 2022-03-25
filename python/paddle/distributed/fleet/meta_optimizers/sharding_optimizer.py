@@ -53,6 +53,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
+            "ASPOptimizer",
             # "ModelParallelOptimizer",
             # "PipelineOptimizer",
         ]

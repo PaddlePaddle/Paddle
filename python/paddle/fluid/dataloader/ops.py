@@ -18,6 +18,7 @@ import paddle
 
 from ...fluid import core, framework, Program, program_guard, unique_name
 from ...fluid.layers.utils import _hash_with_id
+from ...fluid.framework import in_dygraph_mode
 from ...common_ops_import import *
 
 

@@ -14,18 +14,21 @@
 
 #pragma once
 
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 
-#ifndef PADDLE_WITH_ASCEND_CL
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "brpc/channel.h"
 #include "brpc/server.h"
-#endif
+#include "paddle/fluid/distributed/fleet_executor/message_service.h"
 #endif
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -33,44 +36,42 @@ namespace distributed {
 
 class Carrier;
 
+// A singleton MessageBus
 class MessageBus final {
  public:
-  MessageBus() = delete;
-
-  explicit MessageBus(
-      const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
-      const std::unordered_map<int64_t, std::string>& rank_to_addr,
-      const std::string& addr)
-      : interceptor_id_to_rank_(interceptor_id_to_rank),
-        rank_to_addr_(rank_to_addr),
-        addr_(addr) {}
-
+  MessageBus() = default;
   ~MessageBus();
 
-  // called by Interceptor, send InterceptorMessage to dst
-  bool Send(const InterceptorMessage& interceptor_message);
+  void Init(int64_t rank,
+            const std::unordered_map<int64_t, std::string>& rank_to_addr,
+            const std::string& addr);
 
-  DISABLE_COPY_AND_ASSIGN(MessageBus);
+  bool IsInit() const;
+
+  // called by Interceptor, send InterceptorMessage to dst
+  bool Send(int64_t dst_rank, const InterceptorMessage& interceptor_message);
+
+  void IncreaseBarrierCount();
+  void Barrier();
+  bool DispatchMsgToCarrier(const InterceptorMessage& interceptor_message);
 
  private:
+  DISABLE_COPY_AND_ASSIGN(MessageBus);
+
   // function keep listen the port and handle the message
   void ListenPort();
 
-  // check whether the dst is the same rank or different rank with src
-  bool IsSameRank(int64_t src_id, int64_t dst_id);
+  const std::string& GetAddr(int64_t rank) const;
 
-#ifndef PADDLE_WITH_ASCEND_CL
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // send the message inter rank (dst is different rank with src)
-  bool SendInterRank(const InterceptorMessage& interceptor_message);
-#endif
+  bool SendInterRank(int64_t dst_rank,
+                     const InterceptorMessage& interceptor_message);
 #endif
 
-  // send the message intra rank (dst is the same rank with src)
-  bool SendIntraRank(const InterceptorMessage& interceptor_message);
+  bool is_init_{false};
 
-  // handed by above layer, save the info mapping interceptor id to rank id
-  std::unordered_map<int64_t, int64_t> interceptor_id_to_rank_;
+  int64_t rank_;
 
   // handed by above layer, save the info mapping rank id to addr
   std::unordered_map<int64_t, std::string> rank_to_addr_;
@@ -78,16 +79,16 @@ class MessageBus final {
   // the ip needs to be listened
   std::string addr_;
 
-#ifndef PADDLE_WITH_ASCEND_CL
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  MessageServiceImpl message_service_;
   // brpc server
   brpc::Server server_;
 #endif
-#endif
 
-  // thread keeps listening to the port to receive remote message
-  // this thread runs ListenPort() function
-  std::thread listen_port_thread_;
+  // for barrier
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  int count_{0};
 };
 
 }  // namespace distributed

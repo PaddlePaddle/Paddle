@@ -107,6 +107,73 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
     return hessian
 
 
+def _compute_numerical_batch_jacobian(func, xs, delta, np_dtype):
+    no_batch_jacobian = _compute_numerical_jacobian(func, xs, delta, np_dtype)
+    xs = _tensors(xs, "xs")
+    ys = _tensors(func(*xs), "ys")
+    fin_size = len(xs)
+    fout_size = len(ys)
+    bs = xs[0].shape[0]
+    bat_jac = []
+    for i in range(fout_size):
+        batch_jac_i = []
+        for j in range(fin_size):
+            jac = no_batch_jacobian[i][j]
+            jac_shape = jac.shape
+            out_size = jac_shape[0] // bs
+            in_size = jac_shape[1] // bs
+            jac = np.reshape(jac, (bs, out_size, bs, in_size))
+            batch_jac_i_j = np.zeros(shape=(out_size, bs, in_size))
+            for p in range(out_size):
+                for b in range(bs):
+                    for q in range(in_size):
+                        batch_jac_i_j[p][b][q] = jac[b][p][b][q]
+            batch_jac_i_j = np.reshape(batch_jac_i_j, (out_size, -1))
+            batch_jac_i.append(batch_jac_i_j)
+        bat_jac.append(batch_jac_i)
+
+    return bat_jac
+
+
+def _compute_numerical_batch_hessian(func, xs, delta, np_dtype):
+    xs = _tensors(xs, "xs")
+    batch_size = xs[0].shape[0]
+    fin_size = len(xs)
+    hessian = []
+    for b in range(batch_size):
+        x_l = []
+        for j in range(fin_size):
+            x_l.append(paddle.reshape(xs[j][b], shape=[1, -1]))
+        hes_b = _compute_numerical_hessian(func, x_l, delta, np_dtype)
+        if fin_size == 1:
+            hessian.append(hes_b[0][0])
+        else:
+            hessian.append(hes_b)
+
+    hessian_res = []
+    for index in range(fin_size):
+        x_reshape = paddle.reshape(xs[index], shape=[batch_size, -1])
+        for index_ in range(fin_size):
+            for i in range(x_reshape.shape[1]):
+                tmp = []
+                for j in range(batch_size):
+                    if fin_size == 1:
+                        tmp.extend(hessian[j][i])
+                    else:
+                        tmp.extend(hessian[j][i][index_][index])
+                hessian_res.append(tmp)
+        if fin_size == 1:
+            return hessian_res
+
+    hessian_result = []
+    mid = len(hessian_res) // 2
+    for i in range(mid):
+        hessian_result.append(
+            np.stack(
+                (hessian_res[i], hessian_res[mid + i]), axis=0))
+    return hessian_result
+
+
 def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
     xs = _tensors(xs, "xs")
     jacobian = np.array(_compute_numerical_jacobian(func, xs, delta, np_dtype))

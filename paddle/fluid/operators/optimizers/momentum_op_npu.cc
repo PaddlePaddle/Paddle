@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       Tensor mu_tensor;
-      mu_tensor.mutable_data<T>(framework::make_ddim({1}), ctx.GetPlace());
+      mu_tensor.mutable_data<T>(phi::make_ddim({1}), ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&mu_tensor, mu);
 
       Tensor regularized_grad;
@@ -74,7 +74,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
                             regularized_grad, mu_tensor},
           {*param_out}, {{"use_nesterov", use_nesterov}});
       runner.Run(dev_ctx.stream());
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(false, true, platform::errors::PermissionDenied(
                                          "Unsupport SparseMomentum"));
     } else {

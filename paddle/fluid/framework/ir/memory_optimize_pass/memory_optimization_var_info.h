@@ -66,6 +66,12 @@ class MemOptVarInfo {
     return skip_memory_reuse_ || skip_all_memory_optimization_;
   }
 
+  void SetParentHolder(std::shared_ptr<MemOptVarInfo> parent) {
+    parent_holder_ = parent;
+  }
+
+  std::shared_ptr<MemOptVarInfo> ParentHolder() const { return parent_holder_; }
+
   const std::string &Name() const { return name_; }
 
  private:
@@ -88,6 +94,9 @@ class MemOptVarInfo {
   std::atomic<size_t> runtime_ref_cnt_;
   bool skip_memory_reuse_{false};
   bool skip_all_memory_optimization_{false};
+  // point to var info of the same variable in the main graph,
+  // used in external(input/output) variables of a subgraph
+  std::shared_ptr<MemOptVarInfo> parent_holder_{nullptr};
 };
 
 using MemOptVarInfoMapList = std::vector<

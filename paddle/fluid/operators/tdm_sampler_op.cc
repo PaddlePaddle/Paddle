@@ -96,16 +96,15 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
     }
 
     auto input_dims = ctx->GetInputDim("X");
-    auto ddim = framework::make_ddim({-1, sample_res_length});
+    auto ddim = phi::make_ddim({-1, sample_res_length});
     if (ctx->IsRuntime()) {
-      auto output_dims = framework::vectorize(input_dims);
+      auto output_dims = phi::vectorize(input_dims);
       auto batch_size = output_dims[0];
-      ctx->SetOutputDim("Out",
-                        framework::make_ddim({batch_size, sample_res_length}));
+      ctx->SetOutputDim("Out", phi::make_ddim({batch_size, sample_res_length}));
       ctx->SetOutputDim("Labels",
-                        framework::make_ddim({batch_size, sample_res_length}));
+                        phi::make_ddim({batch_size, sample_res_length}));
       ctx->SetOutputDim("Mask",
-                        framework::make_ddim({batch_size, sample_res_length}));
+                        phi::make_ddim({batch_size, sample_res_length}));
     } else {
       ctx->SetOutputDim("Out", ddim);
       ctx->SetOutputDim("Labels", ddim);

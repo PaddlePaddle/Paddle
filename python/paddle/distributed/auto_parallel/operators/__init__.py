@@ -23,3 +23,8 @@ from . import dist_reshape
 from . import dist_softmax
 from . import dist_transpose
 from . import dist_default
+from . import dist_eltwise
+from . import dist_check_finite_and_unscale
+from . import dist_update_loss_scaling
+from . import dist_split
+from . import dist_fill_constant_batch_size_like

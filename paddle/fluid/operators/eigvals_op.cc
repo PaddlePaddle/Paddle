@@ -47,7 +47,7 @@ class EigvalsOp : public framework::OperatorWithKernel {
                           "but received X's dimension = %d, X's shape = [%s].",
                           x_dims.size(), x_dims));
 
-    if (ctx->IsRuntime() || !framework::contain_unknown_dim(x_dims)) {
+    if (ctx->IsRuntime() || !phi::contain_unknown_dim(x_dims)) {
       int last_dim = x_dims.size() - 1;
       PADDLE_ENFORCE_EQ(x_dims[last_dim], x_dims[last_dim - 1],
                         platform::errors::InvalidArgument(
@@ -59,7 +59,7 @@ class EigvalsOp : public framework::OperatorWithKernel {
 
     auto output_dims = vectorize(x_dims);
     output_dims.resize(x_dims.size() - 1);
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
   }
 };
 

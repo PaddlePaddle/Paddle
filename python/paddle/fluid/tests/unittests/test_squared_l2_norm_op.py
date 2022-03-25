@@ -18,6 +18,8 @@ import numpy as np
 import unittest
 from numpy import linalg as LA
 from op_test import OpTest
+import paddle
+from paddle import _C_ops
 
 
 class TestL2LossOp(OpTest):
@@ -41,5 +43,21 @@ class TestL2LossOp(OpTest):
             ['X'], 'Out', max_relative_error=self.max_relative_error)
 
 
+class TestL2LossDeterministic(unittest.TestCase):
+    def check_place(self, place):
+        with paddle.fluid.dygraph.guard(place):
+            x_np = np.random.rand(5, 11, 13).astype('float32')
+            x = paddle.to_tensor(x_np)
+            y1 = _C_ops.squared_l2_norm(x)
+            y2 = _C_ops.squared_l2_norm(x)
+            self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+
+    def test_main(self):
+        self.check_place(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            self.check_place(paddle.CUDAPlace(0))
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

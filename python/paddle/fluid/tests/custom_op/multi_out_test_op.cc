@@ -34,8 +34,7 @@ void fill_constant_cpu_kernel(data_t* out_data, int64_t x_numel, data_t value) {
 }
 
 std::vector<paddle::Tensor> MultiOutCPU(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "assign_cpu_kernel", ([&] {
@@ -44,15 +43,13 @@ std::vector<paddle::Tensor> MultiOutCPU(const paddle::Tensor& x) {
       }));
 
   // fake multi output: Fake_float64 with float64 dtype
-  auto fake_float64 = paddle::Tensor(paddle::PlaceType::kCPU);
-  fake_float64.reshape(x.shape());
+  auto fake_float64 = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   fill_constant_cpu_kernel<double>(
       fake_float64.mutable_data<double>(x.place()), x.size(), 0.);
 
   // fake multi output: ZFake_int32 with int32 dtype
-  auto zfake_int32 = paddle::Tensor(paddle::PlaceType::kCPU);
-  zfake_int32.reshape(x.shape());
+  auto zfake_int32 = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
   fill_constant_cpu_kernel<int32_t>(
       zfake_int32.mutable_data<int32_t>(x.place()), x.size(), 1);

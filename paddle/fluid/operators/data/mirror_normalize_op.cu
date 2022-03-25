@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/data/mirror_normalize_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -62,17 +63,16 @@ class MirrorNormalizeCUDAKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.cuda_device_context();
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     const auto cplace = platform::CPUPlace();
     int bytes = sizeof(float) * mean.size();
 
     auto mean_ptr = memory::Alloc(dev_ctx, bytes);
     float* mean_data = reinterpret_cast<float*>(mean_ptr->ptr());
-    memory::Copy(gplace, mean_data, cplace, mean.data(), bytes,
+    memory::Copy(ctx.GetPlace(), mean_data, cplace, mean.data(), bytes,
                  dev_ctx.stream());
     auto std_ptr = memory::Alloc(dev_ctx, bytes);
     float* std_data = reinterpret_cast<float*>(std_ptr->ptr());
-    memory::Copy(gplace, std_data, cplace, std.data(), bytes,
+    memory::Copy(ctx.GetPlace(), std_data, cplace, std.data(), bytes,
                  dev_ctx.stream());
 
     platform::GpuLaunchConfig config =

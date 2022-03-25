@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import paddle
 import numpy as np
 from ... import fluid
 from ...fluid import dygraph
@@ -39,25 +39,25 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
             "axis": 1 if axis is None else axis,
             "epsilon": epsilon,
         })
-    return F.squeeze(norm, axes=[axis])
+    return paddle.squeeze(norm, axis=[axis])
 
 
 def norm_except_dim(p, dim):
     shape = p.shape
     ndims = len(shape)
     if dim == -1:
-        return F.sqrt(F.reduce_sum(F.square(p)) + 1e-12)
+        return paddle.sqrt(paddle.sum(paddle.square(p)) + 1e-12)
     elif dim == 0:
-        p_matrix = F.reshape(p, (shape[0], -1))
+        p_matrix = paddle.reshape(p, (shape[0], -1))
         return l2_norm(p_matrix, axis=1)
     elif dim == ndims - 1:
-        p_matrix = F.reshape(p, (-1, shape[-1]))
+        p_matrix = paddle.reshape(p, (-1, shape[-1]))
         return l2_norm(p_matrix, axis=0)
     else:
         perm = list(range(ndims))
         perm[0] = dim
         perm[dim] = 0
-        p_transposed = F.transpose(p, perm)
+        p_transposed = paddle.transpose(p, perm)
         return norm_except_dim(p_transposed, 0)
 
 
@@ -66,25 +66,25 @@ def _weight_norm(v, g, dim):
     ndims = len(shape)
 
     if dim == -1:
-        v_normalized = v / (F.sqrt(F.reduce_sum(F.square(v))) + 1e-12)
+        v_normalized = v / (paddle.sqrt(paddle.sum(paddle.square(v))) + 1e-12)
     elif dim == 0:
-        p_matrix = F.reshape(v, (shape[0], -1))
+        p_matrix = paddle.reshape(v, (shape[0], -1))
         v_normalized = F.l2_normalize(p_matrix, axis=1)
-        v_normalized = F.reshape(v_normalized, shape)
+        v_normalized = paddle.reshape(v_normalized, shape)
     elif dim == ndims - 1:
-        p_matrix = F.reshape(v, (-1, shape[-1]))
+        p_matrix = paddle.reshape(v, (-1, shape[-1]))
         v_normalized = F.l2_normalize(p_matrix, axis=0)
-        v_normalized = F.reshape(v_normalized, shape)
+        v_normalized = paddle.reshape(v_normalized, shape)
     else:
         perm = list(range(ndims))
         perm[0] = dim
         perm[dim] = 0
-        p_transposed = F.transpose(v, perm)
+        p_transposed = paddle.transpose(v, perm)
         transposed_shape = p_transposed.shape
-        p_matrix = F.reshape(p_transposed, (p_transposed.shape[0], -1))
+        p_matrix = paddle.reshape(p_transposed, (p_transposed.shape[0], -1))
         v_normalized = F.l2_normalize(p_matrix, axis=1)
-        v_normalized = F.reshape(v_normalized, transposed_shape)
-        v_normalized = F.transpose(v_normalized, perm)
+        v_normalized = paddle.reshape(v_normalized, transposed_shape)
+        v_normalized = paddle.transpose(v_normalized, perm)
     weight = F.elementwise_mul(
         v_normalized, g, axis=dim if dim is not None else -1)
     return weight
@@ -130,9 +130,9 @@ class WeightNorm(object):
         layer.add_parameter(name + "_v", v)
         g = layer.create_parameter(g_var.shape, dtype=g_var.dtype)
         layer.add_parameter(name + '_g', g)
-        with dygraph.no_grad():
-            F.assign(w, v)
-            F.assign(g_var, g)
+        with paddle.no_grad():
+            paddle.assign(w, v)
+            paddle.assign(g_var, g)
         setattr(layer, name, fn.compute_weight(layer))
 
         layer.register_forward_pre_hook(fn)
@@ -145,8 +145,8 @@ class WeightNorm(object):
         del layer._parameters[self.name + '_v']
         w = layer.create_parameter(w_var.shape, dtype=w_var.dtype)
         layer.add_parameter(self.name, w)
-        with dygraph.no_grad():
-            F.assign(w_var, w)
+        with paddle.no_grad():
+            paddle.assign(w_var, w)
 
     def __call__(self, layer, inputs):
         setattr(layer, self.name, self.compute_weight(layer))

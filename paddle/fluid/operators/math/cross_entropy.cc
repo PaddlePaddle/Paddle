@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace platform {
@@ -30,19 +31,77 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
+struct HardLabelCrossEntropyCPUFunctorImpl {
+  HardLabelCrossEntropyCPUFunctorImpl(framework::Tensor* out,
+                                      const framework::Tensor* prob,
+                                      const framework::Tensor* labels,
+                                      const int ignore_index,
+                                      const int axis_dim)
+      : out_(out),
+        prob_(prob),
+        labels_(labels),
+        ignore_index_(ignore_index),
+        axis_dim_(axis_dim) {}
+
+  template <typename U>
+  void apply() const {
+    const int batch_size = prob_->dims()[0];
+    const int num_classes = prob_->dims()[1];
+    const int num_remain = num_classes / axis_dim_;
+
+    const T* prob_data = prob_->template data<T>();
+    T* loss_data = out_->template data<T>();
+
+    const auto* label_data = labels_->template data<U>();
+    for (int i = 0; i < batch_size; ++i) {
+      for (int j = 0; j < num_remain; j++) {
+        int lbl = static_cast<int>(label_data[i * num_remain + j]);
+        if (lbl != ignore_index_) {
+          PADDLE_ENFORCE_GE(lbl, 0,
+                            platform::errors::OutOfRange(
+                                "label value should >= 0 when label "
+                                "value(%f) not equal to ignore_index(%f)",
+                                lbl, ignore_index_));
+          PADDLE_ENFORCE_LT(
+              lbl, axis_dim_,
+              platform::errors::OutOfRange(
+                  "label value should less than the shape of axis dimension "
+                  "when label value(%f) not equal to ignore_index(%f), But "
+                  "received label value as %ld and shape of axis dimension "
+                  "is %d",
+                  lbl, ignore_index_, lbl, axis_dim_));
+        }
+        int index = i * num_classes + lbl * num_remain + j;
+        int loss_idx = i * num_remain + j;
+        loss_data[loss_idx] =
+            lbl == ignore_index_
+                ? 0
+                : -math::TolerableValue<T>()(std::log(prob_data[index]));
+      }
+    }
+  }
+
+ private:
+  framework::Tensor* out_;
+  const framework::Tensor* prob_;
+  const framework::Tensor* labels_;
+  const int ignore_index_;
+  const int axis_dim_;
+};
+
+template <typename T>
 class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel,
                   const int ignore_index, const int axis_dim) {
-    const int batch_size = prob->dims()[0];
-    const int num_classes = prob->dims()[1];
-    const int num_remain = num_classes / axis_dim;
-
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
-
     if (softLabel) {
+      const int batch_size = prob->dims()[0];
+      const int num_classes = prob->dims()[1];
+      const int num_remain = num_classes / axis_dim;
+
+      Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
       auto in = EigenMatrix<T>::From(*prob);
       auto lbl = EigenMatrix<T>::From(*labels);
       auto loss = EigenMatrix<T>::From(*out);
@@ -52,36 +111,10 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
                 .reshape(batch_axis_remain)
                 .sum(Eigen::DSizes<int, 1>(1)));
     } else {
-      const T* prob_data = prob->data<T>();
-      T* loss_data = out->data<T>();
-
-      const int64_t* label_data = labels->data<int64_t>();
-      for (int i = 0; i < batch_size; ++i) {
-        for (int j = 0; j < num_remain; j++) {
-          int lbl = label_data[i * num_remain + j];
-          if (lbl != ignore_index) {
-            PADDLE_ENFORCE_GE(lbl, 0,
-                              platform::errors::OutOfRange(
-                                  "label value should >= 0 when label "
-                                  "value(%f) not equal to ignore_index(%f)",
-                                  lbl, ignore_index));
-            PADDLE_ENFORCE_LT(
-                lbl, axis_dim,
-                platform::errors::OutOfRange(
-                    "label value should less than the shape of axis dimension "
-                    "when label value(%f) not equal to ignore_index(%f), But "
-                    "received label value as %ld and shape of axis dimension "
-                    "is %d",
-                    lbl, ignore_index, lbl, axis_dim));
-          }
-          int index = i * num_classes + lbl * num_remain + j;
-          int loss_idx = i * num_remain + j;
-          loss_data[loss_idx] =
-              lbl == ignore_index
-                  ? 0
-                  : -math::TolerableValue<T>()(std::log(prob_data[index]));
-        }
-      }
+      HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
+          out, prob, labels, ignore_index, axis_dim);
+      framework::VisitIntDataType(
+          framework::TransToProtoVarType(labels->dtype()), functor_impl);
     }
   }
 };

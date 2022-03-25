@@ -19,11 +19,11 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #if defined(_WIN32)
 #include <intrin.h>
@@ -252,8 +252,7 @@ class MatrixBitCodeFunctor {
   /* For SelectedRows Weight, For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(const framework::Tensor& tmat,
-                     framework::SelectedRows* weight,
+  void MulGradWeight(const framework::Tensor& tmat, phi::SelectedRows* weight,
                      const framework::Tensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))

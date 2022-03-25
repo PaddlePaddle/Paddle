@@ -86,6 +86,27 @@ class ApiMaxTest(unittest.TestCase):
         z_expected = np.array(np.max(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
 
+    def test_big_dimension(self):
+        paddle.disable_static()
+        x = paddle.rand(shape=[2, 2, 2, 2, 2, 2, 2])
+        np_x = x.numpy()
+        z1 = paddle.max(x, axis=-1)
+        z2 = paddle.max(x, axis=6)
+        np_z1 = z1.numpy()
+        np_z2 = z2.numpy()
+        z_expected = np.array(np.max(np_x, axis=6))
+        self.assertEqual((np_z1 == z_expected).all(), True)
+        self.assertEqual((np_z2 == z_expected).all(), True)
+
+    def test_all_negative_axis(self):
+        paddle.disable_static()
+        x = paddle.rand(shape=[2, 2])
+        np_x = x.numpy()
+        z1 = paddle.max(x, axis=(-2, -1))
+        np_z1 = z1.numpy()
+        z_expected = np.array(np.max(np_x, axis=(0, 1)))
+        self.assertEqual((np_z1 == z_expected).all(), True)
+
 
 class TestOutDtype(unittest.TestCase):
     def test_max(self):

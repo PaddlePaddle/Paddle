@@ -25,15 +25,15 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP(elementwise_mul);
 USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
-USE_OP(conv2d);
+USE_OP_ITSELF(conv2d);
 USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
 
 namespace paddle {
@@ -55,7 +55,7 @@ class CacheTester {
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
-  bool Analyze(unsigned short int num_entries) {
+  bool Analyze(uint16_t num_entries) {
     //  Number of created objects in cache should be as expected (num_entries)
     return onednn_dev_ctx_->GetCachedObjectsNumber() == num_entries;
   }
@@ -100,7 +100,7 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
                                          static_cast<T>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(framework::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
   for (int i = 0; i < num_inputs[op_type]; ++i) {
     input_names[i].tensor->Resize(dims);
     auto data_ptr = input_names[i].tensor->mutable_data<T>(place);

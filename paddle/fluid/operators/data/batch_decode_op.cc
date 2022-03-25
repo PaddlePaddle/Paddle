@@ -41,8 +41,8 @@ class BatchDecodeOp : public framework::OperatorWithKernel {
       return expected_kernel_type;
     }
 
-    return framework::OpKernelType(tensor.type(), tensor.place(),
-                                   tensor.layout());
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place());
   }
 };
 

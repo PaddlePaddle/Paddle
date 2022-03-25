@@ -16,6 +16,7 @@ import numpy as np
 from ..fluid.layer_helper import LayerHelper, unique_name
 from ..fluid import core, layers
 from ..fluid.layers import nn, utils
+from ..fluid.framework import in_dygraph_mode
 
 import paddle
 from paddle.common_ops_import import *

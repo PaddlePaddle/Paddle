@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqexpand_concat_fc_op.h"
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
 
 namespace paddle {
 namespace operators {
@@ -196,10 +196,10 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     std::function<void(const int, const T*, T*)> fc_act;
     auto& fc_act_str = ctx.Attr<std::string>("fc_activation");
     if (platform::MayIUse(platform::avx)) {
-      math::VecActivations<T, platform::avx> act_functor;
+      phi::funcs::VecActivations<T, platform::avx> act_functor;
       fc_act = act_functor(fc_act_str);
     } else {
-      math::VecActivations<T, platform::isa_any> act_functor;
+      phi::funcs::VecActivations<T, platform::isa_any> act_functor;
       fc_act = act_functor(fc_act_str);
     }
 
@@ -209,7 +209,7 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
     T* fc_out_data = fc_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;

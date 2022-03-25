@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -87,7 +87,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::ConvElementwiseadd pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
-
+  int found_conv_eltwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
@@ -97,6 +97,13 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
+    auto data_format =
+        conv_op->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_elementwise_add_fuse_pass is enabled, "
+                                 "it's wrong if data_format of conv is not "
+                                 "NCHW.";
+    }
     std::string bias_name = elementwise_add_in_y->Name();
     std::string output_name = elementwise_add_out->Name();
 
@@ -135,9 +142,12 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});
+    found_conv_eltwise_count++;
   };
 
   gpd(graph, handler);
+  // check if detect conv2d_fusion subgraph!
+  AddStatis(found_conv_eltwise_count);
 }
 
 }  // namespace ir

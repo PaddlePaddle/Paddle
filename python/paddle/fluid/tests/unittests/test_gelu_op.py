@@ -19,6 +19,8 @@ import numpy as np
 from scipy.special import erf
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+import paddle
+import paddle.nn.functional as F
 
 
 def gelu(x, approximate):
@@ -58,6 +60,36 @@ class TestGeluOp(unittest.TestCase):
             self._test_case1_cpu(approximate)
             if fluid.is_compiled_with_cuda():
                 self._test_case1_gpu(approximate)
+
+    def test_fast_math(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        def use_fast_math(enabled):
+            paddle.set_flags({'FLAGS_use_fast_math': enabled})
+
+        shape = [11, 17, 8]
+        x_np = np.random.uniform(-1, 1, size=shape).astype(np.float16)
+        y_g_np = np.random.uniform(-1, 1, size=shape).astype(np.float16)
+
+        def run_gelu_op(approximate):
+            with dg.guard():
+                x = paddle.to_tensor(x_np)
+                x.stop_gradient = False
+                y = F.gelu(x, approximate=approximate)
+                x_grad = paddle.grad([y], [x], [paddle.to_tensor(y_g_np)])[0]
+                return y.numpy(), x_grad.numpy()
+
+        use_fast_math(True)
+        y_fast_math, x_g_fast_math = run_gelu_op(True)
+        use_fast_math(False)
+
+        y_ref, x_g_ref = run_gelu_op(True)
+        self.assertTrue(np.allclose(y_ref, y_fast_math, rtol=1e-5, atol=5e-4))
+
+        self.assertTrue(
+            np.allclose(
+                x_g_ref, x_g_fast_math, rtol=1e-5, atol=5e-4))
 
 
 if __name__ == '__main__':

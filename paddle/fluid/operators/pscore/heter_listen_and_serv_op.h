@@ -23,9 +23,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/distributed/service/brpc_utils.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
-#include "paddle/fluid/distributed/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/service/brpc_utils.h"
+#include "paddle/fluid/distributed/ps/service/heter_server.h"
+#include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -45,9 +45,6 @@ class Executor;
 class ProgramDesc;
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -77,9 +74,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
                        const framework::AttributeMap& attrs);
   virtual ~HeterListenAndServOp();
 
-  void RunAsyncLoop(framework::Executor* executor,
-                    framework::ProgramDesc* program,
-                    framework::Scope* recv_scope) const;
+  void RunAsyncLoop(framework::ProgramDesc* program) const;
 
   void Stop() override;
 
@@ -89,7 +84,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
  protected:
   mutable std::shared_ptr<paddle::distributed::HeterServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
-  mutable std::shared_ptr<paddle::distributed::HeterRequestHandler>
+  mutable std::shared_ptr<paddle::distributed::RequestSendAndRecvHandler>
       request_send_and_recv_handler_;
 };
 

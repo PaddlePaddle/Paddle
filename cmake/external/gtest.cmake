@@ -22,11 +22,10 @@ INCLUDE(GNUInstallDirs)
 INCLUDE(ExternalProject)
 
 SET(GTEST_PREFIX_DIR    ${THIRD_PARTY_PATH}/gtest)
-SET(GTEST_SOURCE_DIR    ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 SET(GTEST_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gtest)
 SET(GTEST_INCLUDE_DIR   "${GTEST_INSTALL_DIR}/include" CACHE PATH "gtest include directory." FORCE)
-set(GTEST_REPOSITORY     ${GIT_URL}/google/googletest.git)
-set(GTEST_TAG            release-1.8.1)
+set(GTEST_REPOSITORY    ${GIT_URL}/google/googletest.git)
+set(GTEST_TAG           release-1.8.1)
 
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIR})
 
@@ -35,11 +34,17 @@ IF(WIN32)
         "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
     set(GTEST_MAIN_LIBRARIES
         "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
+    string(REPLACE "/w " "" GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    string(REPLACE "/w " "" GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/W0 " "" GTEST_CMAKE_C_FLAGS "${GTEST_CMAKE_C_FLAGS}")
+    string(REPLACE "/W0 " "" GTEST_CMAKE_CXX_FLAGS "${GTEST_CMAKE_CXX_FLAGS}")
 ELSE(WIN32)
     set(GTEST_LIBRARIES
         "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest.a" CACHE FILEPATH "gtest libraries." FORCE)
     set(GTEST_MAIN_LIBRARIES
         "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
+    set(GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 ENDIF(WIN32)
 
 IF(WITH_MKLML)
@@ -47,26 +52,21 @@ IF(WITH_MKLML)
     SET(GTEST_DEPENDS   ${MKLML_PROJECT})
 ENDIF()
 
-cache_third_party(extern_gtest
-    REPOSITORY       ${GTEST_REPOSITORY}
-    TAG              ${GTEST_TAG}
-    DIR              GTEST_SOURCE_DIR)
-
 ExternalProject_Add(
     extern_gtest
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${GTEST_DOWNLOAD_CMD}"
+    GIT_REPOSITORY  ${GTEST_REPOSITORY}
+    GIT_TAG         ${GTEST_TAG}
     DEPENDS         ${GTEST_DEPENDS}
     PREFIX          ${GTEST_PREFIX_DIR}
-    SOURCE_DIR      ${GTEST_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_CXX_FLAGS=${GTEST_CMAKE_CXX_FLAGS}
                     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                    -DCMAKE_C_FLAGS=${GTEST_CMAKE_C_FLAGS}
                     -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                     -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                     -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}

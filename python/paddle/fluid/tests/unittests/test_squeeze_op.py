@@ -20,7 +20,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -33,6 +34,32 @@ class TestSqueezeOp(OpTest):
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape), }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (1, 3, 1, 40)
+        self.axes = (0, 2)
+        self.new_shape = (3, 40)
+
+    def init_attrs(self):
+        self.attrs = {"axes": self.axes}
+
+
+class TestSqueezeBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "squeeze"
+        self.dtype = np.uint16
+        self.init_test_case()
+        x = np.random.random(self.ori_shape).astype("float32")
+        out = x.reshape(self.new_shape)
+        self.inputs = {"X": convert_float_to_uint16(x)}
+        self.init_attrs()
+        self.outputs = {"Out": convert_float_to_uint16(out)}
 
     def test_check_output(self):
         self.check_output()

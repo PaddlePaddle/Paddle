@@ -18,12 +18,13 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 
 class ElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
+        self.python_api = paddle.divide
         self.dtype = np.float64
         self.init_dtype()
         """ Warning
@@ -37,8 +38,11 @@ class ElementwiseDivOp(OpTest):
         }
         self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
+    def check_eager(self):
+        return (self.use_mkldnn == False and self.axis == -1)
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
@@ -53,6 +57,42 @@ class ElementwiseDivOp(OpTest):
 
     def init_dtype(self):
         pass
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+class TestElementwiseDivOpBF16(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(0.1, 1, [12, 13]).astype(np.float32)
+        y = np.random.uniform(0.1, 1, [12, 13]).astype(np.float32)
+
+        out = np.divide(x, y)
+
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y)
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(

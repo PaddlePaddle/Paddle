@@ -23,7 +23,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"

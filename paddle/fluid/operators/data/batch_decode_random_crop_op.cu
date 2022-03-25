@@ -18,7 +18,8 @@
 #include <vector>
 #include "paddle/fluid/operators/data/batch_decode_random_crop_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -111,14 +112,14 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
 
     if (data_layout == DataLayout::kNCHW){
       const auto& dev_ctx = ctx.cuda_device_context();
-      paddle::operators::math::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
+      phi::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
       std::vector<int> axis = {2, 0, 1};
       for (size_t i = 0; i < inputs->size(); i++) {
         // Do transpose
         const framework::DDim& in_sizes = temp_array[i].dims();
         framework::DDim transposed_input_shape = in_sizes.transpose(axis);
         std::vector<int64_t> transposed_input_shape_ =
-            framework::vectorize(transposed_input_shape);
+            phi::vectorize(transposed_input_shape);
         out_array[i].Resize(transposed_input_shape);
         out_array[i].mutable_data<T>(dev_ctx.GetPlace());
         trans(dev_ctx, temp_array[i], &out_array[i], axis);

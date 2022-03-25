@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

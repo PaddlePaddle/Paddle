@@ -16,11 +16,9 @@
 
 #include <string>
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

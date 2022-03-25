@@ -22,9 +22,9 @@ SET(CRYPTOPP_TAG        CRYPTOPP_8_2_0)
 
 IF(WIN32)
   SET(CRYPTOPP_LIBRARIES "${CRYPTOPP_INSTALL_DIR}/lib/cryptopp-static.lib" CACHE FILEPATH "cryptopp library." FORCE)
-  # There is a compilation parameter 'FI\"winapifamily.h\"' can't be used correctly
+  # There is a compilation parameter "/FI\"winapifamily.h\"" or "/FIwinapifamily.h" can't be used correctly
   # with Ninja on Windows. The only difference between the patch file and original
-  # file is that the compilation parameters are changed to 'FIwinapifamily.h'. This
+  # file is that the compilation parameters are changed to '/nologo'. This
   # patch command can be removed when upgrading to a higher version.
   if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
     set(CRYPTOPP_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/patches/cryptopp/CMakeLists.txt" "<SOURCE_DIR>/")
@@ -52,18 +52,13 @@ set(CRYPTOPP_CMAKE_ARGS ${COMMON_CMAKE_ARGS}
 
 INCLUDE_DIRECTORIES(${CRYPTOPP_INCLUDE_DIR})
 
-cache_third_party(extern_cryptopp
-    REPOSITORY   ${CRYPTOPP_REPOSITORY}
-    TAG          ${CRYPTOPP_TAG}
-    DIR          CRYPTOPP_SOURCE_DIR)
-
 ExternalProject_Add(
     extern_cryptopp
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${CRYPTOPP_DOWNLOAD_CMD}"
+    GIT_REPOSITORY  ${CRYPTOPP_REPOSITORY}
+    GIT_TAG         ${CRYPTOPP_TAG}
     PREFIX          ${CRYPTOPP_PREFIX_DIR}
-    SOURCE_DIR      ${CRYPTOPP_SOURCE_DIR}
     UPDATE_COMMAND  ""
     PATCH_COMMAND
     COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"

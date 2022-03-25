@@ -41,17 +41,17 @@ class SGDOp : public framework::OperatorWithKernel {
                           "Output(ParamOut) of SGDOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(lr_dims), 0,
                       platform::errors::NotFound(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
                       platform::errors::InvalidArgument(
                           "Learning rate should have 1 element. But received "
                           "LearningRate dims [%s]",
-                          framework::product(lr_dims)));
+                          phi::product(lr_dims)));
     auto param_dim = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -72,7 +72,7 @@ class SGDOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
+    using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       const auto *param_var = ctx.InputVar("Param");
       const auto *grad_var = ctx.InputVar("Grad");
@@ -80,7 +80,7 @@ class SGDOp : public framework::OperatorWithKernel {
       // supported cases
       bool dense_param_sparse_grad =
           param_var->IsType<framework::LoDTensor>() &&
-          grad_var->IsType<framework::SelectedRows>();
+          grad_var->IsType<phi::SelectedRows>();
       bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
                                   grad_var->IsType<framework::LoDTensor>();
 
@@ -97,8 +97,9 @@ class SGDOp : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "LearningRate") {
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
@@ -126,13 +127,24 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
+
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
 
 SGD operator
@@ -154,8 +166,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SGDOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SGDOpKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>,
-    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

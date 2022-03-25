@@ -368,7 +368,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     image_arr->clear();
     image_arr->reserve(batch_size);
     label_tensor->Resize(
-        framework::make_ddim({static_cast<int64_t>(batch_size)}));
+        phi::make_ddim({static_cast<int64_t>(batch_size)}));
     auto* label_data = label_tensor->mutable_data<int64_t>(platform::CPUPlace());
     for (int64_t i = 0; i < batch_size; i++) {
       int64_t index = static_cast<int>(indices_data[i]);
@@ -382,7 +382,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
 
       framework::LoDTensor image;
       std::vector<int64_t> image_len = {file_size};
-      image.Resize(framework::make_ddim(image_len));
+      image.Resize(phi::make_ddim(image_len));
 
       uint8_t* data = image.mutable_data<uint8_t>(platform::CPUPlace());
 
@@ -429,7 +429,7 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
                    framework::LoDTensor* out) const {
     if (lod_tensor.numel() == 0) return;
     auto& out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
+    framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 

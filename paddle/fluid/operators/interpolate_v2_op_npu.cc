@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/interpolate_v2_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -65,7 +65,8 @@ struct InterpolateFunction {
     runner.Run(stream);
   }
   void Cast(const Tensor* x, Tensor* y) {
-    auto dst_dtype = ConvertToNpuDtype(y->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(y->dtype()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
@@ -146,7 +147,7 @@ struct InterpolateFunction {
 
 template <>
 void InterpolateFunction<fp16>::Arange(int n, Tensor* x) {
-  Tensor x_fp32(framework::proto::VarType::FP32);
+  Tensor x_fp32(experimental::DataType::FLOAT32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
   const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {x_fp32}, {});

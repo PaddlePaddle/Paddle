@@ -57,7 +57,7 @@ class UniqueOp : public framework::OperatorWithKernel {
     if (axis_vec.empty()) {
       ctx->SetOutputDim("Out", {-1});
       if (return_inverse) {
-        ctx->SetOutputDim("Index", {framework::product(in_dims)});
+        ctx->SetOutputDim("Index", {phi::product(in_dims)});
       }
     } else {
       int axis = axis_vec[0];

@@ -371,6 +371,15 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.array_equal(x.rank().numpy(), paddle.rank(x).numpy()))
         self.assertTrue(
             np.array_equal(x[0].t().numpy(), paddle.t(x[0]).numpy()))
+        self.assertTrue(
+            np.array_equal(x.asinh().numpy(), paddle.asinh(x).numpy()))
+        ### acosh(x) = nan, need to change input
+        t_np = np.random.uniform(1, 2, [2, 3]).astype(self.dtype)
+        t = paddle.to_tensor(t_np)
+        self.assertTrue(
+            np.array_equal(t.acosh().numpy(), paddle.acosh(t).numpy()))
+        self.assertTrue(
+            np.array_equal(x.atanh().numpy(), paddle.atanh(x).numpy()))
         d = paddle.to_tensor([[1.2285208, 1.3491015, 1.4899898],
                               [1.30058, 1.0688717, 1.4928783],
                               [1.0958099, 1.3724753, 1.8926544]])

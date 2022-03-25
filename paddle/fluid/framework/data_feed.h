@@ -50,11 +50,14 @@ DECLARE_bool(enable_slotrecord_reset_shrink);
 namespace paddle {
 namespace framework {
 class DataFeedDesc;
-class LoDTensor;
 class Scope;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -188,6 +191,7 @@ struct Record {
   uint64_t search_id;
   uint32_t rank;
   uint32_t cmatch;
+  std::string uid_;
 };
 
 inline SlotRecord make_slotrecord() {
@@ -559,6 +563,7 @@ class DataFeed {
   virtual void SetThreadNum(int thread_num) {}
   // This function will do nothing at default
   virtual void SetParseInsId(bool parse_ins_id) {}
+  virtual void SetParseUid(bool parse_uid) {}
   virtual void SetParseContent(bool parse_content) {}
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
@@ -642,6 +647,7 @@ class DataFeed {
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
   platform::Place place_;
+  std::string uid_slot_;
 
   // The input type of pipe reader, 0 for one sample, 1 for one batch
   int input_type_;
@@ -706,6 +712,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
   virtual void SetParseInsId(bool parse_ins_id);
+  virtual void SetParseUid(bool parse_uid);
   virtual void SetParseContent(bool parse_content);
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvMerge(bool enable_pv_merge);
@@ -734,6 +741,7 @@ class InMemoryDataFeed : public DataFeed {
   int thread_id_;
   int thread_num_;
   bool parse_ins_id_;
+  bool parse_uid_;
   bool parse_content_;
   bool parse_logkey_;
   bool enable_pv_merge_;

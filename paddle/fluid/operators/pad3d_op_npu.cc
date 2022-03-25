@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,8 @@ static inline std::vector<int> GetPaddings(
   std::vector<int> paddings(6);
   auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
-    TensorToVector(*paddings_t, context.device_context(), &paddings);
+    paddle::framework::TensorToVector(*paddings_t, context.device_context(),
+                                      &paddings);
   } else {
     auto pads = context.Attr<std::vector<int>>("paddings");
     std::copy(pads.begin(), pads.end(), paddings.data());

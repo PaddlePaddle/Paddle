@@ -20,8 +20,8 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -48,7 +48,8 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
     for (const auto& ivar : pair.second) {
       auto* var = ivar->MutableVar();
       if (var == nullptr) continue;
-      CheckVarHasNanOrInf(op_type, ivar->Name(), var, place);
+      CheckVarHasNanOrInf(op_type, paddle::imperative::GetNameFromVar(ivar),
+                          var, place);
     }
   }
 }

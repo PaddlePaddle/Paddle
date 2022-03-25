@@ -37,6 +37,12 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         if attrs[0]['groups'] <= 1:
             return False
 
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if attrs[0]['padding_algorithm'] == 'SAME' and (
+                    attrs[0]['strides'][0] > 1 or attrs[0]['strides'][1] > 1):
+                return False
+
         return True
 
     def sample_program_configs(self):
@@ -184,25 +190,10 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs[
-                    'padding_algorithm'] == "SAME" or program_config.ops[
-                        0].attrs['padding_algorithm'] == "VALID":
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When padding_algorithm is 'SAME' or 'VALID', Trt dose not support. In this case, trt build error is caused by scale op."
-        )
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
     def test_quant(self):
-        self.add_skip_trt_case()
         self.run_test(quant=True)
 
 

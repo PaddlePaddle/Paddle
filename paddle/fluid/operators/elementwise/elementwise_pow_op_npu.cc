@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -46,11 +46,9 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
     axis =
         (axis < 0 ? std::abs(x_dims.size() - y_dims.size()) + axis + 1 : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == phi::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
 
     auto stream = dev_ctx.stream();

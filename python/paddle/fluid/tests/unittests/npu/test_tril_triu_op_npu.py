@@ -15,7 +15,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
@@ -185,6 +185,20 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 triu_out = exe.run(fluid.default_main_program(),
                                    feed={"x": data},
                                    fetch_list=[triu_out])
+
+
+# @skip_check_grad_ci(reason="[NPU does not support grad right now.")
+class TestNPUTrilTriu_bool(TestNPUTrilTriu):
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def init_dtype(self):
+        self.dtype = np.bool
+
+    def initTestCase(self):
+        self.real_op_type = np.random.choice(['triu', 'tril'])
+        self.diagonal = None
+        self.X = np.random.choice([False, True], size=(100)).reshape([10, -1])
 
 
 if __name__ == '__main__':

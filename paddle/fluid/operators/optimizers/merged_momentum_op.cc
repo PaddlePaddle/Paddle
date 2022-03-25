@@ -50,7 +50,8 @@ class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "Input learning rate");
+             "Input learning rate")
+        .AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDispensable()
         .AsDuplicable();
@@ -68,6 +69,18 @@ class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable()
         .AsDuplicable();
     AddAttr<float>("mu", "(float) Momentum coefficient");
+    AddAttr<bool>("use_nesterov",
+                  "(bool, default false) "
+                  "Use Nesterov Momentum or not.")
+        .SetDefault(false);
+    AddAttr<std::vector<std::string>>(
+        "regularization_method",
+        "(string) regularization_method, right now only "
+        "support l2decay or none")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("regularization_coeff",
+                                "(float) regularization_coeff")
+        .SetDefault({});
     AddAttr<bool>("multi_precision",
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")

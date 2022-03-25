@@ -16,10 +16,10 @@ import numpy as np
 
 import paddle
 from .. import Layer
-from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from paddle import _C_ops
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -78,7 +78,7 @@ class PairwiseDistance(Layer):
         check_type(self.keepdim, 'keepdim', (bool), 'PairwiseDistance')
 
     def forward(self, x, y):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             sub = _C_ops.elementwise_sub(x, y)
             return _C_ops.p_norm(sub, 'axis', 1, 'porder', self.p, 'keepdim',
                                  self.keepdim, 'epsilon', self.epsilon)

@@ -16,11 +16,10 @@ INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
 SET(MKLDNN_PREFIX_DIR     ${THIRD_PARTY_PATH}/mkldnn)
-SET(MKLDNN_SOURCE_DIR     ${THIRD_PARTY_PATH}/mkldnn/src/extern_mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     ${GIT_URL}/oneapi-src/oneDNN.git)
-SET(MKLDNN_TAG            e2d45252ae9c3e91671339579e3c0f0061f81d49)
+SET(MKLDNN_TAG            145c4b50196ac90ec1b946fb80cb5cef6e7d2d35)
 
 
 # Introduce variables:
@@ -43,40 +42,38 @@ IF(NOT WIN32)
     SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
     SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
+    SET(MKLDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    SET(MKLDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/libdnnl.so" CACHE FILEPATH "mkldnn library." FORCE)
 ELSE()
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
+    SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS}")
+    string(REPLACE "/O2 " "" MKLDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    string(REPLACE "/O2 " "" MKLDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
 ENDIF(NOT WIN32)
-
-cache_third_party(${MKLDNN_PROJECT}
-    REPOSITORY    ${MKLDNN_REPOSITORY}
-    TAG           ${MKLDNN_TAG}
-    DIR           MKLDNN_SOURCE_DIR)
 
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${MKLDNN_DOWNLOAD_CMD}"
+    GIT_REPOSITORY      ${MKLDNN_REPOSITORY}
+    GIT_TAG             ${MKLDNN_TAG}
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
-    SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     #BUILD_ALWAYS        1
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                        -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                        -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
+                        -DCMAKE_CXX_FLAGS_RELEASE=${MKLDNN_CXXFLAG_RELEASE}
                         -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-                        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
                         -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-                        -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                        -DCMAKE_C_FLAGS_RELEASE=${MKLDNN_CFLAG_RELEASE}
                         -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
                         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                        -DMKLROOT=${MKLML_ROOT}
-                        -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
-                        -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
                         -DDNNL_BUILD_TESTS=OFF -DDNNL_BUILD_EXAMPLES=OFF
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
 )

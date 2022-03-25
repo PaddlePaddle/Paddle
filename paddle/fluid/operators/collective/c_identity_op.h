@@ -48,7 +48,7 @@ class CIdentityOpKernel : public framework::OpKernel<T> {
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     out->mutable_data<T>(ctx.GetPlace());
 
-    TensorCopy(*x, out->place(), out);
+    paddle::framework::TensorCopy(*x, out->place(), out);
   }
 };
 

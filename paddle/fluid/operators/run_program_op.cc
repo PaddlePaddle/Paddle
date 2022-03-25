@@ -154,6 +154,31 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
+struct FilterHelper {};
+
+template <>
+struct FilterHelper<imperative::OpBase> {
+  static void filter(const BlockDesc* desc,
+                     imperative::TracedVarList<imperative::VarBase,
+                                               imperative::kBackward>* vec) {
+    auto f = [desc](std::shared_ptr<imperative::VarBase> ptr) {
+      return !desc->HasVar(ptr->Name());
+    };
+    auto new_end = std::remove_if(vec->begin(), vec->end(), f);
+    vec->resize(new_end - vec->begin());
+  }
+};
+
+template <>
+struct FilterHelper<framework::OpDesc> {
+  static void filter(const BlockDesc* desc, std::vector<std::string>* vec) {
+    auto f = [desc](const std::string& name) { return !desc->HasVar(name); };
+    auto new_end = std::remove_if(vec->begin(), vec->end(), f);
+    vec->resize(new_end - vec->begin());
+  }
+};
+
+template <typename T>
 class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -167,8 +192,12 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("OutScope", this->Output("OutScope"));
     grad_op->SetInput("DOut", this->Output("DOut"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetOutput(framework::GradVarName("Params"),
-                       this->InputGrad("Params"));
+
+    auto block_desc =
+        BOOST_GET_CONST(BlockDesc*, this->GetAttr("global_block"));
+    auto params_grad = this->InputGrad("Params");
+    FilterHelper<T>::filter(block_desc, &params_grad);  // filter the vector.
+    grad_op->SetOutput(framework::GradVarName("Params"), params_grad);
     grad_op->SetAttrMap(this->Attrs());
   }
 };

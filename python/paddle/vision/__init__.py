@@ -35,10 +35,16 @@ from .models import resnet34  # noqa: F401
 from .models import resnet50  # noqa: F401
 from .models import resnet101  # noqa: F401
 from .models import resnet152  # noqa: F401
+from .models import wide_resnet50_2  # noqa: F401
+from .models import wide_resnet101_2  # noqa: F401
 from .models import MobileNetV1  # noqa: F401
 from .models import mobilenet_v1  # noqa: F401
 from .models import MobileNetV2  # noqa: F401
 from .models import mobilenet_v2  # noqa: F401
+from .models import MobileNetV3Small  # noqa: F401
+from .models import MobileNetV3Large  # noqa: F401
+from .models import mobilenet_v3_small  # noqa: F401
+from .models import mobilenet_v3_large  # noqa: F401
 from .models import SqueezeNet  # noqa: F401
 from .models import squeezenet1_0  # noqa: F401
 from .models import squeezenet1_1  # noqa: F401

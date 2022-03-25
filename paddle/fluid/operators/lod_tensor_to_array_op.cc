@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -77,7 +78,8 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(input_.type(), func);
+    framework::VisitDataType(framework::TransToProtoVarType(input_.dtype()),
+                             func);
   }
 };
 
@@ -134,7 +136,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
             x.lod(), start_idx, start_idx + 1, rank_level + 1);
         auto &lod_length = lod_and_offset.first;
-        framework::AppendLoD(&lod, lod_length);
+        phi::AppendLoD(&lod, lod_length);
         size_t start_offset = lod_and_offset.second.first;
         size_t end_offset = lod_and_offset.second.second;
         copy_ranges[t].emplace_back(CopyRange{start_offset, end_offset});

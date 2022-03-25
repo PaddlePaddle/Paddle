@@ -12,13 +12,13 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License. */
 
-#include "paddle/fluid/operators/maxout_op.h"
 #include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -107,7 +107,7 @@ class MaxOutOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape(
         {in_x_dims[0], in_x_dims[1], in_x_dims[2], in_x_dims[3]});
     output_shape[axis] = in_x_dims[axis] / groups;
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }
 };
 
@@ -130,10 +130,3 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MaxOutKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    maxout_grad,
-    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, double>);

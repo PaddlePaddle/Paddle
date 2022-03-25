@@ -38,7 +38,7 @@ class RandomFlipOp : public framework::OperatorWithKernel {
                           "Output(Out) of RandomFlipOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", framework::make_ddim({x_dims[0], 1}));
+    ctx->SetOutputDim("Out", phi::make_ddim({x_dims[0], 1}));
     ctx->ShareLoD("X", "Out");
   }
 

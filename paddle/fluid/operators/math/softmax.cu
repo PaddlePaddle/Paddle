@@ -13,14 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <vector>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -39,7 +36,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(X->dims());
+  std::vector<int> cudnn_tensor_dims = phi::vectorize<int>(X->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -54,7 +51,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   miopenTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
       context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace()), MIOPEN_SOFTMAX_ACCURATE,
@@ -64,7 +61,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
@@ -80,7 +77,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(Y->dims());
+  std::vector<int> cudnn_tensor_dims = phi::vectorize<int>(Y->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -97,7 +94,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   miopenTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
       context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
       CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
@@ -110,7 +107,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
@@ -123,6 +120,10 @@ template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<platform::float16>;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+template class SoftmaxCUDNNFunctor<platform::bfloat16>;
+template class SoftmaxGradCUDNNFunctor<platform::bfloat16>;
+#endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
@@ -134,6 +135,10 @@ template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
                               false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
                               true>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
+                              false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::bfloat16,
+                              true>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float, false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double, false>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float, true>;
@@ -142,6 +147,21 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::float16>;
+template class SoftmaxGradFunctor<platform::CUDADeviceContext,
+                                  platform::bfloat16>;
+
+template class SoftmaxFunctor<phi::GPUContext, platform::float16, false>;
+template class SoftmaxFunctor<phi::GPUContext, platform::float16, true>;
+template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, false>;
+template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, true>;
+template class SoftmaxFunctor<phi::GPUContext, float, false>;
+template class SoftmaxFunctor<phi::GPUContext, double, false>;
+template class SoftmaxFunctor<phi::GPUContext, float, true>;
+template class SoftmaxFunctor<phi::GPUContext, double, true>;
+template class SoftmaxGradFunctor<phi::GPUContext, float>;
+template class SoftmaxGradFunctor<phi::GPUContext, double>;
+template class SoftmaxGradFunctor<phi::GPUContext, platform::float16>;
+template class SoftmaxGradFunctor<phi::GPUContext, platform::bfloat16>;
 
 }  // namespace math
 }  // namespace operators

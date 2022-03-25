@@ -20,12 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace platform {
-struct EnforceNotMet;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 // insert python call stack & append error op for exception message

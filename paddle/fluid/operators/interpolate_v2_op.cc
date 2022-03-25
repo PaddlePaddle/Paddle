@@ -249,12 +249,12 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE_EQ(
-      "trilinear", interp_method,
-      platform::errors::InvalidArgument(
-          "Interpolation method can only be \"trilinear\" when Input(X) "
-          "dimension is 5, but got method = %s .",
-          interp_method));
+  PADDLE_ENFORCE("nearest" == interp_method || "trilinear" == interp_method,
+                 platform::errors::InvalidArgument(
+                     "Interpolation method can only be \"trilinear\" or "
+                     "\"nearest\" when Input(X) "
+                     "dimension is 5, but got method = %s .",
+                     interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -414,7 +414,7 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto interp_method = ctx.Attr<std::string>("interp_method");
+    const auto& interp_method = ctx.Attr<std::string>("interp_method");
     // TODO(danqing): support other interp_method
     if (this->CanMKLDNNBeUsed(ctx, data_type) &&
         (interp_method == "nearest" || interp_method == "bilinear")) {

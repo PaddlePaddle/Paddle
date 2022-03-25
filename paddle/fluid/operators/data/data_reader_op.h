@@ -207,7 +207,7 @@ class DataReader {
     auto* var = scope->Var(indices_var_name_);
 
     auto* indices_tensor = var->GetMutable<LoDTensor>();
-    indices_tensor->Resize(framework::make_ddim({static_cast<int64_t>(indices.size())}));
+    indices_tensor->Resize(phi::make_ddim({static_cast<int64_t>(indices.size())}));
     auto* indices_data = indices_tensor->mutable_data<int64_t>(platform::CPUPlace());
     
     for (size_t i = 0; i < indices.size(); i++) {
@@ -233,7 +233,7 @@ class DataReader {
                    framework::LoDTensor* out) const {
     if (lod_tensor.numel() == 0) return;
     auto& out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
+    framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 };

@@ -39,6 +39,7 @@ class TensorTypeTest(unittest.TestCase):
 
         tensorx = paddle.tensor.logic.Tensor(inx)
         typex_str = str(type(tensorx))
+
         expectx = "<class 'paddle.Tensor'>"
         self.assertEqual((typex_str == expectx), True)
 

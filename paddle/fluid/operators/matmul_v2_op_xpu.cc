@@ -33,12 +33,12 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
   auto& dev_ctx =
       ctx.template device_context<paddle::platform::XPUDeviceContext>();
 
-  auto mat_dim_a =
-      math::CreateMatrixDescriptor(RowMatrixFromVector(x_dims), 0, trans_x);
-  auto mat_dim_b =
-      math::CreateMatrixDescriptor(ColumnMatrixFromVector(y_dims), 0, trans_y);
+  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
+      RowMatrixFromVector(x_dims), 0, trans_x);
+  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
+      ColumnMatrixFromVector(y_dims), 0, trans_y);
 
-  if (x_dims.size() == 3 && y_dims.size() <= 2) {
+  if (x_dims.size() >= 3 && y_dims.size() <= 2) {
     // if transpose_X is true, the transpose cost much time
     if (!trans_x) {
       mat_dim_a.height_ *= mat_dim_a.batch_size_;

@@ -49,7 +49,6 @@ class DownpourServer(Server):
         self.server_.downpour_server_param.service_param.server_class = "DownpourBrpcPsServer"
         self.server_.downpour_server_param.service_param.client_class = "DownpourBrpcPsClient"
         self.server_.downpour_server_param.service_param.service_class = "DownpourPsService"
-        self.server_.downpour_server_param.service_param.start_server_port = 0
         self.server_.downpour_server_param.service_param.server_thread_num = 12
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,

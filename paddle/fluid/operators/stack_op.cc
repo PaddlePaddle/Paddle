@@ -67,9 +67,24 @@ class StackOp : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize<int>(input_dims[0]);
+    auto vec = phi::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
-    ctx->SetOutputDim("Y", framework::make_ddim(vec));
+    ctx->SetOutputDim("Y", phi::make_ddim(vec));
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -81,6 +96,11 @@ class StackOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which all of the Inputs(X) should be stacked.")
         .SetDefault(0);
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Stack Operator.
 Stack all of the Inputs(X) into one tensor along Attr(axis). The dims of all Inputs(X) must be the same.
@@ -123,11 +143,11 @@ class StackOpGrad : public framework::OperatorWithKernel {
             ctx->Outputs(framework::GradVarName("X")).size(),
             static_cast<size_t>(dy_dim[axis])));
 
-    auto vec = framework::vectorize<int>(dy_dim);
+    auto vec = phi::vectorize<int>(dy_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim(
         framework::GradVarName("X"),
-        std::vector<framework::DDim>(dy_dim[axis], framework::make_ddim(vec)));
+        std::vector<framework::DDim>(dy_dim[axis], phi::make_ddim(vec)));
   }
 };
 
@@ -153,13 +173,16 @@ REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
                   ops::StackGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
 
-REGISTER_OP_CPU_KERNEL(stack, ops::StackKernel<plat::CPUDeviceContext, float>,
-                       ops::StackKernel<plat::CPUDeviceContext, double>,
-                       ops::StackKernel<plat::CPUDeviceContext, int>,
-                       ops::StackKernel<plat::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    stack, ops::StackKernel<plat::CPUDeviceContext, float>,
+    ops::StackKernel<plat::CPUDeviceContext, double>,
+    ops::StackKernel<plat::CPUDeviceContext, int>,
+    ops::StackKernel<plat::CPUDeviceContext, int64_t>,
+    ops::StackKernel<plat::CPUDeviceContext, paddle::platform::bfloat16>);
 
-REGISTER_OP_CPU_KERNEL(stack_grad,
-                       ops::StackGradKernel<plat::CPUDeviceContext, float>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, double>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, int>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    stack_grad, ops::StackGradKernel<plat::CPUDeviceContext, float>,
+    ops::StackGradKernel<plat::CPUDeviceContext, double>,
+    ops::StackGradKernel<plat::CPUDeviceContext, int>,
+    ops::StackGradKernel<plat::CPUDeviceContext, int64_t>,
+    ops::StackGradKernel<plat::CPUDeviceContext, paddle::platform::bfloat16>);

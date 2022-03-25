@@ -26,6 +26,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 from paddle.fluid.dygraph import TracedLayer
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 #NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -60,7 +61,7 @@ def optimizer_setting(params, parameter_list=None):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01,
                                             parameter_list=parameter_list)
         else:
@@ -242,7 +243,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         return _reader_imple
 
-    def test_resnet_float32(self):
+    def func_test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -259,14 +260,9 @@ class TestDygraphResnet(unittest.TestCase):
                 train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
 
-            batch_py_reader = fluid.io.PyReader(capacity=1)
-            batch_py_reader.decorate_sample_list_generator(
-                paddle.batch(
-                    self.reader_decorator(
-                        paddle.dataset.flowers.train(use_xmap=False)),
-                    batch_size=batch_size,
-                    drop_last=True),
-                places=fluid.CPUPlace())
+            train_reader = paddle.batch(
+                paddle.dataset.flowers.train(use_xmap=False),
+                batch_size=batch_size)
 
             dy_param_init_value = {}
             for param in resnet.parameters():
@@ -275,16 +271,21 @@ class TestDygraphResnet(unittest.TestCase):
             helper = DyGraphProgramDescTracerTestHelper(self)
             program = None
 
-            for batch_id, data in enumerate(batch_py_reader()):
+            for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
                     break
 
-                img = data[0]
-                label = data[1]
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    batch_size, 1)
+
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0:
+                if batch_id % 5 == 0 and _in_legacy_dygraph():
                     out, traced_layer = TracedLayer.trace(resnet, img)
                     if program is not None:
                         self.assertTrue(
@@ -429,6 +430,11 @@ class TestDygraphResnet(unittest.TestCase):
             self.assertTrue(np.allclose(value, dy_param_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
+
+    def test_resnet_float32(self):
+        with _test_eager_guard():
+            self.func_test_resnet_float32()
+        self.func_test_resnet_float32()
 
 
 if __name__ == '__main__':

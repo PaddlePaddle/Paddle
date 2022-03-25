@@ -21,7 +21,7 @@ enum MessageType {
   STOP = 1;            // STOP an Interceptor
   DATA_IS_READY = 2;   // upstream data is ready
   DATE_IS_USELESS = 3; // downstream has used the data
-  ERROR = 4;           // current Interceptor encounters error
+  ERR = 4;             // current Interceptor encounters error
   RESET = 5;           // reset the status
 }
 
@@ -34,7 +34,8 @@ message InterceptorMessage {
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }
 
-service TheInterceptorMessageService {
-  rpc InterceptorMessageService(InterceptorMessage)
+service MessageService {
+  rpc ReceiveInterceptorMessage(InterceptorMessage)
       returns (InterceptorResponse);
+  rpc IncreaseBarrierCount(InterceptorMessage) returns (InterceptorResponse);
 }

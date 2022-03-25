@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_scale.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -41,21 +41,23 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq->numel() / seq->dims()[0];
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    auto abs_offset_lod = framework::ToAbsOffset(lod);
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(
         HIP_KERNEL_NAME(SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>),
         dim3(num_seq), dim3(PADDLE_CUDA_NUM_THREADS), 0, context.stream(),
-        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
-        scales, seq_width);
+        seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
+        seq_width);
 #else
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
         num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
-        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
-        scales, seq_width);
+        seq_data, mix_vector.CUDAMutableData(context.GetPlace()), scales,
+        seq_width);
 #endif
+    mix_vector.CopyToCPU();
   }
 };
 

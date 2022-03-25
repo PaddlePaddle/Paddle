@@ -22,11 +22,10 @@ class Scope;
 }  // namespace framework
 }  // namespace paddle
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "acl/acl.h"
 #include "hccl/hccl.h"
 #include "hccl/hccl_types.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -42,7 +41,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "CCommInitOpAscend can run on npu place only."));
 
@@ -55,7 +54,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
     int rank_ids = Attr<int>("rank_ids");
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
-    int device_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+    int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
@@ -69,12 +68,11 @@ class CCommInitOpAscend : public framework::OperatorBase {
     for (int32_t idx = 0; idx < size; idx++) {
       input[idx] = 1.0;
     }
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtMalloc(reinterpret_cast<void**>(&buff),
-                                           size * sizeof(float),
-                                           ACL_MEM_MALLOC_HUGE_FIRST));
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(
-        reinterpret_cast<void*>(buff), size * sizeof(float), input.data(),
-        size * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::RecordedNPUMalloc(
+        reinterpret_cast<void**>(&buff), size * sizeof(float), device_id));
+    platform::NPUMemcpySync(reinterpret_cast<void*>(buff), input.data(),
+                            size * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE,
+                            size * sizeof(float));
     VLOG(3) << "Build buff data successful.";
 
     aclrtStream stream = nullptr;
@@ -88,7 +86,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         buff, size, HCCL_DATA_TYPE_FP32, 0, comm->comm(), stream));
     // Synchronize stream to find hccl error in time.
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    platform::NPUStreamSync(stream);
     VLOG(3) << "Build connection successful.";
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
