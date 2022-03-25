@@ -333,6 +333,7 @@ function(register_kernels)
     file(GLOB KERNELS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_kernel.h")
     string(REPLACE ".h" "" KERNELS "${KERNELS}")
     list(LENGTH register_kernels_DEPS register_kernels_DEPS_len)
+
     foreach(target ${KERNELS})
         list(FIND register_kernels_EXCLUDES ${target} _index)
         if (${_index} EQUAL -1)
