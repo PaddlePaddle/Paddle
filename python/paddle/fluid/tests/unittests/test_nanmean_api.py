@@ -68,7 +68,7 @@ class TestNanmeanAPI(unittest.TestCase):
                 out_ref[nan_mask] = 0
                 out_np = out.numpy()
                 out_np[nan_mask] = 0
-                self.assertEqual(np.allclose(out_np, out_ref, rtol=1e-04), True)    
+                self.assertEqual(np.allclose(out_np, out_ref, rtol=1e-04), True)
             else:
                 self.assertEqual(
                     np.allclose(
@@ -98,7 +98,7 @@ class TestNanmeanAPI(unittest.TestCase):
                 axis = list(axis)
                 if len(axis) == 0:
                     axis = None
-            x_tensor = paddle.to_tensor(x, stop_gradient = False)
+            x_tensor = paddle.to_tensor(x, stop_gradient=False)
             y = paddle.nanmean(x_tensor, axis, keepdim)
             dx = paddle.grad(y, x_tensor)[0].numpy()
             sum_dx_ref = np.prod(y.shape)
@@ -106,20 +106,19 @@ class TestNanmeanAPI(unittest.TestCase):
                 sum_dx_ref -= np.isnan(y.numpy()).sum()
             dx[np.isnan(dx)] = 0
             sum_dx = dx.sum()
-            self.assertEqual(
-                np.allclose(
-                    sum_dx, sum_dx_ref, rtol=1e-04), True)
+            self.assertEqual(np.allclose(sum_dx, sum_dx_ref, rtol=1e-04), True)
 
         test_case(self.x)
         test_case(self.x, [])
         test_case(self.x, -1)
-        #test_case(self.x, keepdim=True)
+        test_case(self.x, keepdim=True)
         test_case(self.x, 2, keepdim=True)
         test_case(self.x, [0, 2])
         test_case(self.x, (0, 2))
         test_case(self.x, [0, 1, 2, 3])
         print("test grad ok")
         paddle.enable_static()
+
 
 if __name__ == "__main__":
     unittest.main()
