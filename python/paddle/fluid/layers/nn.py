@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_eager_mode
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_eager_mode, _in_legacy_mode
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -5138,6 +5138,10 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
     if in_dygraph_mode():
+        _, out = _C_ops.final_state_norm(x, 1
+                                         if axis is None else axis, epsilon)
+        return out
+    if _in_legacy_dygraph():
         _, out = _C_ops.norm(x, 'axis', 1
                              if axis is None else axis, 'epsilon', epsilon)
         return out

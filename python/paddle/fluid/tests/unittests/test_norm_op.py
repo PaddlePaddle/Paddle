@@ -32,6 +32,7 @@ def l2_norm(x, axis, epsilon):
 class TestNormOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
+        self.python_api = paddle.fluid.layers.l2_normalize
         self.init_test_case()
         self.init_dtype()
         x = np.random.random(self.shape).astype(self.dtype)
@@ -41,7 +42,7 @@ class TestNormOp(OpTest):
         self.outputs = {'Out': y, 'Norm': norm}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
