@@ -18,7 +18,7 @@ import numpy as np
 import six
 import paddle
 import warnings
-
+from paddle.fluid import Program, program_guard
 
 def numpy_corr(np_arr, rowvar=True):
     return np.corrcoef(np_arr, rowvar=rowvar)
