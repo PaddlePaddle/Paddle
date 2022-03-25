@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from functools import reduce
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -1013,7 +1013,7 @@ class TestBackward(unittest.TestCase):
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         # 
         # TODO(pangyoki) add inplace and delete if
-        if not _in_eager_mode():
+        if _in_legacy_dygraph():
             self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
 
     def test_dynamic(self):
