@@ -20,16 +20,19 @@
 namespace paddle {
 namespace operators {
 
+#define CEIL(_x_, _y_) (((_x_)-1) / (_y_) + 1)
+
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void limit_by_capacity_impl(const T* expc, T* cap, T* out,
                                        const int n_expert, const int n_worker) {
-  CUDA_KERNEL_LOOP(i, n_expert * n_worker) {
-    int eid = i / n_worker;
-    int wid = i % n_worker;
+  int eid = blockIdx.y;
+  int wid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (wid < n_worker) {
     auto proposal = expc[wid * n_expert + eid];
+    // int cap_left = atomicSub(cap + eid, proposal);
     auto cap_left = paddle::platform::CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
@@ -56,7 +59,7 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    dim3 grid_dim(1024, 128);
+    dim3 grid_dim(CEIL(n_worker, 1024), n_expert);
     dim3 block_dim(1024);
     auto out_data = out->mutable_data<T>(place);
     const T* ec_data = expert_count->data<T>();
