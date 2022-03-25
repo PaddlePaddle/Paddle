@@ -63,19 +63,16 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
             })
 
         if FCAsX:
-            elt_add_op = OpConfig(
-                type="elementwise_add",
-                inputs={"X": ["fc_output"],
-                        "Y": ["input_data"]},
-                outputs={"Out": ["elementwise_output"]},
-                attrs={'axis': axis})
+            inputs={"X": ["fc_output"],
+                    "Y": ["input_data"]}
         else:
-            elt_add_op = OpConfig(
-                type="elementwise_add",
-                inputs={"X": ["input_data"],
-                        "Y": ["fc_output"]},
-                outputs={"Out": ["elementwise_output"]},
-                attrs={'axis': axis})
+            inputs={"X": ["input_data"],
+                    "Y": ["fc_output"]}
+        elt_add_op = OpConfig(
+            type="elementwise_add",
+            inputs=inputs,
+            outputs={"Out": ["elementwise_output"]},
+            attrs={'axis': axis})
 
         model_net = [relu_op, fc_op, elt_add_op]
 

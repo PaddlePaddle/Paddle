@@ -44,9 +44,6 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .End()
       .AddAttr("in_num_col_dims")
       .IsNumGE(1)
-      .End()
-      .AddAttr("Scale_in_eltwise")
-      .IsOptional()
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

@@ -14,14 +14,7 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
-#include <memory>
-#include <string>
-#include <tuple>
-#include <utility>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {

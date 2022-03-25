@@ -27,16 +27,6 @@ namespace ir {
 class Node;
 
 bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
-  auto find_node = [](ir::Graph *graph, const Node *node) -> Node * {
-    for (auto n : graph->Nodes()) {
-      if (n == node) {
-        return n;
-      }
-    }
-
-    return nullptr;
-  };
-
   if (from == to) {
     return true;
   }
@@ -53,7 +43,7 @@ bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
   queue.push_back(from);
 
   while (!queue.empty()) {
-    auto cur = find_node(graph, queue.front());
+    auto cur = FindNode(graph, queue.front());
     queue.pop_front();
 
     if (!cur) return false;
@@ -70,6 +60,15 @@ bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
     }
   }
   return false;
+}
+
+Node *FindNode(ir::Graph *graph, const Node *node) {
+  for (auto n : graph->Nodes()) {
+    if (n == node) {
+      return n;
+    }
+  }
+  return nullptr;
 }
 
 NodesDFSIterator::NodesDFSIterator(const std::vector<Node *> &source) {
