@@ -40,7 +40,7 @@ class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
         "iou_threshold",
         "iou_threshold is a threshold value used to compress similar boxes "
         "boxes with IoU > iou_threshold will be considered as overlapping "
-        "and just one of them can be kept. ")
+        "and just one of them can be kept.")
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& iou_threshold) {
           PADDLE_ENFORCE_LE(iou_threshold, 1.0f,
