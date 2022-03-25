@@ -20,6 +20,7 @@
 #include <miopen/miopen.h>
 #endif
 #include <glog/logging.h>
+#include <algorithm>
 #include <sstream>
 
 namespace paddle {
@@ -58,6 +59,12 @@ void PaddlePassBuilder::DeletePass(const std::string &pass_type) {
       ++it;
     }
   }
+}
+
+size_t PaddlePassBuilder::GetPassIndex(const std::string &pass_type) {
+  auto iter = std::find(std::begin(passes_), std::end(passes_), pass_type);
+  if (iter == std::end(passes_)) return -1;
+  return std::distance(std::begin(passes_), iter);
 }
 
 void PaddlePassBuilder::InsertPass(size_t idx, const std::string &pass_type) {
@@ -386,9 +393,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_gelu_mkldnn_fuse_pass");
     passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
-    // How to judge whether fc is quantified?
-    // passes_.push_back("fc_mkldnn_pass");
-    // passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_fuse_pass");
     passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");
@@ -397,10 +401,9 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_v2_mkldnn_fuse_pass");
-    // How to set input parameters？
-    // passes_.push_back("cpu_quantize_placement_pass");
-    // passes_.push_back("cpu_quantize_pass");
-    // passes_.push_back("cpu_quantize_squash_pass");
+    passes_.push_back("cpu_quantize_placement_pass");
+    passes_.push_back("cpu_quantize_pass");
+    passes_.push_back("cpu_quantize_squash_pass");
     passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("mkldnn_inplace_pass");
     passes_.push_back("runtime_context_cache_pass");

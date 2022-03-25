@@ -219,10 +219,20 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
 bool CPUQuantizePass::AreScalesPresentForVarNames(
     std::vector<std::string> names) const {
   bool present = true;
-  for (auto name : names) {
-    if (var_quant_scales_->find(name) == var_quant_scales_->end()) {
-      present = false;
-      LogScaleIsMissingForVarName(name);
+  if (var_quant_scales_->empty()) {
+    auto& scales = Get<VarQuantScale>("quant_var_scales");
+    for (auto name : names) {
+      if (scales.find(name) == scales.end()) {
+        present = false;
+        LogScaleIsMissingForVarName(name);
+      }
+    }
+  } else {
+    for (auto name : names) {
+      if (var_quant_scales_->find(name) == var_quant_scales_->end()) {
+        present = false;
+        LogScaleIsMissingForVarName(name);
+      }
     }
   }
   return present;
@@ -231,10 +241,20 @@ bool CPUQuantizePass::AreScalesPresentForVarNames(
 bool CPUQuantizePass::AreScalesPresentForNodes(
     std::initializer_list<Node*> nodes) const {
   bool present = true;
-  for (auto node : nodes) {
-    if (var_quant_scales_->count(node->Name()) == 0) {
-      present = false;
-      LogScaleIsMissingForVarNode(node);
+  if (var_quant_scales_->empty()) {
+    auto& scales = Get<VarQuantScale>("quant_var_scales");
+    for (auto node : nodes) {
+      if (scales.count(node->Name()) == 0) {
+        present = false;
+        LogScaleIsMissingForVarNode(node);
+      }
+    }
+  } else {
+    for (auto node : nodes) {
+      if (var_quant_scales_->count(node->Name()) == 0) {
+        present = false;
+        LogScaleIsMissingForVarNode(node);
+      }
     }
   }
   return present;
@@ -242,6 +262,10 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
 
 std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
     const std::string& name) const {
+  if (var_quant_scales_->empty()) {
+    auto& scales = Get<VarQuantScale>("quant_var_scales");
+    return scales.at(name);
+  }
   return var_quant_scales_->at(name);
 }
 
@@ -286,9 +310,9 @@ void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
   for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
     LoDTensor tensor;
     const int size = static_cast<int>(iter->second.size());
-    auto* data = tensor.mutable_data<float>({size}, platform::CPUPlace());
+    auto* data = tensor.mutable_data<double>({size}, platform::CPUPlace());
     for (int i = 0; i < size; i++) {
-      data[i] = iter->second[i];
+      data[i] = static_cast<double>(iter->second[i]);
     }
 
     auto pair = std::make_pair(false, tensor);

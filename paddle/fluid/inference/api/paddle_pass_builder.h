@@ -71,6 +71,10 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \param[in] idx the position to delete.
   void DeletePass(size_t idx);
 
+  /// \brief Get the certain position of a pass.
+  /// \param[in] pass_type the type of insert pass.
+  size_t GetPassIndex(const std::string &pass_type);
+
   /// \brief Delete all passes that has a certain type 'pass_type'.
   /// \param[in] pass_type the certain pass type to be deleted.
   void DeletePass(const std::string &pass_type);
@@ -192,6 +196,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_ = other.use_mkldnn_;
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
+    use_mkldnn_int8_ = other.use_mkldnn_int8_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;

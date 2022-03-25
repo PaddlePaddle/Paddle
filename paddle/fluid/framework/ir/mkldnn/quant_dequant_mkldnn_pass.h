@@ -30,21 +30,24 @@ class QuantDequantMkldnnPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void MarkSkipQuantizedOps(ir::Graph* graph,
-                            std::unordered_set<std::string> skip_ops) const;
+  void MarkSkipQuantizedOps(
+      ir::Graph* graph, const std::unordered_set<std::string>& skip_ops) const;
 
-  void GatherInfoFromFake(ir::Graph* graph, Scope* scope,
-                          std::unordered_set<std::string> fake_dequantize_types,
-                          std::unordered_map<std::string, std::vector<float>>*
-                              weight_thresholds) const;
+  void MarkSkipQuantizedPool2d(ir::Graph* graph) const;
 
-  void GatherInputScalesFromFake(
+  void CollectInfoFromFake(
       ir::Graph* graph, Scope* scope,
-      std::unordered_set<std::string> fake_quantize_types,
+      const std::unordered_set<std::string>& fake_dequantize_types,
+      std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
+      const;
+
+  void CollectInputScalesFromFake(
+      ir::Graph* graph, Scope* scope,
+      const std::unordered_set<std::string>& fake_quantize_types,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
-  void GatherOutputScalesFromAttr(
+  void CollectOutputScalesFromAttr(
       ir::Graph* graph,
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
@@ -58,9 +61,9 @@ class QuantDequantMkldnnPass : public FusePassBase {
 
   void RemoveFakeOps(
       ir::Graph* graph,
-      const std::unordered_set<std::string> fake_quantize_types,
-      const std::unordered_set<std::string> fake_dequantize_types,
-      const std::unordered_set<std::string> fake_quantize_dequantize_types)
+      const std::unordered_set<std::string>& fake_quantize_types,
+      const std::unordered_set<std::string>& fake_dequantize_types,
+      const std::unordered_set<std::string>& fake_quantize_dequantize_types)
       const;
 
   bool IsInt8Weight(Node* op_node, Scope* scope,

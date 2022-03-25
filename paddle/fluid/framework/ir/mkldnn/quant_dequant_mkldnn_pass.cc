@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
-    ir::Graph* graph, std::unordered_set<std::string> skip_ops) const {
+    ir::Graph* graph, const std::unordered_set<std::string>& skip_ops) const {
   VLOG(3) << "mark skip quantized ops";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -53,9 +53,26 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
   }
 }
 
-void QuantDequantMkldnnPass::GatherInfoFromFake(
+void QuantDequantMkldnnPass::MarkSkipQuantizedPool2d(ir::Graph* graph) const {
+  VLOG(3) << "mark avg pool2d as skip quantized op";
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp()) continue;
+
+    if (op_node->Name() == "pool2d") {
+      auto* op_desc = op_node->Op();
+      auto pool_type =
+          BOOST_GET_CONST(std::string, op_desc->GetAttr("pooling_type"));
+      if (pool_type == "avg") {
+        op_node->Op()->SetAttr("skip_quant", true);
+      }
+    }
+  }
+}
+
+void QuantDequantMkldnnPass::CollectInfoFromFake(
     ir::Graph* graph, Scope* scope,
-    std::unordered_set<std::string> fake_dequantize_types,
+    const std::unordered_set<std::string>& fake_dequantize_types,
     std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
     const {
   VLOG(3) << "gather weight_thresholds from fake dequantized ops";
@@ -91,9 +108,9 @@ void QuantDequantMkldnnPass::GatherInfoFromFake(
   }
 }
 
-void QuantDequantMkldnnPass::GatherInputScalesFromFake(
+void QuantDequantMkldnnPass::CollectInputScalesFromFake(
     ir::Graph* graph, Scope* scope,
-    std::unordered_set<std::string> fake_quantize_types,
+    const std::unordered_set<std::string>& fake_quantize_types,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
   VLOG(3) << "gather input scales from fake quantized ops";
@@ -139,7 +156,7 @@ void QuantDequantMkldnnPass::GatherInputScalesFromFake(
   }
 }
 
-void QuantDequantMkldnnPass::GatherOutputScalesFromAttr(
+void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
     ir::Graph* graph,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
     const {
@@ -253,9 +270,10 @@ void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
 }
 
 void QuantDequantMkldnnPass::RemoveFakeOps(
-    ir::Graph* graph, const std::unordered_set<std::string> fake_quantize_types,
-    const std::unordered_set<std::string> fake_dequantize_types,
-    const std::unordered_set<std::string> fake_quantize_dequantize_types)
+    ir::Graph* graph,
+    const std::unordered_set<std::string>& fake_quantize_types,
+    const std::unordered_set<std::string>& fake_dequantize_types,
+    const std::unordered_set<std::string>& fake_quantize_dequantize_types)
     const {
   VLOG(3) << "remove fake quantize and dequantize ops";
 
@@ -516,10 +534,11 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   MarkSkipQuantizedOps(graph, skip_ops);
-  GatherInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
-  GatherInputScalesFromFake(graph, scope, fake_quantize_types,
-                            &var_quant_scales);
-  GatherOutputScalesFromAttr(graph, &var_quant_scales);
+  MarkSkipQuantizedPool2d(graph);
+  CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
+  CollectInputScalesFromFake(graph, scope, fake_quantize_types,
+                             &var_quant_scales);
+  CollectOutputScalesFromAttr(graph, &var_quant_scales);
   RemoveFakeOps(graph, fake_quantize_types, fake_dequantize_types,
                 fake_quantize_dequantize_types);
   DequantizeWeights(graph, scope, &weight_thresholds);

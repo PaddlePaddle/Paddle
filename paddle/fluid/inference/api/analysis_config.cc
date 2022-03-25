@@ -263,6 +263,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // Quantization related.
   CP_MEMBER(use_mkldnn_int8_);
   CP_MEMBER(quantize_enabled_op_types_);
+  CP_MEMBER(quantize_excluded_op_ids_);
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
   CP_MEMBER(min_input_shape_);
@@ -455,6 +456,13 @@ void AnalysisConfig::EnableMkldnnInt8(std::unordered_set<std::string> op_list) {
     if (use_mkldnn_int8_) {
       quantize_enabled_op_types_.clear();
       quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
+    }
+  }
+  if (quantize_enabled_op_types_.count("fc")) {
+    auto idx = pass_builder_->GetPassIndex("repeated_fc_relu_fuse_pass");
+    if (static_cast<int>(idx) != -1) {
+      pass_builder_->InsertPass(idx, "fc_mkldnn_pass");
+      pass_builder_->InsertPass(idx + 1, "fc_act_mkldnn_fuse_pass");
     }
   }
 #else
@@ -775,8 +783,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
   for (auto &item : bfloat16_enabled_op_types_) ss << item;
+
   ss << use_mkldnn_int8_;
   for (auto &item : quantize_enabled_op_types_) ss << item;
+  for (auto &item : quantize_excluded_op_ids_) ss << item;
   ss << ";";
   ss << model_from_memory_;
 
