@@ -263,7 +263,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // Quantization related.
   CP_MEMBER(use_mkldnn_int8_);
   CP_MEMBER(quantize_enabled_op_types_);
-  CP_MEMBER(enable_mkldnn_fc_related_pass_);
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
   CP_MEMBER(min_input_shape_);
@@ -441,8 +440,23 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 void AnalysisConfig::EnableMkldnnInt8(std::unordered_set<std::string> op_list) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
-  quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
   use_fc_padding_ = false;
+  if (!op_list.empty()) {
+    for (auto &type : op_list) {
+      if (!quantize_enabled_op_types_.count(type)) {
+        LOG(ERROR) << "There are unsupported operators in the configured "
+                      "quantization operator list. The unsupported operator "
+                      "is: "
+                   << type;
+        use_mkldnn_int8_ = false;
+        break;
+      }
+    }
+    if (use_mkldnn_int8_) {
+      quantize_enabled_op_types_.clear();
+      quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
+    }
+  }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
   use_mkldnn_int8_ = false;
