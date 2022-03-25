@@ -50,6 +50,8 @@ int64_t CastPyArg2Long(PyObject* obj, const std::string& op_type,
                        ssize_t arg_pos);
 float CastPyArg2Float(PyObject* obj, const std::string& op_type,
                       ssize_t arg_pos);
+double CastPyArg2Float64(PyObject* obj, const std::string& op_type,
+                         ssize_t arg_pos);
 std::string CastPyArg2String(PyObject* obj, const std::string& op_type,
                              ssize_t arg_pos);
 std::vector<bool> CastPyArg2Booleans(PyObject* obj, const std::string& op_type,
@@ -86,6 +88,11 @@ void CastPyArg2AttrFloat(PyObject* obj,
                          paddle::framework::AttributeMap& attrs,  // NOLINT
                          const std::string& key, const std::string& op_type,
                          ssize_t arg_pos);
+
+void CastPyArg2AttrFloat64(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key, const std::string& op_type,
+                           ssize_t arg_pos);
 
 void CastPyArg2AttrString(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT

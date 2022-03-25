@@ -2945,3 +2945,16 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     values = paddle.broadcast_to(values, indices.shape)
     return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
                                   reduce)
+
+
+def diag_block(x, ss):
+    if paddle.in_dynamic_mode():
+        return _C_ops.diag_block(x, "ss", ss)
+    helper = LayerHelper('diag_block', **locals())
+    out = helper.create_variable_for_type_inference(x[0].dtype)
+    helper.append_op(
+        type='diag_block',
+        inputs={'X': x},
+        attrs={"ss": ss},
+        outputs={'Out': out})
+    return out

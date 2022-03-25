@@ -192,6 +192,28 @@ void CastPyArg2AttrFloat(PyObject* obj,
   attrs[key] = CastPyArg2Float(obj, op_type, arg_pos);
 }
 
+double CastPyArg2Float64(PyObject* obj, const std::string& op_type,
+                         ssize_t arg_pos) {
+  if (PyObject_CheckFloatOrToFloat(&obj)) {
+    return (double)PyFloat_AsDouble(obj);  // NOLINT
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "float64, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  return 0.0;
+}
+
+void CastPyArg2AttrFloat64(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key, const std::string& op_type,
+                           ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Float64(obj, op_type, arg_pos);
+}
+
 std::string CastPyArg2String(PyObject* obj, const std::string& op_type,
                              ssize_t arg_pos) {
   if (PyObject_CheckString(obj)) {
@@ -689,6 +711,9 @@ void ConstructAttrMapFromPyArgs(
         break;
       case paddle::framework::proto::AttrType::LONGS:
         CastPyArg2AttrLongs(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::FLOAT64:
+        CastPyArg2AttrFloat64(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::FLOAT64S:
         CastPyArg2AttrFloat64s(obj, attrs, key, op_type, arg_pos);

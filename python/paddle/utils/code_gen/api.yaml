@@ -541,7 +541,13 @@
     func : mv
   backward : mv_grad
 
-
+- api : diag_block
+  args : (Tensor[] x, double ss)
+  output : Tensor
+  infer_meta :
+    func : DiagBlockInferMeta
+  kernel :
+    func : diag_block
 
 #  =================================== sep0
 

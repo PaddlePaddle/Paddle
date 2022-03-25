@@ -2237,7 +2237,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // scalar is in the attribute
         auto& attr = Attrs().at(attr_names[i]);
-        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+        if (std::type_index(attr.type()) == std::type_index(typeid(double))) {
+          pt_kernel_context->EmplaceBackAttr(
+              std::move(phi::Scalar(BOOST_GET_CONST(double, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(float))) {
           pt_kernel_context->EmplaceBackAttr(
               std::move(phi::Scalar(BOOST_GET_CONST(float, attr))));
         } else if (std::type_index(attr.type()) ==
@@ -2328,6 +2332,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(float, attr_it->second));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(double))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(double, attr_it->second));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(bool, attr_it->second));
@@ -2368,6 +2375,18 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<float>, attr_it->second));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<double>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<double>, attr_it->second));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<bool>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<bool>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

@@ -133,6 +133,10 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void DiagBlockInferMeta(const std::vector<MetaTensor*>& x,
+                        double ss,
+                        MetaTensor* out);
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,

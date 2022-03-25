@@ -505,6 +505,8 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
+  std::cout << "WTF: " << name << paddle::platform::demangle(v.type().name())
+            << "\n";
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
   if (attr_type == proto::AttrType::INTS &&
       BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
@@ -535,6 +537,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
         this->attrs_[name] = std::vector<float>();
         break;
       }
+      case proto::AttrType::FLOAT64S: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to FLOAT64S";
+        this->attrs_[name] = std::vector<double>();
+        break;
+      }
       case proto::AttrType::STRINGS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to STRINGS";
@@ -559,6 +567,14 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
       GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
     this->attrs_[name] = static_cast<bool>(BOOST_GET_CONST(int, v));
+    need_update_ = true;
+    return;
+  }
+
+  // In order to set double attr properly
+  if (attr_type == proto::AttrType::FLOAT && HasProtoAttr(name) &&
+      GetProtoAttr(name).type() == proto::AttrType::FLOAT64) {
+    this->attrs_[name] = static_cast<double>(BOOST_GET_CONST(float, v));
     need_update_ = true;
     return;
   }
@@ -721,6 +737,8 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<int64_t> &v) const {
     VectorToRepeated(v, attr_->mutable_longs());
   }
+
+  void operator()(double v) const { attr_->set_float64(v); }
 
   void operator()(const std::vector<double> &v) const {
     VectorToRepeated(v, attr_->mutable_float64s());

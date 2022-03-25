@@ -179,6 +179,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(double);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);

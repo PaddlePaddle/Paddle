@@ -414,7 +414,11 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       if (ctx->HasAttr(attr_name)) {
         // TODO(chentianyu03): support other attrs later
         auto& attr = attr_reader.GetAttr(attr_name);
-        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+        if (std::type_index(attr.type()) == std::type_index(typeid(double))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(double, attr)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(float))) {
           infer_meta_context.EmplaceBackAttr(
               phi::Scalar(BOOST_GET_CONST(float, attr)));
         } else if (std::type_index(attr.type()) ==
@@ -506,6 +510,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(double))) {
+        infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(double, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));

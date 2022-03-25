@@ -45,7 +45,8 @@ using Attribute = boost::variant<boost::blank,
                                  int64_t,
                                  std::vector<BlockDesc*>,
                                  std::vector<int64_t>,
-                                 std::vector<double>>;
+                                 std::vector<double>,
+                                 double>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 
