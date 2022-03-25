@@ -113,7 +113,7 @@ function(kernel_library TARGET)
     
     # used for cc_library selected_rows dir target
     set(target_suffix "")
-    if ("${kernel_library_SUB_DIR}" STREQUAL "selected_rows_kernel")
+    if ("${kernel_library_SUB_DIR}" STREQUAL "selected_rows")
         set(target_suffix "_sr")
     endif()
 
@@ -204,7 +204,6 @@ function(kernel_library TARGET)
                     string(REGEX REPLACE ".h\"" "" kernel_name ${kernel_name})
                     list(APPEND all_kernel_name ${kernel_name})
                 endif()
-                message(STATUS "${TARGET} DEPS ${all_kernel_name}")
             endif()
             list(APPEND kernel_deps ${all_kernel_name})
         endforeach()

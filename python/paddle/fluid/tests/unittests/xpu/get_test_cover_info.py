@@ -208,7 +208,7 @@ def is_empty_grad_op_type(xpu_version, op, test_type):
     if grad_op not in xpu_op_list.keys():
         return True
 
-    grad_op_types = xpu_op_list[op]
+    grad_op_types = xpu_op_list[grad_op]
     paddle_test_type = type_dict_str_to_paddle[test_type]
     if paddle_test_type not in grad_op_types:
         return True
@@ -239,9 +239,11 @@ def create_test_class(func_globals,
             continue
         class_obj = test_class[1]
         cls_name = "{0}_{1}".format(test_class[0], str(test_type))
-        func_globals[cls_name] = type(
-            cls_name, (class_obj, ),
-            {'in_type': type_dict_str_to_numpy[test_type]})
+        func_globals[cls_name] = type(cls_name, (class_obj, ), {
+            'in_type': type_dict_str_to_numpy[test_type],
+            'in_type_str': test_type,
+            'op_type_need_check_grad': True
+        })
 
     if hasattr(test_class_obj, 'use_dynamic_create_class'
                ) and test_class_obj.use_dynamic_create_class:
@@ -250,6 +252,8 @@ def create_test_class(func_globals,
             cls_name = "{0}_{1}".format(dy_class[0], str(test_type))
             attr_dict = dy_class[1]
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
+            attr_dict['in_type_str'] = test_type
+            attr_dict['op_type_need_check_grad'] = True
             func_globals[cls_name] = type(cls_name, (base_class, ), attr_dict)
 
     record_op_test(op_name, test_type)

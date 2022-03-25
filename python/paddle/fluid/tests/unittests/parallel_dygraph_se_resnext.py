@@ -66,7 +66,7 @@ def optimizer_setting(params, parameter_list=None):
     bd = [step * e for e in ls["epochs"]]
     lr = params["lr"]
     num_epochs = params["num_epochs"]
-    if fluid.in_dygraph_mode():
+    if fluid._non_static_mode():
         optimizer = fluid.optimizer.Momentum(
             learning_rate=fluid.layers.cosine_decay(
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs),

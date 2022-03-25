@@ -16,7 +16,7 @@ import os
 import re
 import json
 
-skip_list = []
+skip_list = ["adam_sig.cc", "adamw_sig.cc"]
 
 
 def parse_compat_registry(kernel_info):
