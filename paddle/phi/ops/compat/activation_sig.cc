@@ -36,18 +36,18 @@ namespace phi {
 
 #define comma ,
 
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cos, "cos", );            // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Tan, "tan", );            // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acos, "acos", );          // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sin, "sin", );            // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asin, "asin", );          // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atan, "atan", );          // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sinh, "sinh", );          // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cosh, "cosh", );          // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asinh, "asinh", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );      // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cos, "cos", );        // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Tan, "tan", );        // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acos, "acos", );      // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sin, "sin", );        // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asin, "asin", );      // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atan, "atan", );      // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sinh, "sinh", );      // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cosh, "cosh", );      // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asinh, "asinh", );    // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );    // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );    // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );  // NOLINT
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(BRelu, "brelu", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LeakyRelu, "leaky_relu", "alpha");
@@ -96,9 +96,8 @@ KernelSignature SqrtActiOpArgumentMapping(
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-KernelSignature SquareActiOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if ( ctx.IsDenseTensorInput("X"))
+KernelSignature SquareActiOpArgumentMapping( const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X"))
   {
   return KernelSignature(
       "square", {"X"}, {}, {"Out"});

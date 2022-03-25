@@ -85,5 +85,4 @@ void MishKernel(const Context& dev_ctx,
                 float threshold,
                 DenseTensor* out);
 
-
 }  // namespace phi

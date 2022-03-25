@@ -841,10 +841,7 @@ struct SoftsignFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device,
-            typename X,
-            typename Out,
-            typename dOut,
+  template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) =
@@ -1108,13 +1105,13 @@ class PowGradKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_ACTIVATION_OP(__macro)                                      \
-  __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                         \
-  __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                      \
-  __macro(round, Round, RoundFunctor, ZeroGradFunctor);                      \
-  __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);        \
-  __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                     \
-  __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                     \
-  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);    \
+#define FOR_EACH_ACTIVATION_OP(__macro)                                   \
+  __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                      \
+  __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                   \
+  __macro(round, Round, RoundFunctor, ZeroGradFunctor);                   \
+  __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);     \
+  __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                  \
+  __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                  \
+  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor); \
   __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor); 
         

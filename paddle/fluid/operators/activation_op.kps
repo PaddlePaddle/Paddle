@@ -65,7 +65,6 @@ struct CudaZeroGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-
 template <typename T>
 struct CudaSoftReluFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
@@ -422,7 +421,6 @@ USE_PHI_FUNCTOR(CudaSquare)
 USE_PHI_FUNCTOR(CudaSqrt)
 USE_PHI_FUNCTOR(CudaRsqrt)
 USE_PHI_FUNCTOR(CudaSoftplus)
-
 
 template <typename T>
 using CudaELUGradNegativeAlphaFunctor =
