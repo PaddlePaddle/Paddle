@@ -86,21 +86,18 @@ DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
                                  "hard_sigmoid",
                                  "slope" comma "offset");  // NOLINT
 KernelSignature SqrtActiOpArgumentMapping(
+
     const ArgumentMappingContext& ctx) {
-  if ( ctx.IsDenseTensorInput("X"))
-  {
-  return KernelSignature(
-      "sqrt", {"X"}, {}, {"Out"});
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("sqrt", {"X"}, {}, {"Out"});
   }
 
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-KernelSignature SquareActiOpArgumentMapping( const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorInput("X"))
-  {
-  return KernelSignature(
-      "square", {"X"}, {}, {"Out"});
+KernelSignature SquareActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("square", {"X"}, {}, {"Out"});
   }
 
   return KernelSignature("unregistered", {}, {}, {});
