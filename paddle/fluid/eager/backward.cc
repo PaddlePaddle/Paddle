@@ -489,7 +489,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       if (grad_tensors[i].is_initialized()) {
         // Deep copy
         paddle::experimental::Tensor tmp_tensor;
-        tmp_tensor.copy_(grad_tensors[i], grad_tensors[i].inner_place(), true);
+        tmp_tensor.copy_(grad_tensors[i], grad_tensors[i].inner_place(), false);
         node_input_buffers_dict[grad_node]->add(input_info.first,
                                                 input_info.second, tmp_tensor);
       } else {

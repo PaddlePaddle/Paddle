@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import ParamBase, _in_eager_mode
+from paddle.fluid.framework import ParamBase, EagerParamBase, _in_legacy_dygraph
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -50,7 +50,7 @@ def prepare_context(strategy=None):
         strategy.current_endpoint = Env().current_endpoint
     if strategy.nranks < 2:
         return
-    assert framework.in_dygraph_mode() is True, \
+    assert framework._non_static_mode() is True, \
         "dygraph.prepare_context should be used with dygraph mode."
     place = framework._current_expected_place()
     assert place is not None, \
@@ -586,7 +586,8 @@ class DataParallel(layers.Layer):
         self.process_group = process_group
         self.gradient_as_buffer_view = gradient_as_buffer_view
         self.static_graph = static_graph
-        self.var_dtype = core.eager.Tensor if _in_eager_mode() else core.VarBase
+        self.var_dtype = core.eager.Tensor if not _in_legacy_dygraph(
+        ) else core.VarBase
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -603,7 +604,7 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-            if self.process_group is None and _in_eager_mode():
+            if self.process_group is None and (not _in_legacy_dygraph()):
                 raise RuntimeError(
                     "Process group should be built in DataParallel of eager mode."
                 )
@@ -612,7 +613,7 @@ class DataParallel(layers.Layer):
             # TODO(liuyuhui) Currently not support xpu. xpu is 
             # still broadcasting parameters when calling layer
             if not paddle.is_compiled_with_xpu():
-                if _in_eager_mode():
+                if not _in_legacy_dygraph():
                     sync_eager_params(
                         self._layers, comm_group=self.process_group)
                 else:
@@ -669,7 +670,7 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        if _in_eager_mode():
+        if not _in_legacy_dygraph():
             self.group_indices = core.eager_assign_group_by_size(
                 trainable_parameters, is_sparse_gradient,
                 [self.last_comm_buffer_size, self.comm_buffer_size])
@@ -693,7 +694,8 @@ class DataParallel(layers.Layer):
                 self.find_unused_parameters)
 
     def _find_varbase(self, obj):
-        var_type = core.eager.Tensor if _in_eager_mode() else core.VarBase
+        var_type = core.eager.Tensor if not _in_legacy_dygraph(
+        ) else core.VarBase
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
