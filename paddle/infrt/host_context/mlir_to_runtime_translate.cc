@@ -130,7 +130,7 @@ boost::optional<int32_t> MlirToRuntimeTranslator::EmitAttribute(
   if (attr.isa<mlir::IntegerAttr>()) {
     auto val = attr.cast<mlir::IntegerAttr>();
     if (val.getType().isInteger(32)) {
-      return val.getInt();
+      return val.getValue().getSExtValue();
     }
   }
   return boost::none;
@@ -142,7 +142,7 @@ boost::optional<int64_t> MlirToRuntimeTranslator::EmitAttribute(
   if (attr.isa<mlir::IntegerAttr>()) {
     auto val = attr.cast<mlir::IntegerAttr>();
     if (val.getType().isInteger(64)) {
-      return val.getInt();
+      return val.getValue().getSExtValue();
     }
   }
   return boost::none;
@@ -233,7 +233,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
                                                                                \
     std::vector<type__> res;                                                   \
     for (auto& v : array) {                                                    \
-      res.push_back(v.cast<mlir::IntegerAttr>().getInt());                     \
+      res.push_back(v.cast<mlir::IntegerAttr>().getValue().getSExtValue());    \
     }                                                                          \
     return res;                                                                \
   }
