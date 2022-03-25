@@ -1153,8 +1153,6 @@ if(APPLE)
     set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
     set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 300)
     set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
