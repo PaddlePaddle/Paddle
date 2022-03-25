@@ -2681,7 +2681,7 @@ def isfinite(x, name=None):
             out = paddle.tensor.isfinite(x)
             print(out)  # [False  True  True False  True False False]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_isfinite( x )
     if _in_legacy_dygraph():
         return _C_ops.isfinite_v2(x)
@@ -2711,7 +2711,7 @@ def isinf(x, name=None):
             out = paddle.tensor.isinf(x)
             print(out)  # [ True False False  True False False False]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_isinf( x )
     if _in_legacy_dygraph():
         return _C_ops.isinf_v2(x)
@@ -2741,7 +2741,7 @@ def isnan(x, name=None):
             out = paddle.tensor.isnan(x)
             print(out)  # [False False False False False  True  True]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_isnan( x )
 
     if _in_legacy_dygraph():
@@ -3394,7 +3394,7 @@ def lerp(x, y, weight, name=None):
             # out: [5.5., 6., 6.5, 7.]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)

@@ -28,7 +28,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import _varbase_creator, _in_legcy_dygraph
+from ...fluid.framework import _varbase_creator, _in_legacy_dygraph
 
 from ...fluid import dygraph_utils
 from ...fluid import layers
@@ -1616,7 +1616,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         if isinstance(prior_dist, (list, tuple)):
             prior_dist = None
         return _C_ops.final_state_label_smooth(label, prior_dist, epsilon)

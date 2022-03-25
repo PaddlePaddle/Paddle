@@ -774,7 +774,7 @@ def masked_select(x, mask, name=None):
             #[1.0 5.0 6.0 9.0]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_masked_select(x, mask)
 
     if _in_legacy_dygraph():
@@ -847,7 +847,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
            # [[1 1 0 0]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         k = k.numpy().item(0) if isinstance(k, Variable) else k
 
         if axis == None:

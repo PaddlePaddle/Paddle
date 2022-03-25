@@ -1845,7 +1845,7 @@ def expand_as(x, y, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_expand_as(x, y, y.shape)
 
     if _in_legacy_dygraph():
