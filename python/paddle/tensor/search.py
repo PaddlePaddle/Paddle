@@ -91,7 +91,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [1 1 0 2]
             #  [0 2 1 1]]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         _, ids, = _C_ops.final_state_argsort(x, axis, descending)
         return ids
 
@@ -175,7 +175,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_argmax(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():
         out = _C_ops.arg_max(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
@@ -257,7 +257,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         out = _C_ops.final_state_arg_min(x, axis, keepdim, flattern, var_dtype)
     if in_legacy_dygraph():
         out = _C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',

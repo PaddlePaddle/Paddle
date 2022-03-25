@@ -959,7 +959,7 @@ def split(x, num_or_sections, axis=0, name=None):
             print(out1.shape)  # [3, 3, 5]
             print(out2.shape)  # [3, 3, 5]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_split(x, num_or_sections, dim)
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
@@ -1764,7 +1764,7 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_tile(x, repeat_times)
 
     if _in_legacy_dygraph():

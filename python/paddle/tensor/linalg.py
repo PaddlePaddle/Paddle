@@ -1209,7 +1209,7 @@ def cholesky(x, upper=False, name=None):
             #  [1.25450498 0.05600871 0.06400121]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_cholesky(x, upper)
 
     if _in_legacy_dygraph():
@@ -1445,7 +1445,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_bincount(x, weights, minlength)
 
     if _in_legacy_dygraph():
@@ -1762,7 +1762,7 @@ def matrix_power(x, n, name=None):
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_matrix_power(x, n)
 
     if _in_legacy_dygraph():
@@ -2283,7 +2283,7 @@ def eigh(x, UPLO='L', name=None):
             #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_eigh(x, UPLO)
 
     if _in_legacy_dygraph():
@@ -2756,7 +2756,7 @@ def cholesky_solve(x, y, upper=False, name=None):
         print(out)
         # [-2.5, -7, 9.5]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_cholesky_solve(x, y, upper)
 
     if _in_legacy_dygraph():

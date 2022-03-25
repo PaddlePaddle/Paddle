@@ -66,7 +66,7 @@ def bernoulli(x, name=None):
 
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_bernoulli(x)
 
     if _in_legach_dygraph():
@@ -177,7 +177,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
     assert core.is_compiled_with_rocm() == False, (
         "multinomial op is not supported on ROCM yet.")
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_multinomial(x, num_samples, replacement)
 
     if _in_legach_dygraph():
