@@ -825,6 +825,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(phi::make_ddim({1}));
   out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 void ModeInferMeta(const MetaTensor& x,
