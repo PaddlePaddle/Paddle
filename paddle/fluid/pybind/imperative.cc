@@ -386,46 +386,6 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
   return result;
 }
 
-// cast numpy type form S to T, this may allocate new memory
-template <class T, class S>
-static py::array_t<T> CastNumpyType(py::array_t<S> array) {
-  if (std::is_same<T, S>::value) {
-    return array;
-  }
-  auto dim = array.ndim();
-  std::vector<py::ssize_t> result_shape(dim);
-  for (auto i = 0; i < dim; i++) {
-    result_shape[i] = array.shape(i);
-  }
-
-  py::array_t<T> result(result_shape);
-
-  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
-}
-
-template <class T>
-static py::array_t<T> CastNumpyArray(const py::object &array) {
-  if (py::isinstance<py::array_t<float>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<float>>());
-  } else if (py::isinstance<py::array_t<double>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<double>>());
-  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
-  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
-  } else if (py::isinstance<py::array_t<bool>>(array)) {
-    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Value type error. The assign numpy value allows integer, float, "
-        "double and bool, "
-        "but received %s.",
-        Py_TYPE(array.ptr())->tp_name));
-  }
-  // can't reach here
-  return py::array_t<T>();
-}
-
 static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     const PyNameVarBaseMap &map) {
   imperative::NameVarBaseMap result;
@@ -695,6 +655,7 @@ void BindImperative(py::module *m_ptr) {
              } else {
                act_name = name.cast<std::string>();
              }
+             VLOG(4) << "Init VarBase :" << act_name;
              new (&self) imperative::VarBase(act_name);
              self.SetPersistable(persistable);
              self.SetType(type);
@@ -854,27 +815,29 @@ void BindImperative(py::module *m_ptr) {
                 py::object value = value_obj;
                 if (self->DataType() == framework::proto::VarType::FP32) {
                   if (!py::isinstance<py::array_t<float>>(value_obj)) {
-                    value = CastNumpyArray<float>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<float>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::FP64) {
                   if (!py::isinstance<py::array_t<double>>(value_obj)) {
-                    value = CastNumpyArray<double>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<double>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT32) {
                   if (!py::isinstance<py::array_t<int32_t>>(value_obj)) {
-                    value = CastNumpyArray<int32_t>(value_obj);
+                    value =
+                        pybind11::detail::CastNumpyArray<int32_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT64) {
                   if (!py::isinstance<py::array_t<int64_t>>(value_obj)) {
-                    value = CastNumpyArray<int64_t>(value_obj);
+                    value =
+                        pybind11::detail::CastNumpyArray<int64_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::BOOL) {
                   if (!py::isinstance<py::array_t<bool>>(value_obj)) {
-                    value = CastNumpyArray<bool>(value_obj);
+                    value = pybind11::detail::CastNumpyArray<bool>(value_obj);
                   }
                 } else {
                   PADDLE_THROW(platform::errors::InvalidArgument(

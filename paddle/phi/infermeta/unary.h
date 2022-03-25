@@ -86,6 +86,12 @@ void FlattenInferMeta(const MetaTensor& x,
                       int stop_axis,
                       MetaTensor* out);
 
+void FlattenWithXShapeInferMeta(const MetaTensor& x,
+                                int start_axis,
+                                int stop_axis,
+                                MetaTensor* out,
+                                MetaTensor* xshape);
+
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             float temperature,
                             bool hard,
@@ -147,6 +153,14 @@ void PadInferMeta(const MetaTensor& input,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
+void Pad3dInferMeta(const MetaTensor& x,
+                    const ScalarArray& paddings,
+                    const std::string& mode,
+                    float value,
+                    const std::string& data_format,
+                    MetaTensor* out,
+                    MetaConfig config = MetaConfig());
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
@@ -165,6 +179,11 @@ void PoolInferMeta(const MetaTensor& x,
                    const std::string& padding_algorithm,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
+
+void QrInferMeta(const MetaTensor& x,
+                 const std::string& mode,
+                 MetaTensor* q,
+                 MetaTensor* r);
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -189,6 +208,10 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
+
+void ReverseInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axis,
+                      MetaTensor* out);
 
 void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
@@ -216,6 +239,11 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
+
+void SqueezeInferMeta(const MetaTensor& x,
+                      const std::vector<int>& axes,
+                      MetaTensor* xshape,
+                      MetaTensor* out);
 
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
@@ -259,6 +287,11 @@ void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
 
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out);
+
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor>* outs);
@@ -277,6 +310,11 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void UnsqueezeInferMeta(const MetaTensor& x,
+                        const ScalarArray& axes,
+                        MetaTensor* xshape,
+                        MetaTensor* out);
 
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,

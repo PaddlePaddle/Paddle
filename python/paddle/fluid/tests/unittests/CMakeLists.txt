@@ -939,6 +939,7 @@ if (WITH_DISTRIBUTE)
     set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
     set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT 120)
     set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce PROPERTIES TIMEOUT 60)
+    set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
@@ -949,7 +950,7 @@ if (WITH_DISTRIBUTE AND NOT APPLE)
 endif()
 
 # setting timeout value as 15S
-set_tests_properties(test_run PROPERTIES TIMEOUT 200)
+set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_lod_tensor_to_selected_rows PROPERTIES TIMEOUT 200)

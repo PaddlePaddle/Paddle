@@ -20,18 +20,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ElementwiseFMaxKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out);
+void FMaxKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out);
 
 template <typename T, typename Context>
-void ElementwiseFMinKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out);
+void FMinKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out);
 
 template <typename T, typename Context>
 void AddRawKernel(const Context& dev_ctx,

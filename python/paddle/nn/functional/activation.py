@@ -22,7 +22,7 @@ from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_
+from ...fluid.framework import convert_np_dtype_to_dtype_, _in_eager_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -576,6 +576,8 @@ def relu_(x, name=None):
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
+    if _in_eager_mode():
+        return _C_ops.final_state_relu_(x)
     return _C_ops.relu_(x)
 
 

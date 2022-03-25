@@ -119,46 +119,5 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    out->mutable_data(context.GetPlace(), in->type());
-    auto &start_axis = context.Attr<int>("start_axis");
-    auto &stop_axis = context.Attr<int>("stop_axis");
-    auto &dev_ctx = context.device_context<DeviceContext>();
-
-    // call new kernel
-    phi::FlattenKernel<T, typename paddle::framework::ConvertToPhiContext<
-                              DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPhiContext<
-            DeviceContext>::TYPE &>(dev_ctx),
-        *in, start_axis, stop_axis, out);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *xshape = ctx.Input<framework::LoDTensor>("XShape");
-
-    d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    auto &dev_ctx = ctx.device_context<DeviceContext>();
-
-    // call new kernel
-    phi::FlattenGradKernel<T, typename paddle::framework::ConvertToPhiContext<
-                                  DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPhiContext<
-            DeviceContext>::TYPE &>(dev_ctx),
-        *d_out, *xshape, d_x);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle

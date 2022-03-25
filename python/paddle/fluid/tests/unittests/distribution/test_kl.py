@@ -112,3 +112,7 @@ class TestKLExpfamilyExpFamily(unittest.TestCase):
             kl._kl_expfamily_expfamily(self.p, self.q),
             rtol=config.RTOL.get(config.DEFAULT_DTYPE),
             atol=config.ATOL.get(config.DEFAULT_DTYPE))
+
+
+if __name__ == '__main__':
+    unittest.main()

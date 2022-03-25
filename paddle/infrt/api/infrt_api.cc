@@ -129,7 +129,7 @@ class PredictExecutor : public MlirToRuntimeTranslator {
       auto arg = predict_func.getArgument(i);
       auto type = arg.getType();
       // this param is TensorMap
-      if (type.isa<infrt::DenseTensorMapType>()) {
+      if (type.isa<infrt::DenseHostTensorMapType>()) {
         auto* value = new host_context::Value(std::move(*map));
         arguments_.push_back(value);
         AddValue(predict_func.getArgument(i), value);
