@@ -90,9 +90,6 @@ InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
 
-  exception_notifier_->UnregisterEvent();
-  completion_notifier_->UnregisterEvent();
-
   async_work_queue_.reset(nullptr);
 }
 

@@ -23,7 +23,7 @@ import numpy as np
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
