@@ -11665,12 +11665,12 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
-    if in_dygraph_mode():        
+    if in_dygraph_mode():
         return _C_ops.final_state_size(input)
 
     if _in_legacy_dygraph():
         return _C_ops.size(input)
-    
+
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], "size")
@@ -12642,7 +12642,7 @@ def logical_not(x, out=None, name=None):
             res = paddle.logical_not(x)
             print(res) # [False  True False  True]
     """
-    if in_dygraph_mode() and _in_eager_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
@@ -13419,8 +13419,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
-    # if in_dygraph_mode() and _in_eager_mode():
-    #     return _C_ops.final_state_log_loss(input, label, epsilon)
+    if in_dygraph_mode():
+        return _C_ops.final_state_log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
@@ -14438,7 +14438,7 @@ def where(condition):
 
     """
 
-    if in_dygraph_mode():        
+    if in_dygraph_mode():
         return _C_ops.final_state_where_index(condition)
     if _in_legacy_dygraph():
         return _C_ops.where_index(condition)
@@ -14934,9 +14934,8 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers")
 
     if in_dygraph_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
-                                             dilations)
+        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
+                                         dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -15165,7 +15164,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
-    if in_dygraph_mode() and _in_eager_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_shard_index(input, index_num, nshards,
                                               shard_id, ignore_value)
 

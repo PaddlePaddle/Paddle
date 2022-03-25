@@ -24,7 +24,6 @@ from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
 from .logic import logical_not
-from paddle.fluid.framework import _in_eager_mode
 
 # TODO: define searching & indexing functions of a tensor  
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
@@ -93,8 +92,10 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [0 2 1 1]]]
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            _, ids, = _C_ops.final_state_argsort(x, axis, descending)
+        _, ids, = _C_ops.final_state_argsort(x, axis, descending)
+        return ids
+
+    if _in_legacy_dygraph():
         _, ids = _C_ops.argsort(x, 'axis', axis, 'descending', descending)
         return ids
     check_variable_and_dtype(
@@ -175,9 +176,8 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_argmin(x, axis, keepdim, flatten,
-                                             var_dtype)
+        return _C_ops.final_state_argmax(x, axis, keepdim, flatten, var_dtype)
+    if _in_legacy_dygraph():
         out = _C_ops.arg_max(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
         return out
@@ -258,9 +258,8 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            out = _C_ops.final_state_arg_min(x, axis, keepdim, flattern,
-                                             var_dtype)
+        out = _C_ops.final_state_arg_min(x, axis, keepdim, flattern, var_dtype)
+    if in_legacy_dygraph():
         out = _C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
         return out

@@ -38,7 +38,6 @@ from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
 from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
-from paddle.fluid.framework import _in_eager_mode
 
 __all__ = []
 
@@ -960,7 +959,7 @@ def split(x, num_or_sections, axis=0, name=None):
             print(out1.shape)  # [3, 3, 5]
             print(out2.shape)  # [3, 3, 5]
     """
-    if paddle.in_dynamic_mode() and _in_eager_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.final_state_split(x, num_or_sections, dim)
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
@@ -1766,9 +1765,11 @@ def tile(x, repeat_times, name=None):
             # [[1, 2, 3, 1, 2, 3]]
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_tile(x, repeat_times)
+        return _C_ops.final_state_tile(x, repeat_times)
+
+    if _in_legacy_dygraph():
         return _C_ops.tile(x, 'repeat_times', repeat_times)
+
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
         assert len(repeat_times.shape) == 1, (
@@ -2838,13 +2839,13 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if paddle.in_dynamic_mode():
+    if _none_staic_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
-        if _in_eager_mode():
+        if not _in_legach_dygraph():
             return _C_ops.final_state_take_along_axis(arr, indices, axis)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
@@ -2905,13 +2906,13 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             "`indices` and `arr` must have the same number of dimensions!")
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if paddle.in_dynamic_mode():
+    if _none_static_mode():
         values = paddle.to_tensor(values) if not isinstance(
             values, paddle.Tensor) else values
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
-        if _in_eager_mode():
+        if not in_legacy_dygraph():
             return _C_ops.final_state_put_alone_axis(arr, indices, value, axis,
                                                      reduce)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,

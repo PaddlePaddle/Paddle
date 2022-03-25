@@ -1210,9 +1210,11 @@ def cholesky(x, upper=False, name=None):
 
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_cholesky(x, upper)
+        return _C_ops.final_state_cholesky(x, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky(x, "upper", upper)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -1444,8 +1446,9 @@ def bincount(x, weights=None, minlength=0, name=None):
         raise TypeError("Elements in Input(x) should all be integers")
 
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_bincount(x, weights, minlength)
+        return _C_ops.final_state_bincount(x, weights, minlength)
+
+    if _in_legacy_dygraph():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1760,8 +1763,9 @@ def matrix_power(x, n, name=None):
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_matrix_power(x, n)
+        return _C_ops.final_state_matrix_power(x, n)
+
+    if _in_legacy_dygraph():
         return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
@@ -2280,8 +2284,9 @@ def eigh(x, UPLO='L', name=None):
 
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_eigh(x, UPLO)
+        return _C_ops.final_state_eigh(x, UPLO)
+
+    if _in_legacy_dygraph():
         return _C_ops.eigh(x, 'UPLO', UPLO)
 
     def __check_input(x, UPLO):
@@ -2752,8 +2757,9 @@ def cholesky_solve(x, y, upper=False, name=None):
         # [-2.5, -7, 9.5]
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_cholesky_solve(x, y, upper)
+        return _C_ops.final_state_cholesky_solve(x, y, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
 
     helper = LayerHelper("cholesky_solve", **locals())
