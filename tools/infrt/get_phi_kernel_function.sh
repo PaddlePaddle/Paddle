@@ -33,6 +33,11 @@ unset GREP_OPTIONS && find ${PADDLE_ROOT}/paddle/phi/kernels -name "*.c*" | grep
   | grep -v "_grad" > $kernel_register_info_file
 
 # handle `activation_kernel.cc` case by case.
+find ${PADDLE_ROOT}/paddle/phi/kernels -name "activation_kernel.cc" | xargs sed -e '/PD_REGISTER_KERNEL(relu/,/)/!d' \
+  | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' |   grep PD_REGISTER_KERNEL \
+  | awk -F ",|\(|\)" '{gsub(/ /,"");$1="";print}' \
+  | sort -u  | awk '{gsub(/phi::/,"");gsub(/paddle::platform::/,"");gsub(/dtype::/,"");gsub(/paddle::/,"");print $0}' \
+  | grep -v "_grad" >> $kernel_register_info_file
 act_temp=$(find ${PADDLE_ROOT}/paddle/phi/kernels -name "activation_kernel.cc" | xargs sed -e '/PD_REGISTER_KERNEL(name/,/)/!d' \
   | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' | grep -E "PD_REGISTER_(GENERAL_)?KERNEL" \
   | awk -F ",|\(|\)" '{gsub(/ /,"");gsub(/\\/,"");$1="";print}' | sort -u \
