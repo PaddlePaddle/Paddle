@@ -27,16 +27,10 @@ TEST(AlgosCache, AlgosCache) {
   std::vector<int> paddings = {0, 0};
   std::vector<int> strides = {2, 2};
   std::vector<int> dilations = {1, 1};
-  int algorithmFlags = 2;
-  int64_t cudnn_dtype = 0;
+  phi::DataType dtype = paddle::experimental::CppTypeToDataType<float>::Type();
 
-  auto key = cache.ConvKey(x_shape,
-                           w_shape,
-                           paddings,
-                           strides,
-                           dilations,
-                           algorithmFlags,
-                           cudnn_dtype);
+  auto key =
+      cache.ConvKey(x_shape, w_shape, paddings, strides, dilations, dtype);
   EXPECT_EQ(cache.Find(key), false);
   cache.Set(key, Algo);
   EXPECT_EQ(cache.Find(key), true);
@@ -44,13 +38,7 @@ TEST(AlgosCache, AlgosCache) {
   algo();
 
   x_shape = {4, 128, 128, 3};
-  key = cache.ConvKey(x_shape,
-                      w_shape,
-                      paddings,
-                      strides,
-                      dilations,
-                      algorithmFlags,
-                      cudnn_dtype);
+  key = cache.ConvKey(x_shape, w_shape, paddings, strides, dilations, dtype);
   EXPECT_EQ(cache.Find(key), false);
   float cache_hit_rate = static_cast<float>(1) / static_cast<float>(3);
   EXPECT_LT(std::abs(cache_hit_rate - cache.CacheHitRate()), 1e-5);

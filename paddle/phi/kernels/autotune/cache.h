@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -50,7 +51,7 @@ struct hash<std::vector<T>> {
 namespace phi {
 namespace autotune {
 
-template <typename TAlgorithm>
+template <typename AlgorithmT>
 class AlgorithmsCache {
  public:
   AlgorithmsCache() { hash_.clear(); }
@@ -62,7 +63,7 @@ class AlgorithmsCache {
     return seed;
   }
 
-  TAlgorithm Get(size_t key) {
+  AlgorithmT Get(size_t key) {
     std::lock_guard<std::mutex> lock(cache_mutex_);
     PADDLE_ENFORCE_NE(
         hash_.find(key),
@@ -83,7 +84,7 @@ class AlgorithmsCache {
     return ret;
   }
 
-  void Set(size_t key, TAlgorithm algo) {
+  void Set(size_t key, AlgorithmT algo) {
     std::lock_guard<std::mutex> lock(cache_mutex_);
     hash_[key] = algo;
   }
@@ -101,19 +102,17 @@ class AlgorithmsCache {
                  const std::vector<int>& strides,
                  const std::vector<int>& paddings,
                  const std::vector<int>& dilations,
-                 int algorithmFlags,
-                 int64_t cudnn_dtype) {
+                 phi::DataType dtype) {
     return GetKey(x_dims,
                   w_dims,
                   strides,
                   paddings,
                   dilations,
-                  algorithmFlags,
-                  cudnn_dtype);
+                  static_cast<int64_t>(dtype));
   }
 
  private:
-  std::unordered_map<size_t, TAlgorithm> hash_;
+  std::unordered_map<size_t, AlgorithmT> hash_;
   std::mutex cache_mutex_;
   int64_t cache_hits_ = 0;
   int64_t cache_misses_ = 0;
