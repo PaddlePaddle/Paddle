@@ -45,8 +45,9 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
-  return FLAGS_allocator_strategy == "auto_growth" &&
-         FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+  return memory::allocation::AllocatorFacade::Instance()
+             .IsStreamSafeCUDAAllocatorUsed() &&
+         FLAGS_fast_eager_deletion_mode;
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
