@@ -17,8 +17,6 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/place.h"
 namespace paddle {
 namespace experimental {
 
@@ -34,15 +32,11 @@ void ThrowTensorConvertError(int num) {
                         num));
 }
 
-// The Tensor must have one dim
 template <>
-ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
+ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
-  auto cpu_place = phi::CPUPlace();
-  if (!paddle::platform::is_same_place(tensor_in.place(), cpu_place)) {
-    phi::DenseTensor tensor;
-    framework::TensorCopySync(tensor_in, cpu_place, &tensor);
-    GetDataFromTensor(tensor);
+  if (tensor_in.place() == PlaceType::kGPU) {
+    GetDataFromTensor(tensor_in.copy_to(phi::CPUPlace(), true));
   } else {
     GetDataFromTensor(tensor_in);
   }
