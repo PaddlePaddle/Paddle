@@ -746,6 +746,13 @@
     func : cumprod
   backward : cumprod_grad
 
-
+#- api : uniform_random
+  #args : (ScalarArray shape,  DataType dtype,  float min,  float max, int seed)
+  #output : Tensor(out)
+  #infer_meta : 
+    #func : UniformRandomInferMeta
+  #kernel : 
+    #func : uniform_random
+  #backward : uniform_random_grad
 
 #  =================================== sep3
