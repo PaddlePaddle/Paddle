@@ -29,15 +29,19 @@ from .profiler_statistic import StatisticData, _build_table, SortedKeys
 
 class ProfilerState(Enum):
     r"""
-    ProfilerState is used to present the state of :ref:`Profiler <api_profiler_profiler>` .
+    ProfilerState is used to present the state of :ref:`Profiler <api_paddle_profiler_Profiler>` .
 
     The meaning of each ProfilerState is as following
-        - **ProfilerState.CLOSED** : The profiler is closed, and no profiling data will be recorded.
-        - **ProfilerState.READY** : The profiler is open, but the data will not be recorded.
-        This state is used for reducing overhead influence when profiler starts.
-        - **ProfilerState.RECORD** : The profiler is open, and the data will be recorded.
-        - **ProfilerState.RECORD_AND_RETURN** : The profiler is open, and this state stands for the last batch of "RECORD" state in current profiling period.
-        The collected data will be returned in this state.
+
+    **ProfilerState.CLOSED** : The profiler is closed, and no profiling data will be recorded.
+
+    **ProfilerState.READY** : The profiler is open, but the data will not be recorded.
+    This state is used for reducing overhead influence when profiler starts.
+
+    **ProfilerState.RECORD** : The profiler is open, and the data will be recorded.
+
+    **ProfilerState.RECORD_AND_RETURN** : The profiler is open, and this state stands for the last batch of "RECORD" state in current profiling period.
+    The collected data will be returned in this state.
     """
     CLOSED = 0
     READY = 1
@@ -47,11 +51,13 @@ class ProfilerState(Enum):
 
 class ProfilerTarget(Enum):
     r"""
-    ProfilerTarget is used to specify target device for :ref:`profiling <api_profiler_profiler>` . Only CPU and GPU are supported currently.
+    ProfilerTarget is used to specify target device for :ref:`profiling <api_paddle_profiler_Profiler>` . Only CPU and GPU are supported currently.
 
     The meaning of each ProfilerState is as following
-        - **ProfilerTarget.CPU** : Profile events on CPU.
-        - **ProfilerTarget.GPU** : Profile events on GPU.
+
+    **ProfilerTarget.CPU** : Profile events on CPU.
+
+    **ProfilerTarget.GPU** : Profile events on GPU.
     """
     CPU = 0
     GPU = 1
@@ -64,7 +70,7 @@ def make_scheduler(*,
                    repeat: int=0,
                    skip_first: int=0) -> Callable:
     r"""
-    Return a scheduler function, which scheduler the :ref:`state <api_profiler_profilerstate>` according to the setting.
+    Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
 
     .. code-block:: text
@@ -92,7 +98,7 @@ def make_scheduler(*,
         Assume batch 0: closed, batch 1: ready, batch [2, 5] record
 
             .. code-block:: python
-              :name: code-example1
+                :name: code-example1
 
                 import paddle.profiler as profiler
                 profiler.make_scheduler(closed=1, ready=1, record=4, repeat=1)
@@ -103,7 +109,7 @@ def make_scheduler(*,
         Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
 
             .. code-block:: python
-              :name: code-example2
+                :name: code-example2
 
                 import paddle.profiler as profiler
                 profiler.make_scheduler(closed=1, ready=1, record=4, skip_first=1)
@@ -210,6 +216,7 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
 
     Examples:
         The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
+
         .. code-block:: python
             :name: code-example1
 
