@@ -68,6 +68,7 @@ class IValue {
 
   IValue(const IValue& rhs) : tag_(rhs.tag_) {
     if (IsTensor()) {
+      new (&holder_.as_tensor) Tensor();
       holder_.as_tensor = rhs.holder_.as_tensor;
     } else {
       holder_.cv = rhs.holder_.cv;
@@ -124,7 +125,15 @@ class IValue {
 
  private:
   // TODO(dev): implement it.
-  void MoveFrom(IValue&& rhs) {}
+  void MoveFrom(IValue&& rhs) {
+    tag_ = rhs.tag_;
+    if (IsTensor()) {
+      new (&holder_.as_tensor) Tensor();
+      holder_.as_tensor = rhs.holder_.as_tensor;
+    } else {
+      holder_.cv = rhs.holder_.cv;
+    }
+  }
   // Inner data struct to represent both Tensor and Plain constant value;
   Holder holder_;
   // TODO(dev): Use Tag to distingwish Tensor/bool/int64_t/double

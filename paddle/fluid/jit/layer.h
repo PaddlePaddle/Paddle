@@ -22,7 +22,6 @@
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/jit/ivalue.h"
 #include "paddle/fluid/jit/object.h"
-#include "paddle/fluid/jit/serializer.h"
 
 namespace paddle {
 namespace jit {
@@ -30,17 +29,36 @@ namespace jit {
 class Layer {
  public:
   // TODO(dev): Make vector<string>, num_slot as in argument
-  Layer(std::shared_ptr<CompilationUnit> cu, const ClassType& type)
-      : obj_(ClassType::Create({}, cu), /*num_slot*/ 0U) {}
+  // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
+  // {}
+  Layer(const std::vector<framework::ProgramDesc>& progs,
+        const std::vector<IValue>& params) {
+    cout << "program size: " << progs.size() << endl;
+    // Layer manage the life time of all parameter.
+    params_ = params;
+    for (size_t i = 0; i < progs.size(); ++i) {
+      funcs_.emplace_back(std::make_shared<Function>(progs[i], params_));
+    }
+  }
 
-  void save(const std::string& file_path) const { Export(*this, file_path); }
+  // TODO: make it as const function
+  std::shared_ptr<Function> GetFunction(const std::string& name) {
+    cout << "funcs_ size: " << funcs_.size() << endl;
+    return funcs_[0];
+  }
 
-  Function* get_mothod(const std::string& name) const;
-
-  std::vector<IValue> forward(const std::vector<IValue>& args);
+  std::vector<IValue> forward(const std::vector<IValue>& args) {
+    auto func = GetFunction("forward");
+    return (*func)(args);
+  }
 
  private:
-  internal::Object obj_;
+  // internal::Object obj_;
+  // TODO: we should class them.
+  std::vector<framework::ProgramDesc> progs_;
+  std::vector<std::string> param_names_;
+  std::vector<IValue> params_;
+  std::vector<std::shared_ptr<Function>> funcs_;
 };
 
 }  // namespace jit
