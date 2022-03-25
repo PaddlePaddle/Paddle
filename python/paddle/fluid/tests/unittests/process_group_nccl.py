@@ -179,12 +179,14 @@ class TestProcessGroupFp32(unittest.TestCase):
             if pg.rank() == 0:
                 task = pg.alltoall(tensor_x, tensor_out1)
                 task.wait()
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
-                task = pg.alltoall(tensor_y, tensor_out2)
-                task.wait()
+                in_1, in_2 = paddle.split(tensor_y, 2)
+                out_1, out_2 = paddle.split(tensor_out2, 2)
+                out_tensor_list = [out_1, out_2]
+                task = dist.alltoall([in_1, in_2], out_tensor_list)
                 paddle.device.cuda.synchronize()
+                tensor_out2 = paddle.concat(out_tensor_list)
             out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
                                   [self.shape[0]])
             out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
@@ -202,12 +204,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             tensor_y = paddle.to_tensor(y)
             sum_result = tensor_x + tensor_y
             if pg.rank() == 0:
-                task = pg.reduce(tensor_x, 0)
-                task.wait()
+                task = dist.reduce(tensor_x, 0, use_calc_stream=True)
                 paddle.device.cuda.synchronize()
             # rank 1
             else:
-                task = pg.reduce(tensor_y, 0)
+                task = dist.reduce(tensor_y, 0, use_calc_stream=False)
                 task.wait()
                 paddle.device.cuda.synchronize()
             if pg.rank() == 0:
@@ -223,12 +224,14 @@ class TestProcessGroupFp32(unittest.TestCase):
             tensor_x = paddle.to_tensor(x)
             tensor_y = paddle.to_tensor(y)
             if pg.rank() == 0:
-                task = pg.scatter(tensor_x, tensor_y, 0)
-                task.wait()
+                in_1, in_2 = paddle.split(tensor_x, 2)
+                task = dist.scatter(
+                    tensor_y, [in_1, in_2], 0, use_calc_stream=True)
+                #task.wait()
                 paddle.device.cuda.synchronize()
             # rank 1
             else:
-                task = pg.scatter(tensor_x, tensor_y, 0)
+                task = dist.scatter(tensor_y, [], 0, use_calc_stream=False)
                 task.wait()
                 paddle.device.cuda.synchronize()
             out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])

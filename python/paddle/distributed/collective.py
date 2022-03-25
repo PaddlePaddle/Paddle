@@ -927,7 +927,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     temp = paddle.concat(tensor_list, axis=0)
     wait(temp, group, use_calc_stream=True)
     if core._in_eager_mode() and in_dygraph_mode():
-        task = group.scatter(temp, tensor, gsrc)
+        task = group.process_group.scatter(temp, tensor, gsrc)
         if use_calc_stream:
             task.wait()
             return None
@@ -1718,14 +1718,16 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     nranks = len(in_tensor_list)
     wait(temp, group, use_calc_stream=True)
     if core._in_eager_mode() and in_dygraph_mode():
-        out = paddle.empty_like(temp, temp.dtype)
-        wait(temp, group, use_calc_stream=True)
-        task = group.alltoall(temp, out)
+        out = paddle.concat(out_tensor_list, axis=0)
+        wait(out, group, use_calc_stream=True)
+        task = group.process_group.alltoall(temp, out)
         task.wait()
-        assert use_calc_stream, ("For alltoall, only use_calc_stream=True "
-                                 "is supported.")
+        #assert use_calc_stream, ("For alltoall, only use_calc_stream=True "
+        #                         "is supported.")
+        out_tensor_list.clear()
         out_tensor_list.extend(paddle.split(out, nranks, 0))
         wait(temp, group, use_calc_stream=True)
+        return
 
     if in_dygraph_mode():
         out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
