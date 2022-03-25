@@ -85,9 +85,7 @@ DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Rsqrt, "rsqrt", );            // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
                                  "hard_sigmoid",
                                  "slope" comma "offset");  // NOLINT
-KernelSignature SqrtActiOpArgumentMapping(
-
-    const ArgumentMappingContext& ctx) {
+KernelSignature SqrtActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     return KernelSignature("sqrt", {"X"}, {}, {"Out"});
   }
