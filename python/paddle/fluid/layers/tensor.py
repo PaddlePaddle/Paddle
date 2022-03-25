@@ -654,6 +654,7 @@ def assign(input, output=None):
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
+
         if in_dygraph_mode():
             output = _C_ops.assign_value('dtype', dtype, 'shape',
                                          list(input.shape), value_name, values)
