@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 namespace optimizer_config {
-
+#ifdef PADDLE_WITH_CUDA
 __constant__ float nonclk_coeff = 0.1;
 __constant__ float clk_coeff = 1;
 
@@ -31,4 +31,5 @@ __constant__ float mf_initial_g2sum = 3.0;
 __constant__ float mf_initial_range = 1e-4;
 __constant__ float mf_min_bound = -10;
 __constant__ float mf_max_bound = 10;
-}
+#endif
+}  // end namespace optimizer_config

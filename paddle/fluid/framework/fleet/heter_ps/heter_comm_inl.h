@@ -520,8 +520,8 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
 #ifdef PADDLE_WITH_XPU
   platform::XPUPlace place = platform::XPUPlace(dev_id);
   platform::XPUDeviceGuard guard(dev_id);
-  T* d_k_buf = nullptr;
-  T* d_v_buf = nullptr;
+  KeyType* d_k_buf = nullptr;
+  ValType* d_v_buf = nullptr;
   PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&d_k_buf),
                                chunk_size * sizeof(KeyType)),
                     XPU_SUCCESS, platform::errors::ResourceExhausted(
@@ -535,12 +535,12 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
 
   while (cur_len < len) {
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(reinterpret_cast<KeyType*>(d_k_buf), h_keys + cur_len,
-                   sizeof(KeyType) * tmp_len, XPU_HOST_TO_DEVICE));
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(reinterpret_cast<ValType*>(d_v_buf), h_vals + cur_len,
-                   sizeof(ValType) * tmp_len, XPU_HOST_TO_DEVICE));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(d_k_buf, h_keys + cur_len,
+                                          sizeof(KeyType) * tmp_len,
+                                          XPU_HOST_TO_DEVICE));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(d_v_buf, h_vals + cur_len,
+                                          sizeof(ValType) * tmp_len,
+                                          XPU_HOST_TO_DEVICE));
     // TODO(zhiping): xpu kv insert
     // tables_[num]->insert(
     //     reinterpret_cast<KeyType*>(d_k_buf),
@@ -608,13 +608,13 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   platform::XPUDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
-  T* d_merge_keys = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_merge_keys), len * sizeof(KeyType));
-  KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys);
+  KeyType* d_merge_keys_ptr = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&d_merge_keys_ptr),
+             len * sizeof(KeyType));
 
-  T* d_merge_grads = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_merge_grads), len * sizeof(GradType));
-  GradType* d_merge_grads_ptr = reinterpret_cast<GradType*>(d_merge_grads);
+  GradType* d_merge_grads_ptr = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&d_merge_grads_ptr),
+             len * sizeof(GradType));
 
   // TODO(zhipeng): xpu::SortPairs 接口待实现
   // size_t temp_storage_bytes;
@@ -631,9 +631,8 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   //     false));
   // temp_storage_bytes = 0;
 
-  T* d_num_runs_out_mem = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_num_runs_out_mem), sizeof(int));
-  int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem);
+  int* d_num_runs_out = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&d_num_runs_out), sizeof(int));
 
 // TODO(zhipeng): xpu::ReduceByKey 接口待实现
 // PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
@@ -701,17 +700,15 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   platform::XPUDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
 
-  T* d_idx_tmp = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_idx_tmp), len * sizeof(int));
-  int* d_idx_tmp_ptr = reinterpret_cast<int*>(d_idx_tmp);
+  int* d_idx_tmp_ptr = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&d_idx_tmp_ptr), len * sizeof(int));
 
-  T* d_shard_index = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_shard_index), len * sizeof(int));
-  int* d_shard_index_ptr = reinterpret_cast<int*>(d_shard_index);
+  int* d_shard_index_ptr = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&d_shard_index_ptr), len * sizeof(int));
 
-  T* d_shard_index_tmp = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_shard_index_tmp), len * sizeof(int));
-  int* d_shard_index_tmp_ptr = reinterpret_cast<int*>(d_shard_index_tmp);
+  int* d_shard_index_tmp_ptr = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&d_shard_index_tmp_ptr),
+             len * sizeof(int));
 
   fill_idx<<<3, 64, stream>>>(d_idx_tmp_ptr, len);
 
@@ -859,13 +856,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   ​xpu_malloc(reinterpret_cast<*void**>(&d_idx), len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx);
 
-  T* d_shard_keys = nullptr;
-  T* d_shard_vals = nullptr;
-  ​xpu_malloc(reinterpret_cast<*void**>(&d_shard_keys),
+  int* d_shard_keys_ptr = nullptr;
+  int* d_shard_vals_ptr = nullptr;
+  ​xpu_malloc(reinterpret_cast<*void**>(&d_shard_keys_ptr),
                 len * sizeof(KeyType));
-  xpu_malloc(reinterpret_cast<*void**>(&d_shard_vals), len * sizeof(ValType));
-  int* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys);
-  int* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals);
+  xpu_malloc(reinterpret_cast<*void**>(&d_shard_vals_ptr),
+             len * sizeof(ValType));
 
   split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
 

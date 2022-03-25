@@ -790,10 +790,9 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 #endif
 #ifdef PADDLE_WITH_XPU
   VLOG(3) << "Begine Xpu Ps PullSparse";
-  T* buf = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&buf),
+  FeatureValue* total_values_gpu = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&total_values_gpu),
              total_length * sizeof(FeatureValue));
-  FeatureValue* total_values_gpu = reinterpret_cast<FeatureValue*>(buf));
 #endif
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -919,11 +918,9 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
 #endif
 #ifdef PADDLE_WITH_XPU
   VLOG(3) << "Begine Xpu Ps PushSparseGrad";
-  T* buf = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&buf),
+  FeaturePushValue* total_grad_values_gpu = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&total_grad_values_gpu),
              total_length * sizeof(FeaturePushValue));
-  FeaturePushValue* total_grad_values_gpu =
-      reinterpret_cast<FeaturePushValue*>(buf);
 #endif
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
