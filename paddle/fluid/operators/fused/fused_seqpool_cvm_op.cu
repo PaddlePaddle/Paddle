@@ -28,74 +28,79 @@ using Vector = framework::Vector<T>;
   for (auto i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
 
-// normal
 template <typename T>
-__global__ void FusedSeqpoolKernelNormal(const size_t N, T **input_values,
-                                         T **seqpool_output_values,
-                                         const size_t *lods_values,
-                                         const int batch_size,
-                                         const int embedding_size,
-                                         const float pad_value) {
-  CUDA_KERNEL_LOOP(i, N) {
-    int key = i / embedding_size;
-    int offset = i % embedding_size;
-    int x = key / batch_size;  // slot id
-    int y = key % batch_size;  // ins id
-    auto &start = lods_values[key + x]; // x * (batch_size + 1) + y
-    auto &end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
-    
-
-    T val = static_cast<T>(pad_value);
-    for (auto k = start; k < end; ++k) {
-      val += *(input_values[x] + k * embedding_size + offset);
-    }
-    *(seqpool_output_values[x] + y * embedding_size + offset) = val;
-  }
-}
-
-// join need show click input
-template <typename T>
-__global__ void FusedCVMKernelWithCVM(const size_t N, T **output_values,
-                                      T **seqpool_output_values,
-                                      const int batch_size,
-                                      const int embedding_size,
-                                      const int cvm_offset) {
-  CUDA_KERNEL_LOOP(i, N) {
-    int key = i / embedding_size;
-    int offset = i % embedding_size;
-    int x = key / batch_size;  // slot id
-    int y = key % batch_size;  // ins id
-    if (offset == 0) {         // show
-      *(output_values[x] + y * embedding_size) =
-          log(*(seqpool_output_values[x] + y * embedding_size) + 1);
-    } else if (offset == 1) {  // click
-      *(output_values[x] + y * embedding_size + offset) =
-          log(*(seqpool_output_values[x] + y * embedding_size + 1) + 1) -
-          log(*(seqpool_output_values[x] + y * embedding_size) + 1);
-    } else {
-      *(output_values[x] + y * embedding_size + offset) =
-          *(seqpool_output_values[x] + y * embedding_size + offset);
-    }
-  }
-}
-
-// update not need show click input
-template <typename T>
-__global__ void FusedCVMKernelNoCVM(const size_t N, T **output_values,
-                                    T **seqpool_output_values,
+__device__ void FusedCVMKernelNoCVMDevice(const size_t slot_num, T **input_values, T **output_values,
+                                    const size_t *lods_values,
                                     const int batch_size,
-                                    const int no_cvm_embedding_size,
-                                    const int cvm_offset) {
+                                    const float pad_value,
+                                    const int embedding_size,
+                                    const int cvm_offset,
+                                    const int output_embedding_size,
+                                    const int output_offset) {
+  const size_t no_cvm_embedding_size = (embedding_size - cvm_offset);
+  size_t N = no_cvm_embedding_size * slot_num * batch_size;
   CUDA_KERNEL_LOOP(i, N) {
     int key = i / no_cvm_embedding_size;
     int offset = i % no_cvm_embedding_size;
     int x = key / batch_size;  // slot id
     int y = key % batch_size;  // ins id
     // no cvm
-    *(output_values[x] + y * no_cvm_embedding_size + offset) =
-        *(seqpool_output_values[x] + y * (no_cvm_embedding_size + cvm_offset) +
-          offset + cvm_offset);
+    auto start = lods_values[key + x]; // x * (batch_size + 1) + y
+    auto end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
+
+    T val = static_cast<T>(pad_value);
+    auto input_values_ptr = input_values[x];
+    for (auto k = start; k < end; ++k) {
+      val += input_values_ptr[k * embedding_size + offset + cvm_offset];
+    }
+    output_values[x][y * output_embedding_size + offset + output_offset] = val;
   }
+}
+
+// join need show click input
+template <typename T>
+__global__ void FusedCVMKernelWithCVM(const size_t slot_num, T **input_values, T **output_values,
+                                      const size_t *lods_values,
+                                      const int batch_size,
+                                      const float pad_value,
+                                      const int embedding_size,
+                                      const int cvm_offset) {
+  FusedCVMKernelNoCVMDevice(slot_num,
+    input_values, output_values, lods_values,
+    batch_size, pad_value, embedding_size, cvm_offset, embedding_size, cvm_offset);
+  size_t N = slot_num * batch_size;
+  CUDA_KERNEL_LOOP(i, N) {
+    int x = i / batch_size;  // slot id
+    int y = i % batch_size;  // ins id
+    auto start = lods_values[i + x]; // x * (batch_size + 1) + y
+    auto end = lods_values[i + x + 1]; // x * (batch_size + 1) + y + 1
+    T show_sum = 0;
+    T click_sum = 0;
+    auto input_values_ptr = input_values[x];
+    for (auto k = start; k < end; ++k) {
+      auto values_ptr = input_values_ptr + k * embedding_size;
+      show_sum += values_ptr[0];
+      click_sum += values_ptr[1];
+    }
+    show_sum = log(show_sum + 1);
+    click_sum = show_sum - log(click_sum + 1);
+    auto out_values_ptr = output_values[x] + y * embedding_size;
+    out_values_ptr[0] = show_sum;
+    out_values_ptr[1] = click_sum;
+  }
+}
+
+// update not need show click input
+template <typename T>
+__global__ void FusedCVMKernelNoCVM(const size_t slot_num, T **input_values, T **output_values,
+                                    const size_t *lods_values,
+                                    const int batch_size,
+                                    const float pad_value,
+                                    const int embedding_size,
+                                    const int cvm_offset) {
+  FusedCVMKernelNoCVMDevice(slot_num,
+    input_values, output_values, lods_values,
+    batch_size, pad_value, embedding_size, cvm_offset, embedding_size - cvm_offset, 0);
 }
 
 template <typename T>
@@ -103,7 +108,6 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
                          &ctx,  // const paddle::platform::Place &place,
                      const std::vector<const T *> &input_data,
                      const std::vector<T *> &output_data,
-                     const std::vector<T *> &seqpool_output_data,
                      const size_t* lods, const int batch_size,
                      const int slot_num, const int embedding_size,
                      const float padding_value, const bool use_cvm,
@@ -111,8 +115,7 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
   auto stream =
       ctx.template device_context<platform::CUDADeviceContext>().stream();
   auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  size_t total_ptr_len = input_data.size() + output_data.size() +
-                         seqpool_output_data.size();
+  size_t total_ptr_len = input_data.size() + output_data.size();
   auto temp_ptr =
       memory::AllocShared(ctx.GetPlace(), total_ptr_len * sizeof(void *));
   void *ptr = temp_ptr->ptr();
@@ -127,11 +130,6 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
   platform::GpuMemcpyAsync(gpu_output_values, output_data.data(),
                            output_data.size() * sizeof(T *),
                            hipMemcpyHostToDevice, stream);
-  T **gpu_seqpool_output_values =
-      reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
-  platform::GpuMemcpyAsync(
-      gpu_seqpool_output_values, seqpool_output_data.data(),
-      seqpool_output_data.size() * sizeof(T *), hipMemcpyHostToDevice, stream);
 #else
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
   platform::GpuMemcpyAsync(gpu_input_values, input_data.data(),
@@ -142,25 +140,14 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
   platform::GpuMemcpyAsync(gpu_output_values, output_data.data(),
                            output_data.size() * sizeof(T *),
                            cudaMemcpyHostToDevice, stream);
-  T **gpu_seqpool_output_values =
-      reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
-  platform::GpuMemcpyAsync(
-      gpu_seqpool_output_values, seqpool_output_data.data(),
-      seqpool_output_data.size() * sizeof(T *), cudaMemcpyHostToDevice, stream);
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
   platform::GpuLaunchConfig config = GetGpuLaunchConfig1D(dev_ctx, N);
-  // first sum pool
-  FusedSeqpoolKernelNormal<<<config.block_per_grid.x, config.thread_per_block.x,
-                             0, stream>>>(
-      N, gpu_input_values, gpu_seqpool_output_values, lods, batch_size,
-      embedding_size, padding_value);
   // second log
   if (use_cvm) {
     FusedCVMKernelWithCVM<<<config.block_per_grid.x, config.thread_per_block.x,
-                            0, stream>>>(N, gpu_output_values,
-                                         gpu_seqpool_output_values, batch_size,
+                            0, stream>>>(slot_num, gpu_input_values, gpu_output_values, lods, batch_size, padding_value,
                                          embedding_size, cvm_offset);
   } else {
     // not need show click input
@@ -168,9 +155,8 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
                             (embedding_size - cvm_offset));
     platform::GpuLaunchConfig config = GetGpuLaunchConfig1D(dev_ctx, N);
     FusedCVMKernelNoCVM<<<config.block_per_grid.x, config.thread_per_block.x, 0,
-                          stream>>>(N, gpu_output_values,
-                                    gpu_seqpool_output_values, batch_size,
-                                    (embedding_size - cvm_offset), cvm_offset);
+                          stream>>>(slot_num, gpu_input_values, gpu_output_values, lods, batch_size, padding_value,
+                                    embedding_size, cvm_offset);
   }
 }
 
@@ -186,14 +172,14 @@ __global__ void FusedSeqpoolCVMGradKernelWithCVM(
     int x = key / batch_size;         // slot id
     int y = key % batch_size;         // ins id
 
-    T &val = (offset < cvm_offset)
-                 ? *(cvm_values[x] + y * cvm_offset + offset)
-                 : *(out_grads_values[x] + y * embedding_size + offset);
+    T val = (offset < cvm_offset)
+                 ? cvm_values[x][y * cvm_offset + offset]
+                 : out_grads_values[x][y * embedding_size + offset];
 
-    auto &start = lods_values[key + x]; // x * (batch_size + 1) + y
-    auto &end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
+    auto start = lods_values[key + x]; // x * (batch_size + 1) + y
+    auto end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
     for (auto k = start; k < end; ++k) {
-      *(in_grads_values[x] + k * embedding_size + offset) = val;
+      in_grads_values[x][k * embedding_size + offset] = val;
     }
   }
 }
@@ -210,15 +196,15 @@ __global__ void FusedSeqpoolCVMGradKernelWithShow(
     int x = key / batch_size;         // slot id
     int y = key % batch_size;         // ins id
 
-    T &val =
+    T val =
         (offset < cvm_offset)
-            ? *(cvm_values[x] + y * cvm_offset + offset)
-            : *(out_grads_values[x] + y * (embedding_size - 1) + offset - 1);
+            ? cvm_values[x][y * cvm_offset + offset]
+            : out_grads_values[x][y * (embedding_size - 1) + offset - 1];
 
-    auto &start = lods_values[key + x]; // x * (batch_size + 1) + y
-    auto &end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
+    auto start = lods_values[key + x]; // x * (batch_size + 1) + y
+    auto end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
     for (auto k = start; k < end; ++k) {
-      *(in_grads_values[x] + k * embedding_size + offset) = val;
+      in_grads_values[x][k * embedding_size + offset] = val;
     }
   }
 }
@@ -235,15 +221,15 @@ __global__ void FusedSeqpoolCVMGradKernelNoCVM(
     int x = key / batch_size;         // slot id
     int y = key % batch_size;         // ins id
 
-    T &val = (offset < cvm_offset)
-                 ? *(cvm_values[x] + y * cvm_offset + offset)
-                 : *(out_grads_values[x] + y * (embedding_size - cvm_offset) +
-                     offset - cvm_offset);
+    T val = (offset < cvm_offset)
+                 ? cvm_values[x][y * cvm_offset + offset]
+                 : out_grads_values[x][y * (embedding_size - cvm_offset) +
+                     offset - cvm_offset];
 
-    auto &start = lods_values[key + x]; // x * (batch_size + 1) + y
-    auto &end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
+    auto start = lods_values[key + x]; // x * (batch_size + 1) + y
+    auto end = lods_values[key + x + 1]; // x * (batch_size + 1) + y + 1
     for (auto k = start; k < end; ++k) {
-      *(in_grads_values[x] + k * embedding_size + offset) = val;
+      in_grads_values[x][k * embedding_size + offset] = val;
     }
   }
 }
@@ -329,8 +315,6 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
     std::vector<T *> output_data(slot_size);
 
     std::vector<LoDTensor> seqpool_outputs(slot_size);
-    std::vector<T *> seqpool_output_data(slot_size);
-
     auto padding_value = ctx.Attr<float>("pad_value");
     auto use_cvm = ctx.Attr<bool>("use_cvm");
     const int cvm_offset = ctx.Attr<int>("cvm_offset");
@@ -339,6 +323,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
     int batch_size = inputs[0]->lod().size() ? inputs[0]->lod()[0].size() - 1 : inputs[0]->dims()[0];
     std::vector<size_t> mix_lods;
     mix_lods.reserve(slot_size * (batch_size + 1));
+    #pragma omp parallel for
     for (size_t i = 0; i < slot_size; ++i) {
       const auto *input = inputs[i];
       if (input->lod().size() != 0) {
@@ -372,6 +357,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
                           "please cheack"));
     paddle::framework::MixVector<size_t> mix_lods_v(&mix_lods);
     auto mix_lods_data = mix_lods_v.CUDAData(ctx.GetPlace());
+    #pragma omp parallel for
     for (size_t i = 0; i < slot_size; ++i) {
       const auto *input = inputs[i];
       input_data[i] = reinterpret_cast<const T *>(input->data<T>());
@@ -384,12 +370,9 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       }
       output_data[i] =
           reinterpret_cast<T *>(output->mutable_data<T>(ctx.GetPlace()));
-      seqpool_output_data[i] =
-          reinterpret_cast<T *>(seqpool_outputs[i].mutable_data<T>(
-              {batch_size, embedding_size}, ctx.GetPlace()));
     }
 
-    FusedSeqpoolCVM(ctx, input_data, output_data, seqpool_output_data,
+    FusedSeqpoolCVM(ctx, input_data, output_data,
                     mix_lods_data, batch_size, slot_size, embedding_size,
                     padding_value, use_cvm, cvm_offset);
   }
@@ -416,6 +399,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
     int batch_size = in_grads[0]->lod().size() ? in_grads[0]->lod()[0].size() - 1 : in_grads[0]->dims()[0];
     std::vector<size_t> mix_lods;
     mix_lods.reserve(slot_size * (batch_size + 1));
+    #pragma omp parallel for
     for (size_t i = 0; i < slot_size; ++i) {
       auto *in_grad = in_grads[i];
       if (in_grad->lod().size() != 0) {
@@ -449,6 +433,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
     paddle::framework::MixVector<size_t> mix_lods_v(&mix_lods);
     auto mix_lods_data = mix_lods_v.CUDAData(ctx.GetPlace());
 
+    #pragma omp parallel for
     for (size_t i = 0; i < slot_size; ++i) {
       auto *in_grad = in_grads[i];
 
