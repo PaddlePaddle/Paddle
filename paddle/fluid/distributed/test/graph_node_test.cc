@@ -456,7 +456,7 @@ void RunBrpcPushSparse() {
       pull_status.wait();
       ASSERT_EQ(_vs[0].size(), vs1[0].size());
 
-      for (int j = 0; j < _vs[0].size(); j++) {
+      for (size_t j = 0; j < _vs[0].size(); j++) {
         ASSERT_EQ(_vs[0][j], vs1[0][j]);
       }
     }
