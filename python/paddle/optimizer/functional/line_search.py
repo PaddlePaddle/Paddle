@@ -19,8 +19,16 @@ from paddle.fluid.framework import in_dygraph_mode
 
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
-    # cubic interpolation use two points and their function value and gradient.
-    # Usually it has a better covergence than bisect.
+    r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
+        Use two points and their gradient to determine a cubic function and get the minimun point
+        between them in the cubic curve.
+        Usually it has a better covergence than bisect.
+    Args:
+        x1, f1, g1: point1's position, value and gradient.
+        x2, f2, g2: point2's position, value and gradient.
+    Returns:
+        min_pos: the minimun point between the specified points in the cubic curve.
+    """
     if in_dygraph_mode():
         if x1 <= x2:
             xmin, xmax = (x1, x2)
@@ -44,24 +52,25 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
         d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
         d2_square = d1**2 - g1 * g2
 
-        def true_func():
+        def true_func1():
             d2 = d2_square.sqrt()
 
-            def true_fn():
+            def true_fn2():
                 return x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
 
-            def false_fn():
+            def false_fn2():
                 return x1 - (x1 - x2) * ((g1 + d2 - d1) / (g1 - g2 + 2 * d2))
 
             pred = paddle.less_equal(x=x1, y=x2)
-            min_pos = paddle.static.nn.cond(pred, true_fn, false_fn)
+            min_pos = paddle.static.nn.cond(pred, true_fn2, false_fn2)
 
             return paddle.minimum(paddle.maximum(min_pos, xmin), xmax)
 
-        def false_func():
+        def false_func1():
             return (xmin + xmax) / 2.
 
-        min_pos = paddle.static.nn.cond(d2_square >= 0., true_func, false_func)
+        min_pos = paddle.static.nn.cond(d2_square >= 0., true_func1,
+                                        false_func1)
         return min_pos
 
 
@@ -75,10 +84,11 @@ def strong_wolfe(f,
                  c2=0.9,
                  alpha_max=10,
                  dtype='float32'):
-    """Implements of line search algorithm that satisfies the strong Wolfe conditions using double zoom.
+    r"""Implements of line search algorithm that satisfies the strong Wolfe conditions using double zoom.
     
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
+        pp60: Algorithm 3.5 (Line Search Algorithm).
     
     Args:
         f: the objective function to minimize. ``f`` accepts a multivariate input and returns a scalar.
@@ -97,15 +107,19 @@ def strong_wolfe(f,
     
     Returns:
         num_func_calls (float): number of objective function called in line search process.
-        alpha_star (Tensor): optimal step length, or None if the line search algorithm did not converge.
+        alpha_star (Tensor): optimal step length, or 0. if the line search algorithm did not converge.
         phi_star (Tensor): phi at alpha_star.
         derphi_star (Tensor): derphi at alpha_star.
     """
 
     def phi_and_derphi(alpha):
-        # phi = f(xk + alpha * pk)
+        r"""Compute function value and gradient of phi at alpha.
+            phi = f(xk + alpha * pk)
+            phi'(alpha) = f'(xk + alpha * pk) * pk
+        """
         phi_value, f_grad = _value_and_gradient(f, xk + alpha * pk)
         phi_grad = paddle.dot(f_grad, pk)
+        # return f_grad to be used in bfgs/l-bfgs to compute yk to avoid computint repeatly.
         return phi_value, f_grad, phi_grad
 
     def zoom(alpha_lo, phi_lo, derphi_lo, derf_lo, alpha_hi, phi_hi, derphi_hi,
@@ -177,7 +191,6 @@ def strong_wolfe(f,
 
         return j
 
-    # variable that can be used by both mode
     alpha_max = paddle.full(shape=[1], fill_value=alpha_max, dtype=dtype)
 
     alpha_1 = paddle.full(shape=[1], fill_value=0., dtype=dtype)

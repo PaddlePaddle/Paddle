@@ -47,8 +47,8 @@ def minimize_bfgs(objective_func,
     history.
 
     Reference:
-        Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
-        Second Edition, 2006.
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
+        pp140: Algorithm 6.1 (BFGS Method).
 
     Args:
         objective_func: the objective function to minimize. ``func`` accepts

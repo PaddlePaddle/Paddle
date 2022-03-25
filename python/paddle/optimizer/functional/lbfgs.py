@@ -37,8 +37,8 @@ def minimize_lbfgs(objective_func,
     The L-BFGS is simalar as BFGS, the only difference is that L-BFGS use historical
     sk, yk, rhok rather than H_k-1 to compute Hk.
     Reference:
-        Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
-        Second Edition, 2006.
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
+        pp179: Algorithm 7.5 (L-BFGS).
     Args:
         objective_func: the objective function to minimize. ``func`` accepts
             a multivariate input and returns a scalar.
