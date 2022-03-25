@@ -541,19 +541,6 @@
     func : mv
   backward : mv_grad
 
-# label_smooth
-- api : label_smooth
-  args : (Tensor label, Tensor prior_dist, float epsilon)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [label]
-  kernel :
-    func : label_smooth
-    data_type : label
-  optional : prior_dist
-  backward : label_smooth_grad
-
 #  =================================== sep0
 
 

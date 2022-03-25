@@ -307,17 +307,6 @@
   kernel :
     func : mv_grad
 
-- backward_api : label_smooth_grad
-  forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
-  args : (Tensor out_grad, float epsilon)
-  output : Tensor(label_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : label_smooth_grad    
-  optional : prior_dist
-
 #  =================================== sep0
 
 
