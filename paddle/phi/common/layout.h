@@ -32,8 +32,6 @@ enum class DataLayout {
   SPARSE_COO,
   SPARSE_CSR,
   NUM_DATA_LAYOUTS,
-  NDHWC,
-  NCDHW,
   // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_LAYOUT = UNDEFINED,
   // Note: Unify phi DataLayout and fluid::framework::DataLayout,
@@ -49,8 +47,6 @@ enum class DataLayout {
   kNCDHW = NCDHW,
   kNDHWC = NDHWC,
   kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
-  kNDHWC = NDHWC,
-  kNCDHW = NCDHW,
 };
 
 }  // namespace experimental
@@ -82,10 +78,6 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::SPARSE_COO;
   } else if (s == "SPARSE_CSR") {
     return DataLayout::SPARSE_CSR;
-  } else if (s == "NDHWC") {
-    return DataLayout::kNDHWC;
-  } else if (s == "NCDHW") {
-    return DataLayout::kNCDHW;
   } else {
     PD_THROW("Unknown data layout type string: ", s, ".");
   }
@@ -109,10 +101,6 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       return "SPARSE_COO";
     case DataLayout::SPARSE_CSR:
       return "SPARSE_CSR";
-    case DataLayout::kNDHWC:
-      return "NDHWC";
-    case DataLayout::kNCDHW:
-      return "NCDHW";
     default:
       PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
   }
