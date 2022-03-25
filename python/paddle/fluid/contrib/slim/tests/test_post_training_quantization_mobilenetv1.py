@@ -498,6 +498,7 @@ class TestPostTrainingEMDForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_avg_mobilenetv1(self):
         model = "MobileNet-V1"
         algo = "emd"
+        round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
@@ -511,9 +512,9 @@ class TestPostTrainingEMDForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.025
-        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, is_optimize_model,
-                      diff_threshold)
+        self.run_test(model, algo, round_type, data_urls, data_md5s,
+                      quantizable_op_type, is_full_quantize, is_use_cache_file,
+                      is_optimize_model, diff_threshold)
 
 
 if __name__ == '__main__':

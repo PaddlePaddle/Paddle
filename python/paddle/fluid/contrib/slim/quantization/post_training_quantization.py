@@ -647,7 +647,7 @@ class PostTrainingQuantization(object):
     def _sample_emd(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
@@ -664,7 +664,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("EMD searching stage ...")
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
             abs_max_value = float(np.max(np.abs(var_tensor)))
             abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value

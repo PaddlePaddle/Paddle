@@ -257,6 +257,7 @@ class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model.tar.gz"
         data_md5 = "be71d3997ec35ac2a65ae8a145e2887c"
         algo = "emd"
+        round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -265,10 +266,10 @@ class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
-        self.run_test(model_name, data_url, data_md5, algo, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, is_optimize_model,
-                      diff_threshold, batch_size, infer_iterations,
-                      quant_iterations)
+        self.run_test(model_name, data_url, data_md5, algo, round_type,
+                      quantizable_op_type, is_full_quantize, is_use_cache_file,
+                      is_optimize_model, diff_threshold, batch_size,
+                      infer_iterations, quant_iterations)
 
 
 class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
