@@ -25,9 +25,9 @@ from paddle.autograd.functional import _as_tensors
 import config
 import utils
 from utils import (_compute_numerical_batch_hessian, _compute_numerical_hessian,
-                   _compute_numerical_vhp, matmul, mul, nested, o2, pow, reduce,
-                   reduce_dim, unuse, _compute_numerical_jacobian,
+                   _compute_numerical_vhp, _compute_numerical_jacobian,
                    _compute_numerical_batch_jacobian)
+from utils import matmul, mul, nested, o2, pow, reduce, reduce_dim, unuse
 
 
 def make_v(f, inputs):
@@ -338,7 +338,7 @@ class TestJacobianClassNoBatch(unittest.TestCase):
 @utils.parameterize((utils.TEST_CASE_NAME, 'func', 'xs'), (
     ('1d_in_1d_out', utils.square, np.array([[1., 2., 3.], [3., 4., 3.]])),
     ('3d_in_3d_out', utils.square, np.random.rand(2, 3, 4)),
-    ('multi-in-single-out', utils.square, np.random.rand(2, 3)), ))
+    ('multi_in_single_out', utils.square, np.random.rand(2, 3)), ))
 class TestJacobianClassBatchFirst(unittest.TestCase):
     def setUp(self):
         self._dtype = self.xs[0].dtype if isinstance(
@@ -410,8 +410,8 @@ class TestHessianClassNoBatch(unittest.TestCase):
 
         self.x.stop_gradient = False
         hessian = paddle.autograd.Hessian(func, self.x)
-        assert np.allclose(hessian[:].numpy(), numerical_hessian, self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
+                                   self.rtol, self.atol)
 
     def test_multi_input(self):
         def func(x, y):
@@ -586,8 +586,8 @@ class TestHessian(unittest.TestCase):
 
         self.x.stop_gradient = False
         hessian = paddle.autograd.hessian(func, self.x)
-        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian.numpy(), numerical_hessian[0][0],
+                                   self.rtol, self.atol)
 
     def test_multi_input(self):
         def func(x, y):
@@ -601,9 +601,9 @@ class TestHessian(unittest.TestCase):
         hessian = paddle.autograd.hessian(func, [self.x, self.y])
         for i in range(len(hessian)):
             for j in range(len(hessian[0])):
-                assert np.allclose(hessian[i][j].numpy(),
-                                   numerical_hessian[i][j], self.rtol,
-                                   self.atol)
+                np.testing.assert_allclose(hessian[i][j].numpy(),
+                                           numerical_hessian[i][j], self.rtol,
+                                           self.atol)
 
     def test_allow_unused_false(self):
         def func(x, y):
@@ -630,9 +630,9 @@ class TestHessian(unittest.TestCase):
         for i in range(len(hessian)):
             for j in range(len(hessian[0])):
                 if i == j == 0:
-                    assert np.allclose(hessian[i][j].numpy(),
-                                       numerical_hessian[i][j], self.rtol,
-                                       self.atol)
+                    np.testing.assert_allclose(hessian[i][j].numpy(),
+                                               numerical_hessian[i][j],
+                                               self.rtol, self.atol)
                 else:
                     assert hessian[i][j] is None
 
@@ -645,8 +645,8 @@ class TestHessian(unittest.TestCase):
         self.x.stop_gradient = False
         hessian = paddle.autograd.hessian(func, self.x)
         assert hessian.stop_gradient == True
-        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian.numpy(), numerical_hessian[0][0],
+                                   self.rtol, self.atol)
         try:
             paddle.grad(hessian, self.x)
         except RuntimeError as e:
@@ -662,8 +662,8 @@ class TestHessian(unittest.TestCase):
         self.x.stop_gradient = False
         hessian = paddle.autograd.hessian(func, self.x, create_graph=True)
         assert hessian.stop_gradient == False
-        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian.numpy(), numerical_hessian[0][0],
+                                   self.rtol, self.atol)
         triple_grad = paddle.grad(hessian, self.x)
         assert triple_grad is not None
 
@@ -710,7 +710,8 @@ class TestBatchHessian(unittest.TestCase):
             func, self.x, self.numerical_delta, self.np_dtype)
         self.x.stop_gradient = False
         hessian = paddle.autograd.batch_hessian(func, self.x, create_graph=True)
-        assert np.allclose(hessian, numerical_hessian, self.rtol, self.atol)
+        np.testing.assert_allclose(hessian, numerical_hessian, self.rtol,
+                                   self.atol)
 
     def test_multi_input(self):
         def func(x, y):
@@ -725,8 +726,8 @@ class TestBatchHessian(unittest.TestCase):
 
         shape_tensor = paddle.to_tensor(numerical_hessian).astype("float64")
         hessian_reshape = np.reshape(hessian, (shape_tensor.shape))
-        assert np.allclose(hessian_reshape, numerical_hessian, self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian_reshape, numerical_hessian,
+                                   self.rtol, self.atol)
 
     def test_allow_unused_false(self):
         def func(x, y):
@@ -757,8 +758,8 @@ class TestBatchHessian(unittest.TestCase):
                     numerical_hessian = np.stack(
                         (numerical_hessian[i][j], numerical_hessian[i][j + 1]),
                         axis=0)
-                    assert np.allclose(hessian[i][j], numerical_hessian,
-                                       self.rtol, self.atol)
+                    np.testing.assert_allclose(hessian[i][j], numerical_hessian,
+                                               self.rtol, self.atol)
                 else:
                     assert hessian[i][j] is None
 
@@ -771,8 +772,8 @@ class TestBatchHessian(unittest.TestCase):
         self.x.stop_gradient = False
         hessian = paddle.autograd.batch_hessian(func, self.x)
         assert hessian.stop_gradient == True
-        assert np.allclose(hessian.numpy(), numerical_hessian, self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian.numpy(), numerical_hessian,
+                                   self.rtol, self.atol)
         try:
             paddle.grad(hessian, self.x)
         except RuntimeError as e:
@@ -788,8 +789,8 @@ class TestBatchHessian(unittest.TestCase):
         self.x.stop_gradient = False
         hessian = paddle.autograd.batch_hessian(func, self.x, create_graph=True)
         assert hessian.stop_gradient == False
-        assert np.allclose(hessian.numpy(), numerical_hessian, self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(hessian.numpy(), numerical_hessian,
+                                   self.rtol, self.atol)
         triple_grad = paddle.grad(hessian, self.x)
         assert triple_grad is not None
 
@@ -840,10 +841,10 @@ class TestVHP(unittest.TestCase):
 
         self.x.stop_gradient = False
         func_output, vhp = paddle.autograd.vhp(func, self.x, self.vx)
-        assert np.allclose(func_output.numpy(), numerical_func_output,
-                           self.rtol, self.atol)
-        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(func_output.numpy(), numerical_func_output,
+                                   self.rtol, self.atol)
+        np.testing.assert_allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                                   self.atol)
 
     def test_multi_input(self):
         def func(x, y):
@@ -858,11 +859,11 @@ class TestVHP(unittest.TestCase):
         self.y.stop_gradient = False
         func_output, vhp = paddle.autograd.vhp(func, [self.x, self.y],
                                                [self.vx, self.vy])
-        assert np.allclose(func_output.numpy(), numerical_func_output,
-                           self.rtol, self.atol)
+        np.testing.assert_allclose(func_output.numpy(), numerical_func_output,
+                                   self.rtol, self.atol)
         for i in range(len(vhp)):
-            assert np.allclose(vhp[i].numpy(), numerical_vhp[i], self.rtol,
-                               self.atol)
+            np.testing.assert_allclose(vhp[i].numpy(), numerical_vhp[i],
+                                       self.rtol, self.atol)
 
     def test_v_default(self):
         def func(x, y):
@@ -878,11 +879,11 @@ class TestVHP(unittest.TestCase):
         self.x.stop_gradient = False
         self.y.stop_gradient = False
         func_output, vhp = paddle.autograd.vhp(func, [self.x, self.y])
-        assert np.allclose(func_output.numpy(), numerical_func_output,
-                           self.rtol, self.atol)
+        np.testing.assert_allclose(func_output.numpy(), numerical_func_output,
+                                   self.rtol, self.atol)
         for i in range(len(vhp)):
-            assert np.allclose(vhp[i].numpy(), numerical_vhp[i], self.rtol,
-                               self.atol)
+            np.testing.assert_allclose(vhp[i].numpy(), numerical_vhp[i],
+                                       self.rtol, self.atol)
 
     def test_allow_unused_true(self):
         def func(x, y):
@@ -897,10 +898,10 @@ class TestVHP(unittest.TestCase):
         self.y.stop_gradient = False
         func_output, vhp = paddle.autograd.vhp(func, [self.x, self.y],
                                                [self.vx, self.vy])
-        assert np.allclose(func_output.numpy(), numerical_func_output,
-                           self.rtol, self.atol)
-        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(func_output.numpy(), numerical_func_output,
+                                   self.rtol, self.atol)
+        np.testing.assert_allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                                   self.atol)
 
     def test_create_graph_true(self):
         def func(x):
@@ -912,11 +913,11 @@ class TestVHP(unittest.TestCase):
 
         self.x.stop_gradient = False
         func_output, vhp = paddle.autograd.vhp(func, self.x, self.vx)
-        assert np.allclose(func_output.numpy(), numerical_func_output,
-                           self.rtol, self.atol)
+        np.testing.assert_allclose(func_output.numpy(), numerical_func_output,
+                                   self.rtol, self.atol)
         assert vhp[0].stop_gradient == False
-        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
-                           self.atol)
+        np.testing.assert_allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                                   self.atol)
         triple_grad = paddle.grad(vhp, self.x)
         assert triple_grad is not None
 
@@ -941,8 +942,8 @@ class TestJacobian(unittest.TestCase):
             func, self.x, self.numerical_delta, self.np_dtype)
         self.x.stop_gradient = False
         jacobian = paddle.autograd.jacobian(func, self.x)
-        assert np.allclose(jacobian.numpy(), numerical_jacobian[0][0],
-                           self.rtol, self.atol)
+        np.testing.assert_allclose(jacobian.numpy(), numerical_jacobian[0][0],
+                                   self.rtol, self.atol)
 
     def test_single_input_and_multi_output(self):
         def func(x):
@@ -953,8 +954,9 @@ class TestJacobian(unittest.TestCase):
         self.x.stop_gradient = False
         jacobian = paddle.autograd.jacobian(func, self.x)
         for i in range(len(jacobian)):
-            assert np.allclose(jacobian[i].numpy(), numerical_jacobian[i][0],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(jacobian[i].numpy(),
+                                       numerical_jacobian[i][0], self.rtol,
+                                       self.atol)
 
     def test_multi_input_and_single_output(self):
         def func(x, y):
@@ -966,8 +968,9 @@ class TestJacobian(unittest.TestCase):
         self.y.stop_gradient = False
         jacobian = paddle.autograd.jacobian(func, [self.x, self.y])
         for j in range(len(jacobian)):
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(jacobian[j].numpy(),
+                                       numerical_jacobian[0][j], self.rtol,
+                                       self.atol)
 
     def test_multi_input_and_multi_output(self):
         def func(x, y):
@@ -980,9 +983,9 @@ class TestJacobian(unittest.TestCase):
         jacobian = paddle.autograd.jacobian(func, [self.x, self.y])
         for i in range(len(jacobian)):
             for j in range(len(jacobian[0])):
-                assert np.allclose(jacobian[i][j].numpy(),
-                                   numerical_jacobian[i][j], self.rtol,
-                                   self.atol)
+                np.testing.assert_allclose(jacobian[i][j].numpy(),
+                                           numerical_jacobian[i][j], self.rtol,
+                                           self.atol)
 
     def test_allow_unused_false(self):
         def func(x, y):
@@ -1006,8 +1009,8 @@ class TestJacobian(unittest.TestCase):
         self.y.stop_gradient = False
         jacobian = paddle.autograd.jacobian(
             func, [self.x, self.y], allow_unused=True)
-        assert np.allclose(jacobian[0].numpy(), numerical_jacobian[0][0],
-                           self.rtol, self.atol)
+        np.testing.assert_allclose(
+            jacobian[0].numpy(), numerical_jacobian[0][0], self.rtol, self.atol)
         assert jacobian[1] is None
 
     def test_create_graph_false(self):
@@ -1021,8 +1024,9 @@ class TestJacobian(unittest.TestCase):
         jacobian = paddle.autograd.jacobian(func, [self.x, self.y])
         for j in range(len(jacobian)):
             assert jacobian[j].stop_gradient == True
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(jacobian[j].numpy(),
+                                       numerical_jacobian[0][j], self.rtol,
+                                       self.atol)
         try:
             paddle.grad(jacobian[0], [self.x, self.y])
         except RuntimeError as e:
@@ -1041,8 +1045,9 @@ class TestJacobian(unittest.TestCase):
             func, [self.x, self.y], create_graph=True)
         for j in range(len(jacobian)):
             assert jacobian[j].stop_gradient == False
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(jacobian[j].numpy(),
+                                       numerical_jacobian[0][j], self.rtol,
+                                       self.atol)
         double_grad = paddle.grad(jacobian[0], [self.x, self.y])
         assert double_grad is not None
 
@@ -1104,8 +1109,9 @@ class TestJacobianBatch(unittest.TestCase):
             self.x, )
 
         for i in range(len(batch_jacobian)):
-            assert np.allclose(batch_jacobian[i].numpy(),
-                               numerical_jacobian[i][0], self.rtol, self.atol)
+            np.testing.assert_allclose(batch_jacobian[i].numpy(),
+                                       numerical_jacobian[i][0], self.rtol,
+                                       self.atol)
 
     def test_batch_multi_input_and_batch_single_output(self):
         def func(x, y):
@@ -1119,8 +1125,9 @@ class TestJacobianBatch(unittest.TestCase):
         batch_jacobian = paddle.autograd.batch_jacobian(func, [self.x, self.y])
 
         for j in range(len(batch_jacobian)):
-            assert np.allclose(batch_jacobian[j].numpy(),
-                               numerical_jacobian[0][j], self.rtol, self.atol)
+            np.testing.assert_allclose(batch_jacobian[j].numpy(),
+                                       numerical_jacobian[0][j], self.rtol,
+                                       self.atol)
 
     def test_batch_multi_input_and_batch_multi_output(self):
         def func(x, y):
@@ -1134,8 +1141,8 @@ class TestJacobianBatch(unittest.TestCase):
         batch_jacobian = paddle.autograd.batch_jacobian(func, [self.x, self.y])
 
         for i in range(len(batch_jacobian)):
-            assert np.allclose(batch_jacobian[i], numerical_jacobian[i],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(batch_jacobian[i], numerical_jacobian[i],
+                                       self.rtol, self.atol)
 
     def test_allow_unused_false(self):
         def func(x, y):
@@ -1160,8 +1167,8 @@ class TestJacobianBatch(unittest.TestCase):
         jacobian = paddle.autograd.batch_jacobian(
             func, [self.x, self.y], allow_unused=True)
 
-        assert np.allclose(jacobian[0].numpy(), numerical_jacobian[0][0],
-                           self.rtol, self.atol)
+        np.testing.assert_allclose(
+            jacobian[0].numpy(), numerical_jacobian[0][0], self.rtol, self.atol)
         assert jacobian[1] is None
 
     def test_create_graph_false(self):
@@ -1175,8 +1182,9 @@ class TestJacobianBatch(unittest.TestCase):
         jacobian = paddle.autograd.batch_jacobian(func, [self.x, self.y])
         for j in range(len(jacobian)):
             assert jacobian[j].stop_gradient == True
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(jacobian[j].numpy(),
+                                       numerical_jacobian[0][j], self.rtol,
+                                       self.atol)
         try:
             paddle.grad(jacobian[0], [self.x, self.y])
         except RuntimeError as e:
@@ -1195,8 +1203,9 @@ class TestJacobianBatch(unittest.TestCase):
             func, [self.x, self.y], create_graph=True)
         for j in range(len(jacobian)):
             assert jacobian[j].stop_gradient == False
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
+            np.testing.assert_allclose(jacobian[j].numpy(),
+                                       numerical_jacobian[0][j], self.rtol,
+                                       self.atol)
         double_grad = paddle.grad(jacobian[0], [self.x, self.y])
         assert double_grad is not None
 

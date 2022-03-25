@@ -217,94 +217,6 @@ def prepare_data(test, input_shapes, dtype):
         setattr(test, name, np.array(shape, dtype=dtype))
 
 
-def jac(grad_fn, f, inputs):
-    inputs = _as_tensors(inputs)
-    assert grad_fn in [paddle.autograd.vjp, paddle.autograd.jvp]
-    if grad_fn is paddle.autograd.jvp:
-        vs = [paddle.zeros_like(x) for x in inputs]
-    else:
-        outputs = f(*inputs)
-        if isinstance(outputs, paddle.fluid.framework.Variable):
-            outputs = [outputs]
-        vs = [paddle.zeros_like(y) for y in outputs]
-    JJ_cols = []
-    for i, v in enumerate(vs):
-        v = v.flatten()
-        for j in range(v.shape[0]):
-            _v = paddle.zeros_like(v).detach()
-            _v[j] = 1.0
-            _v = _v.reshape(vs[i].shape)
-            _vs = vs.copy()
-            _vs[i] = _v
-            _, grads = grad_fn(f, inputs, _vs)
-            d_outs = paddle.concat([d_out.flatten() for d_out in grads])
-            JJ_cols.append(d_outs)
-    # JJ is the fully unrolled jacobian
-    JJ = paddle.stack(JJ_cols)
-    if grad_fn is paddle.autograd.vjp:
-        JJ = JJ.t()
-    return JJ
-
-
-# # @utils.place(config.DEVICES)
-# @utils.parameterize((utils.TEST_CASE_NAME, 'func', 'xs', 'v', 'stop_gradient'), (
-#     ('single_in_single_out', utils.square, np.random.rand(2, 3), None, False),
-#     # ('tensor_sequence_input', utils.reduce, np.random.rand(2, 3), None, False),
-#     # ('v_not_none', utils.reduce, np.random.rand(2, 3), np.random.rand(1),
-#     #  False),
-#     # ('xs_stop_gradient', utils.reduce, np.random.rand(2, 3), np.random.rand(1),
-#     #  True),
-#     # ('func_mutmul', utils.matmul, (np.random.rand(3, 2), np.random.rand(2, 3)), None,
-#     #  False),
-#     # ('func_mul', utils.mul, (np.random.rand(3, 3), np.random.rand(3, 3)), None,
-#     #  False),
-#     # ('func_out_two', utils.o2, (np.random.rand(10), np.random.rand(10)), None,
-#     #  False), 
-#      ))
-# class TestJVP(unittest.TestCase):
-#     def setUp(self):
-#         self.dtype = str(self.xs[0].dtype) if isinstance(
-#             self.xs, typing.Sequence) else str(self.xs.dtype)
-#         self._rtol = config.TOLERANCE.get(self.dtype).get("first_order_grad").get("rtol")
-#         self._atol = config.TOLERANCE.get(self.dtype).get("first_order_grad").get("atol")
-
-#         exe = paddle.static.Executor()
-#         sp = paddle.static.Program()
-#         mp = paddle.static.Program()
-#         with paddle.static.program_guard(mp, sp):
-#             feed, static_xs, static_v = gen_static_data_and_feed(
-#                 self.xs, self.v, stop_gradient=self.stop_gradient)
-#             forward_jac = jac(paddle.autograd.jvp, self.func, static_xs)
-#             # reverse_jac = jac(paddle.autograd.vjp, self.func, static_xs)
-#         exe.run(sp)
-#         [self.actual] = exe.run(mp, feed=feed, fetch_list=[forward_jac])
-
-#     def test_vjp(self):
-#         print(self.actual)
-#         # actual = self._vjp()
-#         # expected = self._expected_vjp()
-#         # self.assertEqual(len(actual), len(expected))
-#         # for i in range(len(actual)):
-#         #     np.testing.assert_allclose(
-#         #         actual[i],
-#         #         expected[i],
-#         #         rtol=self._rtol,
-#         #         atol=self._atol)
-
-#     # def check_results(self, ref, res):
-#     #     type_error = 'Result is different than expected in shape or type'
-#     #     value_error = 'Result is different than expected values'
-#     #     if ref is None:
-#     #         self.assertTrue(res is None, type_error)
-#     #     elif isinstance(ref, paddle.Tensor):
-#     #         np.testing.assert_allclose(res, ref)
-#     #     else:
-#     #         self.assertTrue(len(res) == len(ref), type_error)
-#     #         for i in range(len(ref)):
-#     #             self.check_results(ref[i], res[i])
-#         # return True
-
-
 class TestJacobianFloat32(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -373,8 +285,8 @@ class TestJacobianFloat32(unittest.TestCase):
         pd_jac = exe.run(main, feed=feeds, fetch_list=[rows])
         np_jac = approx_jacobian(np_f, inps, self.dtype, self.eps, batch=batch)
         for i in range(nrow):
-            self.assertTrue(
-                np.allclose(pd_jac[i], np_jac[i], self.rtol, self.atol))
+            np.testing.assert_allclose(pd_jac[i], np_jac[i], self.rtol,
+                                       self.atol)
 
     def run_test_by_entries(self, pd_f, np_f, inps, batch=False):
         main = fluid.Program()
@@ -505,36 +417,20 @@ class TestHessianFloat32(unittest.TestCase):
         else:
             feeds = {'x': inps}
         pd_hess = exe.run(main, feed=feeds, fetch_list=[full_hessian])[0]
-        self.assertTrue(np.allclose(pd_hess, np_hess, self.rtol, self.atol))
+        np.testing.assert_allclose(pd_hess, np_hess, self.rtol, self.atol)
 
     def test_square(self):
         def pd_f(x):
             """Input is a square matrix."""
-            return paddle.matmul(x, x.T)
+            return paddle.matmul(x, x.T).flatten().sum()
 
         def np_hess(x):
             dim = x.shape[0]
-            f_xx_upperleft = 2 * np.eye(dim, dtype=self.dtype)
-            f_xx = np.zeros([dim * dim, dim * dim], dtype=self.dtype)
-            f_xx[:dim, :dim] = f_xx_upperleft
-            return f_xx
+            upperleft = 2 * np.eye(dim, dtype=self.dtype)
+            upper = np.concatenate((upperleft, upperleft))
+            return np.concatenate((upper, upper), axis=1)
 
         self.run_test_by_fullmatrix(pd_f, self.B, np_hess(self.B))
-
-        def test_batch_square(self):
-            def pd_f(x):
-                """Input is a square matrix."""
-                return paddle.matmul(x, paddle.transpose(x, [0, 2, 1]))
-
-            def np_hess(x):
-                bat, dim, _ = x.shape
-                f_xx_upperleft = 2 * np.eye(dim, dtype=self.dtype)
-                f_xx = np.zeros([bat, dim * dim, dim * dim], dtype=self.dtype)
-                f_xx[..., :dim, :dim] = f_xx_upperleft
-                return f_xx
-
-            self.run_test_by_fullmatrix(
-                pd_f, self.E, np_hess(self.E), batch=True)
 
 
 class TestHessianFloat64(TestHessianFloat32):

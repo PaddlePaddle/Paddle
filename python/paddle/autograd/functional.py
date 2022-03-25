@@ -24,7 +24,7 @@ def vjp(func, xs, v=None):
     reverse mode automatic differentiation.
 
     Warning:
-        This API is in beta, the signatures maybe changed in future version.
+        This API is in beta, the signatures could be changed in future version.
 
     Args:
         func(Callable): A function that takes ``xs`` as inputs parameter and
@@ -38,9 +38,8 @@ def vjp(func, xs, v=None):
 
     Returns:
         output(tuple):
-            func_out(Tensor|Sequence[Tensor]): The output of ``func(xs)`` .
-            vjp(Tensor|tuple[Tensor]): The pullback results of ``v`` on 
-                ``func`` .
+            func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
+            vjp(Tensor|tuple[Tensor]): The vjp result.
 
     Examples:
 
@@ -52,37 +51,24 @@ def vjp(func, xs, v=None):
                 return paddle.matmul(x, x)
 
             x = paddle.ones(shape=[2, 2], dtype='float32')
-            _, x_grad = paddle.autograd.vjp(func, x)
-            print(x_grad)
+            _, vjp_result = paddle.autograd.vjp(func, x)
+            print(vjp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[4., 4.],
             #         [4., 4.]])
 
             v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
-            _, x_grad = paddle.autograd.vjp(func, x, v)
-            print(x_grad)
+            _, vjp_result = paddle.autograd.vjp(func, x, v)
+            print(vjp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[2., 1.],
             #         [1., 0.]])
-
-
-            def func_unused(x, y):
-                return paddle.matmul(x, x)
-
-            x1 = paddle.ones(shape=[2, 2], dtype='float32')
-            _, xs_grad = paddle.autograd.vjp(func_unused, [x, x1])
-            print(xs_grad)
-            # (Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[4., 4.],
-            #         [4., 4.]]), Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[0., 0.],
-            #         [0., 0.]]))
     """
     _check_inputs(func, xs, v)
 
-    # clone xs as formal parameters for breaking the dependencies with other
-    # variables. See more ``_clone`` .
-    xs, v = _clone(xs), _clone(v)
+    # ``_seprate`` breaks the dependencies between ``xs`` and other
+    # variables. See more ``_seprate`` .
+    xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, ys)
 
@@ -95,23 +81,23 @@ def jvp(func, xs, v=None):
     inputs and a vector in the tangent space induced by the inputs.
 
     Warning:
-        This API is in beta, the signatures maybe changed in future version.
+        This API is in beta, the signatures could be changed in future version.
 
     Args:
         func(Callable): The ``func`` takes as input a Tensor or a Sequence
             of Tensors and returns a Tensor or a Sequence of Tensors.
-        inputs(Tensor|Sequence[Tensor]): Used as positional arguments to
-            evaluate ``func``.  The ``inputs`` is accepted as one Tensor or a
+        xs(Tensor|Sequence[Tensor]): Used as positional arguments to
+            evaluate ``func``.  The ``xs`` is accepted as one Tensor or a
             Sequence of Tensors.
         v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector invovled
             in the JVP computation. The ``v`` matches the size and shape of
-            ``inputs`` . Default value is None and in this case is equivalent to 
-            all ones the same size of ``inputs`` .
+            ``xs`` . Default value is None and in this case is equivalent to 
+            all ones the same size of ``xs`` .
 
     Returns:
         output(tuple):
-            func_out(Tensor|Sequence[Tensor]): The output of ``func(xs)`` .
-            jvp(tuple[Tensor]): The pullback results of ``v`` on ``func`` .
+            func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
+            jvp(Tensor|tuple[Tensor]): The jvp result.
 
     Examples:
 
@@ -125,23 +111,23 @@ def jvp(func, xs, v=None):
 
 
             x = paddle.ones(shape=[2, 2], dtype='float32')
-            _, x_grad = paddle.autograd.jvp(func, x)
-            print(x_grad)
+            _, jvp_result = paddle.autograd.jvp(func, x)
+            print(jvp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[4., 4.],
             #         [4., 4.]])
             v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
-            _, x_grad = paddle.autograd.jvp(func, x, v)
-            print(x_grad)
+            _, jvp_result = paddle.autograd.jvp(func, x, v)
+            print(jvp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[2., 1.],
             #         [1., 0.]])
 
     """
     _check_inputs(func, xs, v)
-    # clone xs as formal parameters for breaking the dependencies with other
-    # variables. See more ``_clone`` .
-    xs, v = _clone(xs), _clone(v)
+    # ``_seprate`` breaks the dependencies between ``xs`` and other
+    # variables. See more ``_seprate`` .
+    xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
     return ys, _double_backward_trick(ys, xs, v)
@@ -151,20 +137,20 @@ def _double_backward_trick(ys, xs, v):
     """Double backward trick for computing ``jvp`` by ``vjp``
     see details: https://j-towns.github.io/2017/06/12/A-new-trick.html
     """
-    # The value of ys_grad is not important, it can be any random value in t
-    # heory, but it's required to set stop_gradient=False.
-    ys_grad = _zeros_like_with_grad(ys, stop_gradient=False)
+    # The value of ys_grad is not important, it can be any random value in 
+    # theory, but it's required to set stop_gradient=False.
+    ys_grad = _zeros_like_with_grad(ys)
     xs_grad = _grad(ys, xs, ys_grad)
     return _grad(xs_grad, ys_grad, v)
 
 
-def _zeros_like_with_grad(xs, stop_gradient=False):
-    """Create a zero or zeros sequence Tensor like xs with a flag 
-    ``stop_graident``.
+def _zeros_like_with_grad(xs):
+    """Create a zero or zeros sequence Tensor like ``xs`` with a flag 
+    ``stop_graident=False`` .
     """
     if not isinstance(xs, typing.Sequence):
-        ys = paddle.zeros_like()
-        ys.stop_gradient = stop_gradient
+        ys = paddle.zeros_like(xs)
+        ys.stop_gradient = False
     else:
         ys = []
         for x in xs:
@@ -178,14 +164,10 @@ class Jacobian(object):
     r"""
     Computes the Jacobian matrix of a given function.
 
-    In case ``func`` is multi-input and multi-output, i.e.,
-
-    func: Callable[[Tensor, ...], [Tensor, ...]]
-
-    ``func`` is treated as a vector valued function with all its inputs 
-    flattened into a single one dimensional Tensor, or a two dimensional Tensor 
-    with the first dimension retained as the batching dimension. The same rule 
-    applies to the function outputs.
+    If the function has multiple inputs and multiple outputs, during internal 
+    implementation, all input tensors are concatenated after being flatten, 
+    the batch dimension is retained, and the output is subject to the same 
+    processing rules.
 
     Once the Jacobian ``J`` is constructed, you can use a multidimensional index 
     to retrieve the submatrix of ``J``, as same as slicing a Tensor. The 
@@ -208,7 +190,7 @@ class Jacobian(object):
         Eclipsis index is not supported currently.
 
     Warning:
-        This API is in beta, the signatures maybe changed in future version.
+        This API is in beta, the signatures could be changed in future version.
 
     Args:
 
@@ -272,15 +254,15 @@ class Hessian(object):
     """
     Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
 
-    ``func`` is treated as a vector valued function with all its inputs 
-    flattened into a single one dimensional Tensor, or a two dimensional Tensor 
-    with the first dimension retained as the batching dimension.
+    If the function has multiple inputs, during internal implementation, 
+    all input tensors are concatenated after being flatten, the batch dimension 
+    is retained.
 
-    The submatrix is lazily evaluated, and can be retrieved with a 
+    The Hessian submatrix is lazily evaluated, and can be retrieved with a 
     multidimensional indexes. See details ``Jacobian`` .
 
     Warning:
-        This API is in beta, the signatures maybe changed in future version.
+        This API is in beta, the signatures could be changed in future version.
 
     Args:
         func (Callable): A python function that takes a Tensor or a Tensor
@@ -304,7 +286,7 @@ class Hessian(object):
 
 
         def reducer(x):
-            return (x*x).sum()
+            return paddle.sum(x * x)
 
 
         x = paddle.rand([2, 2])
@@ -323,7 +305,7 @@ class Hessian(object):
             if (is_batched and jac.shape[1] != 1) or (not is_batched and
                                                       jac.shape[0] != 1):
                 raise RuntimeError(
-                    "The function given to Hessian shoud return as single Tensor."
+                    "The function given to Hessian shoud return as single element Tensor or batched single element Tensor."
                 )
             return jac[:, 0, :] if is_batched else jac[0, :]
 
@@ -343,13 +325,13 @@ class _Jacobian(object):
     """The base class for computing Jacobian matrix.
 
     ``_Jacobian`` implementes the core logic of multidimensional index and lazy 
-    evaluation for Jacobian matrix, subclass only need overwrite following 
+    evaluation for Jacobian matrix, subclass only need to overwrite following 
     methods:
 
-        * ``_lazy_axis``,  the axis along which will be lazy evaluating.
-        * ``_flatten``, flattens the inputs ``xs``.
-        * ``_evaluate``, the method for evaluating one slice along 
-            ``_lazy_axis`` .
+        * ``_lazy_axis()``,  return the axis along which will be lazy 
+            evaluating.
+        * ``_flatten(xs)``, flattens the inputs ``xs``.
+        * ``_evaluate(index)``, evaluates one slice along ``_lazy_axis`` .
 
     Notes:
 
@@ -361,7 +343,7 @@ class _Jacobian(object):
     """
 
     def __init__(self, func, xs):
-        self._xs = _clone(xs)
+        self._xs = _separate(xs)
         self._ys = func(*_as_tensors(self._xs))
         self._flatten_xs = self._flatten(_as_tensors(self._xs))
         self._flatten_ys = self._flatten(_as_tensors(self._ys))
@@ -384,10 +366,11 @@ class _Jacobian(object):
     def _flatten(self, xs):
         raise NotImplementedError
 
-    def _shifted_indexes(self, indexes, offset=0):
+    def _shifted_indexes(self, indexes, lazy_axis_size=0):
         idx = indexes[self._lazy_axis]
-        idx = 0 if isinstance(idx, int) else slice(0, offset, 1)
-        return indexes[:self._lazy_axis] + (idx,
+        shifted_lazy_axis_idx = 0 if isinstance(
+            idx, int) else slice(0, lazy_axis_size, 1)
+        return indexes[:self._lazy_axis] + (shifted_lazy_axis_idx,
                                             ) + indexes[self._lazy_axis + 1:]
 
     def __getitem__(self, indexes):
@@ -556,15 +539,9 @@ def _replace_none_with_zero_tensor(xs, refs):
         xs.stop_gradient = refs.stop_gradient
         return xs
     elif isinstance(xs, typing.Sequence):
-        ys = []
-        for i, x in enumerate(xs):
-            if x is None:
-                y = paddle.zeros_like(refs[i])
-                y.stop_gradient = refs[i].stop_gradient
-            else:
-                y = x
-            ys.append(y)
-        return tuple(ys)
+        return tuple(
+            _replace_none_with_zero_tensor(x, refs[i])
+            for i, x in enumerate(xs))
     else:
         return xs
 
@@ -576,12 +553,12 @@ def _grad(ys, xs, v=None):
     ``paddle.static.gradients`` used in static graph, and do following changes:
 
     * The ``allow_unused`` flag is removed and set defaults to true internally,
-        outputs with none will be replace by zero.
+        none in outputs will be replaced by zero tensor.
     * The ``create_graph`` flag is removed and set defaults to true internally,
         only makes sense in dynamic graph.
-    * When ``xs`` is a Tensor, ``paddle.grad`` still return a list of Tensor.
-        It's not consistent. So, ``_grad`` unpack the return value to a Tensor
-        when ``xs`` is a Tensor.
+    * When xs is a single Tensor, ``paddle.grad`` returns a list which only 
+        contains one Tensor. It may confuse users, thus in this case we improve 
+        to return a single Tensor in _grad interface.
 
     Args:
         ys (Tensor|Sequence[Tensor]): The output tensor or tensor sequence of
@@ -599,11 +576,12 @@ def _grad(ys, xs, v=None):
             grad_outputs is a Tensor. Default None.
 
     Returns:
-        Tensor|Tuple[Tensor]: A tuple of Tensors, whose length is the same as the
-            Tensor number inside inputs, and the i-th returned Tensor is the sum
-            of gradients of outputs with respect to the i-th inputs.
+        Tensor|tuple[Tensor]: Tensor or a tuple of Tensors, whose length is the 
+            same as the Tensor number inside inputs, and the i-th returned 
+            Tensor is the sum of gradients of outputs with respect to the i-th 
+            inputs.
     """
-    if paddle.fluid.framework.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
     else:
         xs_grad = paddle.static.gradients(ys, xs, v)
@@ -614,10 +592,10 @@ def _grad(ys, xs, v=None):
     return _replace_none_with_zero_tensor(xs_grad, xs)
 
 
-def _clone(xs):
+def _separate(xs):
     """
-    ``_clone`` is used to clone ``xs`` as formal parameters of a ``func`` 
-    when need to compute gradients using ``paddle.grad`` .
+    ``_separate`` separates ``xs`` from the computation graph through ``clone`` 
+    or ``deteach`` .
 
     Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on 
     computional graph, which will reduce gradients along all path from ys to xs.
@@ -627,18 +605,18 @@ def _clone(xs):
 
     For example, given a ``func`` :math:`y0=f(x0)`, supposing forward path is:
     ``x0 -> y0``, ``x0 -> x1 -> y0`` .
-    ``paddle.grad(x0, y0)`` will reduce gradients along ``y0->x0`` and 
+    ``paddle.grad(y0, x0)`` will reduce gradients along ``y0->x0`` and 
     ``y0->x1->x0``, and ``vjp`` only need reduce along ``y0->x0``.
 
-    So, it's needed to clone xs as formal parameters before passed to ``func ``, 
-    for breaking the dependencies with other variables.
+    So, it's needed to clone or detach xs for breaking the dependencies with 
+    other variables.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-            from paddle.autograd.functional import _clone
+            from paddle.autograd.functional import _separate
 
 
             def func(x, y):
@@ -653,7 +631,7 @@ def _clone(xs):
             # [Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [2.])]
 
-            x1, x2 = _clone((x, x))
+            x1, x2 = _separate((x, x))
             y = func(x1, x2)
             print(paddle.grad(y, x1))
             # [Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
@@ -661,12 +639,12 @@ def _clone(xs):
 
     """
     if isinstance(xs, typing.Sequence):
-        return tuple(_clone_one(x) for x in xs)
+        return tuple(_single_separate(x) for x in xs)
     else:
-        return _clone_one(xs)
+        return _single_separate(xs)
 
 
-def _clone_one(x):
+def _single_separate(x):
     if x is None:  # x maybe none because grad input's v defaults to none.
         return x
     if not x.stop_gradient:
@@ -691,7 +669,7 @@ def _check_inputs(func, xs, v=None):
 
     if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
         raise TypeError(
-            f"Expected 'v' is Tensor|List[Tensor]|None, but got {type(v)}.")
+            f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}.")
 
     if isinstance(v, typing.Sequence) and not all(
             isinstance(e, framework.Variable) for e in v):
@@ -1361,7 +1339,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
     xs = _as_tensors(inputs)
     if v is not None:
         v = _as_tensors(v)
-    xs = _clone(xs)
+    xs, v = _separate(xs), _separate(v)
     outputs = func(*xs)
     ys = _as_tensors(outputs)
     assert len(ys) == 1 and isinstance(
