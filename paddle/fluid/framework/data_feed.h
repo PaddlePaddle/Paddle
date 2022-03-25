@@ -1389,6 +1389,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
 #endif
   }
   virtual void Init(const DataFeedDesc& data_feed_desc);
+  virtual bool Start();
   // void SetRecord(Record* records) { records_ = records; }
 
  protected:

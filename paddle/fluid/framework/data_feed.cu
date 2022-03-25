@@ -51,8 +51,7 @@ __global__ void FillSlotValueOffsetKernel(
       for (int k = 0; k < ins_num; ++k) {
         int pos = k * uint64_cols + info.slot_value_idx;
         int num = uint64_offsets[pos + 1] - uint64_offsets[pos];
-        PADDLE_ENFORCE_GE(num, 0, platform::errors::InvalidArgument(
-                                      "The number of slot size must be ge 0."));
+        PADDLE_ENFORCE(num >= 0, "The number of slot size must be ge 0.");
         slot_value_offsets[value_off + k + 1] =
             slot_value_offsets[value_off + k] + num;
       }
@@ -60,8 +59,7 @@ __global__ void FillSlotValueOffsetKernel(
       for (int k = 0; k < ins_num; ++k) {
         int pos = k * float_cols + info.slot_value_idx;
         int num = float_offsets[pos + 1] - float_offsets[pos];
-        PADDLE_ENFORCE_GE(num, 0, platform::errors::InvalidArgument(
-                                      "The number of slot size must be ge 0."));
+        PADDLE_ENFORCE(num >= 0, "The number of slot size must be ge 0.");
         slot_value_offsets[value_off + k + 1] =
             slot_value_offsets[value_off + k] + num;
       }
@@ -107,8 +105,7 @@ __global__ void CopyForTensorKernel(
       int index = info.slot_value_idx + uint64_cols * ins_idx;
       int old_off = uint64_offsets[index];
       int num = uint64_offsets[index + 1] - old_off;
-      PADDLE_ENFORCE_GE(num, 0, platform::errors::InvalidArgument(
-                                    "The number of slot size must be ge 0."));
+      PADDLE_ENFORCE(num >= 0, "The number of slot size must be ge 0.");
       int uint64_value_offset = uint64_ins_lens[ins_idx];
       for (int k = 0; k < num; ++k) {
         up[k + value_offset] = uint64_feas[k + old_off + uint64_value_offset];
@@ -118,8 +115,7 @@ __global__ void CopyForTensorKernel(
       int index = info.slot_value_idx + float_cols * ins_idx;
       int old_off = float_offsets[index];
       int num = float_offsets[index + 1] - old_off;
-      PADDLE_ENFORCE_GE(num, 0, platform::errors::InvalidArgument(
-                                    "The number of slot size must be ge 0."));
+      PADDLE_ENFORCE(num >= 0, "The number of slot size must be ge 0.");
       int float_value_offset = float_ins_lens[ins_idx];
       for (int k = 0; k < num; ++k) {
         fp[k + value_offset] = float_feas[k + old_off + float_value_offset];

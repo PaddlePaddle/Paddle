@@ -366,10 +366,6 @@ bool InMemoryDataFeed<T>::Start() {
     this->offset_index_ = 0;
   }
   this->finish_start_ = true;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
-  pack_ = BatchGpuPackMgr().get(this->GetPlace(), slot_conf_);
-#endif
   return true;
 }
 
@@ -1084,6 +1080,28 @@ void MultiSlotInMemoryDataFeed::Init(
   so_parser_name_ = data_feed_desc.so_parser_name();
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
+}
+
+bool MultiSlotInMemoryDataFeed::Start() {
+#ifdef _LINUX
+  this->CheckSetFileList();
+  if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
+    std::vector<T> data;
+    input_channel_->Read(data);
+    output_channel_->Write(std::move(data));
+  }
+#endif
+  if (batch_offsets_.size() > 0) {
+    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
+    enable_heterps_ = true;
+    this->offset_index_ = 0;
+  }
+  this->finish_start_ = true;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  CHECK(paddle::platform::is_gpu_place(this->place_));
+  pack_ = BatchGpuPackMgr().get(this->GetPlace(), slot_conf_);
+#endif
+  return true;
 }
 
 void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
