@@ -633,6 +633,8 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     ssize_t arg_idx, bool dispensable) {
   if (PyTuple_Check(obj)) {
     obj = PyTuple_GET_ITEM(obj, 0);
+  } else if (PyList_Check(obj)) {
+    obj = PyList_GET_ITEM(obj, 0);
   }
 
   if (obj == nullptr || obj == Py_None) {
