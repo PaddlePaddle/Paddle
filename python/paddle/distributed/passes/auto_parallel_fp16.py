@@ -555,9 +555,11 @@ class FP16Pass(AMPPass):
                         if fp16_grads:
                             self._update_loss_scaling(fp16_grads, found_inf)
 
-            # NOTE(JZ-LIANG) modify optimizer
+            # modify optimizer
             base_opt = self.get_attr("base_opt")
             base_opt._multi_precision = True
+            if self.get_attr("use_optimizer_fp16"):
+                base_opt._multi_precision = False
             if isinstance(base_opt, (paddle.fluid.optimizer.Adam,
                                      paddle.optimizer.AdamW)):
                 # with main_program._optimized_guard([]):
