@@ -123,12 +123,11 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
+        return _C_ops.final_state_allclose(x, y, rtol, atol, equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
                                str(atol), 'equal_nan', equal_nan)
-
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
@@ -672,8 +671,8 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_isclose(x, y, rtol, atol, equal_nan)
+        return _C_ops.final_state_isclose(x, y, rtol, atol, equal_nan)
+    if _in_legacy_dygraph():
         return _C_ops.isclose(x, y, 'rtol',
                               str(rtol), 'atol',
                               str(atol), 'equal_nan', equal_nan)

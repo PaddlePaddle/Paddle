@@ -754,5 +754,32 @@
   #kernel : 
     #func : uniform_random
   #backward : uniform_random_grad
+  
+- api : floor
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+  kernel : 
+    func : floor
+  backward : floor_grad
 
+- api : ceil
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+  kernel : 
+    func : ceil
+  backward : ceil_grad
+  
+- api : round
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+  kernel : 
+    func : round
+  backward : round_grad
+  
 #  =================================== sep3

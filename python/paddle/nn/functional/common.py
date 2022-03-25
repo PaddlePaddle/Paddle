@@ -37,7 +37,8 @@ from ...fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.creation import full
-from paddle.framework import core, _in_eager_mode
+from paddle.framework import core
+from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.static import default_main_program
 
 __all__ = []
@@ -1352,10 +1353,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     if in_dynamic_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy()
-        if _in_eager_mode():
-            return _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
-        out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
-                           "data_format", data_format, "name", name)
+        if _in_legacy_dygraph():
+            out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
+                               "data_format", data_format, "name", name)
+        else:
+            out = _C_ops.final_state_pad3d(x, pad, mode, value, data_format)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
         inputs = {'X': [x]}

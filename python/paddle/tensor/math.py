@@ -706,9 +706,9 @@ def fmax(x, y, name=None):
     op_type = 'elementwise_fmax'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_elementwise_fmax(x, y, axis)
+    if in_dygraph_mode():
+        return _C_ops.final_state_elementwise_fmax(x, y, axis)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -769,9 +769,9 @@ def fmin(x, y, name=None):
     op_type = 'elementwise_fmin'
     axis = -1
     act = None
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_elementwise_fmin(x, y, axis)
+    if in_dygraph_mode():
+        return _C_ops.final_state_elementwise_fmin(x, y, axis)
+    if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -2072,9 +2072,9 @@ def log1p(x, name=None):
             # [[0.], [0.6931472]]
     """
 
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_log1p(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_log1p(x)
+    if _in_legacy_dygraph():
         return _C_ops.log1p(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
@@ -2123,9 +2123,9 @@ def log2(x, name=None):
             res = paddle.log2(x_i)
             print(res) # [1.0]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_log2(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_log2(x)
+    if _in_legacy_dygraph():
         return _C_ops.log2(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log2")
@@ -2175,9 +2175,9 @@ def log10(x, name=None):
             res = paddle.log10(x_i)
             print(res) # [1.0]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_log10(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_log10(x)
+    if _in_legacy_dygraph():
         return _C_ops.log10(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")
@@ -2659,9 +2659,9 @@ def cumprod(x, dim=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_cumprod(x, dim)
+    if in_dygraph_mode():
+        return _C_ops.final_state_cumprod(x, dim)
+    if _in_legacy_dygraph():
         return _C_ops.cumprod(x, 'dim', dim)
 
     check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')

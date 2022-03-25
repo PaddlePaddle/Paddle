@@ -517,4 +517,26 @@
   kernel :
     func : soft_shrink_grad
 
+- backward_api : ceil_grad
+  forward : ceil(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : ceil_grad
+
+- backward_api : round_grad
+  forward : round(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : round_grad
+
+
+
 #  =================================== sep3

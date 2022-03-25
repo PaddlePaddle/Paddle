@@ -25,6 +25,7 @@ import six
 
 import paddle
 from ..layer_helper import LayerHelper
+from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
 from .. import dygraph_utils
@@ -6426,9 +6427,9 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    if _non_static_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_squeeze(input, axes)[1]
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze(input, axes)[1]
+    if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
 
@@ -6489,10 +6490,10 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        if _in_eager_mode():
-            return _C_ops.final_state_unsqueeze(input, axes)[1]
-        out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
-        return out
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
+            return out
+        return _C_ops.final_state_unsqueeze(input, axes)[1]
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -8913,9 +8914,9 @@ def log(x, name=None):
             res = paddle.log(x)
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
-    if _non_static_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_log(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_log(x)
+    if _in_legacy_dygraph():
         return _C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
