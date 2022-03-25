@@ -16,6 +16,7 @@
     func : cast
     param : [x, out_dtype]
     data_type : x
+  backward : cast_grad
 
 
 - api : concat
