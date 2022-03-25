@@ -456,6 +456,21 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
+  if (!instr_node.InplaceBackMap().empty()) {
+    auto& m = instr_node.InplaceBackMap();
+    // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+    for (auto& p : m) {
+      auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.first));
+      auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.second));
+      original_tensor->ShareDataWith(*transformed_tensor);
+      VLOG(4) << "Transfer inplace variable back form "
+              << global_scope_->GetNameById(p.first) << " to "
+              << global_scope_->GetNameById(p.second);
+    }
+  }
+
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     instr_node.DeviceContext().Wait();

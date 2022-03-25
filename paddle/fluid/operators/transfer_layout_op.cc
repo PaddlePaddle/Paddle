@@ -95,8 +95,9 @@ class TransferLayoutKernel {
     auto *x = ctx.InputVar("X");
     auto *out = ctx.OutputVar("Out");
     auto &dev_ctx = ctx.device_context();
+    auto src_layout = ctx.Attr<int>("src_layout");
     auto dst_layout = ctx.Attr<int>("dst_layout");
-    TransferLayoutFunctor(x, out, dev_ctx, dst_layout)();
+    TransferLayoutFunctor(x, out, dev_ctx, src_layout, dst_layout)();
   }
 };
 
@@ -105,6 +106,8 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(LoDTensor) The input Tensor");
     AddOutput("Out", "(LoDTensor) The Output Tensor with desired layout");
+    AddAttr<int>("src_layout",
+                 "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3");
     AddAttr<int>("dst_layout",
                  "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3");
     AddComment(R"DOC(
