@@ -1651,7 +1651,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         attrs = ('has_offset', has_offset)
         return getattr(_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
 
@@ -1725,7 +1725,7 @@ def correlation(x,
 
     """
 
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
@@ -1943,7 +1943,7 @@ def pow2_decay_with_linear_warmup(warmup_steps,
                                   end_lr,
                                   dtype='float32',
                                   name=None):
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         raise NotImplementedError(
             "pow2_decay_with_linear_warmup does not support dygraph mode yet.")
 

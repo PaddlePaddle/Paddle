@@ -132,27 +132,6 @@ struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaLogFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // log(x) = log(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log(x));
-  }
-};
-
-template <typename T>
-struct CudaLogGradFunctor : public BaseActivationFunctor<T> {
-  // dx = dout / x
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / x;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct CudaSquareFunctor : public BaseActivationFunctor<T> {
   // square(x) = x * x
   __device__ __forceinline__ T operator()(const T x) const { return x * x; }
@@ -218,78 +197,6 @@ struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
   }
-};
-
-template <typename T>
-struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
-
-  // log1p(x) = log(1 + x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log(one + x));
-  }
-};
-
-template <typename T>
-struct CudaLog1pGradFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // dx = dout / (1 + x)
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / (one + x);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaLog2Functor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // log2(x) = log2(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log2(x));
-  }
-};
-
-template <typename T>
-struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  T log_two = static_cast<T>(log(static_cast<MPType>(2.0f)));
-
-  // dx = dout / (x * log(2))
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / (x * log_two);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaLog10Functor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // log10(x) = log10(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log10(x));
-  }
-};
-
-template <typename T>
-struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  T log_ten = static_cast<T>(log(static_cast<MPType>(10.0f)));
-
-  // dx = dout / (x * log(10))
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / (x * log_ten);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
@@ -773,6 +680,10 @@ USE_PHI_FUNCTOR(CudaELU)
 USE_PHI_FUNCTOR(CudaSigmoid)
 USE_PHI_FUNCTOR(CudaLogSigmoid)
 USE_PHI_FUNCTOR(CudaHardSigmoid)
+USE_PHI_FUNCTOR(CudaLog)
+USE_PHI_FUNCTOR(CudaLog2)
+USE_PHI_FUNCTOR(CudaLog10)
+USE_PHI_FUNCTOR(CudaLog1p)
 
 template <typename T>
 using CudaELUGradNegativeAlphaFunctor =
@@ -975,18 +886,6 @@ REGISTER_OP_CUDA_KERNEL(
                                   ops::CudaExpm1GradFunctor<plat::float16>>);
 /* ========================================================================== */
 
-/* ==========================  Log register ==================================*/
-REGISTER_ACTIVATION_CUDA_KERNEL(log, Log, CudaLogFunctor, CudaLogGradFunctor);
-
-REGISTER_OP_CUDA_KERNEL(
-    log_grad_grad, ops::LogDoubleGradKernel<plat::CUDADeviceContext,
-                                            ops::LogGradGradFunctor<float>>,
-    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
-                             ops::LogGradGradFunctor<double>>,
-    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
-                             ops::LogGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
   __macro(softshrink, SoftShrink, CudaSoftShrinkFunctor,                      \
           CudaSoftShrinkGradFunctor);                                         \
@@ -995,9 +894,6 @@ REGISTER_OP_CUDA_KERNEL(
   __macro(round, Round, CudaRoundFunctor, CudaZeroGradFunctor);               \
   __macro(reciprocal, Reciprocal, CudaReciprocalFunctor,                      \
           CudaReciprocalGradFunctor);                                         \
-  __macro(log1p, Log1p, CudaLog1pFunctor, CudaLog1pGradFunctor);              \
-  __macro(log2, Log2, CudaLog2Functor, CudaLog2GradFunctor);                  \
-  __macro(log10, Log10, CudaLog10Functor, CudaLog10GradFunctor);              \
   __macro(soft_relu, SoftRelu, CudaSoftReluFunctor, CudaSoftReluGradFunctor); \
   __macro(stanh, STanh, CudaSTanhFunctor, CudaSTanhGradFunctor);              \
   __macro(softplus, Softplus, CudaSoftplusFunctor, CudaSoftplusGradFunctor);  \

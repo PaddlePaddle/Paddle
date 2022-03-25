@@ -20,8 +20,8 @@
 
 namespace egr {
 std::vector<std::vector<paddle::experimental::Tensor>> RunCustomOpNode::
-operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-           bool create_graph) {
+operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+           bool create_graph) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
   auto grad_inputs_name = paddle::framework::OpMetaInfoHelper::GetInputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
