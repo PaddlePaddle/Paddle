@@ -113,7 +113,7 @@ function(kernel_library TARGET)
     
     # used for cc_library selected_rows dir target
     set(target_suffix "")
-    if ("${kernel_library_SUB_DIR}" STREQUAL "selected_rows_kernel")
+    if ("${kernel_library_SUB_DIR}" STREQUAL "selected_rows")
         set(target_suffix "_sr")
     endif()
 
