@@ -51,6 +51,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -1367,6 +1368,7 @@ void BindImperative(py::module *m_ptr) {
       .def("numpy",
 
            [](imperative::VarBase &self) -> py::array {
+             platform::RecordEvent event("numpy");
              const auto &tensor =
                  self.MutableVar()->Get<framework::LoDTensor>();
              PADDLE_ENFORCE_EQ(

@@ -16,6 +16,7 @@
 
 // TODO(pten): remove fluid headers.
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
@@ -279,6 +280,7 @@ void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
 }
 
 void GpuStreamSync(gpuStream_t stream) {
+  paddle::platform::RecordEvent event("GpuStreamSync");
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 }
 

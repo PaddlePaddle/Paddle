@@ -51,6 +51,7 @@ limitations under the License. */
 
 // TODO(pten): remove fluid header.
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace pten {
 
@@ -542,6 +543,7 @@ struct GPUContext::Impl {
   void SetSparseHandle(sparseHandle_t handle) { sparse_handle_ = handle; }
 
   void Wait() const {
+    paddle::platform::RecordEvent event("GpuContextWait");
 #ifdef PADDLE_WITH_HIP
     hipError_t e_sync = hipSuccess;
 #if !defined(_WIN32)

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace platform {
@@ -68,6 +69,7 @@ void CUDAStream::Destroy() {
 }
 
 void CUDAStream::Wait() const {
+  platform::RecordEvent event("CUDAStreamWait");
 #ifdef PADDLE_WITH_HIP
   hipError_t e_sync = hipSuccess;
 #if !defined(_WIN32)

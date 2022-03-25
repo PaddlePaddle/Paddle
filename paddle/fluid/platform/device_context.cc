@@ -517,7 +517,6 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 }
 
 void CUDADeviceContext::Wait() const {
-  platform::RecordEvent event("Wait");
   if (thread_ctx_.count(this)) {
     context()->Stream()->Wait();
     return;

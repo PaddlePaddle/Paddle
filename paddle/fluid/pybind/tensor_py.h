@@ -783,6 +783,7 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
 
 inline py::array TensorToPyArray(const framework::Tensor &tensor,
                                  bool need_deep_copy = false) {
+  platform::RecordEvent event("TensorToPyArray");
   if (!tensor.IsInitialized()) {
     return py::array();
   }
