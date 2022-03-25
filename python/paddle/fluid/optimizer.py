@@ -2155,7 +2155,7 @@ class LarsMomentumOptimizer(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             tmp, tmp2 = _C_ops.lars_momentum(
                 [param_and_grad[0]], [param_and_grad[1]], [velocity_acc], [lr],
                 [param_and_grad[0]], [velocity_acc], "mu", self._momentum,
