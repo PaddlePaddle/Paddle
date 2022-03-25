@@ -1651,16 +1651,21 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     .. hint::
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
-    
+
         The API supports CPU, single GPU and multi GPU.
+
+        For data parallel mode, set ``group=False``.
+
+        For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
 
     Args:
         label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
         num_classes (int): A positive integer to specify the number of classes at local rank.
             Note that num_classes of each GPU can be different.
         num_samples (int): A positive integer to specify the number of class center to sample.
-        group (Group, optional): The abstract representation of group.
-            See paddle.distributed.collective.Group. Default is ``None``.
+        group (Group, optional): The group instance return by paddle.distributed.new_group 
+            or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
+            Default is ``None``.
 
     Returns:
         Tuple of two ``Tensor`` : (remapped_label, sampled_class_center), remapped label using sampled class center,
@@ -1733,18 +1738,25 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [0, 1, 2, 3, 5, 7, 8])
     """
-    if group is not None and not group.is_member():
+    if not (group == False or group is None or hasattr(group, 'is_member')):
+        raise ValueError(
+            'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {})'.format(group))
         return
 
-    ring_id = 0 if group is None else group.id
+    if hasattr(group, 'is_member') and not group.is_member():
+        return
+
+    ring_id = 0
     rank = 0
     nranks = 1
-    if core.is_compiled_with_dist():
-        parallel_env = paddle.distributed.ParallelEnv()
-        global_rank = parallel_env.rank
-        rank = global_rank if group is None else group.get_group_rank(
-            global_rank)
-        nranks = parallel_env.world_size if group is None else group.nranks
+    if group != False:
+        if core.is_compiled_with_dist():
+            parallel_env = paddle.distributed.ParallelEnv()
+            global_rank = parallel_env.rank
+            rank = global_rank if group is None else group.get_group_rank(
+                global_rank)
+            nranks = parallel_env.world_size if group is None else group.nranks
 
     if num_samples > num_classes:
         raise ValueError(

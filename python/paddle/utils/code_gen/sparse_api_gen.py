@@ -24,9 +24,6 @@ class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
         super(SparseAPI, self).__init__(api_item_yaml)
 
-    def get_api_func_name(self):
-        return self.api
-
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
@@ -182,17 +179,12 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 """
-
-
-def api_register():
-    return ""
 
 
 def api_namespace():
@@ -228,13 +220,13 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     for api in apis:
         sparse_api = SparseAPI(api)
+        if sparse_api.is_dygraph_api:
+            sparse_api.is_dygraph_api = False
         header_file.write(sparse_api.gene_api_declaration())
         source_file.write(sparse_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    source_file.write(api_register())
 
     header_file.close()
     source_file.close()

@@ -93,14 +93,17 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
+  int *offset;
   NeighborSampleResult(int _sample_size, int _key_size)
       : sample_size(_sample_size), key_size(_key_size) {
     actual_sample_size = NULL;
     val = NULL;
+    offset = NULL;
   };
   ~NeighborSampleResult() {
     if (val != NULL) cudaFree(val);
     if (actual_sample_size != NULL) cudaFree(actual_sample_size);
+    if (offset != NULL) cudaFree(offset);
   }
 };
 
