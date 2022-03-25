@@ -30,7 +30,7 @@ from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dty
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..framework import _in_eager_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
 
 __all__ = []
 
@@ -164,9 +164,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    # TOOD(jiabin): Support kwargs in eager tensor constructor
-    if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
+    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+        return core.eager.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=False,
+            name=None,
+            stop_gradient=stop_gradient)
     else:
         return paddle.Tensor(
             value=data,
@@ -973,35 +978,36 @@ def diag(x, offset=0, padding_value=0, name=None):
           print(y.numpy())
           # [4]
     """
-    if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_diag(x, offset, padding_value)
-        return _C_ops.diag_v2(x, "offset", offset, "padding_value",
-                              padding_value)
+    if in_dygraph_mode():
+        return _C_ops.final_state_diag(x, offset, padding_value)
+    else:
+        if _in_legacy_dygraph():
+            return _C_ops.diag_v2(x, "offset", offset, "padding_value",
+                                  padding_value)
+        else:
+            check_type(x, 'x', (Variable), 'diag_v2')
+            check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
+                        'diag_v2')
+            check_type(offset, 'offset', (int), 'diag_v2')
+            check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
+            if len(x.shape) != 1 and len(x.shape) != 2:
+                raise ValueError(
+                    "The dimension of input x must be either 1 or 2, but received {}".
+                    format(len(x.shape)))
 
-    check_type(x, 'x', (Variable), 'diag_v2')
-    check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
-                'diag_v2')
-    check_type(offset, 'offset', (int), 'diag_v2')
-    check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
-    if len(x.shape) != 1 and len(x.shape) != 2:
-        raise ValueError(
-            "The dimension of input x must be either 1 or 2, but received {}".
-            format(len(x.shape)))
+            helper = LayerHelper("diag_v2", **locals())
 
-    helper = LayerHelper("diag_v2", **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='diag_v2',
+                inputs={'X': x},
+                outputs={'Out': out},
+                attrs={'offset': offset,
+                       'padding_value': padding_value})
 
-    helper.append_op(
-        type='diag_v2',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'offset': offset,
-               'padding_value': padding_value})
-
-    out.stop_gradient = True
-    return out
+            out.stop_gradient = True
+            return out
 
 
 def empty(shape, dtype=None, name=None):
