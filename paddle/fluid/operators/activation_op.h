@@ -1115,5 +1115,6 @@ class PowGradKernel
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);        \
   __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                     \
   __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                     \
-  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);    
+  __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);    \
+  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor); 
         

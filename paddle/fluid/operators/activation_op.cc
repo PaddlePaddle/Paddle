@@ -1499,8 +1499,6 @@ REGISTER_ACTIVATION_OP(logsigmoid, LogSigmoid, LogSigmoidFunctor,
 REGISTER_ACTIVATION_OP(expm1, Expm1, Expm1Functor, Expm1GradFunctor);
 REGISTER_ACTIVATION_OP(softplus, Softplus, SoftplusFunctor,
                        SoftplusGradFunctor);
-REGISTER_ACTIVATION_OP(softsign, Softsign, SoftsignFunctor,
-                       SoftsignGradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
 REGISTER_ACTIVATION_OP(reciprocal, Reciprocal, ReciprocalFunctor,
