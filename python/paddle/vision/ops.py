@@ -1351,3 +1351,74 @@ class ConvNormActivation(Sequential):
         if activation_layer is not None:
             layers.append(activation_layer())
         super().__init__(*layers)
+
+
+def nms(boxes, threshold):
+    """
+    Compute non-maximum suppression
+    Args:
+        boxes(Tensor[N, 4]): The input boxes data to be computed. The expected format of one box is ``x1, x2, y1, y2``. Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
+        threshold(float32): Boxes with IoU > iou_threshold will be considered as overlapping boxes, Just one of them can be kept.
+    """
+    if _non_static_mode():
+        return _C_ops.nms(boxes, 'iou_threshold', threshold)
+
+    helper = LayerHelper('nms', **locals())
+    out = helper.create_variable_for_type_inference('int64')
+    helper.append_op(
+        type='nms',
+        inputs={'Boxes': boxes},
+        outputs={'KeepBoxesIdxs': out},
+        attrs={'iou_threshold': threshold})
+    return out
+
+
+def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
+    """
+    Perform non-maximum suppression with a batched style, which means NMS will be applied to each category respectively.
+
+    Args:
+        boxes(Tensor[N, 4]):  The input boxes data to be computed. The expected format of one box is ``x1, x2, y1, y2``. Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
+        scores(Tensor[N]): Scores corresponding to boxes.
+        class_idxs(Tensor[N]): Category indices corresponding to boxes.
+        categories(List): A list of unique id of all categories.
+        iou_threshold(float32): Boxes with IoU > iou_threshold will be considered as overlapping boxes, Just one of them can be kept.
+        top_k(int64): The top K boxes who has higher score and kepy by nms preds to consider. top_k should be smaller equal than N.
+
+    Returns:
+        Tensor: Indices of boxes kept by nms, sorted in descending order of scores.
+    """
+    assert top_k <= scores.shape[
+        0], "top_k should be smaller equal than the number of boxes"
+    import paddle
+    mask = paddle.zeros_like(scores, dtype=paddle.int32)
+
+    for category_id in categories:
+        cur_category_boxes_idxs = paddle.where(category_idxs == category_id)[0]
+        shape = cur_category_boxes_idxs.shape[0]
+        cur_category_boxes_idxs = paddle.reshape(cur_category_boxes_idxs,
+                                                 [shape])
+        cur_category_boxes = boxes[cur_category_boxes_idxs]
+        cur_category_scores = scores[cur_category_boxes_idxs]
+        cur_category_sorted_indices = paddle.argsort(
+            cur_category_scores, descending=True)
+        cur_category_sorted_boxes = cur_category_boxes[
+            cur_category_sorted_indices]
+
+        cur_category_keep_boxes_sub_idxs = cur_category_sorted_indices[nms(
+            cur_category_sorted_boxes, iou_threshold)]
+
+        updates = paddle.ones_like(
+            cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
+            dtype=paddle.int32)
+        mask = paddle.scatter(
+            mask,
+            cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
+            updates,
+            overwrite=True)
+
+    keep_boxes_idxs = paddle.where(mask)[0]
+    shape = keep_boxes_idxs.shape[0]
+    keep_boxes_idxs = paddle.reshape(keep_boxes_idxs, [shape])
+    _, topK_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
+    return keep_boxes_idxs[topK_sub_indices]
