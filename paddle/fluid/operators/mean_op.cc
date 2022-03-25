@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -90,8 +89,5 @@ REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
                   ops::MeanGradMaker<paddle::imperative::OpBase>,
                   MeanInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(mean_grad, MeanGradInferShapeFunctor,
-                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
-                  ops::MeanGradNoNeedBufferVarsInferer,
-                  MeanGradInferShapeFunctor);
+                  ops::MeanGradNoNeedBufferVarsInferer);
