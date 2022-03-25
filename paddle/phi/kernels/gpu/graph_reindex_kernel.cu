@@ -240,8 +240,8 @@ void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& neighbors,
                         const DenseTensor& count,
-                        const DenseTensor& hashtable_value,
-                        const DenseTensor& hashtable_index,
+                        paddle::optional<const DenseTensor&> hashtable_value,
+                        paddle::optional<const DenseTensor&> hashtable_index,
                         bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
@@ -261,20 +261,20 @@ void GraphReindexKernel(const Context& dev_ctx,
 
   if (flag_buffer_hashtable) {
     // Here we directly use buffer tensor to act as a hash table.
-    DenseTensor hashtable_value_out(hashtable_value.type());
-    const auto* ph_value = &hashtable_value;
+    DenseTensor hashtable_value_out(hashtable_value->type());
+    const auto* ph_value = hashtable_value.get_ptr();
     hashtable_value_out.ShareDataWith(*ph_value);
-    DenseTensor hashtable_index_out(hashtable_index.type());
-    const auto* ph_index = &hashtable_index;
+    DenseTensor hashtable_index_out(hashtable_index->type());
+    const auto* ph_index = hashtable_index.get_ptr();
     hashtable_index_out.ShareDataWith(*ph_index);
     int* hashtable_value_data =
         hashtable_value_out.mutable_data<int>(dev_ctx.GetPlace());
     int* hashtable_index_data =
         hashtable_index_out.mutable_data<int>(dev_ctx.GetPlace());
     cudaMemset(
-        hashtable_value_data, -1, hashtable_value.dims()[0] * sizeof(int));
+        hashtable_value_data, -1, hashtable_value->dims()[0] * sizeof(int));
     cudaMemset(
-        hashtable_index_data, -1, hashtable_index.dims()[0] * sizeof(int));
+        hashtable_index_data, -1, hashtable_index->dims()[0] * sizeof(int));
     BufferReindex<T, Context>(dev_ctx,
                               x_data,
                               src_outputs,

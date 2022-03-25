@@ -43,9 +43,11 @@ class GraphReindexOpMaker : public framework::OpProtoAndCheckerMaker {
     // nodes of
     //                  the input graph should be no larger than maximum(int32).
     AddInput("HashTable_Value",
-             "One of the buffer tensor of hashtable for reindex");
+             "One of the buffer tensor of hashtable for reindex")
+        .AsDispensable();
     AddInput("HashTable_Index",
-             "One of the buffer tensor of hashtable for reindex");
+             "One of the buffer tensor of hashtable for reindex")
+        .AsDispensable();
     AddAttr<bool>("flag_buffer_hashtable",
                   "Define whether using the buffer hashtable.")
         .SetDefault(false);

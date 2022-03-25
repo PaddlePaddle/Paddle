@@ -726,8 +726,8 @@ void WhereInferMeta(const MetaTensor& condition,
 void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& neighbors,
                            const MetaTensor& count,
-                           const MetaTensor& hashtable_value,
-                           const MetaTensor& hashtable_index,
+                           paddle::optional<const MetaTensor&> hashtable_value,
+                           paddle::optional<const MetaTensor&> hashtable_index,
                            bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
@@ -757,8 +757,8 @@ void GraphReindexInferMeta(const MetaTensor& x,
   GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
   GraphReindexShapeCheck(count.dims(), "Count");
   if (flag_buffer_hashtable) {
-    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
-    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
+    GraphReindexShapeCheck(hashtable_value->dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index->dims(), "HashTable_Index");
   }
 
   reindex_src->set_dims({-1});
