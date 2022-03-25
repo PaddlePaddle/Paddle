@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/slice_op.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
@@ -236,7 +236,7 @@ REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpVarTypeInference, StridedSliceInferShape);
 
 DECLARE_INFER_SHAPE_FUNCTOR(strided_slice_grad, StridedSliceGradInferShape,
-                            PD_INFER_META(phi::StridedSliceGradInferMeta));
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
                   ops::StridedSliceOpGradNoNeedBufferVarsInferer,

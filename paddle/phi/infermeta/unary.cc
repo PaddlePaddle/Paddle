@@ -1660,20 +1660,7 @@ void StridedSliceInferMeta(const MetaTensor& x,
   VLOG(1) << "out_dims: " << out_dims;
   out->set_dims(out_dims);
   out->share_lod(x);
-}
-
-void StridedSliceGradInferMeta(const MetaTensor& x,
-                               const MetaTensor& out_grad,
-                               const std::vector<int>& axes,
-                               const ScalarArray& starts,
-                               const ScalarArray& ends,
-                               const ScalarArray& strides,
-                               const std::vector<int>& infer_flags,
-                               const std::vector<int>& decrease_axis,
-                               MetaTensor* x_grad,
-                               MetaConfig config) {
-  auto x_dims = x.dims();
-  x_grad->set_dims(x_dims);
+  out->set_dtype(x.dtype());
 }
 
 /*  Why not use SumRawInferMeta directly?
