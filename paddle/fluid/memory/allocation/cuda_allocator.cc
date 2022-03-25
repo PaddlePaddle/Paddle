@@ -28,9 +28,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#include "paddle/fluid/platform/monitor.h"
-DECLARE_string(memory_stats_opt);
-
 namespace paddle {
 namespace memory {
 namespace allocation {

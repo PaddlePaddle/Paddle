@@ -67,26 +67,22 @@ class Stat : public StatBase {
   int64_t GetPeakValue() override { return peak_value_; }
 
   void Update(int64_t increment) override {
-    ThreadLocalStatType thread_local_stat =
-        ThreadDataRegistry<ThreadLocalStatType>::GetInstance()
-            .GetCurrentThreadData();
-    thread_local_stat.current += increment;
-
-    if (thread_local_stat.current > thread_local_stat.peak) {
-      // VLOG(1) << "stat = {" <<  thread_local_stat.current << ", " <<
-      // thread_local_stat.peak << "}";
-      thread_local_stat.peak = thread_local_stat.current;
-      int64_t current_value = GetCurrentValue() + increment;
+    auto& thread_data_registry =
+        ThreadDataRegistry<ThreadLocalStatType>::GetInstance();
+    ThreadLocalStatType* thread_local_stat =
+        thread_data_registry.GetMutableCurrentThreadData();
+    thread_local_stat->current += increment;
+    VLOG(1) << "+" << increment << " sum: " << thread_local_stat->current;
+    if (thread_local_stat->current > thread_local_stat->peak) {
+      thread_local_stat->peak = thread_local_stat->current;
+      int64_t current_value = GetCurrentValue();
       int64_t prev_value = peak_value_;
       while (prev_value < current_value &&
              !peak_value_.compare_exchange_weak(prev_value, current_value)) {
       }
-
       VLOG(8) << "Update peak_value, after update, peak_value = " << peak_value_
               << " , current value = " << current_value;
     }
-    ThreadDataRegistry<ThreadLocalStatType>::GetInstance().SetCurrentThreadData(
-        thread_local_stat);
   }
 
  private:

@@ -20,9 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/inlined_vector.h"
-#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
 
