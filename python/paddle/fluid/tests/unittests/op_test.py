@@ -1450,7 +1450,7 @@ class OpTest(unittest.TestCase):
                 if actual_np.dtype == np.uint16 and expect_np.dtype in [
                         np.float32, np.float64
                 ]:
-                    actual_t = convert_uint16_to_float(actual_t)
+                    actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.e-2
                 else:
                     self.rtol = 1.e-5
