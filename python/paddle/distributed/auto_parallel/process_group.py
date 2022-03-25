@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid.core as core
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
-from ...fluid.framework import in_dygraph_mode
+from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
 
 
@@ -132,7 +132,7 @@ class ProcessGroup:
         # TODO(shenliang03): This is a temporary solution to solve the problem of 
         # hang caused by cross-creation of new_group
         tmp = paddle.to_tensor(
-            [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [1], dtype="int32") if _non_static_mode() else fill_constant(
                 [0], dtype="int32", value="1")
         paddle.distributed.all_reduce(tmp, use_calc_stream=True)
         paddle.distributed.wait(tmp)

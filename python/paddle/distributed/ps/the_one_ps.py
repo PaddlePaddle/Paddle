@@ -15,7 +15,7 @@
 import warnings
 
 import os
-from paddle.distributed.fleet.proto import ps_pb2
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.fluid import core
@@ -68,16 +68,30 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
             print('new var: {}, {}, {}'.format(var, embedding_dim,
                                                accessor_proto.fea_dim))
             break
+
     fea_dim = accessor_proto.fea_dim
-    if fea_dim != embedding_dim + 2:
-        raise ValueError(
-            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
-            format(embedding_dim + 2, fea_dim))
+    if accessor_proto.accessor_class == "SparseAccessor":
+        if fea_dim != embedding_dim + 2:
+            raise ValueError(
+                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
+                format(embedding_dim + 2, fea_dim))
+    else:
+        if fea_dim != embedding_dim:
+            raise ValueError(
+                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
+                format(embedding_dim, fea_dim))
+
     embedx_dim = accessor_proto.embedx_dim
-    if embedx_dim != embedding_dim - 1:
-        raise ValueError(
-            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
-            format(embedding_dim - 1, embedx_dim))
+    if accessor_proto.accessor_class == "SparseAccessor":
+        if embedx_dim != embedding_dim - 1:
+            raise ValueError(
+                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
+                format(embedding_dim - 1, embedx_dim))
+    else:
+        if embedx_dim != embedding_dim - 3:
+            raise ValueError(
+                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
+                format(embedding_dim - 3, embedx_dim))
 
 
 class Service:
@@ -119,11 +133,18 @@ class Accessor:
                 break
 
         if not accessor_proto.HasField("accessor_class"):
-            accessor_proto.accessor_class = "CtrCommonAccessor"
+            # DownpourSparseValueAccessor
+            accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
-            accessor_proto.fea_dim = embedding_dim + 2
+            if accessor_proto.accessor_class == "SparseAccessor":
+                accessor_proto.fea_dim = embedding_dim + 2
+            else:
+                accessor_proto.fea_dim = embedding_dim
         if not accessor_proto.HasField("embedx_dim"):
-            accessor_proto.embedx_dim = embedding_dim - 1
+            if accessor_proto.accessor_class == "SparseAccessor":
+                accessor_proto.embedx_dim = embedding_dim - 1
+            else:
+                accessor_proto.embedx_dim = embedding_dim - 3
         if not accessor_proto.HasField("embedx_threshold"):
             accessor_proto.embedx_threshold = 0
 
@@ -268,16 +289,16 @@ class CommonAccessor(Accessor):
         attr_str = ""
 
         origin_var_name = value_name
-        print("get_initializer_attr param name:", value_name)
+        # print("get_initializer_attr param name:", value_name)
         for op in o_startup_program.global_block().ops:
             if op.type in self.opt_init_map.keys(
             ) and origin_var_name == op.output("Out")[0]:
                 init_attr = [op.type]
-                print("get_initializer_attr op type:", op.type)
+                # print("get_initializer_attr op type:", op.type)
                 for attr in self.opt_init_map[op.type]:
-                    print("get_initializer_attr opt_init_map attr:", attr)
+                    # print("get_initializer_attr opt_init_map attr:", attr)
                     init_attr.append(str(op.attr(attr)))
-                    print("get_initializer_attr op attr:", str(op.attr(attr)))
+                    # print("get_initializer_attr op attr:", str(op.attr(attr)))
                 attr_str = l_in.join(init_attr)
                 break
         return attr_str
@@ -288,16 +309,16 @@ class CommonAccessor(Accessor):
         size = ctx.sections()[0]
         single_dim = ctx.sections()[1] if ctx.is_sparse() else 1
         adam_d2sum = context["user_defined_strategy"].adam_d2sum
-        print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
-            ctx.table_id(), ctx.is_datanorm_table()))
+        # print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
+        #     ctx.table_id(), ctx.is_datanorm_table()))
 
         main_program, startup_program, idx = get_program_by_id(context,
                                                                ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
-        print("the one ps optimizer_ops:", optimizer_ops)
-        print("the one ps parse_by_optimizer grad_name:", grad_name)
+        # print("the one ps optimizer_ops:", optimizer_ops)
+        # print("the one ps parse_by_optimizer grad_name:", grad_name)
         oop = None
 
         for op in optimizer_ops:
@@ -394,7 +415,7 @@ class CommonAccessor(Accessor):
                     initializer = self.get_initializer_attr(param.name,
                                                             startup_program)
                 elif formal_name == "SummaryDecayRate":
-                    initializer = "fill_constant&0.99999"
+                    initializer = "fill_constant&0.999999"
                 else:
                     initializer = "fill_constant&0"
                 initializers.append(initializer)
@@ -740,7 +761,6 @@ class PsDescBuilder(object):
     def _get_tables(self):
         tables = []
         for idx, (name, ctx) in enumerate(self.send_ctx.items()):
-            print('####### {}\n'.format(ctx.is_sparse()))
             if ctx.is_sparse():
                 if self.ps_mode == DistributedMode.GEO:
                     tables.append(globals()['GeoSparseTable'](self.context,
@@ -778,11 +798,11 @@ class PsDescBuilder(object):
         return text_format.MessageToString(self.ps_desc)
 
     def build_server_desc(self):
+        self.sparse_table_maps = {}
         for table in self.tables:
             table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
             )
             table._set(table_proto)
-            self.sparse_table_maps = {}
             if table_proto.type == ps_pb2.PS_SPARSE_TABLE and table_proto.common is not None:
                 self.sparse_table_maps[
                     table_proto.common.table_name] = table_proto.table_id
@@ -801,6 +821,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._worker = fluid.core.DistFleetWrapper()
         self._server_sub_program = []
         self._heter_client = None
+        self._send_ctx = None
 
     def _set_basic_info(self, context):
         self.context = context
@@ -835,7 +856,40 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.ps_desc_builder = PsDescBuilder(self.context)
 
-    def _init_worker(self):
+    def _init_params(self, scopes, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            _, _, idx = get_program_by_id(self.context, ctx.program_id())
+            scope = scopes[idx]
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            # print("init params:", idx, table_id, var_names)
+            self._worker.push_dense_params(scope, table_id, var_names)
+
+    def _pull_all_dense(self, scopes, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            _, _, idx = get_program_by_id(self.context, ctx.program_id())
+            scope = scopes[idx]
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            # print("pull all dense:", idx, table_id, var_names)
+            self._worker.pull_dense_params(scope, table_id, var_names)
+
+    def _pull_dense(self, program, scope, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            if ctx.program_id() != id(program):
+                continue
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            # print("pull dense:", table_id, var_names)
+            self._worker.pull_dense_params(scope, table_id, var_names)
+
+    def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
 
         if self.context['use_ps_gpu']:
@@ -866,6 +920,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.is_heter_ps_mode,
             use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
+        self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -889,23 +944,32 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs.update(sync_kwargs)
 
         print("communicator config:", trainer_config.get_communicator_flags())
-        self._communicator = Communicator(
-            trainer_config.mode, kwargs,
-            trainer_config.get_communicator_flags())
-        self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         self.string_hosts,
-                                         fluid.global_scope())
 
+        role_id = get_role_id(self.role_maker)
+        self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+
+        if self.context['ps_mode'] == DistributedMode.GEO:
+            self._communicator = Communicator(
+                trainer_config.mode, kwargs,
+                trainer_config.get_communicator_flags())
+            self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+                                             self.string_hosts,
+                                             fluid.global_scope())
         fleet.util.barrier()
-        info = self._communicator.get_client_info()
+
+        # info = self._communicator.get_client_info()
+        info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
             all_info = self.role_maker._all_gather(info[0])
             # for unittest
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
                 all_info = [all_info]
-            self._communicator.set_clients(all_info)
-            self._communicator.create_client_to_client_connection()
+
+            # self._communicator.set_clients(all_info)
+            # self._communicator.create_client_to_client_connection()
+            self._worker.set_clients(all_info)
+            self._worker.create_client2client_connection()
             print('create c2c connection done')
         else:
             print('cannot create c2c connection')
@@ -914,6 +978,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
+        # for GEO
         if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
             # for ps-heter mode load all parameters on first_worker
             init_params = get_the_one_recv_context(
@@ -921,16 +986,38 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
+        # if not is_test:
+        #     self._communicator.init_params(init_params)
+        #     fleet.util.barrier()
+        # self._communicator.pull_dense(init_params)
+        # fleet.util.barrier()
+
+        if scopes is None:
+            if len(self.origin_main_programs) > 1:
+                raise ValueError(
+                    "You must set the scope list when you have Multiple programs"
+                )
+            scopes = [fluid.global_scope()]
+        if len(self.origin_main_programs) != len(scopes):
+            raise VauleError("len(programs) != len(scopes)")
+
+        self.scopes = scopes
         if not is_test:
-            self._communicator.init_params(init_params)
+            if self.context['ps_mode'] == DistributedMode.GEO:
+                self._communicator.init_params(init_params)
+            else:
+                if role_id == 0:
+                    self._init_params(scopes, send_ctx, dense_map)
+
             fleet.util.barrier()
-        self._communicator.pull_dense(init_params)
+        self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
-        if not self._communicator.is_running():
-            self._communicator.start()
-        else:
-            warnings.warn("communicator has been initialized, skip")
+        if self.context['ps_mode'] == DistributedMode.GEO:
+            if not self._communicator.is_running():
+                self._communicator.start()
+            else:
+                warnings.warn("communicator has been initialized, skip")
 
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
@@ -996,7 +1083,9 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.run_server(host, int(port))
 
     def _stop_worker(self):
-        self._communicator.stop()
+        if self.context['ps_mode'] == DistributedMode.GEO:
+            self._communicator.stop()
+        self._worker.stop_worker()
         if self.is_heter_ps_mode:
             assert self._heter_client != None, "heter client should not be None in heterps mode"
             self._heter_client.stop()
@@ -1151,7 +1240,11 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, executor must be as Executor type")
 
         import paddle
-        program = self.origin_main_program if main_program is None else main_program
+        program = self.origin_main_programs[
+            0] if main_program is None else main_program
+        _, _, idx = get_program_by_id(self.context, id(program))
+        scope = self.scopes[idx]
+        print("save inference model scope idx:", idx)
 
         if isinstance(program, CompiledProgram):
             raise TypeError(
@@ -1180,12 +1273,14 @@ class TheOnePSRuntime(RuntimeBase):
         sparse_names = self._save_sparse_params(executor, dirname, sparses,
                                                 main_program, mode)
 
-        denses = get_the_one_recv_context(
+        dense_map = get_the_one_recv_context(
+            self.context, split_dense_table=self.is_heter_ps_mode)
+        send_ctx = get_the_one_send_context(
             self.context,
-            is_dense=True,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
-        self._communicator.pull_dense(denses)
+            use_origin_program=self.is_heter_ps_mode,
+            ep_list=self.endpoints)
+        self._pull_dense(program, scope, send_ctx, dense_map)
 
         generate_vars = self.context[
             "user_defined_strategy"].trainer_desc_configs["stat_var_names"]
@@ -1196,7 +1291,7 @@ class TheOnePSRuntime(RuntimeBase):
                 infer_program.list_vars()))
 
         for var in remaining_vars:
-            tensor = var.get_value()
+            tensor = var.get_value(scope)
             paddle.save(
                 tensor,
                 os.path.join(model_path, var.name),
