@@ -1086,7 +1086,7 @@ bool MultiSlotInMemoryDataFeed::Start() {
 #ifdef _LINUX
   this->CheckSetFileList();
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
-    std::vector<T> data;
+    std::vector<Record> data;
     input_channel_->Read(data);
     output_channel_->Write(std::move(data));
   }
