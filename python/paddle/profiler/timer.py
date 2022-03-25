@@ -275,7 +275,7 @@ class Event(object):
             records['total'] += current_record
 
     def get_summary(self):
-        if self.total_iters < self.skip_iter:
+        if self.total_iters <= self.skip_iter:
             return {}
 
         reader_avg = 0
