@@ -1350,6 +1350,165 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+// HardSwish = min(max(0, x+3), 6) * x / 6
+template <typename T>
+struct HardSwishFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = (x + static_cast<T>(offset))
+                        .cwiseMax(static_cast<T>(0))
+                        .cwiseMin(static_cast<T>(threshold)) *
+                    x / static_cast<T>(scale);
+  }
+};
+
+template <typename T>
+struct HardSwishGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto tmp = ((x + static_cast<T>(offset)) < static_cast<T>(threshold))
+                   .template cast<T>();
+    dx.device(d) =
+        dout *
+        (((x + static_cast<T>(offset)) > static_cast<T>(0)).template cast<T>() *
+             (static_cast<T>(2) * x + static_cast<T>(offset)) /
+             static_cast<T>(scale) * tmp +
+         static_cast<T>(1) * (static_cast<T>(1) - tmp));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct SwishFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x / (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
+  }
+};
+
+template <typename T>
+struct SwishGradFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out fake_out, dOut dout, dX dx) const {
+    auto temp1 = static_cast<T>(1) /
+                 (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
+    auto out = x * temp1;
+    auto temp2 = temp1 * (static_cast<T>(1) - (static_cast<T>(beta) * out));
+    dx.device(d) = dout * ((static_cast<T>(beta) * out) + temp2);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
+template <typename T>
+struct PowFunctor : public BaseActivationFunctor<T> {
+  float factor;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"factor", &factor}};
+  }
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.pow(static_cast<T>(factor));
+  }
+};
+
+template <typename T>
+struct PowGradFunctor : public BaseActivationFunctor<T> {
+  float factor;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"factor", &factor}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(factor) *
+                   x.pow(static_cast<T>(factor) - static_cast<T>(1));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// floor(x) = flooring(x)
+template <typename T>
+struct FloorFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.floor();
+  }
+};
+
+// round(x) = [x]
+template <typename T>
+struct RoundFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.round();
+  }
+};
+
+// ceil(x) = ceiling(x)
+template <typename T>
+struct CeilFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.ceil();
+  }
+};
+
+template <typename T>
+struct ZeroGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = static_cast<T>(0) * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kNoDeps;
+  }
+};
+
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 template <typename T>
 struct CudaReluFunctor : public BaseActivationFunctor<T> {
@@ -2188,6 +2347,147 @@ struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSwishFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float beta;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  // swish(x) = x / (1 + exp(-beta * x))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType b = static_cast<MPType>(beta);
+    return static_cast<T>(x / (one + exp(-b * x)));
+  }
+};
+
+template <typename T>
+struct CudaSwishGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float beta;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  // dx = dout * (1 + exp(-b * x) + b * x * exp(-b * x) / (1 + exp(-b * x))^2)
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType b = static_cast<MPType>(beta);
+    MPType temp1 = one / (one + exp(-b * x));
+    MPType out = x * temp1;
+    MPType temp2 = b * out;
+    MPType temp3 = temp1 * (one - temp2);
+    return static_cast<T>(dout * (temp2 + temp3));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaHardSwishFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+
+  // hard_swish(x) = 0, when x <= -offset
+  //                 x , when x >= threshold - offset
+  //                 x * (x + offset) / scale, otherwise
+  // threshold = scale = 6, offset = 3 by default
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    T temp = x + static_cast<T>(offset);
+    T temp_max = temp > zero ? temp : zero;
+    T temp_min = temp_max < t ? temp_max : t;
+    return temp_min * x / static_cast<T>(scale);
+  }
+};
+
+template <typename T>
+struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  T one = static_cast<T>(1.0f);
+  T two = static_cast<T>(2.0f);
+  float threshold;
+  float scale;
+  float offset;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}, {"scale", &scale}, {"offset", &offset}};
+  }
+
+  // dx = 0, when x <= -offset
+  //      dout , when x >= threshold - offset
+  //      dout * (2 * x / scale + offset / scale), otherwise
+  // threshold = scale = 6, offset = 3 by default
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    T o = static_cast<T>(offset);
+    T s = static_cast<T>(scale);
+    T temp1 = static_cast<T>(x + o > zero);
+    T temp2 = static_cast<T>(x + o < static_cast<T>(threshold));
+    return dout * (temp1 * temp2 * (two * x + o) / s + one - temp2);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaCeilFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // ceil(x) = ceil(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(ceil(x));
+  }
+};
+
+template <typename T>
+struct CudaFloorFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // floor(x) = floor(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(floor(x));
+  }
+};
+
+template <typename T>
+struct CudaRoundFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // round(x) = round(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(round(x));
+  }
+};
+
+// GradFunctor for ceil, floor and round
+template <typename T>
+struct CudaZeroGradFunctor : public BaseActivationFunctor<T> {
+  __device__ __forceinline__ T operator()(const T x) const {
+    return static_cast<T>(0.0f);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kNoDeps;
+  }
 };
 
 #endif

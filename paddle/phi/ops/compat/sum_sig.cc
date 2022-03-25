@@ -1,4 +1,5 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <paddle/fluid/operators/optimizers/adamw_op.h>
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CPU_KERNEL(
-    adamw, ops::AdamWOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AdamWOpKernel<paddle::platform::CPUDeviceContext, double>);
+namespace phi {
+
+KernelSignature SumOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("add_n", {"X"}, {}, {"Out"});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
+}  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(sum, add_n);
+
+PD_REGISTER_ARG_MAPPING_FN(sum, phi::SumOpArgumentMapping);
