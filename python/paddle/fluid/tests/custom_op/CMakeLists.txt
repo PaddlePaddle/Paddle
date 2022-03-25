@@ -25,3 +25,7 @@ py_test(test_custom_simple_slice SRCS test_custom_simple_slice.py)
 # other tests
 py_test(test_sysconfig SRCS test_sysconfig.py)
 py_test(test_check_abi SRCS test_check_abi.py)
+
+if(APPLE)
+    set_tests_properties(test_custom_simple_slice PROPERTIES TIMEOUT 300)
+endif()
