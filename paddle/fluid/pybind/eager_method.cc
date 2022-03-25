@@ -706,22 +706,25 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self, PyObject* args,
     }
   }
 
-#define TENSOR_TO_PY_SCALAR(T, proto_type)                             \
-  if (tensor.dtype() == proto_type) {                                  \
-    auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);             \
-    T b = paddle::pybind::TensorGetElement<T>(tensor, offset);         \
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];            \
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];         \
-    py_dims[0] = 1;                                                    \
-    py_strides[0] = 1;                                                 \
-    auto& api = pybind11::detail::npy_api::get();                      \
-    PyObject* array = api.PyArray_NewFromDescr_(                       \
-        api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1, \
-        py_dims, py_strides, static_cast<void*>(&b),                   \
-        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |                \
-            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,           \
-        nullptr);                                                      \
-    return array;                                                      \
+#define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
+  if (tensor.dtype() == proto_type) {                                        \
+    auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
+    T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
+    py_dims[0] = 1;                                                          \
+    py_strides[0] = 1;                                                       \
+    auto& api = pybind11::detail::npy_api::get();                            \
+    PyObject* array = api.PyArray_NewFromDescr_(                             \
+        api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1,       \
+        py_dims, py_strides, nullptr,                                        \
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |                      \
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,                 \
+        nullptr);                                                            \
+    std::memcpy(                                                             \
+        reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data), \
+        static_cast<void*>(&b), sizeof(b));                                  \
+    return array;                                                            \
   }
 
   PD_FOR_EACH_DATA_TYPE(TENSOR_TO_PY_SCALAR);
