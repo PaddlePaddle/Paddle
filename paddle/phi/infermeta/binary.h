@@ -186,6 +186,12 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_y,
                      MetaTensor* out);
 
+void MatmulWithFlattenInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                int x_num_col_dims,
+                                int y_num_col_dims,
+                                MetaTensor* out);
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,
