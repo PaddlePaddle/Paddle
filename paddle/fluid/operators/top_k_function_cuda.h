@@ -374,16 +374,20 @@ struct Bitfield<unsigned int> {
   static __device__ __forceinline__ unsigned int GetBitfield(unsigned int val,
                                                              int pos, int len) {
     unsigned int ret;
+#if defind(PADDLE_WITH_CUDA)
     asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 
   static __device__ __forceinline__ unsigned int SetBitfield(
       unsigned int val, unsigned int to_insert, int pos, int len) {
     unsigned int ret;
+#if defind(PADDLE_WITH_CUDA)
     asm("bfi.b32 %0, %1, %2, %3, %4;"
         : "=r"(ret)
         : "r"(to_insert), "r"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 };
@@ -393,7 +397,9 @@ struct Bitfield<uint64_t> {
   static __device__ __forceinline__ uint64_t GetBitfield(uint64_t val, int pos,
                                                          int len) {
     uint64_t ret;
+#if defind(PADDLE_WITH_CUDA)
     asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 
@@ -401,9 +407,11 @@ struct Bitfield<uint64_t> {
                                                          uint64_t to_insert,
                                                          int pos, int len) {
     uint64_t ret;
+#if defind(PADDLE_WITH_CUDA)
     asm("bfi.b64 %0, %1, %2, %3, %4;"
         : "=l"(ret)
         : "l"(to_insert), "l"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 };
@@ -503,13 +511,17 @@ struct RadixTypeConfig<platform::float16> {
 /*---------------------------Helper Functions------------------*/
 __device__ __forceinline__ int GetLaneId() {
   int lane_id;
+#if defind(PADDLE_WITH_CUDA)
   asm("mov.s32 %0, %%laneid;" : "=r"(lane_id));
+#endif
   return lane_id;
 }
 
 __device__ __forceinline__ unsigned GetLaneMaskLe() {
   unsigned mask;
+#if defind(PADDLE_WITH_CUDA)
   asm("mov.u32 %0, %%lanemask_le;" : "=r"(mask));
+#endif
   return mask;
 }
 
