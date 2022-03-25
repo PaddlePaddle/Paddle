@@ -286,6 +286,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                             data = data[0]
                     else:
                         data = self._reader.read_next()
+            benchmark().after_reader()
 
             return data
         except StopIteration:

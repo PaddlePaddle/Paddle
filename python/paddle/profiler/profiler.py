@@ -354,10 +354,7 @@ class Profiler:
                 BATCH_SIZE = 4
                 loader = paddle.io.DataLoader(
                     dataset,
-                    batch_size=BATCH_SIZE,
-                    shuffle=True,
-                    drop_last=True,
-                    num_workers=2)
+                    batch_size=BATCH_SIZE)
                 p = profiler.Profiler(timer_only=True)
                 p.start()
                 for i, (image, label) in enumerate(loader()):
