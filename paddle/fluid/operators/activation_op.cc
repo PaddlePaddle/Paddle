@@ -1499,6 +1499,12 @@ REGISTER_ACTIVATION_OP(logsigmoid, LogSigmoid, LogSigmoidFunctor,
 REGISTER_ACTIVATION_OP(log2, Log2, Log2Functor, Log2GradFunctor);
 REGISTER_ACTIVATION_OP(log10, Log10, Log10Functor, Log10GradFunctor);
 REGISTER_ACTIVATION_OP(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);
+REGISTER_ACTIVATION_OP(hard_swish, HardSwish, HardSwishFunctor,
+                       HardSwishGradFunctor);
+REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
+REGISTER_ACTIVATION_OP(round, Round, RoundFunctor, ZeroGradFunctor);
+REGISTER_ACTIVATION_OP(floor, Floor, FloorFunctor, ZeroGradFunctor);
+REGISTER_ACTIVATION_OP(ceil, Ceil, CeilFunctor, ZeroGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */
@@ -1778,18 +1784,6 @@ REGISTER_OPERATOR(
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    pow, ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<float>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    pow_grad,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */
