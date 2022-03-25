@@ -13,18 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/split.h"
-
-DECLARE_int32(rpc_deadline);
-DECLARE_int32(pserver_timeout_ms);
 
 namespace paddle {
 namespace distributed {
 
-std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
-bool HeterClient::is_initialized_ = false;
+std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
 
 int GetMicroId(const platform::DeviceContext& ctx,
                const framework::Scope* scope) {
@@ -54,58 +50,21 @@ int GetMicroId(const platform::DeviceContext& ctx,
   return micro_id;
 }
 
-void HeterClient::MainThread() {
-  while (running_) {
-    RpcProfilerControl();
-  }
-}
-
 void HeterClient::Stop() {
-  running_ = false;
-  if (!is_initialized_) {
-    VLOG(3) << "HeterClient is not inited, do nothing";
-  } else {
-    if (main_thread_) {
-      auto status = StopHeterWorker();
-      status.wait();
-      main_thread_->join();
-      main_thread_.reset(nullptr);
-    }
-    VLOG(3) << "HeterClient Stop Done";
-  }
-}
-
-void HeterClient::FinalizeWorker() {
-  running_ = false;
-  if (!is_initialized_) {
-    VLOG(3) << "HeterClient is not inited, do nothing";
-  } else {
-    if (main_thread_) {
-      main_thread_->join();
-      main_thread_.reset(nullptr);
-    }
-    VLOG(3) << "HeterClient Stop Done";
-  }
+  auto status = StopHeterWorker();
+  status.wait();
 }
 
 std::future<int32_t> HeterClient::StopHeterWorker() {
   return SendCmd(-1, PS_STOP_SERVER, {});
 }
 
-void HeterClient::RpcProfilerControl() {
-  if (trainer_id_ == 0) {
-    if (!do_server_profiler_ && platform::IsProfileEnabled()) {
-      // send profiler start flag
-      do_server_profiler_ = true;
-      auto start_status = StartProfiler();
-      start_status.wait();
-    } else if (do_server_profiler_ && !platform::IsProfileEnabled()) {
-      // send profiler end flag
-      auto stop_status = StopProfiler();
-      stop_status.wait();
-      do_server_profiler_ = false;
-    }
-  }
+std::future<int32_t> HeterClient::StartProfiler() {
+  return SendCmd(-1, PS_START_PROFILER, {});
+}
+
+std::future<int32_t> HeterClient::StopProfiler() {
+  return SendCmd(-1, PS_STOP_PROFILER, {});
 }
 
 void HeterClient::CreateClient2XpuConnection() {
@@ -156,27 +115,24 @@ void HeterClient::SendAndRecvAsync(
                                      1);
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
-  const std::string message_name_val = message_name;
   const std::vector<std::string> send_var_name_val = send_var_name;
   const std::vector<std::string> recv_var_name_val = recv_var_name;
-  VLOG(3) << "BRPCClient::SendAndRecv Begin, message_name: "
-          << message_name_val;
+  VLOG(3) << "BRPCClient::SendAndRecv Begin, message_name: " << message_name;
   brpc::Channel* channel = nullptr;
   distributed::MultiVarMsg request;
-  OnHeterRpcDone* closure = new OnHeterRpcDone([p_ctx, p_scope](void* done) {
+  OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
     auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
     PADDLE_ENFORCE_NE(
         closure->cntl.Failed(), true,
         platform::errors::Unimplemented(
             "HeterClient::SendAndRecv meets brpc error, error message is %s",
             closure->cntl.ErrorText()));
-
     VLOG(4) << "call heter_worker success";
   });
   closure->cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
   auto& request_io_buffer = closure->cntl.request_attachment();
   distributed::SerializeToMultiVarMsgAndIOBuf(
-      message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
+      message_name, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
 
   int micro_id = GetMicroId(ctx, p_scope);
@@ -188,6 +144,19 @@ void HeterClient::SendAndRecvAsync(
   } else if (mode == "backward") {
     int num = minibatch_id % previous_xpu_channels_.size();
     channel = previous_xpu_channels_[num].get();
+  } else if (mode == "send_to_switch") {
+    VLOG(4) << "calling switch service";
+    // auto promise = std::make_shared<std::promise<int32_t>>();
+    // closure->add_promise(promise);
+    // std::future<int> fut = promise->get_future();
+    // int idx = 1;  // for test
+    // LOG(INFO) << "xpu_channels_ size: " << xpu_channels_.size();
+    // channel = xpu_channels_[idx].get();  // 为了适配 send_and_recv op
+    // ::paddle::distributed::PsService_Stub stub(channel);
+    // stub.SendToSwitch(&closure->cntl, &request, &closure->ps_response,
+    // closure); fut.wait();
+    VLOG(4) << "calling switch service done";
+    return;
   }
   ::paddle::distributed::PsService_Stub stub(channel);
   stub.SendAndRecvVariable(&closure->cntl, &request, &closure->response,
@@ -229,13 +198,5 @@ std::future<int32_t> HeterClient::SendCmd(
   return fut;
 }
 
-std::future<int32_t> HeterClient::StartProfiler() {
-  return SendCmd(-1, PS_START_PROFILER, {});
-}
-
-std::future<int32_t> HeterClient::StopProfiler() {
-  return SendCmd(-1, PS_STOP_PROFILER, {});
-}
-
-}  // end namespace distributed
+}  // namespace distributed
 }  // end namespace paddle

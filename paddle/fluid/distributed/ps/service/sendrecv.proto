@@ -59,6 +59,8 @@ enum PsCmdID {
   PS_GRAPH_SAMPLE_NODES_FROM_ONE_SERVER = 38;
   PS_GRAPH_USE_NEIGHBORS_SAMPLE_CACHE = 39;
   PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG = 40;
+  PEER_ROLE_IS_WORKER = 41;
+  PEER_ROLE_IS_SWITCH = 42;
 }
 
 message PsRequestMessage {
@@ -122,4 +124,8 @@ message MultiVariableMessage {
 service PsService {
   rpc service(PsRequestMessage) returns (PsResponseMessage);
   rpc SendAndRecvVariable(MultiVariableMessage) returns (MultiVariableMessage);
+  rpc SendToWorker(MultiVariableMessage) returns (PsResponseMessage);
+  rpc SendToSwitch(MultiVariableMessage) returns (PsResponseMessage);
+  rpc SendS2S(MultiVariableMessage) returns (PsResponseMessage);
+  rpc RecvFromSwitch(MultiVariableMessage) returns (MultiVariableMessage);
 };

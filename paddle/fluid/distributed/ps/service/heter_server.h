@@ -22,10 +22,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/executor.h"
@@ -51,123 +53,26 @@ class Scope;
 }  // namespace paddle
 
 DECLARE_double(eager_delete_tensor_gb);
+DECLARE_int32(pserver_timeout_ms);
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
-using VarMsg = ::paddle::distributed::VariableMessage;
+using MultiVarMsg = MultiVariableMessage;
+using VarMsg = VariableMessage;
 
-class HeterService;
-
-typedef int32_t (HeterService::*serviceHandlerFunc)(
+using serviceHandler = std::function<int32_t(
     const PsRequestMessage& request, PsResponseMessage& response,  // NOLINT
-    brpc::Controller* cntl);
+    brpc::Controller* cntl)>;
+using HeterServiceHandler =
+    std::function<int32_t(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>;
 
-typedef std::function<void(void*)> HeterRpcCallbackFunc;
-typedef std::function<int(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>
-    HeterServiceHandler;
+using HeterRpcCallbackFunc = std::function<void(void*)>;
 
-class HeterService : public ::paddle::distributed::PsService {
+class ServiceHandlerBase {
  public:
-  HeterService() {
-    _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
-    _service_handler_map[PS_START_PROFILER] = &HeterService::start_profiler;
-    _service_handler_map[PS_STOP_PROFILER] = &HeterService::stop_profiler;
-  }
+  ServiceHandlerBase() : dev_ctx_(nullptr), scope_(nullptr) {}
 
-  virtual ~HeterService() {}
-
-  virtual void service(::google::protobuf::RpcController* controller,
-                       const PsRequestMessage* request,
-                       PsResponseMessage* response,
-                       ::google::protobuf::Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    std::string log_label("ReceiveCmd-");
-
-    response->set_err_code(0);
-    response->set_err_msg("");
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    auto itr = _service_handler_map.find(request->cmd_id());
-    if (itr == _service_handler_map.end()) {
-      std::string err_msg(
-          "undefined cmd_id, should match PsCmdID in ps.proto, cmd_id:");
-      err_msg.append(std::to_string(request->cmd_id()));
-      return;
-    }
-    serviceHandlerFunc handler_func = itr->second;
-    int service_ret = (this->*handler_func)(*request, *response, cntl);
-    if (service_ret != 0) {
-      response->set_err_code(service_ret);
-      response->set_err_msg("server internal error");
-    }
-  }
-
-  void SendAndRecvVariable(::google::protobuf::RpcController* controller,
-                           const MultiVarMsg* request, MultiVarMsg* response,
-                           ::google::protobuf::Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    std::string message_name = request->message_name();
-    auto itr = handler_map_.find(message_name);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    PADDLE_ENFORCE_NE(
-        itr, handler_map_.end(),
-        platform::errors::InvalidArgument(
-            "HeterService::SendAndRecvVariable Get illegal message_name: %s "
-            "which is not in HeterService::handler_map_",
-            message_name));
-    itr->second(request, response, cntl);
-  }
-
-  void RegisterServiceHandler(std::string message_name,
-                              HeterServiceHandler func) {
-    handler_map_[message_name] = func;
-  }
-
-  int32_t ForceExit() {
-    VLOG(3) << "heter service force exit";
-    is_exit_ = true;
-    return 0;
-  }
-
-  void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
-  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
-  bool IsExit() { return is_exit_; }
-
- private:
-  int32_t stop_profiler(const PsRequestMessage& request,
-                        PsResponseMessage& response,  // NOLINT
-                        brpc::Controller* cntl);
-
-  int32_t start_profiler(const PsRequestMessage& request,
-                         PsResponseMessage& response,  // NOLINT
-                         brpc::Controller* cntl);
-
-  int32_t stop_heter_worker(const PsRequestMessage& request,
-                            PsResponseMessage& response,  // NOLINT
-                            brpc::Controller* cntl);
-
- private:
-  std::string endpoint_;
-  std::unordered_map<std::string, HeterServiceHandler> handler_map_;
-  std::unordered_map<int32_t, serviceHandlerFunc> _service_handler_map;
-  std::unordered_set<int> stop_cpu_worker_set_;
-  int fan_in_;
-  bool is_exit_ = false;
-};
-
-using SharedMiniScope =
-    std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
-using SharedMicroScope = std::shared_ptr<std::unordered_map<
-    int, std::shared_ptr<std::vector<::paddle::framework::Scope*>>>>;
-using SharedTaskQueue = std::shared_ptr<
-    std::unordered_map<int, std::shared_ptr<::paddle::framework::BlockingQueue<
-                                std::pair<std::string, int>>>>>;
-
-class HeterRequestHandler {
- public:
-  HeterRequestHandler() : dev_ctx_(nullptr), scope_(nullptr) {}
-
-  virtual ~HeterRequestHandler() {}
+  virtual ~ServiceHandlerBase() {}
 
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
   void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
@@ -180,14 +85,22 @@ class HeterRequestHandler {
   const framework::Scope* scope_;
 };
 
-class RequestSendAndRecvHandler final : public HeterRequestHandler {
+using SharedMiniScope =
+    std::shared_ptr<std::unordered_map<int, ::paddle::framework::Scope*>>;
+using SharedMicroScope = std::shared_ptr<std::unordered_map<
+    int, std::shared_ptr<std::vector<::paddle::framework::Scope*>>>>;
+using SharedTaskQueue = std::shared_ptr<
+    std::unordered_map<int, std::shared_ptr<::paddle::framework::BlockingQueue<
+                                std::pair<std::string, int>>>>>;
+
+class SendAndRecvVariableHandler final : public ServiceHandlerBase {
  public:
-  RequestSendAndRecvHandler() {
+  SendAndRecvVariableHandler() {
     this->num_microbatch_ = 0;
     this->num_minibatch_ = 0;
   }
 
-  virtual ~RequestSendAndRecvHandler() {}
+  virtual ~SendAndRecvVariableHandler() {}
 
   void SetMiniScopes(SharedMiniScope mini_scopes) {
     mini_scopes_ = mini_scopes;
@@ -209,11 +122,119 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     return (*task_queue_).size();
   }
 
+  int SaveInSwitch(const MultiVarMsg* request, PsResponseMessage* response,
+                   brpc::Controller* cntl) {
+    VLOG(4) << "entering SaveInSwitch";
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::CPUPlace cpu_place;
+    auto& cpu_dev_ctx = *pool.Get(cpu_place);
+    auto message_name = request->message_name();
+    VLOG(4) << "message_name in heter server: " << message_name;
+    std::unique_lock<std::mutex> lk(scope_mutex_);
+    auto local_scope = local_scope_ptr.get();
+    if (!local_scope) {
+      LOG(ERROR) << "local_scope_ptr is null in SaveInSwitch";
+    }
+    for (int idx = 0; idx < request->send_var_names_size(); idx++) {
+      const auto& msg = request->var_messages(idx);
+      std::string var_name = msg.varname();
+      auto* var_exist_ptr = local_scope->FindVar(var_name);
+      if (!var_exist_ptr) {
+        VLOG(4) << "not find var: " << var_name << " in local_scope";
+      }
+      vars_table[var_name] += 1;
+      VLOG(4) << "saved var_name: " << var_name
+              << ", cnt = " << vars_table[var_name];
+    }
+    auto& request_io_buffer = cntl->request_attachment();
+    distributed::DeserializeFromMultiVarMsgAndIOBuf(
+        *request, &request_io_buffer, cpu_dev_ctx, local_scope);
+    lk.unlock();
+    while (true) {
+      int ret = 0;
+      for (int idx = 0; idx < request->send_var_names_size(); idx++) {
+        ret |= vars_table[request->var_messages(idx).varname()];
+      }
+      if (!ret) {
+        VLOG(4) << "all saved vars consumed";
+        break;
+      }
+      VLOG(4) << "waiting consume result......";
+      sleep(1);
+    }
+    VLOG(4) << "SaveInSwitch success";
+    return 0;
+  }
+
+  int QueryInSwitch(const MultiVarMsg* request, MultiVarMsg* response,
+                    brpc::Controller* cntl) {
+    VLOG(4) << "entering QueryInSwitch";
+    auto local_scope = local_scope_ptr.get();
+    if (!local_scope) {
+      LOG(INFO) << "local_scope is null";
+    }
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::CPUPlace cpu_place;
+    auto& cpu_dev_ctx = *pool.Get(cpu_place);
+
+    // get req message_name & req_var_names
+    auto msg_name = request->message_name();
+    auto req_var_nums = request->recv_var_names_size();
+    std::vector<std::string> req_var_names(req_var_nums);
+    for (int var_idx = 0; var_idx < req_var_nums; ++var_idx) {
+      req_var_names[var_idx] = request->recv_var_names(var_idx);
+    }
+    auto& response_io_buffer = cntl->response_attachment();
+
+    // 1. fill message_name(string)
+    response->set_message_name(msg_name);
+
+    // 2. fill var_names(string)
+    for (auto& req_var_name : req_var_names) {
+      response->add_send_var_names(req_var_name);
+    }
+
+    // 3. fill var_messages(VarMessage)
+    for (auto& req_var_name : req_var_names) {
+      LOG(INFO) << "query var_name: " << req_var_name;
+      auto* send_var_msg = response->add_var_messages();
+      send_var_msg->set_varname(req_var_name);
+
+      framework::Variable* var_ptr;
+      while (true) {
+        var_ptr = local_scope->FindVar(req_var_name);
+        if (!var_ptr) {
+          LOG(ERROR) << "local_scope not find var: " << req_var_name;
+        } else {
+          break;
+        }
+        sleep(1);
+      }
+      butil::IOBuf temp_iobuf;
+      if (var_ptr->IsType<framework::LoDTensor>()) {
+        SerializeLodTensor(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);
+      } else if (var_ptr->IsType<phi::SelectedRows>()) {
+        SerializeSelectedRows(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);
+      }
+      response_io_buffer.append(temp_iobuf);
+    }
+    for (auto& req_var_name : req_var_names) {
+      std::unique_lock<std::mutex> lk(scope_mutex_);
+      vars_table[req_var_name] -= 1;
+      VLOG(4) << "remained var: " << req_var_name
+              << ", cnt = " << vars_table[req_var_name];
+      lk.unlock();
+    }
+    VLOG(4) << "heter server QueryInSwitch done";
+    return 0;
+  }
+
   void SetTaskQueue(SharedTaskQueue task_queue) { task_queue_ = task_queue; }
 
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
-    platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle",
+    LOG(INFO) << "entered Handle";
+    platform::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
                                        platform::TracerEventType::Communication,
                                        1);
     FLAGS_eager_delete_tensor_gb = -1;
@@ -241,7 +262,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     auto* tensor = var->GetMutable<framework::LoDTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
     auto micro_id = static_cast<int>(data[0]);
-
     int minibatch_index = micro_id / 10;
     int microbatch_index = micro_id % 10;
 
@@ -249,10 +269,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     std::unique_lock<std::mutex> lk(scope_mutex_);
     if ((*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end()) {
       lk.unlock();
-      // PADDLE_ENFORCE_EQ(
-      //    (*mini_scopes_).find(minibatch_index) != (*mini_scopes_).end(), 1,
-      //    platform::errors::InvalidArgument(
-      //        "minibatch index should in current trainer"));
+
       PADDLE_ENFORCE_EQ(
           (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(), 1,
           platform::errors::InvalidArgument(
@@ -282,6 +299,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     // blocking queue handles multi thread
     (*task_queue_)[minibatch_index]->Push(
         std::make_pair(message_name, microbatch_index));
+
     auto response_var_nums = request->recv_var_names_size();
     std::vector<std::string> response_var_names(response_var_nums),
         empty_var_names{};
@@ -294,6 +312,10 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
         &local_scope, response, &response_io_buffer);
     return 0;
   }
+
+ public:
+  std::shared_ptr<paddle::framework::Scope> local_scope_ptr;  // for switch
+  std::unordered_map<std::string, uint32_t> vars_table;
 
  private:
   // share with HeterPipelineTrainer
@@ -310,15 +332,236 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   SharedTaskQueue task_queue_;
 };
 
+class HeterService : public PsService {
+ public:
+  HeterService() {
+    _service_handler_map[PS_STOP_SERVER] =
+        std::bind(&HeterService::stop_heter_worker, this, std::placeholders::_1,
+                  std::placeholders::_2, std::placeholders::_3);
+    _service_handler_map[PS_START_PROFILER] =
+        std::bind(&HeterService::start_profiler, this, std::placeholders::_1,
+                  std::placeholders::_2, std::placeholders::_3);
+    _service_handler_map[PS_STOP_PROFILER] =
+        std::bind(&HeterService::stop_profiler, this, std::placeholders::_1,
+                  std::placeholders::_2, std::placeholders::_3);
+
+    service_handler_.local_scope_ptr =
+        std::make_shared<paddle::framework::Scope>();
+  }
+
+  virtual ~HeterService() {}
+
+  virtual void service(::google::protobuf::RpcController* controller,
+                       const PsRequestMessage* request,
+                       PsResponseMessage* response,
+                       ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    response->set_err_code(0);
+    response->set_err_msg("");
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    auto itr = _service_handler_map.find(request->cmd_id());
+    if (itr == _service_handler_map.end()) {
+      std::string err_msg(
+          "undefined cmd_id, should match PsCmdID in ps.proto, cmd_id:");
+      err_msg.append(std::to_string(request->cmd_id()));
+      return;
+    }
+    serviceHandler handler = itr->second;
+    int service_ret = handler(*request, *response, cntl);
+    VLOG(4) << "handler in service ret: " << service_ret;
+    if (service_ret != 0) {
+      response->set_err_code(service_ret);
+      response->set_err_msg("server internal error");
+    }
+  }
+
+  virtual void SendAndRecvVariable(
+      ::google::protobuf::RpcController* controller, const MultiVarMsg* request,
+      MultiVarMsg* response, ::google::protobuf::Closure* done) {
+    // This object helps you to call done->Run() in RAII style. If you need
+    // to process the request asynchronously, pass done_guard.release().
+    brpc::ClosureGuard done_guard(done);
+    std::string message_name = request->message_name();
+    VLOG(0) << "SendAndRecvVariable message_name: " << message_name;
+    auto itr = handler_map_.find(message_name);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    LOG(INFO) << "SendAndRecvVariable(client addr) =" << cntl->remote_side();
+    PADDLE_ENFORCE_NE(
+        itr, handler_map_.end(),
+        platform::errors::InvalidArgument(
+            "HeterService::SendAndRecvVariable Get illegal message_name: %s "
+            "which is not in HeterService::handler_map_",
+            message_name));
+    itr->second(request, response, cntl);
+    // We don't want to call done->Run() here, release the guard.
+    // done_guard.release();
+  }
+
+  virtual void RecvFromSwitch(::google::protobuf::RpcController* controller,
+                              const MultiVarMsg* request, MultiVarMsg* response,
+                              ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    int ret = service_handler_.QueryInSwitch(request, response, cntl);
+    if (ret != 0) {
+      LOG(ERROR) << "QueryInSwitch failed!";
+    }
+  }
+
+  virtual void SendToSwitch(::google::protobuf::RpcController* controller,
+                            const MultiVarMsg* request,
+                            PsResponseMessage* response,
+                            ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    auto& switch_client_ptr_ =
+        HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_SWITCH);
+    if (switch_client_ptr_.peer_switch_channels_.empty()) {
+      LOG(ERROR) << "switch_client_ptr_.peer_switch_channels_ null";
+    }
+    brpc::Channel* channel = switch_client_ptr_.peer_switch_channels_[0].get();
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    // proxy: 定义新的 OnHeterRpcDone 对象（或者在类 OnHeterRpcDone 中 reset）
+    OnHeterRpcDone* closure2 = new OnHeterRpcDone([](void* done) {
+      auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
+      int ret = closure->CheckResponse();
+      closure->set_promise_value(ret);
+      PADDLE_ENFORCE_NE(
+          closure->cntl.Failed(), true,
+          platform::errors::Unimplemented(
+              "HeterClient::SendS2S meets brpc error, error message is %s",
+              closure->cntl.ErrorText()));
+    });
+    auto& std_cntl = closure2->cntl;
+    std_cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
+    std_cntl.request_attachment().append(cntl->request_attachment().movable());
+
+    auto promise = std::make_shared<std::promise<int32_t>>();
+    closure2->add_promise(promise);
+    std::future<int> fut = promise->get_future();
+    // brpc::Controller std_cntl;
+    // std_cntl.request_attachment().append(cntl->request_attachment().movable());
+    PsService_Stub stub(channel);
+    stub.SendS2S(&std_cntl, request, response, closure2);
+    cntl->response_attachment().append(
+        std_cntl.response_attachment().movable());
+    fut.wait();
+  }
+
+  void SendS2S(::google::protobuf::RpcController* controller,
+               const MultiVarMsg* request, PsResponseMessage* response,
+               ::google::protobuf::Closure* done) {
+    VLOG(4) << "entering SendS2S";
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    int ret = service_handler_.SaveInSwitch(request, response, cntl);
+    if (ret != 0) {
+      LOG(ERROR) << "SaveInSwitch failed";
+    }
+    std::string err_msg = "ok";
+    response->set_err_msg(err_msg.c_str());
+    response->set_err_code(ret);
+    VLOG(4) << "heter server SendS2S done";
+  }
+
+  void SendToWorker(::google::protobuf::RpcController* controller,
+                    const MultiVarMsg* request, PsResponseMessage* response,
+                    ::google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    VLOG(4) << "SendToWorker(client addr) =" << cntl->remote_side();
+    auto& switch_client_ptr_ =
+        HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_WORKER);
+    VLOG(4) << "in switch client, peer worker 0: "
+            << switch_client_ptr_.peer_worker_list_[0];
+    brpc::Channel* channel = switch_client_ptr_.peer_worker_channels_[0].get();
+
+    auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
+    PsService_Stub stub(channel);
+    stub.SendAndRecvVariable(controller, request, &closure->response, done);
+    // fill response content
+    std::string err_msg("pass to worker");
+    response->set_err_msg(err_msg.c_str());
+    response->set_err_code(0);
+  }
+
+  void RegisterServiceHandler(std::string message_name,
+                              HeterServiceHandler func) {
+    handler_map_[message_name] = func;
+  }
+
+  void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
+
+  void SetInterEndpoint(const std::string& end_point) {
+    endpoint_inter_ = end_point;
+  }
+
+  void SetPeerEndPoints(const std::vector<std::string>& peer_endpoints) {
+    peer_endpoints_ = peer_endpoints;
+  }
+
+  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
+
+  void ForceExit() {
+    VLOG(3) << "heter service force exit";
+    is_exit_ = true;
+    return;
+  }
+
+  bool IsExit() { return is_exit_; }
+
+ private:
+  int32_t stop_profiler(const PsRequestMessage& request,
+                        PsResponseMessage& response,  // NOLINT
+                        brpc::Controller* cntl) {
+    platform::DisableProfiler(
+        platform::EventSortingKey::kDefault,
+        string::Sprintf("heter_worker_%s_profile", endpoint_));
+    return 0;
+  }
+
+  int32_t start_profiler(const PsRequestMessage& request,
+                         PsResponseMessage& response,  // NOLINT
+                         brpc::Controller* cntl) {
+    platform::EnableProfiler(platform::ProfilerState::kAll);
+    return 0;
+  }
+
+  int32_t stop_heter_worker(const PsRequestMessage& request,
+                            PsResponseMessage& response,  // NOLINT
+                            brpc::Controller* cntl) {
+    auto client_id = request.client_id();
+    stop_cpu_worker_set_.insert(client_id);
+    if (stop_cpu_worker_set_.size() == fan_in_) {
+      is_exit_ = true;
+    }
+    return 0;
+  }
+
+ private:
+  SendAndRecvVariableHandler service_handler_;
+  std::string endpoint_;
+  std::string endpoint_inter_;
+  // for switch
+  std::vector<std::string> peer_endpoints_;
+
+  std::unordered_map<int32_t, serviceHandler> _service_handler_map;
+  std::unordered_map<std::string, HeterServiceHandler> handler_map_;
+  std::unordered_set<int> stop_cpu_worker_set_;
+  uint32_t fan_in_;
+  bool is_exit_ = false;
+};
+
 class HeterServer {
  public:
+  HeterServer() : ready_(0) {}
   virtual ~HeterServer() {}
-
   void Stop() {
     std::unique_lock<std::mutex> lock(mutex_);
     if (stoped_ == true) return;
-    if (!IsExit()) service_.ForceExit();
-    VLOG(3) << "HeterServer Stop()";
+    if (!IsExit()) {
+      service_.ForceExit();
+    }
     stoped_ = true;
     cv_.notify_all();
     server_.Stop(1000);
@@ -327,26 +570,37 @@ class HeterServer {
 
   bool IsStop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (stoped_ == true)
-      return true;
-    else
-      return false;
+    return stoped_;
   }
 
   bool IsExit() { return service_.IsExit(); }
 
-  HeterServer() : service_(), ready_(0) {}
-
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func);
 
-  void StartHeterService();
+  void StartHeterService(bool need_encrypt = false);
 
-  void SetEndPoint(const std::string& endpoint);
+  void StartHeterInterService(bool need_encrypt = false);
+
+  void SetEndPoint(const std::string& endpoint) {
+    this->endpoint_ = endpoint;
+    service_.SetEndpoint(endpoint);
+  }
+
+  void SetInterEndpoint(const std::string& endpoint) {
+    this->endpoint_inter_ = endpoint;
+    service_.SetInterEndpoint(endpoint);
+  }
+
+  void SetPeerEndPoints(const std::vector<std::string>& peer_endpoints) {
+    this->peer_endpoints_ = peer_endpoints;
+    service_.SetPeerEndPoints(peer_endpoints);
+  }
+
   void SetFanin(const int& fan_in);
 
-  void SetRequestHandler(
-      std::shared_ptr<RequestSendAndRecvHandler> request_handler) {
+  void SetServiceHandler(
+      std::shared_ptr<SendAndRecvVariableHandler> request_handler) {
     request_handler_ = request_handler;
   }
 
@@ -381,11 +635,15 @@ class HeterServer {
   std::condition_variable condition_ready_;
   bool stoped_ = true;
   std::string endpoint_;
+  std::string endpoint_inter_;
+  // for switch
+  std::vector<std::string> peer_endpoints_;
 
  protected:
   brpc::Server server_;
+  brpc::Server server_inter_;
   HeterService service_;
-  std::shared_ptr<RequestSendAndRecvHandler> request_handler_;
+  std::shared_ptr<SendAndRecvVariableHandler> request_handler_;
 
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
