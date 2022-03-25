@@ -339,7 +339,9 @@ paddle::optional<const paddle::experimental::Tensor&>
 EagerUtils::RecoverOptionalTensorWrapper(
     TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
   PADDLE_ENFORCE_NOT_NULL(
-      tw, phi::errors::InvalidArgument("TensorWrapper should not be null"));
+      tw, phi::errors::InvalidArgument("TensorWrapper in "
+                                       "RecoverOptionalTensorWrapper function "
+                                       "should not be null"));
   auto tmp = tw->recover(grad_node);
 
   paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
