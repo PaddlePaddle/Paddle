@@ -6269,16 +6269,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            if _in_eager_mode():
-                out = _C_ops.final_state_reshape(x, shape)
-            else:
-                out, _ = _C_ops.reshape2(x, None, 'shape', shape)
+            out = _C_ops.final_state_reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
-            if _in_eager_mode():
-                out = _C_ops.final_state_reshape(x, shape)
-            else:
-                out, _ = _C_ops.reshape2(x, shape)
+            out = _C_ops.final_state_reshape(x, shape)
         else:
             raise ValueError(
                 "shape must be an instance of `list`, `tuple` or `Variable`,"

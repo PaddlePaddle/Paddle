@@ -461,6 +461,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
 
     def BackwardValidationCheck(self):
         backward_forward_inputs_map = self.backward_forward_inputs_map
+        print("yoki self.backward_forward_inputs_map2: ", self.backward_forward_inputs_map)
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_attrs_list = self.backward_attrs_list
 
@@ -470,6 +471,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             max_fwd_input_position = max(max_fwd_input_position, pos)
 
         max_grad_tensor_position = -1
+        print("yoki: backward_grad_inputs_map: ", backward_grad_inputs_map)
         for _, (_, _, pos) in backward_grad_inputs_map.items():
             assert pos > max_fwd_input_position
             max_grad_tensor_position = max(max_grad_tensor_position, pos)
@@ -523,12 +525,14 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         forward_outputs_position_map = self.forward_outputs_position_map
 
         for backward_input in backward_inputs_list:
+            print("yoki: print backward_input: ", backward_input)
             backward_input_name = backward_input[0]
             backward_input_type = backward_input[1]
             backward_input_pos = backward_input[2]
 
             backward_fwd_name = FindForwardName(backward_input_name)
             if backward_fwd_name:
+                print("yoki: backward_fwd_name: ", backward_input_name)
                 # Grad Input
                 assert backward_fwd_name in forward_outputs_position_map.keys()
                 matched_forward_output_type = forward_outputs_position_map[
@@ -541,6 +545,9 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                     backward_input_pos
                 ]
             else:
+                print("yoki: not backward_fwd_name: ", backward_input_name)
+                print("yoki: forward_inputs_position_map: ", forward_inputs_position_map)
+                print("yoki: forward_outputs_position_map: ", forward_outputs_position_map)
                 # TensorWrapper Input
                 if backward_input_name in forward_inputs_position_map.keys():
                     tensor_wrapper_type = forward_inputs_position_map[
@@ -557,6 +564,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                     ]
                 else:
                     assert False, backward_input_name
+                print("yoki: self.backward_forward_inputs_map: ", self.backward_forward_inputs_map)
 
         for backward_output in backward_returns_list:
             backward_output_name = backward_output[0]
@@ -726,7 +734,10 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
         intermediate_outputs = self.intermediate_outputs
-        inplace_map = self.inplace_map
+        if is_inplaced:
+            inplace_map = self.inplace_map
+        else:
+            inplace_map = {}
 
         # Get Function Args
         num_inputs = len(forward_attrs_list) + len(
@@ -768,7 +779,10 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         # Forward Full Logic
         function_name = forward_api_name
         if len(intermediate_outputs) > 0:
-            function_name = GetIntermediateAPIFunctionName(function_name)
+            if is_inplaced:
+                function_name = GetIntermediateAPIFunctionName(forward_api_name[:-1]) + '_'
+            else:
+                function_name = GetIntermediateAPIFunctionName(function_name)
 
         forward_call_str = f"auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
 
@@ -777,10 +791,17 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             intermediate_outputs)
         returns_type_list = ["" for i in range(num_outputs)]
         returns_list = ["" for i in range(num_outputs)]
+        if forward_api_name == "reshape":
+            print("yoki intermediate_outputs: ", intermediate_outputs)
+            print("yoki: ", self.forward_outputs_position_map)
+            # assert False
+        # real_pos = 0
         for name, (rtype, pos) in forward_outputs_position_map.items():
+            if forward_api_name == "reshape":
+                print("yoki: ", name, " ", rtype, " ", pos)
             if name in intermediate_outputs:
                 continue
-            if num_outputs == 1:
+            if num_outputs == 1 and len(intermediate_outputs) == 0:
                 returns_list[0] = f"api_result"
             else:
                 # Tuple api_result
@@ -792,7 +813,10 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                 assert IsVectorTensorType(rtype)
                 returns_type_list[
                     pos] = "std::vector<paddle::experimental::Tensor>"
-
+            # real_pos += 1
+        # if forward_api_name == "reshape":
+        #     print("yoki: ", num_outputs, "  ", returns_list[0])
+        #     assert False
         if num_outputs == 1:
             returns_str = returns_list[0]
             returns_type_str = returns_type_list[0]
@@ -802,7 +826,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             returns_str = ", ".join(returns_list)
             returns_str = f"std::make_tuple({returns_str})"
 
-        self.GenerateNodeCreationCodes(forward_call_str)
+        self.GenerateNodeCreationCodes(forward_call_str, is_inplaced)
 
         node_creation_str = self.node_creation_str
         dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
@@ -816,7 +840,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         print("Generated Forward Definition: ", self.forward_definition_str)
         print("Generated Forward Declaration: ", self.forward_declaration_str)
 
-    def GenerateNodeCreationCodes(self, forward_call_str):
+    def GenerateNodeCreationCodes(self, forward_call_str, is_inplaced):
         forward_api_name = self.forward_api_name
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
@@ -879,14 +903,16 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         # Check Inplace
         check_inplace_str = ""
         bump_inplace_version_str = ""
-        for inplace_name in inplace_map.keys():
-            inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
-            check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
-                inplace_name, inplace_autograd_meta_name)
-            bump_inplace_version_str += BUMP_INPLACE_VERSION_TEMPLATE.format(
-                inplace_name, inplace_name)
+        if is_inplaced:
+            for inplace_name in inplace_map.keys():
+                inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
+                check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
+                    inplace_name, inplace_autograd_meta_name)
+                bump_inplace_version_str += BUMP_INPLACE_VERSION_TEMPLATE.format(
+                    inplace_name, inplace_name)
 
         # Node Construction
+        # num_backward_inputs = len(backward_grad_inputs_map.keys()) + len(backward_forward_inputs_map.keys())
         num_backward_inputs = len(backward_grad_inputs_map.keys())
         num_backward_outputs = len(backward_grad_outputs_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
@@ -1030,6 +1056,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             core_ops_returns_info[final_state_fwd_api_name][pos] = name
 
     def run(self):
+        print("\n\n\nyoki\n\n\n", self.forward_api_name)
         # Basic Validation Check
         self.DygraphYamlValidationCheck()
 
@@ -1067,6 +1094,10 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         # Initialize forward_inputs_position_map, forward_outputs_position_map
         self.DetermineForwardPositionMap(self.forward_inputs_list,
                                          self.forward_returns_list)
+        print("yoki forward_inputs_position_map: ",
+              self.forward_inputs_position_map)
+        print("yoki forward_outputs_position_map: ",
+              self.forward_outputs_position_map)
 
         # Initialize forward_inputs_position_map, forward_outputs_position_map
         self.SlotNameMatching()

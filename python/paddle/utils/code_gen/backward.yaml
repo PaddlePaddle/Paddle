@@ -97,11 +97,11 @@
     func : relu_grad
 
 - backward_api : reshape_grad
-  forward : reshape (Tensor x, ScalarArray shape) -> Tensor(out)
+  forward : reshape_with_xshape (Tensor x, ScalarArray shape) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
-    func : UnchangedInferMeta
+    func : KernelWithXShapeInferMeta
     param : [xshape]
   kernel :
     func : reshape_grad

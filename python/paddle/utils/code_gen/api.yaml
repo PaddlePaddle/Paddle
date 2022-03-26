@@ -153,13 +153,22 @@
   kernel:
     func : pool2d
 
+# - api : reshape
+#   args : (Tensor x, ScalarArray shape)
+#   output : Tensor(out)
+#   infer_meta :
+#     func : ReshapeInferMeta
+#   kernel :
+#     func : reshape
+#   inplace : (x -> out)
+
 - api : reshape
   args : (Tensor x, ScalarArray shape)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
   kernel :
-    func : reshape
+    func : reshape_with_xshape
   inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape

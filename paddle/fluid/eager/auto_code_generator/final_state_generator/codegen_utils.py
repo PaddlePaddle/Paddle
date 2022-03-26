@@ -390,6 +390,7 @@ class FunctionGeneratorBase:
 
         for i in range(len(forward_returns_list)):
             forward_return = forward_returns_list[i]
+            print("yoki: forward_return: ", forward_return)
             return_name = forward_return[0]
             return_type = forward_return[1]
             return_pos = forward_return[2]
@@ -400,6 +401,7 @@ class FunctionGeneratorBase:
               self.forward_inputs_position_map)
         print("Generated Forward Output Position Map: ",
               self.forward_outputs_position_map)
+        # assert False
 
 
 class YamlGeneratorBase:
