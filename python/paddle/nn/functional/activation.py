@@ -560,10 +560,7 @@ def relu(x, name=None):
             out = F.relu(x) # [0., 0., 1.]
     """
 
-    if in_dygraph_mode():
-        return _C_ops.final_state_relu(x)
-
-    if _in_legacy_dygraph():
+    if in_dynamic_mode():
         return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
