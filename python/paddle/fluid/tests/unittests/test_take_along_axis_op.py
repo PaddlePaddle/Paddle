@@ -47,7 +47,7 @@ class TestTakeAlongAxisOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Result', check_eager=True)
+        self.check_grad(['Input'], 'Result', check_eager=False)
 
     def init_data(self):
         self.x_type = "float64"

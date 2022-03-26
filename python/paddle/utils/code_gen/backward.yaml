@@ -643,6 +643,7 @@
     param : [x]
   kernel :
     func : erf_grad
+    data_type : out_grad
   
 - backward_api : erfinv_grad
   forward : erf (Tensor x) -> Tensor(out)
