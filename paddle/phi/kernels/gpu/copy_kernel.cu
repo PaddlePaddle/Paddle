@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -42,6 +43,10 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (paddle::platform::is_cpu_place(dst_place)) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
+  } else if (paddle::platform::is_cuda_pinned_place(dst_place)) {
+    // now we only can use mutable_data to Alloc pinned memory here,
+    // dev_ctx can not alloc pinned memory now
+    dst_ptr = dst->mutable_data(dst_place, src.dtype());
   } else {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
   }
@@ -61,7 +66,7 @@ void Copy(const Context& dev_ctx,
        paddle::platform::is_cuda_pinned_place(src_place)) &&  // NOLINT
       (paddle::platform::is_cpu_place(dst_place) ||
        paddle::platform::is_cuda_pinned_place(dst_place))) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = src_place;
