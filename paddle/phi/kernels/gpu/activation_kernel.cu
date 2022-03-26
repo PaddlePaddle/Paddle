@@ -97,6 +97,9 @@ DEFINE_GPU_ACTIVATION_KERNEL(Log, CudaLogFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Log2, CudaLog2Functor)
 DEFINE_GPU_ACTIVATION_KERNEL(Log10, CudaLog10Functor)
 DEFINE_GPU_ACTIVATION_KERNEL(Log1p, CudaLog1pFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Round, CudaRoundFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Floor, CudaFloorFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Ceil, CudaCeilFunctor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -107,12 +110,29 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, CudaSwishFunctor, beta)
 
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, CudaBReluFunctor, t_min, t_max)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,
                                      offset)
+
+template <typename T, typename Context>
+void HardSwishKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     float threshold,
+                     float scale,
+                     float offset,
+                     DenseTensor* out) {
+  funcs::CudaHardSwishFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = threshold;
+  *(attrs[1].second) = scale;
+  *(attrs[2].second) = offset;
+  ActivationGPUImpl<T, Context, funcs::CudaHardSwishFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 
 }  // namespace phi
 
@@ -172,3 +192,17 @@ PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
+PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
+PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
+PD_REGISTER_KERNEL(pow,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PowKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
