@@ -254,7 +254,6 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
   req_ctx.send_data = data;
   req_ctx.num = dense_data->size();
   req_ctx.callback = reinterpret_cast<void *>(closure);
-  << (req_ctx.callback == nullptr);
 
   //  auto status = _worker_ptr->push_dense_raw_gradient(
   //      table_id, data, dense_data->size(), closure);
