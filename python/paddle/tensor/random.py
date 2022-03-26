@@ -70,7 +70,7 @@ def bernoulli(x, name=None):
     if in_dygraph_mode():
         return _C_ops.final_state_bernoulli(x)
 
-    if _in_legach_dygraph():
+    if _in_legacy_dygraph():
         return _C_ops.bernoulli(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
