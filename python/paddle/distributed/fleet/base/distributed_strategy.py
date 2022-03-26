@@ -613,7 +613,11 @@ class DistributedStrategy(object):
                 raise ValueError(
                     "support sparse_accessor_class: [''DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
                     % (accessor_class))
-            table_data.accessor.accessor_class = 'CtrCommonAccessor'
+
+            if configs.get("use_cvm", True):
+                table_data.accessor.accessor_class = 'CtrCommonAccessor'
+            else:
+                table_data.accessor.accessor_class = 'SparseAccessor'
 
             table_data.accessor.embedx_dim = config.get('sparse_embedx_dim', 8)
             table_data.accessor.fea_dim = table_data.accessor.embedx_dim + 3
