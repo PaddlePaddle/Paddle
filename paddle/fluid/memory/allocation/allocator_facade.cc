@@ -212,21 +212,23 @@ class AllocatorFacadePrivate {
                                       allow_free_idle_chunk_);
         }
 
-        // Note(Ruibiao): For GPU multi-stream case, the 'allocators_' map(place
-        // -> Allocator) hold the StreamSafeCUDAAllocator releate to default
-        // stream (i.e., the stream directly got from DeviceContex), while the
-        // 'cuda_allocators_' map(place -> map(stream -> Allocator)) hold the
-        // StreamSafeCUDAAllocator releate to non-default stream (i.e., the
-        // stream users pass in). The default stream Allocator is built in the
-        // structure of AllocatorFacadePrivate, while the non-default stream is
-        // build in a delayed manner in GetAllocator function with
-        // 'create_if_not_found = ture'. We make special treatment for the
-        // default stream for performance reasons. Since most Alloc calls are
-        // for default stream in application, treating it separately can avoid
-        // lots of overhead of acquiring default stream and applying read-write
-        // lock.
+        // Note(Ruibiao): For GPU multi-stream case without CUDA graph
+        // capturing, the 'allocators_' map(place -> Allocator) hold the
+        // StreamSafeCUDAAllocator releate to defaultstream (i.e., the stream
+        // directly got from DeviceContex), while the 'cuda_allocators_' map
+        // (place -> map(stream -> Allocator)) hold the StreamSafeCUDAAllocator
+        // releate to non-default stream (i.e., the stream users pass in). The
+        // default stream Allocator is built in the structure of
+        // AllocatorFacadePrivate, while the non-default stream is build in a
+        // manner in GetAllocator function with 'create_if_not_found = ture'.
+        // We make special treatment for the default stream for performance
+        // reasons. Since most Alloc calls are for default stream in
+        // application, treating it separately can avoid lots of overhead of
+        // acquiring default stream and applying read-write lock.
         if (FLAGS_use_stream_safe_cuda_allocator) {
-          WrapStreamSafeCUDAAllocatorForDefault();
+          if (LIKELY(platform::CUDAGraph::IsThisThreadCapturing()) == false) {
+            WrapStreamSafeCUDAAllocatorForDefault();
+          }
           is_stream_safe_cuda_allocator_used_ = true;
         }
 
@@ -355,9 +357,11 @@ class AllocatorFacadePrivate {
   const std::shared_ptr<Allocator>& GetAllocator(
       const platform::CUDAPlace& place, const gpuStream_t& stream,
       bool create_if_not_found = false) {
-    if (stream == GetDefaultStream(place)) {
-      VLOG(7) << "Get Allocator by passing in a default stream";
-      return GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+    if (LIKELY(platform::CUDAGraph::IsThisThreadCapturing() == false)) {
+      if (stream == GetDefaultStream(place)) {
+        VLOG(7) << "Get Allocator by passing in a default stream";
+        return GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+      }
     }
 
     /* shared_lock_guard */ {
@@ -406,16 +410,6 @@ class AllocatorFacadePrivate {
     VLOG(8) << "Set default stream to " << stream
             << " for StreamSafeCUDAAllocator(" << allocator.get() << ") in "
             << place;
-  }
-
-  void SetDefaultStreamFromDeviceContext() {
-    VLOG(8) << "Set default stream from DeviceContex";
-    for (auto& pair : default_stream_safe_cuda_allocators_) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      pair.second->SetDefaultStream(
-          static_cast<phi::GPUContext*>(pool.Get(pair.first))->stream());
-    }
   }
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
@@ -989,7 +983,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
                                      const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   AllocatorFacadePrivate* m = GetPrivate();
-  if (m->IsStreamSafeCUDAAllocatorUsed()) {
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
     VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
     return Alloc(place, size);
   }
@@ -1026,7 +1020,7 @@ bool AllocatorFacade::IsStreamSafeCUDAAllocatorUsed() {
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
                                   const gpuStream_t& stream) {
   AllocatorFacadePrivate* m = GetPrivate();
-  if (m->IsStreamSafeCUDAAllocatorUsed()) {
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
     VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
     return Release(place);
   }
@@ -1043,7 +1037,7 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, const gpuStream_t& stream) {
   AllocatorFacadePrivate* m = GetPrivate();
 
-  if (m->IsStreamSafeCUDAAllocatorUsed()) {
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
     VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
     return GetAllocator(place);
   }
@@ -1062,9 +1056,8 @@ const gpuStream_t AllocatorFacade::GetStream(
 
 void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
                                        const gpuStream_t& stream) {
-  AllocatorFacadePrivate* m = GetPrivate();
-  if (m->IsStreamSafeCUDAAllocatorUsed()) {
-    m->SetDefaultStream(place, stream);
+  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
+    m_->SetDefaultStream(place, stream);
   }
 }
 
@@ -1083,7 +1076,6 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(CUDAGraphID id) {
           "The memory pool of the CUDA Graph with ID %d have been prepared.",
           id));
   allocator.reset(new AllocatorFacadePrivate(/*allow_free_idle_chunk=*/false));
-  allocator->SetDefaultStreamFromDeviceContext();
 
   VLOG(10) << "Prepare memory pool for CUDA Graph with ID " << id;
 }
