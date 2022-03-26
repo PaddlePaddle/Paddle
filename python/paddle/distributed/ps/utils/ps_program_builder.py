@@ -41,8 +41,7 @@ class PsProgramBuilder(object):
         opt_info = self.loss.block.program._fleet_opt
         opt_info = {} if opt_info is None else opt_info
         opt_info["trainer"] = opt_info.get("trainer", "MultiTrainer")
-        opt_info["device_worker"] = opt_info.get("device_worker",
-                                                 "Hogwild")
+        opt_info["device_worker"] = opt_info.get("device_worker", "Hogwild")
         self.cloned_main._fleet_opt = opt_info
 
     def _optimize_programs(self):
