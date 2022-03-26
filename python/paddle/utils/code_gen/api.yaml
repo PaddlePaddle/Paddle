@@ -159,10 +159,11 @@
   infer_meta :
     func : ReshapeWithXShapeInferMeta
   kernel :
-    func : reshape
+    func : reshape_with_xshape
   inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
+  no_need_buffer: xshape
   backward: reshape_grad
 
 - api : relu

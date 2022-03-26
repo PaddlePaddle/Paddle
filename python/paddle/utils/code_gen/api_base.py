@@ -427,7 +427,8 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
         kernel_select_args = ""
         for input_name in input_names:
-            kernel_select_args = kernel_select_args + input_name + ", "
+            if input_name != 'xshape':
+                kernel_select_args = kernel_select_args + input_name + ", "
 
         if len(kernel_select_args) > 2:
             kernel_select_args = kernel_select_args[:-2]
