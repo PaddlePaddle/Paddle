@@ -801,7 +801,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                 if is_optional:
                     arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
                     amp_tensors_vector_optional_list.append(
-                        f"if ({name}.is)initialized() amp_tensors_vector.push_back({name}.get()));\n"
+                        f"if ({name}.is_initialized()) amp_tensors_vector.push_back({name}.get());\n"
                     )
                     amp_autocast_optional_list.append(
                         f"auto NEW_{name} = {name}.is_initialized() ? egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name) : {name};\n"
