@@ -105,7 +105,7 @@ class ScalarBase {
   }
 
   // The Tensor must have one dim
-  explicit ScalarBase(const T& tensor_in);
+  ScalarBase(const T& tensor_in);  // NOLINT
 
   template <typename OtherT>
   ScalarBase(const ScalarBase<OtherT>& other) {

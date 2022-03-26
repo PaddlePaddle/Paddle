@@ -17,10 +17,16 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace tests {
+
+using DDim = phi::DDim;
+
+__global__ void FillTensor(float* data) { data[0] = 1; }
 
 TEST(Scalar, ConstructFromDenseTensor) {
   // 1. create tensor
@@ -30,38 +36,17 @@ TEST(Scalar, ConstructFromDenseTensor) {
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::CPUContext dev_ctx;
+  phi::GPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(paddle::platform::GPUPlace())
+                           .GetAllocator(phi::GPUPlace())
                            .get());
   dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  dense_x_data[0] = 2.2;
+  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
+  dev_ctx.Wait();
   phi::Scalar scalar_test(dense_x);
-  ASSERT_NEAR(dense_x_data[0], scalar_test.to<float>(), 1e-6);
-}
-
-TEST(Scalar, ConstructFromTensor) {
-  // 1. create tensor
-  const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
-  phi::DenseTensor dense_x(
-      alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
-  phi::CPUContext dev_ctx;
-  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(paddle::platform::GPUPlace())
-                           .get());
-  dev_ctx.Init();
-
-  auto* dense_x_data = dev_ctx.Alloc<float>(&dense_x);
-  dense_x_data[0] = 2.2;
-
-  paddle::experimental::Tensor x(dense_x);
-  phi::Scalar scalar_test(x);
-  ASSERT_NEAR(dense_x_data[0], scalar_test.to<float>(), 1e-6);
+  ASSERT_NEAR(1, scalar_test.to<float>(), 1e-6);
 }
 
 }  // namespace tests
