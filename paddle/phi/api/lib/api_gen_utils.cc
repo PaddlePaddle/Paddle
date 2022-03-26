@@ -160,12 +160,12 @@ phi::TensorBase* SetStringsKernelOutput(Backend backend,
                                         Tensor* out,
                                         TensorType type) {
   if (!out->initialized()) {
-    auto place = phi::TransToPhiPlace(backend);
     if (type == TensorType::STRING_TENSOR) {
-      auto strings_tensor = std::make_shared<phi::StringTensor>(
-          paddle::memory::AllocShared(place, 0), phi::StringTensorMeta());
-      out->set_impl(strings_tensor);
-      return strings_tensor.get();
+      if (out->impl() == nullptr) {
+        auto strings_tensor = std::make_shared<phi::StringTensor>();
+        out->set_impl(strings_tensor);
+      }
+      return out->impl().get();
     }
   }
   return out->impl().get();

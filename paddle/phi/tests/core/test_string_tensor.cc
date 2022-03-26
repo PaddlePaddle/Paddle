@@ -171,14 +171,14 @@ TEST(pstring, func) {
   CHECK_EQ(nchar_str, "AAAAAB");
 
   // Test operator =
+  long_str = std::move(nchar_str);
+  CHECK_EQ(long_str, "AAAAAB");
   long_str = short_str;
   CHECK_EQ(short_str, long_str);
   short_str = 'A';
   CHECK_EQ(short_str, "A");
   short_str = std::move(copy_nchar_str);
   CHECK_EQ(short_str, "AAAAA");
-  long_str = std::move(nchar_str);
-  CHECK_EQ(long_str, "AAAAAB");
 }
 
 }  // namespace tests

@@ -175,7 +175,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 
         return f"""
   // 1. Get kernel signature and kernel
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
   VLOG(6) << "{self.api} api strings kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
   VLOG(6) << "{self.api} api strings kernel: " << kernel;
@@ -276,9 +276,9 @@ def header_include():
 #include <tuple>
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 """
 
 
@@ -291,9 +291,9 @@ def source_include(header_file_path):
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/nullary.h"
 #include "paddle/phi/infermeta/strings/unary.h"
-#include "paddle/phi/kernels/declarations.h"
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/core/kernel_registry.h"
 """
 
 
