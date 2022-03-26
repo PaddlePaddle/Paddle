@@ -35,7 +35,7 @@ USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(tanh);
 USE_OP_ITSELF(elementwise_mul);
-USE_OP(softmax_with_cross_entropy);
+USE_OP_ITSELF(softmax_with_cross_entropy);
 USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);
