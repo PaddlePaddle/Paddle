@@ -115,10 +115,9 @@ TEST(HETERSENDANDRECV, CPU) {
   switch_server_ptr_b->WaitServerReady();
 
   // 获取 client 实例
-  distributed::HeterClient* heter_client_ptr_ =
+  std::shared_ptr<distributed::HeterClient> heter_client_ptr_ =
       distributed::HeterClient::GetInstance(
-          {switch_a_endpoint, switch_b_endpoint}, {}, 0)
-          .get();
+          {switch_a_endpoint, switch_b_endpoint}, {}, 0);
 
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
