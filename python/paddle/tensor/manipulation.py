@@ -17,7 +17,7 @@ from collections import Counter
 
 from ..static import Variable, device_guard
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check, _non_static_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -2839,13 +2839,13 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if _none_staic_mode():
+    if _non_static_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
-        if not _in_legach_dygraph():
+        if not _in_legacy_dygraph():
             return _C_ops.final_state_take_along_axis(arr, indices, axis)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
@@ -2906,13 +2906,13 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             "`indices` and `arr` must have the same number of dimensions!")
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if _none_static_mode():
+    if _non_static_mode():
         values = paddle.to_tensor(values) if not isinstance(
             values, paddle.Tensor) else values
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
-        if not in_legacy_dygraph():
+        if not _in_legacy_dygraph():
             return _C_ops.final_state_put_alone_axis(arr, indices, value, axis,
                                                      reduce)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,

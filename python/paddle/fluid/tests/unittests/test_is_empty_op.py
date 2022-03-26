@@ -34,6 +34,7 @@ class TestEmpty(OpTest):
 class TestNotEmpty(TestEmpty):
     def setUp(self):
         self.op_type = "is_empty"
+        self.python_api = paddle.is_empty
         self.inputs = {'X': np.array([])}
         self.outputs = {'Out': np.array([True])}
 

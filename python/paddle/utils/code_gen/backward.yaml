@@ -636,7 +636,7 @@
 
 - backward_api : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

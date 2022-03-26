@@ -27,7 +27,7 @@ import paddle
 class TestWhereIndexOp(OpTest):
     def setUp(self):
         self.op_type = "where_index"
-        self.pythona_api = paddle.fluid.layers.where
+        self.python_api = paddle.fluid.layers.where
         self.init_config()
 
     def test_check_output(self):
@@ -42,6 +42,7 @@ class TestWhereIndexOp(OpTest):
 class TestAllFalse(unittest.TestCase):
     def setUp(self):
         self.op_type = "where_index"
+        self.python_api = paddle.fluid.layers.where
         self.init_config()
 
     def check_with_place(self, place):

@@ -15,7 +15,7 @@
 from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
-from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -53,7 +53,7 @@ def segment_sum(data, segment_ids, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_segment_pool(data, segment_idsm, "SUM")[0]
-    if in_legacy_dygraph():
+    if _in_legacy_dygraph():
         out, tmp = _C_ops.segment_pool(data, segment_ids, 'pooltype', "SUM")
         return out
 

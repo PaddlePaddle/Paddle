@@ -2587,8 +2587,8 @@ def cumsum(x, axis=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if paddle.in_dynamic_mode():
-        return _C_ops._final_state_cumsum(x, axis, flatten, False, False)
+    if in_dygraph_mode():
+        return _C_ops.final_state_cumsum(x, axis, flatten, False, False)
     if _in_legacy_dygraph():
         if axis is None:
             return _C_ops.cumsum(x, 'flatten', flatten)
@@ -2839,8 +2839,8 @@ def sign(x, name=None):
           out = paddle.sign(x=x)
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
-    if paddle.in_dynamic_mode():
-        return _C_op.final_state_sign(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_sign(x)
 
     if _in_legacy_dygraph():
         return _C_ops.sign(x)

@@ -785,7 +785,7 @@ def selu(x,
         raise ValueError(
             "The alpha must be no less than zero. Received: {}.".format(alpha))
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_selu(x, scale, alpha)
     if _in_legacy_dygraph():
         return _C_ops.selu(x, 'scale', scale, 'alpha', alpha)
@@ -963,7 +963,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
             else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return _C_ops.final_state_softmax(outs_cast, axis)
 
-    if in_legacy_dygraph():
+    if _in_legacy_dygraph():
         outs_cast = x if dtype is None \
             else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return _C_ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
