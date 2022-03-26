@@ -17,12 +17,13 @@ import numpy as np
 import paddle
 from op_test import OpTest
 
+paddle.enable_static()
+
 
 ################## TEST OP: BitwiseAnd ##################
 class TestBitwiseAnd(OpTest):
     def setUp(self):
         self.op_type = "bitwise_and"
-        self.python_api = paddle.bitwise_and
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -37,7 +38,7 @@ class TestBitwiseAnd(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         pass
@@ -94,7 +95,7 @@ class TestBitwiseAndBool(TestBitwiseAnd):
     def setUp(self):
         self.op_type = "bitwise_and"
         self.init_shape()
-        self.python_api = paddle.bitwise_and
+
         x = np.random.choice([True, False], self.x_shape)
         y = np.random.choice([True, False], self.y_shape)
         out = np.bitwise_and(x, y)
@@ -107,7 +108,6 @@ class TestBitwiseAndBool(TestBitwiseAnd):
 class TestBitwiseOr(OpTest):
     def setUp(self):
         self.op_type = "bitwise_or"
-        self.python_api = paddle.bitwise_or
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -122,7 +122,7 @@ class TestBitwiseOr(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         pass
@@ -178,7 +178,6 @@ class TestBitwiseOrInt64(TestBitwiseOr):
 class TestBitwiseOrBool(TestBitwiseOr):
     def setUp(self):
         self.op_type = "bitwise_or"
-        self.python_api = paddle.bitwise_or
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
@@ -193,7 +192,6 @@ class TestBitwiseOrBool(TestBitwiseOr):
 class TestBitwiseXor(OpTest):
     def setUp(self):
         self.op_type = "bitwise_xor"
-        self.python_api = paddle.bitwise_xor
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -208,7 +206,7 @@ class TestBitwiseXor(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         pass
@@ -264,7 +262,6 @@ class TestBitwiseXorInt64(TestBitwiseXor):
 class TestBitwiseXorBool(TestBitwiseXor):
     def setUp(self):
         self.op_type = "bitwise_xor"
-        self.python_api = paddle.bitwise_xor
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
@@ -291,7 +288,7 @@ class TestBitwiseNot(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         pass
@@ -354,5 +351,4 @@ class TestBitwiseNotBool(TestBitwiseNot):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

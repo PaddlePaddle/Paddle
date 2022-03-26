@@ -105,7 +105,7 @@ class TestBatchNorm(unittest.TestCase):
                     with _test_eager_guard():
                         bn = paddle.nn.BatchNorm2D(shape[1])
                         eag_y = bn(paddle.to_tensor(x))
-                    assert np.allcose(eag_y.numpy(), y.numpy())
+                    assert np.allclose(eag_y.numpy(), y.numpy())
                 return y.numpy()
 
             def compute_v3(x, is_test, trainable_statistics):
