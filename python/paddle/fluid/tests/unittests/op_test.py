@@ -1352,7 +1352,7 @@ class OpTest(unittest.TestCase):
                 self.op_type = op_test.op_type
 
             def convert_uint16_to_float(self, actual_np, expect_np):
-                raise NotImplemented("base class, not implement!")
+                raise NotImplementedError("base class, not implement!")
 
             def calculate_output(self):
                 """
@@ -1371,7 +1371,7 @@ class OpTest(unittest.TestCase):
             def find_actual_value(self, name):
                 """ return: (actual_tensor(var_base), actual_numpy)
                 """
-                raise NotImplemented("base class, not implement!")
+                raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 self.op_test.assertTrue(
@@ -1387,7 +1387,7 @@ class OpTest(unittest.TestCase):
             def _compare_list(self, name, actual, expect):
                 """ if expect is a tuple, we need to compare list.
                 """
-                raise NotImplemented("base class, not implement!")
+                raise NotImplementedError("base class, not implement!")
 
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
