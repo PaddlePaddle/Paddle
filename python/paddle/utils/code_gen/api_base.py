@@ -427,7 +427,8 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
         kernel_select_args = ""
         for input_name in input_names:
-            kernel_select_args = kernel_select_args + input_name + ", "
+            if input_name != 'xshape':
+                kernel_select_args = kernel_select_args + input_name + ", "
 
         if len(kernel_select_args) > 2:
             kernel_select_args = kernel_select_args[:-2]
@@ -441,11 +442,15 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 """
 
             kernel_select_code = kernel_select_code + f"""
+  VLOG(3) << "yoki before parser1";
   if (kernel_backend == Backend::UNDEFINED
         || kernel_layout == DataLayout::UNDEFINED
         || kernel_data_type == DataType::UNDEFINED ) {{
+    VLOG(3) << "yoki before parser2";
     auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
+    VLOG(3) << "yoki flag3";
     auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    VLOG(3) << "yoki flag4";
     if (kernel_backend == Backend::UNDEFINED) {{
       kernel_backend = kernel_key.backend();
     }}
@@ -455,6 +460,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
     if (kernel_data_type == DataType::UNDEFINED) {{
       kernel_data_type = kernel_key.dtype();
     }}
+    VLOG(3) << "yoki flag5";
   }}"""
 
         return kernel_select_code
@@ -578,14 +584,18 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
 {code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
+{code_indent}  VLOG(3) << "yoki flag";
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = TensorToDenseTensor({input_name});
+{code_indent}  VLOG(3) << "yoki flag";
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
 {code_indent}  }}"""
 
                 else:
                     input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});"""
+{code_indent}  VLOG(3) << "yoki flag";
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});
+{code_indent}  VLOG(3) << "yoki flag";"""
 
         kernel_args = "*dev_ctx, "
         for param in kernel_param:

@@ -38,7 +38,9 @@ class TensorWrapper {
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
+    VLOG(3) << "yoki enter tensorwrapper";
     if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
+      VLOG(3) << "yoki tensorwrapper tensor.impl not null";
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(tensor.impl().get());
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();

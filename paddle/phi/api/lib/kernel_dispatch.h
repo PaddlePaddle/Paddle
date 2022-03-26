@@ -93,9 +93,12 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
+    VLOG(3) << "yoki parser flag1";
     const phi::TensorBase& tensor = *x.impl();
+    VLOG(3) << "yoki parser flag2";
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    VLOG(3) << "yoki parser flag3";
     // TODO(chenweihang): select multi layout and dtype
     key_set.layout = tensor.layout();
     key_set.dtype = tensor.dtype();
@@ -104,6 +107,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
     }
+    VLOG(3) << "yoki parser flag4";
   }
 
   void operator()(const std::vector<Tensor>& x) {

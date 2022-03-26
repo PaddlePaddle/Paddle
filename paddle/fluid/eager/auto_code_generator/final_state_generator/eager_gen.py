@@ -912,9 +912,15 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                     inplace_name, inplace_name)
 
         # Node Construction
+        print("\nyoki important num:\n")
+        print("yoki: backward_forward_inputs_map: ", backward_forward_inputs_map)
+        print("yoki: backward_grad_inputs_map: ", backward_grad_inputs_map)
+        print("yoki: backward_grad_outputs_map: ", backward_grad_outputs_map)
+        print("yoki: forward_outputs_position_map: ", forward_outputs_position_map)
+        print("yoki: forward_inputs_position_map: ", forward_inputs_position_map)
         # num_backward_inputs = len(backward_grad_inputs_map.keys()) + len(backward_forward_inputs_map.keys())
-        num_backward_inputs = len(backward_grad_inputs_map.keys())
-        num_backward_outputs = len(backward_grad_outputs_map.keys())
+        num_backward_inputs = len(forward_outputs_position_map.keys())
+        num_backward_outputs = len(forward_inputs_position_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
 
         node_construction_str = f"            auto grad_node = std::make_shared<{grad_node_name}>({num_backward_inputs}, {num_backward_outputs});"
