@@ -36,8 +36,8 @@ from ...static import Variable
 from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
-from paddle.framework import core, _in_eager_mode
-
+from paddle.framework import core
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 __all__ = []
 
 
@@ -113,11 +113,8 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
 
-    if in_dynamic_mode():
-        if _in_eager_mode():
-            out = _C_ops.final_state_bce_loss(input, label)
-        else:
-            out = _C_ops.bce_loss(input, label)
+    if in_dygraph_mode():
+        out = _C_ops.final_state_bce_loss(input, label)
         if weight is not None:
             out = _C_ops.elementwise_mul(out, weight, 'axis', -1)
 
@@ -128,37 +125,49 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             return _C_ops.mean(out)
         else:
             return out
-
-    fluid.data_feeder.check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
-    fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
-
-    sub_name = name if weight is None and reduction == 'none' else None
-    helper = LayerHelper("binary_cross_entropy", name=sub_name)
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='bce_loss',
-        inputs={
-            'X': [input],
-            'Label': [label],
-        },
-        outputs={'Out': [out]})
-
-    if weight is not None:
-        if isinstance(weight, paddle.static.Variable):
-            weight_name = name if reduction == 'none' else None
-            out = paddle.multiply(out, weight, name=weight_name)
-        else:
-            raise ValueError(
-                "The weight is not a Tensor, please convert to Tensor.")
-
-    if reduction == 'sum':
-        return paddle.sum(out, name=name)
-    elif reduction == 'mean':
-        return paddle.mean(out, name=name)
     else:
-        return out
+        if _in_legacy_dygraph():
+            out = _C_ops.bce_loss(input, label)
+            if weight is not None:
+                out = _C_ops.elementwise_mul(out, weight, 'axis', -1)
+            if reduction == 'sum':
+                return _C_ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
+                                         "reduce_all", True)
+            elif reduction == 'mean':
+                return _C_ops.mean(out)
+            else:
+                return out
+        else:
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
+
+            sub_name = name if weight is None and reduction == 'none' else None
+            helper = LayerHelper("binary_cross_entropy", name=sub_name)
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
+            helper.append_op(
+                type='bce_loss',
+                inputs={
+                    'X': [input],
+                    'Label': [label],
+                },
+                outputs={'Out': [out]})
+
+            if weight is not None:
+                if isinstance(weight, paddle.static.Variable):
+                    weight_name = name if reduction == 'none' else None
+                    out = paddle.multiply(out, weight, name=weight_name)
+                else:
+                    raise ValueError(
+                        "The weight is not a Tensor, please convert to Tensor.")
+
+            if reduction == 'sum':
+                return paddle.sum(out, name=name)
+            elif reduction == 'mean':
+                return paddle.mean(out, name=name)
+            else:
+                return out
 
 
 def binary_cross_entropy_with_logits(logit,
