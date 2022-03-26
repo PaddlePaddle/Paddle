@@ -361,6 +361,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
 }
 
 /*---------------------------Radix TopK Begin------------------*/
+#if defined(PADDLE_WITH_CUDA)
 constexpr int RADIX_BITS = 2;  // digits are base-(2 ^ RADIX_BITS)
 constexpr int RADIX_SIZE = 4;  // 2 ^ RADIX_BITS
 constexpr int RADIX_MASK = (RADIX_SIZE - 1);
@@ -374,20 +375,16 @@ struct Bitfield<unsigned int> {
   static __device__ __forceinline__ unsigned int GetBitfield(unsigned int val,
                                                              int pos, int len) {
     unsigned int ret;
-#if defined(PADDLE_WITH_CUDA)
     asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
-#endif
     return ret;
   }
 
   static __device__ __forceinline__ unsigned int SetBitfield(
       unsigned int val, unsigned int to_insert, int pos, int len) {
     unsigned int ret;
-#if defined(PADDLE_WITH_CUDA)
     asm("bfi.b32 %0, %1, %2, %3, %4;"
         : "=r"(ret)
         : "r"(to_insert), "r"(val), "r"(pos), "r"(len));
-#endif
     return ret;
   }
 };
@@ -397,9 +394,7 @@ struct Bitfield<uint64_t> {
   static __device__ __forceinline__ uint64_t GetBitfield(uint64_t val, int pos,
                                                          int len) {
     uint64_t ret;
-#if defined(PADDLE_WITH_CUDA)
     asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
-#endif
     return ret;
   }
 
@@ -407,11 +402,9 @@ struct Bitfield<uint64_t> {
                                                          uint64_t to_insert,
                                                          int pos, int len) {
     uint64_t ret;
-#if defined(PADDLE_WITH_CUDA)
     asm("bfi.b64 %0, %1, %2, %3, %4;"
         : "=l"(ret)
         : "l"(to_insert), "l"(val), "r"(pos), "r"(len));
-#endif
     return ret;
   }
 };
@@ -486,42 +479,28 @@ struct RadixTypeConfig<platform::float16> {
   typedef uint32_t RadixType;
 
   static inline __device__ RadixType Convert(platform::float16 v) {
-#if defined(PADDLE_WITH_CUDA)
     half v_h = v.to_half();
     RadixType x = __half_as_ushort(v_h);
     RadixType mask = (x & 0x00008000) ? 0x0000ffff : 0x00008000;
     return (v_h == v_h) ? (x ^ mask) : 0xffff;
-#else
-    assert(false);
-    return 0u;
-#endif
   }
 
   static inline __device__ platform::float16 Deconvert(RadixType v) {
-#if defined(PADDLE_WITH_CUDA)
     RadixType mask = (v & 0x00008000) ? 0x00008000 : 0x0000ffff;
     return static_cast<platform::float16>(__ushort_as_half(v ^ mask));
-#else
-    assert(false);
-    return static_cast<platform::float16>(0);
-#endif
   }
 };
 
 /*---------------------------Helper Functions------------------*/
 __device__ __forceinline__ int GetLaneId() {
   int lane_id;
-#if defined(PADDLE_WITH_CUDA)
   asm("mov.s32 %0, %%laneid;" : "=r"(lane_id));
-#endif
   return lane_id;
 }
 
 __device__ __forceinline__ unsigned GetLaneMaskLe() {
   unsigned mask;
-#if defined(PADDLE_WITH_CUDA)
   asm("mov.u32 %0, %%lanemask_le;" : "=r"(mask));
-#endif
   return mask;
 }
 
@@ -799,6 +778,7 @@ __global__ void RadixTopK(const T* input, int k, int slice_num, int slice_size,
     write_start += carry;
   }
 }
+#endif
 /*---------------------------Radix TopK End------------------*/
 
 template <typename T, int MaxLength, int BlockSize>
