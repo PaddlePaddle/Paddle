@@ -72,7 +72,7 @@ class Stat : public StatBase {
     ThreadLocalStatType* thread_local_stat =
         thread_data_registry.GetMutableCurrentThreadData();
     thread_local_stat->current += increment;
-    VLOG(1) << "+" << increment << " sum: " << thread_local_stat->current;
+
     if (thread_local_stat->current > thread_local_stat->peak) {
       thread_local_stat->peak = thread_local_stat->current;
       int64_t current_value = GetCurrentValue();

@@ -50,7 +50,7 @@ TEST(stats_test, MultiThreadReadWriteTest) {
           std::this_thread::sleep_for(std::chrono::seconds(1));
         });
   }
-  VLOG(1) << "lunch!";
+
   std::unique_lock<std::mutex> unique_lock(mutex);
   cv.wait(unique_lock, [&ready_thread_num, thread_num]() {
     return ready_thread_num == thread_num;
