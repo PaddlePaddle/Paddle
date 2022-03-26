@@ -281,6 +281,38 @@ class TestStrategyConfig(unittest.TestCase):
         }
         self.assertEqual(strategy.fs_client_param.user, "456")
 
+    def test_fleet_desc_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {"sparse_optimizer": "adagrad"}
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.learning_rate, 0.05)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {"sparse_optimizer": "naive"}
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.naive.learning_rate, 0.05)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {"sparse_optimizer": "adam"}
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adam.beta1_decay_rate, 0.9)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {}
+        configs['emb'] = {
+            "sparse_accessor_class": "DownpourUnitAccessor",
+            "sparse_optimizer": "std_adagrad"
+        }
+        strategy.fleet_desc_configs = configs
+        self.assertEqual(strategy.sparse_table_configs[0]
+                         .accessor.embed_sgd_param.adagrad.initial_range, 0)
+
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         configs = {
