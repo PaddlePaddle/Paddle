@@ -2250,6 +2250,16 @@ def triplet_margin_loss(input,positive,negative,
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
                                  'triplet_margin_loss')
 
+    # reshape to [batch_size, N]
+    input = input.flatten(start_axis=1,stop_axis=-1)
+    positive = positive.flatten(start_axis=1,stop_axis=-1)
+    negative = negative.flatten(start_axis=1,stop_axis=-1)
+    if not(input.shape==positive.shape==negative.shape):
+        raise ValueError(
+            "input's shape must equal to "
+            "positive's shape and  "
+            "negative's shape")
+
     distance_function = paddle.nn.PairwiseDistance(p, epsilon=eps)
     positive_dist = distance_function(input, positive)
     negative_dist = distance_function(input, negative)
