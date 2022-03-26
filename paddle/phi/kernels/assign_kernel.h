@@ -34,7 +34,7 @@ void AssignArrayKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& x,
                        std::vector<DenseTensor*> out);
 
-template <typename Context>
+template <typename T, typename Context>
 void AssignValueKernel(const Context& dev_ctx,
                        const std::vector<int>& shape,
                        DataType dtype,
