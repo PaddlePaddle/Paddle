@@ -543,7 +543,7 @@ struct InverseModuloFunctor<
 template <typename T>
 struct HeavisideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return a == static_cast<T>(0) ? b : static_cast<T>(a > static_cast<T>(0));
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > 0);
   }
 };
 
