@@ -70,7 +70,7 @@ class TestTransferDtypeOpFp32ToFp16(OpTest):
 
 class TestTransferDtypeOpBf16ToFp32(OpTest):
     def setUp(self):
-        ipt = np.array(np.random.randint(10, size=[10, 10])).astype('uint16')
+        ipt = np.array(np.random.randint(1, size=[10, 10])).astype('uint16')
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_uint16_to_float(ipt)}
         self.attrs = {

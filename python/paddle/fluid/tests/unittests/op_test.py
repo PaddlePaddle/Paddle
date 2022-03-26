@@ -1775,7 +1775,7 @@ class OpTest(unittest.TestCase):
                    no_grad_set=None,
                    numeric_grad_delta=0.005,
                    in_place=False,
-                   max_relative_error=0.005,
+                   max_relative_error=0.008,
                    user_defined_grads=None,
                    user_defined_grad_outputs=None,
                    check_dygraph=True,

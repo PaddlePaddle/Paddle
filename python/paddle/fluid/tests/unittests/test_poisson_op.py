@@ -56,7 +56,7 @@ class TestPoissonOp1(OpTest):
         hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
         self.assertTrue(
             np.allclose(
-                hist, prob, rtol=0.01),
+                hist, prob, rtol=0.05),
             "actual: {}, expected: {}".format(hist, prob))
 
     def test_check_output(self):
