@@ -21,7 +21,7 @@ limitations under the License. */
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/reshape_grad_kernel.h"
@@ -353,7 +353,7 @@ class ReshapeKernel {
     auto *shape_tensor = ctx.HasInput("Shape")
                              ? ctx.Input<framework::LoDTensor>("Shape")
                              : nullptr;
-    phi::ScalarArray pt_scalar_shape;
+    phi::IntArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
@@ -368,7 +368,7 @@ class ReshapeKernel {
           pt_vec_shape.push_back(*tensor);
         }
       }
-      pt_scalar_shape = phi::ScalarArray(pt_vec_shape);
+      pt_scalar_shape = phi::IntArray(pt_vec_shape);
     } else if (shape_tensor) {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
@@ -380,10 +380,10 @@ class ReshapeKernel {
       } else {
         pt_shape = *shape_tensor;
       }
-      pt_scalar_shape = phi::ScalarArray(pt_shape);
+      pt_scalar_shape = phi::IntArray(pt_shape);
     } else {
       auto &shape_attr = ctx.Attr<std::vector<int>>("shape");
-      pt_scalar_shape = phi::ScalarArray(shape_attr);
+      pt_scalar_shape = phi::IntArray(shape_attr);
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();

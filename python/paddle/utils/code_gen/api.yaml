@@ -59,7 +59,7 @@
     func : dot
 
 - api : empty
-  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -91,7 +91,7 @@
     func : flatten
 
 - api : full
-  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor
   infer_meta :
     func : CreateInferMeta
@@ -154,7 +154,7 @@
     func : pool2d
 
 - api : reshape
-  args : (Tensor x, ScalarArray shape)
+  args : (Tensor x, IntArray shape)
   output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
@@ -199,7 +199,7 @@
     func : sotfmax
 
 - api : split
-  args : (Tensor x, ScalarArray num_or_sections, Scalar(int) axis)
+  args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
 

@@ -127,7 +127,7 @@
     func : diagonal_grad
 
 # - backward_api : split_grad
-#   forward : split (Tensor x, ScalarArray num_or_sections, Scalar axis) -> Tensor[](out)
+#   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
 #   args : (Tensor[] out_grad, Scalar axis)
 #   output : Tensor(x_grad)    
 #   invoke : concat( out_grad, axis)

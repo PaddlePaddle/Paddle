@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -170,7 +170,7 @@ void PadInferMeta(const MetaTensor& input,
                   MetaConfig config = MetaConfig());
 
 void Pad3dInferMeta(const MetaTensor& x,
-                    const ScalarArray& paddings,
+                    const IntArray& paddings,
                     const std::string& mode,
                     float value,
                     const std::string& data_format,
@@ -223,12 +223,12 @@ void ReduceInferMetaBase(const MetaTensor& x,
                          MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,
-                      const ScalarArray& shape,
+                      const IntArray& shape,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
 void ReshapeWithXShapeInferMeta(const MetaTensor& x,
-                                const ScalarArray& shape,
+                                const IntArray& shape,
                                 MetaTensor* xshape,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
@@ -238,7 +238,7 @@ void ReverseInferMeta(const MetaTensor& x,
                       MetaTensor* out);
 
 void RollInferMeta(const MetaTensor& x,
-                   const ScalarArray& shifts,
+                   const IntArray& shifts,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out);
 
@@ -259,7 +259,7 @@ void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out);
 
 void SplitInferMeta(const MetaTensor& x_meta,
-                    const ScalarArray& num_or_sections,
+                    const IntArray& num_or_sections,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
@@ -271,9 +271,9 @@ void SqueezeInferMeta(const MetaTensor& x,
 
 void StridedSliceInferMeta(const MetaTensor& x,
                            const std::vector<int>& axes,
-                           const ScalarArray& starts,
-                           const ScalarArray& ends,
-                           const ScalarArray& strides,
+                           const IntArray& starts,
+                           const IntArray& ends,
+                           const IntArray& strides,
                            const std::vector<int>& infer_flags,
                            const std::vector<int>& decrease_axis,
                            MetaTensor* out,
@@ -293,7 +293,7 @@ void SumRawInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void TileInferMeta(const MetaTensor& x,
-                   const ScalarArray& repeat_times,
+                   const IntArray& repeat_times,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
@@ -346,7 +346,7 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaConfig config = MetaConfig());
 
 void UnsqueezeInferMeta(const MetaTensor& x,
-                        const ScalarArray& axes,
+                        const IntArray& axes,
                         MetaTensor* xshape,
                         MetaTensor* out);
 
