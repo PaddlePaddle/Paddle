@@ -438,7 +438,8 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
-void AnalysisConfig::EnableMkldnnInt8(std::unordered_set<std::string> op_list) {
+void AnalysisConfig::EnableMkldnnInt8(
+    const std::unordered_set<std::string> &op_list) {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;

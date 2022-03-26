@@ -717,7 +717,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param op_list The operator type list.
   ///
-  void EnableMkldnnInt8(std::unordered_set<std::string> op_list = {});
+  void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
 
   ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
