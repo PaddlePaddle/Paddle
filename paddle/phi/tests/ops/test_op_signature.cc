@@ -588,7 +588,8 @@ TEST(ARG_MAP, reshape) {
       OpUtilsMap::Instance().GetArgumentMappingFn("reshape2")(arg_case2);
   ASSERT_EQ(signature2.name, "reshape");
 
-  TestArgumentMappingContext arg_case3({"X", "shape"}, {}, {}, {"Out"});
+  TestArgumentMappingContext arg_case3(
+      {"X"}, {}, {{"shape", paddle::any(std::vector<int>({1, 2}))}}, {"Out"});
   auto signature3 =
       OpUtilsMap::Instance().GetArgumentMappingFn("reshape2")(arg_case3);
   ASSERT_EQ(signature3.name, "reshape");
