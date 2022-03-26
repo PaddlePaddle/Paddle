@@ -139,7 +139,6 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
         dense_pull_regions;
 
     if (worker_ptr_.get() == nullptr) {
-      std::cout << "debug zcb FleetWrapper::InitWorker worker_ptr_ is null\n";
       paddle::distributed::PSParameter ps_param;
       google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
       InitGFlag(ps_param.init_gflags());
@@ -147,17 +146,12 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       ps_env_.set_ps_servers(&host_sign_list, servers);
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
           paddle::distributed::PSClientFactory::create(ps_param));
-      std::cout
-          << "debug zcb FleetWrapper::InitWorker create worker_ptr done\n";
       worker_ptr_->configure(ps_param, dense_pull_regions, ps_env_, index);
-      std::cout
-          << "debug zcb FleetWrapper::InitWorker config worker_ptr done\n";
     }
     is_initialized_ = true;
   } else {
     VLOG(3) << "Client can be initialized only once";
   }
-  std::cout << "debug zcb FleetWrapper::InitWorker done\n";
 }
 
 void FleetWrapper::StopServer() {

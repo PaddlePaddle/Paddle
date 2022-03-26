@@ -142,12 +142,6 @@ class BrpcPsClient : public PSClient {
       flush();
       _running = false;
     }
-    //    if (_async_push_dense_thread.joinable()) {
-    //      _async_push_dense_thread.join();
-    //    }
-    //    if (_async_push_sparse_thread.joinable()) {
-    //      _async_push_sparse_thread.join();
-    //    }
     if (_server_started) {
       _server.Stop(1000);
       _server.Join();
@@ -205,24 +199,18 @@ class BrpcPsClient : public PSClient {
                                            const uint64_t *keys, size_t num,
                                            bool is_training);
   // GEO and recv_and_save
-  std::future<int32_t> PullSparseParam(float **select_values,
-                                                 size_t table_id,
-                                                 const uint64_t *keys,
-                                                 size_t num, bool is_training);
+  std::future<int32_t> PullSparseParam(float **select_values, size_t table_id,
+                                       const uint64_t *keys, size_t num,
+                                       bool is_training);
 
-  virtual std::future<int32_t> Pull(RequestContext &pull_context) override;
+  std::future<int32_t> Pull(RequestContext &pull_context) override;
 
-  virtual std::future<int32_t> Push(RequestContext &push_context) override;
+  std::future<int32_t> Push(RequestContext &push_context) override;
 
   virtual std::future<int32_t> print_table_stat(uint32_t table_id);
 
   virtual std::future<int32_t> barrier(size_t table_id, uint32_t barrier_type);
 
-  // GEO
-//  virtual std::future<int32_t> PullGeoParam(size_t table_id,
-//                                              std::vector<float> *values,
-//                                              std::vector<uint64_t> *keys,
-//                                              int pserver_idx);
   virtual std::future<int32_t> push_global_step(int table_id,
                                                 int64_t *total_send_data,
                                                 void *done);
@@ -234,9 +222,6 @@ class BrpcPsClient : public PSClient {
   // for local save sparse
   virtual int32_t recv_and_save_table(const uint64_t table_id,
                                       const std::string &path);
-
-  //  void print_queue_size();
-  //  void print_queue_size_thread();
 
  protected:
   virtual size_t get_server_nums() { return _server_channels.size(); }
@@ -265,43 +250,6 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
 
-  //  bool _running = false;
-  //  bool _flushing = false;
-  //  std::atomic<uint32_t> _async_call_num;  // 异步请求计数
-
-  //  // 异步push dense task
-  //  std::thread _async_push_dense_thread;
-  //  typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>>
-  //  DenseAsyncTask;
-  //  std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
-  //      _push_dense_task_queue_map;
-  //  // 异步push sparse task
-  //  std::thread _async_push_sparse_thread;
-  //  typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>>
-  //  SparseAsyncTask;
-  //  std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask
-  //  *>>
-  //      _push_sparse_task_queue_map;
-  //  std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
-
-  //  std::thread _print_thread;
-
-  //  int push_sparse_async_shard_merge(
-  //      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       //
-  //      NOLINT
-  //      std::vector<int> &request_kv_num, int table_id, int shard_idx,  //
-  //      NOLINT
-  //      ValueAccessor *accessor);
-  //
-  //  int push_sparse_async_shard_push(
-  //      std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,       //
-  //      NOLINT
-  //      std::vector<int> &request_kv_num, int table_id, int shard_idx,  //
-  //      NOLINT
-  //      DownpourBrpcClosure *closure, ValueAccessor *accessor);
-
-  //  SparseTaskPool _sparse_task_pool;
-
   std::vector<std::shared_ptr<brpc::Channel>>
       _client_channels;  // client2client
   std::vector<std::array<std::shared_ptr<brpc::Channel>, 3>>
@@ -317,15 +265,6 @@ class BrpcPsClient : public PSClient {
                                                 size_t num,
                                                 void *done) override;
 
-  // GEO
-//  std::future<int32_t> push_sparse_raw_gradient_partial(
-//      size_t table_id, const uint64_t *keys, const float **update_values,
-//      uint32_t num, void *done, int pserver_idx) override;
-
-  // GEO
-//  std::future<int32_t> PushSparseParam(size_t table_id, const uint64_t *keys,
-//                                         const float **update_values,
-//                                         size_t num, void *done) override;
   virtual std::future<int32_t> push_sparse(size_t table_id,
                                            const uint64_t *keys,
                                            const float **update_values,
@@ -340,18 +279,9 @@ class BrpcPsClient : public PSClient {
 
   int32_t start_client_service();
 
-  //  void push_dense_raw_gradient(std::shared_ptr<DenseAsyncTask> &task,  //
-  //  NOLINT
-  //                               float *total_send_data,
-  //                               size_t total_send_data_size,
-  //                               DownpourBrpcClosure *closure);
-  // float _mae = 0;
-  // float _mse = 0;
-  // uint16_t _push_times = 0;
   brpc::Server _server;
   DownpourPsClientService _service;
   bool _server_started = false;
-  // std::atomic_uint grad_num_{0};
 };
 
 class AsyncPsClient : public BrpcPsClient {
@@ -373,7 +303,7 @@ class AsyncPsClient : public BrpcPsClient {
   int32_t initialize() override;
   void finalize_worker() override;
 
-  virtual std::future<int32_t> Push(RequestContext &push_context) override;
+  std::future<int32_t> Push(RequestContext &push_context) override;
 
   void print_queue_size();
   void print_queue_size_thread();
@@ -436,29 +366,25 @@ class GeoPsClient : public BrpcPsClient {
 
   int32_t initialize() override;
 
-  virtual std::future<int32_t> Pull(RequestContext &pull_context) override;
+  std::future<int32_t> Pull(RequestContext &pull_context) override;
 
-  virtual std::future<int32_t> Push(RequestContext &push_context) override;
+  std::future<int32_t> Push(RequestContext &push_context) override;
 
  private:
   std::future<int32_t> PushSparseParam(size_t table_id, const uint64_t *keys,
-                                         const float **update_values,
-                                         size_t num, void *done);
-
-  // in BrpcPsClient
-//  virtual std::future<int32_t> PullSparseParam(float **select_values,
-//                                                 size_t table_id,
-//                                                 const uint64_t *keys,
-//                                                 size_t num, bool is_training);
+                                       const float **update_values, size_t num,
+                                       void *done);
 
   virtual std::future<int32_t> PullGeoParam(size_t table_id,
-                                              std::vector<float> *values,
-                                              std::vector<uint64_t> *keys,
-                                              int pserver_idx);
+                                            std::vector<float> *values,
+                                            std::vector<uint64_t> *keys,
+                                            int pserver_idx);
 
-  std::future<int32_t> PushSparseRawGradientPartial(
-      size_t table_id, const uint64_t *keys, const float **update_values,
-      uint32_t num, void *done, int pserver_idx);
+  std::future<int32_t> PushSparseRawGradientPartial(size_t table_id,
+                                                    const uint64_t *keys,
+                                                    const float **update_values,
+                                                    uint32_t num, void *done,
+                                                    int pserver_idx);
 };
 
 }  // namespace distributed
