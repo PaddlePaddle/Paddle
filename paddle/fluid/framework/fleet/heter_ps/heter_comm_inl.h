@@ -19,13 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename T>
-__global__ void fill_idx(T* idx, size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    idx[i] = i;
-  }
-}
 
 template <typename T>
 void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name) {
@@ -56,43 +49,6 @@ __global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len) {
   }
 }
 
-template <typename KeyType, typename T>
-__global__ void calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
-                                 int total_gpu) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    shard_index[i] = d_keys[i] % total_gpu;
-  }
-}
-
-template <typename KeyType, typename T>
-__global__ void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                               size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-  }
-}
-
-template <typename KeyType, typename GradType, typename T>
-__global__ void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                                 GradType* d_shard_grads, GradType* d_grads,
-                                 T* idx, size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-    d_shard_grads[i] = d_grads[idx[i]];
-  }
-}
-
-template <typename ValType, typename T>
-__global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                           size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_vals[idx[i]] = d_shard_vals[i];
-  }
-}
 
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
