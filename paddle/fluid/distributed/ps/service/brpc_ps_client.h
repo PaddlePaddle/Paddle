@@ -204,8 +204,8 @@ class BrpcPsClient : public PSClient {
                                            size_t table_id,
                                            const uint64_t *keys, size_t num,
                                            bool is_training);
-  // GEO
-  virtual std::future<int32_t> pull_sparse_param(float **select_values,
+  // GEO and recv_and_save
+  std::future<int32_t> PullSparseParam(float **select_values,
                                                  size_t table_id,
                                                  const uint64_t *keys,
                                                  size_t num, bool is_training);
@@ -219,10 +219,10 @@ class BrpcPsClient : public PSClient {
   virtual std::future<int32_t> barrier(size_t table_id, uint32_t barrier_type);
 
   // GEO
-  virtual std::future<int32_t> pull_geo_param(size_t table_id,
-                                              std::vector<float> *values,
-                                              std::vector<uint64_t> *keys,
-                                              int pserver_idx);
+//  virtual std::future<int32_t> PullGeoParam(size_t table_id,
+//                                              std::vector<float> *values,
+//                                              std::vector<uint64_t> *keys,
+//                                              int pserver_idx);
   virtual std::future<int32_t> push_global_step(int table_id,
                                                 int64_t *total_send_data,
                                                 void *done);
@@ -318,14 +318,14 @@ class BrpcPsClient : public PSClient {
                                                 void *done) override;
 
   // GEO
-  std::future<int32_t> push_sparse_raw_gradient_partial(
-      size_t table_id, const uint64_t *keys, const float **update_values,
-      uint32_t num, void *done, int pserver_idx) override;
+//  std::future<int32_t> push_sparse_raw_gradient_partial(
+//      size_t table_id, const uint64_t *keys, const float **update_values,
+//      uint32_t num, void *done, int pserver_idx) override;
 
   // GEO
-  std::future<int32_t> push_sparse_param(size_t table_id, const uint64_t *keys,
-                                         const float **update_values,
-                                         size_t num, void *done) override;
+//  std::future<int32_t> PushSparseParam(size_t table_id, const uint64_t *keys,
+//                                         const float **update_values,
+//                                         size_t num, void *done) override;
   virtual std::future<int32_t> push_sparse(size_t table_id,
                                            const uint64_t *keys,
                                            const float **update_values,
@@ -441,23 +441,24 @@ class GeoPsClient : public BrpcPsClient {
   virtual std::future<int32_t> Push(RequestContext &push_context) override;
 
  private:
-  std::future<int32_t> push_sparse_param(size_t table_id, const uint64_t *keys,
+  std::future<int32_t> PushSparseParam(size_t table_id, const uint64_t *keys,
                                          const float **update_values,
-                                         size_t num, void *done) override;
+                                         size_t num, void *done);
 
-  virtual std::future<int32_t> pull_sparse_param(float **select_values,
-                                                 size_t table_id,
-                                                 const uint64_t *keys,
-                                                 size_t num, bool is_training);
+  // in BrpcPsClient
+//  virtual std::future<int32_t> PullSparseParam(float **select_values,
+//                                                 size_t table_id,
+//                                                 const uint64_t *keys,
+//                                                 size_t num, bool is_training);
 
-  virtual std::future<int32_t> pull_geo_param(size_t table_id,
+  virtual std::future<int32_t> PullGeoParam(size_t table_id,
                                               std::vector<float> *values,
                                               std::vector<uint64_t> *keys,
                                               int pserver_idx);
 
-  std::future<int32_t> push_sparse_raw_gradient_partial(
+  std::future<int32_t> PushSparseRawGradientPartial(
       size_t table_id, const uint64_t *keys, const float **update_values,
-      uint32_t num, void *done, int pserver_idx) override;
+      uint32_t num, void *done, int pserver_idx);
 };
 
 }  // namespace distributed

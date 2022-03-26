@@ -113,8 +113,18 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
       regions.emplace_back(std::move(reg));
     }
   }
-  auto status =
-      _worker_ptr->pull_dense(regions.data(), regions.size(), table_id);
+
+  RequestContext req_ctx;
+//  req_ctx.training_mode = Geo;
+//  req_ctx.training_phase = Train;
+  req_ctx.value_type = Dense;
+  req_ctx.dense_values = regions.data();
+  req_ctx.num = regions.size();
+  req_ctx.table = table_id;
+
+//  auto status =
+//      _worker_ptr->pull_dense(regions.data(), regions.size(), table_id);
+  auto status = _worker_ptr->Pull(req_ctx);
   status.wait();
 
   for (auto &t : varnames) {
@@ -176,10 +186,24 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
               << " Temp_data[-1] " << w[tensor->numel() - 1];
     }
   }
-  auto status =
-      _worker_ptr->push_dense_param(regions.data(), regions.size(), table_id);
+
+  RequestContext req_ctx;
+//  req_ctx.training_mode = Geo;
+  req_ctx.training_phase = Init;
+  req_ctx.value_type = Dense;
+  req_ctx.table = table_id;
+  PushContext push_ctx;
+  req_ctx.push_context = push_ctx;
+  req_ctx.push_context.push_dense_values = regions.data();
+  req_ctx.num = regions.size();
+
+//  auto status =
+//      _worker_ptr->push_dense_param(regions.data(), regions.size(), table_id); 
+  VLOG(0) << "debug zcb comm begin call push_dense_param";
+  auto status = _worker_ptr->Push(req_ctx);
+  VLOG(0) << "debug zcb comm end call push_dense_param";
   status.wait();
-  VLOG(4) << "RPC Send Dense Param " << table_id << " done!";
+  VLOG(0) << "RPC Send Dense Param " << table_id << " done!";
   return;
 }
 
@@ -222,8 +246,21 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
         closure->set_promise_value(ret);
         --_async_call_num;
       });
-  auto status = _worker_ptr->push_dense_raw_gradient(
-      table_id, data, dense_data->size(), closure);
+
+  RequestContext req_ctx;
+//  req_ctx.training_mode = Geo;
+  req_ctx.training_phase = Train;
+  req_ctx.value_type = Dense;
+  req_ctx.table = table_id;
+  req_ctx.send_data = data;
+  req_ctx.num = dense_data->size();
+  req_ctx.callback = reinterpret_cast<void *>(closure);
+  VLOG(0) << "debug zcb comm req_ctx.callback is null? " << (req_ctx.callback == nullptr);
+  VLOG(0) << "debug zcb comm closure is null? " << (closure == nullptr);
+
+//  auto status = _worker_ptr->push_dense_raw_gradient(
+//      table_id, data, dense_data->size(), closure);
+  auto status = _worker_ptr->Push(req_ctx);
   std::cout << "debug zcb push dense done, begin wait\n";
   status.wait();
   std::cout << "debug zcb push dense wait done\n";
@@ -262,9 +299,22 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
         }
         closure->set_promise_value(ret);
       });
-  auto status = _worker_ptr->push_sparse_param(
-      table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
-      sparse_push_keys.size(), closure);
+  RequestContext req_ctx;
+//  req_ctx.training_mode = Geo;
+  req_ctx.training_phase = Init;
+  req_ctx.value_type = Sparse;
+  req_ctx.table = table_id;
+  PushContext push_ctx;
+  req_ctx.push_context = push_ctx;
+  req_ctx.push_context.keys = (const uint64_t *)sparse_push_keys.data();
+  req_ctx.push_context.push_values = (const float **)push_g_vec.data();
+  req_ctx.num = sparse_push_keys.size();
+  req_ctx.callback = reinterpret_cast<void *>(closure);
+
+//  auto status = _worker_ptr->PushSparseParam(
+//      table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
+//      sparse_push_keys.size(), closure);
+  auto status = _worker_ptr->Push(req_ctx);
   status.wait();
   return;
 }
@@ -315,9 +365,22 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
         closure->set_promise_value(ret);
         --_async_call_num;
       });
-  auto status = _worker_ptr->push_sparse_raw_gradient(
-      table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
-      sparse_push_keys.size(), closure);
+  RequestContext req_ctx;
+//  req_ctx.training_mode = Sync;
+  req_ctx.training_phase = Train;
+  req_ctx.value_type = Sparse;
+  req_ctx.table = table_id;
+  PushContext push_ctx;
+  req_ctx.push_context = push_ctx;
+  req_ctx.push_context.keys = sparse_push_keys.data();
+  req_ctx.push_context.push_values = (const float **)push_g_vec.data();
+  req_ctx.num = sparse_push_keys.size();
+  req_ctx.callback = reinterpret_cast<void *>(closure);
+ 
+  auto status = _worker_ptr->Push(req_ctx);
+//  auto status = _worker_ptr->push_sparse_raw_gradient(
+//      table_id, sparse_push_keys.data(), (const float **)push_g_vec.data(),
+//      sparse_push_keys.size(), closure);
   std::cout << "debug zcb push sparse done, begin wait\n";
   status.wait();
   std::cout << "debug zcb push sparse wait done\n";
@@ -343,10 +406,20 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
   }
 
   bool training = true;
+  RequestContext req_ctx;
+//  req_ctx.training_mode = Geo;
+  req_ctx.training_phase = Init;
+  req_ctx.value_type = Sparse;
+  req_ctx.table = table_id;
+  req_ctx.sparse_values = (void **)push_g_vec.data();
+  req_ctx.keys = (void **)sparse_push_keys.data();
+  req_ctx.num = sparse_push_keys.size();
+  req_ctx.is_training = training;
 
-  auto status = _worker_ptr->pull_sparse_param(
-      (float **)push_g_vec.data(), table_id,  // NOLINT
-      sparse_push_keys.data(), sparse_push_keys.size(), training);
+//  auto status = _worker_ptr->PullSparseParam(
+//      (float **)push_g_vec.data(), table_id,  // NOLINT
+//      sparse_push_keys.data(), sparse_push_keys.size(), training);
+  auto status = _worker_ptr->Pull(req_ctx);
   status.wait();
   return;
 }
@@ -1332,9 +1405,23 @@ void GeoCommunicator::SendSparse(const std::string &varname,
     closure->set_promise_value(ret);
     --_async_call_num;
   });
-  auto status = _worker_ptr->push_sparse_raw_gradient_partial(
-      table_id, (const uint64_t *)sparse_ids.data(),
-      (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
+
+  RequestContext req_ctx;
+  req_ctx.training_mode = Geo;
+  req_ctx.training_phase = Train;
+  req_ctx.value_type = Sparse;
+  req_ctx.table = table_id;
+  PushContext push_ctx;
+  req_ctx.push_context = push_ctx;
+  req_ctx.push_context.keys = (const uint64_t *)sparse_ids.data();
+  req_ctx.push_context.push_values = (const float **)push_g_vec.data();
+  req_ctx.num = sparse_ids.size();
+  req_ctx.callback = reinterpret_cast<void *>(closure);
+  req_ctx.pserver_idx = ep_idx;
+//  auto status = _worker_ptr->push_sparse_raw_gradient_partial(
+//      table_id, (const uint64_t *)sparse_ids.data(),
+//      (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
+  auto status =  _worker_ptr->Push(req_ctx);
   status.wait();
 
   VLOG(1) << "Finish Send Sparse " << varname
@@ -1350,7 +1437,17 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
-  auto status = _worker_ptr->pull_geo_param(table_id, &values, &keys, ep_idx);
+  
+  RequestContext req_ctx;
+  req_ctx.training_mode = Geo;
+  req_ctx.training_phase = Train;
+  req_ctx.value_type = Sparse;
+  req_ctx.table = table_id;
+  req_ctx.pull_geo_values = &values;
+  req_ctx.pull_geo_keys = &keys;
+  req_ctx.pserver_idx = ep_idx;
+//  auto status = _worker_ptr->PullGeoParam(table_id, &values, &keys, ep_idx);
+  auto status = _worker_ptr->Pull(req_ctx);
   status.wait();
 
   std::string param = SplitedGradToParam(varname);

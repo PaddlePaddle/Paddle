@@ -93,6 +93,10 @@ struct RequestContext {
   size_t num;
   bool is_training;
   void *callback;
+  int pserver_idx;
+  float *send_data; // for push dense gradient geo/sync
+  std::vector<float>* pull_geo_values;
+  std::vector<uint64_t>* pull_geo_keys;
 };
 
 class PSClient {
@@ -174,16 +178,16 @@ class PSClient {
                                            const uint64_t *keys, size_t num,
                                            bool is_training) = 0;
 
-  virtual std::future<int32_t> pull_sparse_param(float **select_values,
-                                                 size_t table_id,
-                                                 const uint64_t *keys,
-                                                 size_t num, bool is_training) {
-    VLOG(0) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
+//  virtual std::future<int32_t> pull_sparse_param(float **select_values,
+//                                                 size_t table_id,
+//                                                 const uint64_t *keys,
+//                                                 size_t num, bool is_training) {
+//    VLOG(0) << "Did not implement";
+//    std::promise<int32_t> promise;
+//    std::future<int> fut = promise.get_future();
+//    promise.set_value(-1);
+//    return fut;
+//  }
 
   virtual ::std::future<int32_t> pull_sparse_ptr(char **select_values,
                                                  size_t table_id,
@@ -210,10 +214,10 @@ class PSClient {
   virtual std::future<int32_t> barrier(size_t table_id,
                                        uint32_t barrier_type) = 0;
 
-  virtual std::future<int32_t> pull_geo_param(size_t table_id,
-                                              std::vector<float> *values,
-                                              std::vector<uint64_t> *keys,
-                                              int pserver_idx) = 0;
+//  virtual std::future<int32_t> pull_geo_param(size_t table_id,
+//                                              std::vector<float> *values,
+//                                              std::vector<uint64_t> *keys,
+//                                              int pserver_idx) = 0;
 
   virtual std::future<int32_t> push_global_step(int table_id,
                                                 int64_t *total_send_data,
@@ -271,14 +275,14 @@ class PSClient {
       size_t table_id, const uint64_t *keys, const float **update_values,
       size_t num, void *done) = 0;
 
-  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
-      size_t table_id, const uint64_t *keys, const float **update_values,
-      uint32_t num, void *done, int pserver_idx) = 0;
+//  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
+//      size_t table_id, const uint64_t *keys, const float **update_values,
+//      uint32_t num, void *done, int pserver_idx) = 0;
 
-  virtual std::future<int32_t> push_sparse_param(size_t table_id,
-                                                 const uint64_t *keys,
-                                                 const float **update_values,
-                                                 size_t num, void *done) = 0;
+//  virtual std::future<int32_t> push_sparse_param(size_t table_id,
+//                                                 const uint64_t *keys,
+//                                                 const float **update_values,
+//                                                 size_t num, void *done) = 0;
   virtual std::future<int32_t> push_sparse(size_t table_id,
                                            const uint64_t *keys,
                                            const float **update_values,

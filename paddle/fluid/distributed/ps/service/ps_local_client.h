@@ -124,16 +124,16 @@ class PsLocalClient : public PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> pull_geo_param(size_t table_id,
-                                              std::vector<float>* values,
-                                              std::vector<uint64_t>* keys,
-                                              int pserver_idx) {
-    std::promise<int32_t> prom;
-    std::future<int32_t> fut = prom.get_future();
-    prom.set_value(0);
-
-    return fut;
-  }
+//  virtual std::future<int32_t> pull_geo_param(size_t table_id,
+//                                              std::vector<float>* values,
+//                                              std::vector<uint64_t>* keys,
+//                                              int pserver_idx) {
+//    std::promise<int32_t> prom;
+//    std::future<int32_t> fut = prom.get_future();
+//    prom.set_value(0);
+//
+//    return fut;
+//  }
 
   virtual std::future<int32_t> push_global_step(int table_id,
                                                 int64_t* total_send_data,
@@ -169,27 +169,27 @@ class PsLocalClient : public PSClient {
       size_t table_id, const uint64_t* keys, const float** update_values,
       size_t num, void* callback) override;
 
-  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
-      size_t table_id, const uint64_t* keys, const float** update_values,
-      uint32_t num, void* done, int pserver_idx) override {
-    std::promise<int32_t> prom;
-    std::future<int32_t> fut = prom.get_future();
-    prom.set_value(0);
+//  virtual std::future<int32_t> push_sparse_raw_gradient_partial(
+//      size_t table_id, const uint64_t* keys, const float** update_values,
+//      uint32_t num, void* done, int pserver_idx) override {
+//    std::promise<int32_t> prom;
+//    std::future<int32_t> fut = prom.get_future();
+//    prom.set_value(0);
+//
+//    return fut;
+//  }
 
-    return fut;
-  }
-
-  virtual std::future<int32_t> push_sparse_param(size_t table_id,
-                                                 const uint64_t* keys,
-                                                 const float** update_values,
-                                                 size_t num,
-                                                 void* done) override {
-    std::promise<int32_t> prom;
-    std::future<int32_t> fut = prom.get_future();
-    prom.set_value(0);
-
-    return fut;
-  }
+//  virtual std::future<int32_t> push_sparse_param(size_t table_id,
+//                                                 const uint64_t* keys,
+//                                                 const float** update_values,
+//                                                 size_t num,
+//                                                 void* done) override {
+//    std::promise<int32_t> prom;
+//    std::future<int32_t> fut = prom.get_future();
+//    prom.set_value(0);
+//
+//    return fut;
+//  }
 
  private:
   virtual int32_t initialize() override;

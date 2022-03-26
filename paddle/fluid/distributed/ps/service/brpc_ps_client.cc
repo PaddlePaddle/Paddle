@@ -214,7 +214,7 @@ int32_t BrpcPsClient::initialize() {
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_client_pull_dense");
   profiler.register_profiler("pserver_client_pull_sparse");
-  profiler.register_profiler("pserver_client_pull_sparse_param");
+  profiler.register_profiler("pserver_client_PullSparseParam");
   profiler.register_profiler("pserver_client_pull_sparse_local");
   profiler.register_profiler("pserver_client_push_sparse");
   //  profiler.register_profiler("pserver_client_push_sparse_parse");
@@ -501,11 +501,11 @@ std::future<int32_t> BrpcPsClient::Pull(RequestContext &pull_context) {
     size_t table_id = pull_context.table;
     size_t num = pull_context.num;
     bool is_training = pull_context.is_training;
-    if (pull_context.training_mode == Geo) {  // for geo
-      pull_sparse_param(select_values, table_id, keys, num, is_training);
-    } else if (pull_context.training_mode == Async) {  // for async
+//    if (pull_context.training_mode == Geo) {  // for geo
+//      PullSparseParam(select_values, table_id, keys, num, is_training);
+//    } else if (pull_context.training_mode == Async) {  // for async
       pull_sparse(select_values, table_id, keys, num, is_training);
-    }
+//    }
   }
 }
 
@@ -514,21 +514,18 @@ std::future<int32_t> BrpcPsClient::Push(RequestContext &push_context) {
     const Region *dense_region = push_context.push_context.push_dense_values;
     push_dense(dense_region, push_context.num, push_context.table);
   } else {  // push sparse
-    size_t table_id = push_context.table;
-    size_t num = push_context.num;
-    bool is_training = push_context.is_training;
-    if (push_context.training_mode == Geo) {  // for geo
-      // TODO(zhaocaibei)
-    } else if (push_context.training_mode == Async) {  // for async
-      const uint64_t *keys = push_context.push_context.keys;
-      const float **update_values = push_context.push_context.push_values;
-      push_sparse(table_id, keys, update_values, num);
-    }
+    // check push_context.training_mode == SYNC
+    return push_sparse_raw_gradient(push_context.table,
+                                    push_context.push_context.keys,
+                                    push_context.push_context.push_values,
+                                    push_context.num,
+                                    push_context.callback);
   }
 }
 
 // GEO
-std::future<int32_t> BrpcPsClient::pull_geo_param(size_t table_id,
+/*
+std::future<int32_t> BrpcPsClient::PullGeoParam(size_t table_id,
                                                   std::vector<float> *values,
                                                   std::vector<uint64_t> *keys,
                                                   int pserver_idx) {
@@ -565,10 +562,11 @@ std::future<int32_t> BrpcPsClient::pull_geo_param(size_t table_id,
   rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
                    closure);
   return fut;
-}
+}*/
 
 // for GEO
-std::future<int32_t> BrpcPsClient::push_sparse_param(
+/*
+std::future<int32_t> BrpcPsClient::PushSparseParam(
     size_t table_id, const uint64_t *keys, const float **update_values,
     size_t num, void *done) {
   auto *accessor = table_accessor(table_id);
@@ -615,7 +613,7 @@ std::future<int32_t> BrpcPsClient::push_sparse_param(
                      closure->response(shard_idx), closure);
   }
   return fut;
-}
+}*/
 
 std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
                                               size_t region_num,
@@ -1018,13 +1016,13 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
   return fut;
 }
 
-// for GEO
-std::future<int32_t> BrpcPsClient::pull_sparse_param(float **select_values,
+// for GEO and recv_and_save ... so can not del it...
+std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
                                                      size_t table_id,
                                                      const uint64_t *keys,
                                                      size_t num,
                                                      bool is_training) {
-  auto timer = std::make_shared<CostTimer>("pserver_client_pull_sparse_param");
+  auto timer = std::make_shared<CostTimer>("pserver_client_PullSparseParam");
   size_t request_call_num = _server_channels.size();
 
   auto shard_sorted_kvs = std::make_shared<
@@ -1158,7 +1156,8 @@ std::future<int32_t> BrpcPsClient::send_client2client_msg(
 }
 
 // GEO
-std::future<int32_t> BrpcPsClient::push_sparse_raw_gradient_partial(
+/*
+std::future<int32_t> BrpcPsClient::PushSparseRawGradientPartial(
     size_t table_id, const uint64_t *keys, const float **update_values,
     uint32_t num, void *done, int pserver_idx) {
   auto *accessor = table_accessor(table_id);
@@ -1190,6 +1189,7 @@ std::future<int32_t> BrpcPsClient::push_sparse_raw_gradient_partial(
                    closure);
   return fut;
 }
+*/
 
 int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
                                           const std::string &path) {
@@ -1231,7 +1231,7 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   // recv_and_save_table
   if (table_class == "MemorySparseGeoTable") {
     auto status =
-        pull_sparse_param(reinterpret_cast<float **>(save_vec.data()), table_id,
+        PullSparseParam(reinterpret_cast<float **>(save_vec.data()), table_id,
                           save_key.data(), save_key.size(), true);
     status.wait();
   } else {
@@ -1928,11 +1928,11 @@ int32_t GeoPsClient::initialize() {
 }
 
 // for GEO
-std::future<int32_t> GeoPsClient::push_sparse_param(size_t table_id,
+std::future<int32_t> GeoPsClient::PushSparseParam(size_t table_id,
                                                     const uint64_t *keys,
                                                     const float **update_values,
                                                     size_t num, void *done) {
-  std::cout << "debug zcb GeoPsClient::push_sparse_param\n";
+  std::cout << "debug zcb GeoPsClient::PushSparseParam\n";
   auto *accessor = table_accessor(table_id);
   // 发送RPC请求
   DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
@@ -1980,13 +1980,14 @@ std::future<int32_t> GeoPsClient::push_sparse_param(size_t table_id,
 }
 
 // for GEO
-std::future<int32_t> GeoPsClient::pull_sparse_param(float **select_values,
+/*
+std::future<int32_t> GeoPsClient::PullSparseParam(float **select_values,
                                                     size_t table_id,
                                                     const uint64_t *keys,
                                                     size_t num,
                                                     bool is_training) {
-  std::cout << "debug zcb GeoPsClient::pull_sparse_param\n";
-  auto timer = std::make_shared<CostTimer>("pserver_client_pull_sparse_param");
+  std::cout << "debug zcb GeoPsClient::PullSparseParam\n";
+  auto timer = std::make_shared<CostTimer>("pserver_client_PullSparseParam");
   size_t request_call_num = _server_channels.size();
 
   auto shard_sorted_kvs = std::make_shared<
@@ -2092,14 +2093,14 @@ std::future<int32_t> GeoPsClient::pull_sparse_param(float **select_values,
     }
   }
   return fut;
-}
+}*/
 
 // GEO
-std::future<int32_t> GeoPsClient::pull_geo_param(size_t table_id,
+std::future<int32_t> GeoPsClient::PullGeoParam(size_t table_id,
                                                  std::vector<float> *values,
                                                  std::vector<uint64_t> *keys,
                                                  int pserver_idx) {
-  std::cout << "debug zcb GeoPsClient::pull_geo_param\n";
+  std::cout << "debug zcb GeoPsClient::PullGeoParam\n";
   auto *accessor = table_accessor(table_id);
   DownpourBrpcClosure *closure =
       new DownpourBrpcClosure(1, [keys, values, accessor](void *done) {
@@ -2135,10 +2136,10 @@ std::future<int32_t> GeoPsClient::pull_geo_param(size_t table_id,
   return fut;
 }
 
-std::future<int32_t> GeoPsClient::push_sparse_raw_gradient_partial(
+std::future<int32_t> GeoPsClient::PushSparseRawGradientPartial(
     size_t table_id, const uint64_t *keys, const float **update_values,
     uint32_t num, void *done, int pserver_idx) {
-  std::cout << "debug zcb GeoPsClient::push_sparse_raw_gradient_partial\n";
+  std::cout << "debug zcb GeoPsClient::PushSparseRawGradientPartial\n";
   auto *accessor = table_accessor(table_id);
   size_t value_size = accessor->update_size();
   DownpourBrpcClosure *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
@@ -2170,21 +2171,61 @@ std::future<int32_t> GeoPsClient::push_sparse_raw_gradient_partial(
 }
 
 std::future<int32_t> GeoPsClient::Push(RequestContext &push_context) {
-  // TODO
-  VLOG(0) << "GeoPsClient::push_dense";
-  std::promise<int32_t> prom;
-  prom.set_value(0);
-  std::future<int32_t> fut = prom.get_future();
-  return fut;
+  // TODO(zhaocaibei): check push_context.training_mode == 2
+  VLOG(0) << "debug zcb GeoClient push trainint_phase: " << push_context.training_phase;
+  if (push_context.value_type == Dense) {  // push dense
+    if (push_context.training_phase == Init) {
+      const Region *dense_region = push_context.push_context.push_dense_values;
+      return push_dense_param(dense_region, push_context.num, push_context.table);
+    } else if (push_context.training_phase == Train) {
+      if (push_context.callback == nullptr) {
+        VLOG(0) << "debug zcb push_context.callback is null";
+      }
+      return push_dense_raw_gradient(push_context.table, 
+                                     push_context.send_data, 
+                                     push_context.num, 
+                                     push_context.callback);
+    }
+  } else {  // push sparse
+    if (push_context.training_phase == Init) {  // init
+      return PushSparseParam(push_context.table, 
+                               push_context.push_context.keys, 
+                               push_context.push_context.push_values, 
+                               push_context.num, 
+                               push_context.callback);
+    } else if (push_context.training_phase == Train) {  // train
+      return PushSparseRawGradientPartial(push_context.table, 
+                                              push_context.push_context.keys, 
+                                              push_context.push_context.push_values, 
+                                              push_context.num, 
+                                              push_context.callback, 
+                                              push_context.pserver_idx);
+    }
+  }
 }
 
 std::future<int32_t> GeoPsClient::Pull(RequestContext &pull_context) {
-  // TODO
-  VLOG(0) << "GeoPsClient::push_dense";
-  std::promise<int32_t> prom;
-  prom.set_value(0);
-  std::future<int32_t> fut = prom.get_future();
-  return fut;
+  // TODO(zhaocaibei): check push_context.training_mode == 2
+  if (pull_context.value_type == Dense) {  // pull dense
+    Region *dense_region =
+        reinterpret_cast<Region *>(pull_context.dense_values);
+    return pull_dense(dense_region, pull_context.num, pull_context.table);
+  } else {  // pull sparse
+    uint64_t *keys = reinterpret_cast<uint64_t *>(pull_context.keys);
+    float **select_values =
+        reinterpret_cast<float **>(pull_context.sparse_values);
+    size_t table_id = pull_context.table;
+    size_t num = pull_context.num;
+    bool is_training = pull_context.is_training;
+    if (pull_context.training_phase == Init) {
+      return PullSparseParam(select_values, table_id, keys, num, is_training);
+    } else if (pull_context.training_phase == Train) {
+      return PullGeoParam(table_id, 
+                            pull_context.pull_geo_values, 
+                            pull_context.pull_geo_keys, 
+                            pull_context.pserver_idx);
+    }
+  }
 }
 
 }  // namespace distributed
