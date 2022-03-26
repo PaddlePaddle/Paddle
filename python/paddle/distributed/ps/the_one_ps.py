@@ -134,7 +134,10 @@ class Accessor:
 
         if not accessor_proto.HasField("accessor_class"):
             # DownpourSparseValueAccessor
-            accessor_proto.accessor_class = "SparseAccessor"
+            if context['use_ps_gpu']:
+                accessor_proto.accessor_class = "CtrCommonAccessor"
+            else:
+                accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
             if accessor_proto.accessor_class == "SparseAccessor":
                 accessor_proto.fea_dim = embedding_dim + 2
@@ -948,7 +951,8 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
 
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                'use_ps_gpu']:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
@@ -1003,17 +1007,23 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.scopes = scopes
         if not is_test:
-            if self.context['ps_mode'] == DistributedMode.GEO:
+            if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                    'use_ps_gpu']:
                 self._communicator.init_params(init_params)
             else:
                 if role_id == 0:
                     self._init_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
-        self._pull_all_dense(scopes, send_ctx, dense_map)
+
+        if self.context['use_ps_gpu']:
+            self._communicator.pull_dense(init_params)
+        else:
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                'use_ps_gpu']:
             if not self._communicator.is_running():
                 self._communicator.start()
             else:
@@ -1083,7 +1093,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.run_server(host, int(port))
 
     def _stop_worker(self):
-        if self.context['ps_mode'] == DistributedMode.GEO:
+        if self.context['ps_mode'] == DistributedMode.GEO or self.context[
+                'use_ps_gpu']:
             self._communicator.stop()
         self._worker.stop_worker()
         if self.is_heter_ps_mode:

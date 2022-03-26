@@ -494,7 +494,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #endif
 
 #ifdef PADDLE_WITH_PSCORE
-    std::vector<std::vector<paddle::distributed::VALUE*>> task_ptrs(device_num);
+    std::vector<std::vector<paddle::distributed::FixedFeatureValue*>> task_ptrs(
+        device_num);
 #endif
 
     for (size_t j = 0; j < local_keys[i].size(); j++) {
@@ -557,21 +558,21 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
       for (int j = 0; j < len; ++j) {
         device_keys[dev][cur + j] = task_keys[dev][j];
-        distributed::VALUE* ptr_val = task_ptrs[dev][j];
+        float* ptr_val = task_ptrs[dev][j]->data();
         FeatureValue& val = device_vals[dev][cur + j];
-        bool has_mf = 1;
-        val.delta_score = 0;
-        val.show = ptr_val->count_;
-        val.clk = 0;
-        val.slot = 0;
-        val.lr = 0;
-        val.lr_g2sum = 0;
+        size_t dim = task_ptrs[dev][j]->size();
+        val.delta_score = ptr_val[2];
+        val.show = ptr_val[3];
+        val.clk = ptr_val[4];
+        val.slot = ptr_val[0];
+        val.lr = ptr_val[5];
+        val.lr_g2sum = ptr_val[6];
         val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
 
-        if (has_mf) {
+        if (dim > 7) {
           val.mf_size = MF_DIM + 1;
           for (int x = 0; x < val.mf_size; x++) {
-            val.mf[x] = ptr_val->data_[x];
+            val.mf[x] = ptr_val[x + 7];
           }
         } else {
           val.mf_size = 0;
