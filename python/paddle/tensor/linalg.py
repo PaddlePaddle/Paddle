@@ -1445,8 +1445,8 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dygraph_mode():
-        return _C_ops.final_state_bincount(x, weights, minlength)
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_bincount(x, weights, minlength)
 
     if _in_legacy_dygraph():
         return _C_ops.bincount(x, weights, "minlength", minlength)

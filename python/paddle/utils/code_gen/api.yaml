@@ -669,15 +669,15 @@
 #   backward : bilinear_tensor_product_grad
 #   optional : bias
 
-# bincount
-- api : bincount
-  args : (Tensor x, Tensor weight, int minlength)
-  output : Tensor
-  infer_meta :
-    func : BincountInferMeta
-  kernel :
-    func : bincount
-  optional : weight
+# # bincount
+# - api : bincount
+#   args : (Tensor x, Tensor weight, int minlength)
+#   output : Tensor
+#   infer_meta :
+#     func : BincountInferMeta
+#   kernel :
+#     func : bincount
+#   optional : weight
 
 
 
