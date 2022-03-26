@@ -32,7 +32,7 @@ def call_TripletMarginDistanceLoss_layer(input,
     return res
 
 
-def call_TripletMaginLoss_functional(input,
+def call_TripletMaginDistanceLoss_functional(input,
                         positive,
                         negative,
                         distance_function = None,
@@ -68,7 +68,7 @@ def test_static(place,
 
 
         if functional:
-            res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
+            res = call_TripletMaginDistanceLoss_functional(input=input,positive=positive,negative=negative,distance_function=distance_function,
         margin=margin,swap=swap,reduction=reduction)
         else:
             res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
@@ -93,7 +93,7 @@ def test_dygraph(place,
     negative = paddle.to_tensor(negative)
 
     if functional:
-        dy_res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
+        dy_res = call_TripletMaginDistanceLoss_functional(input=input,positive=positive,negative=negative,distance_function=distance_function,
         margin=margin,swap=swap,reduction=reduction)
     else:
         dy_res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
@@ -103,7 +103,7 @@ def test_dygraph(place,
     return dy_result
 
 
-def calc_triplet_margin_loss(input,
+def calc_triplet_margin_distance_loss(input,
                  positive,
                  negative,
                 distance_function=None,
@@ -141,7 +141,7 @@ class TestTripletMarginLoss(unittest.TestCase):
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
-                expected = calc_triplet_margin_loss(input=input, positive=positive, negative=negative,
+                expected = calc_triplet_margin_distance_loss(input=input, positive=positive, negative=negative,
                                                      reduction=reduction)
 
                 dy_result = test_dygraph(place=place,
@@ -167,7 +167,7 @@ class TestTripletMarginLoss(unittest.TestCase):
                 self.assertTrue(np.allclose(static_functional, dy_functional))
                 self.assertTrue(np.allclose(dy_functional, expected))
 
-    def test_BCEWithLogitsLoss_error(self):
+    def test_TripletMarginDistanceLoss_error(self):
         paddle.disable_static()
         self.assertRaises(
             ValueError,

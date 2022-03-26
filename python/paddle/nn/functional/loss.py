@@ -2280,6 +2280,17 @@ def triplet_margin_with_distance_loss(input,positive,negative,distance_function 
         check_variable_and_dtype(negative, 'negative', ['float32', 'float64'],
                                  'triplet_margin_loss')
 
+    # reshape to [batch_size, N]
+    input = input.flatten(start_axis=1,stop_axis=-1)
+    positive = positive.flatten(start_axis=1,stop_axis=-1)
+    negative = negative.flatten(start_axis=1,stop_axis=-1)
+    if not(input.shape==positive.shape==negative.shape):
+        raise ValueError(
+            "input's shape must equal to "
+            "positive's shape and  "
+            "negative's shape")
+
+
     distance_function = distance_function if distance_function is not None \
         else paddle.nn.PairwiseDistance(2)
 
