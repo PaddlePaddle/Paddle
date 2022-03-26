@@ -228,8 +228,11 @@ TEST(SENDANDRECV, GPU) {
   b_rpc_service2->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
-  distributed::HeterClient* heter_client_ptr_ =
+  std::shared_ptr<distributed::HeterClient> heter_client_ptr_ =
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0);
+  if (heter_client_ptr_ == nullptr) {
+    LOG(ERROR) << "heter_client_ptr_ is null";
+  }
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
