@@ -42,7 +42,7 @@ class BaseTestCase(OpTest):
             self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
 
 class TestCase0(BaseTestCase):
@@ -57,6 +57,7 @@ class TestCase0(BaseTestCase):
 class TestCase1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.argmin
         self.dims = (3, 4)
         self.dtype = 'float64'
         self.axis = 1
@@ -83,6 +84,7 @@ class TestCase2_1(BaseTestCase):
 class TestCase3(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (3, )
         self.dtype = 'int64'
         self.axis = 0
@@ -91,6 +93,7 @@ class TestCase3(BaseTestCase):
 class TestCase4(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.argmin
         self.dims = (1, )
         self.dtype = 'int32'
         self.axis = 0
@@ -107,6 +110,7 @@ class TestCase3_(BaseTestCase):
 class BaseTestComplex1_1(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -132,6 +136,7 @@ class BaseTestComplex1_1(OpTest):
 class BaseTestComplex1_2(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.argmin
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -184,6 +189,7 @@ class BaseTestComplex2_1(OpTest):
 class BaseTestComplex2_2(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.argmin
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2

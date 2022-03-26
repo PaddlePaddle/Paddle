@@ -349,15 +349,15 @@
   backward : segment_pool_grad
   
 
-# # accuracy
-# - api : accuracy
-#   args : (Tensor x, Tensor indices, Tensor label)
-#   output : Tensor(accuracy), Tensor(correct), Tensor(total)
-#   infer_meta :
-#     func : AccuracyInferMeta
-#   kernel :
-#     func : accuracy
-#     dtype : x
+# accuracy
+- api : accuracy
+  args : (Tensor x, Tensor indices, Tensor label)
+  output : Tensor(accuracy), Tensor(correct), Tensor(total)
+  infer_meta :
+    func : AccuracyInferMeta
+  kernel :
+    func : accuracy
+    dtype : x
 
 # sin
 - api : sin
@@ -1119,15 +1119,15 @@
   kernel :
     func : shard_index
 
-# sigmoid_cross_entropy_with_logits
-- api : sigmoid_cross_entropy_with_logits
-  args : (Tensor x, Tensor label, bool normalize, int ignore_index)
-  output : Tensor
-  infer_meta :
-    func : SigmoidCrossEntropyWithLogitsInferMeta
-  kernel :
-    func : sigmoid_cross_entropy_with_logits
-  backward : sigmoid_cross_entropy_with_logits_grad
+# # sigmoid_cross_entropy_with_logits
+# - api : sigmoid_cross_entropy_with_logits
+#   args : (Tensor x, Tensor label, bool normalize, int ignore_index)
+#   output : Tensor
+#   infer_meta :
+#     func : SigmoidCrossEntropyWithLogitsInferMeta
+#   kernel :
+#     func : sigmoid_cross_entropy_with_logits
+#   backward : sigmoid_cross_entropy_with_logits_grad
 
 # size
 - api : size

@@ -258,7 +258,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dygraph_mode():
-        out = _C_ops.final_state_arg_min(x, axis, keepdim, flattern, var_dtype)
+        return _C_ops.final_state_argmin(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():
         out = _C_ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                              keepdim, 'flatten', flatten)
