@@ -709,8 +709,13 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         for name, (_, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
             tensor_wrapper_name = GetSavedName(name)
-            grad_api_args[
-                grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
+            is_optional = (name in self.optional_inputs)
+            if is_optional:
+                grad_api_args[
+                    grad_api_position] = f"egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
+            else:
+                grad_api_args[
+                    grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
 
         for _, (ttype, fwd_position,
                 grad_api_position) in backward_grad_inputs_map.items():
@@ -729,7 +734,8 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Construct grad_api returns
         num_bwd_outputs = len(backward_grad_outputs_map.keys())
-        returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({num_bwd_outputs});\n"
+        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
+        returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
         for _, (ttype, fwd_position,
                 grad_api_position) in backward_grad_outputs_map.items():
             # Infer Grad API Return Type
@@ -793,7 +799,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             is_optional = (name in optional_inputs)
             if IsPlainTensorType(ttype):
                 if is_optional:
-                    arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+                    arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
                     amp_tensors_vector_optional_list.append(
                         f"if ({name}.is)initialized() amp_tensors_vector.push_back({name}.get()));\n"
                     )
@@ -980,9 +986,9 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             bump_inplace_version_str += BUMP_INPLACE_VERSION_TEMPLATE.format(
                 inplace_name, inplace_name)
 
-        # Node Construction
-        num_backward_inputs = len(backward_grad_inputs_map.keys())
-        num_backward_outputs = len(backward_grad_outputs_map.keys())
+        # Node Construction        
+        num_backward_inputs = len(forward_outputs_position_map.keys())
+        num_backward_outputs = len(forward_inputs_position_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
 
         node_construction_str = f"            auto grad_node = std::make_shared<{grad_node_name}>({num_backward_inputs}, {num_backward_outputs});"
@@ -1009,7 +1015,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
 
             if is_fwd_input:
                 if is_optional:
-                    set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+                    set_tensor_wrappers = f" if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
                 else:
                     set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
             else:
@@ -1023,7 +1029,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                     tw_name = f"api_result"
 
                 if is_optional:
-                    set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
+                    set_tensor_wrappers = f" if({tw_name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({tw_name}.get_ptr()), false);"
                 else:
                     set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({tw_name}, false);"
             set_tensor_wrappers_list.append(set_tensor_wrappers)
@@ -1034,8 +1040,13 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         set_edges_list = []
         for name, (_, pos) in forward_inputs_position_map.items():
             input_autograd_meta_name = GetAutoGradMetaName(name)
-            set_grad_out_meta = f"        grad_node->SetGradOutMeta({name}, {pos});"
-            set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+            is_optional = (name in self.optional_inputs)
+            if is_optional:
+                set_grad_out_meta = f"            if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                set_edges = f"            if({name}.get_ptr() != nullptr)  grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+            else:
+                set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
+                set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
             set_grad_out_meta_list.append(set_grad_out_meta)
             set_edges_list.append(set_edges)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
