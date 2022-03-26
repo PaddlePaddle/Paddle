@@ -48,7 +48,6 @@ class TestTopkOp(OpTest):
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
         self.dtype = np.float64
-        self.python_api = paddle.topk
         self.input_data = np.random.rand(10, 20)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -58,10 +57,10 @@ class TestTopkOp(OpTest):
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad(set(['X']), 'Out', check_eager=False)
 
 
 class TestTopkOp1(TestTopkOp):
