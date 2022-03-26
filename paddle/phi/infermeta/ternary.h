@@ -51,6 +51,7 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
                             const std::string& pool_type,
+                            int64_t out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count);
 

@@ -53,7 +53,7 @@ class GradTensorHolder {
     return buffer_[pos];
   }
 
-  const std::vector<std::vector<paddle::experimental::Tensor>>& Buffers() {
+  std::vector<std::vector<paddle::experimental::Tensor>>& Buffers() {
     return buffer_;
   }
 

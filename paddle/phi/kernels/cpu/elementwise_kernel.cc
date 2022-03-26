@@ -70,6 +70,49 @@ void DivideRawKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MaximumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
+      dev_ctx, x, y, axis, funcs::MaximumFunctor<T>(), out);
+}
+
+template <typename T, typename Context>
+void MinimumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
+      dev_ctx, x, y, axis, funcs::MinimumFunctor<T>(), out);
+}
+
+template <typename T, typename Context>
+void ModuloRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::ModuloFunctor<T>, T>(
+        dev_ctx, x, y, axis, funcs::ModuloFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseModuloFunctor<T>, T>(
+        dev_ctx, x, y, axis, funcs::InverseModuloFunctor<T>(), out);
+  }
+}
+
 // Create the definition of Add
 DEFINE_CPU_ELEMENTWISE_OP(Add)
 
@@ -87,23 +130,11 @@ using complex128 = ::phi::dtype::complex<double>;
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
 
-PD_REGISTER_KERNEL(elementwise_fmax,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmax, CPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(elementwise_fmin,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMinKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(add_raw,
                    CPU,
@@ -150,3 +181,29 @@ PD_REGISTER_KERNEL(multiply_raw,
                    complex64,
                    complex128,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(maximum_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MaximumRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(minimum_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MinimumRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(modulo_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ModuloRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

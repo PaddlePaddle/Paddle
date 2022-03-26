@@ -55,6 +55,32 @@ void MultiplyKernel(const Context& dev_ctx,
   MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+template <typename T, typename Context>
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  int axis = -1;
+  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  int axis = -1;
+  MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void ModuloKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* out) {
+  int axis = -1;
+  ModuloRawKernel<T>(dev_ctx, x, y, axis, out);
+}
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -105,6 +131,26 @@ PD_REGISTER_KERNEL(multiply,
                    complex64,
                    complex128,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(maximum,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MaximumKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(minimum,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MinimumKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    modulo, CPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -158,4 +204,26 @@ PD_REGISTER_KERNEL(multiply,
                    phi::dtype::float16,
                    complex64,
                    complex128) {}
+PD_REGISTER_KERNEL(maximum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MaximumKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(minimum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MinimumKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    modulo, GPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
 #endif

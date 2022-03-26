@@ -31,7 +31,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_eager_mode
+from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -617,7 +617,7 @@ class OpTest(unittest.TestCase):
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if _in_eager_mode():
+                    if not _in_legacy_dygraph():
                         v.retain_grads()
 
                 if has_lod:
@@ -698,7 +698,10 @@ class OpTest(unittest.TestCase):
                 + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
                 self.__class__.__name__)
 
-    def _calc_python_api_output(self, place):
+    def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
+        """ set egr_inps and egr_oups = None if you want to create it by yourself.
+        """
+
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
@@ -710,53 +713,94 @@ class OpTest(unittest.TestCase):
             def is_empty(a):
                 return isinstance(a, Empty)
 
-            def get_default(idx, all_params_number, defaults):
-                related_idx = idx - all_params_number + len(defaults)
-                assert related_idx >= 0, "%d-th arguments don't have default value" % idx
-                return defaults[related_idx]
-
-            def filter_by_name(x):
-                names = set(['name', 'out', 'output'])
-                if isinstance(x, list): return [i for i in x if i not in names]
-                if isinstance(x, dict):
-                    return {k: v for k, v in x.items() if k not in names}
-                assert False, "Only support list or dict."
+            def get_default(idx, defaults):
+                assert not isinstance(
+                    defaults[idx], Empty
+                ), "%d-th params of python api don't have default value." % idx
+                return defaults[idx]
 
             def to_defaults_list(params, defaults):
                 return [defaults[p] for p in params if p in defaults]
 
-            # NOTE(xiongkun): why don't use input arguments dicts ? 
-            # Because we don't know the python api name of each arguments.
-            # using parse_arg_and_kwargs, we can get the all api information we need.
-            api_params, api_defaults = [
-                filter_by_name(item) for item in parse_arg_and_kwargs(api)
-            ]
+            def parse_attri_value(name, op_inputs, op_attrs):
+                """ parse true value from inputs and attrs, if there is no name passed by OpTest, return Empty
+                    1. if the name in op_attrs, use the op_attrs[name]
+                    2. if the name in op_inputs, convert the op_inputs to [type of default value]
+                    3. if the name not in op_attrs ans op_inputs, return Empty. (this will use the default value from python api)
+                """
+                if name in op_proto_attrs:
+                    return op_proto_attrs[name]
+                elif name in op_inputs:
+                    if len(op_inputs[name]) == 1:
+                        # why don't use numpy().item() : if the Tensor is float64, we will change it to python.float32, where we loss accuracy: [allclose_op]
+                        # why we reconstruct a tensor: because we want the tensor in cpu. 
+                        return paddle.to_tensor(
+                            op_inputs[name][0].numpy(), place='cpu')
+                    else:
+                        # if this is a list (test_unsqueeze2_op): we just pass it into the python api.
+                        return op_inputs[name]
+                else:
+                    return Empty()
+
+            # NOTE(xiongkun): the logic of constructing parameters: 
+            # for example:  
+            #    python api: cumprod(x, dim, dtype=None, name=None) 
+            #    kernel sig: [["x"], ["dim"], ["out"]]"
+            #
+            # we will construct a lot of list with the same length : len == len(api_params), here is 4
+            #    api_params = ["x", "dim", "dtype", "name"]
+            #    api_defaults = [Empty, Empty, None, None]; empty means no defaults.
+            #    inputs_and_attrs = ["x", "dim"] , the length may shorter or longer than api_params
+            #    input_arguments = [RealValue in self.inputs and self.attrs]
+            # then ,we will loop for the api_params, construct a result list: 
+            #    if the name in ['name', 'dtype', 'out', 'output'], we will use the default value
+            #    else, we will consume a input_arguments. (because the name is not corresponding, so we only use the order)
+
+            api_params, api_defaults = parse_arg_and_kwargs(api)
             api_defaults = to_defaults_list(api_params, api_defaults)
+            api_defaults = [
+                Empty() for i in range(len(api_params) - len(api_defaults))
+            ] + api_defaults
+            assert len(api_defaults) == len(
+                api_params), "Error happens. contack xiongkun03 to solve."
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
-            assert (
-                len(api_params) == len(inputs_and_attrs)
-            ), "inputs and attrs length must equals to python api length. (May be output is in argument list?)"
             input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
-                op_proto_attrs[name] if name in op_proto_attrs else Empty()
+                parse_attri_value(name, op_proto_ins, op_proto_attrs)
                 for name in attrs_sig
             ]
             results = []
-            for idx, arg in enumerate(input_arguments):
-                if is_empty(arg):
-                    results.append(
-                        get_default(idx, len(input_arguments), api_defaults))
+            api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+            idx_of_op_proto_arguments = 0
+            for idx, arg_name in enumerate(api_params):
+                if arg_name in api_ignore_param_list:
+                    results.append(get_default(idx, api_defaults))
                 else:
-                    results.append(arg)
+                    assert idx_of_op_proto_arguments < len(
+                        input_arguments), "Assert False."
+                    tmp = input_arguments[idx_of_op_proto_arguments]
+                    idx_of_op_proto_arguments += 1
+                    if isinstance(tmp, Empty):
+                        results.append(get_default(idx, api_defaults))
+                    else:
+                        results.append(tmp)
+            assert len(results) == len(api_params)
             return results
 
         def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
+            if hasattr(self, "python_out_sig"):
+                output_sig = self.python_out_sig
             if not isinstance(ret_tuple, (tuple, list)):
                 ret_tuple = [ret_tuple]
-            assert len(output_sig) == len(
-                ret_tuple), "expect %d outputs, but get %d outputs" % (
-                    len(output_sig), len(ret_tuple))
-            return {a: b for a, b in zip(output_sig, ret_tuple)}
+            if len(output_sig) == len(ret_tuple):
+                # [assumption]: we assume {"Out": [Tensor]}
+                return {a: [b] for a, b in zip(output_sig, ret_tuple)}
+            else:
+                # [assumption]: return multi-Tensor in a single output. such as paddle.split()
+                assert len(
+                    output_sig
+                ) == 1, "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                return {output_sig[0]: ret_tuple}
 
         def assumption_assert_and_transform(args, inp_num):
             """
@@ -775,6 +819,21 @@ class OpTest(unittest.TestCase):
             ] + args[inp_num:]
             return args
 
+        def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
+                                  attrs_outputs):
+            try:
+                kernel_sig = _dygraph_tracer()._get_kernel_signature(
+                    self.op_type, eager_tensor_inputs, eager_tensor_outputs,
+                    attrs_outputs)
+            except RuntimeError as re:
+                """ we think the kernel_sig is missing.
+                """
+                kernel_sig = None
+                print(
+                    "[Warning: op_test.py] Kernel Signature is not found for %s, fall back to intermediate state."
+                    % self.op_type)
+            return kernel_sig
+
         def cal_python_api(python_api, args, kernel_sig):
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             args = assumption_assert_and_transform(args, len(inputs_sig))
@@ -785,10 +844,10 @@ class OpTest(unittest.TestCase):
             block = fluid.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
-            eager_tensor_inputs = self.append_input_output_for_dygraph(
+            eager_tensor_inputs = egr_inps if egr_inps else self.append_input_output_for_dygraph(
                 op_proto, self.inputs, True, False, block)
             # prepare output variable
-            eager_tensor_outputs = self.append_input_output_for_dygraph(
+            eager_tensor_outputs = egr_oups if egr_oups else self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 
             # prepare attrbutes
@@ -798,13 +857,13 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            kernel_sig = _dygraph_tracer()._get_kernel_signature(
-                self.op_type, eager_tensor_inputs, eager_tensor_outputs,
-                attrs_outputs)
-
+            kernel_sig = _get_kernel_signature(
+                eager_tensor_inputs, eager_tensor_outputs, attrs_outputs)
+            if not kernel_sig:
+                return None
             assert hasattr(
                 self, "python_api"
-            ), "Please set the `self.python_api` if you want to compare python api output."
+            ), "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_eager = True" % self.op_type
             args = prepare_python_api_arguments(
                 self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig)
             """ we directly return the cal_python_api value because the value is already tensor. 
@@ -1281,18 +1340,23 @@ class OpTest(unittest.TestCase):
                     "no_check_set of op %s must be set to None." % self.op_type)
 
         if check_dygraph:
-            dygraph_outs = self._calc_dygraph_output(
-                place, no_check_set=no_check_set)
-
-        if check_eager:
-            with _test_eager_guard():
-                eager_dygraph_outs = self._calc_dygraph_output(
+            if _in_eager_without_dygraph_check():
+                _enable_legacy_dygraph()
+                dygraph_outs = self._calc_dygraph_output(
                     place, no_check_set=no_check_set)
-                # we only check end2end api when check_eager=True
-                if hasattr(self, "python_api"):
-                    api_outs = self._calc_python_api_output(place)
-                    self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
-                                                         place)
+                _disable_legacy_dygraph()
+            else:
+                dygraph_outs = self._calc_dygraph_output(
+                    place, no_check_set=no_check_set)
+        if check_eager:
+            # we only check end2end api when check_eager=True
+            with fluid.dygraph.base.guard(place):
+                with _test_eager_guard():
+                    eager_dygraph_outs = self._calc_python_api_output(place)
+                    if eager_dygraph_outs is None:
+                        # missing KernelSignature, fall back to eager middle output.
+                        eager_dygraph_outs = self._calc_dygraph_output(
+                            place, no_check_set=no_check_set)
 
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
 
@@ -1332,16 +1396,25 @@ class OpTest(unittest.TestCase):
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
                     if check_dygraph:
-                        imperative_actual = find_imperative_actual(
-                            sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(imperative_actual.value()
-                                                       .get_tensor())
+                        if _in_eager_without_dygraph_check():
+                            _enable_legacy_dygraph()
+                            imperative_actual = find_imperative_actual(
+                                sub_out_name, dygraph_outs, place)
+                            imperative_actual_t = np.array(
+                                imperative_actual.value().get_tensor())
+                            _disable_legacy_dygraph()
+                        else:
+                            imperative_actual = find_imperative_actual(
+                                sub_out_name, dygraph_outs, place)
+                            imperative_actual_t = np.array(
+                                imperative_actual.value().get_tensor())
                     if check_eager:
-                        with _test_eager_guard():
-                            eager_imperative_actual = find_imperative_actual(
-                                sub_out_name, eager_dygraph_outs, place)
-                            eager_imperative_actual_t = eager_imperative_actual.numpy(
-                            )
+                        with fluid.dygraph.base.guard(place):
+                            with _test_eager_guard():
+                                eager_imperative_actual = find_imperative_actual(
+                                    sub_out_name, eager_dygraph_outs, place)
+                                eager_imperative_actual_t = eager_imperative_actual.numpy(
+                                )
 
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
@@ -1363,15 +1436,16 @@ class OpTest(unittest.TestCase):
                             "Output (" + sub_out_name + ") has diff at " +
                             str(place) + " in dygraph mode")
                     if check_eager:
-                        with _test_eager_guard():
-                            self.assertTrue(
-                                np.allclose(
-                                    eager_imperative_actual_t,
-                                    expect_t,
-                                    atol=atol,
-                                    equal_nan=equal_nan),
-                                "Output (" + sub_out_name + ") has diff at " +
-                                str(place) + " in eager dygraph mode")
+                        with fluid.dygraph.base.guard(place):
+                            with _test_eager_guard():
+                                self.assertTrue(
+                                    np.allclose(
+                                        eager_imperative_actual_t,
+                                        expect_t,
+                                        atol=atol,
+                                        equal_nan=equal_nan),
+                                    "Output (" + sub_out_name + ") has diff at "
+                                    + str(place) + " in eager dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
@@ -1385,25 +1459,30 @@ class OpTest(unittest.TestCase):
                                 ") has different lod at " + str(place) +
                                 " in dygraph mode")
                         if check_eager:
-                            with _test_eager_guard():
-                                self.assertListEqual(
-                                    eager_imperative_actual.value().get_tensor()
-                                    .recursive_sequence_lengths(), expect[1],
-                                    "Output (" + out_name +
-                                    ") has different lod at " + str(place) +
-                                    " in eager dygraph mode")
+                            with fluid.dygraph.base.guard(place):
+                                with _test_eager_guard():
+                                    self.assertListEqual(
+                                        eager_imperative_actual.value(
+                                        ).get_tensor()
+                                        .recursive_sequence_lengths(),
+                                        expect[1], "Output (" + out_name +
+                                        ") has different lod at " + str(place) +
+                                        " in eager dygraph mode")
             else:
                 if check_dygraph:
-                    imperative_actual = find_imperative_actual(
-                        out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(imperative_actual.value()
-                                                   .get_tensor())
+
+                    with fluid.dygraph.base.guard(place=place):
+                        imperative_actual = find_imperative_actual(
+                            out_name, dygraph_outs, place)
+                        imperative_actual_t = np.array(imperative_actual.value()
+                                                       .get_tensor())
                 if check_eager:
-                    with _test_eager_guard():
-                        eager_imperative_actual = find_imperative_actual(
-                            out_name, eager_dygraph_outs, place)
-                        eager_imperative_actual_t = eager_imperative_actual.numpy(
-                        )
+                    with fluid.dygraph.base.guard(place):
+                        with _test_eager_guard():
+                            eager_imperative_actual = find_imperative_actual(
+                                out_name, eager_dygraph_outs, place)
+                            eager_imperative_actual_t = eager_imperative_actual.numpy(
+                            )
 
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
@@ -1466,31 +1545,33 @@ class OpTest(unittest.TestCase):
                             "But Got" + str(imperative_actual_t) + " in class "
                             + self.__class__.__name__)
                 if check_eager:
-                    with _test_eager_guard():
-                        if self.is_bfloat16_op():
-                            if eager_imperative_actual_t.dtype == np.uint16:
-                                eager_imperative_actual_t = convert_uint16_to_float(
-                                    eager_imperative_actual_t)
-                            if expect_t.dtype == np.uint16:
-                                expect_t = convert_uint16_to_float(expect_t)
-                        if six.moves.reduce(lambda x, y: x * y,
-                                            eager_imperative_actual_t.shape,
-                                            1) == 0 and six.moves.reduce(
-                                                lambda x, y: x * y,
-                                                expect_t.shape, 1) == 0:
-                            pass
-                        else:
-                            self.assertTrue(
-                                np.allclose(
-                                    eager_imperative_actual_t,
-                                    expect_t,
-                                    atol=atol,
-                                    rtol=rtol,
-                                    equal_nan=equal_nan),
-                                "Output (" + out_name + ") has diff at " +
-                                str(place) + "\nExpect " + str(expect_t) + "\n"
-                                + "But Got" + str(eager_imperative_actual_t) +
-                                " in class " + self.__class__.__name__)
+                    with fluid.dygraph.base.guard(place):
+                        with _test_eager_guard():
+                            if self.is_bfloat16_op():
+                                if eager_imperative_actual_t.dtype == np.uint16:
+                                    eager_imperative_actual_t = convert_uint16_to_float(
+                                        eager_imperative_actual_t)
+                                if expect_t.dtype == np.uint16:
+                                    expect_t = convert_uint16_to_float(expect_t)
+                            if six.moves.reduce(lambda x, y: x * y,
+                                                eager_imperative_actual_t.shape,
+                                                1) == 0 and six.moves.reduce(
+                                                    lambda x, y: x * y,
+                                                    expect_t.shape, 1) == 0:
+                                pass
+                            else:
+                                self.assertTrue(
+                                    np.allclose(
+                                        eager_imperative_actual_t,
+                                        expect_t,
+                                        atol=atol,
+                                        rtol=rtol,
+                                        equal_nan=equal_nan),
+                                    "Output (" + out_name + ") has diff at " +
+                                    str(place) + "\nExpect " + str(expect_t) +
+                                    "\n" + "But Got" +
+                                    str(eager_imperative_actual_t) +
+                                    " in class " + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
@@ -1502,13 +1583,14 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in eager dygraph mode")
                     if check_eager:
-                        with _test_eager_guard():
-                            self.assertListEqual(
-                                eager_imperative_actual.value().get_tensor()
-                                .recursive_sequence_lengths(), expect[1],
-                                "Output (" + out_name +
-                                ") has different lod at " + str(place) +
-                                " in eager dygraph mode")
+                        with fluid.dygraph.base.guard(place):
+                            with _test_eager_guard():
+                                self.assertListEqual(
+                                    eager_imperative_actual.value().get_tensor()
+                                    .recursive_sequence_lengths(), expect[1],
+                                    "Output (" + out_name +
+                                    ") has different lod at " + str(place) +
+                                    " in eager dygraph mode")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -1826,7 +1908,7 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
-                no_grad_set)
+                no_grad_set, False)
             fp32_grads = []
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
@@ -1839,20 +1921,21 @@ class OpTest(unittest.TestCase):
                                   "Gradient Check On %s" % str(place))
 
         if check_eager:
-            with _test_eager_guard():
-                eager_dygraph_grad = self._get_dygraph_grad(
-                    inputs_to_check, place, output_names,
-                    user_defined_grad_outputs, no_grad_set)
-                fp32_grads = []
-                for grad in eager_dygraph_grad:
-                    if grad.dtype == np.uint16:
-                        grad = convert_uint16_to_float(grad)
-                        max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
-                    fp32_grads.append(grad)
-                eager_dygraph_grad = fp32_grads
-                self._assert_is_close(numeric_grads, eager_dygraph_grad,
-                                      inputs_to_check, max_relative_error,
-                                      "Gradient Check On %s" % str(place))
+            with fluid.dygraph.base.guard(place):
+                with _test_eager_guard():
+                    eager_dygraph_grad = self._get_dygraph_grad(
+                        inputs_to_check, place, output_names,
+                        user_defined_grad_outputs, no_grad_set, check_eager)
+                    fp32_grads = []
+                    for grad in eager_dygraph_grad:
+                        if grad.dtype == np.uint16:
+                            grad = convert_uint16_to_float(grad)
+                            max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                        fp32_grads.append(grad)
+                    eager_dygraph_grad = fp32_grads
+                    self._assert_is_close(numeric_grads, eager_dygraph_grad,
+                                          inputs_to_check, max_relative_error,
+                                          "Gradient Check On %s" % str(place))
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
@@ -1868,7 +1951,8 @@ class OpTest(unittest.TestCase):
                           place,
                           output_names,
                           user_defined_grad_outputs=None,
-                          no_grad_set=None):
+                          no_grad_set=None,
+                          check_eager=False):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1889,11 +1973,18 @@ class OpTest(unittest.TestCase):
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
 
-            block.append_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=attrs_outputs if hasattr(self, "attrs") else None)
+            if check_eager:
+                eager_outputs = self._calc_python_api_output(place, inputs,
+                                                             outputs)
+            # if outputs is None, kernel sig is empty or other error is happens.
+            if not check_eager or eager_outputs is None:
+                block.append_op(
+                    type=self.op_type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs_outputs if hasattr(self, "attrs") else None)
+            else:
+                outputs = eager_outputs
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(outputs,
@@ -1984,7 +2075,7 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                if _in_eager_mode():
+                if not _in_legacy_dygraph():
                     core.eager.run_backward(
                         fluid.layers.utils.flatten(outputs), grad_outputs,
                         False)
