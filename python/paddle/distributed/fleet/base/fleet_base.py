@@ -1597,7 +1597,8 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                opt_info[k] = v
+                if v:
+                    opt_info[k] = v
             program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
@@ -1673,7 +1674,8 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                opt_info[k] = v
+                if v:
+                    opt_info[k] = v
             program._fleet_opt = opt_info
             # print("fleet base opt info:", id(program), program._fleet_opt)
 
@@ -1711,13 +1713,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))

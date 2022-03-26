@@ -161,6 +161,8 @@ message TrainerDescConfig {
   repeated string dump_fields = 2;
   repeated string dump_param = 3;
   repeated string stat_var_names = 4;
+  optional string trainer = 5;
+  optional string device_worker = 6;
 }
 
 message PipelineConfig {
