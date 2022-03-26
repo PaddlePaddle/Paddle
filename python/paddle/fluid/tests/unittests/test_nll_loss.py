@@ -795,7 +795,7 @@ class TestNLLLossOp1DWithReduce(OpTest):
     def test_check_grad(self):
         self.with_weight = True
         place = fluid.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=False)
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             self.check_grad_with_place(place, ['X'], 'Out')
