@@ -31,6 +31,16 @@ class MixedPrecisionConfigurePass : public FusePassBase {
   void ApplyImpl(Graph* graph) const override;
 
  private:
+  void UpdateCastOpDesc(framework::OpDesc* desc, const std::string& x_name,
+                        const std::string& out_name, const int in_dtype,
+                        const int out_dtype) const;
+
+  void CastOpOutput(Graph* graph, Node* op_node,
+                    const StringSet& blacklist) const;
+
+  void CastOpInput(Graph* graph, Node* op_node,
+                   const StringSet& blacklist) const;
+
   void InsertCastOps(Graph* graph, const StringSet& blacklist) const;
 };
 
