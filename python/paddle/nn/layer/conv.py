@@ -25,6 +25,7 @@ from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
 from ...device import is_compiled_with_cuda
 from ...device import is_compiled_with_rocm
+from ...device import is_compiled_with_npu
 
 __all__ = []
 
@@ -59,6 +60,9 @@ class _ConvNd(Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCHW"):
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! __file__ (62): {__file__}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! dilation: {dilation}')
+
         super(_ConvNd, self).__init__()
         assert weight_attr is not False, "weight_attr should not be False in Conv."
         self._param_attr = weight_attr
@@ -142,15 +146,23 @@ class _ConvNd(Layer):
         self._use_cudnn = True if (is_compiled_with_cuda() and
                                    cudnn_version is not None) else False
 
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! __file__ (148): {__file__}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! in_channels: {in_channels}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! groups: {groups}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! out_channels: {out_channels}')
+
         self._op_type = "conv" + str(dims) + 'd'
         if self._op_type == 'conv2d' and (in_channels == groups and
                                           in_channels != 1 and
                                           out_channels % in_channels == 0):
-            self._op_type = 'depthwise_conv2d'
+            if is_compiled_with_npu() and dilation == 1:
+                self._op_type = 'depthwise_conv2d'
             if is_compiled_with_rocm():
                 self._use_cudnn = True
             else:
                 self._use_cudnn = False
+
+            # print(f'!!!!!!!!!!!!!!!!!!!!!!! self._op_type: {self._op_type}')
 
         if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")[
                 "FLAGS_conv2d_disable_cudnn"]):
@@ -641,6 +653,16 @@ class Conv2D(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCHW"):
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! __file__ (652): {__file__}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! in_channels: {in_channels}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! out_channels: {out_channels}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! kernel_size: {kernel_size}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! stride: {stride}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! padding: {padding}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! padding_mode: {padding_mode}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! dilation: {dilation}')
+        # print(f'!!!!!!!!!!!!!!!!!!!!!!! groups: {groups}')
+
         super(Conv2D, self).__init__(
             in_channels,
             out_channels,

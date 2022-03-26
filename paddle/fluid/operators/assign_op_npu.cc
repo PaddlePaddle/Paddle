@@ -38,7 +38,7 @@ class AssignNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& runner = NpuOpRunner("Assign", {*out, *x}, {*out}, {});
+    const auto& runner = NpuOpRunner("Assign", {*out, *x}, {*out}, {{"validate_shape", false}, {"use_locking", false}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -54,5 +54,5 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
     assign, ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, double>)

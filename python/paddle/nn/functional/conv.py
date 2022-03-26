@@ -118,6 +118,13 @@ def _conv_nd(x,
              use_cudnn=True,
              use_mkldnn=False,
              name=None):
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! __file__ (119): {__file__}')
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! op_type: {op_type}')
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! stride: {stride}')
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! padding: {padding}')
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! padding_algorithm: {padding_algorithm}')
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! dilation: {dilation}')
+    # print(f'!!!!!!!!!!!!!!!!!!!!!!! groups: {groups}')
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_mode():

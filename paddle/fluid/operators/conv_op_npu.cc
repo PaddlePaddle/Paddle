@@ -136,6 +136,13 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
 
     const bool channel_last = data_format == "NHWC";
 
+    // LOG(WARNING) << "data_format: " << data_format;
+    // LOG(WARNING) << "dilation.size(): " << dilation.size();
+    // LOG(WARNING) << "dilation[0]: " << dilation[0];
+    // LOG(WARNING) << "dilation[1]: " << dilation[1];
+    // LOG(WARNING) << "dilation[2]: " << dilation[2];
+    // LOG(WARNING) << "dilation[3]: " << dilation[3];
+
     // update padding and dilation
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
@@ -189,12 +196,19 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
 
+      // LOG(WARNING) << "data_format: " << data_format;
+      // LOG(WARNING) << "dilation.size(): " << dilation.size();
+      // LOG(WARNING) << "dilation[0]: " << dilation[0];
+      // LOG(WARNING) << "dilation[1]: " << dilation[1];
+      // LOG(WARNING) << "dilation[2]: " << dilation[2];
+      // LOG(WARNING) << "dilation[3]: " << dilation[3];
+
       PADDLE_ENFORCE_EQ(
-          (dilations[2] == 1 && dilations[3] == 1), true,
+          (dilation[0] == 1 && dilation[1] == 1), true,
           platform::errors::InvalidArgument(
               "dilation_h and dilation_w in DepthwiseConv2DBackpropFilterD "
               "must be equal to 1, but got dilation_h %d, dilation_w %d",
-              dilation[2], dilation[3]));
+              dilation[0], dilation[1]));
 
       NpuOpRunner runner;
       runner.SetType("DepthwiseConv2DBackpropFilterD")
