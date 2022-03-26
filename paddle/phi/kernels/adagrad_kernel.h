@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 
@@ -28,15 +27,4 @@ void AdagradDenseKernel(const Context& dev_ctx,
                         float epsilon,
                         DenseTensor* param_out,
                         DenseTensor* moment_out);
-
-template <typename T, typename Context>
-void AdagradSparseKernel(const Context& dev_ctx,
-                         const DenseTensor& param,
-                         const SelectedRows& grad,
-                         const DenseTensor& moment,
-                         const DenseTensor& learning_rate,
-                         float epsilon,
-                         DenseTensor* param_out,
-                         DenseTensor* moment_out);
-
 }  // namespace phi

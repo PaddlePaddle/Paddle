@@ -19,10 +19,3 @@
 
 PD_REGISTER_KERNEL(
     momentum, CPU, ALL_LAYOUT, phi::MomentumDenseKernel, float, double) {}
-
-PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MomentumSparseKernel,
-                   float,
-                   double) {}

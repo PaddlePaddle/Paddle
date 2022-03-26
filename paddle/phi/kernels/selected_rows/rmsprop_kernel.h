@@ -15,24 +15,25 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MomentumDenseKernel(const Context& dev_ctx,
+void RmspropSparseKernel(const Context& dev_ctx,
                          const DenseTensor& param,
-                         const DenseTensor& grad,
-                         const DenseTensor& velocity,
+                         const DenseTensor& mean_square,
+                         const SelectedRows& grad,
+                         const DenseTensor& moment,
                          const DenseTensor& learning_rate,
-                         paddle::optional<const DenseTensor&> master_param,
-                         float mu,
-                         bool use_nesterov,
-                         const std::string& regularization_method,
-                         float regularization_coeff,
-                         bool multi_precision,
-                         float rescale_grad,
+                         paddle::optional<const DenseTensor&> mean_grad,
+                         float epsilon,
+                         float decay,
+                         float momentum,
+                         bool centered,
                          DenseTensor* param_out,
-                         DenseTensor* velocity_out,
-                         DenseTensor* master_param_out);
+                         DenseTensor* moment_out,
+                         DenseTensor* mean_square_out,
+                         DenseTensor* mean_grad_out);
 
 }  // namespace phi

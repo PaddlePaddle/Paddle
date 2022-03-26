@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/momentum_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 
-PD_REGISTER_KERNEL(momentum,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MomentumDenseKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+namespace phi {
+
+template <typename T, typename Context>
+void AdagradSparseKernel(const Context& dev_ctx,
+                         const DenseTensor& param,
+                         const SelectedRows& grad,
+                         const DenseTensor& moment,
+                         const DenseTensor& learning_rate,
+                         float epsilon,
+                         DenseTensor* param_out,
+                         DenseTensor* moment_out);
+
+}  // namespace phi

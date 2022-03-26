@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/momentum_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/selected_rows/momentum_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
+#include "paddle/phi/kernels/selected_rows/impl/momentum_kernel_impl.h"
 
-PD_REGISTER_KERNEL(momentum,
-                   GPU,
+PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::MomentumDenseKernel,
+                   phi::MomentumSparseKernel,
                    float,
-                   double,
-                   phi::dtype::float16) {}
+                   double) {}

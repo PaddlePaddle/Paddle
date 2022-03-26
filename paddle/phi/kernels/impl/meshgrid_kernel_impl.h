@@ -74,7 +74,7 @@ void MeshgridForward(const Context& ctx,
     outs[i]->Resize(out_dims);
     auto x = EigenTensor<T, Rank>::From(
         static_cast<const DenseTensor>(reshape_ins_tensor));
-    outs[i]->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(outs[i]);
     auto y = EigenTensor<T, Rank>::From(*outs[i]);
     auto& place = *ctx.eigen_device();
     funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(

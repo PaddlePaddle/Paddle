@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/phi/kernels/momentum_kernel.h"
+#include "paddle/phi/kernels/selected_rows/momentum_kernel.h"
 #include "paddle/phi/kernels/sgd_kernel.h"
 
 namespace paddle {

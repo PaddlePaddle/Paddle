@@ -16,35 +16,10 @@
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-
-template <typename DeviceContext, typename T>
-struct SparseAdagradFunctor {
-  void operator()(const DeviceContext& context,
-                  const phi::SelectedRows& grad,
-                  const DenseTensor& learning_rate,
-                  T epsilon,
-                  DenseTensor* moment,
-                  DenseTensor* param);
-};
-
-template <typename DeviceContext, typename T>
-phi::SelectedRows SquareSelectedRows(const DeviceContext& context,
-                                     const phi::SelectedRows& input) {
-  phi::SelectedRows out;
-  out.set_rows(input.rows());
-  out.set_height(input.height());
-  out.mutable_value()->Resize(input.value().dims());
-  context.template Alloc<T>(out.mutable_value());
-  auto e_out = EigenVector<T>::Flatten(*(out.mutable_value()));
-  auto e_in = EigenVector<T>::Flatten(input.value());
-  e_out.device(*context.eigen_device()) = e_in.square();
-  return out;
-}
 
 template <typename T, typename Context>
 void AdagradDenseKernel(const Context& ctx,
@@ -81,40 +56,6 @@ void AdagradDenseKernel(const Context& ctx,
     param_out.device(place) =
         param - lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
   }
-}
-
-template <typename T, typename Context>
-void AdagradSparseKernel(const Context& ctx,
-                         const DenseTensor& param_t,
-                         const SelectedRows& grad_t,
-                         const DenseTensor& moment_t,
-                         const DenseTensor& learning_rate,
-                         float epsilon_t,
-                         DenseTensor* param_out,
-                         DenseTensor* moment_out) {
-  auto* param_out_tensor = param_out;
-  auto* moment_out_tensor = moment_out;
-
-  ctx.template Alloc<T>(param_out_tensor);
-  ctx.template Alloc<T>(moment_out_tensor);
-
-  T epsilon = static_cast<T>(epsilon_t);
-
-  auto* param_tensor = &param_t;
-  PADDLE_ENFORCE_EQ(param_tensor,
-                    param_out_tensor,
-                    phi::errors::InvalidArgument(
-                        "the input tensor not euqal with output tensor"));
-
-  auto* moment_tensor = &moment_t;
-  PADDLE_ENFORCE_EQ(moment_tensor,
-                    moment_out_tensor,
-                    phi::errors::InvalidArgument(
-                        "the input moment not eual with output moment"));
-
-  SparseAdagradFunctor<Context, T> functor;
-  functor(
-      ctx, grad_t, learning_rate, epsilon, moment_out_tensor, param_out_tensor);
 }
 
 }  // namespace phi
