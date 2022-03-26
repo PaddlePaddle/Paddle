@@ -107,6 +107,15 @@ namespace phi {
         dev_ctx, nullptr, &out, &dout, dx, functor);         \
   }
 
+#define DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(name, functor_class)      \
+  template <typename T, typename Context>                                 \
+  void name##GradKernel(                                                  \
+      const Context& dev_ctx, const DenseTensor& dout, DenseTensor* dx) { \
+    funcs::functor_class<T> functor;                                      \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(              \
+        dev_ctx, nullptr, nullptr, &dout, dx, functor);                   \
+  }
+
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, CosGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Tan, TanGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Acos, AcosGradFunctor);
@@ -130,6 +139,10 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, SigmoidGradFunctor);
 
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, ZeroGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, ZeroGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, ZeroGradFunctor);
+
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                LeakyReluGradFunctor,
                                                alpha);
@@ -142,6 +155,7 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink,
                                                HardShrinkGradFunctor,
                                                threshold);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish, SwishGradFunctor, beta);
 
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu,
                                                BReluGradFunctor,
@@ -181,6 +195,23 @@ void EluGradKernel(const Context& dev_ctx,
     functor.alpha = alpha;
     functor(*place, x_flatten, out_flatten, dout_flatten, dx_flatten);
   }
+}
+
+template <typename T, typename Context>
+void HardSwishGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         float threshold,
+                         float scale,
+                         float offset,
+                         DenseTensor* dx) {
+  funcs::HardSwishGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = threshold;
+  *(attrs[1].second) = scale;
+  *(attrs[2].second) = offset;
+  ActivationGradImpl<T, Context, funcs::HardSwishGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
 }  // namespace phi
@@ -242,3 +273,17 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(log2_grad, Log2GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log10_grad, Log10GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log1p_grad, Log1pGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(log_double_grad, LogDoubleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
+
+PD_REGISTER_KERNEL(pow_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PowGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

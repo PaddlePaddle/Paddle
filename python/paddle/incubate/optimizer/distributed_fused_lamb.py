@@ -39,7 +39,7 @@ class DistributedFusedLamb(Optimizer):
                  alignment=128,
                  use_master_param_norm=True,
                  name=None):
-        assert not framework.in_dygraph_mode(
+        assert not framework._non_static_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
         super(DistributedFusedLamb, self).__init__(
             learning_rate=learning_rate,

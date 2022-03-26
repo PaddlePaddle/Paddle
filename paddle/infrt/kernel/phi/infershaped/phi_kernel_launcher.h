@@ -37,8 +37,7 @@ template <typename KernelFunc,
           typename InferShapedFunc,
           InferShapedFunc infershape>
 void KernelLauncherFunc(host_context::KernelFrame* frame) {
-  static InferShapedKernelLauncher launcher(
-      FuncArgStatics<InferShapedFunc>::arg_size);
+  InferShapedKernelLauncher launcher(FuncArgStatics<InferShapedFunc>::arg_size);
   static const uint16_t num_input_tensors{InferShapeHelper<KernelFunc>::count};
   static const bool turn_on_infer_shape_cache{true};
 

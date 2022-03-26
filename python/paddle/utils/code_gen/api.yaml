@@ -16,10 +16,11 @@
     func : cast
     param : [x, out_dtype]
     data_type : x
+  backward : cast_grad
 
 
 - api : concat
-  args : (Tensor[] x, Scalar axis)
+  args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
   infer_meta :
     func : ConcatInferMeta
@@ -123,7 +124,7 @@
   backward : matmul_grad
 
 - api : mean
-  args : (Tensor x, int64[] axis={}, bool keep_dim=false)
+  args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
@@ -198,7 +199,7 @@
     func : sotfmax
 
 - api : split
-  args : (Tensor x, ScalarArray num_or_sections, Scalar axis)
+  args : (Tensor x, ScalarArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
   backward : split_grad
@@ -213,7 +214,7 @@
   backward : subtract_grad
 
 - api : sum
-  args : (Tensor x, int64[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : SumInferMeta
@@ -228,7 +229,7 @@
 
 
 - api : one_hot
-  args : (Tensor x, Scalar num_classes)
+  args : (Tensor x, Scalar(int) num_classes)
   output : Tensor
   infer_meta :
     func : OneHotInferMeta
