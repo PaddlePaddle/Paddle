@@ -25,7 +25,7 @@ KernelSignature RmspropOpArgumentMapping(const ArgumentMappingContext& ctx) {
         {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
     return KernelSignature(
-        "rmsprop_dense_param_sparse_grad",
+        "rmsprop_sr",
         {"Param", "MeanSquare", "Grad", "Moment", "LearningRate", "MeanGrad"},
         {"epsilon", "decay", "momentum", "centered"},
         {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"});

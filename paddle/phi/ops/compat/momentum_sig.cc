@@ -30,7 +30,7 @@ KernelSignature MomentumOpArgumentMapping(const ArgumentMappingContext& ctx) {
         {"ParamOut", "VelocityOut", "MasterParamOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
     return KernelSignature(
-        "momentum_dense_param_sparse_grad",
+        "momentum_sr",
         {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"},
         {"mu",
          "use_nesterov",

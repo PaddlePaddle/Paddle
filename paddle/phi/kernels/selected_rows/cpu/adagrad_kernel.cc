@@ -70,9 +70,5 @@ template struct SparseAdagradFunctor<phi::CPUContext, double>;
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(adagrad_dense_param_sparse_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::AdagradSparseKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    adagrad_sr, CPU, ALL_LAYOUT, phi::AdagradSparseKernel, float, double) {}

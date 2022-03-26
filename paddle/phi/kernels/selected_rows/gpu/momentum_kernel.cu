@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/selected_rows/impl/momentum_kernel_impl.h"
 
-PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
+PD_REGISTER_KERNEL(momentum_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::MomentumSparseKernel,

@@ -23,7 +23,7 @@ KernelSignature AdagradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                            {"epsilon"},
                            {"ParamOut", "MomentOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
-    return KernelSignature("adagrad_dense_param_sparse_grad",
+    return KernelSignature("adagrad_sr",
                            {"Param", "Grad", "Moment", "LearningRate"},
                            {"epsilon"},
                            {"ParamOut", "MomentOut"});
