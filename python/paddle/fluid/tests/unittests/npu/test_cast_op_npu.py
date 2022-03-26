@@ -27,6 +27,7 @@ paddle.enable_static()
 SEED = 2021
 
 
+@skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast1(OpTest):
     def setUp(self):
         self.set_npu()
@@ -49,6 +50,7 @@ class TestCast1(OpTest):
         self.check_output_with_place(self.place)
 
 
+@skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast2(OpTest):
     def setUp(self):
         self.set_npu()
@@ -71,6 +73,7 @@ class TestCast2(OpTest):
         self.check_output_with_place(self.place, atol=1e-3)
 
 
+@skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast3(OpTest):
     def setUp(self):
         self.set_npu()
