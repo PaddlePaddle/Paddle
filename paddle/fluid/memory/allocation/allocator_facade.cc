@@ -145,6 +145,14 @@ class CUDAGraphAllocator
 };
 #endif
 
+static bool IsCUDAGraphCapturing() {
+#ifdef PADDLE_WITH_CUDA
+  return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
+#else
+  return false;
+#endif
+}
+
 class AllocatorFacadePrivate {
  public:
   using AllocatorMap = std::map<platform::Place, std::shared_ptr<Allocator>>;
@@ -226,7 +234,7 @@ class AllocatorFacadePrivate {
         // application, treating it separately can avoid lots of overhead of
         // acquiring default stream and applying read-write lock.
         if (FLAGS_use_stream_safe_cuda_allocator) {
-          if (LIKELY(platform::CUDAGraph::IsThisThreadCapturing()) == false) {
+          if (LIKELY(!IsCUDAGraphCapturing())) {
             WrapStreamSafeCUDAAllocatorForDefault();
           }
           is_stream_safe_cuda_allocator_used_ = true;
@@ -312,7 +320,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUDA
     // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
     if (!is_stream_safe_cuda_allocator_used_ &&
-        UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+        UNLIKELY(IsCUDAGraphCapturing())) {
       WrapCUDAGraphAllocator();
     }
 #endif
@@ -357,7 +365,7 @@ class AllocatorFacadePrivate {
   const std::shared_ptr<Allocator>& GetAllocator(
       const platform::CUDAPlace& place, const gpuStream_t& stream,
       bool create_if_not_found = false) {
-    if (LIKELY(platform::CUDAGraph::IsThisThreadCapturing() == false)) {
+    if (LIKELY(!IsCUDAGraphCapturing())) {
       if (stream == GetDefaultStream(place)) {
         VLOG(7) << "Get Allocator by passing in a default stream";
         return GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
@@ -918,7 +926,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
     auto id = platform::CUDAGraph::CapturingID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
