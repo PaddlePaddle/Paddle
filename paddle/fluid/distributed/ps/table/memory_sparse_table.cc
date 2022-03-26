@@ -48,15 +48,7 @@ int32_t MemorySparseTable::initialize_value() {
   _sparse_table_shard_num = static_cast<int>(_config.shard_num());
   _avg_local_shard_num =
       SparseTable::sparse_local_shard_num(_sparse_table_shard_num, _shard_num);
-  VLOG(0) << "memory sparse table _sparse_table_shard_num:"
-          << _sparse_table_shard_num;
-  VLOG(0) << "memory sparse table _shard_num:" << _shard_num;
-  VLOG(0) << "memory sparse table _shard_idx:" << _shard_idx;
   _real_local_shard_num = _avg_local_shard_num;
-  VLOG(0) << "memory sparse table _avg_local_shard_num:"
-          << _avg_local_shard_num;
-  VLOG(0) << "memory sparse table _real_local_shard_num:"
-          << _real_local_shard_num;
   if (_real_local_shard_num * (_shard_idx + 1) > _sparse_table_shard_num) {
     _real_local_shard_num =
         _sparse_table_shard_num - _real_local_shard_num * _shard_idx;
