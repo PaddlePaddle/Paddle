@@ -136,13 +136,6 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
 
     const bool channel_last = data_format == "NHWC";
 
-    // LOG(WARNING) << "data_format: " << data_format;
-    // LOG(WARNING) << "dilation.size(): " << dilation.size();
-    // LOG(WARNING) << "dilation[0]: " << dilation[0];
-    // LOG(WARNING) << "dilation[1]: " << dilation[1];
-    // LOG(WARNING) << "dilation[2]: " << dilation[2];
-    // LOG(WARNING) << "dilation[3]: " << dilation[3];
-
     // update padding and dilation
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
@@ -195,13 +188,6 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
-
-      // LOG(WARNING) << "data_format: " << data_format;
-      // LOG(WARNING) << "dilation.size(): " << dilation.size();
-      // LOG(WARNING) << "dilation[0]: " << dilation[0];
-      // LOG(WARNING) << "dilation[1]: " << dilation[1];
-      // LOG(WARNING) << "dilation[2]: " << dilation[2];
-      // LOG(WARNING) << "dilation[3]: " << dilation[3];
 
       PADDLE_ENFORCE_EQ(
           (dilation[0] == 1 && dilation[1] == 1), true,
