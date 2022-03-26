@@ -18,7 +18,6 @@ import numpy as np
 import six
 import paddle
 import warnings
-from paddle.fluid import Program, program_guard
 
 def numpy_corr(np_arr, rowvar=True):
     return np.corrcoef(np_arr, rowvar=rowvar)
@@ -108,18 +107,27 @@ class Corr_Test5(unittest.TestCase):
 
 
 # test unsupported complex input
-class Corr_Test6(unittest.TestCase):
-    def setUp(self):
-        self.shape = [10]
+class Cov_Test7(unittest.TestCase):
 
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            def test_err():
-                np_arr = np.random.rand(*self.shape).astype('complex64')
-                tensor = paddle.to_tensor(np_arr)
-                covrr = paddle.linalg.corrcoef(tensor)
+        paddle.enable_static()
+        
+        x1 = fluid.data(name='x1', shape=[2], dtype='complex128')
+        self.assertRaises(TypeError, paddle.linalg.corrcoef,x=x1)
+        
+        paddle.disable_static()
+ 
 
-            self.assertRaises(TypeError, test_err)
+# test unsupported complex input
+class Cov_Test6(unittest.TestCase):
+
+    def test_errors(self):
+        paddle.enable_static()
+        
+        x1 = fluid.data(name='x1', shape=[2,2], dtype='complex64')
+        self.assertRaises(TypeError, paddle.linalg.corrcoef,x=x1)
+        
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
