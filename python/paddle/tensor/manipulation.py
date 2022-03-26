@@ -959,8 +959,6 @@ def split(x, num_or_sections, axis=0, name=None):
             print(out1.shape)  # [3, 3, 5]
             print(out2.shape)  # [3, 3, 5]
     """
-    if in_dygraph_mode():
-        return _C_ops.final_state_split(x, num_or_sections, dim)
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
 
@@ -2912,8 +2910,8 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
-        if not _in_legacy_dygraph():
-            return _C_ops.final_state_put_alone_axis(arr, indices, value, axis,
+        if in_dygraph_mode():
+            return _C_ops.final_state_put_along_axis(arr, indices, values, axis,
                                                      reduce)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
                                      "Reduce", reduce)

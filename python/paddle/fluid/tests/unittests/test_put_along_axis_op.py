@@ -30,6 +30,7 @@ class TestPutAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
         self.reduce_op = "assign"
+        self.python_api = paddle.put_along_axis
         self.dtype = 'float64'
         self.op_type = "put_along_axis"
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
@@ -51,10 +52,10 @@ class TestPutAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["Input", "Value"], "Result")
+        self.check_grad(["Input", "Value"], "Result", check_eager=False)
 
     def init_data(self):
         self.x_type = "float64"
