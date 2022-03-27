@@ -98,6 +98,17 @@ __global__ void BuildHashTable(const T* items, int num_items, int* key_index) {
 }
 
 template <typename T>
+__global__ void ResetHashTable(const T* items,
+                               int num_items,
+                               int* key_index,
+                               int* values) {
+  CUDA_KERNEL_LOOP(index, num_items) {
+    key_index[items[index]] = -1;
+    values[items[index]] = -1;
+  }
+}
+
+template <typename T>
 __global__ void GetItemIndexCount(const T* items,
                                   int* item_count,
                                   int num_items,

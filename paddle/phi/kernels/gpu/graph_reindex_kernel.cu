@@ -116,6 +116,28 @@ void FillBufferHashTable(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void ResetBufferHashTable(const Context& dev_ctx,
+                          const T* input,
+                          int num_input,
+                          thrust::device_vector<T>* unique_items,
+                          int* values,
+                          int* key_index) {
+#ifdef PADDLE_WITH_HIP
+  int block = 256;
+#else
+  int block = 1024;
+#endif
+  int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid_tmp = (unique_items->size() + block - 1) / block;
+  int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
+  ResetHashTable<T><<<grid, block, 0, dev_ctx.stream()>>>(
+      thrust::raw_pointer_cast(unique_items->data()),
+      unique_items->size(),
+      key_index,
+      values);
+}
+
+template <typename T, typename Context>
 void Reindex(const Context& dev_ctx,
              const T* inputs,
              thrust::device_ptr<T> src_outputs,
@@ -209,6 +231,13 @@ void BufferReindex(const Context& dev_ctx,
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   ReindexSrcOutput<T><<<grid, block, 0, dev_ctx.stream()>>>(
       thrust::raw_pointer_cast(src_outputs), num_edges, hashtable_value);
+
+  ResetBufferHashTable<T, Context>(dev_ctx,
+                                   thrust::raw_pointer_cast(out_nodes->data()),
+                                   out_nodes->size(),
+                                   &unique_nodes,
+                                   hashtable_value,
+                                   hashtable_index);
 }
 
 template <typename T, int BLOCK_WARPS, int TILE_SIZE>
@@ -271,10 +300,6 @@ void GraphReindexKernel(const Context& dev_ctx,
         hashtable_value_out.mutable_data<int>(dev_ctx.GetPlace());
     int* hashtable_index_data =
         hashtable_index_out.mutable_data<int>(dev_ctx.GetPlace());
-    cudaMemset(
-        hashtable_value_data, -1, hashtable_value->dims()[0] * sizeof(int));
-    cudaMemset(
-        hashtable_index_data, -1, hashtable_index->dims()[0] * sizeof(int));
     BufferReindex<T, Context>(dev_ctx,
                               x_data,
                               src_outputs,

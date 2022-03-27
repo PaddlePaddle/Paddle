@@ -20,7 +20,13 @@ from paddle.fluid import core
 from paddle import _C_ops
 
 
-def graph_reindex(x, neighbors, count, name=None):
+def graph_reindex(x,
+                  neighbors,
+                  count,
+                  value_buffer=None,
+                  index_buffer=None,
+                  flag_buffer_hashtable=False,
+                  name=None):
     """
     Graph Reindex API.
 
@@ -41,6 +47,14 @@ def graph_reindex(x, neighbors, count, name=None):
                             should be the same with `x`.
         count (Tensor): The neighbor count of the input nodes `x`. And the 
                         data type should be int32.
+        value_buffer (Tensor|None): Value buffer for hashtable. The data type should 
+                                    be int32, and should be filled with -1.
+        index_buffer (Tensor|None): Index buffer for hashtable. The data type should 
+                                    be int32, and should be filled with -1.
+        flag_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
+                                      Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+                              For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
         reindex_src (Tensor): The source node index of graph edges after reindex.
@@ -67,21 +81,35 @@ def graph_reindex(x, neighbors, count, name=None):
         # reindex_src: [3, 4, 0, 5, 6, 7, 6]
         # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
         # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
+
     """
+    if flag_buffer_hashtable:
+        if value_buffer is None or index_buffer is None:
+            raise ValueError(f"`value_buffer` and `index_buffer` should not"
+                             "be None if `flag_buffer_hashtable` is True.")
 
     if in_dygraph_mode():
-        print("Enter python funcs: graph_reindex")
-        reindex_src, reindex_dst, out_nodes, _, _ = \
-            _C_ops.graph_reindex(x, neighbors, count,
-                                 paddle.to_tensor([]),
-                                 paddle.to_tensor([]),
-                                 "flag_buffer_hashtable", False)
+        if not flag_buffer_hashtable:
+            reindex_src, reindex_dst, out_nodes = \
+                _C_ops.graph_reindex(x, neighbors, count, None, None,
+                                     "flag_buffer_hashtable", False)
+        else:
+            reindex_src, reindex_dst, out_nodes = \
+                _C_ops.graph_reindex(x, neighbors, count,
+                                     value_buffer, index_buffer,
+                                     "flag_buffer_hashtable", True)
         return reindex_src, reindex_dst, out_nodes
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
     check_variable_and_dtype(neighbors, "Neighbors", ("int32", "int64"),
                              "graph_reindex")
     check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
+
+    if flag_buffer_hashtable:
+        check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
+                                 "graph_reindex")
+        check_variable_and_dtype(index_buffer, "HashTable_Value", ("int32"),
+                                 "graph_reindex")
 
     helper = LayerHelper("graph_reindex", **locals())
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -93,13 +121,13 @@ def graph_reindex(x, neighbors, count, name=None):
             "X": x,
             "Neighbors": neighbors,
             "Count": count,
-            "HashTable_Value": None,
-            "HashTable_Index": None
+            "HashTable_Value": value_buffer if flag_buffer_hashtable else None,
+            "HashTable_Index": index_buffer if flag_buffer_hashtable else None,
         },
         outputs={
             "Reindex_Src": reindex_src,
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes
         },
-        attrs={"flag_buffer_hashtable": False})
+        attrs={"flag_buffer_hashtable": flag_buffer_hashtable})
     return reindex_src, reindex_dst, out_nodes

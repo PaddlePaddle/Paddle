@@ -40,8 +40,7 @@ class GraphReindexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Neighbors", "The neighbor nodes of the destination nodes `X`.");
     AddInput("Count", "The number of neighbor nodes of each destination node.");
     // Note(daisiming): If using buffer hashtable, we must ensure the number of
-    // nodes of
-    //                  the input graph should be no larger than maximum(int32).
+    // nodes of the input graph should be no larger than maximum(int32).
     AddInput("HashTable_Value",
              "One of the buffer tensor of hashtable for reindex")
         .AsDispensable();
