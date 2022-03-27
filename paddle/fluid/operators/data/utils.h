@@ -68,6 +68,21 @@ void ShutDownPipeline(const int64_t program_id) {
   LOG(ERROR) << "ShutDownPipeline program_id " << program_id << " finish";
 }
 
+void ResetDataLoader(const int64_t reader_id,
+                     const std::vector<int64_t> map_ids,
+                     const int64_t pipeline_id) {
+  // step 1: reset readers
+  ReaderManager::Instance()->ResetReader(reader_id);
+
+  // step 2: reset maps
+  for (auto& map_id : map_ids) {
+    MapRunnerManager::Instance()->ResetMapRunner(map_id);
+  }
+
+  // step3: reset pipeline
+  PipelineManager::Instance()->ResetPipeline(pipeline_id);
+}
+
 }  // namespace data
 }  // namespace operators
 }  // namespace paddle

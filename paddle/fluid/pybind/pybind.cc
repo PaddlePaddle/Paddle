@@ -71,7 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/operators/data/shutdown.h"
+#include "paddle/fluid/operators/data/utils.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -777,6 +777,13 @@ PYBIND11_MODULE(core_noavx, m) {
       });
   m.def("_shutdown_pipeline",
         &paddle::operators::data::ShutDownPipeline);
+  m.def("_reset_dataloader", [](const int64_t reader_id,
+                                const std::vector<int64_t> map_ids,
+                                const int64_t pipeline_id) {
+        paddle::operators::data::ResetDataLoader(
+                          reader_id, map_ids, pipeline_id);
+
+      });
 
   py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
       m, "CustomOpKernelContext", R"DOC()DOC");

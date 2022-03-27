@@ -29,6 +29,7 @@ MapRunner::MapRunner(
     const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues)
     : thread_pool_(1),
       running_(true),
+      shutdown_(false),
       map_block_(map_block),
       program_id_(program_id),
       place_(place),
@@ -124,7 +125,12 @@ void MapRunner::StartMapThread(const Scope* scope) {
 
     auto& scope_ = scope->NewScope();
     framework::Executor executor(place_);
-    while (running_.load()) {
+    while (!shutdown_) {
+      // check running or shutdown
+      std::unique_lock<std::mutex> lock(mutex_);
+      running_cond_.wait(lock, [this] { return running_ || shutdown_; });
+      if (shutdown_) break;
+
       // Step 1: get input LoDTensor and share into Scope
       // LOG(ERROR) << "MapThread Loop " << program_id_ << " start";
       bool success = ShareInputsIntoScope(&scope_);
@@ -133,8 +139,8 @@ void MapRunner::StartMapThread(const Scope* scope) {
           while(queue->Size()) sleep(0.5);
           queue->Close();
         }
-        running_.store(false);
-        return;
+        running_ = false;
+        continue;
       }
       // LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
 
@@ -204,11 +210,21 @@ void MapRunner::CheckOutputVarStatus(const Variable &var,
 void MapRunner::ShutDown() {
   VLOG(1) << "MapRunner shutdown " << program_id_;
   // close all output queue, op after this op can shutdown itself
-  running_.store(false);
+  shutdown_ = true;
+  running_ = false;
+  running_cond_.notify_all();
 
   for (auto queue :  output_queues_) {
     if(queue && !queue->IsClosed()) queue->Close();
   }
+}
+
+void MapRunner::Reset() {
+  VLOG(1) << "MapRunner reset " << program_id_;
+  for (auto queue :  output_queues_) queue->ReOpen();
+
+  running_ = true;
+  running_cond_.notify_all();
 }
 
 // initialization static variables out of MapRunnerManager

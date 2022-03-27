@@ -51,7 +51,9 @@ class MapRunner {
 
   void ShutDown();
 
-  inline bool IsRunning() { return running_.load(); }
+  void Reset();
+
+  inline bool IsRunning() { return running_; }
 
 
  private:
@@ -71,7 +73,10 @@ class MapRunner {
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
   ThreadPool thread_pool_;
-  std::atomic<bool> running_;
+  bool running_;
+  std::condition_variable running_cond_;
+  bool shutdown_;
+  std::mutex mutex_;
 
   std::shared_ptr<BlockDesc> map_block_;
   int64_t program_id_;
@@ -121,11 +126,19 @@ class MapRunnerManager {
   }
 
   void ShutDownMapRunner(int program_id) {
+    std::lock_guard<std::mutex> lk(m_);
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter != prog_id_to_runner_.end()) {
-      std::lock_guard<std::mutex> lk(m_);
       iter->second.get()->ShutDown();
       prog_id_to_runner_.erase(iter);
+    }
+  }
+
+  void ResetMapRunner(int program_id) {
+    std::lock_guard<std::mutex> lk(m_);
+    auto iter = prog_id_to_runner_.find(program_id);
+    if (iter != prog_id_to_runner_.end()) {
+      iter->second.get()->Reset();
     }
   }
 

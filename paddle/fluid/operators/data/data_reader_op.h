@@ -45,7 +45,7 @@ class Sampler {
                      const int rank, const int world_size)
                      : current_iter_(0),
                        batch_size_(batch_size),
-                      //  num_samples_(num_samples),
+                       shuffle_(shuffle),
                        drop_last_(drop_last),
                        rank_(rank),
                        world_size_(world_size) {
@@ -96,9 +96,18 @@ class Sampler {
       }
     }
 
+    void Reset() {
+      if (shuffle_) {
+        std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
+      }
+
+      current_iter_ = 0;
+    }
+
   private:
     int64_t current_iter_;
     const int64_t batch_size_;
+    const bool shuffle_;
     int64_t num_samples_;
     const bool drop_last_;
     const int rank_;
@@ -123,6 +132,7 @@ class DataReader {
                       const int rank,
                       const int world_size)
                       : running_(true),
+                        shutdown_(false),
                         reader_block_(reader_block),
                         place_(place),
                         indices_var_name_(indices_var_name),
@@ -142,7 +152,12 @@ class DataReader {
     reader_thread_ = std::thread([this, scope] {
       auto& scope_ = scope->NewScope();
       framework::Executor executor(place_);
-      while (running_.load()) {
+      while (!shutdown_) {
+        // check running or shutdown
+        std::unique_lock<std::mutex> lock(mutex_);
+        running_cond_.wait(lock, [this] { return running_ || shutdown_; });
+        if (shutdown_) break;
+
         std::vector<int64_t> indices;
         sampler_.GetNextIndices(&indices);
         // shutdown reader if indices drained
@@ -153,8 +168,8 @@ class DataReader {
             queue->Close();
           }
 
-          running_.store(false);
-          return;
+          running_ = false;
+          continue;
         }
 
         ShareIndicesIntoScope(&scope_, indices);
@@ -198,8 +213,23 @@ class DataReader {
       if (queue && !queue->IsClosed()) queue->Close();
     }
 
-    running_.store(false);
+    shutdown_ = true;
+    running_ = false;
+    running_cond_.notify_all();
+
     if (reader_thread_.joinable()) reader_thread_.join();
+  }
+
+  void Reset() {
+    // reopen all output queues
+    for (auto& queue: output_queues_) queue->ReOpen();
+
+    // reset sampler to regenerate indices
+    sampler_.Reset();
+
+    // set running flag to reset running
+    running_ = true;
+    running_cond_.notify_all();
   }
 
   void ShareIndicesIntoScope(Scope* scope,
@@ -216,7 +246,11 @@ class DataReader {
   }
 
  private:
-  std::atomic<bool> running_;
+  bool running_;
+  std::condition_variable running_cond_;
+  bool shutdown_;
+  std::mutex mutex_;
+
   std::thread reader_thread_;
 
   BlockDesc* reader_block_;
@@ -283,6 +317,14 @@ class ReaderManager {
       id_to_reader_.erase(reader_id);
     }
   }
+
+  void ResetReader(const int64_t reader_id) {
+    auto iter = id_to_reader_.find(reader_id);
+    if (iter != id_to_reader_.end()) {
+      iter->second->Reset();
+    }
+  }
+
   void ShutDown() {
     auto iter = id_to_reader_.begin();
     while (iter != id_to_reader_.end()){

@@ -47,6 +47,8 @@ class Pipeline {
 
   inline bool IsRunning() { return running_.load(); }
 
+  void Reset() { running_.store(true); }
+
  private:
 
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
@@ -111,6 +113,13 @@ class PipelineManager {
 
   void ShutDownPipeline(int64_t program_id) {
     prog_id_to_pipeline_.erase(program_id);
+  }
+
+  void ResetPipeline(int64_t program_id) {
+    auto iter = prog_id_to_pipeline_.find(program_id);
+    if (iter != prog_id_to_pipeline_.end()) {
+      iter->second.get()->Reset();
+    }
   }
 
   void ShutDown() {

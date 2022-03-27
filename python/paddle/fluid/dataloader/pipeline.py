@@ -52,7 +52,7 @@ class Pipeline:
         if paddle.distributed.ParallelEnv().nranks > 1:
             paddle.set_device('gpu:%d' % 
                         paddle.distributed.ParallelEnv().dev_id)
-            paddle.distributed.init_parallel_env()
+            # paddle.distributed.init_parallel_env()
 
     def _init_programs(self):
         self._main_program = fluid.Program()
@@ -102,11 +102,11 @@ class Pipeline:
 
     def build(self):
         global_block = self._main_program.desc.block(0)
-        program_id = _hash_with_id(self._main_program, self)
+        self._program_id = _hash_with_id(self._main_program, self)
 
         self._attrs = ('global_block', global_block, 'start_op_index', 0,
                        'end_op_index', global_block.op_size(), 'program_id',
-                       program_id)
+                       self._program_id)
         self._is_built = True
 
     def _prepare_output_vars(self):
@@ -150,6 +150,16 @@ class Pipeline:
     # Python 2 compatable
     def next(self):
         return self.__next__()
+
+    def reset(self):
+        reader_id= _hash_with_id(self._main_program)
+
+        map_ids = []
+        for op in self._main_program.block(0).ops:
+            if op.type == "map" and op.has_attr('program_id'):
+                map_ids.append(op.attr('program_id'))
+
+        core._reset_dataloader(reader_id, map_ids, self._program_id)
 
     def shutdown(self):
         if not self.is_shutdown:
