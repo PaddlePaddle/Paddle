@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #ifdef PADDLE_WITH_XPU
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/simd.h"
-#include "xpu/kernel/math.h"
 #include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/math.h"
+#include "xpu/kernel/simd.h"
 #endif
 
 #ifdef PADDLE_WITH_HETERPS
@@ -39,9 +39,9 @@ __global__ void fill_idx(T* idx, size_t len) {
   }
 }
 
-
 template <typename T>
-__global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len) {
+__global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len,
+                                  const int xpu_len) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -50,22 +50,43 @@ __global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len) {
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
 
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len - 1) {
-    if (idx[i] != idx[i + 1]) {
-      right[idx[i]] = i;
-      left[idx[i + 1]] = i + 1;
+  const int buf_size = 1024;
+  __local__ T local_idx[buf_size];
+  __local__ T local_left[xpu_len];
+  __local__ T local_right[xpu_len];
+
+  for (int i = 0; i < xpu_len; i++) {
+    local_left[i] = -1;
+    local_right[i] = -1;
+  }
+  int len_per_loop = buf_size;
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    // read buffer from GM will boost performance
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(idx + i, local_idx, read_len * sizeof(T));
+    for (int k = 0; k < read_len; k++) {
+      if (local_idx[k] != local_idx[k + 1]) {
+        int real_idx = i + k;
+        local_right[local_idx[k]] = real_idx;
+        local_left[local_idx[k + 1]] = real_idx + 1;
+      }
+    }
+    if (i == 0) {
+      local_left[local_idx[i]] = i;
+    }
+    if (i + read_len == len) {
+      local_right[local_idx[len - 1]] = len - 1;
     }
   }
-  if (i == 0) {
-    left[idx[i]] = i;
+  // to be optimized: call LM2GM too frequently
+  // all_reduce between threads to get global left & global right && LM2GM
+  for (int i = 0; i < xpu_len; i++) {
+    if (local_left[i] != -1) LM2GM(local_left + i, left + i, sizeof(T));
+    if (local_right[i] != -1) LM2GM(local_right + i, right + i, sizeof(T));
   }
-  if (i == (len - 1)) {
-    right[idx[i]] = i;
-  }
-
 }
-
 
 template <typename KeyType, typename T>
 __global__ void calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
@@ -125,36 +146,36 @@ void HeterCommKernel::fill_idx(T* idx, size_t len, StreamType& stream) {
 }
 
 template <typename T, typename StreamType>
-void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right, size_t len, StreamType& stream) {
-  calc_shard_offset<<<<4, 64, stream>>>(idx,
-                                        left, right, len);
+void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right, size_t len,
+                                        StreamType& stream) {
+  calc_shard_offset < <<<4, 64, stream>>>(idx, left, right, len);
 }
 
 template <typename KeyType, typename T, typename StreamType>
-void HeterCommKernel::calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
-                                 int total_xpu, StreamType& stream) {
-  calc_shard_index<<<4, 64, stream>>>(d_keys, len, shard_index,
-                                      total_xpu);
+void HeterCommKernel::calc_shard_index(KeyType* d_keys, size_t len,
+                                       T* shard_index, int total_xpu,
+                                       StreamType& stream) {
+  calc_shard_index<<<4, 64, stream>>>(d_keys, len, shard_index, total_xpu);
 }
 
 template <typename KeyType, typename T, typename StreamType>
-void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                               size_t len, StreamType& stream) {
+void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys,
+                                     T* idx, size_t len, StreamType& stream) {
   fill_shard_key<<<4, 64, stream>>>(d_shard_keys, d_keys, idx, len);
 }
 
 template <typename KeyType, typename GradType, typename T, typename StreamType>
 void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                                 GradType* d_shard_grads, GradType* d_grads,
-                                 T* idx, size_t len, StreamType& stream) {
-  fill_shard_grads<<<4, 64, stream>>>(d_shard_keys, d_keys,
-                                      d_shard_grads, d_grads, idx,
-                                      len);
+                                       GradType* d_shard_grads,
+                                       GradType* d_grads, T* idx, size_t len,
+                                       StreamType& stream) {
+  fill_shard_grads<<<4, 64, stream>>>(d_shard_keys, d_keys, d_shard_grads,
+                                      d_grads, idx, len);
 }
 
 template <typename ValType, typename T, typename StreamType>
 void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                           size_t len, StreamType& stream) {
+                                 size_t len, StreamType& stream) {
   fill_dvals<<<4, 64, stream>>>(d_shard_vals, d_vals, idx, len);
 }
 
