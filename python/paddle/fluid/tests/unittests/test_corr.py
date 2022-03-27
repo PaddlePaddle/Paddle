@@ -87,6 +87,7 @@ class Corr_Test4(unittest.TestCase):
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
             covrr = paddle.linalg.corrcoef(tensor)
+            
         self.assertRaises(ValueError, test_err)
 
 
@@ -100,6 +101,7 @@ class Corr_Test5(unittest.TestCase):
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
             corr = paddle.linalg.corrcoef(tensor)
+            
         self.assertRaises(ValueError, test_err)
 
 
