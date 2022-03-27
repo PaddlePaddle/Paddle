@@ -100,17 +100,17 @@ DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
 KernelSignature SqrtActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     return KernelSignature("sqrt", {"X"}, {}, {"Out"});
+  } else {
+    return KernelSignature("sqrt_sr", {"X"}, {}, {"Out"});
   }
-
-  return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature SquareActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     return KernelSignature("square", {"X"}, {}, {"Out"});
+  } else {
+    return KernelSignature("square_sr", {"X"}, {}, {"Out"});
   }
-
-  return KernelSignature("unregistered", {}, {}, {});
 }
 
 DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Round, "round", );  // NOLINT
