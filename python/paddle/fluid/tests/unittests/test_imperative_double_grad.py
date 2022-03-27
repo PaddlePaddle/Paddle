@@ -20,13 +20,13 @@ import unittest
 from unittest import TestCase
 import numpy as np
 import paddle.compat as cpt
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 import paddle.fluid.core as core
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():
@@ -115,6 +115,54 @@ class TestEagerGrad(TestCase):
         with _test_eager_guard():
             self.func_simple_example_eager_grad_not_allow_unused()
         self.func_simple_example_eager_grad_not_allow_unused()
+
+    def func_simple_example_eager_grad_duplicate_input(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        try:
+            # duplicate input will arise RuntimeError errors
+            dx = fluid.dygraph.grad(out, [x, x])
+        except RuntimeError as e:
+            error_msg = cpt.get_exception_message(e)
+            assert error_msg.find("duplicate") > 0
+
+    def test_simple_example_eager_grad_duplicate_input(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_duplicate_input()
+        self.func_simple_example_eager_grad_duplicate_input()
+
+    def func_simple_example_eager_grad_duplicate_output(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        try:
+            # duplicate output will arise RuntimeError errors
+            dx = fluid.dygraph.grad([out, out], [x])
+        except RuntimeError as e:
+            error_msg = cpt.get_exception_message(e)
+            assert error_msg.find("duplicate") > 0
+
+    def test_simple_example_eager_grad_duplicate_output(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_duplicate_output()
+        self.func_simple_example_eager_grad_duplicate_output()
 
 
 class TestDygraphDoubleGrad(TestCase):
@@ -337,7 +385,7 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             pass
         else:
             loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
@@ -387,7 +435,7 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             pass
         else:
             loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
@@ -428,7 +476,7 @@ class TestDygraphDoubleGrad(TestCase):
 
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             pass
         else:
             loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)

@@ -32,6 +32,8 @@ PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -255,6 +257,6 @@ TEST(Hook_intermidiate, Matmul_v2) {
 }
 }  // namespace egr
 
-USE_OP(sigmoid);
+USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);

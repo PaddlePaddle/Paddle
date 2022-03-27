@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.framework import _in_eager_mode
 from paddle.fluid.framework import Program, program_guard, _test_eager_guard
 
 

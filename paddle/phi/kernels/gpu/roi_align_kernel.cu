@@ -18,7 +18,6 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 
 #include "paddle/fluid/memory/memory.h"
 
