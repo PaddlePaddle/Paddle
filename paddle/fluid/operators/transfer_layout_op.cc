@@ -117,9 +117,7 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "-1 means unspecified and use the tensor's layout.")
         .SetDefault(-1);
     AddAttr<int>("dst_layout",
-                 "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3, default "
-                 "-1 means unspecified and do no transfer.")
-        .SetDefault(-1);
+                 "kAnyLayout = 0, kNHWC = 1, kNCHW = 2, kMKLDNN = 3");
     AddComment(R"DOC(
     TransferLayout Operator)DOC");
   }
