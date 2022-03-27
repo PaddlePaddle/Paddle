@@ -279,46 +279,6 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   }
 };
 
-template <typename T>
-struct SelectedRowsAddToTensor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
-                  const phi::SelectedRows& input1, framework::Tensor* input2) {
-    if (UNLIKELY(input1.rows().size() == 0)) {
-      LOG(WARNING) << "input selected rows is empty!";
-      return;
-    }
-    auto in1_height = input1.height();
-    auto in2_dims = input2->dims();
-    PADDLE_ENFORCE_EQ(
-        in1_height, in2_dims[0],
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But recieved first input height = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height, in2_dims[0]));
-
-    auto& in1_value = input1.value();
-    auto& in1_rows = input1.rows();
-
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(
-        in1_row_numel, input2->numel() / in1_height,
-        platform::errors::InvalidArgument(
-            "The two inputs width must be equal."
-            "But recieved first input width = [%d], second input width = [%d]",
-            in1_row_numel, input2->numel() / in1_height));
-
-    auto* in1_data = in1_value.data<T>();
-    auto* input2_data = input2->data<T>();
-
-    for (size_t i = 0; i < in1_rows.size(); i++) {
-      for (int64_t j = 0; j < in1_row_numel; j++) {
-        input2_data[in1_rows[i] * in1_row_numel + j] +=
-            in1_data[i * in1_row_numel + j];
-      }
-    }
-  }
-};
-
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, float>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, double>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int>;
@@ -326,11 +286,6 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
                                         platform::bfloat16>;
 
-template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, platform::bfloat16>;
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
 //
