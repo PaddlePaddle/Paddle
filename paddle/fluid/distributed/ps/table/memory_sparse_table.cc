@@ -613,7 +613,10 @@ int32_t MemorySparseTable::flush() { return 0; }
 
 int32_t MemorySparseTable::shrink(const std::string& param) {
   VLOG(0) << "MemorySparseTable::shrink";
-  // TODO(zhaocaibei123): implement with multi-thread
+  int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
+
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     // shrink
     auto& shard = _local_shards[shard_id];
