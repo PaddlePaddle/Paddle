@@ -47,6 +47,8 @@ paddle::experimental::DataType TransToPhiDataType(
       return DataType::BFLOAT16;
     case paddle::framework::proto::VarType::BOOL:
       return DataType::BOOL;
+    case paddle::framework::proto::VarType::PSTRING:
+      return DataType::PSTRING;
     default:
       return DataType::UNDEFINED;
   }
@@ -81,6 +83,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
       return paddle::framework::proto::VarType::BF16;
     case DataType::BOOL:
       return paddle::framework::proto::VarType::BOOL;
+    case DataType::PSTRING:
+      return paddle::framework::proto::VarType::PSTRING;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
@@ -117,6 +121,8 @@ size_t DataTypeSize(DataType dtype) {
       return sizeof(paddle::platform::complex<float>);
     case DataType::COMPLEX128:
       return sizeof(paddle::platform::complex<double>);
+    case DataType::PSTRING:
+      return sizeof(paddle::platform::pstring);
     default:
       return 0;
   }
@@ -145,6 +151,8 @@ DataType String2DataType(const std::string& str) {
     return DataType::COMPLEX64;
   } else if (str == "complex128") {
     return DataType::COMPLEX128;
+  } else if (str == "pstring") {
+    return DataType::PSTRING;
   } else if (str == "bfloat16") {
     return DataType::BFLOAT16;
   } else {
@@ -176,6 +184,8 @@ std::string DataType2String(DataType dtype) {
       return "complex64";
     case DataType::COMPLEX128:
       return "complex128";
+    case DataType::PSTRING:
+      return "pstring";
     case DataType::BFLOAT16:
       return "bfloat16";
     default:
