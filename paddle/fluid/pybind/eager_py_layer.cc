@@ -315,6 +315,15 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       auto dirty_tensor = *it;
       auto dirty_tensor_autograd_meta =
           egr::EagerUtils::autograd_meta(dirty_tensor);
+      PADDLE_ENFORCE_EQ(!dirty_tensor_autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(*dirty_tensor),
+                        false, paddle::platform::errors::InvalidArgument(
+                                   "Leaf Var (%s) that doesn't stop gradient "
+                                   "can't use inplace strategy.",
+                                   dirty_tensor->name()));
+      dirty_tensor->bump_inplace_version();
+      VLOG(3) << "Tensor(" << dirty_tensor->name()
+              << ") uses Inplace Strategy.";
     }
 
     auto grad_node = std::make_shared<egr::GradNodePyLayer>(
