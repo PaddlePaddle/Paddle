@@ -31,7 +31,7 @@ from paddle import _C_ops
 from ..fluid import core
 from ..fluid.data_feeder import (check_dtype, check_type,
                                  check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
                             elementwise_mul, elementwise_sub, nn, ops, tensor)
 from ..tensor import arange, concat, gather_nd, multinomial
@@ -201,7 +201,7 @@ class Distribution(object):
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
-        if in_dygraph_mode():
+        if _non_static_mode():
             if value.dtype != param.dtype and convert_dtype(
                     value.dtype) in ['float32', 'float64']:
                 warnings.warn(
