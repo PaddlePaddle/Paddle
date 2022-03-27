@@ -31,7 +31,7 @@ void MeshgridBackward(const Context& ctx,
   auto out_dims = out_grad[0]->dims();
 
   for (int i = 0; i < n; i++) {
-    outs[i]->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(outs[i]);
     auto out_grad_tmp = EigenVector<T>::Flatten(*out_grad[i]);
     auto in_grad = EigenVector<T>::Flatten(*outs[i]);
 

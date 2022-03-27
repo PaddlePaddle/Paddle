@@ -16,8 +16,8 @@
 
 #include "paddle/phi/kernels/momentum_kernel.h"
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -26,8 +26,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType =
-    typename paddle::operators::details::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
 
 template <typename T>
 struct CPUDenseUpdater {
@@ -613,7 +612,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                          DenseTensor* param_out,
                          DenseTensor* velocity_out,
                          DenseTensor* master_param_out) {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   if (multi_precision) {
     MomentumDenseImpl<T, MT>(dev_ctx,
                              param,
@@ -665,7 +664,7 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           DenseTensor* param_out,
                           DenseTensor* velocity_out,
                           DenseTensor* master_param_out) {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   if (multi_precision) {
     MomentumSparseImpl<T, MT>(dev_ctx,
                               param,
