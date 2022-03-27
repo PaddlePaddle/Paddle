@@ -303,6 +303,13 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               op_func_node
                   ->inplace_back_map[var_scope->GetIdByName(new_var_name)] =
                   var_scope->GetIdByName(var_name);
+              op_func_node->output_index[pair.first][j] =
+                  var_scope->VarId(new_var_name);
+              // NOTE(zhiqiu): The inplace op with `transfer` also changes
+              // original output after that
+              // so add original output as well
+              op_func_node->output_index[pair.first].push_back(
+                  var_scope->VarId(var_name));
             }
           }
         }
