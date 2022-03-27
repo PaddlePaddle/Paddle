@@ -18,24 +18,22 @@ namespace phi {
 
 KernelSignature AssignValueOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  // if use `dtype`. here will depend the fluid proto
-  if (ctx.HasAttr("bool_values") &&
-      !paddle::any_cast<std::vector<int>>(ctx.Attr("bool_values")).empty()) {
+  // Here we must use `dtype` attr to determine which attr to use, we can't
+  // judge by whether the attr is empty, some unittests will failed
+  int dtype = paddle::any_cast<int>(ctx.Attr("dtype"));
+  // heer we can't depend on the fluid proto::VarType, so we use the dtype enum
+  // value directly, If the enum value is updated, the code also needs to be
+  // updated here, but the probability of updating the enum value is very low
+  if (dtype == /*BOOL*/ 0) {
     return KernelSignature(
         "assign_value", {}, {"shape", "dtype", "bool_values"}, {"Out"});
-  } else if (ctx.HasAttr("fp32_values") &&
-             !paddle::any_cast<std::vector<float>>(ctx.Attr("fp32_values"))
-                  .empty()) {
-    return KernelSignature(
-        "assign_value", {}, {"shape", "dtype", "fp32_values"}, {"Out"});
-  } else if (ctx.HasAttr("int32_values") &&
-             !paddle::any_cast<std::vector<int>>(ctx.Attr("int32_values"))
-                  .empty()) {
+  } else if (dtype == /*INT32*/ 2) {
     return KernelSignature(
         "assign_value", {}, {"shape", "dtype", "int32_values"}, {"Out"});
-  } else if (ctx.HasAttr("int64_values") &&
-             !paddle::any_cast<std::vector<int64_t>>(ctx.Attr("int64_values"))
-                  .empty()) {
+  } else if (dtype == /*FP32*/ 5) {
+    return KernelSignature(
+        "assign_value", {}, {"shape", "dtype", "fp32_values"}, {"Out"});
+  } else if (dtype == /*INT64*/ 3) {
     return KernelSignature(
         "assign_value", {}, {"shape", "dtype", "int64_values"}, {"Out"});
   } else {
