@@ -52,7 +52,8 @@ if (WITH_GPU AND WITH_TESTING AND NOT WIN32 AND NOT "$ENV{CI_SKIP_CPP_TEST}" STR
         sgd_op
         squared_l2_norm_op
         memcpy_h2d_op
-        memcpy_d2h_op)
+        memcpy_d2h_op
+        sqrt_op)
     
     # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
     set(OP_DEPS 
