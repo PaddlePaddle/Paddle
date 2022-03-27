@@ -124,6 +124,8 @@ class EagerUtils {
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* nullable_autograd_meta(
       const paddle::experimental::Tensor& target);
+  static AutogradMeta* nullable_autograd_meta(
+      paddle::optional<const paddle::experimental::Tensor&> target);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
       const std::vector<paddle::experimental::Tensor>& targets);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
@@ -169,6 +171,9 @@ class EagerUtils {
   static std::vector<paddle::experimental::Tensor> RecoverTensorWrapper(
       std::vector<TensorWrapper>* tw,
       const std::shared_ptr<GradNodeBase>& grad_node);
+  static paddle::optional<const paddle::experimental::Tensor&>
+  RecoverOptionalTensorWrapper(TensorWrapper* tw,
+                               const std::shared_ptr<GradNodeBase>& grad_node);
 
   // Intermidate needed remove this once we don't need legacy
   // Inner Method
