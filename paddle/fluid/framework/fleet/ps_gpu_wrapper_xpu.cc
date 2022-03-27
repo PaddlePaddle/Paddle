@@ -14,16 +14,15 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
-#include <xpu/runtime.h>
 #include <algorithm>
 #include <ctime>
 #include <memory>
 #include <numeric>
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"
-#include "xpu/kernel/math.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -150,12 +149,12 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
-  T* buf_value = nullptr;
+  float* buf_value = nullptr;
   xpu_malloc(reinterpret_cast<void**>(&buf_value),
              values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(&buf_value);
-  ​ xpu_memcpy(gpu_values, values.data(), ​ values.size() * sizeof(float*),
-                 XPU_HOST_TO_DEVICE);
+  xpu_memcpy(gpu_values, values.data(), values.size() * sizeof(float*),
+             XPU_HOST_TO_DEVICE);
 
   PullCopy<<<2, 64, stream>>>(gpu_values, total_values_gpu, gpu_len,
                               hidden_size, slot_num, total_length, gpu_keys);
@@ -208,13 +207,12 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   float** gpu_values = reinterpret_cast<float**>(&buf_grad_value);
   int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length);
   int* d_slot_vector = reinterpret_cast<int*>(buf_slot_vector);
-
-  ​xpu_memcpy(gpu_values, grad_values.data(),
-                grad_values.size() * sizeof(float*), XPU_HOST_TO_DEVICE);
-  ​xpu_memcpy(gpu_len, slot_lengths_lod.data(),
-                slot_lengths.size() * sizeof(int64_t), XPU_HOST_TO_DEVICE);
-  ​xpu_memcpy(d_slot_vector, slot_vector_.data(),
-                slot_lengths_lod.size() * sizeof(int), XPU_HOST_TO_DEVICE);
+  xpu_memcpy(gpu_values, grad_values.data(),
+             grad_values.size() * sizeof(float*), XPU_HOST_TO_DEVICE);
+  xpu_memcpy(gpu_len, slot_lengths_lod.data(),
+             slot_lengths.size() * sizeof(int64_t), XPU_HOST_TO_DEVICE);
+  xpu_memcpy(d_slot_vector, slot_vector_.data(),
+             slot_lengths_lod.size() * sizeof(int), XPU_HOST_TO_DEVICE);
 
   PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, gpu_len,
                               hidden_size, slot_lengths.size(), total_length,

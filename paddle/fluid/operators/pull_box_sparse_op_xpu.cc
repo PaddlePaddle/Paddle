@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class PullBoxSparseXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -27,7 +27,7 @@ class PullBoxSparseXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class PushBoxSparseXPuKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -40,8 +40,8 @@ class PushBoxSparseXPuKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     pull_box_sparse,
-    ops::PullBoxSparseXPUKernel<paddle::platform::XPUDeviceContext, float>)
+    ops::PullBoxSparseXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     push_box_sparse,
-    ops::PushBoxSparseXPuKernel<paddle::platform::XPUDeviceContext, float>)
+    ops::PushBoxSparseXPuKernel<paddle::platform::XPUDeviceContext, float>);
 #endif

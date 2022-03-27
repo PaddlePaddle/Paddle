@@ -76,12 +76,12 @@ class HeterPsResource {
   gpuStream_t local_stream(int gpu_num, int stream_num);
   gpuStream_t remote_stream(int gpu_num, int stream_num);
   gpuStream_t comm_stream(int gpu_num, int stream_num);
-#endif
+#endif
 #ifdef PADDLE_WITH_XPU
   XPUStream local_stream(int gpu_num, int stream_num);
   XPUStream remote_stream(int gpu_num, int stream_num);
   XPUStream comm_stream(int gpu_num, int stream_num);
-#endif
+#endif
   std::vector<std::shared_ptr<GPUResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;

@@ -1112,6 +1112,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <typename KeyType, typename ValType, typename GradType>
 template <typename Sgd>
 void HeterComm<KeyType, ValType, GradType>::update_one_table(
@@ -1297,6 +1298,7 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(
   merge_grad(gpu_num, storage.local_keys, storage.local_grads, merge_num, ret);
   return ret;
 }
+#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::end_pass() {

@@ -34,12 +34,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
+#endif
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
@@ -130,6 +134,7 @@ class PSGPUWrapper {
       PADDLE_THROW(
           platform::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
+#ifdef PADDLE_WITH_CUDA
       if (multi_node_) {
         int dev_size = dev_ids.size();
         // init inner comm
@@ -165,6 +170,7 @@ class PSGPUWrapper {
             platform::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
       }
+#endif
       heter_devices_ = dev_ids;
       data_ready_channel_->Open();
       data_ready_channel_->SetCapacity(3);
@@ -191,6 +197,7 @@ class PSGPUWrapper {
   void SetEmbedxSGD(float mf_create_thresholds, float mf_learning_rate,
                     float mf_initial_g2sum, float mf_initial_range,
                     float mf_min_bound, float mf_max_bound);
+#ifdef PADDLE_WITH_CUDA
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -234,26 +241,27 @@ class PSGPUWrapper {
                              ? 1.0
                              : config["mf_max_bound"];
     for (size_t i = 0; i < heter_devices_.size(); i++) {
-#ifdef PADDLE_WITH_CUDA
+      // #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
       this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
                          learning_rate, initial_g2sum, initial_range);
       this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
                          mf_initial_g2sum, mf_initial_range, mf_min_bound,
                          mf_max_bound);
-#endif
-#ifdef PADDLE_WITH_XPU
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
-// TODO(xinxuan): xpu memcpy optimizer params from host to device, and used by
-// optimizer
-// this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-//                    learning_rate, initial_g2sum, initial_range);
-// this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-//                    mf_initial_g2sum, mf_initial_range, mf_min_bound,
-//                    mf_max_bound);
-#endif
+      // #endif
+      // PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
+      // TODO(xinxuan): xpu memcpy optimizer params from host to device, and
+      // used by
+      // optimizer
+      // this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
+      //                    learning_rate, initial_g2sum, initial_range);
+      // this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
+      //                    mf_initial_g2sum, mf_initial_range, mf_min_bound,
+      //                    mf_max_bound);
     }
   }
+#endif
+
   void SetDate(int year, int month, int day) {
     year_ = year;
     month_ = month;
@@ -281,6 +289,7 @@ class PSGPUWrapper {
     slot_offset_vector_ = slot_offset_vector;
   }
 
+#ifdef PADDLE_WITH_CUDA
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
     assert(slot_mf_dim_vector_.size() == slot_vector_.size());
@@ -314,6 +323,7 @@ class PSGPUWrapper {
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
   }
+#endif
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
@@ -340,9 +350,11 @@ class PSGPUWrapper {
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
+#ifdef PADDLE_WITH_CUDA
   std::vector<ncclComm_t> inner_comms_;
   std::vector<ncclComm_t> inter_comms_;
   std::vector<ncclUniqueId> inter_ncclids_;
+#endif
   std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
@@ -356,9 +368,11 @@ class PSGPUWrapper {
   int month_;
   int day_;
 
+#ifdef PADDLE_WITH_CUDA
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
                                            // pools of totol dims number
+#endif
 
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>

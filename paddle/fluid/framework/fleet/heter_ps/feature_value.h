@@ -52,6 +52,7 @@ struct FeaturePushValue {
   float lr_g;
   float mf_g[MF_DIM];
 
+#ifdef PADDLE_WITH_CUDA
   __device__ __forceinline__ FeaturePushValue
   operator+(const FeaturePushValue& a) const {
     FeaturePushValue out;
@@ -64,6 +65,7 @@ struct FeaturePushValue {
     }
     return out;
   }
+#endif
 };
 
 }  // end namespace framework

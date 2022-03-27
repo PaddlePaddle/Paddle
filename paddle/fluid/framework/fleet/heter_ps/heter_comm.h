@@ -187,8 +187,10 @@ class HeterComm {
   int topo_aware_{0};
   int feanum_{1800 * 2048};
   int multi_node_{0};
+#ifdef PADDLE_WITH_CUDA
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
+#endif
   int node_size_;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 };
