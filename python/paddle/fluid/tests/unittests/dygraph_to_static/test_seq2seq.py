@@ -44,7 +44,7 @@ def prepare_input(batch):
 
 
 def train(attn_model=False):
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         fluid.default_startup_program().random_seed = 2020
         fluid.default_main_program().random_seed = 2020
 
@@ -118,7 +118,7 @@ def train(attn_model=False):
 
 
 def infer(attn_model=False):
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
 
         if attn_model:
             model = AttentionModel(

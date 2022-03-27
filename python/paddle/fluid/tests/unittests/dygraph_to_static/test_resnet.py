@@ -216,7 +216,7 @@ def train(to_static, build_strategy=None):
     """
     Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
     """
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -279,7 +279,7 @@ def train(to_static, build_strategy=None):
 
 def predict_dygraph(data):
     program_translator.enable(False)
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         resnet = ResNet()
 
         model_dict, _ = fluid.dygraph.load_dygraph(DY_STATE_DICT_SAVE_PATH)
@@ -309,7 +309,7 @@ def predict_static(data):
 
 
 def predict_dygraph_jit(data):
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         resnet = fluid.dygraph.jit.load(MODEL_SAVE_PREFIX)
         resnet.eval()
 

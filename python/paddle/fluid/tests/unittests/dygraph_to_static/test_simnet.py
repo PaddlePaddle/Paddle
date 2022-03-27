@@ -107,7 +107,7 @@ def train(conf_dict, to_static):
     else:
         place = fluid.CPUPlace()
 
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 

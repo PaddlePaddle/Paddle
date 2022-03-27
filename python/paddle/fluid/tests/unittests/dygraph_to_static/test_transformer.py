@@ -129,7 +129,7 @@ def train_static(args, batch_generator):
 
 
 def train_dygraph(args, batch_generator):
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         if SEED is not None:
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
@@ -222,7 +222,7 @@ def train_dygraph(args, batch_generator):
 
 
 def predict_dygraph(args, batch_generator):
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 

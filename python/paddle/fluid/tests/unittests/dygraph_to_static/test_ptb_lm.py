@@ -217,7 +217,7 @@ def train(place):
     vocab_size = 1000
     batch_num = 200
 
-    with fluid.dygraph.guard(place):
+    with fluid.framework._test_eager_guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         ptb_model = PtbModel(
