@@ -6,7 +6,7 @@
   kernel :
     func : add
   backward : add_grad
-  no_need_buffer : x, y
+  # no_need_buffer : x, y
 
 - api : cast
   args : (Tensor x, DataType out_dtype)
@@ -213,7 +213,7 @@
   kernel :
     func : subtract
   backward : subtract_grad
-  no_need_buffer : x, y
+  # no_need_buffer : x, y
 
 - api : sum
   args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
@@ -1224,7 +1224,7 @@
     func : WhereIndexInferMeta
   kernel :
     func : where_index
-  no_need_buffer : x, y
+  # no_need_buffer : x, y
 
 
 # # yolo_box
@@ -1288,7 +1288,7 @@
   kernel :
     func : scatter
   backward : scatter_grad
-  no_need_buffer : updates
+  # no_need_buffer : updates
 
 
 - api : scatter_nd_add
@@ -1300,7 +1300,7 @@
   kernel :
     func : scatter_nd_add
   backward : scatter_nd_add_grad
-  no_need_buffer : updates
+  # no_need_buffer : updates
 
 - api : addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha, float beta)
@@ -1428,7 +1428,7 @@
     func : index_sample
     data_type : x
   backward : index_sample_grad
-  no_need_buffer : x
+  # no_need_buffer : x
 
 
 - api : cross
