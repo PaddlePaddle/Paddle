@@ -6,7 +6,7 @@
   kernel :
     func : add
   backward : add_grad
-  # no_need_buffer : x, y
+  no_need_buffer : x, y
 
 - api : cast
   args : (Tensor x, DataType out_dtype)
@@ -213,7 +213,7 @@
   kernel :
     func : subtract
   backward : subtract_grad
-  # no_need_buffer : x, y
+  no_need_buffer : x, y
 
 - api : sum
   args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
