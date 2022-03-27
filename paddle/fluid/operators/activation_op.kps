@@ -374,9 +374,6 @@ REGISTER_OP_CUDA_KERNEL(
 
 /* ===========================   sqrt register  ============================= */
 
-REGISTER_ACTIVATION_CUDA_KERNEL(sqrt, Sqrt, CudaSqrtFunctor,
-                                CudaSqrtGradFunctor);
-
 REGISTER_OP_CUDA_KERNEL(
     sqrt_grad_grad,
     ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -403,9 +400,6 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================  square register  ============================ */
-
-REGISTER_ACTIVATION_CUDA_KERNEL_INT(square, Square, CudaSquareFunctor,
-                                    CudaSquareGradFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     square_grad_grad,

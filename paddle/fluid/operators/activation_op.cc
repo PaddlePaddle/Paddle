@@ -1504,25 +1504,6 @@ REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
 REGISTER_ACTIVATION_OP(reciprocal, Reciprocal, ReciprocalFunctor,
                        ReciprocalGradFunctor);
 
-REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
-REGISTER_OP_CPU_KERNEL(square,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<double>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<int>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::SquareFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           ops::SquareGradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::SquareGradFunctor<double>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::SquareGradFunctor<int>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::SquareGradFunctor<int64_t>>);
 REGISTER_ACTIVATION_OP(log2, Log2, Log2Functor, Log2GradFunctor);
 REGISTER_ACTIVATION_OP(log10, Log10, Log10Functor, Log10GradFunctor);
 REGISTER_ACTIVATION_OP(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);
@@ -1799,21 +1780,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer);
 
-/* ========================================================================== */
-
-/* ==========================   expm1 register  ============================ */
-// REGISTER_OPERATOR(
-//     expm1, ops::ActivationOp, ops::Expm1OpMaker,
-//     ops::ActivationOpInferVarType,
-//     ops::ActivationGradOpMaker<ops::Expm1GradFunctor<float>::FwdDeps(),
-//                                paddle::framework::OpDesc>,
-//     ops::ActivationGradOpMaker<ops::Expm1GradFunctor<float>::FwdDeps(),
-//                                paddle::imperative::OpBase>,
-//     std::conditional<ops::CanInplaceAct<ops::Expm1GradFunctor<float>>(),
-//                      ops::ActFwdInplaceInferer, void>::type);
-
-/* ========================================================================== */
-
 /* ==========================  Log register ==================================*/
 REGISTER_OPERATOR(
     log, ops::ActivationOp, ops::LogOpMaker, ops::ActivationOpInferVarType,
@@ -1831,8 +1797,6 @@ REGISTER_OPERATOR(
     log_grad_grad,
     ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(leaky_relu)

@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/impl/clip_by_norm_kernel_impl.h"
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -106,7 +107,8 @@ void ClipByNormSparseKernel<phi::dtype::float16, phi::GPUContext>(
 //     clip_by_norm_sparse, GPU, ALL_LAYOUT, phi::ClipByNormSparseKernel, float,
 //     phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
-    clip_by_norm, GPU, ALL_LAYOUT, phi::ClipByNormKernel, float) {}
+    clip_by_norm, GPU, ALL_LAYOUT, phi::ClipByNormKernel, phi::dtype::float16) {
+}
 
 PD_REGISTER_KERNEL(
     clip_by_norm_sparse, GPU, ALL_LAYOUT, phi::ClipByNormSparseKernel, float) {}
