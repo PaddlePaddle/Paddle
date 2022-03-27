@@ -57,6 +57,7 @@ class DataReaderOp : public framework::OperatorBase {
     auto num_samples = Attr<int>("num_samples");
     auto shuffle = Attr<bool>("shuffle");
     auto drop_last = Attr<bool>("drop_last");
+    auto seed = Attr<int64_t>("seed");
     auto rank = Attr<int>("rank");
     auto world_size = Attr<int>("world_size");
     auto indices_var_name = Attr<std::string>("indices_var_name");
@@ -69,7 +70,7 @@ class DataReaderOp : public framework::OperatorBase {
     ReaderManager::Instance()->StartDataReader(
         reader_id, reader_block, &scope, platform::CPUPlace(), indices_var_name,
         output_var_names, output_queues, batch_size, num_samples,
-        shuffle, drop_last, rank, world_size);
+        shuffle, drop_last, seed, rank, world_size);
   }
 };
 
@@ -97,6 +98,8 @@ class DataReaderOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("drop_last", "Whether drop last incomplete batch")
         .SetDefault(false);
+    AddAttr<int64_t>("seed", "Random seed for shuffle")
+        .SetDefault(0);
     AddAttr<int>("rank", "The logical rank of current device.")
         .SetDefault(0);
     AddAttr<int>("world_size", "The number of running devices.")

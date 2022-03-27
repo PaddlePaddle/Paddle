@@ -132,7 +132,8 @@ def file_label_loader(data_root, indices, name=None):
 def file_label_reader(file_root,
                       batch_size=1,
                       shuffle=False,
-                      drop_last=False):
+                      drop_last=False,
+                      seed=None):
     """
     Reads and outputs the bytes contents of a file as a uint8 Tensor
     with one dimension.
@@ -178,7 +179,8 @@ def file_label_reader(file_root,
                                  batch_size=batch_size,
                                  num_samples=len(samples),
                                  shuffle=shuffle,
-                                 drop_last=drop_last)
+                                 drop_last=drop_last,
+                                 seed=seed)
     # inputs = dict()
     # attrs = {
     #     'root_dir': file_root,

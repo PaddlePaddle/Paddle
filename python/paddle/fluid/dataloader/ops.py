@@ -116,7 +116,8 @@ def data_reader(reader_func,
                 batch_size=1,
                 num_samples=1,
                 shuffle=False,
-                drop_last=False):
+                drop_last=False,
+                seed=None):
     assert not in_dygraph_mode(), \
             "paddle.io.data_reader can only be used in static mode"
     helper = LayerHelper("data_reader", **locals())
@@ -153,6 +154,7 @@ def data_reader(reader_func,
         "num_samples": num_samples,
         "shuffle": shuffle,
         "drop_last": drop_last,
+        "seed": 0 if seed is None else seed,
         "rank": paddle.distributed.get_rank(),
         "world_size": paddle.distributed.get_world_size()
     }

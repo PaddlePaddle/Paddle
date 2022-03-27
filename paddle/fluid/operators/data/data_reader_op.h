@@ -42,7 +42,8 @@ class Sampler {
   public:
     explicit Sampler(const int64_t batch_size, const int64_t num_samples,
                      const bool shuffle, const bool drop_last,
-                     const int rank, const int world_size)
+                     const int64_t seed, const int rank,
+                     const int world_size)
                      : current_iter_(0),
                        batch_size_(batch_size),
                        shuffle_(shuffle),
@@ -67,7 +68,7 @@ class Sampler {
       num_samples_ = sample_ids_.size();
       LOG(ERROR) << " Final num_samples " << num_samples_;
       if (shuffle) {
-        rnd_.seed(time(0));
+        rnd_.seed(seed);
         std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
       }
     }
@@ -129,6 +130,7 @@ class DataReader {
                       const int num_samples,
                       const bool shuffle,
                       const bool drop_last,
+                      const int64_t seed,
                       const int rank,
                       const int world_size)
                       : running_(true),
@@ -140,7 +142,7 @@ class DataReader {
                         output_queues_(output_queues),
                         batch_size_(batch_size),
                         sampler_(batch_size, num_samples, shuffle,
-                                 drop_last, rank, world_size) {
+                                 drop_last, seed, rank, world_size) {
     StartReaderThread(scope);
   }
 
@@ -300,13 +302,15 @@ class ReaderManager {
       const std::vector<std::string> &output_var_names,
       const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> &output_queues,
       const int batch_size, const int num_samples, const bool shuffle,
-      const bool drop_last, const int rank, const int world_size) {
+      const bool drop_last, const int64_t seed, const int rank,
+      const int world_size) {
     auto iter = id_to_reader_.find(reader_id);
     if (iter == id_to_reader_.end()) {
       id_to_reader_[reader_id] = std::unique_ptr<DataReader>(
           new DataReader(reader_block, scope, place, indices_var_name,
                          output_var_names, output_queues, batch_size,
-                         num_samples, shuffle, drop_last, rank, world_size));
+                         num_samples, shuffle, drop_last, seed,
+                         rank, world_size));
     }
   }
 
