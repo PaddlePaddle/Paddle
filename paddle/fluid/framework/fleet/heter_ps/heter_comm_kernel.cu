@@ -29,10 +29,12 @@ __global__ void fill_idx(T* idx, size_t len) {
   }
 }
 
-//template <typename T>
-//void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name) {
+// template <typename T>
+// void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name)
+// {
 //  T tmp[len];  // NOLINT
-//  cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
+//  cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost,
+//  stream);
 //  cudaStreamSynchronize(stream);
 //  std::cout << name;
 //  for (int i = 0; i < len; ++i) {
@@ -66,7 +68,6 @@ __global__ void calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
     shard_index[i] = d_keys[i] % total_gpu;
   }
 }
-
 
 template <typename KeyType, typename T>
 __global__ void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
@@ -105,46 +106,48 @@ void HeterCommKernel::fill_idx(T* idx, size_t len, StreamType& stream) {
 }
 
 template <typename T, typename StreamType>
-void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right, size_t len, StreamType& stream) {
+void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right, size_t len,
+                                        size_t total_devs, StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(idx,
-                                                           left, right, len);
+  calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(idx, left, right,
+                                                           len);
 }
 
 template <typename KeyType, typename T, typename StreamType>
-void HeterCommKernel::calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
-                                 int total_gpu, StreamType& stream) {
+void HeterCommKernel::calc_shard_index(KeyType* d_keys, size_t len,
+                                       T* shard_index, int total_gpu,
+                                       StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  calc_shard_index<<<grid_size, block_size_, 0, stream>>>(d_keys, len, shard_index, total_gpu);
+  calc_shard_index<<<grid_size, block_size_, 0, stream>>>(
+      d_keys, len, shard_index, total_gpu);
 }
 
 template <typename KeyType, typename T, typename StreamType>
-void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                               size_t len, StreamType& stream) {
+void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys,
+                                     T* idx, size_t len, StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys,
-                                                        d_keys, idx, len);
+  fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys, d_keys,
+                                                        idx, len);
 }
 
 template <typename KeyType, typename GradType, typename T, typename StreamType>
 void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                                 GradType* d_shard_grads, GradType* d_grads,
-                                 T* idx, size_t len, StreamType& stream) {
+                                       GradType* d_shard_grads,
+                                       GradType* d_grads, T* idx, size_t len,
+                                       StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(
-      d_shard_keys, d_keys, d_shard_grads, d_grads, idx,
-      len);
+      d_shard_keys, d_keys, d_shard_grads, d_grads, idx, len);
 }
 
 template <typename ValType, typename T, typename StreamType>
 void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                           size_t len, StreamType& stream) {
+                                 size_t len, StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
-  fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals, d_vals,
-                                                    idx, len);
+  fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals, d_vals, idx,
+                                                    len);
 }
 #endif
-
 
 }  // end namespace framework
 }  // end namespace paddle
