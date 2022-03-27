@@ -67,7 +67,6 @@ class Corr_Test(unittest.TestCase):
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
-# test normal input
 class Corr_Test2(Corr_Test):
     def setUp(self):
         self.shape = [10]
@@ -79,7 +78,6 @@ class Corr_Test3(Corr_Test):
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
-# test error input
 class Corr_Test4(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 5, 10]
@@ -89,7 +87,6 @@ class Corr_Test4(unittest.TestCase):
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
             covrr = paddle.linalg.corrcoef(tensor)
-
         self.assertRaises(ValueError, test_err)
 
 
@@ -103,31 +100,24 @@ class Corr_Test5(unittest.TestCase):
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
             corr = paddle.linalg.corrcoef(tensor)
-
         self.assertRaises(ValueError, test_err)
 
 
 # test unsupported complex input
 class Cov_Test6(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
-
         x1 = fluid.data(name='x1', shape=[2], dtype='complex128')
         self.assertRaises(TypeError, paddle.linalg.corrcoef, x=x1)
-
         paddle.disable_static()
 
 
 # test unsupported complex input
 class Cov_Test7(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
-
         x2 = fluid.data(name='x2', shape=[2, 2], dtype='complex64')
         self.assertRaises(TypeError, paddle.linalg.corrcoef, x=x2)
-
         paddle.disable_static()
 
 
