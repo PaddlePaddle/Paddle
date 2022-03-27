@@ -6,6 +6,7 @@
   kernel :
     func : add
   backward : add_grad
+  no_need_buffer : x, y
 
 - api : cast
   args : (Tensor x, DataType out_dtype)
@@ -212,6 +213,7 @@
   kernel :
     func : subtract
   backward : subtract_grad
+  no_need_buffer : x, y
 
 - api : sum
   args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
@@ -281,6 +283,7 @@
   kernel :
     func : diagonal
   backward : diagonal_grad
+  # no_need_buffer : x
 
 # # maxout
 # - api : maxout
@@ -629,6 +632,7 @@
   kernel :
     func : argsort
   backward : argsort_grad
+  # no_need_buffer : x
 
 # auc
 - api : auc
@@ -1147,6 +1151,7 @@
   kernel :
     func : tile
   backward : tile_grad
+  # no_need_buffer : x
 
 # # top_k
 # - api : top_k
@@ -1167,6 +1172,7 @@
   kernel :
     func : trace
   backward : trace_grad
+  # no_need_buffer : x
 
 # # phi_transfer_layout | not have python api
 
@@ -1197,6 +1203,7 @@
   kernel :
     func : unfold
   backward : unfold_grad
+  # no_need_buffer : x
 
 # # uniform_random_raw selected rows ??
 
@@ -1217,6 +1224,7 @@
     func : WhereIndexInferMeta
   kernel :
     func : where_index
+  no_need_buffer : x, y
 
 
 # # yolo_box
@@ -1280,6 +1288,7 @@
   kernel :
     func : scatter
   backward : scatter_grad
+  no_need_buffer : updates
 
 
 - api : scatter_nd_add
@@ -1291,7 +1300,7 @@
   kernel :
     func : scatter_nd_add
   backward : scatter_nd_add_grad
-
+  no_need_buffer : updates
 
 - api : addmm
   args : (Tensor input, Tensor x, Tensor y, float alpha, float beta)
@@ -1318,7 +1327,6 @@
     func : AdamaxInferMeta
   kernel :
     func : adamax
-
 
 
 - api : where
@@ -1402,7 +1410,7 @@
   # backward : huber_loss_grad
 
 - api : triangular_solve
-  args : (Tensor x, Tensor y, bool upper, bool tranpose, bool unitriangular)
+  args : (Tensor x, Tensor y, bool upper, bool transpose, bool unitriangular)
   output : Tensor
   infer_meta :
     func : TriangularSolveInferMeta
@@ -1420,6 +1428,7 @@
     func : index_sample
     data_type : x
   backward : index_sample_grad
+  no_need_buffer : x
 
 
 - api : cross

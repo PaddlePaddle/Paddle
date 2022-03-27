@@ -34,7 +34,8 @@
     param : [x, y]
   kernel :
     func : add_grad
-
+  no_need_buffer : x, y
+  
 - backward_api : subtract_grad
   forward : subtract (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)

@@ -1017,10 +1017,11 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             is_optional = (name in optional_inputs)
 
             if is_fwd_input:
+                need_input_data = "false" if name in self.no_need_buffers else "true"
                 if is_optional:
                     set_tensor_wrappers = f" if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
                 else:
-                    set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+                    set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, {need_input_data});"
             else:
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
