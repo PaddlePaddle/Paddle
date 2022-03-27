@@ -1,6 +1,7 @@
 cc_library(cinn_cache_key SRCS cinn_cache_key.cc DEPS boost graph graph_helper lod_tensor proto_desc)
 cc_library(build_cinn_pass SRCS build_cinn_pass.cc DEPS pass subgraph_detector graph_pattern_detector cinn_compiler errors enforce)
 cc_library(transform_desc SRCS transform_desc.cc DEPS proto_desc cinn)
+cc_library(transform_type SRCS transform_type.cc DEPS errors enforce cinn)
 cc_library(cinn_graph_symbolization SRCS cinn_graph_symbolization.cc DEPS lod_tensor graph transform_desc cinn)
 cc_library(cinn_compiler SRCS cinn_compiler.cc DEPS framework_proto graph lod_tensor cinn_cache_key cinn_graph_symbolization cinn cinn_launch_context)
 
@@ -16,6 +17,9 @@ if (WITH_TESTING)
 
   cc_test(transform_desc_test SRCS transform_desc_test.cc DEPS transform_desc)
   set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  cc_test(transform_type_test SRCS transform_type_test.cc DEPS transform_type)
+  set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test(cinn_graph_symbolization_test SRCS cinn_graph_symbolization_test.cc DEPS cinn_graph_symbolization)
   set_tests_properties(cinn_graph_symbolization_test PROPERTIES LABELS "RUN_TYPE=CINN")
