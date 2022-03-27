@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
+#include "paddle/phi/kernels/funcs/slice_utils.h"
+
 namespace paddle {
 namespace operators {
 
@@ -51,9 +53,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     }
 
     auto in_dims = in->dims();
-    CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
-    auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, &steps);
-    auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+    phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
+    auto slice_dims =
+        phi::funcs::GetSliceDims(in_dims, axes, starts, ends, &steps);
+    auto decrease_slice_dims =
+        phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
     auto slice_dims_for_assign = decrease_slice_dims;
     if (!none_axes.empty()) {
