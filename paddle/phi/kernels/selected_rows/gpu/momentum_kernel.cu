@@ -21,7 +21,7 @@
 PD_REGISTER_KERNEL(momentum_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::MomentumSparseKernel,
+                   phi::sr::MomentumSparseKernel,
                    float,
                    double,
                    phi::dtype::float16) {}

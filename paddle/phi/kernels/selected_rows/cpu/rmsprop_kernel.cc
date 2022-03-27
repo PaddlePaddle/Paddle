@@ -18,4 +18,4 @@
 #include "paddle/phi/kernels/selected_rows/impl/rmsprop_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    rmsprop_sr, CPU, ALL_LAYOUT, phi::RmspropSparseKernel, float, double) {}
+    rmsprop_sr, CPU, ALL_LAYOUT, phi::sr::RmspropSparseKernel, float, double) {}

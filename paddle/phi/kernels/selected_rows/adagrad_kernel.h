@@ -18,6 +18,7 @@
 #include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void AdagradSparseKernel(const Context& dev_ctx,
@@ -29,4 +30,5 @@ void AdagradSparseKernel(const Context& dev_ctx,
                          DenseTensor* param_out,
                          DenseTensor* moment_out);
 
+}  // namespace sr
 }  // namespace phi

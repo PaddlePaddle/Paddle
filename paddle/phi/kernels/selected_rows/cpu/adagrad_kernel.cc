@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/selected_rows/impl/adagrad_kernel_impl.h"
 
 namespace phi {
+namespace sr {
 
 namespace {
 size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
@@ -68,7 +69,8 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
 template struct SparseAdagradFunctor<phi::CPUContext, float>;
 template struct SparseAdagradFunctor<phi::CPUContext, double>;
 
+}  // namespace sr
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    adagrad_sr, CPU, ALL_LAYOUT, phi::AdagradSparseKernel, float, double) {}
+    adagrad_sr, CPU, ALL_LAYOUT, phi::sr::AdagradSparseKernel, float, double) {}

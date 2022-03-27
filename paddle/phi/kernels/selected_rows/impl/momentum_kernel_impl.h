@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T>
 using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -347,4 +348,5 @@ void MomentumSparseKernel(const Context& dev_ctx,
   }
 }
 
+}  // namespace sr
 }  // namespace  phi

@@ -18,6 +18,7 @@
 #include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void RmspropSparseKernel(const Context& dev_ctx,
@@ -36,4 +37,5 @@ void RmspropSparseKernel(const Context& dev_ctx,
                          DenseTensor* mean_square_out,
                          DenseTensor* mean_grad_out);
 
+}  // namespace sr
 }  // namespace phi

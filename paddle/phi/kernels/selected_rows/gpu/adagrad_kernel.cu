@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/selected_rows/impl/adagrad_kernel_impl.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, int block_size>
 __global__ void SparseAdagradFunctorKernel(const T* grad,
@@ -98,7 +99,8 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
 template struct SparseAdagradFunctor<phi::GPUContext, float>;
 template struct SparseAdagradFunctor<phi::GPUContext, double>;
 
+}  // namespace sr
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    adagrad_sr, GPU, ALL_LAYOUT, phi::AdagradSparseKernel, float, double) {}
+    adagrad_sr, GPU, ALL_LAYOUT, phi::sr::AdagradSparseKernel, float, double) {}

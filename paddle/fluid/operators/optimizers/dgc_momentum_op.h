@@ -95,7 +95,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       } else {
         // sgd dense param sparse grad
         auto* grad = context.Input<phi::SelectedRows>("Grad");
-        phi::MomentumSparseKernel<T>(
+        phi::sr::MomentumSparseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
             *param, *grad, *velocity, *learning_rate, master_param_opt, mu,

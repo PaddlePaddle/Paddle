@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T>
 struct SparseRmspropGradFunctor {
@@ -216,4 +217,5 @@ void RmspropSparseKernel(const Context &ctx,
   }
 }
 
+}  // namespace sr
 }  // namespace phi

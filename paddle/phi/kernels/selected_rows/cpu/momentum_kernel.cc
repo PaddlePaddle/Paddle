@@ -17,5 +17,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/selected_rows/impl/momentum_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    momentum_sr, CPU, ALL_LAYOUT, phi::MomentumSparseKernel, float, double) {}
+PD_REGISTER_KERNEL(momentum_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sr::MomentumSparseKernel,
+                   float,
+                   double) {}

@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
+namespace sr {
 
 template <typename DeviceContext, typename T>
 struct SparseAdagradFunctor {
@@ -117,4 +118,5 @@ void AdagradSparseKernel(const Context& ctx,
       ctx, grad_t, learning_rate, epsilon, moment_out_tensor, param_out_tensor);
 }
 
+}  // namespace sr
 }  // namespace phi

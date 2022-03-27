@@ -18,6 +18,7 @@
 #include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void MomentumSparseKernel(const Context& dev_ctx,
@@ -36,4 +37,5 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           DenseTensor* velocity_out,
                           DenseTensor* master_param_out);
 
+}  // namespace sr
 }  // namespace phi
