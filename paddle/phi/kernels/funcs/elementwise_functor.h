@@ -554,5 +554,24 @@ struct InverseFloorDivideFunctor {
     return static_cast<T>(std::trunc(b / a));
   }
 };
+
+template <typename T>
+struct ElementwisePowFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+// TODO(wujionghao): A potential speed improvement is supporting different
+// types in C++.
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+    // it will return a float number like 2.99... , which floor to 2
+    // when cast to int by default and it is wrong.
+    // Use llrint to cast it to the nearest integer, which is 3.
+    if (std::is_integral<T>::value) {
+      return std::llrint(
+          std::pow(static_cast<double>(a), static_cast<double>(b)));
+    }
+#endif
+    return std::pow(a, b);
+  }
+};
 }  // namespace funcs
 }  // namespace phi
