@@ -139,8 +139,8 @@ def enabled():
     and :ref:`api_fluid_dygraph_disable_dygraph` api .
 
     **Note**:
-        ``fluid.dygraph.enabled`` is the alias of ``fluid._non_static_mode``, and
-        ``fluid._non_static_mode`` is recommended to use.
+        ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
+        ``fluid.in_dygraph_mode`` is recommended to use for now.
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
@@ -155,6 +155,7 @@ def enabled():
             fluid.disable_dygraph()
             print(fluid.dygraph.enabled())  # False
     """
+    # TODO(jiabin): Make this check as in_dygraph_mode when we support default eager mode.
     return framework._non_static_mode()
 
 
