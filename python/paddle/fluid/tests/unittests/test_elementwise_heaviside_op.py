@@ -66,8 +66,8 @@ class TestElementwiseHeavisideOp_broadcast_1(TestElementwiseOp):
 
         self.attrs = {'axis': 1}
         self.outputs = {
-            'Out':np.heaviside(self.inputs['X'], self.inputs['Y'].reshape(
-                1, 100, 1))
+            'Out': np.heaviside(self.inputs['X'],
+                                self.inputs['Y'].reshape(1, 100, 1))
         }
 
 
@@ -93,8 +93,8 @@ class TestElementwiseHeavisideOp_broadcast_3(TestElementwiseOp):
 
         self.attrs = {'axis': 1}
         self.outputs = {
-            'Out':
-            np.heaviside(self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1))
+            'Out': np.heaviside(self.inputs['X'],
+                                self.inputs['Y'].reshape(1, 50, 2, 1))
         }
 
 
