@@ -350,12 +350,13 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
-
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
     if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
+      VLOG(4) << "End run " << place << " "
+              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
       auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
           static_cast<const framework::OperatorWithKernel*>(op));
@@ -488,43 +489,45 @@ void build_op_func_list(const platform::Place& place,
 
     VLOG(4) << "End run " << place << " "
             << op_func_node.operator_base_->DebugStringEx(local_scope);
+
     vec_func_list->emplace_back(op_func_node);
 
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
-    if (iter != unused_var_map.end()) {
-      auto& delete_vars = iter->second;
-      std::deque<std::shared_ptr<memory::Allocation>>* garbages =
-          new std::deque<std::shared_ptr<memory::Allocation>>();
-
-      for (auto& var_name : delete_vars) {
-        auto* var = var_scope->FindVar(var_name);
-        if (var == nullptr) {
-          continue;
-        }
-
-        VLOG(6) << "Erase variable " << var_name;
-        if (var->IsType<LoDTensor>()) {
-          garbages->emplace_back(
-              var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-        } else if (var->IsType<phi::SelectedRows>()) {
-          garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                     ->mutable_value()
-                                     ->MoveMemoryHolder());
-        } else if (var->IsType<LoDTensorArray>()) {
-          auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
-          for (auto& t : *lod_tensor_arr) {
-            garbages->emplace_back(t.MoveMemoryHolder());
-          }
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Type %s of variable %s is not supported eager deletion.",
-              framework::ToTypeName(var->Type()), var_name));
-        }
-      }
-      delete garbages;  // free mem
+    if (iter == unused_var_map.end()) {
+      continue;
     }
-    VLOG(3) << "run " << op->Type() << " done.";
+
+    auto& delete_vars = iter->second;
+    std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+        new std::deque<std::shared_ptr<memory::Allocation>>();
+
+    for (auto& var_name : delete_vars) {
+      auto* var = var_scope->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+
+      VLOG(6) << "Erase variable " << var_name;
+      if (var->IsType<LoDTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+      } else if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                   ->mutable_value()
+                                   ->MoveMemoryHolder());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& t : *lod_tensor_arr) {
+          garbages->emplace_back(t.MoveMemoryHolder());
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Type %s of variable %s is not supported eager deletion.",
+            framework::ToTypeName(var->Type()), var_name));
+      }
+    }
+    delete garbages;  // free mem
   }
 }
 
