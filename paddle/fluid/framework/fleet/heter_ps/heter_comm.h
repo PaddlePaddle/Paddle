@@ -32,6 +32,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
+using ppStream = cudaStream_t;
+#elif defined(PADDLE_WITH_XPU)
+using ppStream = XPUStream;
+#endif
+
 struct CustomGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
@@ -106,8 +112,8 @@ class HeterComm {
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
   struct Node {
-    cudaStream_t in_stream;
-    cudaStream_t out_stream;
+    ppStream in_stream;
+    ppStream out_stream;
     char* key_storage;
     char* val_storage;
     int sync;
@@ -190,7 +196,12 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
+#ifdef PADDLE_WITH_CUDA
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
+#endif
+#ifdef PADDLE_WITH_CUDA
+  std::vector<std::shared_ptr<>> allocators_;
+#endif
 };
 
 }  // end namespace framework
