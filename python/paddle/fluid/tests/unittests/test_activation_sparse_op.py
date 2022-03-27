@@ -22,44 +22,42 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 import paddle
 
-# class TestSparseSquareOp(unittest.TestCase):
-#     def check_with_place(self, place):
-#         scope = core.Scope()
 
-#         # create and initialize Grad Variable   
-#         height = 10
-#         rows = [0, 4, 7]
-#         self.row_numel = 12
+class TestSparseSquareOp(unittest.TestCase):
+    def check_with_place(self, place):
+        scope = core.Scope()
 
-#         x_selected_rows = scope.var('X').get_selected_rows()
-#         x_selected_rows.set_height(height)
-#         x_selected_rows.set_rows(rows)
-#         np_array = np.ones((len(rows), self.row_numel)).astype("float32")
-#         np_array[0, 0] = 2.0
-#         np_array[2, 8] = 4.0
+        # create and initialize Grad Variable   
+        height = 10
+        rows = [0, 4, 7]
+        self.row_numel = 12
 
-#         x_tensor = x_selected_rows.get_tensor()
-#         x_tensor.set(np_array, place)
+        x_selected_rows = scope.var('X').get_selected_rows()
+        x_selected_rows.set_height(height)
+        x_selected_rows.set_rows(rows)
+        np_array = np.ones((len(rows), self.row_numel)).astype("float32")
+        np_array[0, 0] = 2.0
+        np_array[2, 8] = 4.0
 
-#         out_selected_rows = scope.var('Out').get_selected_rows()
-#         # create and run sqrt operator
-#         square_op = Operator(
-#             "square",
-#             X='X',
-#             Out='Out')
-#         square_op.run(scope, place)
+        x_tensor = x_selected_rows.get_tensor()
+        x_tensor.set(np_array, place)
 
-#         # get and compare result
-#         result_array = np.array( out_selected_rows.get_tensor() )
+        out_selected_rows = scope.var('Out').get_selected_rows()
+        # create and run sqrt operator
+        square_op = Operator("square", X='X', Out='Out')
+        square_op.run(scope, place)
 
-#         self.assertTrue( np.array_equal( result_array, np.square( np_array)))
+        # get and compare result
+        result_array = np.array(out_selected_rows.get_tensor())
 
-#     def test_sparse_acti(self):
-#         places = [core.CPUPlace()]
-#         if core.is_compiled_with_cuda():
-#             places.append(core.CUDAPlace(0))
-#         for place in places:
-#             self.check_with_place(place)
+        self.assertTrue(np.array_equal(result_array, np.square(np_array)))
+
+    def test_sparse_acti(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_with_place(place)
 
 
 class TestSparseSqrtOp(unittest.TestCase):
