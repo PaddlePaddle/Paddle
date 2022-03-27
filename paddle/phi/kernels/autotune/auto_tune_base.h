@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 
 namespace phi {
-
 template <typename F, typename Enable = void>
 struct CallbackTraits {
   using Type = F const&;
@@ -38,10 +37,13 @@ struct CallbackBase {
  public:
   using FuncType = typename CallbackTraits<F>::Type;
 
+  CallbackBase() {}
   explicit CallbackBase(FuncType& func) : func_(func) {}
 
   template <typename... Args>
   typename std::result_of<FuncType(Args...)>::type Run(Args... args) {
+    return func_(args...);
+    return func_(args...);
     return func_(args...);
   }
 
@@ -49,33 +51,48 @@ struct CallbackBase {
   FuncType func_;
 };
 
-// TODO(limingshu): A basic version, need to be optimized later.
-template <typename Context, typename CallBack, typename ReturnType>
+template <typename T>
+static CallbackBase<T> MakeCallBack(T kernel) {
+  return CallbackBase<T>(kernel);
+}
+
+/* TODO(limingshu): A basic version. Intending to design this module by
+   extending functionality of CallbackBase. However, having not found one
+   container to store multiple rvalue/lvalue references hinding it from
+   final achievement. */
+template <typename Context, typename CallBack>
 struct AutoTuneBase {
  public:
-  AutoTuneBase(Context ctx, CallBack kernels) : kernels_(kernels), ctx_(ctx) {}
+  using ContentType = typename CallbackTraits<Context>::Type;
+
+  explicit AutoTuneBase(ContentType ctx, std::vector<CallBack> kernels)
+      : ctx_(ctx), kernels_(kernels) {}
 
   template <typename... Args>
-  ReturnType PickBestAlgorithm(Args... args) {
-    ctx.wait();
+  CallBack PickBestAlgorithm(Args... args) {
+    int idx = 0;
+    phi::GpuTimer timer;
     float min_time = std::numeric_limits<float>::max();
-    for (auto kernel : kernels) {
-      phi::GpuTimer timer;
-      timer.start();
-      kernel.Run(args...);
-      ctx.stop();
+
+    for (int i = 0; i < kernels_.size(); ++i) {
+      ctx_.Wait();
+      timer.Start(0);
+      kernels_[i].Run(args...);
+      timer.Stop(0);
       auto time = timer.ElapsedTime();
+      VLOG(3) << "kernel[" << i << "]: time cost is " << time;
       if (time < min_time) {
-        best_kernel = kernel
+        min_time = time;
+        idx = i;
       }
     }
-    return best_kernel;
+    VLOG(3) << "best kernel idx is " << idx;
+    return kernels_[idx];
   }
 
  private:
-  Context ctx;
-  CallBack kernels_;
-  ReturnType best_kernel;
+  ContentType ctx_;
+  std::vector<CallBack> kernels_;
 };
 
 }  // namespace phi
