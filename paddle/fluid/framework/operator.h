@@ -664,6 +664,10 @@ class OperatorWithKernel : public OperatorBase {
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
+  void ResetKernelType(OpKernelType* kernel_type) {
+    kernel_type_.reset(kernel_type);
+  }
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
