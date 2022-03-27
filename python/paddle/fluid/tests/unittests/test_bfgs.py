@@ -73,7 +73,7 @@ def test_dynamic_graph(func,
 
 class TestBfgs(unittest.TestCase):
     def test_quadratic_nd(self):
-        for dimension in [1, 2, 10]:
+        for dimension in [1, 10]:
             minimum = np.random.random(size=[dimension]).astype('float32')
             scale = np.exp(np.random.random(size=[dimension]).astype('float32'))
 
@@ -104,9 +104,6 @@ class TestBfgs(unittest.TestCase):
         results = test_static_graph(func, x0)
         self.assertFalse(results[0][0])
 
-        results = test_dynamic_graph(func, x0)
-        self.assertFalse(results[0])
-
     def test_multi_minima(self):
         def func(x):
             # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
@@ -125,29 +122,20 @@ class TestBfgs(unittest.TestCase):
         self.assertTrue(np.allclose(-1.1, results[2]))
 
     def test_rosenbrock(self):
-        """
-        Tests BFGS on the Rosenbrock function.
-        The Rosenbrock function is a standard optimization test case. In two
-        dimensions, the function is (a, b > 0):
-        f(x, y) = (a - x)^2 + b (y - x^2)^2
-        The function has a global minimum at (a, a^2). This minimum lies inside
-        a parabolic valley (y = x^2).
-        """
-
+        # The Rosenbrock function is a standard optimization test case.
         a = np.random.random(size=[1]).astype('float32')
         minimum = [a.item(), (a**2).item()]
         b = np.random.random(size=[1]).astype('float32')
 
         def func(position):
+            # f(x, y) = (a - x)^2 + b (y - x^2)^2
+            # minimum = (a, a^2)
             x, y = position[0], position[1]
             c = (a - x)**2 + b * (y - x**2)**2
             # the return cant be np array[1], or in jacobin will cause flat error
             return c[0]
 
         x0 = np.random.random(size=[2]).astype('float32')
-
-        results = test_static_graph(func, x0)
-        self.assertTrue(np.allclose(minimum, results[2]))
 
         results = test_dynamic_graph(func, x0)
         self.assertTrue(np.allclose(minimum, results[2]))

@@ -15,10 +15,9 @@
 import numpy as np
 
 from .line_search import strong_wolfe
-from .utils import _value_and_gradient, check_input_type, check_H0
+from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
 
 import paddle
-from paddle.fluid.framework import in_dygraph_mode
 
 
 def minimize_lbfgs(objective_func,
@@ -39,6 +38,20 @@ def minimize_lbfgs(objective_func,
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
         pp179: Algorithm 7.5 (L-BFGS).
+
+    Following summarizes the the main logic of the program based on L-BFGS.Note: _k represents 
+    value of k_th iteration, ^T represents the transposition of a vector or matrix.
+    repeat
+        compute p_k by two-loop recursion
+        alpha = strong_wolfe(f, x_k, p_k)
+        x_k+1 = x_k + alpha * p_k
+        s_k = x_k+1 - x_k
+        y_k = g_k+1 - g_k
+        rho_k = 1 / (s_k^T * y_k)
+        update sk_vec, yk_vec, rhok_vec
+        check_converge
+    end 
+
     Args:
         objective_func: the objective function to minimize. ``func`` accepts
             a multivariate input and returns a scalar.
@@ -51,8 +64,8 @@ def minimize_lbfgs(objective_func,
         tolerance_change (Scalar): terminates if the change of function value/position/parameter between 
             two iterations is smaller than this value.
         initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation.
-        line_search_fn (str): indicate which line search method to use, 'strong wolfe' or 'hager zhang'. 
-            only support 'strong wolfe' right now.
+        line_search_fn (str): indicate which line search method to use, only support 'strong wolfe' right now. May support 
+            'Hager Zhang' in the futrue.
         max_line_search_iters (Scalar): the maximum number of line search iterations.
         initial_step_length: step length used in first iteration of line search. different initial_step_length 
         may cause different optimal result.
@@ -66,6 +79,8 @@ def minimize_lbfgs(objective_func,
         the objective function regrading to the initial position.
         objective_value (Tensor): objective function value at the `position`.
         objective_gradient (Tensor): objective function gradient at the `position`.
+
+    
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
@@ -73,14 +88,14 @@ def minimize_lbfgs(objective_func,
             format(dtype))
 
     op_name = 'minimize_lbfgs'
-    check_input_type(initial_position, 'initial_position', dtype, op_name)
+    check_input_type(initial_position, 'initial_position', op_name)
 
     if initial_inverse_hessian_estimate is None:
         H0 = paddle.eye(initial_position.shape[0], dtype=dtype)
     else:
         check_input_type(initial_inverse_hessian_estimate,
-                         'initial_inverse_hessian_estimate', dtype, op_name)
-        check_H0(initial_inverse_hessian_estimate)
+                         'initial_inverse_hessian_estimate', op_name)
+        check_initial_inverse_hessian_estimate(initial_inverse_hessian_estimate)
         H0 = initial_inverse_hessian_estimate
 
     xk = initial_position
@@ -97,6 +112,10 @@ def minimize_lbfgs(objective_func,
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
     shape = initial_position.shape[0]
+    # Use tensor as array of fixed length, rather than flexible tensor array. Because in static mode,
+    # tensor array will produce tensor of shape[-1], which will cause error when calling jacobian. In this way, can not use append
+    # or pop, so we need head and tail to record where is the newest data and where is the oldest.
+    # Totally speaking, realized a stack by array.
     sk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
     yk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
     rhok_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
@@ -108,8 +127,11 @@ def minimize_lbfgs(objective_func,
 
     def body(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
              yk_vec, rhok_vec, head, tail):
-        q = paddle.assign(g1)
+        # use assign to cut off the relevance between g1 and q, or they will change together.
 
+        #############    compute p_k by two-loop recursion    #############
+        q = paddle.assign(g1)
+        # In a array circle, the index may out of range, so must use mod.
         i = paddle.full(
             shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64')
 
@@ -141,6 +163,7 @@ def minimize_lbfgs(objective_func,
 
         pk = -r
 
+        #############    compute alpha by line serach    #############
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
@@ -154,6 +177,7 @@ def minimize_lbfgs(objective_func,
                 format(line_search_fn))
         paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
+        #############    update sk_vec, yk_vec, rhok_vec    #############
         sk = alpha * pk
         yk = g2 - g1
 
@@ -169,12 +193,14 @@ def minimize_lbfgs(objective_func,
         def true_fn(tail):
             paddle.assign(tail + 1, tail)
 
+        # when array is full, the tail should move forward too.
         paddle.static.nn.cond(head == tail, lambda: true_fn(tail), None)
 
         xk = xk + sk
         g1 = g2
         k += 1
 
+        #############    check convergence    #############
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(done | (gnorm < tolerance_grad) |

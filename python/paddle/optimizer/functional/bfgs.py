@@ -15,10 +15,9 @@
 import numpy as np
 
 from .line_search import strong_wolfe
-from .utils import _value_and_gradient, check_input_type, check_H0
+from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
 
 import paddle
-from paddle.fluid.framework import in_dygraph_mode
 
 
 def minimize_bfgs(objective_func,
@@ -32,23 +31,38 @@ def minimize_bfgs(objective_func,
                   initial_step_length=1.0,
                   dtype='float32',
                   name=None):
-    """
+    r"""
     Minimizes a differentiable function `func` using the BFGS method.
     The BFGS is a quasi-Newton method for solving an unconstrained
     optimization problem over a differentiable function.
     Closely related is the Newton method for minimization. Consider the iterate 
     update formula
     .. math::
-        x_{k+1} = x_{k} + H^{-1} \nabla{f},
-    If $H$ is the Hessian of $f$ at $x_{k}$, then it's the Newton method.
-    If $H$ is symmetric and positive definite, used as an approximation of the Hessian, then 
+        x_{k+1} = x_{k} + H \nabla{f},
+    If $H$ is the inverse Hessian of $f$ at $x_{k}$, then it's the Newton method.
+    If $H$ is symmetric and positive definite, used as an approximation of the inverse Hessian, then 
     it's a quasi-Newton. In practice, the approximated Hessians are obtained
     by only using the gradients, over either whole or part of the search 
-    history.
+    history, the former is BFGS.
 
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
         pp140: Algorithm 6.1 (BFGS Method).
+    
+    Following summarizes the the main logic of the program based on BFGS. Note: _k represents value of
+    k_th iteration, ^T represents the transposition of a vector or matrix.
+    repeat
+        p_k = H_k * g_k
+        alpha = strong_wolfe(f, x_k, p_k)
+        x_k+1 = x_k + alpha * p_k
+        s_k = x_k+1 - x_k
+        y_k = g_k+1 - g_k
+        rho_k = 1 / (s_k^T * y_k)
+        V_k^T = I - rho_k * s_k * y_k^T
+        V_k = I - rho_k * y_k * s_k^T
+        H_k+1 = V_k^T * H_k * V_k + rho_k * s_k * s_k^T
+        check_converge
+    end 
 
     Args:
         objective_func: the objective function to minimize. ``func`` accepts
@@ -61,8 +75,8 @@ def minimize_bfgs(objective_func,
             two iterations is smaller than this value.
         initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation at initial_position.
         It must be symmetric and positive definite.
-        line_search_fn (str): indicate which line search method to use, 'strong wolfe' or 'hager zhang'. 
-            only support 'strong wolfe' right now.
+        line_search_fn (str): indicate which line search method to use, only support 'strong wolfe' right now. May support 
+            'Hager Zhang' in the futrue.
         max_line_search_iters (int): the maximum number of line search iterations.
         initial_step_length (float): step length used in first iteration of line search. different initial_step_length 
         may cause different optimal result.
@@ -103,15 +117,15 @@ def minimize_bfgs(objective_func,
             format(dtype))
 
     op_name = 'minimize_bfgs'
-    check_input_type(initial_position, 'initial_position', dtype, op_name)
+    check_input_type(initial_position, 'initial_position', op_name)
 
     I = paddle.eye(initial_position.shape[0], dtype=dtype)
     if initial_inverse_hessian_estimate is None:
         initial_inverse_hessian_estimate = I
     else:
         check_input_type(initial_inverse_hessian_estimate,
-                         'initial_inverse_hessian_estimate', dtype, op_name)
-        check_H0(initial_inverse_hessian_estimate)
+                         'initial_inverse_hessian_estimate', op_name)
+        check_initial_inverse_hessian_estimate(initial_inverse_hessian_estimate)
 
     Hk = paddle.assign(initial_inverse_hessian_estimate)
     xk = initial_position
@@ -128,8 +142,10 @@ def minimize_bfgs(objective_func,
         return (k < max_iters) & ~done
 
     def body(k, done, is_converge, num_func_calls, xk, value, g1, Hk):
+        #############    compute pk    #############
         pk = -paddle.matmul(Hk, g1)
 
+        #############    compute alpha by line serach    #############
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
@@ -143,6 +159,7 @@ def minimize_bfgs(objective_func,
                 format(line_search_fn))
         num_func_calls += ls_func_calls
 
+        #############    update Hk    #############
         sk = alpha * pk
         yk = g2 - g1
 
@@ -163,12 +180,13 @@ def minimize_bfgs(objective_func,
 
         k += 1
 
+        #############    check convergence    #############
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(done | (gnorm < tolerance_grad) |
                       (pk_norm < tolerance_change), done)
         paddle.assign(done, is_converge)
-
+        # when alpha=0, there is no chance to get xk change.
         paddle.assign(done | (alpha == 0.), done)
         return [k, done, is_converge, num_func_calls, xk, value, g1, Hk]
 
