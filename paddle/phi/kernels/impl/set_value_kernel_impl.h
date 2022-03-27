@@ -24,8 +24,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-
-#include "paddle/fluid/operators/slice_utils.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
 
@@ -85,12 +84,12 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  paddle::operators::CheckAndUpdateSliceAttrs(
+  phi::funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
-  auto slice_dims = paddle::operators::GetSliceDims(
+  auto slice_dims = phi::funcs::GetSliceDims(
       in_dims, axes, starts_local, ends_local, &steps_local);
   auto decrease_slice_dims =
-      paddle::operators::GetDecreasedDims(slice_dims, decrease_axes);
+      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
