@@ -106,25 +106,6 @@ class TestRandomValue(unittest.TestCase):
         expect = [0., 0., 1., 1., 1., 1., 0., 1., 1., 1.]
         self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
 
-        with _test_eager_guard():
-            x = paddle.to_tensor(x_np, dtype='float64')
-            y = paddle.bernoulli(x).numpy()
-            index0, index1, index2 = np.nonzero(y)
-            self.assertEqual(np.sum(index0), 260028995)
-            self.assertEqual(np.sum(index1), 8582429431)
-            self.assertEqual(np.sum(index2), 8581445798)
-            expect = [0., 0., 0., 0., 0., 0., 0., 1., 1., 1.]
-            self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
-
-            x = paddle.to_tensor(x_np, dtype='float32')
-            y = paddle.bernoulli(x).numpy()
-            index0, index1, index2 = np.nonzero(y)
-            self.assertEqual(np.sum(index0), 260092343)
-            self.assertEqual(np.sum(index1), 8583509076)
-            self.assertEqual(np.sum(index2), 8582778540)
-            expect = [0., 0., 1., 1., 1., 1., 0., 1., 1., 1.]
-            self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
-
         paddle.enable_static()
 
 
