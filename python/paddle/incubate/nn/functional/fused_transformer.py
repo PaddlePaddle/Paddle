@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode, default_main_program
+from paddle.fluid.framework import _non_static_mode, default_main_program
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid import core, dygraph_utils
 from paddle import _C_ops
@@ -118,7 +118,7 @@ def fused_feedforward(x,
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
@@ -348,7 +348,7 @@ def fused_multi_head_attention(x,
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,

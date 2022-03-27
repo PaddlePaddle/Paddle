@@ -27,12 +27,14 @@ kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
 # Some kernels depend on some targets that are not commonly used.
 # These targets are not suitable for common dependencies.
 # In this case, you need to manually generate them here.
-set(MANUAL_BUILD_KERNELS deformable_conv_kernel deformable_conv_grad_kernel eigh_kernel gumbel_softmax_kernel gumbel_softmax_grad_kernel
-    hierarchical_sigmoid_kernel hierarchical_sigmoid_grad_kernel
+set(MANUAL_BUILD_KERNELS adam_kernel adamw_kernel deformable_conv_kernel deformable_conv_grad_kernel eigh_kernel
+    gumbel_softmax_kernel gumbel_softmax_grad_kernel hierarchical_sigmoid_kernel hierarchical_sigmoid_grad_kernel
     matrix_power_kernel matrix_power_grad_kernel maxout_kernel maxout_grad_kernel pool_kernel
     put_along_axis_kernel put_along_axis_grad_kernel segment_pool_kernel segment_pool_grad_kernel
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
     triangular_solve_grad_kernel determinant_grad_kernel reduce_kernel)
+kernel_library(adam_kernel DEPS gflags glog flags ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper)
+kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
 kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
 kernel_library(deformable_conv_grad_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
 kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
@@ -66,6 +68,8 @@ add_subdirectory(sparse)
 add_subdirectory(selected_rows)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
+# For strings kernels
+add_subdirectory(strings)
 
 # 5. kernel autotune 
 add_subdirectory(autotune)
