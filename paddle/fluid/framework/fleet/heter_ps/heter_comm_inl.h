@@ -26,14 +26,14 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   resource_ = resource;
   storage_.resize(resource_->total_gpu());
   for (int i = 0; i < resource_->total_gpu(); ++i) {
-#ifdef PADDLE_WITH_CUDA
-    platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-        8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
-#endif
-    // TODO(zhipeng): xpu kv table
-    // auto table = new Table(capacity / load_factor_);
-    // tables_.push_back(table);
+    //
+    // platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    // allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
+    //    8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
+
+    // table interface not change
+    auto table = new Table(capacity / load_factor_);
+    tables_.push_back(table);
     if (multi_node_) {
       storage_[i].init(feanum_, resource_->dev_id(i));
     }
