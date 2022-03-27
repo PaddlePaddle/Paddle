@@ -82,6 +82,15 @@ KernelSignature ElementwiseModOpArgumentMapping(
   return KernelSignature("modulo_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
+KernelSignature ElementwiseFloorDivOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
+  if (axis == -1) {
+    return KernelSignature("floor_divide", {"X", "Y"}, {}, {"Out"});
+  }
+  return KernelSignature("floor_divide_raw", {"X", "Y"}, {"axis"}, {"Out"});
+}
+
 KernelSignature ElementwiseAddGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("add_grad",
@@ -209,6 +218,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_max, maximum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min, minimum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, modulo);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_floordiv, floor_divide);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
@@ -240,6 +250,8 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_min,
                            phi::ElementwiseMinOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_mod,
                            phi::ElementwiseModOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_floordiv,
+                           phi::ElementwiseFloorDivOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
                            phi::ElementwiseAddGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,

@@ -55,6 +55,8 @@ DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
 DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
 // Create the definition of Modulo
 DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
+// Create the definition of Modulo
+DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
 
 }  // namespace phi
 
@@ -146,5 +148,11 @@ PD_REGISTER_KERNEL(modulo_raw,
                    phi::ModuloRawKernel,
                    float,
                    double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(floor_divide_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FloorDivideRawKernel,
                    int,
                    int64_t) {}

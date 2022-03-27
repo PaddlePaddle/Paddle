@@ -538,5 +538,21 @@ struct InverseModuloFunctor<
     return res;
   }
 };
+
+template <typename T>
+struct FloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return static_cast<T>(std::trunc(a / b));
+  }
+};
+
+template <typename T>
+struct InverseFloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+    return static_cast<T>(std::trunc(b / a));
+  }
+};
 }  // namespace funcs
 }  // namespace phi
