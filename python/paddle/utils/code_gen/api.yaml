@@ -229,7 +229,6 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
-
 - api : one_hot
   args : (Tensor x, Scalar(int) num_classes)
   output : Tensor
