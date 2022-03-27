@@ -41,9 +41,7 @@ struct CallbackBase {
   explicit CallbackBase(FuncType& func) : func_(func) {}
 
   template <typename... Args>
-  typename std::result_of<FuncType(Args...)>::type Run(Args... args) {
-    return func_(args...);
-    return func_(args...);
+  typename std::result_of<FuncType(Args...)>::type Run(Args&&... args) {
     return func_(args...);
   }
 
@@ -69,11 +67,19 @@ struct AutoTuneBase {
       : ctx_(ctx), kernels_(kernels) {}
 
   template <typename... Args>
-  CallBack PickBestAlgorithm(Args... args) {
+  CallBack PickBestAlgorithm(Args&&... args) {
+    PADDLE_ENFORCE_GT(
+        kernels_.size(),
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "kernel num must be greater than 0, now is %d", kernels_.size()));
+
     int idx = 0;
     phi::GpuTimer timer;
     float min_time = std::numeric_limits<float>::max();
 
+    // Warm up step.
+    kernels_[0].Run(args...);
     for (int i = 0; i < kernels_.size(); ++i) {
       ctx_.Wait();
       timer.Start(0);

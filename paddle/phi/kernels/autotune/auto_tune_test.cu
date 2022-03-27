@@ -41,7 +41,12 @@ __global__ void VecSumTest(T *x, T *y, int N) {
 }
 
 template <int Vecsize>
-void Algo(float *d_in, float *d_out, size_t N, size_t threads, size_t blocks) {
+void Algo(const phi::GPUContext &ctx,
+          float *d_in,
+          float *d_out,
+          size_t N,
+          size_t threads,
+          size_t blocks) {
 #ifdef __HIPCC__
   hipLaunchKernelGGL(HIP_KERNEL_NAME(VecSumTest<float, Vecsize>),
                      dim3(blocks),
@@ -53,7 +58,8 @@ void Algo(float *d_in, float *d_out, size_t N, size_t threads, size_t blocks) {
                      N);
 #else
   VLOG(3) << "Vecsize is " << Vecsize;
-  VecSumTest<float, Vecsize><<<blocks, threads>>>(d_in, d_out, N);
+  VecSumTest<float, Vecsize><<<blocks, threads, 0, ctx.stream()>>>(
+      d_in, d_out, N);
 #endif
 }
 
@@ -92,7 +98,6 @@ TEST(AutoTune, sum) {
   auto call_back1 = phi::MakeCallBack(Algo<4>);
   auto call_back2 = phi::MakeCallBack(Algo<2>);
   auto call_back3 = phi::MakeCallBack(Algo<1>);
-  auto call_back4 = phi::MakeCallBack(Algo<4>);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   phi::GPUPlace place;
@@ -105,17 +110,17 @@ TEST(AutoTune, sum) {
 
   // 2. set the container of obj_1
   using CallBackType = decltype(call_back1);
-  std::vector<CallBackType> call_backs{
-      call_back1, call_back2, call_back3, call_back4};
+  std::vector<CallBackType> call_backs{call_back1, call_back2, call_back3};
   auto tuner =
       phi::AutoTuneBase<phi::GPUContext, CallBackType>(ctx, call_backs);
-  auto best_call = tuner.PickBestAlgorithm(d_in1, d_in2, N, threads, blocks);
+  auto best_call =
+      tuner.PickBestAlgorithm(std::move(ctx), d_in1, d_in2, N, threads, blocks);
 
   // 3. best kernel test.
   ctx.Wait();
   phi::GpuTimer timer;
   timer.Start(0);
-  best_call.Run(d_in1, d_in2, N, threads, blocks);
+  best_call.Run(std::move(ctx), d_in1, d_in2, N, threads, blocks);
   timer.Stop(0);
   VLOG(3) << "Bestkernel time cost is " << timer.ElapsedTime();
 #endif
