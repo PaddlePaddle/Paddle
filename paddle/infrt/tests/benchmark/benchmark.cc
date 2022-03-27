@@ -26,52 +26,6 @@
 #include "paddle/infrt/common/buffer.h"
 #include "paddle/infrt/common/dtype.h"
 
-namespace infrt {
-namespace tests {
-
-class BenchmarkStats {
- public:
-  void Start() {
-    wall_timer_.Start();
-    cpu_timer_.Start();
-  }
-
-  void Stop() {
-    wall_time_.push_back(wall_timer_.GetMs());
-    cpu_time_.push_back(cpu_timer_.GetMs());
-  }
-
-  std::string Summerize(const std::vector<float>& percents) {
-    std::stringstream ss;
-    std::sort(wall_time_.begin(), wall_time_.end());
-    std::sort(cpu_time_.begin(), cpu_time_.end());
-    auto percentile = [](float p, const std::vector<float>& stats) {
-      assert(p >= 0 && p < 1);
-      return stats[stats.size() * p];
-    };
-    for (auto p : percents) {
-      ss << "=== Wall Time (ms): \n";
-      ss << "  * percent " << std::to_string(static_cast<int>(p * 100));
-      ss << ": " << percentile(p, wall_time_) << '\n';
-    }
-    for (auto p : percents) {
-      ss << "=== CPU Time (ms): \n";
-      ss << "  * percent " << std::to_string(static_cast<int>(p * 100));
-      ss << ": " << percentile(p, cpu_time_) << '\n';
-    }
-    return ss.str();
-  }
-
- private:
-  WallClockTimer wall_timer_;
-  std::vector<float> wall_time_;
-  CpuClockTimer cpu_timer_;
-  std::vector<float> cpu_time_;
-};
-
-}  // namespace tests
-}  // namespace infrt
-
 int main() {
   using namespace infrt;  // NOLINT
 
