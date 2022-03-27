@@ -43,14 +43,6 @@ class AssignValueOp : public framework::OperatorWithKernel {
                 const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of assign_op is not found."));
-    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    ctx->SetOutputDim("Out", phi::make_ddim(shape));
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
