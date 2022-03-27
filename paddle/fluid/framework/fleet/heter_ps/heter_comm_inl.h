@@ -13,40 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+// #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include <queue>
 
 namespace paddle {
 namespace framework {
 
-
-template <typename T>
-void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name) {
-  T tmp[len];  // NOLINT
-  cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
-  cudaStreamSynchronize(stream);
-  std::cout << name;
-  for (int i = 0; i < len; ++i) {
-    std::cout << ":" << tmp[i];
-  }
-  std::cout << std::endl;
-}
-
-template <typename T>
-__global__ void calc_shard_offset(T* idx, T* left, T* right, size_t len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len - 1) {
-    if (idx[i] != idx[i + 1]) {
-      right[idx[i]] = i;
-      left[idx[i + 1]] = i + 1;
-    }
-  }
-  if (i == 0) {
-    left[idx[i]] = i;
-  }
-  if (i == (len - 1)) {
-    right[idx[i]] = i;
-  }
-}
 
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
