@@ -33,6 +33,7 @@ set(MANUAL_BUILD_KERNELS adam_kernel adamw_kernel deformable_conv_kernel deforma
     put_along_axis_kernel put_along_axis_grad_kernel segment_pool_kernel segment_pool_grad_kernel
     softmax_kernel softmax_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel
     triangular_solve_grad_kernel determinant_grad_kernel reduce_kernel)
+
 kernel_library(adam_kernel DEPS gflags glog flags ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper)
 kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
 kernel_library(deformable_conv_kernel DEPS ${COMMON_KERNEL_DEPS} deformable_conv_functor)
