@@ -309,7 +309,7 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       }
     }
 
-    // TODO(pangyoki) add inplace, inplaced tensor is ctx->dirty_tensors
+    // add inplace strategy, inplaced tensor is ctx->dirty_tensors
     auto dirty_tensors = GetTensorsFromPyObject(ctx->dirty_tensors);
     for (auto it = dirty_tensors.begin(); it != dirty_tensors.end(); ++it) {
       auto dirty_tensor = *it;
