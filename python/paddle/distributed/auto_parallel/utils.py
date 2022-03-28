@@ -775,19 +775,19 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
 def _merge_parameter_with_dist_attr(param_list, dist_attr):
     """ Merge parameter with distributed attribute """
-    from .reshard import _compute_complete_shape, _compute_partition_index
+    from .reshard import Resharder
 
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
-    complete_shape = _compute_complete_shape(param_list[0].shape, process_shape,
-                                             dims_mapping)
+    complete_shape = Resharder.compute_complete_shape(
+        param_list[0].shape, process_shape, dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
     merged_partiton = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         if partition_index not in merged_partiton:
@@ -840,7 +840,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
             _merge_parameter(partition_param_list, param, partition_index)
             # partition_param_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
     """
-    from .reshard import _compute_concat_info
+    from .reshard import Resharder
 
     if len(partition_param_list) == 1:
         is_complete_data = True
@@ -856,7 +856,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
     else:
         i = 0
         while i < len(partition_param_list):
-            concat_axis, first_order, new_partition = _compute_concat_info(
+            concat_axis, first_order, new_partition = Resharder.compute_concat_info(
                 partition_param_list[i][1], partition_index)
             if concat_axis != -1:
                 if first_order == 0:
@@ -933,9 +933,9 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
                                             process_shape, process_group)
             # index: 2
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
-    partition_index = _compute_partition_index(
+    partition_index = Resharder.compute_partition_index(
         rank, complete_shape, dims_mapping, process_shape, process_group)
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
@@ -972,11 +972,11 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
             # index: [[], [], [2, 4]]
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
     split_indices_list = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         if split_indices_list:
             for dim in range(len(partition_index)):
@@ -1047,8 +1047,7 @@ def set_grad_var_shape(program, dist_context):
 
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
-
-                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                assert forward_input_dist_attr is not None, f"{forward_var_name, str(op)}"
                 forward_var = vars[forward_var_name]
                 forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     forward_var)
