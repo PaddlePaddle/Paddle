@@ -20,6 +20,19 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void MixedPrecisionConfigurePass::UpdateCastOpAttr(
+    const std::vector<Node*>& all_nodes) const {
+  for (auto* op_node : all_nodes) {
+    if (!op_node->IsOp()) continue;
+    if (op_node->Op()->Type() == "cast") {
+      const auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
+      if (out_dtype == 5) {
+        op_node->Op()->SetAttr("out_dtype", 4);
+      }
+    }
+  }
+}
+
 void MixedPrecisionConfigurePass::UpdateCastOpDesc(framework::OpDesc* desc,
                                                    const std::string& x_name,
                                                    const std::string& out_name,
@@ -49,8 +62,15 @@ void MixedPrecisionConfigurePass::CastOpInput(
         int suffix = 0;
         for (auto* pre_node_input : pre_node->inputs) {
           if (!pre_node_input->IsOp()) continue;
+
           const auto& type = pre_node_input->Op()->Type();
-          if (!blacklist.count(type) && type != "feed" && type != "cast") {
+          bool is_fp16_input = false;
+          if (type == "cast") {
+            const auto out_dtype =
+                pre_node_input->Op()->GetAttrIfExists<int>("out_dtype");
+            if (out_dtype == 4) is_fp16_input = true;
+          }
+          if (!blacklist.count(type) && type != "feed" && !is_fp16_input) {
             std::string old_name = pre_node->Name();
             std::string new_name =
                 old_name + "_cast.tmp_" + std::to_string(suffix);
@@ -123,8 +143,11 @@ void MixedPrecisionConfigurePass::InsertCastOps(
   VLOG(3) << "Insert the cast op before and after the kernel that does not "
              "supports fp16 precision";
 
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+  std::vector<Node*> all_nodes =
+      ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0));
+  UpdateCastOpAttr(all_nodes);
+
+  for (auto* op_node : all_nodes) {
     if (!op_node->IsOp()) continue;
 
     const auto& type = op_node->Op()->Type();
