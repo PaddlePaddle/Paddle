@@ -138,7 +138,10 @@ class TestPyLayer(unittest.TestCase):
 
     def func_test_pylayer_num_output_match(self):
         class tanh(EagerPyLayer if in_dygraph_mode() else PyLayer):
+            @staticmethod
+            def forward(
                     ctx,
+                    x1,
                     x2, ):
                 return x1 + x2
 
@@ -165,6 +168,7 @@ class TestPyLayer(unittest.TestCase):
             def forward(ctx, x, dtype):
                 y = paddle.cast(x, dtype)
                 return x * 2, x * 5
+
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False
         z = Layer_no_bk.apply(input1)
