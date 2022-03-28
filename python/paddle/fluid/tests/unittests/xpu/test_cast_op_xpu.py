@@ -44,6 +44,7 @@ def create_test_class(in_typename, out_typename):
                 'out_dtype': typeid_dict[out_typename],
             }
             self.op_type = 'cast'
+            self.__class__.no_need_check_grad = True
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():

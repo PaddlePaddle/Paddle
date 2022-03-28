@@ -66,6 +66,88 @@ void AdadeltaInferMeta(const MetaTensor& param,
   avg_squared_update_out->set_dtype(avg_squared_update.dtype());
 }
 
+void AdamInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   paddle::optional<const MetaTensor&> master_param,
+                   paddle::optional<const MetaTensor&> skip_update,
+                   const Scalar& beta1,
+                   const Scalar& beta2,
+                   const Scalar& epsilon,
+                   bool lazy_mode,
+                   int64_t min_row_size_to_use_multithread,
+                   bool multi_precision,
+                   bool use_global_beta_pow,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      errors::InvalidArgument(
+          "The number of LearningRate shall be 1, but received %d. Maybe "
+          "the Input variable LearningRate has not "
+          "been initialized. You may need to confirm "
+          "if you put exe.run(startup_program) "
+          "after optimizer.minimize function.",
+          phi::product(lr_dims)));
+  auto beta1_pow_dims = beta1_pow.dims();
+  VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta1 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta1_pow_dims)));
+  auto beta2_pow_dims = beta2_pow.dims();
+  VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta2 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta2_pow_dims)));
+
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment1.dims(),
+      errors::InvalidArgument(
+          "Param and Moment1 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment1 dims: [%s].",
+          param_dims,
+          moment1.dims()));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment2.dims(),
+      errors::InvalidArgument(
+          "Param and Moment2 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment2 dims: [%s].",
+          param_dims,
+          moment2.dims()));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  moment1_out->set_dims(param_dims);
+  moment1_out->set_dtype(moment1.dtype());
+  moment2_out->set_dims(param_dims);
+  moment2_out->set_dtype(moment2.dtype());
+
+  beta1_pow_out->set_dims(beta1_pow_dims);
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow_dims);
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
+}
+
 void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& grad,
                      const MetaTensor& learning_rate,
@@ -120,6 +202,55 @@ void AdamaxInferMeta(const MetaTensor& param,
 
   inf_norm_out->set_dims(param_dims);
   inf_norm_out->set_dtype(inf_norm.dtype());
+}
+
+void AdamwInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& moment1,
+                    const MetaTensor& moment2,
+                    const MetaTensor& beta1_pow,
+                    const MetaTensor& beta2_pow,
+                    paddle::optional<const MetaTensor&> master_param,
+                    paddle::optional<const MetaTensor&> skip_update,
+                    const Scalar& beta1,
+                    const Scalar& beta2,
+                    const Scalar& epsilon,
+                    float lr_ratio,
+                    float coeff,
+                    bool with_decay,
+                    bool lazy_mode,
+                    int64_t min_row_size_to_use_multithread,
+                    bool multi_precision,
+                    bool use_global_beta_pow,
+                    MetaTensor* param_out,
+                    MetaTensor* moment1_out,
+                    MetaTensor* moment2_out,
+                    MetaTensor* beta1_pow_out,
+                    MetaTensor* beta2_pow_out,
+                    MetaTensor* master_param_outs) {
+  AdamInferMeta(param,
+                grad,
+                learning_rate,
+                moment1,
+                moment2,
+                beta1_pow,
+                beta2_pow,
+                master_param,
+                skip_update,
+                beta1,
+                beta2,
+                epsilon,
+                lazy_mode,
+                min_row_size_to_use_multithread,
+                multi_precision,
+                use_global_beta_pow,
+                param_out,
+                moment1_out,
+                moment2_out,
+                beta1_pow_out,
+                beta2_pow_out,
+                master_param_outs);
 }
 
 void AucInferMeta(const MetaTensor& input,
@@ -514,6 +645,215 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->set_dtype(x.at(0)->dtype());
   out->set_layout(x.at(0)->layout());
   out->share_lod(*x.at(0));
+}
+
+inline int ConvOutputSize(
+    int input_size, int filter_size, int dilation, int padding, int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
+  PADDLE_ENFORCE_GT(
+      output_size,
+      0,
+      phi::errors::InvalidArgument(
+          "The output's size is expected to be greater than 0. "
+          "But recieved: output's size is %d. The output's size is computed by "
+          "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
+          "stride + 1), where input_size is %d, padding is %d, "
+          "filter_size is %d, dilation is %d, stride is %d.",
+          output_size,
+          input_size,
+          padding,
+          filter_size,
+          dilation,
+          stride));
+
+  return output_size;
+}
+
+void DeformableConvInferMeta(const MetaTensor& x,
+                             const MetaTensor& offset,
+                             const MetaTensor& filter,
+                             paddle::optional<const MetaTensor&> mask,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::vector<int>& dilations,
+                             int deformable_groups,
+                             int groups,
+                             int im2col_step,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  auto in_dims = x.dims();
+  auto offset_dims = offset.dims();
+  auto filter_dims = filter.dims();
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Conv input should be 4-D tensor, get %u",
+                                   in_dims.size()));
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    filter_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Conv input dimension and filter dimension should be "
+                        "the same. The difference is [%d]: [%d]",
+                        in_dims.size(),
+                        filter_dims.size()));
+  PADDLE_ENFORCE_EQ(in_dims.size() - strides.size(),
+                    2U,
+                    phi::errors::InvalidArgument(
+                        "Conv input dimension and strides "
+                        "dimension should be consistent. But received input "
+                        "dimension:[%d], strides dimension:[%d]",
+                        in_dims.size(),
+                        strides.size()));
+  PADDLE_ENFORCE_EQ(paddings.size(),
+                    strides.size(),
+                    phi::errors::InvalidArgument(
+                        "Conv paddings dimension and Conv strides dimension "
+                        "should be the same. The difference is [%d]: [%d]",
+                        paddings.size(),
+                        strides.size()));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims[1],
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input channels should be equal to filter "
+          "channels * groups. The difference is [%d]: [%d]",
+          in_dims[1],
+          filter_dims[1] * groups));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output channels should be divided by groups. But "
+          "received output channels:[%d], groups:[%d]",
+          filter_dims[0],
+          groups));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % deformable_groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output channels should be "
+          "divided by deformable groups. The difference is [%d]: [%d]",
+          filter_dims[0] % groups,
+          0));
+
+  if (in_dims[0] > im2col_step) {
+    PADDLE_ENFORCE_EQ(
+        in_dims[0] % im2col_step,
+        0U,
+        phi::errors::InvalidArgument(
+            "Input batchsize must be smaller than or divide im2col_step. But "
+            "received Input batchsize:[%d], im2col_step:[%d]",
+            in_dims[0],
+            im2col_step));
+  }
+
+  for (size_t i = 0; i < strides.size(); ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0U,
+        phi::errors::InvalidArgument("stride %d size incorrect", i));
+  }
+  for (size_t i = 0; i < dilations.size(); ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0U,
+        phi::errors::InvalidArgument("dilation %d size incorrect", i));
+  }
+
+  std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
+  for (size_t i = 0; i < strides.size(); ++i) {
+    if (!config.is_runtime &&
+        (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+      output_shape.push_back(-1);
+    } else {
+      output_shape.push_back(ConvOutputSize(in_dims[i + 2],
+                                            filter_dims[i + 2],
+                                            dilations[i],
+                                            paddings[i],
+                                            strides[i]));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      output_shape[1] % deformable_groups,
+      0U,
+      phi::errors::InvalidArgument(
+          "output num_filter must divide deformable group size. But received "
+          "output num_filter:[%d], deformable group size:[%d]",
+          output_shape[1],
+          deformable_groups));
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(output_shape[2],
+                      offset_dims[2],
+                      phi::errors::InvalidArgument(
+                          "output height must equal to offset map height. "
+                          "The difference is [%d]: [%d]",
+                          output_shape[2],
+                          offset_dims[2]));
+    PADDLE_ENFORCE_EQ(output_shape[3],
+                      offset_dims[3],
+                      phi::errors::InvalidArgument(
+                          "output width must equal to offset map width. The "
+                          "difference is [%d]: [%d]",
+                          output_shape[3],
+                          offset_dims[3]));
+
+    PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]),
+                      0U,
+                      phi::errors::InvalidArgument(
+                          "offset filter must divide deformable group size. "
+                          "But received [%d]: [%d]",
+                          offset_dims[1],
+                          filter_dims[2] * filter_dims[3]));
+    PADDLE_ENFORCE_EQ(
+        offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
+        deformable_groups,
+        phi::errors::InvalidArgument(
+            "offset filter must divide deformable group size. But received "
+            "[%d]: [%d]",
+            offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
+            deformable_groups));
+
+    if (mask) {
+      auto mask_dims = mask->dims();
+      PADDLE_ENFORCE_EQ(output_shape[2],
+                        mask_dims[2],
+                        phi::errors::InvalidArgument(
+                            "output height must equal to mask map height. The "
+                            "difference is [%d] vs [%d]",
+                            output_shape[2],
+                            mask_dims[2]));
+      PADDLE_ENFORCE_EQ(output_shape[3],
+                        mask_dims[3],
+                        phi::errors::InvalidArgument(
+                            "output width must equal to mask map width. The "
+                            "difference is [%d] vs [%d]",
+                            output_shape[3],
+                            mask_dims[3]));
+
+      PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]),
+                        0U,
+                        phi::errors::InvalidArgument(
+                            "mask filter must divide deformable group size. "
+                            "But received [%d]: [%d]",
+                            mask_dims[1],
+                            filter_dims[2] * filter_dims[3]));
+      PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        phi::errors::InvalidArgument(
+                            "mask filter must divide deformable group size. "
+                            "But received [%d]: [%d]",
+                            mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                            deformable_groups));
+    }
+  }
+
+  out->set_dims(phi::make_ddim(output_shape));
+  out->set_dtype(x.dtype());
 }
 
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
@@ -1126,6 +1466,50 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->set_dims(out_dim);
   out->set_dtype(x.at(0)->dtype());
   out->share_lod(*x.at(0));
+}
+
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_NE(
+      ins.empty(),
+      true,
+      phi::errors::InvalidArgument("MultiInput(X) shouldn't be empty."));
+  auto ids_dim = ids.dims();
+  PADDLE_ENFORCE_EQ(ids_dim.size(),
+                    2,
+                    phi::errors::PreconditionNotMet(
+                        "The index tensor must be a vector with 2 dimensions"));
+  PADDLE_ENFORCE_EQ(
+      ids_dim[1],
+      1,
+      phi::errors::PreconditionNotMet(
+          "The index tensor must be a vector with batchSize x 1."));
+
+  auto ins_dims = GetMetaTensorsDim(ins);
+  auto num_ins = ins_dims.size();
+  PADDLE_ENFORCE_GT(
+      num_ins,
+      1,
+      phi::errors::InvalidArgument("multiplex operator should have more than "
+                                   "one candidate input tensors."));
+
+  auto in_dim = ins_dims[0];
+  PADDLE_ENFORCE_GE(
+      in_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of candidate tensors must be not less than 2."));
+  for (size_t i = 1; i < num_ins; i++) {
+    auto dim = ins_dims[i];
+    PADDLE_ENFORCE_EQ(
+        in_dim,
+        dim,
+        phi::errors::PreconditionNotMet(
+            "All the candidate tensors must have the same size."));
+  }
+  out->set_dims(in_dim);
+  out->set_dtype(ins[0]->dtype());
 }
 
 void PsroiPoolInferMeta(const MetaTensor& x,

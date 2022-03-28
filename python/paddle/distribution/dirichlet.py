@@ -15,7 +15,7 @@
 import paddle
 
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import _non_static_mode
 from ..fluid.layer_helper import LayerHelper
 from .exponential_family import ExponentialFamily
 
@@ -158,7 +158,7 @@ def _dirichlet(concentration, name=None):
     check_variable_and_dtype(concentration, 'concentration',
                              ['float32', 'float64'], op_type)
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return paddle._C_ops.dirichlet(concentration)
 
     else:

@@ -58,8 +58,6 @@ class DenseTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
-                             "number of threads for inner op");
 DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
@@ -1122,7 +1120,15 @@ static void CheckTensorNANOrInf(const std::string& op_type,
 
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
-  auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+  auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+  if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+    VLOG(6) << "Warning: " << type_ << " don't find its MKLDNN Kernel in Fluid "
+                                       "Registered Kernels. And We don't "
+                                       "search its kernels in phi lib, "
+                                       "SupportsMKLDNN() return false.";
+    return false;
+  }
+  auto& op_kernels = op_kernel_iter->second;
   return std::any_of(op_kernels.begin(), op_kernels.end(),
                      [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&

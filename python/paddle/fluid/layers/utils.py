@@ -17,7 +17,7 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Block, Variable, in_dygraph_mode
+from ..framework import Block, Variable, _non_static_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
@@ -403,7 +403,7 @@ def try_set_static_shape_tensor(tensor, shape):
     # (-1, 2)
     
     """
-    if not in_dygraph_mode():
+    if not _non_static_mode():
         # static mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
@@ -426,7 +426,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     # (-1, 2)
     
     """
-    if not in_dygraph_mode():
+    if not _non_static_mode():
         try:
             if shape_tensor.op is not None:
                 generate_op = shape_tensor.op

@@ -64,7 +64,10 @@ class StreamSafeCUDAAllocator
                           platform::CUDAPlace place, gpuStream_t default_stream,
                           bool in_cuda_graph_capturing = false);
   ~StreamSafeCUDAAllocator();
+
   bool IsAllocThreadSafe() const override;
+  const gpuStream_t &GetDefaultStream() const;
+  void SetDefaultStream(const gpuStream_t &stream);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
