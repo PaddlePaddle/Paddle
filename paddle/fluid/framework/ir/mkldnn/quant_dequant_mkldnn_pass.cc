@@ -453,6 +453,12 @@ void QuantDequantMkldnnPass::DequantizeWeights(
     const {
   VLOG(3) << "dequantize weight for ops which has weight";
 
+  if (weight_thresholds->empty()) {
+    VLOG(3)
+        << "No need to dequantize weights because weight_thresholds is empty.";
+    return;
+  }
+
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;

@@ -61,7 +61,7 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
     for (int i = 0; i < columns; i++) {
       float max_value = FLT_MIN;
       for (int j = 0; j < rows; j++) {
-        max_value = std::max(max_value, data[i + j * columns]);
+        max_value = std::max(max_value, std::abs(data[i + j * columns]));
       }
       max_value = 1.0 / max_value;
       if (std::isinf(max_value) || std::isnan(max_value)) {
@@ -73,7 +73,7 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
     for (int i = 0; i < rows; i++) {
       float max_value = FLT_MIN;
       for (int j = i * columns; j < (i + 1) * columns; j++) {
-        max_value = std::max(max_value, data[j]);
+        max_value = std::max(max_value, std::abs(data[j]));
       }
       max_value = 1.0 / max_value;
       if (std::isinf(max_value) || std::isnan(max_value)) {
@@ -114,7 +114,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
           weight_tensor->mutable_data<float>(platform::CPUPlace());
       auto* tmp_data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
-        tmp_data[i] = std::fabs(weight_data[i]);
+        tmp_data[i] = std::abs(weight_data[i]);
       }
 
       auto scales_v = GetScales(&tmp_tensor, axis);
@@ -144,7 +144,7 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
   for (int row_id = 0; row_id < wx_tensor->dims()[0]; row_id++) {
     for (int col_id = 0; col_id < 2 * OC; col_id++) {
       int idx = (row_id * wx_tensor->dims()[1]) + col_id;
-      auto abs_value = std::fabs(wx_tensor->data<float>()[idx]);
+      auto abs_value = std::abs(wx_tensor->data<float>()[idx]);
       if (row_id == 0) {
         scale_ur[col_id] = abs_value;
       } else {
@@ -155,14 +155,14 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
 
   for (int i = 0; i < 2 * OC * OC; i++) {
     int col_id = i % (2 * OC);
-    auto abs_value = std::fabs(wh_tensor->data<float>()[i]);
+    auto abs_value = std::abs(wh_tensor->data<float>()[i]);
     if (abs_value > scale_ur[col_id]) scale_ur[col_id] = abs_value;
   }
 
   for (int row_id = 0; row_id < wx_tensor->dims()[0]; row_id++) {
     for (int col_id = 2 * OC; col_id < wx_tensor->dims()[1]; col_id++) {
       int idx = (row_id * wx_tensor->dims()[1]) + col_id;
-      auto abs_value = std::fabs(wx_tensor->data<float>()[idx]);
+      auto abs_value = std::abs(wx_tensor->data<float>()[idx]);
       if (row_id == 0) {
         scale_o[col_id % OC] = abs_value;
       } else {
@@ -173,7 +173,7 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
 
   for (int i = 2 * OC * OC; i < OC * wh_tensor->dims()[1]; i++) {
     int col_id = i % OC;
-    auto abs_value = std::fabs(wh_tensor->data<float>()[i]);
+    auto abs_value = std::abs(wh_tensor->data<float>()[i]);
     if (abs_value > scale_o[col_id]) scale_o[col_id] = abs_value;
   }
 
