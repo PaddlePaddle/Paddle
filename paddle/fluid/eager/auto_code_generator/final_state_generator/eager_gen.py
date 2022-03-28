@@ -807,8 +807,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
                         f"auto NEW_{name} = {name}.is_initialized() ? egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name) : {name};\n"
                     )
                 else:
-                    if is_inplaced and inplace_map and name in inplace_map.keys(
-                    ):
+                    if inplace_map and name in inplace_map.keys():
                         arg_str = f"paddle::experimental::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
@@ -882,7 +881,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             returns_str = ", ".join(returns_list)
             returns_str = f"std::make_tuple({returns_str})"
 
-        self.GenerateNodeCreationCodes(forward_call_str, is_inplaced)
+        self.GenerateNodeCreationCodes(forward_call_str)
 
         node_creation_str = self.node_creation_str
         dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
@@ -917,7 +916,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         logging.info(
             f"Generated Forward Declaration: {self.forward_declaration_str}")
 
-    def GenerateNodeCreationCodes(self, forward_call_str, is_inplaced):
+    def GenerateNodeCreationCodes(self, forward_call_str):
         forward_api_name = self.forward_api_name
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
@@ -980,13 +979,12 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         # Check Inplace
         check_inplace_str = ""
         bump_inplace_version_str = ""
-        if is_inplaced:
-            for inplace_name in inplace_map.keys():
-                inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
-                check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
-                    inplace_name, inplace_autograd_meta_name)
-                bump_inplace_version_str += BUMP_INPLACE_VERSION_TEMPLATE.format(
-                    inplace_name, inplace_name)
+        for inplace_name in inplace_map.keys():
+            inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
+            check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
+                inplace_name, inplace_autograd_meta_name)
+            bump_inplace_version_str += BUMP_INPLACE_VERSION_TEMPLATE.format(
+                inplace_name, inplace_name)
 
         # Node Construction        
         num_backward_inputs = len(forward_outputs_position_map.keys())

@@ -333,20 +333,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             forward_api_name, namespace, forward_api_name, forward_api_name)
 
         if len(inplace_map) > 0:
+            inplaced_forward_api_name = GetInplacedFunctionName(
+                self.forward_api_name)
             assert len(
                 inplace_map
             ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
-            inplaced_forward_api_name = GetInplacedFunctionName(
-                self.forward_api_name)
-            # Generate Python-C Function Definitions
-            if is_forward_only:
-                fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                    "paddle::experimental::", namespace,
-                    inplaced_forward_api_name)
-            elif len(inplace_map) > 0:
-                fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                    "::", namespace,
-                    GetForwardFunctionName(inplaced_forward_api_name))
             for inplace_input, inplace_output in inplace_map.items():
                 return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
                     inplaced_forward_api_name, inplace_input,
