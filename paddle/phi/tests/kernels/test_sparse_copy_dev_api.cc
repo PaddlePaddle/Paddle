@@ -33,11 +33,17 @@ TEST(DEV_API, copy_sparse_coo) {
   // (0,0), (1,1)
   std::vector<int> indices = {0, 1, 0, 1};
   std::vector<float> elements = {1.0, 2.0};
+  std::vector<int> crows = {0, 1, 2};
+  std::vector<int> cols = {0, 1};
 
   DenseTensor src_indices(
       alloc.get(), DenseTensorMeta(DataType::INT32, {2, 2}, DataLayout::NCHW));
   DenseTensor src_elements(
       alloc.get(), DenseTensorMeta(DataType::FLOAT32, {2}, DataLayout::NCHW));
+  DenseTensor src_crows(
+      alloc.get(), DenseTensorMeta(DataType::INT32, {3}, DataLayout::NCHW));
+  DenseTensor src_cols(alloc.get(),
+                       DenseTensorMeta(DataType::INT32, {2}, DataLayout::NCHW));
 
   phi::CPUPlace cpu;
   memcpy(src_indices.mutable_data<int>(cpu),
@@ -46,8 +52,15 @@ TEST(DEV_API, copy_sparse_coo) {
   memcpy(src_elements.mutable_data<int>(cpu),
          elements.data(),
          sizeof(float) * elements.size());
+  memcpy(src_crows.mutable_data<int>(cpu),
+         crows.data(),
+         sizeof(int) * crows.size());
+  memcpy(
+      src_cols.mutable_data<int>(cpu), cols.data(), sizeof(int) * cols.size());
   SparseCooTensor src_coo(src_indices, src_elements, dense_dims);
+  SparseCsrTensor src_csr(src_crows, src_cols, src_elements, dense_dims);
   SparseCooTensor dst_coo;
+  SparseCsrTensor dst_csr;
 
   phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.SetAllocator(
@@ -61,6 +74,7 @@ TEST(DEV_API, copy_sparse_coo) {
   dev_ctx_cpu.Init();
 
   sparse::CopyCoo(dev_ctx_cpu, src_coo, cpu, true, &dst_coo);
+  sparse::CopyCsr(dev_ctx_cpu, src_csr, cpu, true, &dst_csr);
   int cmp_indices = memcmp(dst_coo.non_zero_indices().data(),
                            indices.data(),
                            sizeof(int) * indices.size());
@@ -69,6 +83,13 @@ TEST(DEV_API, copy_sparse_coo) {
                             sizeof(float) * elements.size());
   ASSERT_EQ(cmp_indices, 0);
   ASSERT_EQ(cmp_elements, 0);
+  int cmp_crows = memcmp(dst_csr.non_zero_crows().data(),
+                         crows.data(),
+                         sizeof(int) * crows.size());
+  int cmp_cols = memcmp(
+      dst_csr.non_zero_cols().data(), cols.data(), sizeof(int) * cols.size());
+  ASSERT_EQ(cmp_crows, 0);
+  ASSERT_EQ(cmp_cols, 0);
 }
 
 }  // namespace tests
