@@ -467,6 +467,81 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
   xshape->share_lod(x);
 }
 
+void FlipInferMeta(const MetaTensor& x,
+                   const std::vector<int>& axis,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto flip_dims = axis;
+  size_t flip_dims_size = axis.size();
+
+  if (flip_dims_size > 0) {
+    // check if dims axis within range
+    auto min_max_d = std::minmax_element(flip_dims.begin(), flip_dims.end());
+    PADDLE_ENFORCE_LT(*min_max_d.first,
+                      x_dims.size(),
+                      phi::errors::InvalidArgument(
+                          "min(axes) should be less than the input tensor X's "
+                          "axes of FlipOp. But received min(axes) = %d,  "
+                          "X's axes = %d, X's shape = [%s]",
+                          *min_max_d.first,
+                          x_dims.size(),
+                          x_dims));
+    PADDLE_ENFORCE_GE(*min_max_d.first,
+                      x_dims.size() * -1,
+                      phi::errors::InvalidArgument(
+                          "min(axes) should be greater than or equal to the "
+                          "input tensor X's "
+                          "axes of FlipOp times -1. But received "
+                          "min(axes) = %d,  X's "
+                          "axes = %d, X's shape = [%s]",
+                          *min_max_d.first,
+                          x_dims.size() * -1,
+                          x_dims));
+    PADDLE_ENFORCE_LT(*min_max_d.second,
+                      x_dims.size(),
+                      phi::errors::InvalidArgument(
+                          "max(axes) should be less than the input tensor X's "
+                          "axes of FlipOp. But received max(axes) = %d,  "
+                          "X's axes = %d, X's shape = [%s]",
+                          *min_max_d.second,
+                          x_dims.size(),
+                          x_dims));
+    PADDLE_ENFORCE_GE(*min_max_d.second,
+                      x_dims.size() * -1,
+                      phi::errors::InvalidArgument(
+                          "max(axes) should be greater than or equal to the "
+                          "input tensor X's "
+                          "axes of FlipOp times -1. But received "
+                          "max(axes) = %d,  X's "
+                          "axes = %d, X's shape = [%s]",
+                          *min_max_d.second,
+                          x_dims.size() * -1,
+                          x_dims));
+
+    // check duplicates in dims
+    flip_dims.erase(std::unique(flip_dims.begin(), flip_dims.end()),
+                    flip_dims.end());
+    PADDLE_ENFORCE_EQ(flip_dims.size(),
+                      flip_dims_size,
+                      phi::errors::InvalidArgument(
+                          "axes has duplicates, original flip axes size=%d, "
+                          "but unique flip axes size=%d.)",
+                          flip_dims_size,
+                          flip_dims.size()));
+  }
+
+  VLOG(3) << "flip operator x.shape=" << x_dims;
+
+  std::vector<int64_t> output_dims(x_dims.size());
+  for (int i = 0; i < x_dims.size(); ++i) {
+    output_dims[i] = x_dims[i];
+  }
+
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
                                 const Scalar& val,
@@ -748,6 +823,52 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
                         dims[n_dim - 1]));
   out->set_dims(dims);
   out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void MaxOutInferMeta(const MetaTensor& x,
+                     int groups,
+                     int axis,
+                     MetaTensor* out) {
+  auto in_x_dims = x.dims();
+  // check groups > 1
+  PADDLE_ENFORCE_GT(
+      groups,
+      1,
+      phi::errors::InvalidArgument("Attr(groups) of Op(maxout) should be "
+                                   "larger than 1. But received %d.",
+                                   groups));
+  PADDLE_ENFORCE_EQ(
+      axis == 1 || axis == -1 || axis == 3,
+      true,
+      phi::errors::InvalidArgument(
+          "axis only supported 1, -1 or 3, but recevied axis is: %d", axis));
+  PADDLE_ENFORCE_EQ(in_x_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "x's dims should be 4, but received x's dims is: %d",
+                        in_x_dims.size()));
+
+  if (axis < 0) {
+    axis += in_x_dims.size();
+  }
+  PADDLE_ENFORCE_EQ(
+      in_x_dims[axis] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of input channels for Op(maxout) "
+          "should be divisible by Attr(groups). But received: the "
+          "input's channels is [%d], the shape of input is [%s], "
+          "the Attr(groups) is [%d], the Attr(axis) is [%d]. The "
+          "error may come from wrong Attr(groups) or Attr(axis) setting.",
+          in_x_dims[axis],
+          in_x_dims,
+          groups,
+          axis));
+  std::vector<int64_t> output_shape(
+      {in_x_dims[0], in_x_dims[1], in_x_dims[2], in_x_dims[3]});
+  output_shape[axis] = in_x_dims[axis] / groups;
+  out->set_dims(phi::make_ddim(output_shape));
   out->set_dtype(x.dtype());
 }
 

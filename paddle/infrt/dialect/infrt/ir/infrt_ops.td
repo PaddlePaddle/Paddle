@@ -9,6 +9,16 @@ class Infrt_Op<string mnemonic, list<OpTrait> traits = []> : Op<Infrt_Dialect, m
   // let parser = [{ return infrt::parse$cppClass(parser, result); }];
 }
 
+def PD_GraphOp : Infrt_Op<"graph", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
+  let summary = "paddle graph Op";
+  let description = [{
+    Describe a paddle graph or subgraph.
+  }];
+  let regions = (region SizedRegion<1>:$body);
+  let arguments = (ins Variadic<AnyType>:$inputs);
+  let results = (outs Variadic<AnyType>:$outputs);
+}
+
 def Infrt_KernelOp : Infrt_Op<"kernel", [NoSideEffect]> {
   let summary = "kernel op";
   let description = [{kernel op!}];
