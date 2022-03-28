@@ -191,10 +191,10 @@ class TestLogspaceOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_end_type)
 
-            def test_num_dtype():
+            def test_num_type():
                 fluid.layers.logspace(0, 10, [0], 2, dtype="float32")
 
-            self.assertRaises(TypeError, test_num_dtype)
+            self.assertRaises(TypeError, test_num_type)
 
             def test_start_dtype():
                 start = fluid.data(shape=[1], dtype="float64", name="start")
