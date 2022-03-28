@@ -415,9 +415,13 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
   CostTimer timer("pserver_sparse_select_all");
   std::vector<std::future<int>> tasks(_real_local_shard_num);
 
+  VLOG(0) << "yxf in table pull sparse";
   const size_t value_size = _table_info.size / sizeof(float);
+  VLOG(0) << "yxf::value_size: " << value_size;
   size_t mf_value_size = _table_info.mf_size / sizeof(float);
+  VLOG(0) << "yxf::mf_value_size: " << mf_value_size;
   size_t select_value_size = _table_info.select_size / sizeof(float);
+  VLOG(0) << "yxf::select_value_size: " << select_value_size;
   // std::atomic<uint32_t> missed_keys{0};
 
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(

@@ -27,6 +27,7 @@ void CommMergeAccessor::GetTableInfo(AccessorInfo &info) {
   info.select_size = select_size();
   info.update_dim = update_dim();
   info.update_size = update_size();
+  info.mf_size = mf_size();
   info.fea_dim = fea_dim();
 }
 
