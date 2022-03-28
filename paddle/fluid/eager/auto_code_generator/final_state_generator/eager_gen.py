@@ -174,11 +174,13 @@ FORWARD_FUNCTION_TEMPLATE = \
     
     // Get Input AutoGradMeta
 {}
-    // Check Inplace
-{}
     // Forward API Call
 {}
     // Get Output AutoGradMeta
+{}
+    bool trace_backward = egr::Controller::Instance().HasGrad();
+    bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
+    // Check Inplace
 {}
     // Node Creation
 {}
@@ -191,8 +193,6 @@ FORWARD_FUNCTION_TEMPLATE = \
 
 FORWARD_BODY_TEMPLATE = \
 """
-        bool trace_backward = egr::Controller::Instance().HasGrad();
-        bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
         if(require_any_grad) {{
 {}
             egr::EagerUtils::PassStopGradient({});
@@ -302,7 +302,6 @@ CORE_OPS_DECLARATION_TEMPLATE = \
 
 CHECK_INPLACE_TEMPLATE = \
 """
-    // Check Inplace
     egr::EagerUtils::CheckInplace({}, {}, require_any_grad);\n
 """
 
@@ -644,12 +643,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
 
-        compute_require_grad_args_list = ["trace_backward"]
-        for name, (_, _) in forward_inputs_position_map.items():
-            input_autograd_meta_name = GetAutoGradMetaName(name)
-            compute_require_grad_args_list.append(input_autograd_meta_name)
-        compute_require_grad_args_str = ",".join(compute_require_grad_args_list)
-
         # Pass Stop Gradient Args
         pass_stop_gradient_args_list = ["false"]
         for name, (_, _) in forward_outputs_position_map.items():
@@ -756,11 +749,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         node_creation_event_str = f"paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::Operator, 1);\n"
 
         self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
-            compute_require_grad_args_str, node_creation_event_str,
-            pass_stop_gradient_args_str, node_construction_str,
-            set_attributes_str, set_tensor_wrappers_str, set_grad_out_meta_str,
-            set_edges_str, set_out_rank_str, set_history_str,
-            set_grad_in_meta_str, set_retain_grad_str)
+            node_creation_event_str, pass_stop_gradient_args_str,
+            node_construction_str, set_attributes_str, set_tensor_wrappers_str,
+            set_grad_out_meta_str, set_edges_str, set_out_rank_str,
+            set_history_str, set_grad_in_meta_str, set_retain_grad_str)
 
     def run(self):
         # Basic Validation Check
@@ -1019,8 +1011,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
             returns_type_str, forward_function_name, inputs_args_definition_str,
             dygraph_event_str, amp_logic_str, inputs_autograd_meta_str,
-            check_inplace_str, forward_call_str, outputs_autograd_meta_str,
-            node_creation_str, returns_str)
+            forward_call_str, outputs_autograd_meta_str,
+            compute_require_grad_args_str, check_inplace_str, node_creation_str,
+            returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
         logging.info(

@@ -27,7 +27,7 @@ attr_type_converter = {
     "St6vectorIiSaIiEE": 'I32ArrayAttr'
 }
 
-target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
+target_type_converter = {"CPU": "CPU", "GPU": "GPU", "Undefined": "UNK"}
 layout_type_converter = {
     "NCHW": "NCHW",
     "NHWC": "NHWC",
