@@ -72,6 +72,14 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    paddle::optional<const paddle::experimental::Tensor&> target) {
+  if (target.get_ptr() != nullptr) {
+    return EagerUtils::nullable_autograd_meta(*(target.get_ptr()));
+  }
+  return nullptr;
+}
+
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
     const std::vector<paddle::experimental::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
@@ -327,6 +335,22 @@ paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
   return tw->recover(grad_node);
 }
 
+paddle::optional<const paddle::experimental::Tensor&>
+EagerUtils::RecoverOptionalTensorWrapper(
+    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tw, phi::errors::InvalidArgument("TensorWrapper in "
+                                       "RecoverOptionalTensorWrapper function "
+                                       "should not be null"));
+  auto tmp = tw->recover(grad_node);
+
+  paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
+  if (tmp.initialized()) {
+    res = tmp;
+  }
+  return res;
+}
+
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
     std::vector<TensorWrapper>* tw,
     const std::shared_ptr<GradNodeBase>& grad_node) {
@@ -398,7 +422,7 @@ void EagerUtils::FillZeroForEmptyGradInputs(
     std::vector<std::vector<paddle::experimental::Tensor>>* in_grads,
     const std::vector<std::vector<GradSlotMeta>>& grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
-    for (size_t j = 0; j < (*in_grads)[0].size(); j++) {
+    for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
       paddle::experimental::Tensor& grad = (*in_grads)[i][j];
       if (!grad.is_initialized()) {
         const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];

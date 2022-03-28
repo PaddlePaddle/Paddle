@@ -235,19 +235,19 @@ class Converter(object):
     @staticmethod
     def merge_with_dist_attr(tensor_list, dist_attr):
         """ Merge tensor with distributed attribute """
-        from .reshard import _compute_complete_shape, _compute_partition_index
+        from .reshard import Resharder
 
         dims_mapping = dist_attr["dims_mapping"]
         process_shape = dist_attr["process_shape"]
         process_group = dist_attr["process_group"]
         # get the complete shape of the tensor
-        complete_shape = _compute_complete_shape(tensor_list[0].shape,
-                                                 process_shape, dims_mapping)
+        complete_shape = Resharder.compute_complete_shape(
+            tensor_list[0].shape, process_shape, dims_mapping)
         # merge the tensor with dist_attr
         partition_tensor_list = []
         merged_partiton = []
         for process in process_group:
-            partition_index = _compute_partition_index(
+            partition_index = Resharder.compute_partition_index(
                 process, complete_shape, dims_mapping, process_shape,
                 process_group)
             index = process_group.index(process)
@@ -302,7 +302,7 @@ class Converter(object):
                 _merge_tensor(partition_tensor_list, tensor, partition_index)
                 # partition_tensor_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
         """
-        from .reshard import _compute_concat_info
+        from .reshard import Resharder
 
         if len(partition_tensor_list) == 1:
             is_complete_data = True
@@ -318,7 +318,7 @@ class Converter(object):
         else:
             i = 0
             while i < len(partition_tensor_list):
-                concat_axis, first_order, new_partition = _compute_concat_info(
+                concat_axis, first_order, new_partition = Resharder.compute_concat_info(
                     partition_tensor_list[i][1], partition_index)
                 if concat_axis != -1:
                     if first_order == 0:
@@ -391,11 +391,11 @@ class Converter(object):
                 index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
                 # index: [[], [], [2, 4]]
         """
-        from .reshard import _compute_partition_index
+        from .reshard import Resharder
 
         split_indices_list = []
         for process in process_group:
-            partition_index = _compute_partition_index(
+            partition_index = Resharder.compute_partition_index(
                 process, complete_shape, dims_mapping, process_shape,
                 process_group)
             if split_indices_list:
@@ -437,9 +437,9 @@ class Converter(object):
                                                 process_shape, process_group)
                 # index: 2
         """
-        from .reshard import _compute_partition_index
+        from .reshard import Resharder
 
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             rank_id, complete_shape, dims_mapping, process_shape, process_group)
         sliced_index = 0
         for i, shape in enumerate(complete_shape):

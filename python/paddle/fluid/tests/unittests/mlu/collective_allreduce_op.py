@@ -42,19 +42,19 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
+    def get_model(self, main_prog, startup_program, col_type):
         ring_id = 0
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
             toutdata = main_prog.current_block().create_var(
-                name="outofallreduce",
+                name="outof" + col_type,
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=False)
             main_prog.global_block().append_op(
-                type="c_allreduce_sum",
+                type="c_" + col_type,
                 inputs={'X': tindata},
                 attrs={'ring_id': ring_id},
                 outputs={'Out': toutdata})
@@ -67,4 +67,4 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllreduce, "allreduce", 0)
+    runtime_main(TestCollectiveAllreduce)

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -365,10 +366,14 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
                    "FlattenContiguousRangeGrad");
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "FlattenContiguousRangeGrad");
-    auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    context->SetOutputDim(framework::GradVarName("X"), x_dims);
-    context->ShareLoD("XShape", framework::GradVarName("X"));
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor xshape(context->GetInputVarPtrs("XShape")[0],
+                            context->IsRuntime());
+    CompatMetaTensor dx(
+        context->GetOutputVarPtrs(framework::GradVarName("X"))[0],
+        context->IsRuntime());
+    phi::KernelWithXShapeInferMeta(xshape, &dx);
   }
 
  protected:
