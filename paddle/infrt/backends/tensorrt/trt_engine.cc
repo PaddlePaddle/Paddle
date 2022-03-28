@@ -210,11 +210,15 @@ bool TrtEngine::SetupNetworkAndConfig(const BuildOptions& build,
     case PrecisionConstraints::kNONE:
       // It's the default for TensorRT.
       break;
+#if IS_TRT_VERSION_GE(8200)
     case PrecisionConstraints::kOBEY:
       config.setFlag(BuilderFlag::kOBEY_PRECISION_CONSTRAINTS);
       break;
     case PrecisionConstraints::kPREFER:
       config.setFlag(BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+      break;
+#endif  // IS_TRT_VERSION_GE(8200)
+    default:
       break;
   }
 

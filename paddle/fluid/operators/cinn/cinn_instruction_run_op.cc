@@ -47,50 +47,17 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
   }
 
  protected:
+  /* [Why use single type kernel]:
+  *
+  * Whether the kernel data type is int, float or other type,
+  * which has no effect on its execution logic, so directly
+  * specified a data type here.
+  *
+  */
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // Why we need override GetExpectedKernelType?
-    // A cinn-graph may has no inpute var, if we use the base function,
-    // it will check wheter input tensors is initialized. Here we rewrite
-    // the function so that we can infer kernel type by output date type.
-    if (ctx.InputSize(kX)) {
-      // if the instruction has input, infer kernel type by input date type:
-      return OperatorWithKernel::GetExpectedKernelType(ctx);
-    }
-
-    // Else infer kernel type by output date type:
-    // The `OutputVar` will check wheter the kOutputs iff has one output var
-    const framework::Variable* var = ctx.OutputVar(kOutputs);
-    PADDLE_ENFORCE_NE(
-        var, nullptr,
-        platform::errors::InvalidArgument(
-            "The cinn_instruction_run Op's Output Variable should not empty."));
-
-    const framework::Tensor* tensor = nullptr;
-    if (var->IsType<framework::Tensor>()) {
-      tensor = &var->Get<framework::Tensor>();
-    } else if (var->IsType<framework::LoDTensor>()) {
-      tensor = &var->Get<framework::LoDTensor>();
-    } else if (var->IsType<phi::SelectedRows>()) {
-      tensor = &(var->Get<phi::SelectedRows>().value());
-    } else if (var->IsType<framework::LoDTensorArray>()) {
-      auto t_arr = &var->Get<framework::LoDTensorArray>();
-      PADDLE_ENFORCE_EQ(t_arr->size(), 1UL,
-                        platform::errors::InvalidArgument(
-                            "The cinn_instruction_run Op should just has One "
-                            "Output when Input empty."));
-      tensor = &(t_arr->front());
-    }
-
-    PADDLE_ENFORCE_NE(
-        tensor, nullptr,
-        platform::errors::InvalidArgument(
-            "The cinn_instruction_run Op's Output Tensor should not empty."));
-
-    VLOG(4) << "The tensor [" << ctx.OutputName(kOutputs) << "]'s dtype is "
-            << paddle::framework::DataType2String(tensor->dtype());
-    auto output_type = paddle::framework::TransToProtoVarType(tensor->dtype());
-    return framework::OpKernelType(output_type, ctx.device_context());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -151,8 +118,4 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<CPUDeviceContext, bool>,
-    ops::CinnInstructionRunOpKernel<CPUDeviceContext, int>,
-    ops::CinnInstructionRunOpKernel<CPUDeviceContext, int64_t>,
-    ops::CinnInstructionRunOpKernel<CPUDeviceContext, float>,
-    ops::CinnInstructionRunOpKernel<CPUDeviceContext, double>);
+    ops::CinnInstructionRunOpKernel<CPUDeviceContext, float>);
