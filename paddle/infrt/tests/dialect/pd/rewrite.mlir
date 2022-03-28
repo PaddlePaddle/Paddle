@@ -16,5 +16,5 @@ func @main(%arg0: tensor<?xf32>, %arg1: tensor<?xf32>, %arg2:tensor<?xf32>, %arg
   %c2 = "pd.matmul_v2"(%e1, %arg3) {transpose_x=true, transpose_y=false} : (tensor<?xf32>, tensor<?xf32>) -> tensor<?xf32>
   %d2 = "pd.elementwise_add"(%c2, %arg6) {axis=1:si32} : (tensor<?xf32>, tensor<?xf32>) -> tensor<?xf32>
   %e2 = "pd.relu"(%d2) {} : (tensor<?xf32>) -> tensor<?xf32>
-  infrt.return %e2:tensor<?xf32>
+  core.return %e2:tensor<?xf32>
 }

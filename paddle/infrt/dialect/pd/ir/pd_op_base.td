@@ -6,7 +6,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 
 def Paddle_Dialect : Dialect {
   let name = "pd";
@@ -16,7 +16,7 @@ def Paddle_Dialect : Dialect {
 
     This dialect contains the PaddlePaddle operators.
   }];
-  let cppNamespace = "infrt::pd";
+  let cppNamespace = "::infrt::pd";
 }
 
 class PD_Op<string mnemonic, list<OpTrait> traits = []> :
@@ -24,7 +24,7 @@ class PD_Op<string mnemonic, list<OpTrait> traits = []> :
 
 
 class PD_PaddleAttr <string name, string description> :
-      Attr<CPred<"$_self.isa<infrt::pd::" # name # "Attr>()">,
+      Attr<CPred<"$_self.isa<::infrt::pd::" # name # "Attr>()">,
           "PaddlePaddle " # description # " attribute">;
 
 

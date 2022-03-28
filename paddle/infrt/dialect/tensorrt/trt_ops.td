@@ -7,10 +7,10 @@ include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/tensorrt/trt_op_base.td"
 
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 
-def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
+def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"core::ReturnOp">]> {
   let summary = "trt CreateEngine Op";
   let description = [{
     Describe a tensorrt subgraph.

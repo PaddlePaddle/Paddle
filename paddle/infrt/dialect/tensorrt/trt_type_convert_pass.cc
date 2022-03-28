@@ -25,8 +25,8 @@
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/Value.h"
 #include "mlir/Pass/Pass.h"
-#include "paddle/infrt/dialect/infrt/common/types.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/common/types.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
@@ -55,36 +55,36 @@ void TrtTypeConvertPass::runOnFunction() {
     }
   }
 
-  ::infrt::LayoutType layout = ::infrt::LayoutType::NCHW;
-  ::infrt::TargetType target = ::infrt::TargetType::GPU;
+  infrt::LayoutType layout = infrt::LayoutType::NCHW;
+  infrt::TargetType target = infrt::TargetType::GPU;
   for (auto& op : worklist) {
     if (auto tensor_map_get_op =
-            llvm::dyn_cast<::infrt::phi::TensorMapGetTensorOp>(op)) {
+            llvm::dyn_cast<infrt::phi::TensorMapGetTensorOp>(op)) {
       auto res = tensor_map_get_op.output();
-      if (auto t = res.getType().dyn_cast<::infrt::DenseTensorType>()) {
-        auto replace_type = ::infrt::DenseTensorType::get(
+      if (auto t = res.getType().dyn_cast<infrt::core::DenseTensorType>()) {
+        auto replace_type = infrt::core::DenseTensorType::get(
             mlir_ctx, t.getTarget(), t.getPrecision(), layout);
         res.setType(replace_type);
       }
     }
-    if (auto create_engine = llvm::dyn_cast<::infrt::trt::CreateEngineOp>(op)) {
-      // Insert `infrt.gpu.memcpy` op.
+    if (auto create_engine = llvm::dyn_cast<infrt::trt::CreateEngineOp>(op)) {
+      // Insert `core.gpu.memcpy` op.
       for (auto arg : create_engine.getOperands()) {
         if (mlir::Operation* producer = arg.getDefiningOp()) {
-          if (arg.getType().isa<::infrt::DenseTensorType>()) {
+          if (arg.getType().isa<infrt::core::DenseTensorType>()) {
             builder.setInsertionPointAfter(producer);
-            auto t = arg.getType().dyn_cast<::infrt::DenseTensorType>();
+            auto t = arg.getType().dyn_cast<infrt::core::DenseTensorType>();
             if (producer->getName().getStringRef() !=
                     "phi_dt.tensor_map_get_tensor" &&
-                t.getTarget() != ::infrt::TargetType::GPU) {
-              auto replace_type = ::infrt::DenseTensorType::get(
+                t.getTarget() != infrt::TargetType::GPU) {
+              auto replace_type = infrt::core::DenseTensorType::get(
                   mlir_ctx, target, t.getPrecision(), layout);
               CHECK_NOTNULL(ctx_op);
-              auto mem_cpy_op = builder.create<::infrt::phi::GpuMemCopyOp>(
+              auto mem_cpy_op = builder.create<infrt::phi::GpuMemCopyOp>(
                   arg.getLoc(),
                   replace_type,
                   arg,
-                  llvm::dyn_cast<::infrt::phi::CreateGPUContextOp>(ctx_op)
+                  llvm::dyn_cast<infrt::phi::CreateGPUContextOp>(ctx_op)
                       .output(),
                   mlir::BoolAttr::get(mlir_ctx, /*d2h*/ false));
               arg.replaceAllUsesExcept(mem_cpy_op.output(), mem_cpy_op);
@@ -92,18 +92,17 @@ void TrtTypeConvertPass::runOnFunction() {
           }
         } else {
           auto blockArg = arg.cast<mlir::BlockArgument>();
-          if (arg.getType().isa<::infrt::DenseTensorType>()) {
-            auto t = arg.getType().dyn_cast<::infrt::DenseTensorType>();
+          if (arg.getType().isa<infrt::core::DenseTensorType>()) {
+            auto t = arg.getType().dyn_cast<infrt::core::DenseTensorType>();
             builder.setInsertionPointAfter(ctx_op);
-            auto replace_type = ::infrt::DenseTensorType::get(
-                mlir_ctx, ::infrt::TargetType::GPU, t.getPrecision(), layout);
+            auto replace_type = infrt::core::DenseTensorType::get(
+                mlir_ctx, infrt::TargetType::GPU, t.getPrecision(), layout);
             CHECK_NOTNULL(ctx_op);
-            auto mem_cpy_op = builder.create<::infrt::phi::GpuMemCopyOp>(
+            auto mem_cpy_op = builder.create<infrt::phi::GpuMemCopyOp>(
                 blockArg.getLoc(),
                 replace_type,
                 blockArg,
-                llvm::dyn_cast<::infrt::phi::CreateGPUContextOp>(ctx_op)
-                    .output(),
+                llvm::dyn_cast<infrt::phi::CreateGPUContextOp>(ctx_op).output(),
                 mlir::BoolAttr::get(mlir_ctx, /*d2h*/ false));
             arg.replaceAllUsesExcept(mem_cpy_op.output(), mem_cpy_op);
           }
@@ -116,37 +115,36 @@ void TrtTypeConvertPass::runOnFunction() {
         for (size_t i = 0; i < op.getNumResults(); ++i) {
           if (auto t = op.getResult(i)
                            .getType()
-                           .dyn_cast<::infrt::DenseTensorType>()) {
-            auto replace_type = ::infrt::DenseTensorType::get(
-                mlir_ctx, ::infrt::TargetType::GPU, t.getPrecision(), layout);
+                           .dyn_cast<infrt::core::DenseTensorType>()) {
+            auto replace_type = infrt::core::DenseTensorType::get(
+                mlir_ctx, infrt::TargetType::GPU, t.getPrecision(), layout);
             op.getResult(i).setType(replace_type);
           }
         }
       }
     } else if (auto list_get_tensor_op =
-                   llvm::dyn_cast<::infrt::dt::TensorListGetTensorOp>(op)) {
+                   llvm::dyn_cast<infrt::dt::TensorListGetTensorOp>(op)) {
       auto result = list_get_tensor_op.output();
-      if (auto t = result.getType().dyn_cast<::infrt::DenseTensorType>()) {
-        result.setType(::infrt::DenseTensorType::get(
-            mlir_ctx, ::infrt::TargetType::GPU, t.getPrecision(), layout));
+      if (auto t = result.getType().dyn_cast<infrt::core::DenseTensorType>()) {
+        result.setType(infrt::core::DenseTensorType::get(
+            mlir_ctx, infrt::TargetType::GPU, t.getPrecision(), layout));
       }
-    } else if (auto return_op = llvm::dyn_cast<::infrt::ReturnOp>(op)) {
+    } else if (auto return_op = llvm::dyn_cast<infrt::core::ReturnOp>(op)) {
       for (auto arg : return_op->getOperands()) {
-        if (auto t = arg.getType().dyn_cast<::infrt::DenseTensorType>()) {
-          if (t.getLayout() != ::infrt::LayoutType::ANY ||
-              t.getTarget() != ::infrt::TargetType::CPU ||
-              t.getPrecision() != ::infrt::PrecisionType::FLOAT32) {
+        if (auto t = arg.getType().dyn_cast<infrt::core::DenseTensorType>()) {
+          if (t.getLayout() != infrt::LayoutType::ANY ||
+              t.getTarget() != infrt::TargetType::CPU ||
+              t.getPrecision() != infrt::PrecisionType::FLOAT32) {
             builder.setInsertionPoint(return_op);
             CHECK_NOTNULL(ctx_op);
-            auto mem_cpy_op = builder.create<::infrt::phi::GpuMemCopyOp>(
+            auto mem_cpy_op = builder.create<infrt::phi::GpuMemCopyOp>(
                 return_op.getLoc(),
-                ::infrt::DenseTensorType::get(mlir_ctx,
-                                              ::infrt::TargetType::CPU,
-                                              t.getPrecision(),
-                                              ::infrt::LayoutType::ANY),
+                infrt::core::DenseTensorType::get(mlir_ctx,
+                                                  infrt::TargetType::CPU,
+                                                  t.getPrecision(),
+                                                  infrt::LayoutType::ANY),
                 arg,
-                llvm::dyn_cast<::infrt::phi::CreateGPUContextOp>(ctx_op)
-                    .output(),
+                llvm::dyn_cast<infrt::phi::CreateGPUContextOp>(ctx_op).output(),
                 mlir::BoolAttr::get(mlir_ctx, /*d2h*/ true));
             arg.replaceAllUsesExcept(mem_cpy_op.output(), mem_cpy_op);
           }

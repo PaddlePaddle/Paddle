@@ -60,7 +60,7 @@ static mlir::ParseResult parseCreateUninitTensorOp(
 
   if (parser.parseArrow()) return mlir::failure();
   if (parser.parseType(outputRawTypes[0])) return mlir::failure();
-  if (!outputRawTypes[0].isa<DenseTensorType>())
+  if (!outputRawTypes[0].isa<core::DenseTensorType>())
     return parser.emitError(loc, "invalid kind of type specified");
   result.addTypes(outputTypes);
   return mlir::success();

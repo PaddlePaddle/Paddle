@@ -12,38 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/core/pass/core_op_fuse_pass.h"
 
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 namespace {
-#include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/core/pass/core_op_fuse.cpp.inc"  // NOLINT
 
 /*
- * infrtOpFusePass.
+ * coreOpFusePass.
  */
-struct InfrtOpFusePass
-    : public mlir::PassWrapper<InfrtOpFusePass, mlir::FunctionPass> {
+struct CoreOpFusePass
+    : public mlir::PassWrapper<CoreOpFusePass, mlir::FunctionPass> {
  public:
-  ::llvm::StringRef getName() const override { return "infrtOpFusePass"; }
+  ::llvm::StringRef getName() const override { return "CoreOpFusePass"; }
 
-  llvm::StringRef getArgument() const override { return "infrt-op-fuse"; }
+  llvm::StringRef getArgument() const override { return "core-op-fuse"; }
 
   void runOnFunction() override;
 };
 
-// Implementation of the InfrtOpFusePass.
-void InfrtOpFusePass::runOnFunction() {
+// Implementation of the CoreOpFusePass.
+void CoreOpFusePass::runOnFunction() {
   ::mlir::RewritePatternSet patterns(&getContext());
   populateWithGenerated(patterns);
   (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
-  // Fuse infrt.return Operation
+  // Fuse core.return Operation
   auto terminator_op = getFunction().front().getTerminator();
   if (nullptr == terminator_op) return;
   for (auto operand : terminator_op->getOperands()) {
     auto *op1 = operand.getDefiningOp();
-    auto cvt_op = ::llvm::dyn_cast<::infrt::TensorCastOp>(op1);
+    auto cvt_op = ::llvm::dyn_cast<infrt::core::TensorCastOp>(op1);
     if (!cvt_op) continue;
     mlir::Value value = cvt_op.input();
     operand.replaceAllUsesWith(value);
@@ -53,8 +53,8 @@ void InfrtOpFusePass::runOnFunction() {
 
 }  // namespace
 
-std::unique_ptr<mlir::Pass> infrt::createInfrtOpFusePass() {
-  return std::make_unique<InfrtOpFusePass>();
+std::unique_ptr<mlir::Pass> infrt::CreateCoreOpFusePass() {
+  return std::make_unique<CoreOpFusePass>();
 }
 
-mlir::PassRegistration<InfrtOpFusePass> infrt_op_fuse_pass;
+mlir::PassRegistration<CoreOpFusePass> core_op_fuse_pass;

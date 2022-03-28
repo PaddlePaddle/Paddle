@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "paddle/infrt/common/string.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
@@ -100,11 +100,12 @@ void PhiOpConvertPass::convertStage() {
 
     if (!::phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_name)) {
       op_name = phi::TransToPhiKernelName(op_name);
-      auto kernel_op = builder.create<infrt::KernelOp>(loc,
-                                                       op->getResultTypes(),
-                                                       op->getOperands(),
-                                                       op_name,
-                                                       op->getAttrDictionary());
+      auto kernel_op =
+          builder.create<infrt::core::KernelOp>(loc,
+                                                op->getResultTypes(),
+                                                op->getOperands(),
+                                                op_name,
+                                                op->getAttrDictionary());
       op->replaceAllUsesWith(kernel_op.getResults());
     } else {
       ::phi::KernelSignature kernel_sign =
@@ -135,7 +136,7 @@ void PhiOpConvertPass::convertStage() {
         output_types.push_back(op->getResultTypes()[index]);
         ori_output.push_back(op->getResult(index));
       }
-      auto kernel_op = builder.create<infrt::KernelOp>(
+      auto kernel_op = builder.create<infrt::core::KernelOp>(
           loc, output_types, inputs, kernel_sign.name, op->getAttrDictionary());
       for (size_t index = 0; index < ori_output.size(); ++index) {
         ori_output[index].replaceAllUsesWith(kernel_op.getResult(index));
@@ -147,16 +148,17 @@ void PhiOpConvertPass::convertStage() {
 }
 
 void PhiOpConvertPass::dispatchStage() {
-  std::vector<infrt::KernelOp> worklist;
+  std::vector<infrt::core::KernelOp> worklist;
   mlir::Block &block = getFunction().front();
   for (auto &op : block) {
-    infrt::KernelOp kernel_op = ::llvm::dyn_cast_or_null<infrt::KernelOp>(&op);
+    infrt::core::KernelOp kernel_op =
+        ::llvm::dyn_cast_or_null<infrt::core::KernelOp>(&op);
     if (nullptr != kernel_op) worklist.push_back(kernel_op);
   }
 
   mlir::OpBuilder builder(&block, block.begin());
   std::map<infrt::TargetType, mlir::Value> phi_context;
-  for (infrt::KernelOp kernel_op : worklist) {
+  for (infrt::core::KernelOp kernel_op : worklist) {
     std::string kernel_name = kernel_op.name().str();
     std::vector<infrt::PhiKernelDesc> candidates =
         GetCandidateKernels(kernel_name, valid_places_);
@@ -204,9 +206,9 @@ void PhiOpConvertPass::dispatchStage() {
     for (size_t index = 0; index < phi_kernel_desc.input_types.size();
          ++index) {
       mlir::Value input = kernel_op.getOperand(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
+      auto cvt_tensor_type_op = builder.create<infrt::core::TensorCastOp>(
           kernel_op.getLoc(),
-          infrt::DenseTensorType::get(
+          infrt::core::DenseTensorType::get(
               kernel_op.getContext(),
               phi_kernel_desc.input_types[index].target,
               phi_kernel_desc.input_types[index].precision,
@@ -217,7 +219,7 @@ void PhiOpConvertPass::dispatchStage() {
 
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
-      operation_state.addTypes(infrt::DenseTensorType::get(
+      operation_state.addTypes(infrt::core::DenseTensorType::get(
           kernel_op.getContext(),
           phi_kernel_desc.output_types[index].target,
           phi_kernel_desc.output_types[index].precision,
@@ -228,7 +230,7 @@ void PhiOpConvertPass::dispatchStage() {
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
       mlir::Value input = phi_operation->getResult(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
+      auto cvt_tensor_type_op = builder.create<infrt::core::TensorCastOp>(
           kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
       kernel_op.getResult(index).replaceAllUsesWith(
           cvt_tensor_type_op.output());
@@ -250,7 +252,7 @@ PhiOpConvertPass::PhiOpConvertPass() {
 
 void PhiOpConvertPass::getDependentDialects(
     mlir::DialectRegistry &registry) const {
-  registry.insert<infrt::InfrtDialect>();
+  registry.insert<infrt::core::CoreDialect>();
   registry.insert<infrt::phi::PHIDialect>();
   registry.insert<infrt::phi::PHIDenseTensorDialect>();
   registry.insert<infrt::phi::PHICPUKernelDialect>();
@@ -261,11 +263,11 @@ void PhiOpConvertPass::getDependentDialects(
 
 mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass(
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass(
     std::vector<Place> valid_places) {
   return std::make_unique<PhiOpConvertPass>(valid_places);
 }
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass() {
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass() {
   return std::make_unique<PhiOpConvertPass>();
 }

@@ -16,9 +16,9 @@
 
 #include <llvm/Support/Casting.h>
 #include <mlir/IR/Builders.h>
+#include "paddle/infrt/dialect/core/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 namespace infrt {
@@ -40,7 +40,7 @@ void TRTOpTellerPass::runOnFunction() {
     if (op->getName().getStringRef().substr(0, 3) != "pd.") continue;
     builder.setInsertionPoint(op);
     auto loc = getFunction().getLoc();
-    auto graph_op = builder.create<::infrt::GraphOp>(
+    auto graph_op = builder.create<core::GraphOp>(
         loc, op->getResultTypes(), op->getOperands());
 
     ::llvm::SmallVector<mlir::Value, 4> tblgen_repl_values;
@@ -54,7 +54,7 @@ void TRTOpTellerPass::runOnFunction() {
     graph_op.body().push_back(block);
     op->moveBefore(block, block->begin());
     builder.setInsertionPointToEnd(block);
-    builder.create<::infrt::ReturnOp>(loc, op->getResults());
+    builder.create<core::ReturnOp>(loc, op->getResults());
   }
 }
 }  // namespace trt

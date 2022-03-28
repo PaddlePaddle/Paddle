@@ -21,17 +21,17 @@ namespace infrt {
 namespace trt {
 // Implementation of the trtGraphSplitPass。
 void TRTGraphSplitPass::runOnFunction() {
-  std::vector<::infrt::GraphOp> worklist;
+  std::vector<core::GraphOp> worklist;
   mlir::Block& block = getFunction().front();
   for (auto& op : block) {
-    ::infrt::GraphOp graph_op = ::llvm::dyn_cast_or_null<::infrt::GraphOp>(&op);
+    core::GraphOp graph_op = ::llvm::dyn_cast_or_null<core::GraphOp>(&op);
     if (nullptr != graph_op &&
         graph_op.getBody()->getOperations().size() <= min_subgraph_size_) {
       worklist.push_back(graph_op);
     }
   }
   while (!worklist.empty()) {
-    ::infrt::GraphOp graph_op = worklist.back();
+    core::GraphOp graph_op = worklist.back();
     worklist.pop_back();
     mlir::Block* body = graph_op.getBody();
     auto return_op = body->getTerminator();

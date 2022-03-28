@@ -16,7 +16,6 @@
 
 namespace infrt {
 namespace kernel {
-namespace phi {
 
 ::phi::CPUContext CreateCPUContext() {
   ::phi::CPUContext ctx{};
@@ -32,13 +31,12 @@ namespace phi {
 ::phi::GPUContext CreateGPUContext() {
   ::phi::GPUContext context;
   context.PartialInitWithoutAllocator();
-  context.SetAllocator(new ::infrt::backends::GpuPhiAllocator{});
+  context.SetAllocator(new infrt::backends::GpuPhiAllocator{});
   context.SetHostAllocator(new backends::CpuPhiAllocator{});
   context.PartialInitWithAllocator();
   return context;
 }
 #endif
 
-}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

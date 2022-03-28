@@ -99,7 +99,7 @@ endfunction()
 
 function(mlir_add_rewriter td_base)
   set(LLVM_TARGET_DEFINITIONS ${td_base}.td)
-  set(LLVM_TARGET_DEPENDS  ${LLVM_TARGET_DEPENDS} ${CMAKE_SOURCE_DIR}/paddle/infrt/dialect/infrt/ir/infrt_base.td)
+  set(LLVM_TARGET_DEPENDS  ${LLVM_TARGET_DEPENDS} ${CMAKE_SOURCE_DIR}/paddle/infrt/dialect/core/ir/core_base.td)
   mlir_tablegen(${td_base}.cpp.inc -gen-rewriters)
   add_public_tablegen_target(MLIR${td_base}IncGen)
   add_dependencies(mlir-headers MLIR${td_base}IncGen)

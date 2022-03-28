@@ -17,8 +17,8 @@
 
 namespace infrt {
 /*
- * infrtOpFusePass.
+ * CoreOpFusePass.
  */
-std::unique_ptr<mlir::Pass> createInfrtOpFusePass();
+std::unique_ptr<mlir::Pass> CreateCoreOpFusePass();
 
 }  // namespace infrt

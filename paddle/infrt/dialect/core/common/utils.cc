@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/common/utils.h"
+#include "paddle/infrt/dialect/core/common/utils.h"
 
 mlir::SmallVector<mlir::Value, 4> infrt::cvtValueToValueRange(
     const mlir::Value &operand) {

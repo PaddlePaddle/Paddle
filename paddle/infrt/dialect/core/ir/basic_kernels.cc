@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/core/ir/basic_kernels.h"
 
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/IR/Attributes.h>
@@ -79,26 +79,26 @@ static void printConstant(OpAsmPrinter &p, mlir::Operation *op) {  // NOLINT
   }
 }
 
-static void print(OpAsmPrinter &p, ConstantF32Op op) {  // NOLINT
+static void print(OpAsmPrinter &p, core::ConstantF32Op op) {  // NOLINT
   printConstant(p, op);
 }
-static void print(OpAsmPrinter &p, ConstantF64Op op) {  // NOLINT
+static void print(OpAsmPrinter &p, core::ConstantF64Op op) {  // NOLINT
   printConstant(p, op);
 }
-static void print(OpAsmPrinter &p, ConstantI32Op op) {  // NOLINT
+static void print(OpAsmPrinter &p, core::ConstantI32Op op) {  // NOLINT
   printConstant(p, op);
 }
-static void print(OpAsmPrinter &p, ConstantI64Op op) {  // NOLINT
+static void print(OpAsmPrinter &p, core::ConstantI64Op op) {  // NOLINT
   printConstant(p, op);
 }
 
-static LogicalResult verify(ConstantF32Op op) { return success(); }
-static LogicalResult verify(ConstantI32Op op) { return success(); }
-static LogicalResult verify(ConstantF64Op op) { return success(); }
-static LogicalResult verify(ConstantI64Op op) { return success(); }
+static LogicalResult verify(core::ConstantF32Op op) { return success(); }
+static LogicalResult verify(core::ConstantI32Op op) { return success(); }
+static LogicalResult verify(core::ConstantF64Op op) { return success(); }
+static LogicalResult verify(core::ConstantI64Op op) { return success(); }
 
 }  // namespace dialect
 }  // namespace infrt
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/basic_kernels.cpp.inc"

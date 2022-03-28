@@ -32,13 +32,13 @@ TEST(MlirLoader, basic) {
 
   auto source = R"ROC(
 func @main() -> f32 {
-  %v0 = infrt.constant.f32 1.0
-  %v1 = infrt.constant.f32 2.0
-  %value = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v0 = core.constant.f32 1.0
+  %v1 = core.constant.f32 2.0
+  %value = "core.add.f32"(%v0, %v1) : (f32, f32) -> f32
 
-  "infrt.print.f32"(%v0) : (f32) -> ()
+  "core.print.f32"(%v0) : (f32) -> ()
 
-  infrt.return %value : f32
+  core.return %value : f32
 }
 )ROC";
 

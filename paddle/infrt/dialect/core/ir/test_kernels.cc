@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/ir/test_kernels.h"
+#include "paddle/infrt/dialect/core/ir/test_kernels.h"
 
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/OpDefinition.h>
@@ -26,7 +26,7 @@ namespace dialect {
 //===----------------------------------------------------------------------===//
 
 // Parse the BenchmarkOp in the following format
-// infrt.benchmark "add.i32"(%c : i32, %d : f32)
+// core.benchmark "add.i32"(%c : i32, %d : f32)
 //       max_count = 100, duration_secs = 1 {
 // ...
 // }
@@ -99,12 +99,12 @@ static mlir::ParseResult parseBenchmarkOp(
 }
 
 // Print the BenchmarkOp in the following format
-// infrt.benchmark "add.i32"(%c : i32, %d : f32)
+// core.benchmark "add.i32"(%c : i32, %d : f32)
 //       max_count = 100, duration_secs = 1 {
 // ...
 // }
-static void print(mlir::OpAsmPrinter &p, BenchmarkOp op) {  // NOLINT
-  p << "infrt.benchmark ";
+static void print(mlir::OpAsmPrinter &p, core::BenchmarkOp op) {  // NOLINT
+  p << "core.benchmark ";
 
   // Print the name attribute, e.g "add.i32"
   auto name_attr = op->getAttr("name");
@@ -143,11 +143,11 @@ static void print(mlir::OpAsmPrinter &p, BenchmarkOp op) {  // NOLINT
   p.printRegion(op.region(), /*printEntryBlockArgs=*/false);
 }
 
-static mlir::LogicalResult verify(BenchmarkOp op) {
+static mlir::LogicalResult verify(core::BenchmarkOp op) {
   // Verify that the target benchmark region has exactly one return value.
   auto &region = op.region();
   auto &last_op = region.front().back();
-  if (last_op.getName().getStringRef() != "infrt.return") {
+  if (last_op.getName().getStringRef() != "core.return") {
     return op.emitOpError("missing return statement");
   }
   if (last_op.getNumOperands() != 1) {
@@ -161,4 +161,4 @@ static mlir::LogicalResult verify(BenchmarkOp op) {
 }  // namespace infrt
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/infrt/ir/test_kernels.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/test_kernels.cpp.inc"

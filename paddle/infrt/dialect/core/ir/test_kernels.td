@@ -4,12 +4,12 @@
 #else
 #define TEST_OPS
 
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 // Base class for Test dialect ops.
 class Test_Op<string mnemonic, list<OpTrait> traits = []> :
-    Op<Infrt_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+    Op<Core_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 
   // Each registered op in the Test namespace needs to provide all of a printer,
   // parser and verifier.
@@ -21,7 +21,7 @@ class Test_Op<string mnemonic, list<OpTrait> traits = []> :
 def BenchmarkOp : Test_Op<"benchmark"> {
   let summary = "benchmark operation";
   let description = [{
-     The "infrt.benchmark" operation benchmarks the performance of an MLIR
+     The "core.benchmark" operation benchmarks the performance of an MLIR
      region by executing the given MLIR region repeatedly up to the
      `duratino_secs` seconds or `max_count` times. `num_warmup_runs` specifies
      the number of warm up runs to run the given MLIR region before the
@@ -29,23 +29,23 @@ def BenchmarkOp : Test_Op<"benchmark"> {
 
      The target MLIR region can take an arbitrary number of arguments and
      should return exactly one value. The arguments for the MLIR region are
-     provided as the operands of the infrt.benchmark op.
+     provided as the operands of the core.benchmark op.
 
      Example:
-       infrt.benchmark "add.i32"(%c : i32, %d : f32) max_count = 100, duration_secs = 1 {
+       core.benchmark "add.i32"(%c : i32, %d : f32) max_count = 100, duration_secs = 1 {
          // code for benchmarking
          ...
        }
 
-       infrt.benchmark "add.i32"(%c : i32)
+       core.benchmark "add.i32"(%c : i32)
          duration_secs = 1,
          max_count = 100,
          num_warmup_runs = 10 {
          // The MLIR code to be benchmarked goes here.
-         // The following code benchmarks the infrt.add.i32 kernel.
-         %x = infrt.add.i32 %c, %c
+         // The following code benchmarks the core.add.i32 kernel.
+         %x = core.add.i32 %c, %c
          // The benchmarked function needs to return exactly one value.
-         infrt.return %x : i32
+         core.return %x : i32
        }
   }];
 

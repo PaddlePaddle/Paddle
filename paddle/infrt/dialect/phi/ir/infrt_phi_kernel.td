@@ -3,7 +3,7 @@
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 
 def PHI_CPUKernelDialect : Dialect {

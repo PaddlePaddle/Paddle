@@ -36,7 +36,7 @@
 #include "paddle/infrt/kernel/tensorrt/registry.h"
 
 #ifdef INFRT_WITH_PHI
-#include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/core/pass/core_op_fuse_pass.h"
 #include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/phi/registry.h"
@@ -55,17 +55,17 @@ int main(int argc, char** argv) {
 
   infrt::host_context::KernelRegistry registry;
 
-  ::infrt::kernel::RegisterBasicKernels(&registry);
-  ::infrt::kernel::RegisterTestKernels(&registry);
-  ::infrt::kernel::RegisterTensorShapeKernels(&registry);
-  ::infrt::kernel::RegisterTensorKernels(&registry);
-  ::infrt::kernel::RegisterControlFlowKernels(&registry);
+  infrt::kernel::RegisterBasicKernels(&registry);
+  infrt::kernel::RegisterTestKernels(&registry);
+  infrt::kernel::RegisterTensorShapeKernels(&registry);
+  infrt::kernel::RegisterTensorKernels(&registry);
+  infrt::kernel::RegisterControlFlowKernels(&registry);
 #ifdef INFRT_WITH_PHI
-  ::infrt::kernel::RegisterPhiKernels(&registry);
-  ::infrt::kernel::RegisterInferShapeLaunchers(&registry);
+  infrt::kernel::RegisterPhiKernels(&registry);
+  infrt::kernel::RegisterInferShapeLaunchers(&registry);
 #endif
 #if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
-  ::infrt::kernel::RegisterTrtKernels(&registry);
+  infrt::kernel::RegisterTrtKernels(&registry);
 #endif
 
   context->loadAllAvailableDialects();
@@ -83,6 +83,6 @@ int main(int argc, char** argv) {
     return 4;
   }
   module->dump();
-  ::infrt::host_context::TestMlir(module.get(), &registry);
+  infrt::host_context::TestMlir(module.get(), &registry);
   return 0;
 }

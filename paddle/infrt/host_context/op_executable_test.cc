@@ -28,13 +28,13 @@ int add(int a, int b) { return a + b; }
 TEST(OpExecutable, basic) {
   // register kernel
   KernelRegistry registry;
-  registry.AddKernel("infrt.test.add.i32", INFRT_KERNEL(add));
+  registry.AddKernel("core.test.add.i32", INFRT_KERNEL(add));
 
   SymbolTable table;
   table.Register("a", 1);
   table.Register("b", 2);
 
-  OpExecutableBuilder executable("infrt.test.add.i32", &table, &registry);
+  OpExecutableBuilder executable("core.test.add.i32", &table, &registry);
   executable.AppendArgument("a");
   executable.AppendArgument("b");
   executable.SetResults({"c"});

@@ -55,8 +55,8 @@ bool reverseDfs(std::vector<mlir::Operation *> source,
 
 // merge the first&second graph op to a new graph op.
 void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
-                             ::infrt::GraphOp first,
-                             ::infrt::GraphOp second) {
+                             core::GraphOp first,
+                             core::GraphOp second) {
   // comput inputs and outputs
   ::llvm::SmallVector<mlir::Value, 4> inputs(first.getOperands()), outputs;
   for (mlir::Value input : second.getOperands()) {
@@ -85,7 +85,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   // create the new graph op
   builder.setInsertionPoint(first);
   auto loc = first.getLoc();
-  auto graph_op = builder.create<::infrt::GraphOp>(loc, return_types, inputs);
+  auto graph_op = builder.create<core::GraphOp>(loc, return_types, inputs);
   mlir::Block *block = new mlir::Block;
   auto copy_range = second.getBody()->without_terminator();
   block->getOperations().splice(block->begin(),
@@ -98,7 +98,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
                                 copy_range.begin(),
                                 copy_range.end());
   builder.setInsertionPointToEnd(block);
-  builder.create<::infrt::ReturnOp>(loc, outputs);
+  builder.create<core::ReturnOp>(loc, outputs);
   graph_op.body().push_back(block);
 
   // mapping the output
@@ -150,13 +150,12 @@ void TRTGraphFusePass::runOnFunction() {
   do {
     changed = false;
     for (auto &op : body) {
-      ::infrt::GraphOp graph_op =
-          ::llvm::dyn_cast_or_null<::infrt::GraphOp>(&op);
+      core::GraphOp graph_op = ::llvm::dyn_cast_or_null<core::GraphOp>(&op);
       if (nullptr == graph_op) continue;
 
       for (auto user_op : op.getUsers()) {
-        ::infrt::GraphOp user_graph_op =
-            ::llvm::dyn_cast_or_null<::infrt::GraphOp>(user_op);
+        core::GraphOp user_graph_op =
+            ::llvm::dyn_cast_or_null<core::GraphOp>(user_op);
         if (nullptr == user_graph_op) continue;
         // get all dst input nodes except src.
         std::vector<mlir::Operation *> source_nodes;

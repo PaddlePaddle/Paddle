@@ -84,7 +84,7 @@ struct MlirToRuntimeTranslator::Impl {
 };
 
 bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
-  if (!infrt::Startswith(op->getName().getStringRef().str(), "infrt.constant"))
+  if (!Startswith(op->getName().getStringRef().str(), "core.constant"))
     return false;
   VLOG(3) << "Emitting constant op [" << op->getName().getStringRef().str()
           << "]";
@@ -183,31 +183,31 @@ boost::optional<double> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 template <>
-boost::optional<::infrt::TargetType> MlirToRuntimeTranslator::EmitAttribute(
+boost::optional<TargetType> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
-  if (!attr.isa<::infrt::TargetAttr>()) return boost::none;
-  if (attr.isa<::infrt::TargetAttr>()) {
-    return attr.cast<::infrt::TargetAttr>().getTarget();
+  if (!attr.isa<core::TargetAttr>()) return boost::none;
+  if (attr.isa<core::TargetAttr>()) {
+    return attr.cast<core::TargetAttr>().getTarget();
   }
   return boost::none;
 }
 
 template <>
-boost::optional<::infrt::LayoutType> MlirToRuntimeTranslator::EmitAttribute(
+boost::optional<LayoutType> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
-  if (!attr.isa<::infrt::LayoutAttr>()) return boost::none;
-  if (attr.isa<::infrt::LayoutAttr>()) {
-    return attr.cast<::infrt::LayoutAttr>().getLayout();
+  if (!attr.isa<core::LayoutAttr>()) return boost::none;
+  if (attr.isa<core::LayoutAttr>()) {
+    return attr.cast<core::LayoutAttr>().getLayout();
   }
   return boost::none;
 }
 
 template <>
-boost::optional<::infrt::PrecisionType> MlirToRuntimeTranslator::EmitAttribute(
+boost::optional<PrecisionType> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
-  if (!attr.isa<::infrt::PrecisionAttr>()) return boost::none;
-  if (attr.isa<::infrt::PrecisionAttr>()) {
-    return attr.cast<::infrt::PrecisionAttr>().getPrecision();
+  if (!attr.isa<core::PrecisionAttr>()) return boost::none;
+  if (attr.isa<core::PrecisionAttr>()) {
+    return attr.cast<core::PrecisionAttr>().getPrecision();
   }
   return boost::none;
 }
@@ -276,7 +276,7 @@ boost::optional<std::vector<double>> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 static bool IsReturn(mlir::Operation* op) {
-  return op->getName().getStringRef() == "infrt.return";
+  return op->getName().getStringRef() == "core.return";
 }
 
 bool MlirToRuntimeTranslator::EmitGeneralOp(
@@ -290,7 +290,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   if (op->getName().getStringRef() == "trt.create_engine") {
 #ifdef INFRT_WITH_TRT
     auto* symbols = impl_->runtime->symbol_table();
-    ::infrt::kernel::tensorrt::MlirOperationWithInfrtSymbol mlir_operation;
+    kernel::tensorrt::MlirOperationWithInfrtSymbol mlir_operation;
     mlir_operation.operation = op;
     mlir_operation.symbol_table = symbols;
     impl_->cur_op->AppendArgument(new Value(mlir_operation));
@@ -406,12 +406,11 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
       tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
       tmp[offset] = new Value(*v);
-    } else if (auto v = EmitAttribute<::infrt::TargetType>(attr.getValue())) {
+    } else if (auto v = EmitAttribute<TargetType>(attr.getValue())) {
       tmp[offset] = new Value(*v);
-    } else if (auto v =
-                   EmitAttribute<::infrt::PrecisionType>(attr.getValue())) {
+    } else if (auto v = EmitAttribute<PrecisionType>(attr.getValue())) {
       tmp[offset] = new Value(*v);
-    } else if (auto v = EmitAttribute<::infrt::LayoutType>(attr.getValue())) {
+    } else if (auto v = EmitAttribute<LayoutType>(attr.getValue())) {
       tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
       tmp[offset] = new Value(std::move(*v));
@@ -464,7 +463,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   llvm::SmallVector<Value*, 4> res_values;
   for (int i = 0, e = op->getNumResults(); i < e; i++) {
     auto res = op->getResult(i);
-    if (res.getType().isa<::infrt::DenseTensorType>()) {
+    if (res.getType().isa<core::DenseTensorType>()) {
       auto r = impl_->value_map.try_emplace(
           res, ValueRef(new Value{::phi::DenseTensor()}));
       CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
@@ -493,7 +492,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
 bool MlirToRuntimeTranslator::EmitReturnOp(
     mlir::Operation* op, llvm::SmallVectorImpl<mlir::Value>* results) {
   CHECK(results);
-  if (op->getName().getStringRef() == "infrt.return") {
+  if (op->getName().getStringRef() == "core.return") {
     for (size_t i = 0; i < op->getNumOperands(); i++) {
       results->push_back(op->getOperand(i));
     }
@@ -566,7 +565,7 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
                                          function_defs_t* function_table) {
   CHECK(op);
   CHECK(function_table);
-  if (op->getName().getStringRef() != "infrt.call") return false;
+  if (op->getName().getStringRef() != "core.call") return false;
 
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());

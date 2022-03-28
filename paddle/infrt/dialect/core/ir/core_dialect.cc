@@ -12,60 +12,61 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 
 #include <llvm/ADT/TypeSwitch.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/DialectImplementation.h>
+#include "paddle/infrt/dialect/core/ir/core_opsDialect.cpp.inc"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_opsDialect.cpp.inc"
 
 #define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/core_opsTypes.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
-#include "paddle/infrt/dialect/infrt/ir/infrt_opsAttributes.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/core_opsAttributes.cpp.inc"
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/infrt/ir/infrt_ops.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/core_ops.cpp.inc"
 
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/core/ir/basic_kernels.h"
 
-#include "paddle/infrt/dialect/infrt/ir/test_kernels.h"
+#include "paddle/infrt/dialect/core/ir/test_kernels.h"
 
 namespace infrt {
+namespace core {
 
-void InfrtDialect::initialize() {
+void CoreDialect::initialize() {
   addTypes<
 #define GET_TYPEDEF_LIST
-#include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/core/ir/core_opsTypes.cpp.inc"  // NOLINT
       >();
 
   addAttributes<
 #define GET_ATTRDEF_LIST
-#include "paddle/infrt/dialect/infrt/ir/infrt_opsAttributes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/core/ir/core_opsAttributes.cpp.inc"  // NOLINT
       >();
 
   addOperations<
 #define GET_OP_LIST
-#include "paddle/infrt/dialect/infrt/ir/infrt_ops.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/core/ir/core_ops.cpp.inc"  // NOLINT
       >();
   addOperations<
 #define GET_OP_LIST
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/basic_kernels.cpp.inc"
       >();
   addOperations<
 #define GET_OP_LIST
-#include "paddle/infrt/dialect/infrt/ir/test_kernels.cpp.inc"
+#include "paddle/infrt/dialect/core/ir/test_kernels.cpp.inc"
       >();
 }
 
 /// Parse a type registered to this dialect.
-mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
+mlir::Type CoreDialect::parseType(::mlir::DialectAsmParser &parser) const {
   llvm::StringRef keyword;
   if (parser.parseKeyword(&keyword)) return nullptr;
-  // parse TensorType, for example: !infrt.lod_tensor<3x64x3x3xf32,5>
+  // parse TensorType, for example: !core.lod_tensor<3x64x3x3xf32,5>
   // 5 is the lod_level
   if (keyword == "lod_tensor") {
     // Parse the size and elementType.
@@ -94,7 +95,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
     return DenseHostTensorMapType::get(parser.getContext());
   }
   if (keyword == "dense_tensor") {
-    // parse DenseTensor, for example: !i=Infrt.tensor<X86, CUDA, F32>
+    // parse DenseTensor, for example: !i=Core.tensor<X86, CUDA, F32>
     llvm::StringRef target;
     llvm::StringRef layout;
     llvm::StringRef precision;
@@ -139,18 +140,18 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
   }
 
   if (keyword == "tensor_list") {
-    return infrt::DenseTensorListType::get(parser.getContext());
+    return core::DenseTensorListType::get(parser.getContext());
   }
 
   // Todo: parse other type
   return mlir::Type();
 }
 
-void InfrtDialect::printType(::mlir::Type type,
-                             ::mlir::DialectAsmPrinter &os) const {
-  // print LoDTensorType, for example: !infrt.lod_tensor<3x64x3x3xf32,5>
-  if (type.isa<infrt::LoDTensorType>()) {
-    auto lod_tensor_type = type.cast<infrt::LoDTensorType>();
+void CoreDialect::printType(::mlir::Type type,
+                            ::mlir::DialectAsmPrinter &os) const {
+  // print LoDTensorType, for example: !core.lod_tensor<3x64x3x3xf32,5>
+  if (type.isa<core::LoDTensorType>()) {
+    auto lod_tensor_type = type.cast<core::LoDTensorType>();
     os << "lod_tensor<";
     auto shape = lod_tensor_type.getShape();
     for (auto dim = shape.begin(), e = shape.end() - 1; dim != e; ++dim) {
@@ -162,31 +163,31 @@ void InfrtDialect::printType(::mlir::Type type,
        << lod_tensor_type.getLod_level() << ">";
     return;
   }
-  if (type.isa<infrt::DenseHostTensorMapType>()) {
+  if (type.isa<core::DenseHostTensorMapType>()) {
     os << "dense_tensor_map";
     return;
   }
 
-  // print DenseTensorType, for example: !infrt.dense_tensor<CPU, FP32, NCHW>
+  // print DenseTensorType, for example: !core.dense_tensor<CPU, FP32, NCHW>
   if (type.isa<DenseTensorType>()) {
-    auto dense_tensor_type = type.cast<infrt::DenseTensorType>();
+    auto dense_tensor_type = type.cast<DenseTensorType>();
     os << "dense_tensor<" << dense_tensor_type.getTarget() << ", "
        << dense_tensor_type.getPrecision() << ", "
        << dense_tensor_type.getLayout() << ">";
     return;
   }
 
-  if (type.isa<infrt::DenseTensorListType>()) {
+  if (type.isa<DenseTensorListType>()) {
     os << "tensor_list";
     return;
   }
-  llvm_unreachable("unknown infrt type.");
+  llvm_unreachable("unknown core dailect type.");
 }
 
-mlir::Operation *InfrtDialect::materializeConstant(mlir::OpBuilder &builder,
-                                                   mlir::Attribute value,
-                                                   mlir::Type type,
-                                                   mlir::Location loc) {
+mlir::Operation *CoreDialect::materializeConstant(mlir::OpBuilder &builder,
+                                                  mlir::Attribute value,
+                                                  mlir::Type type,
+                                                  mlir::Location loc) {
   return builder.create<ConstantOp>(loc, value);
 }
 
@@ -220,4 +221,5 @@ mlir::OpFoldResult ConstantOp::fold(
   return value();
 }
 
+}  // namespace core
 }  // namespace infrt

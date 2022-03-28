@@ -33,10 +33,10 @@ namespace tensorrt {
 
 struct MlirOperationWithInfrtSymbol {
   mlir::Operation* operation;
-  ::infrt::host_context::SymbolTable* symbol_table;
+  infrt::host_context::SymbolTable* symbol_table;
 };
 
-::infrt::backends::tensorrt::TrtEngine CreateTrtEngine(
+infrt::backends::tensorrt::TrtEngine CreateTrtEngine(
     MlirOperationWithInfrtSymbol engine_op);
 
 void PrintTrtLayer(backends::tensorrt::TrtEngine* engine);

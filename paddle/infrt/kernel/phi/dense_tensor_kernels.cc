@@ -41,14 +41,13 @@ void DeserializeFromStream(std::istream& is,
 
 namespace infrt {
 namespace kernel {
-namespace phi {
 
 ::phi::DenseTensor CreateDenseTensor(
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
-    host_context::Attribute<::infrt::LayoutType> layout,
-    host_context::Attribute<::infrt::PrecisionType> precision) {
+    host_context::Attribute<LayoutType> layout,
+    host_context::Attribute<PrecisionType> precision) {
   return ::phi::DenseTensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
       ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
@@ -61,15 +60,14 @@ namespace phi {
     const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
-    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<LayoutType> layout,
     host_context::Attribute<float> value) {
   ::phi::DenseTensor dense_tensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
-      ::phi::DenseTensorMeta(
-          ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
-          ::phi::make_ddim(dims.get()),
-          ConvertLayoutToPhi(layout.get()),
-          {}));
+      ::phi::DenseTensorMeta(ConvertPrecisionToPhi(PrecisionType::FLOAT32),
+                             ::phi::make_ddim(dims.get()),
+                             ConvertLayoutToPhi(layout.get()),
+                             {}));
   float* a_data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
   for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
     a_data[i] = value.get();
@@ -81,8 +79,8 @@ namespace phi {
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod,
-    host_context::Attribute<::infrt::LayoutType> layout,
-    host_context::Attribute<::infrt::PrecisionType> precision) {
+    host_context::Attribute<LayoutType> layout,
+    host_context::Attribute<PrecisionType> precision) {
   return ::phi::DenseTensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
       ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
@@ -168,9 +166,9 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 #undef PRINT_META_DATA
 }
 
-::infrt::phi::DenseTensorMap LoadParameters(const std::string& file_path) {
+phi::DenseTensorMap LoadParameters(const std::string& file_path) {
   std::cout << "loading params from: " << file_path << std::endl;
-  ::infrt::phi::DenseTensorMap map;
+  phi::DenseTensorMap map;
 
   const std::string model_path = file_path + "/__model__";
   auto pb_proto_prog = paddle::LoadProgram(model_path);
@@ -200,14 +198,13 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
-::infrt::phi::DenseTensorMap LoadParams(
-    host_context::Attribute<std::string> path) {
+phi::DenseTensorMap LoadParams(host_context::Attribute<std::string> path) {
   return LoadParameters(path.get());
 }
 
-::infrt::phi::DenseTensorMap LoadCombinedParameters(
-    const std::string& model_path, const std::string& params_path) {
-  ::infrt::phi::DenseTensorMap map;
+phi::DenseTensorMap LoadCombinedParameters(const std::string& model_path,
+                                           const std::string& params_path) {
+  phi::DenseTensorMap map;
 
   auto pb_proto_prog = paddle::LoadProgram(model_path);
   auto main_block = pb_proto_prog->blocks(0);
@@ -238,23 +235,20 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
-::infrt::phi::DenseTensorMap LoadCombinedParams(
+phi::DenseTensorMap LoadCombinedParams(
     host_context::Attribute<std::string> model_path,
     host_context::Attribute<std::string> params_path) {
   return LoadCombinedParameters(model_path.get(), params_path.get());
 }
 
 ::phi::DenseTensor TensorMapGetTensor(
-    const ::infrt::phi::DenseTensorMap& map,
-    host_context::Attribute<std::string> name) {
+    const phi::DenseTensorMap& map, host_context::Attribute<std::string> name) {
   auto* tensor = map.GetDenseTensor(name.get());
   CHECK(tensor);
   return *tensor;
 }
 
-int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
-  return map.size();
-}
+int32_t TensorMapGetSize(const phi::DenseTensorMap& map) { return map.size(); }
 
 #ifdef INFRT_WITH_GPU
 inline size_t SizeOfDataType(::phi::DataType data_type) {
@@ -319,6 +313,5 @@ inline size_t SizeOfDataType(::phi::DataType data_type) {
 }
 #endif
 
-}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

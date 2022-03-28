@@ -1,8 +1,8 @@
-#ifndef INFRT_REWRITE
-#define INFRT_REWRITE
+#ifndef PD_OP_FUSE
+#define PD_OP_FUSE
 
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
-include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Interfaces/SideEffectInterfaces.td" 
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "paddle/infrt/dialect/pd/ir/pd_ops.td"
 include "paddle/infrt/dialect/pd/ir/pd_extra_ops.td"
 
@@ -25,7 +25,7 @@ include "paddle/infrt/dialect/pd/ir/pd_extra_ops.td"
 //  2. Consider the case of : out = bias + z
 //===----------------------------------------------------------------------===//
 def FuseMulAdd : Pat<(PD_Elementwise_addOp (PD_Matmul_v2Op $x, $y, ConstBoolAttrFalse:$_, ConstBoolAttrFalse:$_), $bias, $axis),
-                     (PD_FusedFC $x, $y, $bias, (INFRT_createI32Attr<"1">))>;
+                     (PD_FusedFC $x, $y, $bias, (CORE_createI32Attr<"1">))>;
 
 
 /*
@@ -82,14 +82,14 @@ def FuseBatchNormWithConvPattern: Pat<
         (PD_MulOp $filter,
             (PD_ElementwiseDiv:$coefficientW
                 $scale,
-                (PD_SqrtOp (PD_ElementwiseAdd $var, (PD_ConstantOp $epsilon), (INFRT_createI32Attr<"1">))),
-                (INFRT_createI32Attr<"1">))),
+                (PD_SqrtOp (PD_ElementwiseAdd $var, (PD_ConstantOp $epsilon), (CORE_createI32Attr<"1">))),
+                (CORE_createI32Attr<"1">))),
         (PD_ElementwiseAdd
             $bias,
             (PD_MulOp 
-                (PD_ElementwiseSub $bias, $mean, (INFRT_createI32Attr<"1">)),
+                (PD_ElementwiseSub $bias, $mean, (CORE_createI32Attr<"1">)),
                 $coefficientW),
-            (INFRT_createI32Attr<"1">)))
+            (CORE_createI32Attr<"1">)))
 >;
 */
-#endif // INFRT_REWRITE
+#endif // PD_OP_FUSE

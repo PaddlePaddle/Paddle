@@ -41,7 +41,7 @@ namespace infrt {
 namespace kernel {
 namespace tensorrt {
 
-::infrt::backends::tensorrt::TrtEngine CreateTrtEngine(
+infrt::backends::tensorrt::TrtEngine CreateTrtEngine(
     MlirOperationWithInfrtSymbol create_engine_op) {
   // TODO(wilber): The device_id needs to get from mlir.
   int device_id = 0;

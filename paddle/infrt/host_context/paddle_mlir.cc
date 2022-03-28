@@ -16,8 +16,8 @@
 
 #include <mlir/IR/OpDefinition.h>
 
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 
@@ -27,9 +27,9 @@ MLIRModelGenImpl::MLIRModelGenImpl()
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
   context_->getOrLoadDialect<infrt::pd::PaddleDialect>();
-  context_->getOrLoadDialect<::infrt::InfrtDialect>();
-  context_->getOrLoadDialect<::infrt::phi::PHIDialect>();
-  context_->getOrLoadDialect<::infrt::phi::PHIDenseTensorDialect>();
+  context_->getOrLoadDialect<infrt::core::CoreDialect>();
+  context_->getOrLoadDialect<infrt::phi::PHIDialect>();
+  context_->getOrLoadDialect<infrt::phi::PHIDenseTensorDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
 
@@ -101,10 +101,10 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
           ConvertDataTypeToInfrt(
               var_desc.type().lod_tensor().tensor().data_type(), &precision_);
           mlir::Type type_ =
-              infrt::DenseTensorType::get(context_,
-                                          infrt::TargetType::CPU,
-                                          precision_,
-                                          infrt::LayoutType::NCHW);
+              infrt::core::DenseTensorType::get(context_,
+                                                infrt::TargetType::CPU,
+                                                precision_,
+                                                infrt::LayoutType::NCHW);
 
           operandTypes.push_back(type_);
         }
@@ -131,10 +131,10 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
           ConvertDataTypeToInfrt(
               var_desc.type().lod_tensor().tensor().data_type(), &precision_);
           mlir::Type type_ =
-              infrt::DenseTensorType::get(context_,
-                                          infrt::TargetType::CPU,
-                                          precision_,
-                                          infrt::LayoutType::NCHW);
+              infrt::core::DenseTensorType::get(context_,
+                                                infrt::TargetType::CPU,
+                                                precision_,
+                                                infrt::LayoutType::NCHW);
           resultTypes.push_back(type_);
         }
       }
@@ -184,11 +184,12 @@ void MLIRModelGenImpl::UpdateModelParams(
       infrt::PrecisionType precision_;
       ConvertDataTypeToInfrt(var_desc.type().lod_tensor().tensor().data_type(),
                              &precision_);
-      mlir::Type type_ = infrt::DenseTensorType::get(context_,
-                                                     infrt::TargetType::CPU,
-                                                     precision_,
-                                                     infrt::LayoutType::NCHW);
-      auto op = builder_.create<::infrt::phi::TensorMapGetTensorOp>(
+      mlir::Type type_ =
+          infrt::core::DenseTensorType::get(context_,
+                                            infrt::TargetType::CPU,
+                                            precision_,
+                                            infrt::LayoutType::NCHW);
+      auto op = builder_.create<infrt::phi::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
           var_desc.name(), op.getOperation()->getResult(0)));
@@ -215,7 +216,7 @@ void MLIRModelGenImpl::UpdateModelOutputs(
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
 
         mlir::OperationState state(loc,
-                                   ::infrt::ReturnOp::getOperationName(),
+                                   infrt::core::ReturnOp::getOperationName(),
                                    operands,
                                    resultTypes,
                                    attrs);
@@ -308,10 +309,11 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
         infrt::PrecisionType precision_;
         ConvertDataTypeToInfrt(
             var_desc.type().lod_tensor().tensor().data_type(), &precision_);
-        mlir::Type type_ = infrt::DenseTensorType::get(context_,
-                                                       infrt::TargetType::CPU,
-                                                       precision_,
-                                                       infrt::LayoutType::NCHW);
+        mlir::Type type_ =
+            infrt::core::DenseTensorType::get(context_,
+                                              infrt::TargetType::CPU,
+                                              precision_,
+                                              infrt::LayoutType::NCHW);
         resultTypes[pd_dialect_outputs_info.at(
             op_.outputs(var_idx).parameter())] = type_;
       }

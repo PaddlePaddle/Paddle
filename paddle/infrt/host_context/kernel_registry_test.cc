@@ -25,7 +25,7 @@ int add_i32(int a, int b) { return a + b; }
 
 TEST(KernelRegistry, basic) {
   KernelRegistry registry;
-  std::string key = "infrt.test.add.i32";
+  std::string key = "core.test.add.i32";
   registry.AddKernel(key, INFRT_KERNEL(add_i32));
 
   const auto& kernel_impl = registry.GetKernel(key);

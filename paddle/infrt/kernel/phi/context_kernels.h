@@ -21,7 +21,6 @@
 
 namespace infrt {
 namespace kernel {
-namespace phi {
 
 ::phi::CPUContext CreateCPUContext();
 
@@ -29,6 +28,5 @@ namespace phi {
 ::phi::GPUContext CreateGPUContext();
 #endif
 
-}  // namespace phi
 }  // namespace kernel
 }  // namespace infrt

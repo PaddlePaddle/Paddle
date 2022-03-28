@@ -193,8 +193,8 @@ tensor::DenseHostTensor ShadowCopyTensor(tensor::DenseHostTensor src) {
 }
 
 void RegisterTestKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernel("infrt.benchmark", INFRT_KERNEL(benchmark));
-  registry->AddKernel("Infrt.test.shadow_copy_tensor",
+  registry->AddKernel("core.benchmark", INFRT_KERNEL(benchmark));
+  registry->AddKernel("core.test.shadow_copy_tensor",
                       INFRT_KERNEL(ShadowCopyTensor));
 }
 

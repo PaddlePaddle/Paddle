@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 
 #include "paddle/infrt/dialect/dense_tensor_dialect.hpp.inc"
 

@@ -14,15 +14,15 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+#include "paddle/infrt/dialect/core/common/types.h"
 
 namespace infrt {
 /*
  * phiOpCvtPass.
  * Convert the general operators from pd Dialect to phi dialect.
  */
-std::unique_ptr<mlir::Pass> createPhiOpCvtPass(std::vector<Place> valid_places);
+std::unique_ptr<mlir::Pass> CreatePhiOpCvtPass(std::vector<Place> valid_places);
 
-std::unique_ptr<mlir::Pass> createPhiOpCvtPass();
+std::unique_ptr<mlir::Pass> CreatePhiOpCvtPass();
 
 }  // namespace infrt

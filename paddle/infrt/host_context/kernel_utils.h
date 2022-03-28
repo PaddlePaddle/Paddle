@@ -133,9 +133,8 @@ struct KernelImpl;
 template <typename T>
 struct TypeTag {};
 
-#define INFRT_KERNEL(...)                                   \
-  ::infrt::host_context::KernelImpl<decltype(&__VA_ARGS__), \
-                                    &__VA_ARGS__>::Invoke
+#define INFRT_KERNEL(...) \
+  infrt::host_context::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Invoke
 
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelImpl<Return (*)(Args...), impl_fn> {

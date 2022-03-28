@@ -29,8 +29,8 @@
 #include <mlir/Interfaces/LoopLikeInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
 #include "paddle/infrt/dialect/phi/ir/phi_cpu_kernelsDialect.h.inc"

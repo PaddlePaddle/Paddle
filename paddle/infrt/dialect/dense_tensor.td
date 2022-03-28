@@ -2,7 +2,7 @@
 #else
 #define DT_OPS
 
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "paddle/infrt/dialect/tensor_shape_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
@@ -30,8 +30,8 @@ class CreateUninitTensorOp<string dtype>
   let arguments = (ins I64ArrayAttr:$shape);
   let results = (outs DenseTensor:$output);
 
-  let parser  = [{ return infrt::dt::parseCreateUninitTensorOp(parser, result); }];
-  let printer = [{ return infrt::dt::printCreateUninitTensorOp(p, *this); }];
+  let parser  = [{ return ::infrt::dt::parseCreateUninitTensorOp(parser, result); }];
+  let printer = [{ return ::infrt::dt::printCreateUninitTensorOp(p, *this); }];
 }
 
 
@@ -64,9 +64,6 @@ class FillTensorWithConstantOp<string dtype> :
   );
   let results = (outs);
 
-  // TODO: can be removed?
-  //let parser  = [{ return infrt::dt::parseFillTensorWithConstantOp(parser, result); }];
-  //let printer = [{ return infrt::dt::printFillTensorWithConstantOp(p, *this); }];
   let assemblyFormat = "`(` $input `:` type($input) `)`  attr-dict";
 }
 
@@ -93,8 +90,8 @@ class SetTensorOp<string dtype> :
   let arguments = (ins DenseTensor);
   let results = (outs);
 
-  let parser  = [{ return infrt::dt::parseSetTensorOp(parser, result); }];
-  let printer = [{ return infrt::dt::printSetTensorOp(p, *this); }];
+  let parser  = [{ return ::infrt::dt::parseSetTensorOp(parser, result); }];
+  let printer = [{ return ::infrt::dt::printSetTensorOp(p, *this); }];
 }
 
 def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {

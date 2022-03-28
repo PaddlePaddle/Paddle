@@ -26,7 +26,7 @@ struct ValueRef;
 /**
  * Base class of all executable Function.
  *
- * This is used by `infrt.call` op, to execute a function.
+ * This is used by `core.call` op, to execute a function.
  */
 class Function {
  public:

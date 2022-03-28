@@ -59,10 +59,10 @@ template <>
 struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
   explicit PD2TRT_GraphLower(::mlir::MLIRContext *context)
       : ::mlir::RewritePattern(
-            "infrt.graph", 1, context, {"trt.create_engine"}) {}
+            "core.graph", 1, context, {"trt.create_engine"}) {}
   ::mlir::LogicalResult matchAndRewrite(
       ::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
-    auto casted_op = ::llvm::dyn_cast<::infrt::GraphOp>(op);
+    auto casted_op = ::llvm::dyn_cast<core::GraphOp>(op);
     ::mlir::Operation::operand_range inputs = casted_op.inputs();
     auto ods_loc = rewriter.getFusedLoc(op->getLoc());
     CreateEngineOp create_engine_op;
@@ -84,13 +84,13 @@ struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
 
     // trt.compute
     ::llvm::SmallVector<::mlir::Value, 4> replace_values2;
-    auto ctx_op = rewriter.create<::infrt::phi::CreateGPUContextOp>(
+    auto ctx_op = rewriter.create<infrt::phi::CreateGPUContextOp>(
         ods_loc,
         infrt::phi::ContextType::get(rewriter.getContext(),
                                      infrt::TargetType::GPU));
     auto compute_op = rewriter.create<EngineComputeOp>(
         ods_loc,
-        ::infrt::DenseTensorListType::get(rewriter.getContext()),
+        infrt::core::DenseTensorListType::get(rewriter.getContext()),
         create_engine_op.engine(),
         ctx_op.output());
     auto tensor_list_val = compute_op.outputs();
@@ -98,7 +98,7 @@ struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
       auto res = casted_op->getResult(i);
       auto int_attr = mlir::IntegerAttr::get(
           mlir::IntegerType::get(rewriter.getContext(), 32), i);
-      auto get_tensor_op = rewriter.create<::infrt::dt::TensorListGetTensorOp>(
+      auto get_tensor_op = rewriter.create<infrt::dt::TensorListGetTensorOp>(
           ods_loc, res.getType(), tensor_list_val, int_attr);
       replace_values2.push_back(get_tensor_op.output());
     }
@@ -117,8 +117,8 @@ void TRTOpConverterPass::runOnOperation() {
   // this lowering. In our case, we are lowering to TensorRTDialect from
   // PaddleDialect
   target.addLegalDialect<TensorRTDialect>();
-  target.addLegalDialect<::infrt::phi::PHIDialect>();
-  target.addLegalDialect<::infrt::dt::DTDialect>();
+  target.addLegalDialect<infrt::phi::PHIDialect>();
+  target.addLegalDialect<infrt::dt::DTDialect>();
   target.addLegalDialect<phi::PHIDenseTensorDialect>();
 
   // Now that the conversion target has been defined, we just need to provide

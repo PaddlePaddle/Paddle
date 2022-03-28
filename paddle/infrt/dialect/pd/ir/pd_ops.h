@@ -25,7 +25,7 @@
 #include <mlir/Interfaces/InferTypeOpInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_opsDialect.h.inc"
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h.inc"

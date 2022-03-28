@@ -37,14 +37,14 @@ TEST(MlirToRuntimeTranslate, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = infrt.constant.f32 1.0
-  %v1 = infrt.constant.f32 2.0
-  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = core.constant.f32 1.0
+  %v1 = core.constant.f32 2.0
+  %v2 = "core.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "core.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "infrt.print.f32"(%v1) : (f32) -> ()
+  "core.print.f32"(%v1) : (f32) -> ()
 
-  infrt.return
+  core.return
 }
 )ROC";
 
@@ -63,14 +63,14 @@ TEST(TestMlir, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = infrt.constant.f32 1.0
-  %v1 = infrt.constant.f32 2.0
-  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = core.constant.f32 1.0
+  %v1 = core.constant.f32 2.0
+  %v2 = "core.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "core.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "infrt.print.f32"(%v1) : (f32) -> ()
+  "core.print.f32"(%v1) : (f32) -> ()
 
-  infrt.return
+  core.return
 }
 )ROC";
 
@@ -88,20 +88,20 @@ TEST(TestMlir, shadow_copy_tensor_profile) {
   mlir::MLIRContext* context = infrt::Global::getMLIRContext();
 
   auto head = R"ROC(
-func @predict(%a: !infrt.dense_tensor<CPU, FP32, NCHW>, %b: !infrt.dense_tensor<CPU, FP32, NCHW>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) {
+func @predict(%a: !core.dense_tensor<CPU, FP32, NCHW>, %b: !core.dense_tensor<CPU, FP32, NCHW>) -> (!core.dense_tensor<CPU, FP32, NCHW>, !core.dense_tensor<CPU, FP32, NCHW>) {
 )ROC";
 
   auto tpl0 =
-      "%a{0} = dt.shallow_copy_tensor %a : !infrt.dense_tensor<CPU, FP32, "
+      "%a{0} = dt.shallow_copy_tensor %a : !core.dense_tensor<CPU, FP32, "
       "NCHW> -> "
-      "!infrt.dense_tensor<CPU, FP32, NCHW>";
+      "!core.dense_tensor<CPU, FP32, NCHW>";
   auto tpl1 =
-      "%b{0} = dt.shallow_copy_tensor %b : !infrt.dense_tensor<CPU, FP32, "
+      "%b{0} = dt.shallow_copy_tensor %b : !core.dense_tensor<CPU, FP32, "
       "NCHW> -> "
-      "!infrt.dense_tensor<CPU, FP32, NCHW>";
+      "!core.dense_tensor<CPU, FP32, NCHW>";
 
   auto end = R"ROC(
-infrt.return %a0, %b0: !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>
+core.return %a0, %b0: !core.dense_tensor<CPU, FP32, NCHW>, !core.dense_tensor<CPU, FP32, NCHW>
 }
   )ROC";
 

@@ -4,10 +4,10 @@
 #else
 #define BASIC_OPS
 
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-class INFRT_Op<string mnemonic, list<OpTrait> traits = []> : Op<Infrt_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+class Core_Op<string mnemonic, list<OpTrait> traits = []> : Op<Core_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 
   // Each registered op needs to provide all of a printer, parser and verifier.
   let printer = [{ return infrt::dialect::print(p, *this); }];
@@ -16,7 +16,7 @@ class INFRT_Op<string mnemonic, list<OpTrait> traits = []> : Op<Infrt_Dialect, m
 }
 
 class ConstantOp<string suffix, Type baseType, Attr attr>
-    : INFRT_Op<"constant." # suffix, [NoSideEffect]> {
+    : Core_Op<"constant." # suffix, [NoSideEffect]> {
   let summary = "constant value constructor in host";
 
   let arguments = (ins attr:$value);
@@ -28,8 +28,8 @@ def ConstantI64Op : ConstantOp<"i64", I64, I64Attr>;
 def ConstantF32Op : ConstantOp<"f32", F32, F32Attr>;
 def ConstantF64Op : ConstantOp<"f64", F64, F64Attr>;
 
-class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {
-  let summary = "infrt.add operation";
+class AddOp<string suffix, Type type> : Core_Op<"add." # suffix, [NoSideEffect]> {
+  let summary = "core.add operation";
   let description = [{
       An operation that takes two inputs and returns their sum as result.
     }];
@@ -45,8 +45,8 @@ def AddI64Op : AddOp<"i64", I64>;
 def AddF32Op : AddOp<"f32", F32>;
 def AddF64Op : AddOp<"f64", F64>;
 
-class MulOp<string suffix, Type type> : INFRT_Op<"mul." # suffix, [NoSideEffect]> {
-    let summary = "infrt.mul operation";
+class MulOp<string suffix, Type type> : Core_Op<"mul." # suffix, [NoSideEffect]> {
+    let summary = "core.mul operation";
     let description = [{
         An operation that takes two inputs and returns their mul as result.
     }];
@@ -62,8 +62,8 @@ def MulI64Op : MulOp<"i64", I64>;
 def MulF32Op : MulOp<"f32", F32>;
 def MulF64Op : MulOp<"f64", F64>;
 
-class PrintOp<string suffix, Type type> : INFRT_Op<"print." # suffix> {
-  let summary = "infrt.print operation";
+class PrintOp<string suffix, Type type> : Core_Op<"print." # suffix> {
+  let summary = "core.print operation";
   let description = [{
       An operation takes a number as input and prints to stdout.
     }];
@@ -78,8 +78,8 @@ def PrintI64Op : PrintOp<"i64", I64>;
 def PrintF32Op : PrintOp<"f32", F32>;
 def PrintF64Op : PrintOp<"f64", F64>;
 
-def PrintStringOp : INFRT_Op<"print_string"> {
-  let summary = "infrt.print_string";
+def PrintStringOp : Core_Op<"print_string"> {
+  let summary = "core.print_string";
   let description = [{
       An operation that prints a string.
   }];

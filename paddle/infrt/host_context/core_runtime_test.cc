@@ -29,8 +29,8 @@ int sub(int a, int b) { return a - b; }
 
 TEST(CoreRuntime, basic) {
   KernelRegistry registry;
-  registry.AddKernel("infrt.test.addi32", INFRT_KERNEL(add));
-  registry.AddKernel("infrt.test.subi32", INFRT_KERNEL(sub));
+  registry.AddKernel("core.test.addi32", INFRT_KERNEL(add));
+  registry.AddKernel("core.test.subi32", INFRT_KERNEL(sub));
 
   CoreRuntimeBuilder builder(&registry);
   auto* table = builder.symbol_table();
@@ -39,13 +39,13 @@ TEST(CoreRuntime, basic) {
   table->Register("d", 4);
 
   // c = a + b
-  auto* op0 = builder.NewOpExecutable("infrt.test.addi32");
+  auto* op0 = builder.NewOpExecutable("core.test.addi32");
   op0->AppendArgument("a");
   op0->AppendArgument("b");
   op0->SetResults({"c"});
 
   // e = c - d
-  auto* op1 = builder.NewOpExecutable("infrt.test.subi32");
+  auto* op1 = builder.NewOpExecutable("core.test.subi32");
   op1->AppendArgument("c");
   op1->AppendArgument("d");
   op1->SetResults({"e"});
@@ -64,8 +64,8 @@ TEST(CoreRuntime, function) {
   //   return c
   // }
   KernelRegistry registry;
-  registry.AddKernel("infrt.test.addi32", INFRT_KERNEL(add));
-  registry.AddKernel("infrt.test.subi32", INFRT_KERNEL(sub));
+  registry.AddKernel("core.test.addi32", INFRT_KERNEL(add));
+  registry.AddKernel("core.test.subi32", INFRT_KERNEL(sub));
 
   CoreRuntimeBuilder builder(&registry);
   auto* table = builder.symbol_table();
@@ -80,7 +80,7 @@ TEST(CoreRuntime, function) {
   ASSERT_EQ(table->Get<int>("b"), 2);
   ASSERT_EQ(table->size(), 2UL);
 
-  auto* op = builder.NewOpExecutable("infrt.test.addi32");
+  auto* op = builder.NewOpExecutable("core.test.addi32");
   op->AppendArgument("a");
   op->AppendArgument("b");
   op->SetResults({"c"});

@@ -53,7 +53,7 @@ void FillTensorWithConstant(Attribute<T> v, DenseHostTensor *tensor) {
   MutableDTArrayView<T>(tensor).Fill(v.get());
 }
 
-TensorMap LoadParams(Attribute<std::string> path) {
+TensorMap LoadParamsToTensorMap(Attribute<std::string> path) {
   return *(infrt::tensor::LoadParams(path.get()));
 }
 
@@ -139,7 +139,7 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
                       INFRT_KERNEL(FillTensorWithConstant<double>));
 
   // TensorMap related methods.
-  registry->AddKernel("dt.load_params", INFRT_KERNEL(LoadParams));
+  registry->AddKernel("dt.load_params", INFRT_KERNEL(LoadParamsToTensorMap));
   registry->AddKernel("dt.tensor_map_get_tensor",
                       INFRT_KERNEL(TensorMapGetTensor));
   registry->AddKernel("dt.tensor_map_get_size", INFRT_KERNEL(TensorMapGetSize));

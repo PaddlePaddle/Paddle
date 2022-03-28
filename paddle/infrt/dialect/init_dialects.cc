@@ -16,9 +16,9 @@
 
 #include <glog/logging.h>
 
+#include "paddle/infrt/dialect/core/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
@@ -31,7 +31,7 @@
 namespace infrt {
 void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
   registry.insert<ts::TensorShapeDialect,
-                  InfrtDialect,
+                  core::CoreDialect,
                   dt::DTDialect,
                   pd::PaddleDialect,
                   trt::TensorRTDialect

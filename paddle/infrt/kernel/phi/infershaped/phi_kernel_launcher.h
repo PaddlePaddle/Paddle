@@ -55,12 +55,12 @@ void KernelLauncherFunc(host_context::KernelFrame* frame) {
   }
   if (turn_on_infer_shape_cache) {
     if (launcher.IsShapeChanged(num_input_tensors)) {
-      ::infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
+      infrt::host_context::KernelImpl<InferShapedFunc, infershape>::Invoke(
           &launcher.infershape_kernel_frame_builder);
       launcher.BuildInferShapeCache(num_input_tensors);
     }
   }
-  ::infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
+  infrt::host_context::KernelImpl<KernelFunc, kernel>::Invoke(frame);
 }
 
 }  // namespace kernel

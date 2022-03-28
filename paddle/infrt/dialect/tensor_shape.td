@@ -2,7 +2,7 @@
 #else
 #define INFRT_OPS
 
-include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "paddle/infrt/dialect/core/ir/core_base.td"
 include "paddle/infrt/dialect/tensor_shape_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 

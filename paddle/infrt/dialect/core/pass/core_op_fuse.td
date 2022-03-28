@@ -1,19 +1,19 @@
-#ifndef INFRT_OP_FUSE
-#define INFRT_OP_FUSE
+#ifndef CORE_OP_FUSE
+#define CORE_OP_FUSE
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "paddle/infrt/dialect/infrt/ir/infrt_ops.td"
+include "paddle/infrt/dialect/core/ir/core_ops.td"
 include "paddle/infrt/dialect/pd/ir/pd_ops.td"
 
 def FuseTensorCastPattern : Pat<
-       (Infrt_TensorCastOp (Infrt_TensorCastOp $arg)),
-       (Infrt_TensorCastOp $arg)>;
+       (Core_TensorCastOp (Core_TensorCastOp $arg)),
+       (Core_TensorCastOp $arg)>;
 
 def TypesAreIdentical : Constraint<CPred<"$0.getType() == $1.getType()">>;
 def RedundantTensorCastOptPattern : Pat<
-  (Infrt_TensorCastOp:$res $arg), (replaceWithValue $arg),
+  (Core_TensorCastOp:$res $arg), (replaceWithValue $arg),
   [(TypesAreIdentical $res, $arg)]>;
 
 
 
-#endif // INFRT_OP_FUSE
+#endif // CORE_OP_FUSE

@@ -21,16 +21,14 @@
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 
+#include "paddle/infrt/dialect/core/ir/core_dialect.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
 namespace infrt {
 namespace trt {
 
-EngineType EngineType::get() {
-  return Base::get(::infrt::Global::getMLIRContext());
-}
+EngineType EngineType::get() { return Base::get(Global::getMLIRContext()); }
 
 EngineType EngineType::get(mlir::MLIRContext *context) {
   return Base::get(context);
@@ -50,7 +48,7 @@ mlir::Type TensorRTDialect::parseType(mlir::DialectAsmParser &parser) const {
   if (parser.parseKeyword(&keyword)) return mlir::Type();
   // parse trt dilaect types, for example: !trt.engine
   if (keyword == "engine") {
-    return infrt::trt::EngineType::get(getContext());
+    return EngineType::get(getContext());
   }
   parser.emitError(parser.getCurrentLocation(), "unknown infrt::trt type: ")
       << keyword;
@@ -60,7 +58,7 @@ mlir::Type TensorRTDialect::parseType(mlir::DialectAsmParser &parser) const {
 void TensorRTDialect::printType(mlir::Type type,
                                 mlir::DialectAsmPrinter &printer) const {
   // print trt dilaect types, for example: !trt.engien
-  if (type.isa<infrt::trt::EngineType>()) {
+  if (type.isa<EngineType>()) {
     printer << "engine";
     return;
   }

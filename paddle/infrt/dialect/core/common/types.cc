@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/common/types.h"
+#include "paddle/infrt/dialect/core/common/types.h"
 
 namespace infrt {
 

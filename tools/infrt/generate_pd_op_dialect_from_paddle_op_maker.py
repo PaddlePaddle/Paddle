@@ -370,7 +370,10 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
             ops_mlir_file.write("}\n")
-            ops_mlir_file.write("\n#endif  // PD_OPS")
+
+        # 3. custom op dialect and end of file
+    with open(dst_dialect_file, 'a') as ops_mlir_file:
+        ops_mlir_file.write("\n#endif  // PD_OPS")
 
     print("Skipped ops num: " + str(len(skipped_op_list)))
     print("Automatically generated op dialects num: " + str(
