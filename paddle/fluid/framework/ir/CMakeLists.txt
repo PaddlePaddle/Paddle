@@ -97,6 +97,7 @@ pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
 pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
+pass_library(mixed_precision_configure_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 

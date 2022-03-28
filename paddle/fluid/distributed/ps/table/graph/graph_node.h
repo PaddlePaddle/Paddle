@@ -48,6 +48,7 @@ class Node {
   virtual void set_feature(int idx, std::string str) {}
   virtual void set_feature_size(int size) {}
   virtual int get_feature_size() { return 0; }
+  virtual size_t get_neighbor_size() { return 0; }
 
  protected:
   uint64_t id;
@@ -70,6 +71,7 @@ class GraphNode : public Node {
   }
   virtual uint64_t get_neighbor_id(int idx) { return edges->get_id(idx); }
   virtual float get_neighbor_weight(int idx) { return edges->get_weight(idx); }
+  virtual size_t get_neighbor_size() { return edges->size(); }
 
  protected:
   Sampler *sampler;

@@ -98,6 +98,28 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
+      } else if (arg_type == std::type_index(typeid(const SparseCooTensor&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
+                                 paddle::optional<const SparseCooTensor&>))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(const SparseCsrTensor&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
+                                 paddle::optional<const SparseCsrTensor&>))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
         args_def->AppendOutput(default_key.backend(),
                                default_tensor_layout,
@@ -110,6 +132,16 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_key.dtype(),
                                arg_type);
       } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(SparseCooTensor*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
+      } else if (arg_type == std::type_index(typeid(SparseCsrTensor*))) {
         args_def->AppendOutput(default_key.backend(),
                                default_tensor_layout,
                                default_key.dtype(),
@@ -177,6 +209,14 @@ struct KernelRegistrar {
       if (dtype == static_cast<size_t>(DataType::UINT32) ||
           dtype == static_cast<size_t>(DataType::UINT64) ||
           dtype == static_cast<size_t>(DataType::UINT16)) {
+        continue;
+      }
+      // NOTE(zhoushunjie): Only the strings kernels can support pstring dtype
+      constexpr char strings_kernels_prefix[] = "strings_";
+      if (dtype == static_cast<size_t>(DataType::PSTRING) &&
+          strncmp(kernel_name_cstr,
+                  strings_kernels_prefix,
+                  strlen(strings_kernels_prefix))) {
         continue;
       }
       ConstructKernel(reg_type,

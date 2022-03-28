@@ -67,6 +67,8 @@ message AMPConfig {
   repeated string custom_black_varnames = 9;
   optional bool use_pure_fp16 = 10 [ default = false ];
   optional bool use_fp16_guard = 11 [ default = true ];
+  optional bool use_optimizer_fp16 = 12
+      [ default = false ]; // auto parallel effective only
 }
 
 message LocalSGDConfig {

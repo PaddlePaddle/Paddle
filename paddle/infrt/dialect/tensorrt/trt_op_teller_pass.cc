@@ -14,7 +14,9 @@
 
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 
+#include <llvm/Support/Casting.h>
 #include <mlir/IR/Builders.h>
+#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
@@ -35,13 +37,15 @@ void TRTOpTellerPass::runOnFunction() {
     auto *op = worklist.back();
     worklist.pop_back();
     if (op == nullptr) continue;
-    if (::llvm::dyn_cast_or_null<mlir::pd::FeedOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<mlir::pd::FetchOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(op)) continue;
+    if (op->getName().getStringRef().substr(0, 3) != "pd.") continue;
+    if (::llvm::dyn_cast_or_null<infrt::pd::FeedOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<infrt::pd::FetchOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<::infrt::GraphOp>(op)) continue;
     if (::llvm::dyn_cast_or_null<::infrt::ReturnOp>(op)) continue;
+
     builder.setInsertionPoint(op);
     auto loc = getFunction().getLoc();
-    auto graph_op = builder.create<mlir::pd::GraphOp>(
+    auto graph_op = builder.create<::infrt::GraphOp>(
         loc, op->getResultTypes(), op->getOperands());
 
     ::llvm::SmallVector<mlir::Value, 4> tblgen_repl_values;

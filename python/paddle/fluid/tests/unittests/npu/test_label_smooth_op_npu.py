@@ -78,8 +78,10 @@ class TestLabelSmoothOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.5)
+        else:
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):

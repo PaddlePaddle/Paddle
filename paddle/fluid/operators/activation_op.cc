@@ -1492,6 +1492,19 @@ REGISTER_ACTIVATION_OP(softshrink, SoftShrink, SoftShrinkFunctor,
 REGISTER_ACTIVATION_OP(tanh_shrink, TanhShrink, TanhShrinkFunctor,
                        TanhShrinkGradFunctor);
 REGISTER_ACTIVATION_OP(silu, Silu, SiluFunctor, SiluGradFunctor);
+REGISTER_ACTIVATION_OP(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,
+                       HardSigmoidGradFunctor);
+REGISTER_ACTIVATION_OP(logsigmoid, LogSigmoid, LogSigmoidFunctor,
+                       LogSigmoidGradFunctor);
+REGISTER_ACTIVATION_OP(log2, Log2, Log2Functor, Log2GradFunctor);
+REGISTER_ACTIVATION_OP(log10, Log10, Log10Functor, Log10GradFunctor);
+REGISTER_ACTIVATION_OP(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);
+REGISTER_ACTIVATION_OP(hard_swish, HardSwish, HardSwishFunctor,
+                       HardSwishGradFunctor);
+REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
+REGISTER_ACTIVATION_OP(round, Round, RoundFunctor, ZeroGradFunctor);
+REGISTER_ACTIVATION_OP(floor, Floor, FloorFunctor, ZeroGradFunctor);
+REGISTER_ACTIVATION_OP(ceil, Ceil, CeilFunctor, ZeroGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */
@@ -1525,30 +1538,6 @@ REGISTER_OPERATOR(sigmoid_triple_grad,
                   ops::ActivationOpTripleGrad<
                       ops::SigmoidTripleGradFunctor<float>::FwdDeps()>,
                   ops::ActivationTripleGradOpInplaceInferer);
-
-// Register Sigmoid/GradSigmoid Kernels
-REGISTER_ACTIVATION_CPU_KERNEL(sigmoid, Sigmoid, SigmoidFunctor,
-                               SigmoidGradFunctor);
-
-// Register DoubleGrad Kernel
-REGISTER_OP_CPU_KERNEL(
-    sigmoid_grad_grad,
-    ops::SigmoidDoubleGradKernel<plat::CPUDeviceContext,
-                                 ops::SigmoidGradGradFunctor<float>>,
-    ops::SigmoidDoubleGradKernel<plat::CPUDeviceContext,
-                                 ops::SigmoidGradGradFunctor<double>>,
-    ops::SigmoidDoubleGradKernel<plat::CPUDeviceContext,
-                                 ops::SigmoidGradGradFunctor<plat::float16>>);
-
-// Register TripleGrad Kernel
-REGISTER_OP_CPU_KERNEL(
-    sigmoid_triple_grad,
-    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
-                                 ops::SigmoidTripleGradFunctor<float>>,
-    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
-                                 ops::SigmoidTripleGradFunctor<double>>,
-    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
-                                 ops::SigmoidTripleGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 
@@ -1795,18 +1784,6 @@ REGISTER_OPERATOR(
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    pow, ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<float>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    pow_grad,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */
@@ -1887,15 +1864,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
-
-REGISTER_OP_CPU_KERNEL(
-    log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                                            ops::LogGradGradFunctor<float>>,
-    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                             ops::LogGradGradFunctor<double>>,
-    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                             ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/
