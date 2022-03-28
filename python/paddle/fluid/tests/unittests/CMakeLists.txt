@@ -560,9 +560,7 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
 endif()
 
-if (NOT WITH_GLOO)
-    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
-endif()
+LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
