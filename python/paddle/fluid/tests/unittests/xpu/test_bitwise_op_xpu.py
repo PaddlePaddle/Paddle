@@ -55,7 +55,7 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -69,7 +69,7 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
 
     class XPUTestBitwiseAndCase1(XPUTestBitwiseAndBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -77,7 +77,7 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
 
     class XPUTestBitwiseAndCase1(XPUTestBitwiseAndBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [4, 1]
             self.low = -100
@@ -85,7 +85,7 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
 
     class XPUTestBitwiseAndCase1(XPUTestBitwiseAndBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = 0
@@ -94,7 +94,7 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('bitwise_and')
 for stype in support_types:
-    create_test_class(globals(), XPUTestExpOP, stype)
+    create_test_class(globals(), XPUTestBitwiseAnd, stype)
 
 
 ################## TEST OP: BitwiseOr ##################
@@ -125,7 +125,7 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -139,7 +139,7 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
 
     class XPUTestBitwiseOrCase1(XPUTestBitwiseOrBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -147,7 +147,7 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
 
     class XPUTestBitwiseOrCase1(XPUTestBitwiseOrBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [4, 1]
             self.low = -100
@@ -155,7 +155,7 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
 
     class XPUTestBitwiseOrCase1(XPUTestBitwiseOrBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = 0
@@ -164,7 +164,7 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('bitwise_or')
 for stype in support_types:
-    create_test_class(globals(), XPUTestExpOP, stype)
+    create_test_class(globals(), XPUTestBitwiseOr, stype)
 
 
 ################## TEST OP: BitwiseXor ##################
@@ -195,7 +195,7 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -209,7 +209,7 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
 
     class XPUTestBitwiseXorCase1(XPUTestBitwiseXorBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -217,7 +217,7 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
 
     class XPUTestBitwiseXorCase1(XPUTestBitwiseXorBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [4, 1]
             self.low = -100
@@ -225,7 +225,7 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
 
     class XPUTestBitwiseXorCase1(XPUTestBitwiseXorBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = 0
@@ -234,7 +234,7 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('bitwise_xor')
 for stype in support_types:
-    create_test_class(globals(), XPUTestExpOP, stype)
+    create_test_class(globals(), XPUTestBitwiseXor, stype)
 
 
 ##################  TEST OP: BitwiseNot ##################
@@ -265,7 +265,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -279,7 +279,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
 
     class XPUTestBitwiseNotCase1(XPUTestBitwiseNotBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = -100
@@ -287,7 +287,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
 
     class XPUTestBitwiseNotCase1(XPUTestBitwiseNotBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [4, 1]
             self.low = -100
@@ -295,7 +295,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
 
     class XPUTestBitwiseNotCase1(XPUTestBitwiseNotBase):
         def init_case(self):
-            self.dtype = np.int
+            self.dtype = np.int32
             self.x_shape = [2, 3, 4, 5]
             self.y_shape = [2, 3, 4, 5]
             self.low = 0
@@ -304,7 +304,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('bitwise_not')
 for stype in support_types:
-    create_test_class(globals(), XPUTestExpOP, stype)
+    create_test_class(globals(), XPUTestBitwiseNot, stype)
 
 if __name__ == '__main__':
     unittest.main()

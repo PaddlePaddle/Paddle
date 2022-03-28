@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.
+// limitation
 
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/logical_kernel.h"
@@ -60,12 +60,12 @@ void LogicalNotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-
-PD_REGISTER_KERNEL(logical_and, XPU, ALL_LAYOUT, phi::LogicalAndKernel, float) {
-}
-PD_REGISTER_KERNEL(logical_Or, XPU, ALL_LAYOUT, phi::LogicalOrKernel, float) {}
-PD_REGISTER_KERNEL(logical_Not, XPU, ALL_LAYOUT, phi::LogicalNotKernel, float) {
-}
-PD_REGISTER_KERNEL(logical_Xor, XPU, ALL_LAYOUT, phi::LogicalXorKernel, float) {
-}
+PD_REGISTER_KERNEL(
+    logical_and, KPS, ALL_LAYOUT, phi::LogicalAndKernel, int /*, float*/) {}
+PD_REGISTER_KERNEL(
+    logical_Or, KPS, ALL_LAYOUT, phi::LogicalOrKernel, int /*, float*/) {}
+PD_REGISTER_KERNEL(
+    logical_Not, KPS, ALL_LAYOUT, phi::LogicalNotKernel, int /*, float*/) {}
+PD_REGISTER_KERNEL(
+    logical_Xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int /*, float*/) {}
 #endif
