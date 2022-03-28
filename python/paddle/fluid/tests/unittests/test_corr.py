@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -91,22 +91,8 @@ class Corr_Test4(unittest.TestCase):
         self.assertRaises(ValueError, test_err)
 
 
-# Input(x) only support N-D (1<=N<=2) tensor
-class Corr_Test5(unittest.TestCase):
-    def setUp(self):
-        self.shape = [2, 2, 5, 10]
-
-    def test_errors(self):
-        def test_err():
-            np_arr = np.random.rand(*self.shape).astype('float64')
-            tensor = paddle.to_tensor(np_arr)
-            corr = paddle.linalg.corrcoef(tensor)
-            
-        self.assertRaises(ValueError, test_err)
-
-
 # test unsupported complex input
-class Cov_Test6(unittest.TestCase):
+class Corr_Test5(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         x1 = fluid.data(name='x1', shape=[2], dtype='complex128')
@@ -115,7 +101,7 @@ class Cov_Test6(unittest.TestCase):
 
 
 # test unsupported complex input
-class Cov_Test7(unittest.TestCase):
+class Corr_Test6(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         x2 = fluid.data(name='x2', shape=[2, 2], dtype='complex64')
