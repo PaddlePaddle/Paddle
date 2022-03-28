@@ -135,7 +135,7 @@ function compile_test() {
     cd ${build_dir}
     TEST_NAME=$1
     if [ $WIN_DETECT != "" ]; then
-        cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+        cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
              -DWITH_GPU=$TEST_GPU_CPU \
@@ -147,7 +147,7 @@ function compile_test() {
              -DCMAKE_CXX_FLAGS='/std:c++17' \
              -DCMAKE_BUILD_TYPE=Release \
              -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-        msbuild /maxcpucount /property:Configuration=Release ALL_BUILD.vcxproj
+        ninja
     else
         cmake .. -DPADDLE_LIB=${inference_install_dir} \
                  -DWITH_MKL=$TURN_ON_MKL \
@@ -171,11 +171,7 @@ mkdir -p ${log_dir}
 cd ${build_dir}
 rm -rf *
 
-if [ $WIN_DETECT != "" ]; then
-    exe_dir=${build_dir}/Release
-else
-    exe_dir=${build_dir}
-fi;
+exe_dir=${build_dir}
 
 printf "${YELLOW} start test_resnet50 ${NC} \n";
 compile_test "test_resnet50"

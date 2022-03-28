@@ -112,16 +112,17 @@ for WITH_STATIC_LIB in ON OFF; do
       continue
     fi
     # -----simple_on_word2vec on windows-----
-    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=simple_on_word2vec \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
-      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-    msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+      -DCMAKE_BUILD_TYPE=Release
+    ninja
     for use_gpu in $use_gpu_list; do
-      Release/simple_on_word2vec.exe \
+      simple_on_word2vec.exe \
         --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
         --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
@@ -132,17 +133,18 @@ for WITH_STATIC_LIB in ON OFF; do
 
     # -----vis_demo on windows-----
     rm -rf *
-    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=vis_demo \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
-      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-    msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+      -DCMAKE_BUILD_TYPE=Release
+    ninja
     for use_gpu in $use_gpu_list; do
       for vis_demo_name in $vis_demo_list; do
-        Release/vis_demo.exe \
+        vis_demo.exe \
           --modeldir=$DATA_DIR/$vis_demo_name/model \
           --data=$DATA_DIR/$vis_demo_name/data.txt \
           --refer=$DATA_DIR/$vis_demo_name/result.txt \
@@ -153,11 +155,11 @@ for WITH_STATIC_LIB in ON OFF; do
         fi
       done
     done
-
+    
     # --------tensorrt mobilenet on windows------
     if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
       rm -rf *
-      cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
+      cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
         -DWITH_MKL=$TURN_ON_MKL \
         -DDEMO_NAME=trt_mobilenet_demo \
         -DWITH_GPU=$TEST_GPU_CPU \
@@ -165,9 +167,10 @@ for WITH_STATIC_LIB in ON OFF; do
         -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
         -DUSE_TENSORRT=$USE_TENSORRT \
         -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
-      msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
-      Release/trt_mobilenet_demo.exe \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
+        -DCMAKE_BUILD_TYPE=Release
+      ninja
+      trt_mobilenet_demo.exe \
         --modeldir=$DATA_DIR/mobilenet/model \
         --data=$DATA_DIR/mobilenet/data.txt \
         --refer=$DATA_DIR/mobilenet/result.txt 
