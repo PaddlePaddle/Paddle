@@ -16,6 +16,13 @@ limitations under the License. */
 
 namespace phi {
 
+void AssignValueInferMeta(const std::vector<int>& shape,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(phi::make_ddim(shape));
+  out->set_dtype(dtype);
+}
+
 void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
