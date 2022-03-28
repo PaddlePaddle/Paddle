@@ -1409,7 +1409,7 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_gather(x, index, axis)
     if _in_legacy_dygraph():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis

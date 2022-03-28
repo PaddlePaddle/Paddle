@@ -18,7 +18,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -510,7 +510,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
            #    [1, 0]]))
            
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_mode(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
