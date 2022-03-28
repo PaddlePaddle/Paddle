@@ -129,7 +129,7 @@ def train_static(args, batch_generator):
 
 
 def train_dygraph(args, batch_generator):
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         if SEED is not None:
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
@@ -222,7 +222,7 @@ def train_dygraph(args, batch_generator):
 
 
 def predict_dygraph(args, batch_generator):
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
@@ -402,4 +402,6 @@ class TestTransformer(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()

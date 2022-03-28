@@ -107,7 +107,7 @@ def train(conf_dict, to_static):
     else:
         place = fluid.CPUPlace()
 
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
@@ -170,4 +170,6 @@ class TestSimnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()

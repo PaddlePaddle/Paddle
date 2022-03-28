@@ -333,7 +333,7 @@ def train(train_reader, to_static):
 
     np.random.seed(SEED)
 
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         se_resnext = SeResNeXt()
@@ -401,7 +401,7 @@ def train(train_reader, to_static):
 def predict_dygraph(data):
     program_translator = ProgramTranslator()
     program_translator.enable(False)
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         se_resnext = SeResNeXt()
 
         model_dict, _ = fluid.dygraph.load_dygraph(DY_STATE_DICT_SAVE_PATH)
@@ -434,7 +434,7 @@ def predict_static(data):
 
 
 def predict_dygraph_jit(data):
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         se_resnext = fluid.dygraph.jit.load(MODEL_SAVE_PREFIX)
         se_resnext.eval()
 
@@ -505,4 +505,6 @@ class TestSeResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()

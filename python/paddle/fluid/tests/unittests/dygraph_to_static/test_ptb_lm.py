@@ -217,7 +217,7 @@ def train(place):
     vocab_size = 1000
     batch_num = 200
 
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         ptb_model = PtbModel(
@@ -314,4 +314,6 @@ class TestPtb(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()

@@ -273,7 +273,7 @@ def train(args, fake_data_reader, to_static):
 
     random.seed(0)
     np.random.seed(0)
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         paddle.seed(1000)
         paddle.framework.random._manual_program_seed(1000)
 
@@ -347,4 +347,6 @@ class TestTsm(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()

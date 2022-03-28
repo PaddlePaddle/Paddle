@@ -44,7 +44,7 @@ def prepare_input(batch):
 
 
 def train(attn_model=False):
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = 2020
         fluid.default_main_program().random_seed = 2020
 
@@ -118,7 +118,7 @@ def train(attn_model=False):
 
 
 def infer(attn_model=False):
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
 
         if attn_model:
             model = AttentionModel(
@@ -203,4 +203,6 @@ class TestSeq2seq(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # switch into new eager mode
+    with fluid.framework._test_eager_guard():
+        unittest.main()
