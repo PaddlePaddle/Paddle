@@ -22,6 +22,7 @@ import paddle
 import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 import os
 
 
@@ -959,6 +960,19 @@ class TestDropoutBackward(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(input.gradient(
                     ), self.cal_grad_downscale_in_infer(mask.numpy())))
+
+    def test_backward_downscale_in_infer_eager(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                with _test_eager_guard():
+                    input = paddle.uniform([40, 40], dtype="float32")
+                    input.stop_gradient = False
+                    out = paddle.nn.functional.dropout(input, 0.5)
+                    # out.backward()
+
+                    # self.assertTrue(
+                    #     np.array_equal(input.gradient(
+                    #     ), self.cal_grad_downscale_in_infer(mask.numpy())))
 
     def test_backward_upscale_train(self):
         for place in self.places:

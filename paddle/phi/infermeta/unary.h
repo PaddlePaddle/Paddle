@@ -80,7 +80,15 @@ void DiagInferMeta(const MetaTensor& x,
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
-void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask);
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask);
 
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,

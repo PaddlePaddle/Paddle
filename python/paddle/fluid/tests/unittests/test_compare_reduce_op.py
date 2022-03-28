@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 def create_test_not_equal_class(op_type, typename, callback):
@@ -110,13 +111,19 @@ class TestEqualReduceAPI(unittest.TestCase):
         assert 'equal_res' in out.name
 
     def test_dynamic_api(self):
-        paddle.disable_static()
-        x = paddle.ones(shape=[10, 10], dtype="int32")
-        y = paddle.ones(shape=[10, 10], dtype="int32")
-        out = paddle.equal_all(x, y)
-        assert out.numpy()[0] == True
-        paddle.enable_static()
+        with paddle.fluid.dygraph.guard():
+            x = paddle.ones(shape=[10, 10], dtype="int32")
+            y = paddle.ones(shape=[10, 10], dtype="int32")
+            out = paddle.equal_all(x, y)
+            assert out.numpy()[0] == True
+
+            with _test_eager_guard():
+                x = paddle.ones(shape=[10, 10], dtype="int32")
+                y = paddle.ones(shape=[10, 10], dtype="int32")
+                out = paddle.equal_all(x, y)
+                assert out.numpy()[0] == True
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

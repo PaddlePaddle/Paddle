@@ -360,7 +360,15 @@ void DiagonalInferMeta(const MetaTensor& input,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
-void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask) {
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask) {
   auto x_dims = x.dims();
   out->set_dims(x_dims);
   out->share_lod(x);
