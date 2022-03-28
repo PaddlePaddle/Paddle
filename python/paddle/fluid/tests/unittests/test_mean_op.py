@@ -147,7 +147,7 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output()
+            self.check_output(check_eager=True)
         else:
             if not core.is_compiled_with_cuda():
                 return

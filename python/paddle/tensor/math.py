@@ -1711,7 +1711,11 @@ def max(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_max(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
 
@@ -1811,7 +1815,12 @@ def min(x, axis=None, keepdim=False, name=None):
     """
 
     reduce_all, axis = _get_reduce_all_value(axis)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_min(x, axis, keepdim)
+
+    if _in_legacy_dygraph():
         return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
 
@@ -3015,7 +3024,12 @@ def all(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_all(x, axis, keepdim)
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         return _C_ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
@@ -3107,7 +3121,12 @@ def any(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_any(x, axis, keepdim)
+
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         return _C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
