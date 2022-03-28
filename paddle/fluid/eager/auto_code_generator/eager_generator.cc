@@ -2108,7 +2108,8 @@ static std::string GenerateSingleOpBase(
             GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grads_position);
 
       } else {
-        if (dispensable_input_name_set.count(fwd_name)) {
+        if (dispensable_input_name_set.count(fwd_name) &&
+            grad_ins_fwd_slotname_map.count(fwd_name)) {
           continue;
         }
         size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
@@ -2153,8 +2154,9 @@ static std::string GenerateSingleOpBase(
     if (grad_outs_slotname_map.count(grad_output_name)) {
       // Fwd Tensor
       const std::string& fwd_name = grad_outs_slotname_map.at(grad_output_name);
-      if (grad_ins_fwd_slotname_map.count(fwd_name)) {
-        if (dispensable_input_name_set.count(fwd_name)) {
+      if (fwd_inputs_name_pos_map.count(fwd_name)) {
+        if (dispensable_input_name_set.count(fwd_name) &&
+            grad_ins_fwd_slotname_map.count(fwd_name)) {
           if (duplicable_input_name_set.count(fwd_name) &&
               !is_op_base_per_duplicable_input) {
             size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
