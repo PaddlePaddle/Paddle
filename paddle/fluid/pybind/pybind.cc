@@ -1934,6 +1934,10 @@ All parameter, weight, gradient are variables in Paddle.
       paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
         .get());
+    context->SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
     return context;
                   })
       .def_static("create",
@@ -1957,6 +1961,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
+          .get());
+      context->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
           .get());
       return context;
 #endif
@@ -2007,6 +2015,10 @@ All parameter, weight, gradient are variables in Paddle.
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
         .get());
+      context->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
       context->PartialInitWithAllocator();
       return context;
 #endif

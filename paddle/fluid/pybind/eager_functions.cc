@@ -28,8 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -537,6 +539,156 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  auto& src = GetTensorFromArgs("async_read", "src", args, 0, false);
+  auto& dst = GetTensorFromArgs("async_read", "dst", args, 1, false);
+  auto& index = GetTensorFromArgs("async_read", "index", args, 2, false);
+  auto& buffer = GetTensorFromArgs("async_read", "buffer", args, 3, false);
+  auto& offset = GetTensorFromArgs("async_read", "offset", args, 4, false);
+  auto& count = GetTensorFromArgs("async_read", "count", args, 5, false);
+  PADDLE_ENFORCE_EQ(
+      src.is_gpu_pinned(), true,
+      platform::errors::InvalidArgument("Required `src` device should be "
+                                        "CUDAPinnedPlace, but received %d.",
+                                        src.inner_place()));
+  PADDLE_ENFORCE_EQ(
+      dst.is_gpu(), true,
+      platform::errors::InvalidArgument(
+          "Required `dst` device should be CUDAPlace, but received %d.",
+          dst.inner_place()));
+  PADDLE_ENFORCE_EQ(
+      index.is_cpu(), true,
+      platform::errors::InvalidArgument(
+          "Required `index` device should be CPUPlace, but received %d.",
+          index.inner_place()));
+  PADDLE_ENFORCE_EQ(buffer.is_gpu_pinned(), true,
+                    platform::errors::InvalidArgument(
+                        "Required `buffer` device should be CUDAPinnedPlace, "
+                        "but received %d.",
+                        buffer.inner_place()));
+  PADDLE_ENFORCE_EQ(
+      offset.is_cpu(), true,
+      platform::errors::InvalidArgument(
+          "Required `offset` device should be CPUPlace, but received %d.",
+          offset.inner_place()));
+  PADDLE_ENFORCE_EQ(
+      count.is_cpu(), true,
+      platform::errors::InvalidArgument(
+          "Required `count` device should be CPUPlace, but received %d.",
+          count.inner_place()));
+
+  auto& src_tensor = src;
+  auto* dst_tensor = &dst;
+  auto& index_tensor = index;
+  auto* buffer_tensor = &buffer;
+  auto& offset_tensor = offset;
+  auto& count_tensor = count;
+  auto* dst_data = dst_tensor->mutable_data<float>(dst.place());
+  const auto& deviceId = paddle::platform::GetCurrentDeviceId();
+
+  PADDLE_ENFORCE_EQ(src_tensor.dims().size(), dst_tensor->dims().size(),
+                    platform::errors::InvalidArgument(
+                        "`src` and `dst` should have same tensor shape, "
+                        "except for the first dimension."));
+  PADDLE_ENFORCE_EQ(src_tensor.dims().size(), buffer_tensor->dims().size(),
+                    platform::errors::InvalidArgument(
+                        "`src` and `buffer` should have same tensor shape, "
+                        "except for the first dimension."));
+  for (int i = 1; i < src_tensor.dims().size(); i++) {
+    PADDLE_ENFORCE_EQ(src_tensor.dims()[i], dst_tensor->dims()[i],
+                      platform::errors::InvalidArgument(
+                          "`src` and `dst` should have the same tensor shape, "
+                          "except for the first dimension."));
+    PADDLE_ENFORCE_EQ(
+        src_tensor.dims()[i], buffer_tensor->dims()[i],
+        platform::errors::InvalidArgument(
+            "`src` and `buffer` should have the same tensor shape, "
+            "except for the first dimension."));
+  }
+  PADDLE_ENFORCE_EQ(index_tensor.dims().size(), 1,
+                    platform::errors::InvalidArgument(
+                        "`index` tensor should be one-dimensional."));
+
+  auto stream =
+      paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
+
+  int64_t numel = 0;  // total copy length
+  int64_t copy_flag = offset_tensor.dims()[0];
+  int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+
+  if (copy_flag != 0) {
+    PADDLE_ENFORCE_EQ(offset_tensor.dims().size(), 1,
+                      platform::errors::InvalidArgument(
+                          "`offset` tensor should be one-dimensional."));
+    PADDLE_ENFORCE_EQ(count_tensor.dims().size(), 1,
+                      platform::errors::InvalidArgument(
+                          "`count` tensor should be one-dimensional."));
+    PADDLE_ENFORCE_EQ(offset_tensor.numel(), count_tensor.numel(),
+                      platform::errors::InvalidArgument(
+                          "`offset` and `count` tensor size dismatch."));
+    auto* offset_data = offset_tensor.data<int64_t>();
+    auto* count_data = count_tensor.data<int64_t>();
+    for (int64_t i = 0; i < count_tensor.numel(); i++) {
+      numel += count_data[i];
+    }
+    PADDLE_ENFORCE_LE(
+        numel + index_tensor.numel(), buffer_tensor->dims()[0],
+        platform::errors::InvalidArgument("Buffer tensor size is too small."));
+    PADDLE_ENFORCE_LE(
+        numel + index_tensor.numel(), dst_tensor->dims()[0],
+        platform::errors::InvalidArgument("Target tensor size is too small."));
+
+    int64_t src_offset, dst_offset = 0, c;
+    auto* src_data = src_tensor.data<float>();
+    for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+      src_offset = offset_data[i], c = count_data[i];
+      PADDLE_ENFORCE_LE(
+          src_offset + c, src_tensor.dims()[0],
+          platform::errors::InvalidArgument("Invalid offset or count index."));
+      PADDLE_ENFORCE_LE(
+          dst_offset + c, dst_tensor->dims()[0],
+          platform::errors::InvalidArgument("Invalid offset or count index."));
+      cudaMemcpyAsync(dst_data + (dst_offset * size),
+                      src_data + (src_offset * size), c * size * sizeof(float),
+                      cudaMemcpyHostToDevice, stream);
+      dst_offset += c;
+    }
+  } else {
+    PADDLE_ENFORCE_LE(
+        index_tensor.numel(), buffer_tensor->dims()[0],
+        platform::errors::InvalidArgument("Buffer tensor size is too small."));
+  }
+
+  // Select the index data to the buffer
+  auto index_select = [](const paddle::experimental::Tensor& src_tensor,
+                         const paddle::experimental::Tensor& index_tensor,
+                         paddle::experimental::Tensor* buffer_tensor) {
+    auto* src_data = src_tensor.data<float>();
+    auto* index_data = index_tensor.data<int64_t>();
+    auto* buffer_data =
+        buffer_tensor->mutable_data<float>(buffer_tensor->place());
+    const int& slice_size = src_tensor.numel() / src_tensor.dims()[0];
+    const int& copy_bytes = slice_size * sizeof(float);
+    int64_t c = 0;
+    for (int64_t i = 0; i < index_tensor.numel(); i++) {
+      std::memcpy(buffer_data + c * slice_size,
+                  src_data + index_data[i] * slice_size, copy_bytes);
+      c += 1;
+    }
+  };
+  index_select(src_tensor, index_tensor, buffer_tensor);
+
+  // Copy the data to device memory
+  cudaMemcpyAsync(dst_data + (numel * size), buffer_tensor->data<float>(),
+                  index_tensor.numel() * size * sizeof(float),
+                  cudaMemcpyHostToDevice, stream);
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
@@ -559,6 +711,8 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"async_read", (PyCFunction)(void (*)(void))eager_api_async_read,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /**sparse functions**/
     {NULL, NULL, 0, NULL}};

@@ -181,6 +181,10 @@ inline void EmplaceDeviceContext(
             memory::allocation::AllocatorFacade::Instance()
                 .GetZeroAllocator(p)
                 .get());
+        dev_ctx->SetPinnedAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                .get());
         return PtrType(dev_ctx);
       }));
 }
