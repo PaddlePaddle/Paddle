@@ -14,79 +14,68 @@
 
 #pragma once
 
+#include <iostream>
+#include <type_traits>
 #include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 
 namespace phi {
-template <typename F, typename Enable = void>
-struct CallbackTraits {
-  using Type = F const&;
-};
 
-template <typename F>
-struct CallbackTraits<
-    F,
-    typename std::enable_if_t<std::is_constructible<F, F const&>::value>> {
-  using Type = F;
-};
-
-template <typename F>
-struct CallbackBase {
+template <typename R, typename... Args>
+class KernelCallback {
  public:
-  using FuncType = typename CallbackTraits<F>::Type;
+  using RetureType = R;
+  using FuncType = R (*)(Args...);
 
-  CallbackBase() {}
-  explicit CallbackBase(FuncType& func) : func_(func) {}
+  KernelCallback() {}
+  explicit KernelCallback(FuncType func_) : func(func_) {}
+  virtual ~KernelCallback() {}
 
-  template <typename... Args>
-  typename std::result_of<FuncType(Args...)>::type Run(Args&&... args) {
-    return func_(args...);
-  }
+  RetureType Call(Args&&... args) { return func(args...); }
 
  private:
-  FuncType func_;
+  FuncType func;
 };
 
-template <typename T>
-static CallbackBase<T> MakeCallBack(T kernel) {
-  return CallbackBase<T>(kernel);
+template <typename R, typename... Args>
+static KernelCallback<R, Args...> MakeCallback(R (*cb)(Args...)) {
+  return KernelCallback<R, Args...>(cb);
 }
 
-/* TODO(limingshu): A basic version. Intending to design this module by
-   extending functionality of CallbackBase. However, having not found one
-   container to store multiple rvalue/lvalue references hinding it from
-   final achievement. */
-template <typename Context, typename CallBack>
-struct AutoTuneBase {
+template <typename KernelType>
+class AutoTuneBase {
  public:
-  using ContentType = typename CallbackTraits<Context>::Type;
+  AutoTuneBase() {}
+  virtual ~AutoTuneBase() {}
+  explicit AutoTuneBase(KernelType kernel) { kernels_.push_back(kernel); }
 
-  explicit AutoTuneBase(ContentType ctx, std::vector<CallBack> kernels)
-      : ctx_(ctx), kernels_(kernels) {}
+  template <typename T>
+  void AddAlgo(T kernel) {
+    static_assert(std::is_same<T, KernelType>::value, "Type must be the same");
+    kernels_.push_back(kernel);
+  }
 
-  template <typename... Args>
-  CallBack PickBestAlgorithm(Args&&... args) {
+  template <typename Context, typename... Args>
+  KernelType PickBestAlgo(const Context& ctx, Args&&... args) {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
         paddle::platform::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
-
     int idx = 0;
     phi::GpuTimer timer;
     float min_time = std::numeric_limits<float>::max();
 
-    // Warm up step.
-    kernels_[0].Run(args...);
     for (int i = 0; i < kernels_.size(); ++i) {
-      ctx_.Wait();
+      ctx.Wait();
       timer.Start(0);
-      kernels_[i].Run(args...);
+      kernels_[i].Call(std::forward<Args...>(args...));
       timer.Stop(0);
       auto time = timer.ElapsedTime();
       VLOG(3) << "kernel[" << i << "]: time cost is " << time;
+
       if (time < min_time) {
         min_time = time;
         idx = i;
@@ -97,8 +86,14 @@ struct AutoTuneBase {
   }
 
  private:
-  ContentType ctx_;
-  std::vector<CallBack> kernels_;
+  std::vector<KernelType> kernels_;
 };
+
+template <typename R, typename... Args>
+static AutoTuneBase<KernelCallback<R, Args...>> MakeAutoTune(
+    R (*func)(Args...)) {
+  auto obj = MakeCallback(func);
+  return AutoTuneBase<decltype(obj)>(obj);
+}
 
 }  // namespace phi

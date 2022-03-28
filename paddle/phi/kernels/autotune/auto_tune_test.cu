@@ -94,11 +94,6 @@ TEST(AutoTune, sum) {
   cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);
 #endif
 
-  // 1. set call_back instance obj for each kernel.
-  auto call_back1 = phi::MakeCallBack(Algo<4>);
-  auto call_back2 = phi::MakeCallBack(Algo<2>);
-  auto call_back3 = phi::MakeCallBack(Algo<1>);
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   phi::GPUPlace place;
   phi::GPUContext ctx(place);
@@ -108,21 +103,16 @@ TEST(AutoTune, sum) {
                        .get());
   ctx.PartialInitWithAllocator();
 
-  // 2. set the container of obj_1
-  using CallBackType = decltype(call_back1);
-  std::vector<CallBackType> call_backs{call_back1, call_back2, call_back3};
-  auto tuner =
-      phi::AutoTuneBase<phi::GPUContext, CallBackType>(ctx, call_backs);
-  auto best_call =
-      tuner.PickBestAlgorithm(std::move(ctx), d_in1, d_in2, N, threads, blocks);
+  // 1. set call_back instance obj for each kernel.
+  auto tuner = phi::MakeAutoTune(Algo<4>);
+  tuner.AddAlgo(phi::MakeCallback(Algo<2>));
+  tuner.AddAlgo(phi::MakeCallback(Algo<1>));
 
-  // 3. best kernel test.
-  ctx.Wait();
-  phi::GpuTimer timer;
-  timer.Start(0);
-  best_call.Run(std::move(ctx), d_in1, d_in2, N, threads, blocks);
-  timer.Stop(0);
-  VLOG(3) << "Bestkernel time cost is " << timer.ElapsedTime();
+  // 2. set the container of obj_1
+  auto best_call =
+      tuner.PickBestAlgo(ctx, ctx, d_in1, d_in2, N, threads, blocks);
+
+// 3. best kernel test.
 #endif
 
 #ifdef __HIPCC__
