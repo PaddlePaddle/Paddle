@@ -26,9 +26,9 @@ DECLARE_int32(num);
 
 namespace phi {
 
-static ::infrt::tests::BenchmarkStats timer1;
-static int i = 0;
-
+// static ::infrt::tests::BenchmarkStats timer1;
+// static int i = 0;
+/*
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
   template <typename T, typename Context>                                   \
   void name##RawKernel(const Context& dev_ctx,                              \
@@ -60,6 +60,31 @@ static int i = 0;
     }                                                                       \
     if (i == 110 * FLAGS_layers) {                                          \
       std::cout << "kernel: " << timer1.Summerize({0.5});                   \
+    }                                                                       \
+  }
+*/
+
+#define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
+  template <typename T, typename Context>                                   \
+  void name##RawKernel(const Context& dev_ctx,                              \
+                       const DenseTensor& x,                                \
+                       const DenseTensor& y,                                \
+                       int axis,                                            \
+                       DenseTensor* out) {                                  \
+    dev_ctx.template Alloc<T>(out);                                         \
+    if (x.dims() == y.dims()) {                                             \
+      SameDimsElementwiseCompute<SameDims##name##Functor<CPUContext, T>>()( \
+          dev_ctx, x, y, out);                                              \
+    } else {                                                                \
+      auto x_dims = x.dims();                                               \
+      auto y_dims = y.dims();                                               \
+      if (x_dims.size() >= y_dims.size()) {                                 \
+        funcs::ElementwiseCompute<funcs::name##Functor<T>, T>(              \
+            dev_ctx, x, y, axis, funcs::name##Functor<T>(), out);           \
+      } else {                                                              \
+        funcs::ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(     \
+            dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out);  \
+      }                                                                     \
     }                                                                       \
   }
 
