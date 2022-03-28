@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/infrt/tests/timer.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -20,7 +21,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
+DECLARE_int32(layers);
+DECLARE_int32(num);
+
 namespace phi {
+
+static ::infrt::tests::BenchmarkStats timer1;
+static int i = 0;
 
 #define DEFINE_CPU_ELEMENTWISE_OP(name)                                     \
   template <typename T, typename Context>                                   \
@@ -29,6 +36,9 @@ namespace phi {
                        const DenseTensor& y,                                \
                        int axis,                                            \
                        DenseTensor* out) {                                  \
+    if (i >= 10 * FLAGS_layers && i % FLAGS_layers == 0) {                  \
+      timer1.Start();                                                       \
+    }                                                                       \
     dev_ctx.template Alloc<T>(out);                                         \
     if (x.dims() == y.dims()) {                                             \
       SameDimsElementwiseCompute<SameDims##name##Functor<CPUContext, T>>()( \
@@ -43,6 +53,13 @@ namespace phi {
         funcs::ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(     \
             dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out);  \
       }                                                                     \
+    }                                                                       \
+    i++;                                                                    \
+    if (i >= 10 * FLAGS_layers && i % FLAGS_layers == 0) {                  \
+      timer1.Stop();                                                        \
+    }                                                                       \
+    if (i == 110 * FLAGS_layers) {                                          \
+      std::cout << "kernel: " << timer1.Summerize({0.5});                   \
     }                                                                       \
   }
 

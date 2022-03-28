@@ -27,7 +27,7 @@ class ChronoTimer {
   void Clear() { start_ = TimePoint::min(); }
   void Start() { start_ = ClockT::now(); }
 
-  double GetMs() {
+  double GetMs() const {
     auto diff = ClockT::now() - start_;
     return static_cast<double>(
                std::chrono::duration_cast<std::chrono::duration<double>>(diff)
@@ -46,7 +46,7 @@ class CpuClockTimer {
   CpuClockTimer() = default;
   void Clear() { start_ = 0; }
   void Start() { start_ = std::clock(); }
-  double GetMs() {
+  double GetMs() const {
     std::clock_t diff = std::clock() - start_;
     return static_cast<double>(diff * 1000.0 / CLOCKS_PER_SEC);
   }
@@ -63,8 +63,10 @@ class BenchmarkStats {
   }
 
   void Stop() {
-    wall_time_.push_back(wall_timer_.GetMs());
-    cpu_time_.push_back(cpu_timer_.GetMs());
+    auto cpu_time = cpu_timer_.GetMs();
+    auto wall_time = wall_timer_.GetMs();
+    cpu_time_.push_back(cpu_time);
+    wall_time_.push_back(wall_time);
   }
 
   std::string Summerize(const std::vector<float>& percents) {
@@ -80,11 +82,13 @@ class BenchmarkStats {
       ss << "  * percent " << std::to_string(static_cast<int>(p * 100));
       ss << ": " << percentile(p, wall_time_) << '\n';
     }
+    /*
     for (auto p : percents) {
       ss << "=== CPU Time (ms): \n";
       ss << "  * percent " << std::to_string(static_cast<int>(p * 100));
       ss << ": " << percentile(p, cpu_time_) << '\n';
     }
+    */
     return ss.str();
   }
 

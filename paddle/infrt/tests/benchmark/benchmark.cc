@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,71 +12,80 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
+
 #include <iostream>
+#include <vector>
 
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/infrt/utils/timer.h"
-#include "paddle_api.h"  // NOLINT
+#include "llvm/Support/raw_ostream.h"
+#include "paddle/infrt/api/infrt_api.h"
+#include "paddle/infrt/backends/host/phi_allocator.h"
+#include "paddle/infrt/common/buffer.h"
+#include "paddle/infrt/common/dtype.h"
+#include "paddle/infrt/tests/timer.h"
 
-class Timer {
- public:
-  std::chrono::high_resolution_clock::time_point start;
-  std::chrono::high_resolution_clock::time_point startu;
+using infrt::InfRtConfig;
+using infrt::InfRtPredictor;
+using infrt::CreateInfRtPredictor;
 
-  void tic() { start = std::chrono::high_resolution_clock::now(); }
-  double toc() {
-    startu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span =
-        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
-                                                                  start);
-    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
-    return used_time_ms;
-  }
-};
+DEFINE_int32(layers, 0, "");
+DEFINE_int32(num, 0, "");
+
+namespace infrt {
 
 void benchmark(size_t layers, size_t num) {
   const std::string tag =
       "l" + std::to_string(layers) + "n" + std::to_string(num);
   const std::string model_name = tag + ".pdmodel";
   const std::string param_name = tag + ".pdiparams";
+  const std::string prefix =
+      "/shixiaowei02/Paddle-InfRT/Paddle/tools/infrt/fake_models/elt_add/";
 
-  const std::string model{"/shixiaowei02/Paddle-InfRT/Paddle/linear/" +
-                          model_name};
-  const std::string params{"/shixiaowei02/Paddle-InfRT/Paddle/linear/" +
-                           param_name};
+  InfRtConfig config;
+  config.set_model_dir(prefix + model_name);
+  config.set_param_dir(prefix + param_name);
 
-  paddle_infer::Config config;
-  config.SwitchIrOptim(false);
-  config.SetModel(model, params);
-  auto predictor = paddle_infer::CreatePredictor(config);
+  std::vector<std::string> shared_libs;
 
-  std::vector<int> input_shape({16, 784});
-  auto input_names = predictor->GetInputNames();
-  auto output_names = predictor->GetOutputNames();
-  auto input_t = predictor->GetInputHandle(input_names[0]);
-  input_t->Reshape(input_shape);
-  input_t->mutable_data<float>(paddle_infer::PlaceType::kCPU);
+  std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
 
-  for (size_t i = 0; i < 100; ++i) {
+  ::infrt::backends::CpuPhiAllocator cpu_allocator;
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+  input->Resize({static_cast<int>(num), static_cast<int>(num)});
+  input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
+  auto* input_data = reinterpret_cast<float*>(input->data());
+  for (int i = 0; i < input->numel(); i++) input_data[i] = 1.0;
+
+  tests::BenchmarkStats timer;
+
+  for (size_t i = 0; i < 10; ++i) {
     predictor->Run();
   }
 
-  Timer timer;
-  timer.tic();
-  const size_t times = 100000;
-  for (size_t i = 0; i < times; ++i) {
+  for (size_t j = 0; j < 100; ++j) {
+    timer.Start();
     predictor->Run();
+    timer.Stop();
   }
-  double time = timer.toc() / times;
-  std::cout << "time = " << time << '\n';
+  std::cout << "\nlayers " << layers << ", num " << num << '\n';
+  std::cout << "framework " << timer.Summerize({0.5});
+  // auto* output = predictor->GetOutput(0);
+
+  // TODO(Shixiaowei02): Automatic result validation for training then
+  // inference.
+  // auto* output_data = reinterpret_cast<float*>(output->data());
+
+  // CHECK(output->dims() == ::phi::DDim({16, 10}));
 }
 
-int main() {
+/*
   for (auto layers : {1, 10, 50}) {
     for (auto num : {1, 100, 1000, 10000}) {
       benchmark(layers, num);
     }
   }
-  return 0;
-}
+*/
+
+TEST(InfRtPredictor, predictor) { benchmark(FLAGS_layers, FLAGS_num); }
+
+}  // namespace infrt
