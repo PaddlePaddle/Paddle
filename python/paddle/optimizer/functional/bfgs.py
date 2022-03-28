@@ -95,20 +95,18 @@ def minimize_bfgs(objective_func,
         .. code-block:: python
 
             import paddle
-            import numpy as np
+            
             def func(x):
                 return paddle.dot(x, x)
 
-            x0 = np.random.random(size=[2]).astype('float32')
-            results = miminize_bfgs(func, x0)
+            x0 = paddle.to_tensor([1.3, 2.7])
+            results = paddle.optimizer.functional.minimize_bfgs(func, x0)
             print("is_converge: ", results[0])
-            print("num_func_calls: ", results[1])
             print("the minimum of func is: ", results[2])
-            # is_converge:  True
-            # num_func_calls:  Tensor(shape=[1], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                    [9])
+            # is_converge:  is_converge:  Tensor(shape=[1], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+            #        [True])
             # the minimum of func is:  Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.42310646, 0.98076421])
+            #        [0., 0.])
     """
 
     if dtype not in ['float32', 'float64']:

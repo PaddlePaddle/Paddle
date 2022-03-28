@@ -80,7 +80,22 @@ def minimize_lbfgs(objective_func,
         objective_value (Tensor): objective function value at the `position`.
         objective_gradient (Tensor): objective function gradient at the `position`.
 
-    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            def func(x):
+                return paddle.dot(x, x)
+
+            x0 = paddle.to_tensor([1.3, 2.7])
+            results = paddle.optimizer.functional.minimize_lbfgs(func, x0)
+            print("is_converge: ", results[0])
+            print("the minimum of func is: ", results[2])
+            # is_converge:  is_converge:  Tensor(shape=[1], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+            #        [True])
+            # the minimum of func is:  Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0., 0.])
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(

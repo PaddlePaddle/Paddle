@@ -113,7 +113,6 @@ class TestLbfgs(unittest.TestCase):
             return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
 
         x0 = np.array([0.82], dtype='float64')
-        x1 = np.array([-1.3], dtype='float32')
 
         results = test_static_graph(func, x0, dtype='float64')
         self.assertTrue(np.allclose(0.8, results[2]))
@@ -157,19 +156,8 @@ class TestLbfgs(unittest.TestCase):
         # test initial_inverse_hessian_estimate is bad and float64
         x2 = np.random.random(size=[2]).astype('float64')
         H1 = np.array([[1.0, 2.0], [3.0, 1.0]]).astype('float64')
-        H2 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
-
         self.assertRaises(
             ValueError, test_static_graph_H0, func, x2, H0=H1, dtype='float64')
-        self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H2)
-
-        # test line_search_fn is bad
-        self.assertRaises(
-            NotImplementedError,
-            test_static_graph,
-            func,
-            x0,
-            line_search_fn='other')
 
 
 if __name__ == '__main__':

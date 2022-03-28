@@ -113,13 +113,9 @@ class TestBfgs(unittest.TestCase):
             return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
 
         x0 = np.array([0.82], dtype='float64')
-        x1 = np.array([-1.3], dtype='float32')
 
         results = test_static_graph(func, x0, dtype='float64')
         self.assertTrue(np.allclose(0.8, results[2]))
-
-        results = test_dynamic_graph(func, x1, dtype='float32')
-        self.assertTrue(np.allclose(-1.1, results[2]))
 
     def test_rosenbrock(self):
         # The Rosenbrock function is a standard optimization test case.
@@ -147,24 +143,14 @@ class TestBfgs(unittest.TestCase):
         x0 = np.random.random(size=[2]).astype('float32')
         H0 = np.array([[2.0, 0.0], [0.0, 0.9]]).astype('float32')
 
-        # test dtype is not float32 or float64
-        x1 = np.random.random(size=[2]).astype('int32')
-        self.assertRaises(
-            ValueError, test_static_graph, func, x1, dtype='int32')
-
         # test initial_inverse_hessian_estimate is good
         results = test_static_graph_H0(func, x0, H0, dtype='float32')
         self.assertTrue(np.allclose([0., 0.], results[2]))
         self.assertTrue(results[0][0])
 
-        # test initial_inverse_hessian_estimate is bad and float64
-        x2 = np.random.random(size=[2]).astype('float64')
-        H1 = np.array([[1.0, 2.0], [3.0, 1.0]]).astype('float64')
-        H2 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
-
-        self.assertRaises(
-            ValueError, test_static_graph_H0, func, x2, H0=H1, dtype='float64')
-        self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H2)
+        # test initial_inverse_hessian_estimate is bad
+        H1 = np.array([[1.0, 2.0], [2.0, 1.0]]).astype('float32')
+        self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H1)
 
         # test line_search_fn is bad
         self.assertRaises(
