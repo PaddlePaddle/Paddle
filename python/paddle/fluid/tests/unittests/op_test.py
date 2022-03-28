@@ -1519,11 +1519,13 @@ class OpTest(unittest.TestCase):
         class EagerChecker(DygraphChecker):
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
+                self.is_python_api_test = True
                 with _test_eager_guard():
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
                         place)
                     if eager_dygraph_outs is None:
                         # missing KernelSignature, fall back to eager middle output.
+                        self.is_python_api_test = False
                         eager_dygraph_outs = self.op_test._calc_dygraph_output(
                             place, no_check_set=no_check_set)
                 self.outputs = eager_dygraph_outs
@@ -1547,8 +1549,15 @@ class OpTest(unittest.TestCase):
                 with _test_eager_guard():
                     super()._compare_list(name, actual, expect)
 
-# set some flags by the combination of arguments. 
+            def _is_skip_name(self, name):
+                # if in final state and kernel signature don't have name, then skip it.
+                if self.is_python_api_test and hasattr(
+                        self.op_test, "python_out_sig"
+                ) and name not in self.op_test.python_out_sig:
+                    return True
+                return super()._is_skip_name(name)
 
+        # set some flags by the combination of arguments. 
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
