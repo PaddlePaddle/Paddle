@@ -83,7 +83,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [x]
+    param : [out_grad]
   kernel :
     func : abs_grad
 
