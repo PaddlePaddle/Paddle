@@ -1844,8 +1844,6 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   }
   input_grad->mutable_data<T>(input->dims(), context.GetPlace());
 
-  VLOG(1) << "############# init_h_grad " << init_h_grad;
-  VLOG(1) << "############# init_c_grad " << init_c_grad;
   if (init_h_grad) {
     init_h_grad->mutable_data<T>(init_h->dims(), context.GetPlace());
   }
