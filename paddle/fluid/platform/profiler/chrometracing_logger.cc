@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <ctime>
+#include <limits>
 
 #include "glog/logging.h"
 
@@ -75,6 +76,15 @@ void ChromeTracingLogger::LogNodeTrees(const NodeTrees& node_trees) {
   // log all nodes except root node, root node is a helper node.
   const std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes = node_trees.Traverse(true);
+  // find the earliest time in current timeline
+  start_time_ = std::numeric_limits<uint64_t>::max();
+  for (auto it = thread2host_event_nodes.begin();
+       it != thread2host_event_nodes.end(); ++it) {
+    if ((*(it->second.begin() + 1))->StartNs() < start_time_) {
+      start_time_ = (*(it->second.begin() + 1))->StartNs();
+    }
+  }
+
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
     for (auto hostnode = it->second.begin(); hostnode != it->second.end();
@@ -114,38 +124,44 @@ void ChromeTracingLogger::LogHostTraceEventNode(
           std::string(
               R"JSON(
   { 
-    "name": "%s", "pid": %lld, "tid": "%lld(Python)",
-    "ts": %lld, "dur": %lld,
+    "name": "%s[%.3f ms]", "pid": %lld, "tid": "%lld(Python)",
+    "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
+    "cname": "thread_state_runnable",
     "args": {
-      "start_ns": %lld,
-      "end_ns": %lld
+      "start_time": "%.3f us",
+      "end_time": "%.3f us"
     }
   },
   )JSON"),
-          host_node.Name().c_str(), host_node.ProcessId(), host_node.ThreadId(),
-          nsToUs(host_node.StartNs()), nsToUs(host_node.Duration()),
+          host_node.Name().c_str(), nsToMsFloat(host_node.Duration()),
+          host_node.ProcessId(), host_node.ThreadId(),
+          nsToUs(host_node.StartNs()), nsToUsFloat(host_node.Duration()),
           categary_name_[static_cast<int>(host_node.Type())],
-          host_node.StartNs(), host_node.EndNs());
+          nsToUsFloat(host_node.StartNs(), start_time_),
+          nsToUsFloat(host_node.EndNs(), start_time_));
       break;
     default:
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
   { 
-    "name": "%s", "pid": %lld, "tid": "%lld(C++)",
-    "ts": %lld, "dur": %lld,
+    "name": "%s[%.3f ms]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
+    "cname": "thread_state_runnable",
     "args": {
-      "start_ns": %lld,
-      "end_ns": %lld
+      "start_time": "%.3f us",
+      "end_time": "%.3f us"
     }
   },
   )JSON"),
-          host_node.Name().c_str(), host_node.ProcessId(), host_node.ThreadId(),
-          nsToUs(host_node.StartNs()), nsToUs(host_node.Duration()),
+          host_node.Name().c_str(), nsToMsFloat(host_node.Duration()),
+          host_node.ProcessId(), host_node.ThreadId(),
+          nsToUs(host_node.StartNs()), nsToUsFloat(host_node.Duration()),
           categary_name_[static_cast<int>(host_node.Type())],
-          host_node.StartNs(), host_node.EndNs());
+          nsToUsFloat(host_node.StartNs(), start_time_),
+          nsToUsFloat(host_node.EndNs(), start_time_));
       break;
   }
 
@@ -161,22 +177,24 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
       std::string(
           R"JSON(
   { 
-    "name": "%s", "pid": %lld, "tid": "%lld(C++)",
-    "ts": %lld, "dur": %lld,
+    "name": "%s[%.3f ms]", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
+    "cname": "thread_state_running",
     "args": {
       "correlation id": %d,
-      "start_ns": %lld,
-      "end_ns": %lld
+      "start_time": "%.3f us",
+      "end_time": "%.3f us"
     }
   },
   )JSON"),
-      runtime_node.Name().c_str(), runtime_node.ProcessId(),
-      runtime_node.ThreadId(), nsToUs(runtime_node.StartNs()),
-      nsToUs(runtime_node.Duration()),
+      runtime_node.Name().c_str(), nsToMsFloat(runtime_node.Duration()),
+      runtime_node.ProcessId(), runtime_node.ThreadId(),
+      nsToUs(runtime_node.StartNs()), nsToUsFloat(runtime_node.Duration()),
       categary_name_[static_cast<int>(runtime_node.Type())],
-      runtime_node.CorrelationId(), runtime_node.StartNs(),
-      runtime_node.EndNs());
+      runtime_node.CorrelationId(),
+      nsToUsFloat(runtime_node.StartNs(), start_time_),
+      nsToUsFloat(runtime_node.EndNs(), start_time_));
   pid_tid_set_.insert({runtime_node.ProcessId(), runtime_node.ThreadId()});
 
   output_file_stream_ << string_format(
@@ -270,12 +288,13 @@ void ChromeTracingLogger::HandleTypeKernel(
       std::string(
           R"JSON(
   { 
-    "name": "%s", "pid": %lld, "tid": %lld,
-    "ts": %lld, "dur": %lld,
+    "name": "%s[%.3f ms]", "pid": %lld, "tid": %lld,
+    "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
+    "cname": "rail_animation",
     "args": {
-      "start_ns": %lld,
-      "end_ns": %lld,
+      "start_time": "%.3f us",
+      "end_time": "%.3f us",
       "device": %d, "context": %d,
       "stream": %d, "correlation id": %d,
       "registers per thread": %d,
@@ -284,15 +303,16 @@ void ChromeTracingLogger::HandleTypeKernel(
       "warps per SM": %f,
       "grid": [%d, %d, %d],
       "block": [%d, %d, %d],
-      "theoretical achieved occupancy %%": %f
+      "theoretical achieved occupancy %%": %.3f
     }
   },
   )JSON"),
-      device_node.Name().c_str(), device_node.DeviceId(),
-      device_node.StreamId(), nsToUs(device_node.StartNs()),
-      nsToUs(device_node.Duration()),
+      device_node.Name().c_str(), nsToMsFloat(device_node.Duration()),
+      device_node.DeviceId(), device_node.StreamId(),
+      nsToUs(device_node.StartNs()), nsToUsFloat(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
-      device_node.StartNs(), device_node.EndNs(), device_node.DeviceId(),
+      nsToUsFloat(device_node.StartNs(), start_time_),
+      nsToUsFloat(device_node.EndNs(), start_time_), device_node.DeviceId(),
       device_node.ContextId(), device_node.StreamId(),
       device_node.CorrelationId(), kernel_info.registers_per_thread,
       kernel_info.static_shared_memory + kernel_info.dynamic_shared_memory,
@@ -312,22 +332,24 @@ void ChromeTracingLogger::HandleTypeMemcpy(
       std::string(
           R"JSON(
   {
-    "name": "%s", "pid": %lld, "tid": %lld,
-    "ts": %lld, "dur": %lld,
+    "name": "%s[%.3f ms]", "pid": %lld, "tid": %lld,
+    "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
+    "cname": "rail_animation",
     "args": {
-      "start_ns": %lld,
-      "end_ns": %lld,
+      "start_time": "%.3f us",
+      "end_time": "%.3f us",
       "stream": %d, "correlation id": %d,
-      "bytes": %d, "memory bandwidth (GB/s)": %f
+      "bytes": %d, "memory bandwidth (GB/s)": %.3f
     }
   },
   )JSON"),
-      device_node.Name().c_str(), device_node.DeviceId(),
-      device_node.StreamId(), nsToUs(device_node.StartNs()),
-      nsToUs(device_node.Duration()),
+      device_node.Name().c_str(), nsToMsFloat(device_node.Duration()),
+      device_node.DeviceId(), device_node.StreamId(),
+      nsToUs(device_node.StartNs()), nsToUsFloat(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
-      device_node.StartNs(), device_node.EndNs(), device_node.StreamId(),
+      nsToUsFloat(device_node.StartNs(), start_time_),
+      nsToUsFloat(device_node.EndNs(), start_time_), device_node.StreamId(),
       device_node.CorrelationId(), memcpy_info.num_bytes, memory_bandwidth);
 }
 
@@ -338,23 +360,25 @@ void ChromeTracingLogger::HandleTypeMemset(
       std::string(
           R"JSON(
   {
-    "name": "%s", "pid": %lld, "tid": %lld,
-    "ts": %lld, "dur": %lld,
+    "name": "%s[%.3f ms]", "pid": %lld, "tid": %lld,
+    "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
+    "cname": "rail_animation",
     "args": {
-      "start_ns": %lld,
-      "end_ns": %lld,
+      "start_time": "%.3f us",
+      "end_time": "%.3f us",
       "device": %d, "context": %d,
       "stream": %d, "correlation id": %d,
       "bytes": %d, "value": %d
     }
   },
   )JSON"),
-      device_node.Name().c_str(), device_node.DeviceId(),
-      device_node.StreamId(), nsToUs(device_node.StartNs()),
-      nsToUs(device_node.Duration()),
+      device_node.Name().c_str(), nsToMsFloat(device_node.Duration()),
+      device_node.DeviceId(), device_node.StreamId(),
+      nsToUs(device_node.StartNs()), nsToUsFloat(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
-      device_node.StartNs(), device_node.EndNs(), device_node.DeviceId(),
+      nsToUsFloat(device_node.StartNs(), start_time_),
+      nsToUsFloat(device_node.EndNs(), start_time_), device_node.DeviceId(),
       device_node.ContextId(), device_node.StreamId(),
       device_node.CorrelationId(), memset_info.num_bytes, memset_info.value);
 }
