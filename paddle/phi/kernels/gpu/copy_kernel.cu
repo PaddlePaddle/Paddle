@@ -34,12 +34,6 @@ void Copy(const Context& dev_ctx,
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
-  if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The src and dst tensor are all CPU tensor, you should call copy "
-        "function in CPU mode."));
-  }
-
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
