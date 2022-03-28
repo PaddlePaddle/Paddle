@@ -84,7 +84,8 @@ def graph_sample_neighbors(row,
         colptr = paddle.to_tensor(colptr, dtype="int64")
         nodes = paddle.to_tensor(nodes, dtype="int64")
         out_neighbors, out_count = \
-            paddle.incubate.graph_sample_neighbors(row, colptr, nodes, sample_size)
+            paddle.incubate.graph_sample_neighbors(row, colptr, nodes, 
+                                                   sample_size=sample_size)
 
     """
 

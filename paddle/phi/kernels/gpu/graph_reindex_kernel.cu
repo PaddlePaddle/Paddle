@@ -157,12 +157,23 @@ void Reindex(const Context& dev_ctx,
   int64_t table_size = log_num << 1;
   T* keys;
   int *values, *key_index;
+
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(&keys, table_size * sizeof(T));
+  hipMalloc(&values, table_size * sizeof(int));
+  hipMalloc(&key_index, table_size * sizeof(int));
+  hipMemset(keys, -1, table_size * sizeof(T));
+  hipMemset(values, -1, table_size * sizeof(int));
+  hipMemset(key_index, -1, table_size * sizeof(int));
+#else
   cudaMalloc(&keys, table_size * sizeof(T));
   cudaMalloc(&values, table_size * sizeof(int));
   cudaMalloc(&key_index, table_size * sizeof(int));
   cudaMemset(keys, -1, table_size * sizeof(T));
   cudaMemset(values, -1, table_size * sizeof(int));
   cudaMemset(key_index, -1, table_size * sizeof(int));
+#endif
+
   FillHashTable<T, Context>(dev_ctx,
                             thrust::raw_pointer_cast(out_nodes->data()),
                             out_nodes->size(),
@@ -189,9 +200,15 @@ void Reindex(const Context& dev_ctx,
       table_size,
       keys,
       values);
+#ifdef PADDLE_WITH_HIP
+  hipFree(keys);
+  hipFree(values);
+  hipFree(key_index);
+#else
   cudaFree(keys);
   cudaFree(values);
   cudaFree(key_index);
+#endif
 }
 
 template <typename T, typename Context>
