@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -164,6 +165,8 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel");
+  AddOutput("TransX", "");
+  AddOutput("TransY", "");
   AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
@@ -248,6 +251,9 @@ framework::OpKernelType FusedBatchNormAddActGradOp::GetExpectedKernelType(
       library);
 }
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    FusedBatchNormAddActGradOpNoNeedBufferVarsInferer, "Z");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -257,5 +263,5 @@ REGISTER_OPERATOR(
     ops::FusedBatchNormAddActOpMaker, ops::FusedBatchNormAddActOpInferVarType,
     ops::FusedBatchNormAddActGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedBatchNormAddActGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_bn_add_activation_grad,
-                  ops::FusedBatchNormAddActGradOp);
+REGISTER_OPERATOR(fused_bn_add_activation_grad, ops::FusedBatchNormAddActGradOp,
+                  ops::FusedBatchNormAddActGradOpNoNeedBufferVarsInferer);

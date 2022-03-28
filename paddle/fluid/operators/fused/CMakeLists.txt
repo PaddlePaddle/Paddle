@@ -3,6 +3,7 @@ if(WITH_UNITY_BUILD)
     # Load Unity Build rules for operators in paddle/fluid/operators/fused.
     include(unity_build_rule.cmake)
 endif()
+
 register_operators(EXCLUDES
     fused_bn_activation_op
     conv_fusion_op
@@ -28,10 +29,15 @@ op_library(fusion_lstm_op)
 
 
 if (WITH_GPU OR WITH_ROCM)
+    nv_library(vectorized_kernel SRCS vectorized_kernel.cu DEPS device_context tensor)    
+endif()
+
+if (WITH_GPU OR WITH_ROCM)
     # fused_bn_activation_op needs cudnn 7.4.1 above
     # HIP not support bn act fuse in MIOPEN
     if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))
         op_library(fused_bn_activation_op)
+        target_link_libraries(fused_bn_activation_op vectorized_kernel)
     endif()
     # conv_fusion_op needs cudnn 7 above
     if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
@@ -62,6 +68,7 @@ if (WITH_GPU OR WITH_ROCM)
     # HIP not support bn act fuse in MIOPEN
     if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))
         op_library(fused_bn_add_activation_op)
+        target_link_libraries(fused_bn_activation_op vectorized_kernel)
     endif()
     # fused_dropout
     # only support CUDA

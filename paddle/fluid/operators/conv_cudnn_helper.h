@@ -192,7 +192,7 @@ static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
 #endif  // CUDA_VERSION >= 11000
   } else {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-        cdesc.desc(), CUDNN_DEFAULT_MATH));
+        cdesc.desc(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION));
     VLOG(5) << "NOT use cudnn_tensor_op_math";
   }
 #endif
@@ -418,7 +418,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       auto x_dims = phi::vectorize(args.x->dims());
       auto w_dims = phi::vectorize(args.w->dims());
 
-      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t"
+      VLOG(10) << "cudnnConvolutionBwdDataAlgoPerf_t"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
                << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
@@ -536,7 +536,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       auto x_dims = phi::vectorize(args.x->dims());
       auto w_dims = phi::vectorize(args.w->dims());
 
-      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
+      VLOG(10) << "cudnnConvolutionBwdFilterAlgoPerf_t:"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
                << args.s << ", args.p" << args.p << ", args.d" << args.d;
       if (dtype != CUDNN_DATA_HALF) {

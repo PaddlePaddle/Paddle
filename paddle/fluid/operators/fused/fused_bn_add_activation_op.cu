@@ -20,13 +20,16 @@
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/fluid/operators/fast_bn_kernel.h"
 #include "paddle/fluid/operators/fused/fused_bn_add_activation_op.h"
+#include "paddle/fluid/operators/fused/vectorized_kernel.h"
 #include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+DECLARE_bool(bn_no_data_format_transform);
 
 namespace paddle {
 namespace operators {
@@ -53,10 +56,11 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float momentum = ctx.Attr<float>("momentum");
     std::string act_type = ctx.Attr<std::string>("act_type");
-    const DataLayout data_layout =
+    DataLayout data_layout =
         framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -69,9 +73,33 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     // Get the size for each dimension.
     // NHWC [batch_size, in_height, in_width, in_channels]
     const auto *x = ctx.Input<Tensor>("X");
-    const auto *x_data = x->template data<T>();
     const auto *z = ctx.Input<Tensor>("Z");
-    const auto *z_data = z->template data<T>();
+    auto *y = ctx.Output<Tensor>("Y");
+    int numel = x->numel();
+    auto dtype = x->dtype();
+
+    auto &transformed_x = *ctx.Output<Tensor>("TransX");
+    auto &transformed_y = *ctx.Output<Tensor>("TransY");
+    framework::Tensor transformed_z;
+    bool need_transform = false;
+    const T *x_data, *z_data;
+    T *y_data;
+    if (data_layout == DataLayout::NCHW && !FLAGS_bn_no_data_format_transform) {
+      x_data = TransformLayout<T>(dev_ctx, *x, &transformed_x, data_layout);
+      z_data = TransformLayout<T>(dev_ctx, *z, &transformed_z, data_layout);
+
+      transformed_y.Resize(transformed_x.dims());
+      y_data = transformed_y.mutable_data<T>(ctx.GetPlace());
+
+      data_layout = DataLayout::NHWC;
+      x = &transformed_x;
+      need_transform = true;
+    } else {
+      x_data = x->template data<T>();
+      z_data = z->template data<T>();
+      y_data = y->mutable_data<T>(ctx.GetPlace());
+    }
+
     const auto &in_dims = x->dims();
 
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -93,19 +121,16 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     auto *saved_variance_data =
         saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
-    auto *y = ctx.Output<Tensor>("Y");
-    auto *y_data = y->mutable_data<T>(ctx.GetPlace());
-
     int N, C, H, W, D;
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
-
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
-    cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    cudnnBatchNormMode_t mode_ = FLAGS_cudnn_batchnorm_spatial_persistent
+                                     ? CUDNN_BATCHNORM_SPATIAL_PERSISTENT
+                                     : CUDNN_BATCHNORM_SPATIAL;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
@@ -138,12 +163,16 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     platform::ScopedActivationDescriptor scope_act_desc;
     cudnnBatchNormOps_t bnOps_;
     cudnnActivationDescriptor_t activation_desc_;
-    if (std::is_same<T, platform::float16>::value) {
+    bool fuse_add_act;
+    if (data_layout == DataLayout::kNHWC &&
+        std::is_same<T, platform::float16>::value) {
       bnOps_ = CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION;
       activation_desc_ = scope_act_desc.descriptor<T>(act_type);
+      fuse_add_act = true;
     } else {
       bnOps_ = CUDNN_BATCHNORM_OPS_BN;
       activation_desc_ = nullptr;
+      fuse_add_act = false;
     }
 
     size_t workspace_size = 0;
@@ -184,11 +213,29 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
-    reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->dtype(),
-                                                    reserve_space_size);
+    VLOG(1) << "ReserveSpaceSize = " << reserve_space_size;
+    PADDLE_ENFORCE_EQ(reserve_space_size, 0);
+    if (reserve_space_size == 0) {
+      reserve_space->Resize({static_cast<int64_t>(numel)});
+      reserve_space_ptr = reserve_space->mutable_data<T>(ctx.GetPlace());
+    } else {
+      reserve_space_ptr = reserve_space->mutable_data(
+          ctx.GetPlace(), x->dtype(), reserve_space_size);
+    }
+
+    if (!fuse_add_act) {
+      bool result = LaunchFP32FastBNKernel<T>(
+          dev_ctx, x_data, z_data, scale_data, bias_data, y_data,
+          saved_mean_data, saved_variance_data, mean_out_data,
+          variance_out_data, reserve_space_ptr, N, C, H, W, this_factor,
+          epsilon, true);
+      if (result) return;
+    }
+
     workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->dtype(),
                                                   workspace_size);
 
+    // LOG(INFO) << "fuse_add_act = " << fuse_add_act;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
             handle, mode_, bnOps_, CudnnDataType<T>::kOne(),
@@ -198,14 +245,14 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
             saved_mean_data, saved_variance_data, activation_desc_,
             workspace_ptr, workspace_size, reserve_space_ptr,
             reserve_space_size));
-    if (!std::is_same<T, platform::float16>::value) {
+    if (!fuse_add_act) {
       // add + relu
-      std::vector<const framework::Tensor *> ins = {y, z};
-      std::vector<framework::Tensor *> outs = {y};
-      PADDLE_ENFORCE_EQ(act_type, "relu", platform::errors::InvalidArgument(
-                                              "The act_type must be relu."));
-      operators::LaunchSameDimsElementwiseCudaKernel<T, AddReluFunctor<T>, 1>(
-          dev_ctx, ins, &outs, AddReluFunctor<T>());
+      LaunchAddReluFwdCUDAKernel<T>(dev_ctx, y_data, z_data, reserve_space_ptr,
+                                    y_data, N * C * H * W * D);
+    }
+
+    if (need_transform) {
+      TransformLayout<T>(dev_ctx, transformed_y, y, data_layout);
     }
   }
 };
@@ -218,23 +265,55 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     std::string act_type = ctx.Attr<std::string>("act_type");
-    const DataLayout data_layout =
+    DataLayout data_layout =
         framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
-    const auto *x = ctx.Input<Tensor>("X");
+    const auto *x = ctx.Input<Tensor>(data_layout == DataLayout::NCHW &&
+                                              !FLAGS_bn_no_data_format_transform
+                                          ? "TransX"
+                                          : "X");
     const auto *x_data = x->template data<T>();
-    const auto *y = ctx.Input<Tensor>("Y");
+    const auto *y = ctx.Input<Tensor>(data_layout == DataLayout::NCHW &&
+                                              !FLAGS_bn_no_data_format_transform
+                                          ? "TransY"
+                                          : "Y");
     const auto *y_data = y->template data<T>();
+
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_z = ctx.Output<Tensor>(framework::GradVarName("Z"));
+
+    framework::Tensor transformed_dy, transformed_dz, transformed_dx;
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const auto *dy_data = d_y->template data<T>();
+    const T *dy_data;
+    T *dx_data, *dz_data;
+    bool need_transform = false;
+    if (data_layout == DataLayout::NCHW && !FLAGS_bn_no_data_format_transform) {
+      dy_data = TransformLayout<T>(dev_ctx, *d_y, &transformed_dy, data_layout);
+      transformed_dx.Resize(transformed_dy.dims());
+      transformed_dz.Resize(transformed_dy.dims());
+
+      dx_data = transformed_dx.mutable_data<T>(ctx.GetPlace());
+      dz_data = transformed_dz.mutable_data<T>(ctx.GetPlace());
+
+      data_layout = DataLayout::NHWC;
+      need_transform = true;
+    } else {
+      dy_data = d_y->template data<T>();
+      dx_data = d_x->mutable_data<T>(ctx.GetPlace());
+      dz_data = d_z->mutable_data<T>(ctx.GetPlace());
+    }
+
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *scale_data = scale->template data<BatchNormParamType<T>>();
 
     const auto *bias = ctx.Input<Tensor>("Bias");
     const auto *bias_data = bias->template data<BatchNormParamType<T>>();
     const auto *reserve_space = ctx.Input<Tensor>("ReserveSpace");
+    void *reserve_space_ptr =
+        const_cast<T *>(reserve_space->template data<T>());
 
     const auto &in_dims = x->dims();
 
@@ -242,13 +321,9 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_z = ctx.Output<Tensor>(framework::GradVarName("Z"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    auto *dx_data = d_x->mutable_data<T>(ctx.GetPlace());
-    auto *dz_data = d_z->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
         d_scale && d_bias, true,
         platform::errors::PreconditionNotMet(
@@ -265,8 +340,6 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-
     std::vector<int> dims, strides;
     if (data_layout == DataLayout::kNCHW) {
       dims = {N, C, H, W, D};
@@ -278,7 +351,9 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
-    cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    cudnnBatchNormMode_t mode_ = FLAGS_cudnn_batchnorm_spatial_persistent
+                                     ? CUDNN_BATCHNORM_SPATIAL_PERSISTENT
+                                     : CUDNN_BATCHNORM_SPATIAL;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
@@ -320,13 +395,18 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     platform::ScopedActivationDescriptor scope_act_desc;
     cudnnActivationDescriptor_t activation_desc_ =
         scope_act_desc.descriptor<T>(act_type);
-    if (std::is_same<T, platform::float16>::value) {
+    if (data_layout == DataLayout::kNHWC &&
+        std::is_same<T, platform::float16>::value) {
       bnOps_ = CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION;
     } else {
+      /*
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnActivationBackward(
           handle, activation_desc_, CudnnDataType<T>::kOne(), data_desc_,
           y_data, data_desc_, dy_data, data_desc_, y_data,
           CudnnDataType<T>::kZero(), data_desc_, dz_data));
+      */
+      LaunchReluBwdCUDAKernel<T>(dev_ctx, y_data, dy_data, reserve_space_ptr,
+                                 dz_data, N * C * H * W * D);
 
       bnOps_ = CUDNN_BATCHNORM_OPS_BN;
       activation_desc_ = nullptr;
@@ -380,8 +460,13 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
             /*activationDesmc=*/activation_desc_,
             /*workspace=*/workspace_ptr,
             /*workSpaceSizeInBytes=*/workspace_size,
-            /*reserveSpace=*/const_cast<T *>(reserve_space->template data<T>()),
+            /*reserveSpace=*/reserve_space_ptr,
             /*reserveSpaceSizeInBytes=*/reserve_space_size));
+
+    if (need_transform) {
+      TransformLayout<T>(dev_ctx, transformed_dz, d_z, data_layout);
+      TransformLayout<T>(dev_ctx, transformed_dx, d_x, data_layout);
+    }
   }
 };
 

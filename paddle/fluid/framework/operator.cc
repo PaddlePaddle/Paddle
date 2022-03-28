@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/dynload/nvtx.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -62,8 +63,28 @@ PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
 DECLARE_bool(run_kp_kernel);
 
+PADDLE_DEFINE_EXPORTED_bool(enable_nvtx, false, "");
+
 namespace paddle {
 namespace framework {
+
+struct NVTXGuard {
+  explicit NVTXGuard(const char* name) {
+    if (FLAGS_enable_nvtx) {
+      platform::dynload::nvtxRangePushA(name);
+    }
+  }
+
+  explicit NVTXGuard(const std::string& name) : NVTXGuard(name.c_str()) {}
+
+  ~NVTXGuard() {
+    if (FLAGS_enable_nvtx) {
+      platform::dynload::nvtxRangePop();
+    }
+  }
+
+  DISABLE_COPY_AND_ASSIGN(NVTXGuard);
+};
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
@@ -206,6 +227,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
+    NVTXGuard guard(Type());
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)

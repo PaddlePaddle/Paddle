@@ -217,6 +217,8 @@ void FusedBatchNormActOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel");
+  AddOutput("TransX", "");
+  AddOutput("TransY", "");
   AddAttr<std::string>("data_layout", "The data layout of the input tensor.")
       .SetDefault("NHWC");
   AddComment(R"DOC(

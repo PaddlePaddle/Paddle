@@ -39,6 +39,8 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
+DECLARE_bool(conv_no_data_format_transform);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -85,7 +87,12 @@ void ConvCudnnGradKernel(const Context& ctx,
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = paddle::platform::DataLayout::kNCHW;
 #else
-  const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+  bool compute_in_nhwc;
+  if (FLAGS_conv_no_data_format_transform) {
+    compute_in_nhwc = channel_last;
+  } else {
+    compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+  }
   auto compute_format = compute_in_nhwc && channel_last
                             ? paddle::platform::DataLayout::kNHWC
                             : paddle::platform::DataLayout::kNCHW;

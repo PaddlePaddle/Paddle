@@ -138,6 +138,9 @@ Node *FuseBatchNormActPass::CreateFusedBatchNormActNode(
   desc.SetInput("Variance", std::vector<std::string>({bn_variance_n}));
 
   desc.SetOutput("Y", std::vector<std::string>({act_out_n}));
+  desc.SetOutput("TransX", std::vector<std::string>({bn_x_n + "@Trans"}));
+  desc.SetOutput("TransY", std::vector<std::string>({act_out_n + "@Trans"}));
+
   desc.SetOutput("MeanOut", std::vector<std::string>({bn_mean_out_n}));
   desc.SetOutput("VarianceOut", std::vector<std::string>({bn_variance_out_n}));
   desc.SetOutput("SavedMean", std::vector<std::string>({bn_saved_mean_n}));
@@ -156,6 +159,9 @@ Node *FuseBatchNormActPass::CreateFusedBatchNormActNode(
   }
 
   auto fused_bn_act_node = g->CreateOpNode(&desc);
+  VarDesc trans_x_desc(bn_x_n + "@Trans"), trans_y_desc(act_out_n + "@Trans");
+  g->CreateVarNode(&trans_x_desc);
+  g->CreateVarNode(&trans_y_desc);
   return fused_bn_act_node;
 }
 
@@ -224,6 +230,9 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
     desc.SetType("fused_batch_norm_act_grad");
     desc.SetInput("X", {bn_x_n});
     desc.SetInput("Y", std::vector<std::string>({act_out_n}));
+    desc.SetInput("TransX", {bn_x_n + "@Trans"});
+    desc.SetInput("TransY", {act_out_n + "@Trans"});
+
     desc.SetInput(GradVarName("Y"), std::vector<std::string>({d_act_out_n}));
     desc.SetInput("Scale", std::vector<std::string>({bn_scale_n}));
     desc.SetInput("Bias", std::vector<std::string>({bn_bias_n}));

@@ -761,12 +761,14 @@ PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
  * transformation when calculating conv and batch_norm op.
  */
 PADDLE_DEFINE_EXPORTED_bool(
-    no_data_format_transform, false,
+    conv_no_data_format_transform, false,
     "Whether to transpose the tensor from NHWC to NCHW "
     "first when computing the conv and batch_norm op. If "
     "it is true, the transformation would not be performed. "
     "If it is false, whether the transformation is performed is "
     "determined by the framework itself automatically.");
+
+PADDLE_DEFINE_EXPORTED_bool(bn_no_data_format_transform, false, "");
 
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
