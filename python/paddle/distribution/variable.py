@@ -16,8 +16,7 @@ from paddle.distribution import constraint
 
 
 class Variable(object):
-    """This class is used to describe random variable of probability 
-    distribution.
+    """Random variable of probability distribution.
 
     Args:
         is_discrete (bool): Is the variable discrete or continuous.

@@ -43,10 +43,10 @@ class TestExponentialFamily(unittest.TestCase):
     (config.TEST_CASE_NAME, 'dist'),
     [('test-dummy', mock.DummyExpFamily(0.5, 0.5)),
      ('test-dirichlet',
-      paddle.distribution.Dirichlet(paddle.to_tensor(config.xrand()))), (
+      paddle.distribution.Dirichlet(paddle.to_tensor(parameterize.xrand()))), (
           'test-beta', paddle.distribution.Beta(
-              paddle.to_tensor(config.xrand()),
-              paddle.to_tensor(config.xrand())))])
+              paddle.to_tensor(parameterize.xrand()),
+              paddle.to_tensor(parameterize.xrand())))])
 class TestExponentialFamilyException(unittest.TestCase):
     def test_entropy_exception(self):
         with self.assertRaises(NotImplementedError):

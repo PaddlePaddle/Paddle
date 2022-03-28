@@ -19,6 +19,7 @@ from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.kl import kl_divergence, register_kl
+from paddle.distribution.multinomial import Multinomial
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import *  # noqa: F403
 from paddle.distribution.uniform import Uniform

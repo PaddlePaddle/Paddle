@@ -29,7 +29,7 @@ paddle.enable_static()
 
 
 @param.place(config.DEVICES)
-@param.parameterize_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
+@param.param_cls((param.TEST_CASE_NAME, 'a1', 'b1', 'a2', 'b2'), [
     ('test_regular_input', 6.0 * np.random.random((4, 5)) + 1e-4,
      6.0 * np.random.random((4, 5)) + 1e-4, 6.0 * np.random.random(
          (4, 5)) + 1e-4, 6.0 * np.random.random((4, 5)) + 1e-4),
@@ -77,7 +77,7 @@ class TestKLBetaBeta(unittest.TestCase):
 
 
 @param.place(config.DEVICES)
-@param.parameterize_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
+@param.param_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
     ('test-regular-input', np.random.random((5, 7, 8, 10)), np.random.random(
         (5, 7, 8, 10))),
 ])
@@ -125,8 +125,8 @@ class DummyDistribution(paddle.distribution.Distribution):
 
 
 @param.place(config.DEVICES)
-@param.parameterize_cls((param.TEST_CASE_NAME, 'p', 'q'),
-                        [('test-dispatch-exception')])
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'),
+                 [('test-dispatch-exception')])
 class TestDispatch(unittest.TestCase):
     def setUp(self):
         self.mp = paddle.static.Program()
@@ -144,11 +144,11 @@ class TestDispatch(unittest.TestCase):
                 self.executor.run(self.mp, feed={}, fetch_list=[out])
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'rate1', 'rate2'),
-                     [('test-diff-dist', np.random.rand(100, 200, 100) + 1.0,
-                       np.random.rand(100, 200, 100) + 2.0),
-                      ('test-same-dist', np.array([1.0]), np.array([1.0]))])
+@param.place(config.DEVICES)
+@param.param_cls((config.TEST_CASE_NAME, 'rate1', 'rate2'),
+                 [('test-diff-dist', np.random.rand(100, 200, 100) + 1.0,
+                   np.random.rand(100, 200, 100) + 2.0),
+                  ('test-same-dist', np.array([1.0]), np.array([1.0]))])
 class TestKLExpfamilyExpFamily(unittest.TestCase):
     def setUp(self):
         self.mp = paddle.static.Program()
@@ -177,3 +177,7 @@ class TestKLExpfamilyExpFamily(unittest.TestCase):
                 out2,
                 rtol=config.RTOL.get(config.DEFAULT_DTYPE),
                 atol=config.ATOL.get(config.DEFAULT_DTYPE))
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -28,7 +28,6 @@ __all__ = [  # noqa
     'AbsTransform',
     'AffineTransform',
     'ChainTransform',
-    'CorrelationCholeskyTransform',
     'ExpTransform',
     'IndependentTransform',
     'PowerTransform',
@@ -58,7 +57,7 @@ class Type(enum.Enum):
 
 
 class Transform(object):
-    """Base class for the random varlable transformation.
+    r"""Base class for the random varlable transformation.
 
     ``Transform`` can be used to represent any differentiable and injective 
     function from the subset of :math:`R^n` to subset of :math:`R^m`, generally 
@@ -191,7 +190,7 @@ class Transform(object):
         Returns:
             Tensor: Outcome of forward transform.
         """
-        if not isinstance(x, paddle.fluid.core.VarBase):
+        if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected 'x' is a Tensor or Real, but got {type(x)}.")
         if x.dim() < self._domain.event_rank:
@@ -210,7 +209,7 @@ class Transform(object):
         Returns:
             Tensor: Outcome of inverse transform.
         """
-        if not isinstance(y, paddle.fluid.core.VarBase):
+        if not isinstance(y, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
@@ -230,10 +229,10 @@ class Transform(object):
         Returns:
             Tensor: The log of the absolute value of Jacobian determinant. 
         """
-        if not isinstance(x, paddle.fluid.core.VarBase):
+        if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}.")
-        if isinstance(x, paddle.fluid.core.VarBase) and x.dim(
+        if isinstance(x, paddle.fluid.framework.Variable) and x.dim(
         ) < self._domain.event_rank:
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
@@ -257,7 +256,7 @@ class Transform(object):
         Returns:
             Tensor: The value of :math:`log|det J_{f^{-1}}(y)|`.
         """
-        if not isinstance(y, paddle.fluid.core.VarBase):
+        if not isinstance(y, paddle.fluid.framework.Variable):
             raise TypeError(f"Expected 'y' is a Tensor, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
@@ -351,10 +350,10 @@ class Transform(object):
 
 
 class AbsTransform(Transform):
-    """Absolute transformation with formula :math:`y = f(x) = abs(x)`, 
+    r"""Absolute transformation with formula :math:`y = f(x) = abs(x)`, 
     element-wise.
 
-    This non-injective transformation allows for transformaitons of scalar 
+    This non-injective transformation allows for transformations of scalar 
     distributions with the absolute value function, which maps ``(-inf, inf)`` 
     to ``[0, inf)`` .
 
@@ -410,7 +409,7 @@ class AbsTransform(Transform):
         return -y, y
 
     def _inverse_log_det_jacobian(self, y):
-        zero = paddle.zeros([], dtype=y.dtype)
+        zero = paddle.zeros([1], dtype=y.dtype)
         return zero, zero
 
     @property
@@ -423,19 +422,38 @@ class AbsTransform(Transform):
 
 
 class AffineTransform(Transform):
-    """Affine transformation with mapping 
+    r"""Affine transformation with mapping 
     :math:`y = \text{loc} + \text{scale} \times x`.
 
     Args:
         loc (Tensor): The location parameter.
         scale (Tensor): The scale parameter.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1., 2.])
+            power = paddle.distribution.AffineTransform(paddle.to_tensor(0.), paddle.to_tensor(1.))
+
+            print(power.forward(x))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1., 2.])
+            print(power.inverse(power.forward(x)))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1., 2.])
+            print(power.forward_log_det_jacobian(x))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.])
     """
     _type = Type.BIJECTION
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, paddle.fluid.core.VarBase):
+        if not isinstance(loc, paddle.fluid.framework.Variable):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
-        if not isinstance(scale, paddle.fluid.core.VarBase):
+        if not isinstance(scale, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected scale is a Tensor, but got {type(scale)}")
         self._loc = loc
@@ -481,7 +499,7 @@ class AffineTransform(Transform):
 
 
 class ChainTransform(Transform):
-    """Composes multiple transforms in a chain.
+    r"""Composes multiple transforms in a chain.
 
     Args:
         transforms (Sequence[int]): A sequence of transformations.
@@ -604,45 +622,8 @@ class ChainTransform(Transform):
         return variable.Independent(codomain, event_rank - codomain.event_rank)
 
 
-class CorrelationCholeskyTransform(Transform):
-    """[summary]
-
-    Args:
-        transform ([type]): [description]
-    """
-
-    # _domain = constraint.real_vector
-    # _codomain = constraint.correlation_cholesky
-
-    def _forward(self, x):
-        pass
-
-    def _inverse(self, y):
-        pass
-
-    def _forward_log_det_jacobian(self, x):
-        pass
-
-    def _forward_shape(self, x):
-        pass
-
-    def _inverse_shape(self, x):
-        pass
-
-    def _fill_triangular(self):
-        """Creates a (batch of) lower triangular matrix from a vector in row 
-        order
-        """
-        pass
-
-    def _fill_triangular_inverse(self):
-        """Creates a vector from a (batch of) lower triangular matrix.
-        """
-        pass
-
-
 class ExpTransform(Transform):
-    """Exponent transformation with mapping :math:`y = \exp(x)`.
+    r"""Exponent transformation with mapping :math:`y = \exp(x)`.
 
     Exapmles:
 
@@ -691,7 +672,8 @@ class ExpTransform(Transform):
 
 
 class IndependentTransform(Transform):
-    """``IndependentTransform` wraps a base transformation, reinterprets 
+    r"""
+    ``IndependentTransform`` wraps a base transformation, reinterprets 
     some of the rightmost batch axes as event axes.
 
     Generally, it is used to expand the event axes. This has no effect on the
@@ -781,18 +763,35 @@ class IndependentTransform(Transform):
 
 
 class PowerTransform(Transform):
-    """Power transformation with mapping :math:`y = x^{\text{exponent}}`.
+    r"""
+    Power transformation with mapping :math:`y = x^{\text{power}}`.
 
     Args:
         power (Tensor): The power parameter.
     
     Examples:
 
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1., 2.])
+            power = paddle.distribution.PowerTransform(paddle.to_tensor(2.))
+
+            print(power.forward(x))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1., 4.])
+            print(power.inverse(power.forward(x)))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1., 2.])
+            print(power.forward_log_det_jacobian(x))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.69314718, 1.38629436])
     """
     _type = Type.BIJECTION
 
     def __init__(self, power):
-        if not isinstance(power, paddle.fluid.core.VarBase):
+        if not isinstance(power, paddle.fluid.framework.Variable):
             raise TypeError(
                 f"Expected 'power' is a tensor, but got {type(power)}")
         self._power = power
@@ -827,7 +826,7 @@ class PowerTransform(Transform):
 
 
 class ReshapeTransform(Transform):
-    """Reshape the event shape of a tensor.
+    r"""Reshape the event shape of a tensor.
 
     Note that ``in_event_shape`` and ``out_event_shape`` must have the same 
     number of elements.
@@ -835,7 +834,31 @@ class ReshapeTransform(Transform):
     Args:
         in_event_shape(Sequence[int]): The input event shape.
         out_event_shape(Sequence[int]): The output event shape.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((1,2,3))
+            reshape_transform = paddle.distribution.ReshapeTransform((2, 3), (3, 2))
+            print(reshape_transform.forward_shape((1,2,3)))
+            # (5, 2, 6)
+            print(reshape_transform.forward(x))
+            # Tensor(shape=[1, 3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[1., 1.],
+            #          [1., 1.],
+            #          [1., 1.]]])
+            print(reshape_transform.inverse(reshape_transform.forward(x)))
+            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[1., 1., 1.],
+            #          [1., 1., 1.]]])
+            print(reshape_transform.forward_log_det_jacobian(x))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.])
     """
+    _type = Type.BIJECTION
 
     def __init__(self, in_event_shape, out_event_shape):
         if not isinstance(in_event_shape, typing.Sequence) or not isinstance(
@@ -862,9 +885,11 @@ class ReshapeTransform(Transform):
     def out_event_shape(self):
         return self._out_event_shape
 
+    @property
     def _domain(self):
         return variable.Independent(variable.real, len(self._in_event_shape))
 
+    @property
     def _codomain(self):
         return variable.Independent(variable.real, len(self._out_event_shape))
 
@@ -901,12 +926,34 @@ class ReshapeTransform(Transform):
         return tuple(shape[:-len(self._out_event_shape)]) + self._in_event_shape
 
     def _forward_log_det_jacobian(self, x):
-        return paddle.zeros(
-            x.shape[:x.dim() - len(self._in_event_shape)], dtype=x.dtype)
+        # paddle.zeros not support zero dimension Tensor.
+        shape = x.shape[:x.dim() - len(self._in_event_shape)] or [1]
+        return paddle.zeros(shape, dtype=x.dtype)
 
 
 class SigmoidTransform(Transform):
-    """Sigmoid transformation with mapping :math:`y = \frac{1}{1 + \exp(-x)}` and :math:`x = \text{logit}(y)`.
+    r"""Sigmoid transformation with mapping :math:`y = \frac{1}{1 + \exp(-x)}` and :math:`x = \text{logit}(y)`.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((2,3))
+            t = paddle.distribution.SigmoidTransform()
+            print(t.forward(x))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.73105860, 0.73105860, 0.73105860],
+            #         [0.73105860, 0.73105860, 0.73105860]])
+            print(t.inverse(t.forward(x)))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1.00000012, 1.00000012, 1.00000012],
+            #         [1.00000012, 1.00000012, 1.00000012]])
+            print(t.forward_log_det_jacobian(x))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-1.62652326, -1.62652326, -1.62652326],
+            #         [-1.62652326, -1.62652326, -1.62652326]])
     """
 
     @property
@@ -918,21 +965,38 @@ class SigmoidTransform(Transform):
         return variable.Variable(False, 0, constraint.Range(0., 1.))
 
     def _forward(self, x):
-        return paddle.sigmoid(x)
+        return F.sigmoid(x)
 
     def _inverse(self, y):
         return y.log() - (-y).log1p()
 
     def _forward_log_det_jacobian(self, x):
-        return F.softplus(-x) - F.softplus(x)
+        return -F.softplus(-x) - F.softplus(x)
 
 
 class SoftmaxTransform(Transform):
-    """Softmax transformation with mapping :math:`y=\exp(x)` then normalizing.
+    r"""Softmax transformation with mapping :math:`y=\exp(x)` then normalizing.
 
     It's generally used to convert unconstrained space to simplex. This mapping 
     is not injective, so ``forward_log_det_jacobian`` and 
     ``inverse_log_det_jacobian`` are not implemented.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((2,3))
+            t = paddle.distribution.SoftmaxTransform()
+            print(t.forward(x))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.33333334, 0.33333334, 0.33333334],
+            #         [0.33333334, 0.33333334, 0.33333334]])
+            print(t.inverse(t.forward(x)))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-1.09861231, -1.09861231, -1.09861231],
+            #         [-1.09861231, -1.09861231, -1.09861231]])
     """
     _type = Type.OTHER
 
@@ -945,8 +1009,8 @@ class SoftmaxTransform(Transform):
         return variable.Variable(False, 1, constraint.simplex)
 
     def _forward(self, x):
-        x = (x - x.max(-1, True)[0]).exp()
-        return x / x.sum(-1, True)
+        x = (x - x.max(-1, keepdim=True)[0]).exp()
+        return x / x.sum(-1, keepdim=True)
 
     def _inverse(self, y):
         return y.log()
@@ -967,8 +1031,42 @@ class SoftmaxTransform(Transform):
 
 
 class StackTransform(Transform):
-    """ ``StackTransform`` applies a sequence of transformations along the 
+    r""" ``StackTransform`` applies a sequence of transformations along the 
     specific axis.
+
+    Args:
+        transforms(Sequence[Transform]): The sequence of transformations. 
+        axis(int): The axis along which will be transformed.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import paddle
+
+
+            x = paddle.stack(
+                (paddle.to_tensor([1., 2., 3.]), paddle.to_tensor([1, 2., 3.])), 1)
+            t = paddle.distribution.StackTransform(
+                (paddle.distribution.ExpTransform(),
+                paddle.distribution.PowerTransform(paddle.to_tensor(2.))),
+                1
+            )
+            print(t.forward(x))
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2.71828175 , 1.         ],
+            #         [7.38905621 , 4.         ],
+            #         [20.08553696, 9.         ]])
+            print(t.inverse(t.forward(x)))
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1., 1.],
+            #         [2., 2.],
+            #         [3., 3.]])
+            print(t.forward_log_det_jacobian(x))
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1.        , 0.69314718],
+            #         [2.        , 1.38629436],
+            #         [3.        , 1.79175949]])
     """
 
     def __init__(self, transforms, axis=0):
@@ -976,7 +1074,7 @@ class StackTransform(Transform):
             raise TypeError(
                 f"Expected 'transforms' is Sequence[Transform], but got {type(transforms)}."
             )
-        if not all(isinstance(t, tansform.Transform) for t in transforms):
+        if not all(isinstance(t, Transform) for t in transforms):
             raise TypeError(
                 'Expected all element in transforms is Transform Type.')
         if not isinstance(axis, int):
@@ -985,8 +1083,7 @@ class StackTransform(Transform):
         self._transforms = transforms
         self._axis = axis
 
-    @classmethod
-    def _is_injective(cls):
+    def _is_injective(self):
         return all(t._is_injective() for t in self._transforms)
 
     @property
@@ -1023,60 +1120,87 @@ class StackTransform(Transform):
             raise ValueError(
                 f'Input dimensions {v.dim()} should be grater than stack '
                 f'transform axis {self._axis}.')
-        if x.shape[self._axis] != len(self._transforms):
+        if v.shape[self._axis] != len(self._transforms):
             raise ValueError(
                 f'Input size along {self._axis} should be equal to the '
                 f'length of transforms.')
 
+    @property
     def _domain(self):
         return variable.Stack([t._domain for t in self._transforms], self._axis)
 
+    @property
     def _codomain(self):
         return variable.Stack([t._codomain for t in self._transforms],
                               self._axis)
 
 
 class StickBreakingTransform(Transform):
-    """Convert an unconstrained vector to the simplex with one additional 
+    r"""Convert an unconstrained vector to the simplex with one additional 
     dimension by the stick-breaking construction.
 
-    Args:
-        transform ([type]): [description]
+    Examples:
 
-    Returns:
-        [type]: [description]
+        .. code-block:: python
+
+            import paddle
+
+
+            x = paddle.to_tensor([1.,2.,3.])
+            t = paddle.distribution.StickBreakingTransform()
+            print(t.forward(x))
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.47536686, 0.41287899, 0.10645414, 0.00530004])
+            print(t.inverse(t.forward(x)))
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.99999988, 2.        , 2.99999881])
+            print(t.forward_log_det_jacobian(x))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-9.10835075])
     """
 
-    # _domain = constraint.real_vector
-    # _codomain = constraint.simplex
+    _type = Type.BIJECTION
 
     def _forward(self, x):
-        beta = (1 - F.sogmoid(x - paddle.arange(-x.shape[-1], 0, -1).log()))
-        return F.pad(beta, [0, 1], value=1) * F.pad(beta.cumprod(-1), [1, 0],
-                                                    value=1)
+        offset = x.shape[-1] + 1 - paddle.ones([x.shape[-1]]).cumsum(-1)
+        z = F.sigmoid(x - offset.log())
+        z_cumprod = (1 - z).cumprod(-1)
+        return F.pad(z, [0, 1], value=1) * F.pad(z_cumprod, [1, 0], value=1)
 
     def _inverse(self, y):
-        return y[..., :-1].log() - (1 - y[..., :-1].cumsum(-1)
-                                    ).log + paddle.arange(-y.shape[-1] - 1, 0,
-                                                          -1).log()
+        y_crop = y[..., :-1]
+        offset = y.shape[-1] - paddle.ones([y_crop.shape[-1]]).cumsum(-1)
+        sf = 1 - y_crop.cumsum(-1)
+        x = y_crop.log() - sf.log() + offset.log()
+        return x
 
     def _forward_log_det_jacobian(self, x):
-        x = x - paddle.arange(-x.shape[-1], 0, -1)
-        return (-x + F.logsigmoid(x) + y[..., :-1].log()).sum(-1)
+        y = self.forward(x)
+        offset = x.shape[-1] + 1 - paddle.ones([x.shape[-1]]).cumsum(-1)
+        x = x - offset.log()
+        return (-x + F.log_sigmoid(x) + y[..., :-1].log()).sum(-1)
 
     def _forward_shape(self, shape):
         if not shape:
             raise ValueError(f"Expected 'shape' is not empty, but got {shape}")
-        return shape[:-1] + (shape[-1] + 1)
+        return shape[:-1] + (shape[-1] + 1, )
 
     def _inverse_shape(self, shape):
         if not shape:
             raise ValueError(f"Expected 'shape' is not empty, but got {shape}")
-        return shape[:-1] + (shape[-1] - 1)
+        return shape[:-1] + (shape[-1] - 1, )
+
+    @property
+    def _domain(self):
+        return variable.Independent(variable.real, 1)
+
+    @property
+    def _codomain(self):
+        return variable.Variable(False, 1, constraint.simplex)
 
 
 class TanhTransform(Transform):
-    """Tanh transformation with mapping :math:`y = \tanh(x)`.
+    r"""Tanh transformation with mapping :math:`y = \tanh(x)`.
 
     Examples
 

@@ -19,8 +19,8 @@ class Constraint(object):
 
 
 class Real(Constraint):
-    def __call__(self, v):
-        return v == v
+    def __call__(self, value):
+        return value == value
 
 
 class Range(Constraint):
@@ -29,28 +29,19 @@ class Range(Constraint):
         self._upper = upper
         super(Range, self).__init__()
 
-    def __call__(self, v):
-        return self._lower <= v <= self.upper
+    def __call__(self, value):
+        return self._lower <= value <= self.upper
 
 
 class Positive(Constraint):
-    def __call__(self, v):
-        return v >= 0.
+    def __call__(self, value):
+        return value >= 0.
 
 
 class Simplex(Constraint):
-    def __call__(self, v):
-        return paddle.all(v >= 0, dim=-1) and ((v.sum(-1) - 1).abs() < 1e-6)
-
-
-class LowerCholesky(Constraint):
-    def __call__(self, v):
-        pass
-
-
-class CorrelationCholesky(Constraint):
-    def __call__(self, v):
-        pass
+    def __call__(self, value):
+        return paddle.all(value >= 0, dim=-1) and (
+            (value.sum(-1) - 1).abs() < 1e-6)
 
 
 real = Real()

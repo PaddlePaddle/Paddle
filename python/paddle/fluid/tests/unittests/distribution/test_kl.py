@@ -57,7 +57,7 @@ class TestKLBetaBeta(unittest.TestCase):
 
 
 @param.place(config.DEVICES)
-@param.parameterize_cls((config.TEST_CASE_NAME, 'conc1', 'conc2'), [
+@param.param_cls((param.TEST_CASE_NAME, 'conc1', 'conc2'), [
     ('test-regular-input', np.random.random((5, 7, 8, 10)), np.random.random(
         (5, 7, 8, 10))),
 ])
@@ -90,9 +90,8 @@ class DummyDistribution(paddle.distribution.Distribution):
 
 
 @param.place(config.DEVICES)
-@param.parameterize(
-    (param.TEST_CASE_NAME, 'p', 'q'),
-    [('test-unregister', DummyDistribution(), DummyDistribution)])
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'),
+                 [('test-unregister', DummyDistribution(), DummyDistribution)])
 class TestDispatch(unittest.TestCase):
     def test_dispatch_with_unregister(self):
         with self.assertRaises(NotImplementedError):
@@ -100,12 +99,12 @@ class TestDispatch(unittest.TestCase):
 
 
 @param.place(config.DEVICES)
-@param.parameterize(
-    (param.TEST_CASE_NAME, 'p', 'q'),
-    [('test-diff-dist', mock.Exponential(paddle.rand((100, 200, 100)) + 1.0),
-      mock.Exponential(paddle.rand((100, 200, 100)) + 2.0)),
-     ('test-same-dist', mock.Exponential(paddle.to_tensor(1.0)),
-      mock.Exponential(paddle.to_tensor(1.0)))])
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'),
+                 [('test-diff-dist',
+                   mock.Exponential(paddle.rand((100, 200, 100)) + 1.0),
+                   mock.Exponential(paddle.rand((100, 200, 100)) + 2.0)),
+                  ('test-same-dist', mock.Exponential(paddle.to_tensor(1.0)),
+                   mock.Exponential(paddle.to_tensor(1.0)))])
 class TestKLExpfamilyExpFamily(unittest.TestCase):
     def test_kl_expfamily_expfamily(self):
         np.testing.assert_allclose(
