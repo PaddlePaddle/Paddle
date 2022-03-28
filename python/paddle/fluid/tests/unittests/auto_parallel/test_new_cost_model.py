@@ -16,9 +16,10 @@ import unittest
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
-from paddle.distributed.auto_parallel.cost.base_cost import parse_to_desc
-from paddle.distributed.auto_parallel.cost.base_cost import parse_desc_to_str
+from paddle.distributed.auto_parallel.cost.base_cost import parse_op_to_comp_desc
+from paddle.distributed.auto_parallel.cost.base_cost import parse_comp_desc_for_predict
 from paddle.distributed.auto_parallel.cost.base_cost import calc_time_from_model
+from paddle.distributed.auto_parallel.cost import MatmulV2OpCost, AllreduceSumCost
 
 paddle.enable_static()
 
@@ -45,10 +46,9 @@ class TestCost(unittest.TestCase):
             if op.type == "matmul_v2":
                 matmul_v2_op = op
                 break
-        matmul_v2_cost = cost_model.OP_COST_FACTORY["matmul_v2"](
-            op=matmul_v2_op)
-        desc = parse_to_desc(op=matmul_v2_op)
-        desc_str = parse_desc_to_str(desc)
+        matmul_v2_cost = MatmulV2OpCost(op=matmul_v2_op)
+        desc = parse_op_to_comp_desc(op=matmul_v2_op)
+        desc_str, = parse_comp_desc_for_predict(desc)
         self.assertIsNotNone(desc_str)
         self.assertTrue(check_cost(matmul_v2_cost.cost))
         time = calc_time_from_model(op=matmul_v2_op)
@@ -61,8 +61,8 @@ class TestCost(unittest.TestCase):
         desc = {}
         desc["op"] = "c_allreduce_sum"
         desc["inputs"] = {"X": [([100, 200], paddle.float32)]}
-        allreduce_cost = cost_model.OP_COST_FACTORY["c_allreduce_sum"](
-            op_desc=desc)
+        desc["group_ranks"] = [0, 1]
+        allreduce_cost = AllreduceSumCost(op_desc=desc)
         self.assertTrue(check_cost(allreduce_cost.cost))
 
     def test_cost_estimator(self):

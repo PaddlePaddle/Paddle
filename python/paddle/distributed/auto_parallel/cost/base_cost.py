@@ -13,16 +13,21 @@
 # limitations under the License
 
 from collections import OrderedDict
+
 import paddle
+
+from ..utils import _get_comm_group, _get_corresponding_rank
+from ..process_group import get_process_group
 
 COMM_OP_TYPE = [
     "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum"
 ]
 NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
-OP_COST_FACTORY = {}
+_g_op_cost_factory = {}
 
 
-def _parse_op_to_desc(op, dist_context=None):
+def parse_op_to_comp_desc(op, dist_context=None, rank_id=0):
+    """Parse op to comp desc for comp cost"""
     desc = {}
     desc["op"] = op.type
     vars = op.block.vars
@@ -35,7 +40,7 @@ def _parse_op_to_desc(op, dist_context=None):
             shape = None
             if dist_context is not None:
                 dist_tensor = dist_context.get_dist_tensor_for_program(var)
-                shape = dist_tensor.local_sizes()
+                shape = dist_tensor.local_sizes(rank_id=rank_id)
             else:
                 shape = var.shape
             assert shape is not None
@@ -52,7 +57,7 @@ def _parse_op_to_desc(op, dist_context=None):
             shape = None
             if dist_context is not None:
                 dist_tensor = dist_context.get_dist_tensor_for_program(var)
-                shape = dist_tensor.local_sizes()
+                shape = dist_tensor.local_sizes(rank_id=rank_id)
             else:
                 shape = var.shape
             assert shape is not None
@@ -62,22 +67,17 @@ def _parse_op_to_desc(op, dist_context=None):
 
     attr_desc = op.all_attrs
     desc["attrs"] = attr_desc
-
     return desc
 
 
-def parse_to_desc(op=None, dist_op=None, dist_context=None):
-    desc = None
-    if op is None and dist_op is not None and dist_context is not None:
-        desc = _parse_op_to_desc(
-            op=dist_op.serial_op, dist_context=dist_context)
-    elif op is not None and dist_op is None and dist_context is None:
-        desc = _parse_op_to_desc(op)
-
+def parse_dist_op_to_comp_desc(dist_op, dist_context, rank_id):
+    """Parse the serial op of dist op to specific desc for comp cost"""
+    desc = parse_op_to_comp_desc(
+        op=dist_op.serial_op, dist_context=dist_context)
     return desc
 
 
-def parse_desc_to_str(desc):
+def parse_comp_desc_for_predict(desc):
     def _parse_dtype(dtype):
         dtype_str = ""
         if dtype == paddle.float32:
@@ -118,8 +118,58 @@ def parse_desc_to_str(desc):
     shape_str = "[" + ",".join(shape_list) + "]"
     desc_str_list += [dtype_str, dims_str, shape_str]
     desc_str = "_".join(desc_str_list)
+    attrs = desc["attrs"]
+    parse_result = (desc_str, attrs)
+    return parse_result
 
-    return desc_str
+
+def parse_dist_op_to_comm_desc(op_type,
+                               dist_op,
+                               ctx,
+                               input_name,
+                               attrs=None,
+                               rank_id=0,
+                               parallel_axis=None,
+                               group_ranks=None):
+    specific_op_type = []
+    desc = {}
+    desc["op"] = op_type
+    op_attrs = None
+    comm_group_ranks = None
+    process_mesh = dist_op.dist_attr.process_mesh
+    if rank_id not in process_mesh.processes:
+        rank_id = _get_corresponding_rank(ctx, process_mesh, rank_id)
+    if op_type not in specific_op_type:
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+        op_dist_attr = dist_op.dist_attr
+        dist_tensor = ctx.get_dist_tensor_for_program(vars[serial_op.input(
+            input_name)])
+        desc["inputs"] = {
+            input_name: [(dist_tensor.serial_tensor.dtype,
+                          dist_tensor.local_sizes())]
+        }
+        if parallel_axis is not None:
+            process_mesh_shape = process_mesh.topology
+            process_mesh_group = process_mesh.processes
+            comm_group_ranks = _get_comm_group(
+                process_mesh_group, process_mesh_shape, parallel_axis, rank_id)
+        elif group_ranks is not None:
+            comm_group_ranks = group_ranks
+        else:
+            raise ValueError(
+                "The parallel_axis and group_ranks can not be None in the same.")
+
+        if attrs is not None:
+            assert isinstance(attrs, dict)
+            op_attrs = attrs
+        else:
+            op_attrs = {}
+
+        desc["attrs"] = op_attrs
+        desc["group_ranks"] = comm_group_ranks
+
+    return desc
 
 
 class CommContext:
@@ -292,10 +342,26 @@ class CommOpCost(OpCost):
         super(CommOpCost, self).__init__(op=op, op_desc=op_desc)
         self._check_comm_op_type()
         self._comm_context = comm_context
+        self._group_ranks = None
 
     @property
     def comm_context(self):
         return self._comm_context
+
+    @property
+    def group_ranks(self):
+        if self._group_ranks is None:
+            if self.op_desc is not None:
+                self._group_ranks = self.op_desc["group_ranks"]
+            elif self.op is not None:
+                ring_id = op.attrs("ring_id")
+                process_group = get_process_group(ring_id)
+                if process_group is None:
+                    raise ValueError(
+                        "There not exists process group whose ring_id is {}.".
+                        format(ring_id))
+                self._group_ranks = process_group.ranks
+        return self._group_ranks
 
     @classmethod
     def _check_comm_op_type(cls):
@@ -325,18 +391,21 @@ def register_op_cost(cls):
     op_type = cls.OP_TYPE
 
     def register(op_type):
-        OP_COST_FACTORY[op_type] = cls
+        _g_op_cost_factory[op_type] = cls
 
-    return register(op_type)
+    register(op_type)
+    return cls
 
 
 def calc_time_from_model(op=None, desc=None, cluster=None, comm_context=None):
     op_type = op.type if op is not None else desc["op"]
     if op_type in COMM_OP_TYPE:
-        op_cost = OP_COST_FACTORY[op_type](op=op,
-                                           op_desc=desc,
-                                           comm_context=comm_context)
+        op_cost = _g_op_cost_factory[op_type](op=op,
+                                              op_desc=desc,
+                                              comm_context=comm_context)
     elif op_type not in NON_COMP_TYPE:
-        op_cost = OP_COST_FACTORY[op_type](op=op, op_desc=desc, cluster=cluster)
+        op_cost = _g_op_cost_factory[op_type](op=op,
+                                              op_desc=desc,
+                                              cluster=cluster)
     time = op_cost.calc_time()
     return time

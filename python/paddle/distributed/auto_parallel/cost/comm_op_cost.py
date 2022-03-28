@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import register_op_cost, CommOpCost, OP_COST_FACTORY
+from .base_cost import register_op_cost, CommOpCost, _g_op_cost_factory
 
 
 @register_op_cost
@@ -20,7 +20,7 @@ class AllreduceSumCost(CommOpCost):
     OP_TYPE = "c_allreduce_sum"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
-        super(OP_COST_FACTORY["c_allreduce_sum"], self).__init__(
+        super(AllreduceSumCost, self).__init__(
             op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
