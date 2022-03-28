@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 def numpy_cov(np_arr, rowvar=True, ddof=1, fweights=None, aweights=None):
@@ -237,10 +237,10 @@ class Cov_Test3(unittest.TestCase):
     def func_test_errors(self):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
-            np_fw = self.fw_s * np.random.rand(
-                *self.fweightshape).astype('int32')
-            np_aw = self.aw_s * np.random.rand(
-                *self.aweightshape).astype('float64')
+            np_fw = self.fw_s * np.random.rand(*self.fweightshape).astype(
+                'int32')
+            np_aw = self.aw_s * np.random.rand(*self.aweightshape).astype(
+                'float64')
             tensor = paddle.to_tensor(np_arr)
             fweights = paddle.to_tensor(np_fw)
             aweights = paddle.to_tensor(np_aw)

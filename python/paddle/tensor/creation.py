@@ -127,12 +127,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor) and not _in_eager_mode():
+        elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
             data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, core.eager.Tensor) and _in_eager_mode():
+        elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
             data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -141,7 +141,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to VarBase first
             # Currenly, there is no copy when places are same
-            if _in_eager_mode():
+            if in_dygraph_mode():
                 data = core.eager.Tensor(data)
             else:
                 data = paddle.Tensor(data)

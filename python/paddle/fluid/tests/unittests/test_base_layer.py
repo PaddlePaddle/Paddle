@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import ParamBase, EagerParamBase
 from paddle.jit import ProgramTranslator
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class L1(fluid.Layer):
@@ -193,7 +193,7 @@ class TestBuffer(unittest.TestCase):
 
             with self.assertRaisesRegexp(TypeError,
                                          "buffer should be a Paddle.Tensor"):
-                if _in_eager_mode():
+                if in_dygraph_mode():
                     net.register_buffer("buffer_name",
                                         EagerParamBase([2, 2], 'float32'))
                 else:
@@ -213,7 +213,7 @@ class TestBuffer(unittest.TestCase):
                 net.register_buffer("attr_name", var)
 
             del net.attr_name
-            if _in_eager_mode():
+            if in_dygraph_mode():
                 net.attr_name = EagerParamBase([2, 2], 'float32')
             else:
                 net.attr_name = ParamBase([2, 2], 'float32')
@@ -309,7 +309,7 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.state_dict()), 0)
 
             # Re-assign a ParamBase will remove the buffer.
-            if _in_eager_mode():
+            if in_dygraph_mode():
                 net.buffer_name = EagerParamBase([2, 2], 'float32')
             else:
                 net.buffer_name = ParamBase([2, 2], 'float32')
@@ -442,7 +442,7 @@ class TestLayerTo(unittest.TestCase):
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
-            if _in_eager_mode():
+            if in_dygraph_mode():
                 self.assertTrue(
                     isinstance(p, paddle.fluid.framework.EagerParamBase))
             else:
@@ -469,7 +469,7 @@ class TestLayerTo(unittest.TestCase):
             self.assertEqual(
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
             for p in self.linear.parameters():
-                if _in_eager_mode():
+                if in_dygraph_mode():
                     self.assertTrue(
                         isinstance(p, paddle.fluid.framework.EagerParamBase))
                 else:
@@ -511,7 +511,7 @@ class TestLayerTo(unittest.TestCase):
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
-            if _in_eager_mode():
+            if in_dygraph_mode():
                 self.assertTrue(
                     isinstance(p, paddle.fluid.framework.EagerParamBase))
             else:
@@ -538,7 +538,7 @@ class TestLayerTo(unittest.TestCase):
         self.assertEqual(self.linear.weight._grad_ivar().dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
         for p in self.linear.parameters():
-            if _in_eager_mode():
+            if in_dygraph_mode():
                 self.assertTrue(
                     isinstance(p, paddle.fluid.framework.EagerParamBase))
             else:

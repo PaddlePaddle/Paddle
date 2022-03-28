@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class TestDLPack(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestDLPack(unittest.TestCase):
         tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
-        if paddle.fluid.framework._in_eager_mode():
+        if paddle.fluid.framework.in_dygraph_mode():
             self.assertTrue(
                 isinstance(out_from_dlpack, paddle.fluid.core.eager.Tensor))
         else:
