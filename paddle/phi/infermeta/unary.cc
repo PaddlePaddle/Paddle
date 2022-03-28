@@ -2003,6 +2003,53 @@ void SumRawInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void TemporalShiftInferMeta(const MetaTensor& x,
+                            int seg_num,
+                            float shift_ratio,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  auto dim_x = x.dims();
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    4,
+                    platform::errors::InvalidArgument(
+                        "Input(X) rank should be 4 in shape of [N*T, C, H, "
+                        "W], but received X rank(%d)",
+                        dim_x.size()));
+
+  PADDLE_ENFORCE_GT(
+      seg_num,
+      0,
+      platform::errors::InvalidArgument(
+          "Attr(seg_num) should be greater than 0, but received %d", seg_num));
+  PADDLE_ENFORCE_GT(
+      shift_ratio,
+      0.,
+      platform::errors::InvalidArgument(
+          "Attr(shift_ratio) should be greater than 0, but received %d",
+          shift_ratio));
+  PADDLE_ENFORCE_LT(
+      shift_ratio,
+      0.5,
+      platform::errors::InvalidArgument(
+          "Attr(shift_ratio) should be less than 0.5, but received %d",
+          shift_ratio));
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(dim_x[0] % seg_num,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "Input(X) dimension[0] should be divided exactly "
+                          "by Attr(seg_num), but received X dimension[0](%d) "
+                          "mod seg_num(%d) != 0",
+                          dim_x[0],
+                          seg_num));
+  }
+
+  out->set_dims(dim_x);
+  out->share_lod(x);
+}
+
 void TileInferMeta(const MetaTensor& x,
                    const ScalarArray& repeat_times,
                    MetaTensor* out,

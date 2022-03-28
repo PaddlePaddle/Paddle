@@ -66,6 +66,30 @@ void AdadeltaInferMeta(const MetaTensor& param,
   avg_squared_update_out->set_dtype(avg_squared_update.dtype());
 }
 
+void AdagradInferMeta(const MetaTensor& param,
+                      const MetaTensor& grad,
+                      const MetaTensor& moment,
+                      const MetaTensor& learning_rate,
+                      float epsilon,
+                      MetaTensor* param_out,
+                      MetaTensor* moment_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "LearningRate should have one element"));
+  auto param_dims = param.dims();
+
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment.dims(),
+      platform::errors::InvalidArgument("Param and Moment input of AdagradOp "
+                                        "should have the same dimension."));
+
+  param_out->set_dims(param_dims);
+  moment_out->set_dims(param_dims);
+}
+
 void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
@@ -963,6 +987,36 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->share_lod(*x.at(0));
 }
 
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
+                       std::vector<MetaTensor*> outputs) {
+  const size_t inputs_num = inputs.size();
+
+  auto out_shape = std::vector<int>(inputs_num);
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    out_shape[i] = inputs[i].dims()[0];
+  }
+  auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    outputs[i]->set_dims(out_dims);
+  }
+}
+
+void MomentumInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& velocity,
+                       const MetaTensor& learning_rate,
+                       paddle::optional<const MetaTensor&> master_param,
+                       float mu,
+                       bool use_nesterov,
+                       const std::string& regularization_method,
+                       float regularization_coeff,
+                       bool multi_precision,
+                       float rescale_grad,
+                       MetaTensor* param_out,
+                       MetaTensor* velocity_out,
+                       MetaTensor* master_param_out) {}
+
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out) {
@@ -1080,6 +1134,83 @@ void PsroiPoolInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
+}
+
+void RmspropDenseInferMeta(const MetaTensor& param,
+                           const MetaTensor& mean_square,
+                           const MetaTensor& grad,
+                           const MetaTensor& moment,
+                           const MetaTensor& learning_rate,
+                           paddle::optional<const MetaTensor&> mean_grad,
+                           float epsilon,
+                           float decay,
+                           float momentum,
+                           bool centered,
+                           MetaTensor* param_out,
+                           MetaTensor* moment_out,
+                           MetaTensor* mean_square_out,
+                           MetaTensor* mean_grad_out) {
+  if (centered) {
+    PADDLE_ENFORCE_NOT_NULL(
+        mean_grad_out,
+        platform::errors::InvalidArgument(
+            "Output(MeanGradOut) of RmspropOp should not be null."));
+  }
+
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(param_dim,
+                    moment.dims(),
+                    platform::errors::InvalidArgument(
+                        "Param and Momentum input of RmspropOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and Moment [%s]",
+                        param_dim,
+                        ctx->GetInputDim("Moment")));
+  PADDLE_ENFORCE_EQ(param_dim,
+                    mean_square.dims(),
+                    platform::errors::InvalidArgument(
+                        "Param and Momentum input of RmspropOp "
+                        "should have the same dimension. But received "
+                        "Param's dim [%s] and MeanSquare [%s]",
+                        param_dim,
+                        ctx->GetInputDim("MeanSquare")));
+
+  auto lr_dim = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dim),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "Learning Rate of RmspropOp should be a scalar. But "
+                        "received LearningRate's dim [%s]",
+                        phi::product(lr_dim)));
+
+  param_out->set_dims(param_dim);
+  moment_out->set_dims(param_dim);
+  mean_square_out->set_dims(param_dim);
+  if (centered) {
+    mean_grad_out->set_dims(param_dim);
+  }
+}
+
+void SGDInferMeta(const MetaTensor& param,
+                  const MetaTensor& learning_rate,
+                  const MetaTensor& grad,
+                  paddle::optional<const MetaTensor&> master_param,
+                  bool multi_precision,
+                  MetaTensor* param_out,
+                  MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NOT_NULL(param_out,
+                          platform::errors::InvalidArgument(
+                              "Output(ParamOut) of SGDOp should not be null."));
+
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "Learning rate should have 1 element. But received "
+                        "LearningRate dims [%s]",
+                        phi::product(lr_dims)));
+
+  param_out->set_dims(param.dims());
 }
 
 void WarpctcInferMeta(const MetaTensor& logits,

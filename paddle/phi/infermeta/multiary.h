@@ -47,6 +47,14 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        MetaTensor* avg_squared_grad_out,
                        MetaTensor* avg_squared_update_out);
 
+void AdagradInferMeta(const MetaTensor& param,
+                      const MetaTensor& grad,
+                      const MetaTensor& moment,
+                      const MetaTensor& learning_rate,
+                      float epsilon,
+                      MetaTensor* param_out,
+                      MetaTensor* moment_out);
+
 void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& grad,
                      const MetaTensor& learning_rate,
@@ -199,6 +207,24 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* pre_out,
                                   MetaTensor* w_out);
 
+void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
+                       std::vector<MetaTensor*> outputs);
+
+void MomentumDenseKernel(const DenseTensor& param,
+                         const DenseTensor& grad,
+                         const DenseTensor& velocity,
+                         const DenseTensor& learning_rate,
+                         paddle::optional<const DenseTensor&> master_param,
+                         float mu,
+                         bool use_nesterov,
+                         const std::string& regularization_method,
+                         float regularization_coeff,
+                         bool multi_precision,
+                         float rescale_grad,
+                         DenseTensor* param_out,
+                         DenseTensor* velocity_out,
+                         DenseTensor* master_param_out);
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
@@ -213,6 +239,29 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         int output_channels,
                         float spatial_scale,
                         MetaTensor* out);
+
+void RmspropDenseInferMeta(const MetaTensor& param,
+                           const MetaTensor& mean_square,
+                           const MetaTensor& grad,
+                           const MetaTensor& moment,
+                           const MetaTensor& learning_rate,
+                           paddle::optional<const MetaTensor&> mean_grad,
+                           float epsilon,
+                           float decay,
+                           float momentum,
+                           bool centered,
+                           MetaTensor* param_out,
+                           MetaTensor* moment_out,
+                           MetaTensor* mean_square_out,
+                           MetaTensor* mean_grad_out);
+
+void SGDInferMeta(const MetaTensor& param,
+                  const MetaTensor& learning_rate,
+                  const MetaTensor& grad,
+                  paddle::optional<const MetaTensor&> master_param,
+                  bool multi_precision,
+                  MetaTensor* param_out,
+                  MetaTensor* master_param_out);
 
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,

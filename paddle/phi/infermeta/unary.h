@@ -301,6 +301,13 @@ void SumRawInferMeta(const MetaTensor& x,
                      DataType dtype,
                      MetaTensor* out);
 
+void TemporalShiftInferMeta(const MetaTensor& x,
+                            int seg_num,
+                            float shift_ratio,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
 void TileInferMeta(const MetaTensor& x,
                    const ScalarArray& repeat_times,
                    MetaTensor* out,
