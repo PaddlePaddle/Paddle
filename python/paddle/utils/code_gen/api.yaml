@@ -701,7 +701,7 @@
   args : (Tensor x, int[] axis)
   output : Tensor
   infer_meta :
-    func : UnchangedInferMeta
+    func : FlipInferMeta
     param : [x]
   kernel :
     func : flip
