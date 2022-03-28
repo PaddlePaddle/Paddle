@@ -78,6 +78,61 @@ int CAllReducePlugin::enqueue(int batchSize, const void* const* inputs,
 #endif
                               void* workspace,
                               cudaStream_t stream) TRT_NOEXCEPT {
+  VLOG(3) << "-----------------CAllReducePlugin--------------";
+  const auto& input_dims = this->getInputDims(0);
+  size_t numel = 1;
+  for (int i = 0; i < input_dims.nbDims; i++) {
+    numel *= input_dims.d[i];
+  }
+  auto input_type = getDataType();
+  void* sendbuff;
+  void* recvbuff = outputs[0];
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp32";
+    sendbuff = const_cast<void*>(inputs[0]);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. CAllReduce-->fp16";
+    sendbuff = const_cast<void*>(inputs[0]);
+  }
+
+  ncclDataType_t dtype = NvInferDtypeToNCCLDType(input_type);
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id_);
+  cudaStream_t custream = nullptr;
+  if (use_calc_stream_) {
+    custream = stream;
+  } else {
+    custream = comm->stream();
+  }
+
+  ncclRedOp_t nccl_red_type = ncclSum;
+  switch (red_type_) {
+    case kRedSum:
+      nccl_red_type = ncclSum;
+      break;
+
+    case kRedMax:
+      nccl_red_type = ncclMax;
+      break;
+
+    case kRedMin:
+      nccl_red_type = ncclMin;
+      break;
+
+    case kRedProd:
+      nccl_red_type = ncclProd;
+      break;
+
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
+                                                     red_type_));
+  }
+  VLOG(3) << "ncclAllReduce, numel: " << numel;
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+
+  bool ret = (cudaGetLastError() != cudaSuccess);
+  VLOG(3) << "ncclAllReduce: " << ret;
+  return ret;
 }
 
 // Dynamic Plugin below.
@@ -119,19 +174,19 @@ bool CAllReducePluginDynamic::supportsFormatCombination(
                                         pos, nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
-  if (pos == 0) {
+  if (pos == 0 || pos == 1) {
     if (with_fp16_) {
-      return (in.type == nvinfer1::DataType::kFLOAT ||
-              in.type == nvinfer1::DataType::kHALF) &&
+      return (in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
   }
-  const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
+  //  const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
   // output
-  return in.type == prev.type && in.format == prev.format;
+  //  return (in.type == nvinfer1::DataType::kHALF) && in.type == prev.type &&
+  //  in.format == prev.format;
 }
 
 nvinfer1::DataType CAllReducePluginDynamic::getOutputDataType(
@@ -194,9 +249,13 @@ int CAllReducePluginDynamic::enqueue(
       PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
                                                      red_type_));
   }
+  VLOG(3) << "ncclAllReduce, numel: " << numel;
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-  return cudaGetLastError() != cudaSuccess;
+  bool ret = (cudaGetLastError() != cudaSuccess);
+
+  VLOG(3) << "ncclAllReduce: " << ret;
+  return ret;
 }
 
 }  // namespace plugin

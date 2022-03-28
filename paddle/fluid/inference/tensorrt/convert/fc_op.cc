@@ -150,10 +150,10 @@ class FcOpConverter : public OpConverter {
                          TensorRTEngine::Weight& bias) {
       if (enable_int8) {
         // add conv layer
-        PADDLE_ENFORCE_EQ(
-            op_desc.HasAttr("out_threshold"), true,
-            platform::errors::InvalidArgument(
-                "must have out threshold in fc layers in int8 mode"));
+        //        PADDLE_ENFORCE_EQ(
+        //            op_desc.HasAttr("out_threshold"), true,
+        //            platform::errors::InvalidArgument(
+        //                "must have out threshold in fc layers in int8 mode"));
         float out_scale =
             BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         nvinfer1::DimsHW nv_ksize(1, 1);
@@ -314,11 +314,11 @@ class FcOpConverter : public OpConverter {
       regist_fc(reshape_itensor, n_output, weight, bias);
     }
 
-    LOG(INFO) << "========W=======" << weight_h << " " << weight_w << " , x_nbD " << x_dim.nbDims;
+    LOG(INFO) << "========W=======" << weight_h << " " << weight_w
+              << " , x_nbD " << x_dim.nbDims;
     for (int k = 0; k < x_dim.nbDims; ++k) {
-        LOG(INFO) << x_dim.d[k];
+      LOG(INFO) << x_dim.d[k];
     }
-
   }
 };
 

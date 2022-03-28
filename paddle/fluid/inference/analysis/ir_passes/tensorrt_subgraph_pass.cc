@@ -49,7 +49,9 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     bool is_ok = tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
                                                    with_dynamic_shape);
     if (!is_ok)
-      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+      VLOG(3) << node->Op()->Type().c_str()
+              << " op is not in TensorRT; with_dynamic_shape: "
+              << with_dynamic_shape << "; no_calib_int8: " << no_calib_int8;
     return is_ok;
   };
 
@@ -396,7 +398,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       return;
     }
   }
-// the following code will NOT run in following situation:
+  // the following code will NOT run in following situation:
   // 1. calibraion mode (generate trt int8 calibraiton table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
@@ -406,7 +408,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
   std::unordered_set<std::string> param_set(params.begin(), params.end());
 
-  for(size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
+  for (size_t i = 0; i < block_desc_temp.OpSize(); ++i) {
     LOG(INFO) << "========One Op Begin======";
     LOG(INFO) << block_desc_temp.Op(i)->Type();
     auto ins = block_desc_temp.Op(i)->InputArgumentNames();

@@ -26,14 +26,19 @@ namespace plugin {
 class ElementWisePlugin : public PluginTensorRT {
  public:
   ElementWisePlugin(std::string type, nvinfer1::Dims const& dims_x,
-                    nvinfer1::Dims const& dims_y, int axis)
+                    nvinfer1::Dims const& dims_y, int axis, float* weight)
       : type_(type),
         dims_x_(dims_x),
         dims_y_(dims_y),
         axis_(axis),
         prev_size_(1),
         midd_size_(1),
-        post_size_(1) {}
+        post_size_(1),
+        p_cpu_weight_(weight) {
+    if (weight != nullptr) {
+      with_weight_ = true;
+    }
+  }
 
   ElementWisePlugin(void const* serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
@@ -46,10 +51,15 @@ class ElementWisePlugin : public PluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &prev_size_);
     DeserializeValue(&serial_data, &serial_length, &midd_size_);
     DeserializeValue(&serial_data, &serial_length, &post_size_);
+    DeserializeValue(&serial_data, &serial_length, &p_cpu_weight_);
+    DeserializeValue(&serial_data, &serial_length, &with_weight_);
   }
 
   ElementWisePlugin* clone() const TRT_NOEXCEPT override {
-    return new ElementWisePlugin(type_, dims_x_, dims_y_, axis_);
+    auto* plugin =
+        new ElementWisePlugin(type_, dims_x_, dims_y_, axis_, p_cpu_weight_);
+    plugin->p_gpu_weight_ = p_gpu_weight_;
+    return plugin;
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -62,6 +72,8 @@ class ElementWisePlugin : public PluginTensorRT {
 
   int initialize() TRT_NOEXCEPT override;
 
+  void destroy() TRT_NOEXCEPT override;
+
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batch_size, const void* const* inputs, void** outputs,
 #else
@@ -73,7 +85,8 @@ class ElementWisePlugin : public PluginTensorRT {
     return getBaseSerializationSize() + SerializedSize(type_.c_str()) +
            SerializedSize(dims_x_) + SerializedSize(dims_y_) +
            SerializedSize(axis_) + SerializedSize(prev_size_) +
-           SerializedSize(midd_size_) + SerializedSize(post_size_);
+           SerializedSize(midd_size_) + SerializedSize(post_size_) +
+           SerializedSize(p_cpu_weight_) + SerializedSize(with_weight_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
@@ -84,7 +97,8 @@ class ElementWisePlugin : public PluginTensorRT {
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, prev_size_);
     SerializeValue(&buffer, midd_size_);
-    SerializeValue(&buffer, post_size_);
+    SerializeValue(&buffer, p_cpu_weight_);
+    SerializeValue(&buffer, with_weight_);
   }
 
  protected:
@@ -95,6 +109,9 @@ class ElementWisePlugin : public PluginTensorRT {
   int prev_size_;
   int midd_size_;
   int post_size_;
+  float* p_cpu_weight_;
+  float* p_gpu_weight_;
+  bool with_weight_;
 };
 
 class ElementWisePluginCreator : public TensorRTPluginCreator {
@@ -116,16 +133,32 @@ REGISTER_TRT_PLUGIN_V2(ElementWisePluginCreator);
 #if IS_TRT_VERSION_GE(6000)
 class ElementwisePluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit ElementwisePluginDynamic(const std::string& type, int axis)
-      : type_(type), axis_(axis) {}
+  explicit ElementwisePluginDynamic(const std::string& type, int axis,
+                                    float* weight, nvinfer1::Dims weight_dims)
+      : type_(type),
+        axis_(axis),
+        p_cpu_weight_(weight),
+        weight_dims_(weight_dims) {
+    if (weight != nullptr) {
+      with_weight_ = true;
+    } else {
+      with_weight_ = false;
+    }
+  }
+
   ElementwisePluginDynamic(void const* serialData, size_t serialLength) {
     const char* elementwise_type;
     DeserializeValue(&serialData, &serialLength, &elementwise_type);
     type_ = std::string(elementwise_type);
     DeserializeValue(&serialData, &serialLength, &axis_);
+    DeserializeValue(&serialData, &serialLength, &p_cpu_weight_);
+    DeserializeValue(&serialData, &serialLength, &with_weight_);
+    DeserializeValue(&serialData, &serialLength, &weight_dims_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new ElementwisePluginDynamic(type_, axis_);
+    VLOG(3) << "ElementwisePluginDynamic clone";
+    return new ElementwisePluginDynamic(type_, axis_, p_cpu_weight_,
+                                        weight_dims_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
@@ -166,11 +199,19 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
       int index, const nvinfer1::DataType* inputTypes,
       int nbInputs) const TRT_NOEXCEPT override;
 
-  void destroy() TRT_NOEXCEPT override { delete this; }
+  void destroy() TRT_NOEXCEPT override {
+    VLOG(3) << "ElementwisePluginDynamic destroy";
+    delete this;
+    VLOG(3) << "ElementwisePluginDynamic destroy finish";
+  }
 
  private:
   std::string type_;
   int axis_;
+  float* p_cpu_weight_;
+  float* p_gpu_weight_;
+  bool with_weight_;
+  nvinfer1::Dims weight_dims_;
 };
 
 class ElementwisePluginDynamicCreator : public nvinfer1::IPluginCreator {
