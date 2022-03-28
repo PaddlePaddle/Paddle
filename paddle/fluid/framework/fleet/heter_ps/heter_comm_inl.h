@@ -30,10 +30,6 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
         8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
 #endif
-#ifdef PADDLE_WITH_XPU
-    platform::XPUDeviceGuard guard(resource_->dev_id(i));
-    allocators_.push_back();
-#endif
     // table interface not change
     auto table = new Table(capacity / load_factor_);
     tables_.push_back(table);
@@ -41,6 +37,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
       storage_[i].init(feanum_, resource_->dev_id(i));
     }
   }
+  heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
   init_path();
 }
 
@@ -393,8 +390,9 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
 
   int grid_size = (len - 1) / block_size_ + 1;
 
-  fill_idx(d_idx_tmp_ptr, len, stream);
-  calc_shard_index(d_keys, len, d_shard_index_tmp_ptr, total_gpu, stream);
+  heter_comm_kernel_->fill_idx(d_idx_tmp_ptr, len, stream);
+  heter_comm_kernel_->calc_shard_index(d_keys, len, d_shard_index_tmp_ptr,
+                                       total_gpu, stream);
 
   size_t temp_storage_bytes;
   const int num_bits = 1 + log2i(total_gpu);
@@ -406,7 +404,8 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
       d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
-  calc_shard_offset(d_shard_index_ptr, left, right, len, total_gpu, stream);
+  heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len,
+                                        total_gpu, stream);
   cudaStreamSynchronize(stream);
 }
 
@@ -497,7 +496,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     cudaStreamSynchronize(node.out_stream);
   }
 
-  fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len, stream);
+  heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
+                                 stream);
   cudaStreamSynchronize(stream);
   for (int i = 0; i < total_gpu; ++i) {
     destroy_storage(num, i);
@@ -549,9 +549,52 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
   split_input_to_shard(d_keys, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr,
                        gpu_num);
 
-  fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(
-      d_shard_keys_ptr, d_keys, d_shard_grads_ptr, d_grads, d_idx_ptr,
-      uniq_len);
+  heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
+                                       d_shard_grads_ptr, d_grads, d_idx_ptr,
+                                       uniq_len, stream);
+
+  cudaStreamSynchronize(stream);
+
+  cudaMemcpy(h_left, d_left_ptr, total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+  cudaMemcpy(h_right, d_right_ptr, total_gpu * sizeof(int),
+             cudaMemcpyDeviceToHost);
+
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_right[i] - h_left[i] + 1;
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    create_storage(gpu_num, i, shard_len * sizeof(KeyType),
+                   shard_len * sizeof(GradType));
+  }
+
+  walk_to_dest(gpu_num, total_gpu, h_left, h_right, d_shard_keys_ptr,
+               d_shard_grads_ptr);
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    auto& node = path_[gpu_num][i].nodes_.back();
+    cudaStreamSynchronize(node.in_stream);
+
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->rwlock_->WRLock();
+    tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
+                       reinterpret_cast<GradType*>(node.val_storage),
+                       h_right[i] - h_left[i] + 1, sgd,
+                       resource_->remote_stream(i, gpu_num));
+  }
+  for (int i = 0; i < total_gpu; ++i) {
+    cudaStreamSynchronize(resource_->remote_stream(i, gpu_num));
+    if (h_left[i] != -1) {
+      tables_[i]->rwlock_->UNLock();
+    }
+  }
+  heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
+                                       d_shard_grads_ptr, d_grads, d_idx_ptr,
+                                       uniq_len, stream);
 
   cudaStreamSynchronize(stream);
 
@@ -710,10 +753,11 @@ int HeterComm<KeyType, ValType, GradType>::gather_one_node_grad(
                cudaMemcpyDeviceToHost);
 
     int grid_size = (h_node_len[i] - 1) / block_size_ + 1;
-    fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(
+    heter_comm_kernel_->fill_shard_grads(
         storage.local_keys + merge_num, storage.all_keys + index,
         storage.local_grads + merge_num, storage.all_grads + index,
-        d_idx_ptr + h_left[gpu_num], h_right[gpu_num] - h_left[gpu_num] + 1);
+        d_idx_ptr + h_left[gpu_num], h_right[gpu_num] - h_left[gpu_num] + 1,
+        stream);
     merge_num = merge_num + h_right[gpu_num] - h_left[gpu_num] + 1;
   }
 

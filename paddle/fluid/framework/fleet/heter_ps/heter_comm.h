@@ -190,6 +190,7 @@ class HeterComm {
   int block_size_{256};
 
  private:
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
   std::vector<LocalStorage> storage_;
   // CustomGradMerger merger_;
   int topo_aware_{0};
@@ -200,9 +201,6 @@ class HeterComm {
   int node_size_;
 #if defined(PADDLE_WITH_CUDA)
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
-#elif defined(PADDLE_WITH_XPU)
-  std::vector<std::shared_ptr<>> allocators_;
-#endif
 };
 
 }  // end namespace framework

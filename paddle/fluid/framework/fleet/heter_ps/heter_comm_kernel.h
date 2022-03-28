@@ -20,6 +20,8 @@ namespace framework {
 
 class HeterCommKernel {
  public:
+  HeterCommKernel() {}
+  HeterCommKernle(const int block_size) : block_size_(block_size) {}
   template <typename T, typename StreamType>
   void fill_idx(T* idx, size_t len, const StreamType& stream);
 
