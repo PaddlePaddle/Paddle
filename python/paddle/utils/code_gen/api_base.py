@@ -308,6 +308,31 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
         return api_declaration
 
+    # Backward API Override this method
+    def gene_kernel_backend_select(self):
+        backend_select_code = ""
+        if self.kernel['backend'] is not None:
+            if '>' in self.kernel['backend']:
+                vars_list = self.kernel['backend'].split('>')
+                assert len(
+                    vars_list
+                ) == 2, f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert (vars_list[0].strip() in self.attrs['names']) and (self.attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
+                    f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                backend_select_code = f"""
+  kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+
+            else:
+                backend_args = [
+                    ele.strip() for ele in kernel['backend'].split(',')
+                ]
+                backend_select_code = f"""
+  kernel_backend = ParseBackend({", ".join(backend_args)});
+"""
+
+        return backend_select_code
+
     def gene_kernel_select(self) -> str:
         api = self.api
         input_names = self.inputs['names']
@@ -338,26 +363,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
                 attr_data_type_count = attr_data_type_count + 1
 
         # preprocess kernel configures
-        kernel_select_code = ""
-        if kernel['backend'] is not None:
-            if '>' in kernel['backend']:
-                vars_list = kernel['backend'].split('>')
-                assert len(
-                    vars_list
-                ) == 2, f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'Place'), \
-                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
-                kernel_select_code = kernel_select_code + f"""
-  kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
-"""
-
-            else:
-                args_str = ""
-                for ele in kernel['backend'].split(','):
-                    args_str = args_str + ele.strip() + ', '
-                kernel_select_code = kernel_select_code + f"""
-  kernel_backend = ParseBackend({args_str[:-2]});
-"""
+        kernel_select_code = self.gene_kernel_backend_select()
 
         if kernel['layout'] is not None:
             if '>' in kernel['layout']:
