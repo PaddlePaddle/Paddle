@@ -191,7 +191,6 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
            dense_tensor.layout(), target_args_def.layout, transform_flag))) {
     return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
   }
-
   phi::DenseTensor out =
       TransformData(dense_tensor, target_args_def, transform_flag);
   return std::make_shared<phi::DenseTensor>(std::move(out));
@@ -204,6 +203,17 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   if (input) {
     return PrepareData(*input, target_args_def, transform_flag);
   }
+  return {nullptr};
+}
+
+std::shared_ptr<phi::DenseTensor> PrepareData(
+    const paddle::optional<const Tensor&> input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input.get_ptr() != nullptr) {
+    return PrepareData(*(input.get_ptr()), target_args_def, transform_flag);
+  }
+
   return {nullptr};
 }
 
