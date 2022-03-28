@@ -48,6 +48,12 @@ void ArgsortInferMeta(const MetaTensor& input,
                       MetaTensor* output,
                       MetaTensor* indices);
 
+void BatchSizeLikeInferMeta(const MetaTensor& x,
+                            const std::vector<int>& shape,
+                            int x_batch_size_dim,
+                            int out_batch_size_dim,
+                            MetaTensor* out);
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
@@ -92,6 +98,14 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* xshape);
 
+void FullBatchSizeLikeInferMeta(const MetaTensor& x,
+                                const std::vector<int>& shape,
+                                const Scalar& val,
+                                DataType dtype,
+                                int x_batch_size_dim,
+                                int out_batch_size_dim,
+                                MetaTensor* out);
+
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             float temperature,
                             bool hard,
@@ -130,6 +144,8 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
 
+void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,
@@ -166,6 +182,14 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            const std::string& data_format,
                            MetaTensor* out);
 
+void PNormInferMeta(const MetaTensor& x,
+                    float porder,
+                    int axis,
+                    float epsilon,
+                    bool keepdim,
+                    bool asvector,
+                    MetaTensor* out);
+
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
                    const std::vector<int>& strides,
@@ -179,6 +203,11 @@ void PoolInferMeta(const MetaTensor& x,
                    const std::string& padding_algorithm,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
+
+void QrInferMeta(const MetaTensor& x,
+                 const std::string& mode,
+                 MetaTensor* q,
+                 MetaTensor* r);
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -240,6 +269,16 @@ void SqueezeInferMeta(const MetaTensor& x,
                       MetaTensor* xshape,
                       MetaTensor* out);
 
+void StridedSliceInferMeta(const MetaTensor& x,
+                           const std::vector<int>& axes,
+                           const ScalarArray& starts,
+                           const ScalarArray& ends,
+                           const ScalarArray& strides,
+                           const std::vector<int>& infer_flags,
+                           const std::vector<int>& decrease_axis,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
+
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
                   DataType dtype,
@@ -281,6 +320,11 @@ void TransposeInferMeta(const MetaTensor& x,
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
+
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,

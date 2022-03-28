@@ -89,10 +89,13 @@ class BaseAPI(object):
         attr_types_map = {
             'ScalarArray': 'const ScalarArray&',
             'Scalar': 'const Scalar&',
-            'uint8': 'uint8_t',
+            'Scalar(int)': 'const Scalar&',
+            'Scalar(int64_t)': 'const Scalar&',
+            'Scalar(float)': 'const Scalar&',
+            'Scalar(dobule)': 'const Scalar&',
             'int': 'int',
-            'int32': 'int32_t',
-            'int64': 'int64_t',
+            'int32_t': 'int32_t',
+            'int64_t': 'int64_t',
             'long': 'long',
             'size_t': 'size_t',
             'float': 'float',
@@ -102,27 +105,21 @@ class BaseAPI(object):
             'Place': 'Place',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
-            'int64[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&',
-            'long[]': 'const std::vector<int64_t>&'
+            'int64_t[]': 'const std::vector<int64_t>&',
+            'int[]': 'const std::vector<int>&'
         }
         optional_types_trans = {
-            'Tensor': 'const paddle::optional<Tensor>&',
+            'Tensor': 'paddle::optional<const Tensor&>',
             'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
-            'ScalarArray': 'const paddle::optional<ScalarArray>&',
-            'Scalar': 'const paddle::optional<Scalar>&',
             'int': 'paddle::optional<int>',
-            'int32': 'paddle::optional<int32_t>',
-            'int64': 'paddle::optional<int64_t>',
-            'size_t': 'paddle::optional<size_t>',
+            'int32_t': 'paddle::optional<int32_t>',
+            'int64_t': 'paddle::optional<int64_t>',
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
             'bool': 'paddle::optional<bool>',
             'Place': 'paddle::optional<Place>',
             'DataLayout': 'paddle::optional<DataLayout>',
-            'DataType': 'paddle::optional<DataType>',
-            'int64[]': 'paddle::optional<std::vector<int64_t>>',
-            'int[]': 'paddle::optional<std::vector<int>>'
+            'DataType': 'paddle::optional<DataType>'
         }
 
         args_declare_str = ""
@@ -505,7 +502,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::DenseTensor*>&',
-            'const paddle::optional<Tensor>&':
+            'const paddle::optional<Tensor&>':
+            'paddle::optional<const phi::DenseTensor&>',
+            'paddle::optional<const Tensor&>':
             'paddle::optional<const phi::DenseTensor&>',
             'const paddle::optional<std::vector<Tensor>>&':
             'paddle::optional<const std::vector<phi::DenseTensor>&>'
