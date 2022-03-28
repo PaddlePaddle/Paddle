@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
 namespace paddle {
