@@ -49,13 +49,6 @@ using DivFunctor = phi::funcs::DivideFunctor<T>;
 template <typename T>
 using InverseDivFunctor = phi::funcs::InverseDivideFunctor<T>;
 
-// Floor Divide
-template <typename T>
-using FloorDivFunctor = phi::funcs::FloorDivideFunctor<T>;
-
-template <typename T>
-using InverseFloorDivFunctor = phi::funcs::InverseFloorDivideFunctor<T>;
-
 #undef DIV_ERROR_INFO
 
 // Maximum
