@@ -25,13 +25,13 @@ from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
-class TestSqueeze2MatmulFusePass(PassAutoScanTest):
+class TestFlatten2MatmulFusePass(PassAutoScanTest):
     """
         x_var  
           |          
-       squeeze2 
+       flatten2 
           \
-    squeeze2_out_var    y_var
+    flatten2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
@@ -39,23 +39,42 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
     """
 
     def sample_predictor_configs(self, program_config):
-        # cpu
-        config = self.create_inference_config(use_gpu=False)
-        yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
+        # TRT
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=10,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
+        yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
 
-        # for gpu
-        config = self.create_inference_config(use_gpu=True)
-        yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
+    def add_ignore_pass_case(self):
+        # Here we put some skip rules to avoid known bugs
+        def teller1(program_config, predictor_config):
+            y_shape = list(program_config.weights["matmul_y"].shape)
+            bias_shape = program_config.weights["bias"].shape
+            axis = program_config.ops[2].attrs["axis"]
+            # bias should be [mul_y_shape[-1]]
+            if axis == 0 or bias_shape[0] != y_shape[1] or len(bias_shape) != 1:
+                return True
+            return False
+
+        self.add_ignore_check_case(
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The pass error on TRT while shape of bias is not [out_size].", )
 
     def sample_program_config(self, draw):
-        # 1. Generate shape of input:X of squeeze2
+        # 1. Generate shape and attr of flatten2
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=8), min_size=2, max_size=2))
-        # axes of squeeze2 == [2, 3]
-        x_shape += [1, 1]
-        axes = [2, 3]
+                    min_value=1, max_value=10), min_size=4, max_size=4))
+        # [a, b, c, d] => [a, b*c*d]
+        flatten_axis = 1
+        flatten_shape = [x_shape[0], x_shape[1] * x_shape[2] * x_shape[3]]
 
         # 2. Generate attr:transpose_X/transpose_Y/alpha of matmul
         alpha = 1.0
@@ -67,35 +86,23 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
             st.lists(
                 st.integers(
                     min_value=1, max_value=8), min_size=2, max_size=2))
-        y_shape[0] = x_shape[1]
+        y_shape[0] = flatten_shape[1]
 
         # 4. Generate legal attr:axis of elementwise_add
         axis = draw(st.integers(min_value=-1, max_value=1))
-        if axis == 0 or axis == -1:
-            if draw(st.booleans()):
-                if axis == 0:
-                    bias_shape = [x_shape[0], ]
-                else:
-                    bias_shape = [y_shape[1], ]
-            else:
-                bias_shape = [x_shape[0], y_shape[1]]
-        elif axis == 1:
-            bias_shape = [y_shape[1], ]
+        if axis == 0:
+            axis = -1
+        bias_shape = [y_shape[1], ]
 
-        if draw(st.integers(min_value=1, max_value=10)) <= 1:
-            bias_shape[-1] = 1
-            if len(bias_shape) == 2 and draw(st.booleans()):
-                bias_shape[0] = 1
-
-        squeeze2_op = OpConfig(
-            "squeeze2",
-            inputs={"X": ["squeeze2_x"], },
-            axes=axes,
-            outputs={"Out": ["squeeze2_out"],
+        flatten2_op = OpConfig(
+            "flatten2",
+            inputs={"X": ["flatten2_x"], },
+            axis=flatten_axis,
+            outputs={"Out": ["flatten2_out"],
                      "XShape": ["xshape"]}, )
         matmul_op = OpConfig(
             "matmul",
-            inputs={"X": ["squeeze2_out"],
+            inputs={"X": ["flatten2_out"],
                     "Y": ["matmul_y"]},
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
@@ -115,27 +122,17 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
             outputs={"Out": ["add_out"]},
             axis=axis, )
 
-        ops = [squeeze2_op, matmul_op, add_op]
+        ops = [flatten2_op, matmul_op, add_op]
 
-        if draw(st.integers(min_value=1, max_value=10)) <= 8:
-            program_config = ProgramConfig(
-                ops=ops,
-                weights={
-                    "matmul_y": TensorConfig(shape=y_shape),
-                    "bias": TensorConfig(shape=bias_shape),
-                },
-                inputs={"squeeze2_x": TensorConfig(shape=x_shape), },
-                outputs=ops[-1].outputs["Out"], )
-        else:
-            program_config = ProgramConfig(
-                ops=ops,
-                weights={},
-                inputs={
-                    "squeeze2_x": TensorConfig(shape=x_shape),
-                    "matmul_y": TensorConfig(shape=y_shape),
-                    "bias": TensorConfig(shape=bias_shape),
-                },
-                outputs=ops[-1].outputs["Out"], )
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={
+                "matmul_y": TensorConfig(shape=y_shape),
+                "bias": TensorConfig(shape=bias_shape),
+            },
+            inputs={"flatten2_x": TensorConfig(shape=x_shape), },
+            outputs=ops[-1].outputs["Out"], )
+
         return program_config
 
     def test(self):
@@ -143,7 +140,7 @@ class TestSqueeze2MatmulFusePass(PassAutoScanTest):
             quant=False,
             max_examples=50,
             max_duration=1000,
-            passes=["gpu_cpu_squeeze2_matmul_fuse_pass"])
+            passes=["trt_flatten2_matmul_fuse_pass"])
 
 
 if __name__ == "__main__":
