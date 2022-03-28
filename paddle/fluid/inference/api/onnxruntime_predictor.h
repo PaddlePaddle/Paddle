@@ -94,9 +94,8 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
-      : config_(config) {
+      : config_(config), env_(ORT_LOGGING_LEVEL_WARNING, "onnx") {
     predictor_id_ = inference::GetUniqueId();
-    env_ = Ort::Env(ORT_LOGGING_LEVEL_INFO, "onnx");
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
@@ -177,30 +176,17 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  std::shared_ptr<framework::Scope> scope_;
-
  private:
   ///
-  /// \brief get the Ort Value(input Tensor).
+  /// \brief Whether to find in/out by name.
   ///
-  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  /// \param[in] name input or output name
   ///
-  /// \param[in] device_name "cpu" or "gpu" of device
+  /// \param[in] is_input input(true) or output(false)
   ///
-  /// \return get a Ort::Value
+  /// \return Whether to find by name
   ///
-  Ort::Value GetOrtValue(const ONNXDesc &desc, const char *device_name);
-
-  ///
-  /// \brief Ort::Value to Paddle::ZeroCopyTensor.
-  ///
-  /// \param[in] value Ort::Value(output Tensor)
-  ///
-  /// \param[in] desc a ONNXDesce(name、shape、dtype)
-  ///
-  /// \return get a Ort::Value
-  ///
-  void AsTensor(const Ort::Value &value, const ONNXDesc &desc);
+  bool FindONNXDesc(const std::string &name, bool is_input);
 
  private:
   AnalysisConfig config_;
@@ -208,9 +194,9 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   // ONNXRuntime
   Ort::Env env_;
   Ort::Session session_{nullptr};
+  std::shared_ptr<Ort::IoBinding> binding_;
 
   platform::Place place_;
-  framework::Scope *sub_scope_{nullptr};
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
   int predictor_id_;

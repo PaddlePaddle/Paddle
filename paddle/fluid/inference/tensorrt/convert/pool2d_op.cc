@@ -328,5 +328,5 @@ class Pool2dOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(pool2d);
+USE_OP_ITSELF(pool2d);
 REGISTER_TRT_OP_CONVERTER(pool2d, Pool2dOpConverter);

@@ -13,6 +13,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/allocator.h"
 
+#ifdef INFRT_WITH_GPU
+#include <cuda_runtime.h>
+#endif
+
 namespace infrt {
 namespace backends {
 
@@ -28,6 +32,23 @@ class CpuPhiAllocator : public phi::Allocator {
         deleter);
   }
 };
+
+#ifdef INFRT_WITH_GPU
+// TODO(wilber): Just for demo test. we need a more efficient gpu allocator.
+class GpuPhiAllocator : public phi::Allocator {
+ public:
+  static void deleter(phi::Allocation* ptr) { cudaFree(ptr->ptr()); }
+
+  AllocationPtr Allocate(size_t bytes_size) {
+    void* ptr;
+    cudaMalloc(&ptr, bytes_size);
+    return AllocationPtr(
+        new phi::Allocation(
+            ptr, bytes_size, phi::Place(phi::AllocationType::GPU)),
+        deleter);
+  }
+};
+#endif
 
 }  // namespace backends
 }  // namespace infrt

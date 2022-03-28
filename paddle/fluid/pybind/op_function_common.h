@@ -146,5 +146,10 @@ unsigned long GetUnsignedLongFromArgs(  // NOLINT
 
 void InitOpsAttrTypeMap();
 
+ssize_t GetIdxFromCoreOpsInfoMap(
+    const std::unordered_map<std::string, std::vector<std::string>>&
+        core_ops_info_map,
+    const std::string& op_type, const std::string& name);
+
 }  // namespace pybind
 }  // namespace paddle

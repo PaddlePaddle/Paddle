@@ -38,6 +38,7 @@ from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
 from white_list import op_threshold_white_list, no_grad_set_white_list
 from op_test import OpTest, _set_use_system_allocator, get_numeric_gradient
+from xpu.get_test_cover_info import is_empty_grad_op_type
 
 
 class XPUOpTest(OpTest):
@@ -108,6 +109,13 @@ class XPUOpTest(OpTest):
                               check_dygraph=True,
                               numeric_place=None,
                               check_eager=False):
+        if hasattr(self, 'op_type_need_check_grad'):
+            xpu_version = core.get_xpu_device_version(0)
+            if is_empty_grad_op_type(xpu_version, self.op_type,
+                                     self.in_type_str):
+                self._check_grad_helper()
+                return
+
         if place == None:
             place = paddle.XPUPlace(0)
 
@@ -123,17 +131,26 @@ class XPUOpTest(OpTest):
             return super().check_grad_with_place(
                 place, inputs_to_check, output_names, no_grad_set,
                 numeric_grad_delta, in_place, max_relative_error,
-                user_defined_grads, user_defined_grads, check_dygraph)
+                user_defined_grads, user_defined_grad_outputs, check_dygraph)
 
         a1 = self.get_grad_with_place(
-            place, inputs_to_check, output_names, no_grad_set=no_grad_set)
+            place,
+            inputs_to_check,
+            output_names,
+            no_grad_set=no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         a2 = self.get_grad_with_place(
-            place, inputs_to_check, output_names, no_grad_set=no_grad_set)
+            place,
+            inputs_to_check,
+            output_names,
+            no_grad_set=no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         a3 = self.get_grad_with_place(
             paddle.CPUPlace(),
             inputs_to_check,
             output_names,
-            no_grad_set=no_grad_set)
+            no_grad_set=no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         self._assert_is_close(a1, a2, inputs_to_check, 0.00000001,
                               "Gradient Check On two xpu")
         self._assert_is_close(a1, a3, inputs_to_check, max_relative_error,
@@ -147,7 +164,7 @@ class XPUOpTest(OpTest):
                             numeric_grad_delta=0.005,
                             in_place=False,
                             max_relative_error=0.005,
-                            user_defined_grads=None,
+                            user_defined_grad_outputs=None,
                             check_dygraph=True):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
@@ -197,6 +214,10 @@ class XPUOpTest(OpTest):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        analytic_grads = self._get_gradient(inputs_to_check, place,
-                                            output_names, no_grad_set)
+        analytic_grads = self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs=user_defined_grad_outputs)
         return analytic_grads

@@ -22,6 +22,7 @@ import paddle.nn.functional as F
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
+from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -94,13 +95,18 @@ class TestCustomLinearJit(unittest.TestCase):
                                    self.np_bias)
             self.check_output(pten_out, pd_out, "pten_out")
 
-    def test_dynamic(self):
+    def func_dynamic(self):
         for dtype in self.dtypes:
             pten_out = linear_dynamic(custom_ops.pten_linear, dtype, self.np_x,
                                       self.np_weight, self.np_bias)
             pd_out = linear_dynamic(F.linear, dtype, self.np_x, self.np_weight,
                                     self.np_bias)
             self.check_output(pten_out, pd_out, "pten_out")
+
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_dynamic()
+        self.func_dynamic()
 
 
 if __name__ == "__main__":

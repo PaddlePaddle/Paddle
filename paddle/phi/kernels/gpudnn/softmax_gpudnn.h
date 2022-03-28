@@ -121,17 +121,10 @@ struct ReduceMaxFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct ExpSubFunctor {
-  HOSTDEVICE inline ExpSubFunctor() { y = static_cast<Tx>(0.0f); }
-
-  HOSTDEVICE explicit inline ExpSubFunctor(Tx y) : y((Tx)(y)) {}
-
+struct ExpFunctor {
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(std::exp(x - y));
+    return static_cast<Ty>(std::exp(x));
   }
-
- private:
-  Tx y;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -293,10 +286,14 @@ __global__ void WarpSoftmaxForward(T* softmax,
   }
 
   // data src
-  AccT srcdata[kBatchSize][kLoopsV][kVSize];
-  T src_tmp[kBatchSize][kLoopsV][kVSize];
-  kps::Init<AccT, kStep>(&srcdata[0][0][0], kLowInf);
-  kps::Init<T, kStep>(&src_tmp[0][0][0], -std::numeric_limits<T>::infinity());
+  // src_data: the raw data form global memory
+  // sub_data: store the data obtained by (src_data - max), used by log_softmax
+  // exp_data: store the data obtained by (exp(sub_data)), used by softmax
+  T src_data[kBatchSize][kLoopsV][kVSize];
+  AccT sub_data[kBatchSize][kLoopsV][kVSize];
+  AccT exp_data[kBatchSize][kLoopsV][kVSize];
+  kps::Init<AccT, kStep>(&sub_data[0][0][0], kLowInf);
+  kps::Init<T, kStep>(&src_data[0][0][0], -std::numeric_limits<T>::infinity());
 
   // data dst
   T out_tmp[kBatchSize][kLoopsV][kVSize];
@@ -313,11 +310,11 @@ __global__ void WarpSoftmaxForward(T* softmax,
   for (int i = 0; i < kBatchSize; ++i) {
     const VecT* src_v =
         reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
-    VecT* reg_v = reinterpret_cast<VecT*>(&src_tmp[i][0][0]);
+    VecT* reg_v = reinterpret_cast<VecT*>(&src_data[i][0][0]);
     kps::ReadData<VecT, VecT, kLoopsV, 1, 1, true>(
         &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
     kps::ElementwiseUnary<T, AccT, kVItem, 1, 1, DataTransFunctor<T, AccT>>(
-        &srcdata[i][0][0], &src_tmp[i][0][0], DataTransFunctor<T, AccT>());
+        &sub_data[i][0][0], &src_data[i][0][0], DataTransFunctor<T, AccT>());
   }
 
   // compute max
@@ -327,14 +324,16 @@ __global__ void WarpSoftmaxForward(T* softmax,
               1,
               ReduceMaxFunctor<AccT>,
               kMode::kLocalMode>(
-      &max[0], &srcdata[0][0][0], ReduceMaxFunctor<AccT>(), true);
+      &max[0], &sub_data[0][0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max);
 
 // compute sum
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpSubFunctor<AccT>>(
-        &srcdata[i][0][0], &srcdata[i][0][0], ExpSubFunctor<AccT>(max[i]));
+    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnarySubFunctor<AccT>>(
+        &sub_data[i][0][0], &sub_data[i][0][0], UnarySubFunctor<AccT>(max[i]));
+    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpFunctor<AccT>>(
+        &exp_data[i][0][0], &sub_data[i][0][0], ExpFunctor<AccT>());
   }
   kps::Reduce<AccT,
               kVItem,
@@ -342,7 +341,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
               1,
               kps::AddFunctor<AccT>,
               kMode::kLocalMode>(
-      &sum[0], &srcdata[0][0][0], kps::AddFunctor<AccT>(), true);
+      &sum[0], &exp_data[0][0][0], kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
 // write data to global memory
@@ -351,8 +350,15 @@ __global__ void WarpSoftmaxForward(T* softmax,
     VecT* softmax_v =
         reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
-    kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnaryDivFunctor<AccT>>(
-        &out_tmp[i][0][0], &srcdata[i][0][0], UnaryDivFunctor<AccT>(sum[i]));
+    if (LogMode) {
+      kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnarySubFunctor<AccT>>(
+          &out_tmp[i][0][0],
+          &sub_data[i][0][0],
+          UnarySubFunctor<AccT>(std::log(sum[i])));
+    } else {
+      kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnaryDivFunctor<AccT>>(
+          &out_tmp[i][0][0], &exp_data[i][0][0], UnaryDivFunctor<AccT>(sum[i]));
+    }
     kps::WriteData<VecT, VecT, kLoopsV, 1, 1, true>(
         &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
   }
@@ -434,15 +440,25 @@ __global__ void WarpSoftmaxBackward(T* dst,
   AccT sum_tmp[kBatchSize][kLoopsV][kVSize];
   AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
   AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
-  kps::ElementwiseBinary<AccT, AccT, kStep, 1, 1, kps::MulFunctor<AccT>>(
-      &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
-  kps::Reduce<AccT,
-              kVItem,
-              kBatchSize,
-              1,
-              kps::AddFunctor<AccT>,
-              kps::details::ReduceMode::kLocalMode>(
-      &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
+  if (LogMode) {
+    kps::Reduce<AccT,
+                kVItem,
+                kBatchSize,
+                1,
+                kps::AddFunctor<AccT>,
+                kps::details::ReduceMode::kLocalMode>(
+        &sum[0], &grad_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
+  } else {
+    kps::ElementwiseBinary<AccT, AccT, kStep, 1, 1, kps::MulFunctor<AccT>>(
+        &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
+    kps::Reduce<AccT,
+                kVItem,
+                kBatchSize,
+                1,
+                kps::AddFunctor<AccT>,
+                kps::details::ReduceMode::kLocalMode>(
+        &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
+  }
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
   // write result to global memory
@@ -453,10 +469,23 @@ __global__ void WarpSoftmaxBackward(T* dst,
     if (i >= local_batches) break;
     AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[i][0][0]);
     AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[i][0][0]);
-    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnarySubFunctor<AccT>>(
-        &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
-    kps::ElementwiseBinary<AccT, T, kVItem, 1, 1, kps::MulFunctor<AccT>>(
-        &out_tmp[i][0][0], &srcptr[0], &out[i][0][0], kps::MulFunctor<AccT>());
+    if (LogMode) {
+      kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpMulFunctor<AccT>>(
+          &out[i][0][0], &srcptr[0], ExpMulFunctor<AccT>(sum[i]));
+      kps::ElementwiseBinary<AccT, T, kVItem, 1, 1, kps::SubFunctor<AccT>>(
+          &out_tmp[i][0][0],
+          &gradptr[0],
+          &out[i][0][0],
+          kps::SubFunctor<AccT>());
+    } else {
+      kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnarySubFunctor<AccT>>(
+          &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
+      kps::ElementwiseBinary<AccT, T, kVItem, 1, 1, kps::MulFunctor<AccT>>(
+          &out_tmp[i][0][0],
+          &srcptr[0],
+          &out[i][0][0],
+          kps::MulFunctor<AccT>());
+    }
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
     kps::WriteData<VecT, VecT, kLoopsV, 1, 1, true>(
@@ -639,7 +668,8 @@ __global__ void NormalSoftmaxForward(
 
 template <typename T,
           typename AccT,
-          template <typename, typename> class Functor>
+          template <typename, typename> class Functor,
+          bool LogMode>
 __global__ void NormalSoftmaxBackward(T* input_grad,
                                       const T* output_grad,
                                       const T* output,
@@ -656,10 +686,17 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
 
       // 1. reduce sum
       AccT sum = 0;
-      for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
-        int data_offset = grad_offset + mid_id * mid_stride;
-        sum += static_cast<AccT>(output_grad[data_offset]) *
-               static_cast<AccT>(output[data_offset]);
+      if (LogMode) {
+        for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
+          int data_offset = grad_offset + mid_id * mid_stride;
+          sum += static_cast<AccT>(output_grad[data_offset]);
+        }
+      } else {
+        for (int mid_id = threadIdx.y; mid_id < mid_dim; mid_id += blockDim.y) {
+          int data_offset = grad_offset + mid_id * mid_stride;
+          sum += static_cast<AccT>(output_grad[data_offset]) *
+                 static_cast<AccT>(output[data_offset]);
+        }
       }
       if (blockDim.y > 1) {
         kps::Reduce<AccT, 1, 1, 1, kps::AddFunctor<AccT>, kMode::kGlobalMode>(
@@ -715,10 +752,10 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxBackward<
-        T,
-        AccT,
-        LogSoftmaxBackwardFunctor><<<grid, block, 0, dev_ctx.stream()>>>(
+    NormalSoftmaxBackward<T,
+                          AccT,
+                          LogSoftmaxBackwardFunctor,
+                          LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
         input_grad_data,
         output_grad_data,
         output_data,
@@ -726,10 +763,10 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
         mid_dim,
         low_dim);
   } else {
-    NormalSoftmaxBackward<
-        T,
-        AccT,
-        SoftmaxBackwardFunctor><<<grid, block, 0, dev_ctx.stream()>>>(
+    NormalSoftmaxBackward<T,
+                          AccT,
+                          SoftmaxBackwardFunctor,
+                          LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
         input_grad_data,
         output_grad_data,
         output_data,
@@ -863,6 +900,32 @@ static bool CanUseCudnnSoftmax(const GPUContext& dev_ctx) {
   }
   return false;
 }
+
+#if CUDNN_VERSION < 8100
+template <>
+inline void SoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
+    const GPUContext& dev_ctx,
+    const DenseTensor& x,
+    const int axis,
+    const bool log_mode,
+    DenseTensor* out) {
+  PADDLE_THROW(errors::Unavailable(
+      "This kernel is not supported when the dtype is bf16 and CUDNN_VERSION < "
+      "8100."));
+}
+template <>
+inline void SoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
+    const GPUContext& dev_ctx,
+    const DenseTensor& out,
+    const DenseTensor& dout,
+    const int axis,
+    const bool log_mode,
+    DenseTensor* dx) {
+  PADDLE_THROW(errors::Unavailable(
+      "This kernel is not supported when the dtype is bf16 and CUDNN_VERSION < "
+      "8100."));
+}
+#endif
 
 template <typename T, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,

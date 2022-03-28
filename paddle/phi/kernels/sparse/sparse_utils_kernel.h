@@ -23,37 +23,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-inline const DDim InferDenseDims(const DDim& x_dims,
-                                 const int64_t sparse_dim,
-                                 const int64_t non_zero_num) {
-  auto dense_dim = x_dims.size() - sparse_dim;
-  DDim values_dims;
-  if (dense_dim) {
-    std::vector<int64_t> dense_dim_vec(dense_dim + 1);
-    dense_dim_vec[0] = non_zero_num;
-    memcpy(&dense_dim_vec[1],
-           x_dims.Get() + sparse_dim,
-           dense_dim * sizeof(x_dims[0]));
-    values_dims = phi::make_ddim(dense_dim_vec);
-  } else {
-    values_dims = phi::make_ddim({non_zero_num});
-  }
-  return values_dims;
-}
-
-template <typename Context>
-inline void GetGpuLaunchConfig1D(const Context& dev_ctx,
-                                 const int64_t n,
-                                 int* grid_size,
-                                 int* block_size) {
-  const int MAX_BLOCK_DIM = dev_ctx.GetMaxThreadsPerBlock();
-  const int MAX_GRID_DIM = dev_ctx.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-  *block_size = (n >= MAX_BLOCK_DIM) ? MAX_BLOCK_DIM
-                                     : (1 << static_cast<int>(std::log2(n)));
-  *grid_size = n / *block_size;
-  *grid_size = (*grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : *grid_size;
-}
-
 template <typename T, typename Context>
 void DenseToSparseCooKernel(const Context& dev_ctx,
                             const DenseTensor& x,

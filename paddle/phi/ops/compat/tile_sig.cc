@@ -20,6 +20,11 @@ KernelSignature TileOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("RepeatTimes")) {
     return KernelSignature("tile", {"X"}, {"RepeatTimes"}, {"Out"});
   } else if (ctx.InputSize("repeat_times_tensor") > 0) {
+    const auto& repeat_times =
+        paddle::any_cast<std::vector<int>>(ctx.Attr("repeat_times"));
+    if (!ctx.IsRuntime() && !repeat_times.empty()) {
+      return KernelSignature("tile", {"X"}, {"repeat_times"}, {"Out"});
+    }
     return KernelSignature("tile", {"X"}, {"repeat_times_tensor"}, {"Out"});
   } else {
     return KernelSignature("tile", {"X"}, {"repeat_times"}, {"Out"});

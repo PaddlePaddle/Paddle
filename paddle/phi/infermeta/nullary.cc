@@ -16,6 +16,19 @@ limitations under the License. */
 
 namespace phi {
 
+void AssignValueInferMeta(const std::vector<int>& shape,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(phi::make_ddim(shape));
+  out->set_dtype(dtype);
+}
+
+void CreateInferMeta(const ScalarArray& shape,
+                     DataType dtype,
+                     MetaTensor* out) {
+  CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
+}
+
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
                          DataLayout layout,
@@ -24,12 +37,6 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(layout);
-}
-
-void CreateInferMeta(const ScalarArray& shape,
-                     DataType dtype,
-                     MetaTensor* out) {
-  CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
 void EyeInferMeta(int64_t num_rows,
@@ -41,18 +48,6 @@ void EyeInferMeta(int64_t num_rows,
   out->set_dtype(dtype);
 }
 
-void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
-                                      float mean,
-                                      float std,
-                                      int seed,
-                                      DataType dtype,
-                                      MetaTensor* out) {
-  auto out_dims = phi::make_ddim(shape);
-  out->set_dims(out_dims);
-  out->set_dtype(dtype);
-  out->set_layout(DataLayout::NCHW);
-}
-
 void GaussianRandomInferMeta(const ScalarArray& shape,
                              float mean,
                              float std,
@@ -60,6 +55,18 @@ void GaussianRandomInferMeta(const ScalarArray& shape,
                              DataType dtype,
                              MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(DataLayout::NCHW);
+}
+
+void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
+                                      float mean,
+                                      float std,
+                                      int seed,
+                                      DataType dtype,
+                                      MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);

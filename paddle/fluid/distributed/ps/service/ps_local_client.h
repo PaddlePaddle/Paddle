@@ -39,12 +39,16 @@ class PsLocalClient : public PSClient {
   virtual ::std::future<int32_t> load(uint32_t table_id,
                                       const std::string& epoch,
                                       const std::string& mode) override;
+  virtual std::future<int32_t> Load(
+      const LoadSaveContext& load_context) override;
 
   virtual ::std::future<int32_t> save(const std::string& epoch,
                                       const std::string& mode) override;
   virtual ::std::future<int32_t> save(uint32_t table_id,
                                       const std::string& epoch,
                                       const std::string& mode) override;
+  virtual std::future<int32_t> Save(
+      const LoadSaveContext& save_context) override;
 
   virtual ::std::future<int32_t> clear() override;
   virtual ::std::future<int32_t> clear(uint32_t table_id) override;
@@ -54,6 +58,10 @@ class PsLocalClient : public PSClient {
   virtual void finalize_worker() override {}
   virtual ::std::future<int32_t> pull_dense(Region* regions, size_t region_num,
                                             size_t table_id);
+
+  virtual ::std::future<int32_t> Pull(RequestContext& pull_context) override;
+
+  virtual ::std::future<int32_t> Push(RequestContext& push_context) override;
 
   virtual ::std::future<int32_t> push_dense(const Region* regions,
                                             size_t region_num, size_t table_id);

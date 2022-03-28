@@ -16,9 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -53,14 +54,20 @@ class SppKernel : public framework::OpKernel<T> {
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
       if (pooling_type == "max") {
-        math::Pool2dFunctor<DeviceContext, math::MaxPool<T>, T> pool_forward;
-        math::MaxPool<T> max_process;
+        phi::funcs::Pool2dFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            phi::funcs::MaxPool<T>, T>
+            pool_forward;
+        phi::funcs::MaxPool<T> max_process;
         pool_forward(context.template device_context<DeviceContext>(), *in_x,
                      kernel_size, strides, paddings, true, false, &out_level,
                      max_process);
       } else if (pooling_type == "avg") {
-        math::Pool2dFunctor<DeviceContext, math::AvgPool<T>, T> pool_forward;
-        math::AvgPool<T> avg_process;
+        phi::funcs::Pool2dFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            phi::funcs::AvgPool<T>, T>
+            pool_forward;
+        phi::funcs::AvgPool<T> avg_process;
         pool_forward(context.template device_context<DeviceContext>(), *in_x,
                      kernel_size, strides, paddings, true, false, &out_level,
                      avg_process);
@@ -95,7 +102,9 @@ class SppGradKernel : public framework::OpKernel<T> {
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
     auto& device_ctx = context.template device_context<DeviceContext>();
-    phi::funcs::SetConstant<DeviceContext, T> zero;
+    phi::funcs::SetConstant<
+        typename framework::ConvertToPhiContext<DeviceContext>::TYPE, T>
+        zero;
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
     auto out_stride = phi::stride(out->dims());
@@ -145,14 +154,18 @@ class SppGradKernel : public framework::OpKernel<T> {
       outgrad_level.Resize(out_shape);
       // pooling backward
       if (pooling_type == "max") {
-        math::MaxPool2dGradFunctor<DeviceContext, T> pool2d_backward;
+        phi::funcs::MaxPool2dGradFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE, T>
+            pool2d_backward;
         pool2d_backward(context.template device_context<DeviceContext>(), *in_x,
                         *&out_level, *&outgrad_level, kernel_size, strides,
                         paddings, in_x_grad);
       } else if (pooling_type == "avg") {
-        math::Pool2dGradFunctor<DeviceContext, math::AvgPoolGrad<T>, T>
+        phi::funcs::Pool2dGradFunctor<
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE,
+            phi::funcs::AvgPoolGrad<T>, T>
             pool_backward;
-        math::AvgPoolGrad<T> avg_process;
+        phi::funcs::AvgPoolGrad<T> avg_process;
         pool_backward(context.template device_context<DeviceContext>(), *in_x,
                       *&out_level, *&outgrad_level, kernel_size, strides,
                       paddings, true, false, in_x_grad, avg_process);

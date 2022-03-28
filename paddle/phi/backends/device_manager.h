@@ -158,6 +158,8 @@ class DeviceManager {
 
   static std::vector<size_t> GetDeviceList(const std::string& device_type);
 
+  static void Clear();
+
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);
   DeviceManager() {}

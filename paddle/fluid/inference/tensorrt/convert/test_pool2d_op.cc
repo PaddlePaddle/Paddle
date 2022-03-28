@@ -71,4 +71,4 @@ TEST(Pool2dOpConverter, avg_ceil_test) { test_pool2d(false, true, "avg"); }
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(pool2d);
+USE_OP_ITSELF(pool2d);

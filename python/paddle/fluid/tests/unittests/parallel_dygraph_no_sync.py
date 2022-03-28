@@ -26,8 +26,10 @@ import paddle
 import paddle.fluid as fluid
 import paddle.distributed as dist
 import paddle.fluid.dygraph as dygraph
+from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
 from test_dist_base import print_to_err, print_to_out, runtime_main, TestParallelDyGraphRunnerBase
 
 seed = 90
@@ -68,6 +70,18 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         return loss
 
     def run_trainer(self, args):
+        if args.eager_mode:
+            self.run_trainer_in_eager_mode(args)
+        else:
+            self.run_trainer_func(args)
+
+    def run_trainer_with_spawn(self, args):
+        if args.eager_mode:
+            return self.run_trainer_with_spawn_in_eager_mode(args)
+        else:
+            return self.run_trainer_with_spawn_func(args)
+
+    def run_trainer_func(self, args):
         if fluid.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(device_id)
@@ -86,56 +100,46 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 print_to_err(
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
-                if not args.find_unused_parameters:
-                    model = paddle.DataParallel(
-                        model, find_unused_parameters=False)
-                else:
-                    model = paddle.DataParallel(
-                        model, find_unused_parameters=True)
-                print_to_err(type(self).__name__, "model built in dygraph")
-            out_losses = []
-            print_to_err(type(self).__name__, "begin to run dygraph training")
-            for step_id, data in enumerate(train_reader()):
-                data = self._get_data(data, args)
-                if step_id == RUN_STEP:
-                    break
-                if step_id % 3 != 0:
-                    if args.update_method == "nccl2":
-                        with model.no_sync():
-                            loss = self.run_one_loop(model, opt, data)
-                            loss.backward()
-                    else:
-                        loss = self.run_one_loop(model, opt, data)
-                        loss.backward()
-                else:
-                    loss = self.run_one_loop(model, opt, data)
-                    loss.backward()
-                    opt.minimize(loss)
+                model = paddle.DataParallel(
+                    model, find_unused_parameters=args.find_unused_parameters)
+            print_to_err(type(self).__name__, "model built in dygraph")
+            return self.model_train(args, model, opt, train_reader)
+
+    def run_trainer_in_eager_mode(self, args):
+        if fluid.core.is_compiled_with_cuda():
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
+        else:
+            assert ("Only support CUDAPlace for now.")
+
+        with fluid.dygraph.guard(place):
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            np.random.seed(seed)
+            random.seed(seed)
+
+            with _test_eager_guard():
+                model, train_reader, opt = self.get_model()
+                if args.update_method == "nccl2":
+                    dist.init_parallel_env()
                     print_to_err(
                         type(self).__name__,
-                        "loss at step %d: %f" % (step_id, loss.numpy()))
-                    out_losses.append(loss.numpy())
+                        "begin to prepare context in dygraph with nccl2")
 
-                    if not args.accumulate_gradient:
-                        model.clear_gradients()
-        print_to_out(out_losses)
+                    nranks = ParallelEnv().nranks
+                    rank = ParallelEnv().local_rank
+                    is_master = True if rank == 0 else False
+                    store = paddle.fluid.core.TCPStore(
+                        "127.0.0.1", args.dist_port, is_master, nranks)
+                    group = core.ProcessGroupNCCL(store, rank, nranks)
+                    model = paddle.DataParallel(
+                        model,
+                        process_group=group,
+                        find_unused_parameters=args.find_unused_parameters)
+                print_to_err(type(self).__name__, "model built in dygraph")
+                return self.model_train(args, model, opt, train_reader)
 
-    def run_trainer_with_spawn(self, args):
-        fluid.default_startup_program().random_seed = seed
-        fluid.default_main_program().random_seed = seed
-        np.random.seed(seed)
-        random.seed(seed)
-        args.trainer_id = dist.get_rank()
-
-        if args.update_method == "nccl2":
-            dist.init_parallel_env()
-        model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":
-            if args.find_unused_parameters:
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-            else:
-                model = paddle.DataParallel(model, find_unused_parameters=False)
-
+    def model_train(self, args, model, opt, train_reader):
         out_losses = []
         for step_id, data in enumerate(train_reader()):
             data = self._get_data(data, args)

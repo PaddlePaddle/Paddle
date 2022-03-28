@@ -124,4 +124,39 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                               DenseTensor* d_ddx,
                               DenseTensor* d_ddy);
 
+template <typename T, typename Context>
+void ElementwiseFMaxGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad);
+
+template <typename T, typename Context>
+void ElementwiseFMinGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad);
+
+template <typename T, typename Context>
+void MaximumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       int axis,
+                       DenseTensor* dx,
+                       DenseTensor* dy);
+
+template <typename T, typename Context>
+void MinimumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       int axis,
+                       DenseTensor* dx,
+                       DenseTensor* dy);
 }  // namespace phi
