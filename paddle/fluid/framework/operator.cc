@@ -58,8 +58,6 @@ class DenseTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
-                             "number of threads for inner op");
 DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
@@ -628,10 +626,12 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
 
 bool OpSupportGPU(const std::string& op_type) {
   // check in new Function kernel first
+  bool has_phi_kernel = false;
   auto& kernel_factory = phi::KernelFactory::Instance();
   auto kernel_key_map =
       kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
   for (auto& kernel : kernel_key_map) {
+    has_phi_kernel = true;
     if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
       return true;
     }
@@ -639,12 +639,19 @@ bool OpSupportGPU(const std::string& op_type) {
 
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
-  if (it == all_kernels.end()) {
-    // All control operator must support GPU
-    return true;
-  }
-  for (auto& kern_pair : it->second) {
-    if (platform::is_gpu_place(kern_pair.first.place_)) {
+  if (it != all_kernels.end()) {
+    for (auto& kern_pair : it->second) {
+      if (platform::is_gpu_place(kern_pair.first.place_)) {
+        return true;
+      }
+    }
+  } else {
+    if (has_phi_kernel) {
+      // if has phi kernel, but not find phi gpu kernel and fluid gpu kernel,
+      // this op doesn't support GPU
+      return false;
+    } else {
+      // All control operator must support GPU
       return true;
     }
   }
@@ -1113,7 +1120,15 @@ static void CheckTensorNANOrInf(const std::string& op_type,
 
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
-  auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+  auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+  if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+    VLOG(6) << "Warning: " << type_ << " don't find its MKLDNN Kernel in Fluid "
+                                       "Registered Kernels. And We don't "
+                                       "search its kernels in phi lib, "
+                                       "SupportsMKLDNN() return false.";
+    return false;
+  }
+  auto& op_kernels = op_kernel_iter->second;
   return std::any_of(op_kernels.begin(), op_kernels.end(),
                      [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&
@@ -2347,6 +2362,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
         const auto& vector_int_attr =
             BOOST_GET_CONST(std::vector<int>, attr_it->second);
         pt_kernel_context->EmplaceBackAttr(vector_int_attr);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<std::string>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

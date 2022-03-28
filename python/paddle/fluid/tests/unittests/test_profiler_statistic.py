@@ -56,7 +56,15 @@ class TestProfilerStatistic(unittest.TestCase):
         mobilenet_node = HostPythonNode(
             'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
         yolonet_node = HostPythonNode(
-            'Yolov3Net', profiler.TracerEventType.Forward, 50, 100, 1000, 1001)
+            'Yolov3Net', profiler.TracerEventType.Forward, 50, 110, 1000, 1001)
+
+        userdefined_node = HostPythonNode('Communication Time',
+                                          profiler.TracerEventType.UserDefined,
+                                          100, 110, 1000, 1001)
+
+        communication_node = HostPythonNode(
+            'Communication', profiler.TracerEventType.Communication, 105, 110,
+            1000, 1001)
         backward_node = HostPythonNode('Gradient Backward',
                                        profiler.TracerEventType.Backward, 120,
                                        200, 1000, 1001)
@@ -114,7 +122,9 @@ class TestProfilerStatistic(unittest.TestCase):
             optimization_node
         ])
         mobilenet_node.children_node.append(conv2d_node)
-        yolonet_node.children_node.append(sync_batch_norm_node)
+        yolonet_node.children_node.extend(
+            [sync_batch_norm_node, userdefined_node])
+        userdefined_node.children_node.append(communication_node)
         conv2d_node.children_node.extend(
             [conv2d_infer_shape, conv2d_compute, conv2d_MemCpy])
         conv2d_compute.runtime_node.append(conv2d_launchkernel)
@@ -145,7 +155,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 profiler.TracerEventType.ProfileStep), 400)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.Forward), 90)
+                profiler.TracerEventType.Forward), 100)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Backward), 80)
@@ -169,15 +179,18 @@ class TestProfilerStatistic(unittest.TestCase):
                 0, profiler.TracerEventType.Memcpy), 60)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.UserDefined), 15)
+                profiler.TracerEventType.UserDefined), 25)
+        self.assertEqual(
+            time_range_summary.get_cpu_range_sum(
+                profiler.TracerEventType.Communication), 5)
         self.assertEqual(len(event_summary.items), 2)
-        self.assertEqual(len(event_summary.userdefined_items), 0)
+        self.assertEqual(len(event_summary.userdefined_items), 1)
         self.assertEqual(len(event_summary.model_perspective_items), 3)
         self.assertEqual(len(event_summary.memory_manipulation_items), 1)
         self.assertEqual(event_summary.items['conv2d'].cpu_time, 15)
         self.assertEqual(event_summary.items['conv2d'].gpu_time, 25)
         self.assertEqual(
-            event_summary.model_perspective_items['Forward'].cpu_time, 90)
+            event_summary.model_perspective_items['Forward'].cpu_time, 100)
         self.assertEqual(
             event_summary.model_perspective_items['Forward'].gpu_time, 135)
         self.assertEqual(

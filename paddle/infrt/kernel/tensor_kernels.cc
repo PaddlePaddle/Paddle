@@ -68,14 +68,14 @@ int32_t TensorMapGetSize(TensorMap map) { return map.size(); }
 
 // TODO(wilber): Maybe we should place TensorList type in dt dialect.
 #ifdef INFRT_WITH_PHI
-phi::DenseTensor TensorListGetTensor(std::vector<phi::DenseTensor *> list,
-                                     Attribute<int32_t> idx) {
+::phi::DenseTensor TensorListGetTensor(std::vector<::phi::DenseTensor *> list,
+                                       Attribute<int32_t> idx) {
   CHECK_LT(idx.get(), static_cast<int>(list.size()))
       << "idx should less than list size";
   return *list[idx.get()];
 }
 
-int32_t TensorListGetSize(const std::vector<phi::DenseTensor *> &list) {
+int32_t TensorListGetSize(const std::vector<::phi::DenseTensor *> &list) {
   return list.size();
 }
 #endif
@@ -146,8 +146,8 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
 
 // TensorList related methods.
 #ifdef INFRT_WITH_PHI
-  registry->AddKernel("dt.tensor_list_get_tensor",
-                      INFRT_KERNEL(TensorListGetTensor));
+  registry->AddKernelWithAttrs(
+      "dt.tensor_list_get_tensor", INFRT_KERNEL(TensorListGetTensor), {"id"});
   registry->AddKernel("dt.tensor_list_get_size",
                       INFRT_KERNEL(TensorListGetSize));
 #endif
