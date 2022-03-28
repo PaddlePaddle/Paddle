@@ -32,7 +32,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
 DECLARE_bool(fast_eager_deletion_mode);
-DECLARE_bool(use_stream_safe_cuda_allocator);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -44,7 +43,9 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
-  return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+  return memory::allocation::AllocatorFacade::Instance()
+             .IsStreamSafeCUDAAllocatorUsed() &&
+         FLAGS_fast_eager_deletion_mode;
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
@@ -89,9 +90,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
-
-  exception_notifier_->UnregisterEvent();
-  completion_notifier_->UnregisterEvent();
 
   async_work_queue_.reset(nullptr);
 }
@@ -234,10 +232,26 @@ void InterpreterCore::Convert(
     gc_check_input_list.erase(last, gc_check_input_list.end());
 
     for (auto var_id : gc_check_input_list) {
-      vec_meta_info[var_id].var_ref_count_++;
-      instr.AddGCCheckVar(var_id);
-      VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
-              << instr.OpBase()->Type();
+      paddle::framework::Variable* var = global_scope_->Var(var_id);
+      if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
+          var->IsType<LoDTensorArray>()) {
+        vec_meta_info[var_id].var_ref_count_++;
+        // TODO(zhiqiu): not all var needs to be checked, var need to be checked
+        // only
+        // after the last_live_op. For example,
+        // b = op1(a)
+        // c = op2(a, b)
+        // in this case, a is the input of op1 and op2, we only need to check
+        // a after op2, because op2 always uses a after op1.
+        instr.AddGCCheckVar(var_id);
+        VLOG(4) << "clear " << global_scope_->GetNameById(var_id) << " after "
+                << instr.OpBase()->Type();
+      } else {
+        VLOG(4) << "not clear " << global_scope_->GetNameById(var_id)
+                << " after " << instr.OpBase()->Type()
+                << " because its type is "
+                << framework::ToTypeName(var->Type());
+      }
     }
   }
 
@@ -442,6 +456,21 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
+
+  if (!instr_node.InplaceBackMap().empty()) {
+    auto& m = instr_node.InplaceBackMap();
+    // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+    for (auto& p : m) {
+      auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.first));
+      auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.second));
+      original_tensor->ShareDataWith(*transformed_tensor);
+      VLOG(4) << "Transfer inplace variable back form "
+              << global_scope_->GetNameById(p.first) << " to "
+              << global_scope_->GetNameById(p.second);
+    }
+  }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {

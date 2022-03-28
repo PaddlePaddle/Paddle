@@ -1,24 +1,10 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -1050,7 +1036,7 @@ def sparse_embedding(input,
             vectors can be loaded with the :attr:`param_attr` parameter. The local word vector needs 
             to be transformed into numpy format, and the shape of local word vector should be consistent 
             with :attr:`size` .
-        dtype(str|core.VarDesc.VarType): It refers to the data type of output Tensor. It must be float32 or 
+        dtype(str): It refers to the data type of output Tensor. It must be float32 or 
             float64. Default: float32.
             
     Returns:
@@ -1651,7 +1637,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         attrs = ('has_offset', has_offset)
         return getattr(_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
 
@@ -1725,7 +1711,7 @@ def correlation(x,
 
     """
 
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
@@ -1943,7 +1929,7 @@ def pow2_decay_with_linear_warmup(warmup_steps,
                                   end_lr,
                                   dtype='float32',
                                   name=None):
-    if paddle.fluid.in_dygraph_mode():
+    if paddle.fluid._non_static_mode():
         raise NotImplementedError(
             "pow2_decay_with_linear_warmup does not support dygraph mode yet.")
 
