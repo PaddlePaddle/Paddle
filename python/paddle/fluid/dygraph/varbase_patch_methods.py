@@ -172,23 +172,22 @@ def monkey_patch_varbase():
             else:
                 self.value().set_string_list(value)
         else:
-            value_np = value
-            if isinstance(value, base_tensor):
-                value_np = value.clone()
-
-            assert self.shape == value_np.shape, \
+            assert self.shape == list(value.shape),  \
                 "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                    self.name, self.shape, value_np.shape)
+                    self.name, self.shape, value.shape)
 
-            assert self.dtype == value_np.dtype, \
+            if not isinstance(value, base_tensor):
+                value = paddle.to_tensor(value, dtype=value.dtype)
+
+            assert self.dtype == value.dtype, \
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    self.name, self.dtype, value_np.dtype)
+                    self.name, self.dtype, value.dtype)
 
             # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
             # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
-            self.value().get_tensor().set(value_np,
+            self.value().get_tensor().set(value,
                                           framework._current_expected_place())
 
     @framework.dygraph_only
