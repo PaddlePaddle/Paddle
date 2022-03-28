@@ -74,7 +74,7 @@ def nms(boxes, nms_threshold):
             continue
         selected_indices[cnt] = i
         cnt += 1
-        for j in range(0, boxes.shape[0]):
+        for j in range(i + 1, boxes.shape[0]):
             io_ratio[i][j] = iou(boxes[i], boxes[j])
             if keep[j]:
                 overlap = iou(boxes[i], boxes[j])
@@ -121,7 +121,7 @@ def gen_args(num_boxes, dtype):
 
 class TestBatchedNMS(unittest.TestCase):
     def setUp(self):
-        self.num_boxes = 640
+        self.num_boxes = 64
         self.threshold = 0.5
         self.topk = 20
         self.dtypes = ['float32']

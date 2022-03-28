@@ -47,7 +47,6 @@ def iou(box_a, box_b):
 
 
 def nms(boxes, nms_threshold):
-    # print(boxes)
     selected_indices = np.zeros(boxes.shape[0], dtype=np.int64)
     keep = np.ones(boxes.shape[0], dtype=int)
     io_ratio = np.ones((boxes.shape[0], boxes.shape[0]), dtype=np.float64)
@@ -57,7 +56,7 @@ def nms(boxes, nms_threshold):
             continue
         selected_indices[cnt] = i
         cnt += 1
-        for j in range(0, boxes.shape[0]):
+        for j in range(i + 1, boxes.shape[0]):
             io_ratio[i][j] = iou(boxes[i], boxes[j])
             if keep[j]:
                 overlap = iou(boxes[i], boxes[j])
@@ -73,7 +72,7 @@ class TestNMSOp(OpTest):
         self.op_type = 'nms'
         self.dtype = np.float64
         self.init_dtype_type()
-        boxes = np.random.rand(64, 4).astype(self.dtype)
+        boxes = np.random.rand(32, 4).astype(self.dtype)
         boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
         boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
 
