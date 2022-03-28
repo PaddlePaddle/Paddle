@@ -2156,27 +2156,16 @@ class LarsMomentumOptimizer(Optimizer):
             outputs["MasterParamOut"] = master_weight
 
         if framework._non_static_mode():
-            if _lars_weight_decay != 0.0:
-                tmp, tmp2 = _C_ops.lars_momentum(
-                    [param_and_grad[0]], [param_and_grad[1]], [velocity_acc],
-                    [lr], [param_and_grad[0]], [velocity_acc], "mu",
-                    self._momentum, "lars_coeff", self._lars_coeff,
-                    "lars_weight_decay", [_lars_weight_decay],
-                    "multi_precision", find_master, "epsilon", self._epsilon,
-                    "rescale_grad", self._rescale_grad)
-            else:
-                _C_ops.momentum(param_and_grad[0], param_and_grad[1],
-                                velocity_acc, lr, master_weight,
-                                param_and_grad[0], velocity_acc, master_weight,
-                                "mu", self._momentum, "lars_coeff",
-                                self._lars_coeff, "lars_weight_decay",
-                                [_lars_weight_decay], "multi_precision",
-                                find_master, "epsilon", self._epsilon,
-                                "rescale_grad", self._rescale_grad)
+            tmp, tmp2 = _C_ops.lars_momentum(
+                [param_and_grad[0]], [param_and_grad[1]], [velocity_acc], [lr],
+                [param_and_grad[0]], [velocity_acc], "mu", self._momentum,
+                "lars_coeff", self._lars_coeff, "lars_weight_decay",
+                [_lars_weight_decay], "multi_precision", find_master, "epsilon",
+                self._epsilon, "rescale_grad", self._rescale_grad)
         else:
             # create the momentum optimize op
             momentum_op = block.append_op(
-                type=self.type if _lars_weight_decay != 0.0 else 'momentum',
+                type=self.type,
                 inputs=inputs,
                 outputs=outputs,
                 attrs=attrs,

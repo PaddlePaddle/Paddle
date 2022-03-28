@@ -32,7 +32,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
 DECLARE_bool(fast_eager_deletion_mode);
-DECLARE_bool(use_stream_safe_cuda_allocator);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -44,7 +43,9 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
-  return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+  return memory::allocation::AllocatorFacade::Instance()
+             .IsStreamSafeCUDAAllocatorUsed() &&
+         FLAGS_fast_eager_deletion_mode;
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
@@ -455,6 +456,21 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
+
+  if (!instr_node.InplaceBackMap().empty()) {
+    auto& m = instr_node.InplaceBackMap();
+    // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+    for (auto& p : m) {
+      auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.first));
+      auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.second));
+      original_tensor->ShareDataWith(*transformed_tensor);
+      VLOG(4) << "Transfer inplace variable back form "
+              << global_scope_->GetNameById(p.first) << " to "
+              << global_scope_->GetNameById(p.second);
+    }
+  }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
