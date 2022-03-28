@@ -326,15 +326,14 @@ class Profiler:
 
                 import paddle
                 import paddle.profiler as profiler
-                import numpy as np
                 
                 class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
                 
                     def __getitem__(self, idx):
-                        image = np.random.random([100]).astype('float32')
-                        label = np.random.randint(0, 10 - 1, (1, )).astype('int64')
+                        image = paddle.rand(shape=[100], dtype='float32')
+                        label = paddle.randint(0, 10, shape=[1], dtype='int64')
                         return image, label
                 
                     def __len__(self):
@@ -534,7 +533,7 @@ class Profiler:
 
         Args:
             num_samples (int|None, optional): Specifies the batch size of every step of the model
-            that is used to compute throughput when timer_only is True. Default: None.
+                that is used to compute throughput when timer_only is True. Default: None.
 
         Examples:
             .. code-block:: python
@@ -584,11 +583,12 @@ class Profiler:
 
         Args:
             unit (string, optional): The unit of input data is only used When `num_samples`
-            of `step()` is specified as a number. For example, when it is `images`, the unit
-            of throughput is `images/s`. Default: None, the unit of throughput is `samples/s`.
+                of `step()` is specified as a number. For example, when it is `images`, the unit
+                of throughput is `images/s`. Default: None, the unit of throughput is `samples/s`.
 
         Returns:
             string: A string representing the statistic.
+
         Examples:
             .. code-block:: python
                 :name: code-example-timer2

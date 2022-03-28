@@ -175,6 +175,7 @@ class TimerHook(Hook):
     A hook for recording real-time performance and the summary
     performance of total steps. 
     """
+
     def __init__(self):
         self.start_time = timeit.default_timer()
         self.start_reader = timeit.default_timer()
@@ -409,7 +410,7 @@ class Benchmark(object):
                 self.current_event.need_record = True
                 self.hooks['timer_hook'].start_time = timeit.default_timer()
 
-                
+
 _benchmark_ = Benchmark()
 
 
