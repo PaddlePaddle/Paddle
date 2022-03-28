@@ -111,13 +111,19 @@ void SampleNeighbors(const T* row,
 }
 
 template <typename T, typename Context>
-void GraphSampleNeighborsKernel(const Context& dev_ctx,
-                                const DenseTensor& row,
-                                const DenseTensor& col_ptr,
-                                const DenseTensor& x,
-                                int sample_size,
-                                DenseTensor* out,
-                                DenseTensor* out_count) {
+void GraphSampleNeighborsKernel(
+    const Context& dev_ctx,
+    const DenseTensor& row,
+    const DenseTensor& col_ptr,
+    const DenseTensor& x,
+    paddle::optional<const DenseTensor&> eids,
+    paddle::optional<const DenseTensor&> perm_buffer,
+    int sample_size,
+    bool return_eids,
+    bool flag_perm_buffer,
+    DenseTensor* out,
+    DenseTensor* out_count,
+    DenseTensor* out_eids) {
   const T* row_data = row.data<T>();
   const T* col_ptr_data = col_ptr.data<T>();
   const T* x_data = x.data<T>();

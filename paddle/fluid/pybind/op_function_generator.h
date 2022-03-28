@@ -103,6 +103,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
     {"graph_reindex",
      {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
+    {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

@@ -229,4 +229,17 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes);
 
+void GraphSampleNeighborsInferMeta(
+    const MetaTensor& row,
+    const MetaTensor& col_ptr,
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> eids,
+    paddle::optional<const MetaTensor&> perm_buffer,
+    int sample_size,
+    bool return_eids,
+    bool flag_perm_buffer,
+    MetaTensor* out,
+    MetaTensor* out_count,
+    MetaTensor* out_eids);
+
 }  // namespace phi

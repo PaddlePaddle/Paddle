@@ -23,7 +23,7 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
         edges = np.unique(edges, axis=0)
-        edges_id = np.arange(0, len(edges))
+        self.edges_id = np.arange(0, len(edges))
         sorted_edges = edges[np.argsort(edges[:, 1])]
 
         # Calculate dst index cumsum counts, also means colptr
@@ -51,7 +51,7 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
         nodes = paddle.to_tensor(self.nodes)
 
         out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
-            row, colptr, nodes, self.sample_size)
+            row, colptr, nodes, sample_size=self.sample_size)
         out_neighbors = paddle.split(out_neighbors, list(out_count))
         for neighbors, node, count in zip(out_neighbors, self.nodes, out_count):
             # Ensure the correct sample size.
@@ -64,6 +64,32 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
             in_neighbors = np.isin(neighbors.numpy(), self.dst_src_dict[node])
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
+    def test_sample_result_fisher_yates_sampling(self):
+        paddle.disable_static()
+        if fluid.core.is_compiled_with_cuda():
+            row = paddle.to_tensor(self.row)
+            colptr = paddle.to_tensor(self.colptr)
+            nodes = paddle.to_tensor(self.nodes)
+            perm_buffer = paddle.to_tensor(self.edges_id)
+
+            out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
+                row,
+                colptr,
+                nodes,
+                perm_buffer=perm_buffer,
+                sample_size=self.sample_size,
+                flag_perm_buffer=True)
+            out_neighbors = paddle.split(out_neighbors, list(out_count))
+            for neighbors, node, count in zip(out_neighbors, self.nodes,
+                                              out_count):
+                self.assertTrue(count == self.sample_size or
+                                count == len(self.dst_src_dict[node]))
+                self.assertTrue(
+                    neighbors.shape[0] == paddle.unique(neighbors).shape[0])
+                in_neighbors = np.isin(neighbors.numpy(),
+                                       self.dst_src_dict[node])
+                self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
+
     def test_sample_result_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -75,7 +101,7 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
                 name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype)
 
             out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
-                row, colptr, nodes, self.sample_size)
+                row, colptr, nodes, sample_size=self.sample_size)
             exe = paddle.static.Executor(paddle.CPUPlace())
             ret = exe.run(feed={
                 'row': self.row,
@@ -88,13 +114,10 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
             out_neighbors = np.split(out_neighbors, out_count_cumsum)[:-1]
             for neighbors, node, count in zip(out_neighbors, self.nodes,
                                               out_count):
-                # Ensure the correct sample size.
                 self.assertTrue(count == self.sample_size or
                                 count == len(self.dst_src_dict[node]))
-                # Ensure no repetitive sample neighbors.
                 self.assertTrue(
                     neighbors.shape[0] == np.unique(neighbors).shape[0])
-                # Ensure the correct sample neighbors.
                 in_neighbors = np.isin(neighbors, self.dst_src_dict[node])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 

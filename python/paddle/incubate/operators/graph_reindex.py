@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid import core
 from paddle import _C_ops
@@ -88,16 +88,10 @@ def graph_reindex(x,
             raise ValueError(f"`value_buffer` and `index_buffer` should not"
                              "be None if `flag_buffer_hashtable` is True.")
 
-    if in_dygraph_mode():
-        if not flag_buffer_hashtable:
-            reindex_src, reindex_dst, out_nodes = \
-                _C_ops.graph_reindex(x, neighbors, count, None, None,
-                                     "flag_buffer_hashtable", False)
-        else:
-            reindex_src, reindex_dst, out_nodes = \
-                _C_ops.graph_reindex(x, neighbors, count,
-                                     value_buffer, index_buffer,
-                                     "flag_buffer_hashtable", True)
+    if _non_static_mode():
+        reindex_src, reindex_dst, out_nodes = \
+            _C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
+                                 "flag_buffer_hashtable", flag_buffer_hashtable)
         return reindex_src, reindex_dst, out_nodes
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
