@@ -15,6 +15,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 static const int64_t threadsPerBlock = sizeof(int64_t) * 8;
 
@@ -54,7 +55,8 @@ static __device__ inline bool CalculateIoU(const T* const box_1,
 template <typename T>
 static __global__ void NMS(const T* boxes_data, float threshold,
                            int64_t num_boxes, uint64_t* masks) {
-  auto raw_start = blockIdx.y, col_start = blockIdx.x;
+  auto raw_start = blockIdx.y;
+  auto col_start = blockIdx.x;
   if (raw_start > col_start) return;
 
   const int raw_last_storage =
