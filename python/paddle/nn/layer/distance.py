@@ -20,6 +20,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
