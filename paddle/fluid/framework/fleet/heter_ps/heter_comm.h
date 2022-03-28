@@ -159,10 +159,8 @@ class HeterComm {
     }
 
     platform::CUDAPlace place_;
-
     std::shared_ptr<memory::Allocation> all_keys_mem;
     std::shared_ptr<memory::Allocation> all_grads_mem;
-
     KeyType* all_keys;
     GradType* all_grads;
 
@@ -201,6 +199,7 @@ class HeterComm {
   int node_size_;
 #if defined(PADDLE_WITH_CUDA)
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
+#endif
 };
 
 }  // end namespace framework
