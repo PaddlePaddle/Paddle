@@ -776,10 +776,12 @@ class OpTest(unittest.TestCase):
                 if arg_name in api_ignore_param_list:
                     results.append(get_default(idx, api_defaults))
                 else:
-                    assert idx_of_op_proto_arguments < len(
-                        input_arguments), "Assert False."
-                    tmp = input_arguments[idx_of_op_proto_arguments]
-                    idx_of_op_proto_arguments += 1
+                    if (idx_of_op_proto_arguments < len(input_arguments)):
+                        tmp = input_arguments[idx_of_op_proto_arguments]
+                        idx_of_op_proto_arguments += 1
+                    else:
+                        tmp = Empty()  # use the default value
+
                     if isinstance(tmp, Empty):
                         results.append(get_default(idx, api_defaults))
                     else:

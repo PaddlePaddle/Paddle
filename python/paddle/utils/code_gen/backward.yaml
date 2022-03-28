@@ -367,17 +367,16 @@
   kernel : 
     func : gather_grad
 
-# TODO(xiongkun): wait for tianyu + hongyu default param PR.
-#- api : mean_grad
-  #forward: mean (Tensor x,  int64[] dims,  bool keep_dim) -> Tensor(out)
-  #args : (Tensor x, Tensor out_grad, int64_t [] dims,  bool keep_dim, bool reduce_all=false)
-  #output : Tensor(x_grad)
-  #infer_meta : 
-    #func : UnchangedInferMeta
-    #param: [x]
-  #kernel : 
-    #func : mean_grad
- 
+- backward_api : mean_grad
+  forward: mean (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : mean_grad
+
 - backward_api : kthvalue_grad
   forward : kthvalue(Tensor x, int k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
   args : (Tensor x, Tensor indices, Tensor out_grad, int k, int axis, bool keepdim)
@@ -577,6 +576,26 @@
     param: [x]
   kernel : 
     func : p_norm_grad
+
+- backward_api : max_grad
+  forward: max (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : max_grad
+
+- backward_api : min_grad
+  forward: min (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : min_grad
 
 
 #  =================================== sep3

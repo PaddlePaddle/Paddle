@@ -124,12 +124,13 @@
   backward : matmul_grad
 
 - api : mean
-  args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
-  output : Tensor
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
   kernel :
     func : mean
+  backward : mean_grad
 
 - api : multiply
   args : (Tensor x, Tensor y)
@@ -804,5 +805,23 @@
   kernel : 
     func : p_norm
   backward : p_norm_grad
+
+- api : max
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : max
+  backward : max_grad
+
+- api : min
+  args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : min
+  backward : min_grad
 
 #  =================================== sep3

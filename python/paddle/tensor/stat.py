@@ -18,7 +18,7 @@ import numpy as np
 from ..static import Variable
 from ..fluid.layer_helper import LayerHelper
 from ..framework import core
-from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -88,7 +88,9 @@ def mean(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if reduce_all:
+            axis = range(len(x.shape))
         return _C_ops.final_state_mean(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
