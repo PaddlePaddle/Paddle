@@ -336,14 +336,23 @@ def cyclic_lr(epoch_num,
     step_ratio = step_size_up / total_steps
     if scale_fn is None:
         if mode == 'triangular':
-            def scale_fn(x): return 1.
+
+            def scale_fn(x):
+                return 1.
+
             scale_mode = 'cycle'
         elif mode == 'triangular2':
-            def scale_fn(x): return 1 / (2. ** (x - 1))
+
+            def scale_fn(x):
+                return 1 / (2.**(x - 1))
+
             scale_mode = 'cycle'
         elif mode == 'exp_range':
-            def scale_fn(x): return gamma**(x)
-            scale_mode = 'interations'
+
+            def scale_fn(x):
+                return gamma**x
+
+            scale_mode = 'iterations'
 
     cycle = math.floor(1 + epoch_num / total_steps)
     x = 1. + epoch_num / total_steps - cycle

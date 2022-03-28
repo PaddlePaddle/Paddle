@@ -993,8 +993,7 @@ class MultiStepDecay(LRScheduler):
 
         self.milestones = milestones
         self.gamma = gamma
-        super(MultiStepDecay, self).__init__(
-            learning_rate, last_epoch, verbose)
+        super(MultiStepDecay, self).__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         for i in range(len(self.milestones)):
@@ -1702,9 +1701,11 @@ class CyclicLR(LRScheduler):
         self.total_size = step_size_up + step_size_down
         self.step_ratio = step_size_up / self.total_size
 
-        if mode not in ['triangular', 'triangular2', 'exp_range'] and scale_fn is None:
+        if mode not in ['triangular', 'triangular2', 'exp_range'
+                        ] and scale_fn is None:
             raise ValueError(
-                "'mode' is invalid and 'scale_fn' is None, make sure one of 'mode' or 'scale_fn' is valid")
+                "'mode' is invalid and 'scale_fn' is None, make sure one of 'mode' or 'scale_fn' is valid"
+            )
         if scale_mode not in ['cycle', 'iterations']:
             raise ValueError(
                 "'scale_mode' must be one of 'cycle' or 'iterations")
@@ -1731,10 +1732,10 @@ class CyclicLR(LRScheduler):
         return 1.
 
     def _triangular2_scale_fn(self, x):
-        return 1 / (2. ** (x - 1))
+        return 1 / (2.**(x - 1))
 
     def _exp_range_scale_fn(self, x):
-        return self.gamma ** x
+        return self.gamma**x
 
     def get_lr(self):
         cycle = math.floor(1 + self.last_epoch / self.total_size)
