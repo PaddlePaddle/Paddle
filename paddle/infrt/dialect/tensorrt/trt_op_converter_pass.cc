@@ -27,14 +27,42 @@
 namespace infrt {
 namespace trt {
 
+#ifdef INFRT_WITH_TRT
+
+#define STRING_TO_ENUM_TYPE(enum_type) enum_type
+#define STRING_TO_ENUM_VALUE(enum_value) enum_value
+#include <NvInfer.h>
+
+#else  // INFRT_WITH_TRT
+
+#define STRING_TO_ENUM_TYPE(enum_type) std::string
+#define STRING_TO_ENUM_VALUE(enum_value) #enum_value
+
+#endif  // INFRT_WITH_TRT
+
+template <typename T>
+::mlir::IntegerAttr createNvinferEnumAttr(
+    ::mlir::PatternRewriter &rewriter,  // NOLINT
+    T enum_value) {
+  return rewriter.getSI32IntegerAttr((int32_t)enum_value);
+}
+
+template <>
+::mlir::IntegerAttr createNvinferEnumAttr<std::string>(
+    ::mlir::PatternRewriter &rewriter, std::string enum_value) {  // NOLINT
+  (void)enum_value;
+  return rewriter.getSI32IntegerAttr(-1);
+}
+
 #include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
 struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
   explicit PD2TRT_GraphLower(::mlir::MLIRContext *context)
-      : ::mlir::RewritePattern("pd.graph", 1, context, {"trt.create_engine"}) {}
+      : ::mlir::RewritePattern(
+            "infrt.graph", 1, context, {"trt.create_engine"}) {}
   ::mlir::LogicalResult matchAndRewrite(
       ::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
-    auto casted_op = ::llvm::dyn_cast<infrt::pd::GraphOp>(op);
+    auto casted_op = ::llvm::dyn_cast<::infrt::GraphOp>(op);
     ::mlir::Operation::operand_range inputs = casted_op.inputs();
     auto ods_loc = rewriter.getFusedLoc(op->getLoc());
     CreateEngineOp create_engine_op;

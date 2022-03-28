@@ -172,7 +172,7 @@ FORWARD_FUNCTION_TEMPLATE = \
 
 """
 
-NODE_CREATION_TEMPLATE = \
+FORWARD_BODY_TEMPLATE = \
 """
     // Get AutoGradMeta
 {}
@@ -305,7 +305,6 @@ BUMP_INPLACE_VERSION_TEMPLATE = \
     VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";\n
 """
 
-
 AMP_LOGIC_TEMPLATE = \
 """
     if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
@@ -363,7 +362,7 @@ def GenerateCoreOpInfoDefinition():
 #####################
 ## Generator Class ##
 #####################
-class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
+class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
     def __init__(self, forward_api_contents, grad_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
         # Members from Parent:
@@ -408,12 +407,6 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         }  #{ "name" : [type, fwd_position, orig_position] ...}
         self.backward_grad_outputs_map = {
         }  #{ "name" : [type, fwd_position, orig_position] ...}
-
-        # Generated Results
-        self.forward_definition_str = ""
-        self.forward_declaration_str = ""
-        self.node_declaration_str = ""
-        self.node_definition_str = ""
 
     def DygraphYamlValidationCheck(self):
         forward_api_contents = self.forward_api_contents
@@ -632,292 +625,6 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             f"Generated Backward Grad Output Map: {self.backward_grad_outputs_map}"
         )
 
-    def GenerateNodeDeclaration(self):
-        forward_op_name = self.forward_api_name
-        backward_forward_inputs_map = self.backward_forward_inputs_map
-        backward_attrs_list = self.backward_attrs_list
-        no_need_buffers = self.no_need_buffers
-
-        # SetTensorWrapper Methods & TensorWrapper Members
-        set_tensor_wrapper_methods_str = ""
-        tensor_wrapper_members_str = ""
-        clear_tensor_wrapper_str = ""
-        for tname, (ttype, is_fwd_input,
-                    _) in backward_forward_inputs_map.items():
-            no_need_buffer = "true" if tname in no_need_buffers else "false"
-            tensor_wrapper_name = GetSavedName(tname)
-            if IsPlainTensorType(ttype):
-                set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                    tname, tname, tensor_wrapper_name, tname, no_need_buffer)
-
-                tensor_wrapper_members_str += PLAIN_TENSOR_MEMBER_TEMPLATE.format(
-                    tensor_wrapper_name)
-
-                clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPER_TEMPLATE.format(
-                    tensor_wrapper_name)
-
-            else:
-                assert IsVectorTensorType(ttype)
-                set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
-                    tname, tname, tname, tensor_wrapper_name, no_need_buffer)
-
-                tensor_wrapper_members_str += VECTOR_TENSOR_MEMBER_TEMPLATE.format(
-                    tensor_wrapper_name)
-
-                clear_tensor_wrapper_str += CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE.format(
-                    tensor_wrapper_name)
-
-        # SetAttributes & Attribute Members
-        set_attribute_methods_str = ""
-        attribute_members_str = ""
-        for aname, atype, default_val, _ in backward_attrs_list:
-            saved_attr_name = GetSavedName(aname)
-            set_attribute_methods_str += SET_ATTR_METHOD_TEMPLATE.format(
-                aname, GetConstReference(atype), aname, saved_attr_name, aname)
-
-            if default_val:
-                attribute_members_str += ATTRIBUTE_MEMBER_WITH_DEFAULT_TEMPLATE.format(
-                    RemoveConstAndReference(atype), saved_attr_name,
-                    default_val)
-            else:
-                attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-                    RemoveConstAndReference(atype), saved_attr_name)
-
-        grad_node_name = GetGradNodeName(forward_op_name)
-        self.node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
-            grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-            grad_node_name, clear_tensor_wrapper_str,
-            set_tensor_wrapper_methods_str, set_attribute_methods_str,
-            tensor_wrapper_members_str, attribute_members_str)
-
-        logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
-
-    def GenerateNodeDefinition(self):
-        namespace = self.namespace
-        forward_api_name = self.forward_api_name
-        backward_api_name = self.backward_api_name
-        backward_forward_inputs_map = self.backward_forward_inputs_map
-        backward_grad_inputs_map = self.backward_grad_inputs_map
-        backward_grad_outputs_map = self.backward_grad_outputs_map
-        backward_attrs_list = self.backward_attrs_list
-
-        # Construct grad_api function args
-        # Order: TensorWrappers, GradTensors, Attributes
-        grad_api_args_len = len(backward_forward_inputs_map.keys()) + len(
-            backward_grad_inputs_map.keys()) + len(backward_attrs_list)
-        grad_api_args = ["" for i in range(grad_api_args_len)]
-        for name, (_, is_fwd_input,
-                   grad_api_position), in backward_forward_inputs_map.items():
-            tensor_wrapper_name = GetSavedName(name)
-            is_optional = (name in self.optional_inputs)
-            if is_optional:
-                grad_api_args[
-                    grad_api_position] = f"egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
-            else:
-                grad_api_args[
-                    grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
-
-        for _, (ttype, fwd_position,
-                grad_api_position) in backward_grad_inputs_map.items():
-            if IsPlainTensorType(ttype):
-                grad_api_args[
-                    grad_api_position] = f"hooked_grads[{fwd_position}][0]"
-            else:
-                assert IsVectorTensorType(ttype)
-                grad_api_args[
-                    grad_api_position] = f"hooked_grads[{fwd_position}]"
-
-        for name, _, _, grad_api_position in backward_attrs_list:
-            saved_attribute_name = GetSavedName(name)
-            grad_api_args[grad_api_position] = f"this->{saved_attribute_name}"
-        grad_api_args_str = ", ".join(grad_api_args)
-
-        # Construct grad_api returns
-        num_bwd_outputs = len(backward_grad_outputs_map.keys())
-        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
-        returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
-        for _, (ttype, fwd_position,
-                grad_api_position) in backward_grad_outputs_map.items():
-            # Infer Grad API Return Type
-            if num_bwd_outputs == 1:
-                # Single tensor output, return as is
-                if IsPlainTensorType(ttype):
-                    returns_str += "returns[0] = { grad_api_returns };\n"
-                else:
-                    assert IsVectorTensorType(ttype)
-                    returns_str += "returns[0] = grad_api_returns;\n"
-            else:
-                # Rearrange output order accordingly
-                returns_str += f"returns[{fwd_position}] =  grad_api_returns[{grad_api_position}];\n"
-        returns_str += f"if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
-        returns_str += f"return returns;\n"
-
-        grad_node_name = GetGradNodeName(forward_api_name)
-
-        fill_zero_str = ""
-        if forward_api_name in ops_to_fill_zero_for_empty_grads:
-            fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
-
-        grad_api_namespace = f"paddle::experimental::{namespace}"
-
-        self.node_definition_str = FUNCTION_TEMPLATE.format(
-            grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
-            backward_api_name, grad_api_args_str, returns_str)
-
-        logging.info(f"Generated Node Definition: {self.node_definition_str}")
-
-    def GenerateForwardDefinition(self, is_inplaced):
-        namespace = self.namespace
-        forward_api_name = GetInplacedFunctionName(
-            self.forward_api_name) if is_inplaced else self.forward_api_name
-        backward_api_name = self.backward_api_name
-        forward_inputs_position_map = self.forward_inputs_position_map
-        forward_outputs_position_map = self.forward_outputs_position_map
-        forward_attrs_list = self.forward_attrs_list
-        backward_forward_inputs_map = self.backward_forward_inputs_map
-        backward_grad_inputs_map = self.backward_grad_inputs_map
-        backward_grad_outputs_map = self.backward_grad_outputs_map
-        backward_attrs_list = self.backward_attrs_list
-        optional_inputs = self.optional_inputs
-        intermediate_outputs = self.intermediate_outputs
-        inplace_map = self.inplace_map
-
-        # Get Function Args
-        num_inputs = len(forward_attrs_list) + len(
-            forward_inputs_position_map.keys())
-        inputs_args_definition_list = ["" for i in range(num_inputs)]
-        inputs_args_declaration_list = ["" for i in range(num_inputs)]
-        inputs_call_list = ["" for i in range(num_inputs)]
-        amp_inputs_call_list = ["" for i in range(num_inputs)]
-        amp_tensors_vector_list = []
-        amp_tensors_vector_optional_list = []
-        amp_autocast_list = []
-        amp_autocast_optional_list = []
-        for name, (ttype, pos) in forward_inputs_position_map.items():
-            inputs_call_list[pos] = f"{name}"
-            amp_inputs_call_list[pos] = f"NEW_{name}"
-            is_optional = (name in optional_inputs)
-            if IsPlainTensorType(ttype):
-                if is_optional:
-                    arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
-                    amp_tensors_vector_optional_list.append(
-                        f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
-                    )
-                    amp_autocast_optional_list.append(
-                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name)) : {name};\n"
-                    )
-                else:
-                    if is_inplaced and inplace_map and name in inplace_map.keys(
-                    ):
-                        arg_str = f"paddle::experimental::Tensor& {name}"
-                        amp_tensors_vector_list.append(f"{{{name}}}")
-                        amp_autocast_list.append(
-                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
-                        )
-                    else:
-                        arg_str = f"const paddle::experimental::Tensor& {name}"
-                        amp_tensors_vector_list.append(f"{{{name}}}")
-                        amp_autocast_list.append(
-                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
-                        )
-            else:
-                assert IsVectorTensorType(ttype)
-                arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
-                amp_tensors_vector_list.append(f"{name}")
-                amp_autocast_list.append(
-                    f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
-                )
-
-            inputs_args_definition_list[pos] = arg_str
-            inputs_args_declaration_list[pos] = arg_str
-
-        for name, atype, default_val, pos in forward_attrs_list:
-            inputs_call_list[pos] = name
-            amp_inputs_call_list[pos] = name
-            if default_val is not None:
-                inputs_args_declaration_list[
-                    pos] = f"{atype} {name} = {default_val}"
-            else:
-                inputs_args_declaration_list[pos] = f"{atype} {name}"
-            inputs_args_definition_list[pos] = f"{atype} {name}"
-
-        inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
-        inputs_args_definition_str = ", ".join(inputs_args_definition_list)
-        inputs_call_args_str = ", ".join(inputs_call_list)
-
-        # Forward Full Logic
-        function_name = forward_api_name
-        if len(intermediate_outputs) > 0:
-            function_name = GetIntermediateAPIFunctionName(function_name)
-
-        forward_call_str = f"auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
-
-        # Get return type list & outputs
-        num_outputs = len(forward_outputs_position_map.keys()) - len(
-            intermediate_outputs)
-        returns_type_list = ["" for i in range(num_outputs)]
-        returns_list = ["" for i in range(num_outputs)]
-        for name, (rtype, pos) in forward_outputs_position_map.items():
-            if name in intermediate_outputs:
-                continue
-            if num_outputs == 1:
-                returns_list[0] = f"api_result"
-            else:
-                # Tuple api_result
-                returns_list[pos] = f"std::get<{pos}>(api_result)"
-
-            if IsPlainTensorType(rtype):
-                returns_type_list[pos] = "paddle::experimental::Tensor"
-            else:
-                assert IsVectorTensorType(rtype)
-                returns_type_list[
-                    pos] = "std::vector<paddle::experimental::Tensor>"
-
-        if num_outputs == 1:
-            returns_str = returns_list[0]
-            returns_type_str = returns_type_list[0]
-        else:
-            returns_type_str = ", ".join(returns_type_list)
-            returns_type_str = f"std::tuple<{returns_type_str}>"
-            returns_str = ", ".join(returns_list)
-            returns_str = f"std::make_tuple({returns_str})"
-
-        self.GenerateNodeCreationCodes(forward_call_str, is_inplaced)
-
-        node_creation_str = self.node_creation_str
-        dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
-        forward_function_name = GetDygraphForwardFunctionName(forward_api_name)
-
-        # Forward amp logic
-        kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
-        amp_tensors_vector_list_str = "{ " + ",".join(
-            amp_tensors_vector_list) + " }"
-        amp_tensors_vector_optional_list_str = "".join(
-            amp_tensors_vector_optional_list)
-        amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
-        amp_autocast_list_str = "        ".join(
-            amp_autocast_list) + "        " + "        ".join(
-                amp_autocast_optional_list)
-        amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
-        amp_call_str = f"return {forward_function_name}({amp_inputs_call_args_str});"
-        if is_inplaced or (forward_api_name == "cast"):
-            amp_logic_str = ""
-        else:
-            amp_logic_str = AMP_LOGIC_TEMPLATE.format(
-                kernel_trans2_op_name_str, amp_tensors_vector_list_str,
-                amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
-                amp_autocast_list_str, amp_call_str)
-
-        self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
-            returns_type_str, forward_function_name, inputs_args_definition_str,
-            dygraph_event_str, amp_logic_str, node_creation_str, returns_str)
-        self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
-
-        logging.info(
-            f"Generated Forward Definition: {self.forward_definition_str}")
-        logging.info(
-            f"Generated Forward Declaration: {self.forward_declaration_str}")
-
     def GenerateNodeCreationCodes(self, forward_call_str, is_inplaced):
         forward_api_name = self.forward_api_name
         forward_inputs_position_map = self.forward_inputs_position_map
@@ -928,7 +635,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         backward_grad_outputs_map = self.backward_grad_outputs_map
         backward_attrs_list = self.backward_attrs_list
         optional_inputs = self.optional_inputs
-        inplace_map = self.inplace_map
+        inplace_map = self.inplace_map if is_inplaced else {}
 
         # Get Input AutoGradMeta
         inputs_autograd_meta_list = []
@@ -1050,6 +757,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             else:
                 set_grad_out_meta = f"            grad_node->SetGradOutMeta({name}, {pos});"
                 set_edges = f"            grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+
             set_grad_out_meta_list.append(set_grad_out_meta)
             set_edges_list.append(set_edges)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -1085,7 +793,7 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         node_event_name = forward_api_name + " node_creation"
         node_creation_event_str = f"paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::Operator, 1);\n"
 
-        self.node_creation_str = NODE_CREATION_TEMPLATE.format(
+        self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
             inputs_autograd_meta_str, compute_require_grad_args_str,
             check_inplace_str, forward_call_str, bump_inplace_version_str,
             node_creation_event_str, outputs_autograd_meta_str,
@@ -1093,50 +801,6 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
             set_attributes_str, set_tensor_wrappers_str, set_grad_out_meta_str,
             set_edges_str, set_out_rank_str, set_history_str,
             set_grad_in_meta_str, set_retain_grad_str)
-
-    def GenerateInplacedForwardDygraphFunctions(self):
-        # Inplaced Version Dygraph Function Generation
-        forward_api_name = self.forward_api_name
-        forward_api_contents = self.forward_api_contents
-
-        if forward_api_name != "sum" and "inplace" in forward_api_contents.keys(
-        ):
-            # Node Definition Generation
-            self.GenerateForwardDefinition(is_inplaced=True)
-            self.UpdateCoreOpsInformation(is_inplaced=True)
-
-    def UpdateCoreOpsInformation(self, is_inplaced):
-        forward_api_name = GetInplacedFunctionName(
-            self.forward_api_name) if is_inplaced else self.forward_api_name
-        forward_inputs_position_map = self.forward_inputs_position_map
-        forward_outputs_position_map = self.forward_outputs_position_map
-        forward_attrs_list = self.forward_attrs_list
-
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            forward_attrs_list)
-        num_returns = len(forward_outputs_position_map.keys())
-
-        final_state_fwd_api_name = "final_state_" + forward_api_name
-        core_ops_returns_info[
-            final_state_fwd_api_name] = ["" for i in range(num_returns)]
-        core_ops_args_info[
-            final_state_fwd_api_name] = ["" for i in range(num_args)]
-        core_ops_args_type_info[
-            final_state_fwd_api_name] = ["" for i in range(num_args)]
-        for name, (ttype, pos) in forward_inputs_position_map.items():
-            core_ops_args_info[final_state_fwd_api_name][pos] = name
-            if IsPlainTensorType(ttype):
-                core_ops_args_type_info[final_state_fwd_api_name][
-                    pos] = "tensor"
-            else:
-                assert IsVectorTensorType(ttype)
-                core_ops_args_type_info[final_state_fwd_api_name][pos] = "list"
-
-        for name, _, _, pos in forward_attrs_list:
-            core_ops_args_info[final_state_fwd_api_name][pos] = name
-
-        for name, (ttype, pos) in forward_outputs_position_map.items():
-            core_ops_returns_info[final_state_fwd_api_name][pos] = name
 
     def run(self):
         # Basic Validation Check
@@ -1183,16 +847,375 @@ class DygraphSingleFunctionGenerator(FunctionGeneratorBase):
         # Backward Validation Check
         self.BackwardValidationCheck()
 
+
+class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
+    def __init__(self, forward_api_contents, grad_api_contents, namespace):
+        DygraphFunctionGeneratorBase.__init__(self, forward_api_contents,
+                                              grad_api_contents, namespace)
+
+        # Generated Results
+        self.forward_definition_str = ""
+        self.forward_declaration_str = ""
+
+    def GenerateForwardDefinition(self, is_inplaced):
+        namespace = self.namespace
+        forward_api_name = GetInplacedFunctionName(
+            self.forward_api_name) if is_inplaced else self.forward_api_name
+        backward_api_name = self.backward_api_name
+        forward_inputs_position_map = self.forward_inputs_position_map
+        forward_outputs_position_map = self.forward_outputs_position_map
+        forward_attrs_list = self.forward_attrs_list
+        backward_forward_inputs_map = self.backward_forward_inputs_map
+        backward_grad_inputs_map = self.backward_grad_inputs_map
+        backward_grad_outputs_map = self.backward_grad_outputs_map
+        backward_attrs_list = self.backward_attrs_list
+        optional_inputs = self.optional_inputs
+        intermediate_outputs = self.intermediate_outputs
+        inplace_map = self.inplace_map if is_inplaced else {}
+
+        # Get Function Args
+        num_inputs = len(forward_attrs_list) + len(
+            forward_inputs_position_map.keys())
+        inputs_args_definition_list = ["" for i in range(num_inputs)]
+        inputs_args_declaration_list = ["" for i in range(num_inputs)]
+        inputs_call_list = ["" for i in range(num_inputs)]
+        amp_inputs_call_list = ["" for i in range(num_inputs)]
+        amp_tensors_vector_list = []
+        amp_tensors_vector_optional_list = []
+        amp_autocast_list = []
+        amp_autocast_optional_list = []
+        for name, (ttype, pos) in forward_inputs_position_map.items():
+            inputs_call_list[pos] = f"{name}"
+            amp_inputs_call_list[pos] = f"NEW_{name}"
+            is_optional = (name in optional_inputs)
+            if IsPlainTensorType(ttype):
+                if is_optional:
+                    arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
+                    amp_tensors_vector_optional_list.append(
+                        f"if ({name}.get_ptr() != nullptr) amp_tensors_vector.push_back({{ *({name}.get_ptr()) }});\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = ({name}.get_ptr() != nullptr) ? paddle::make_optional<const paddle::experimental::Tensor&>(egr::EagerAmpAutoCast(\"{name}\", *({name}.get_ptr()), amp_dst_dtype, op_name)) : {name};\n"
+                    )
+                else:
+                    if is_inplaced and inplace_map and name in inplace_map.keys(
+                    ):
+                        arg_str = f"paddle::experimental::Tensor& {name}"
+                        amp_tensors_vector_list.append(f"{{{name}}}")
+                        amp_autocast_list.append(
+                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        )
+                    else:
+                        arg_str = f"const paddle::experimental::Tensor& {name}"
+                        amp_tensors_vector_list.append(f"{{{name}}}")
+                        amp_autocast_list.append(
+                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        )
+            else:
+                assert IsVectorTensorType(ttype)
+                arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+                amp_tensors_vector_list.append(f"{name}")
+                amp_autocast_list.append(
+                    f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                )
+
+            inputs_args_definition_list[pos] = arg_str
+            inputs_args_declaration_list[pos] = arg_str
+
+        for name, atype, default_val, pos in forward_attrs_list:
+            inputs_call_list[pos] = name
+            amp_inputs_call_list[pos] = name
+            if default_val is not None:
+                inputs_args_declaration_list[
+                    pos] = f"{atype} {name} = {default_val}"
+            else:
+                inputs_args_declaration_list[pos] = f"{atype} {name}"
+            inputs_args_definition_list[pos] = f"{atype} {name}"
+
+        inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
+        inputs_args_definition_str = ", ".join(inputs_args_definition_list)
+        inputs_call_args_str = ", ".join(inputs_call_list)
+
+        # Forward Full Logic
+        function_name = forward_api_name
+        if len(intermediate_outputs) > 0:
+            function_name = GetIntermediateAPIFunctionName(function_name)
+
+        forward_call_str = f"auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+
+        # Get return type list & outputs
+        num_outputs = len(forward_outputs_position_map.keys()) - len(
+            intermediate_outputs)
+        returns_type_list = ["" for i in range(num_outputs)]
+        returns_list = ["" for i in range(num_outputs)]
+        for name, (rtype, pos) in forward_outputs_position_map.items():
+            if name in intermediate_outputs:
+                continue
+            if num_outputs == 1 and len(intermediate_outputs) == 0:
+                returns_list[0] = f"api_result"
+            else:
+                # Tuple api_result
+                returns_list[pos] = f"std::get<{pos}>(api_result)"
+
+            if IsPlainTensorType(rtype):
+                returns_type_list[pos] = "paddle::experimental::Tensor"
+            else:
+                assert IsVectorTensorType(rtype)
+                returns_type_list[
+                    pos] = "std::vector<paddle::experimental::Tensor>"
+
+        if num_outputs == 1:
+            returns_str = returns_list[0]
+            returns_type_str = returns_type_list[0]
+        else:
+            returns_type_str = ", ".join(returns_type_list)
+            returns_type_str = f"std::tuple<{returns_type_str}>"
+            returns_str = ", ".join(returns_list)
+            returns_str = f"std::make_tuple({returns_str})"
+
+        self.GenerateNodeCreationCodes(forward_call_str, is_inplaced)
+
+        node_creation_str = self.node_creation_str
+        dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
+        forward_function_name = GetDygraphForwardFunctionName(forward_api_name)
+
+        # Forward amp logic
+        kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
+        amp_tensors_vector_list_str = "{ " + ",".join(
+            amp_tensors_vector_list) + " }"
+        amp_tensors_vector_optional_list_str = "".join(
+            amp_tensors_vector_optional_list)
+        amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_autocast_list_str = "        ".join(
+            amp_autocast_list) + "        " + "        ".join(
+                amp_autocast_optional_list)
+        amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
+        amp_call_str = f"return {forward_function_name}({amp_inputs_call_args_str});"
+        if is_inplaced or (forward_api_name == "cast"):
+            amp_logic_str = ""
+        else:
+            amp_logic_str = AMP_LOGIC_TEMPLATE.format(
+                kernel_trans2_op_name_str, amp_tensors_vector_list_str,
+                amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
+                amp_autocast_list_str, amp_call_str)
+
+        self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
+            returns_type_str, forward_function_name, inputs_args_definition_str,
+            dygraph_event_str, amp_logic_str, node_creation_str, returns_str)
+        self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
+
+        logging.info(
+            f"Generated Forward Definition: {self.forward_definition_str}")
+        logging.info(
+            f"Generated Forward Declaration: {self.forward_declaration_str}")
+
+    def GenerateInplacedForwardDygraphFunctions(self):
+        # Inplaced Version Dygraph Function Generation
+        forward_api_name = self.forward_api_name
+        forward_api_contents = self.forward_api_contents
+
+        if forward_api_name != "sum" and "inplace" in forward_api_contents.keys(
+        ):
+            # Node Definition Generation
+            self.GenerateForwardDefinition(is_inplaced=True)
+            self.UpdateCoreOpsInformation(is_inplaced=True)
+
+    def UpdateCoreOpsInformation(self, is_inplaced):
+        forward_api_name = GetInplacedFunctionName(
+            self.forward_api_name) if is_inplaced else self.forward_api_name
+        forward_inputs_position_map = self.forward_inputs_position_map
+        forward_outputs_position_map = self.forward_outputs_position_map
+        forward_attrs_list = self.forward_attrs_list
+
+        num_args = len(forward_inputs_position_map.keys()) + len(
+            forward_attrs_list)
+        num_returns = len(forward_outputs_position_map.keys())
+
+        final_state_fwd_api_name = "final_state_" + forward_api_name
+        core_ops_returns_info[
+            final_state_fwd_api_name] = ["" for i in range(num_returns)]
+        core_ops_args_info[
+            final_state_fwd_api_name] = ["" for i in range(num_args)]
+        core_ops_args_type_info[
+            final_state_fwd_api_name] = ["" for i in range(num_args)]
+        for name, (ttype, pos) in forward_inputs_position_map.items():
+            core_ops_args_info[final_state_fwd_api_name][pos] = name
+            if IsPlainTensorType(ttype):
+                core_ops_args_type_info[final_state_fwd_api_name][
+                    pos] = "tensor"
+            else:
+                assert IsVectorTensorType(ttype)
+                core_ops_args_type_info[final_state_fwd_api_name][pos] = "list"
+
+        for name, _, _, pos in forward_attrs_list:
+            core_ops_args_info[final_state_fwd_api_name][pos] = name
+
+        for name, (ttype, pos) in forward_outputs_position_map.items():
+            core_ops_returns_info[final_state_fwd_api_name][pos] = name
+
+    def run(self):
+        super().run()
+
         #####################
         ## Code Generation ##
         #####################
-        self.GenerateNodeDeclaration()
-        self.GenerateNodeDefinition()
         self.GenerateForwardDefinition(is_inplaced=False)
 
         self.UpdateCoreOpsInformation(is_inplaced=False)
 
         self.GenerateInplacedForwardDygraphFunctions()
+
+
+class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
+    def __init__(self, forward_api_contents, grad_api_contents, namespace):
+        DygraphFunctionGeneratorBase.__init__(self, forward_api_contents,
+                                              grad_api_contents, namespace)
+
+        # Generated Results
+        self.node_declaration_str = ""
+        self.node_definition_str = ""
+
+    def GenerateNodeDeclaration(self):
+        forward_op_name = self.forward_api_name
+        backward_forward_inputs_map = self.backward_forward_inputs_map
+        backward_attrs_list = self.backward_attrs_list
+        no_need_buffers = self.no_need_buffers
+
+        # SetTensorWrapper Methods & TensorWrapper Members
+        set_tensor_wrapper_methods_str = ""
+        tensor_wrapper_members_str = ""
+        clear_tensor_wrapper_str = ""
+        for tname, (ttype, is_fwd_input,
+                    _) in backward_forward_inputs_map.items():
+            no_need_buffer = "true" if tname in no_need_buffers else "false"
+            tensor_wrapper_name = GetSavedName(tname)
+            if IsPlainTensorType(ttype):
+                set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
+                    tname, tname, tensor_wrapper_name, tname, no_need_buffer)
+
+                tensor_wrapper_members_str += PLAIN_TENSOR_MEMBER_TEMPLATE.format(
+                    tensor_wrapper_name)
+
+                clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPER_TEMPLATE.format(
+                    tensor_wrapper_name)
+
+            else:
+                assert IsVectorTensorType(ttype)
+                set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
+                    tname, tname, tname, tensor_wrapper_name, no_need_buffer)
+
+                tensor_wrapper_members_str += VECTOR_TENSOR_MEMBER_TEMPLATE.format(
+                    tensor_wrapper_name)
+
+                clear_tensor_wrapper_str += CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE.format(
+                    tensor_wrapper_name)
+
+        # SetAttributes & Attribute Members
+        set_attribute_methods_str = ""
+        attribute_members_str = ""
+        for aname, atype, default_val, _ in backward_attrs_list:
+            saved_attr_name = GetSavedName(aname)
+            set_attribute_methods_str += SET_ATTR_METHOD_TEMPLATE.format(
+                aname, GetConstReference(atype), aname, saved_attr_name, aname)
+
+            if default_val:
+                attribute_members_str += ATTRIBUTE_MEMBER_WITH_DEFAULT_TEMPLATE.format(
+                    RemoveConstAndReference(atype), saved_attr_name,
+                    default_val)
+            else:
+                attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                    RemoveConstAndReference(atype), saved_attr_name)
+
+        grad_node_name = GetGradNodeName(forward_op_name)
+        self.node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
+            grad_node_name, grad_node_name, grad_node_name, grad_node_name,
+            grad_node_name, clear_tensor_wrapper_str,
+            set_tensor_wrapper_methods_str, set_attribute_methods_str,
+            tensor_wrapper_members_str, attribute_members_str)
+
+        logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
+
+    def GenerateNodeDefinition(self):
+        namespace = self.namespace
+        forward_api_name = self.forward_api_name
+        backward_api_name = self.backward_api_name
+        backward_forward_inputs_map = self.backward_forward_inputs_map
+        backward_grad_inputs_map = self.backward_grad_inputs_map
+        backward_grad_outputs_map = self.backward_grad_outputs_map
+        backward_attrs_list = self.backward_attrs_list
+
+        # Construct grad_api function args
+        # Order: TensorWrappers, GradTensors, Attributes
+        grad_api_args_len = len(backward_forward_inputs_map.keys()) + len(
+            backward_grad_inputs_map.keys()) + len(backward_attrs_list)
+        grad_api_args = ["" for i in range(grad_api_args_len)]
+        for name, (_, is_fwd_input,
+                   grad_api_position), in backward_forward_inputs_map.items():
+            tensor_wrapper_name = GetSavedName(name)
+            is_optional = (name in self.optional_inputs)
+            if is_optional:
+                grad_api_args[
+                    grad_api_position] = f"egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
+            else:
+                grad_api_args[
+                    grad_api_position] = f"egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr)"
+        for _, (ttype, fwd_position,
+                grad_api_position) in backward_grad_inputs_map.items():
+            if IsPlainTensorType(ttype):
+                grad_api_args[
+                    grad_api_position] = f"hooked_grads[{fwd_position}][0]"
+            else:
+                assert IsVectorTensorType(ttype)
+                grad_api_args[
+                    grad_api_position] = f"hooked_grads[{fwd_position}]"
+
+        for name, _, _, grad_api_position in backward_attrs_list:
+            saved_attribute_name = GetSavedName(name)
+            grad_api_args[grad_api_position] = f"this->{saved_attribute_name}"
+        grad_api_args_str = ", ".join(grad_api_args)
+
+        # Construct grad_api returns
+        num_bwd_outputs = len(backward_grad_outputs_map.keys())
+        slot_num_bwd_outputs = len(self.forward_inputs_position_map.keys())
+        returns_str = f"std::vector<std::vector<paddle::experimental::Tensor>> returns({slot_num_bwd_outputs});\n"
+        for _, (ttype, fwd_position,
+                grad_api_position) in backward_grad_outputs_map.items():
+            # Infer Grad API Return Type
+            if num_bwd_outputs == 1:
+                # Single tensor output, return as is
+                if IsPlainTensorType(ttype):
+                    returns_str += "returns[0] = { grad_api_returns };\n"
+                else:
+                    assert IsVectorTensorType(ttype)
+                    returns_str += "returns[0] = grad_api_returns;\n"
+            else:
+                # Rearrange output order accordingly
+                returns_str += f"returns[{fwd_position}] =  grad_api_returns[{grad_api_position}];\n"
+        returns_str += f"if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
+        returns_str += f"return returns;\n"
+
+        grad_node_name = GetGradNodeName(forward_api_name)
+
+        fill_zero_str = ""
+        if forward_api_name in ops_to_fill_zero_for_empty_grads:
+            fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads, this->InputMeta());\n"
+
+        grad_api_namespace = f"paddle::experimental::{namespace}"
+
+        self.node_definition_str = FUNCTION_TEMPLATE.format(
+            grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
+            backward_api_name, grad_api_args_str, returns_str)
+
+        logging.info(f"Generated Node Definition: {self.node_definition_str}")
+
+    def run(self):
+        super().run()
+
+        #####################
+        ## Code Generation ##
+        #####################
+        self.GenerateNodeDeclaration()
+        self.GenerateNodeDefinition()
 
 
 class DygraphYamlGenerator(YamlGeneratorBase):
@@ -1239,14 +1262,18 @@ class DygraphYamlGenerator(YamlGeneratorBase):
                 forward_api_contents)
             if backward_api_contents is None: continue
 
-            d_generator = DygraphSingleFunctionGenerator(
+            function_generator = DygraphForwardFunctionGenerator(
                 forward_api_contents, backward_api_contents, namespace)
-            d_generator.run()
+            function_generator.run()
 
-            self.forward_definition_str += d_generator.forward_definition_str + "\n"
-            self.forward_declaration_str += d_generator.forward_declaration_str + "\n"
-            self.node_declaration_str += d_generator.node_declaration_str + "\n"
-            self.node_definition_str += d_generator.node_definition_str + "\n"
+            node_generator = DygraphNodeGenerator(
+                forward_api_contents, backward_api_contents, namespace)
+            node_generator.run()
+
+            self.forward_definition_str += function_generator.forward_definition_str + "\n"
+            self.forward_declaration_str += function_generator.forward_declaration_str + "\n"
+            self.node_declaration_str += node_generator.node_declaration_str + "\n"
+            self.node_definition_str += node_generator.node_definition_str + "\n"
 
         if len(namespace) > 0:
             if namespace.endswith("::"):

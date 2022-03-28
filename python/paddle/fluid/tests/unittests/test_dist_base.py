@@ -687,7 +687,7 @@ class TestParallelDyGraphRunnerBase(object):
 
                     opt.minimize(loss)
                     if not args.accumulate_gradient:
-                        opt.clear_grad()
+                        model.clear_gradients()
             print_to_out(out_losses)
 
     def run_trainer_with_spawn(self, args):
@@ -782,6 +782,57 @@ class TestParallelDyGraphRunnerBase(object):
 
                 # opt.minimize(loss)
                 # opt.clear_grad()
+        return out_losses
+
+    def run_trainer_with_spawn_in_eager_mode(self, args):
+        # 1. enable dygraph
+        paddle.disable_static()
+
+        # 2. init seed
+        seed = 90
+        paddle.static.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
+        np.random.seed(seed)
+        random.seed(seed)
+        # get trainer id
+        args.trainer_id = paddle.distributed.get_rank()
+
+        # 3. init parallel env
+        if args.update_method in ["nccl2", "gloo"]:
+            paddle.distributed.init_parallel_env()
+
+            # 4. build process group
+            nranks = ParallelEnv().nranks
+            rank = ParallelEnv().local_rank
+            is_master = True if rank == 0 else False
+            store = paddle.fluid.core.TCPStore("127.0.0.1", args.dist_port,
+                                               is_master, nranks)
+            if args.update_method == "nccl2":
+                group = core.ProcessGroupNCCL(store, rank, nranks)
+            elif args.update_method == "gloo":
+                group = core.ProcessGroupGloo(store, rank, nranks)
+
+        # 5. train model
+        with _test_eager_guard():
+            model, train_reader, opt = self.get_model()
+            if args.update_method in ["nccl2", "gloo"]:
+                model = paddle.DataParallel(
+                    model,
+                    process_group=group,
+                    find_unused_parameters=args.find_unused_parameters)
+
+            out_losses = []
+            for step_id, data in enumerate(train_reader()):
+                data = self._get_data(data, args)
+                if step_id == RUN_STEP:
+                    break
+                loss = self.run_one_loop(model, opt, data)
+                out_losses.append(loss.numpy())
+
+                loss.backward()
+
+                opt.minimize(loss)
+                model.clear_gradients()
         return out_losses
 
     def run_use_fleet_api_trainer(self, args):
