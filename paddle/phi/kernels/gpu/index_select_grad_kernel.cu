@@ -109,7 +109,6 @@ void IndexSelectGradKernel(const Context& ctx,
                   stride,
                   size,
                   delta);
-    phi::backends::gpu::GpuStreamSync(stream);
   } else {
     const int* index_data = index.data<int>();
     index_select_grad_cuda_kernel<T, int><<<
@@ -124,7 +123,6 @@ void IndexSelectGradKernel(const Context& ctx,
                   stride,
                   size,
                   delta);
-    phi::backends::gpu::GpuStreamSync(stream);
   }
 }
 

@@ -27,6 +27,32 @@
 namespace infrt {
 namespace trt {
 
+#ifdef INFRT_WITH_TRT
+
+#define STRING_TO_ENUM_TYPE(enum_type) enum_type
+#define STRING_TO_ENUM_VALUE(enum_value) enum_value
+#include <NvInfer.h>
+
+#else  // INFRT_WITH_TRT
+
+#define STRING_TO_ENUM_TYPE(enum_type) std::string
+#define STRING_TO_ENUM_VALUE(enum_value) #enum_value
+
+#endif  // INFRT_WITH_TRT
+
+template <typename T>
+::mlir::IntegerAttr createNvinferEnumAttr(::mlir::PatternRewriter &rewriter,
+                                          T enum_value) {
+  return rewriter.getSI32IntegerAttr((int32_t)enum_value);
+}
+
+template <>
+::mlir::IntegerAttr createNvinferEnumAttr<std::string>(
+    ::mlir::PatternRewriter &rewriter, std::string enum_value) {
+  (void)enum_value;
+  return rewriter.getSI32IntegerAttr(-1);
+}
+
 #include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
 struct PD2TRT_GraphLower : public ::mlir::RewritePattern {

@@ -1,8 +1,8 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-Indicesou may obtain a copy of the License at
+You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -12,10 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/assign_value_op.h"
+#pragma once
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(assign_value, ops::AssignValueKernel<bool>,
-                        ops::AssignValueKernel<int>,
-                        ops::AssignValueKernel<float>,
-                        ops::AssignValueKernel<int64_t>);
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
+
+namespace phi {
+namespace strings {
+
+void CreateInferMeta(const std::vector<int64_t>& shape, MetaTensor* out);
+void CreateInferMeta(const ScalarArray& shape, MetaTensor* out);
+
+}  // namespace strings
+}  // namespace phi
