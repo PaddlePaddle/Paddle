@@ -381,40 +381,15 @@ struct XPUPowGradFunctor : public BaseActivationFunctor<T> {
                                            "x_dims should match dy_dims."));
     PADDLE_ENFORCE_EQ(x_dims, dx_dims, platform::errors::PreconditionNotMet(
                                            "x_dims should match dx_dims."));
-
     float pow_factor = ctx.Attr<float>("factor");
-    T pow_factor_1 = static_cast<T>(pow_factor - 1.0f);
 
-    // allocate temp memory for factor on xpu
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    xpu::ctx_guard RAII_GUARD(xpu_context);
-    T *factor_data = RAII_GUARD.alloc_l3_or_gm<T>(1);
-    PADDLE_ENFORCE_NOT_NULL(
-        factor_data,
-        platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
-    memory::Copy(ctx.GetPlace(), static_cast<void *>(factor_data),
-                 platform::CPUPlace(), static_cast<void *>(&pow_factor_1),
-                 sizeof(T));
-
-    // reference: dx = dy * factor * x.pow(factor - 1);
-
-    // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
-    // std::vector<int>& xshape, const std::vector<int>& yshape);
-    int r = xpu::broadcast_pow(xpu_context, x_data, factor_data, x_grad, x_dims,
-                               {1});
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
-
-    // int broadcast_mul(Context* ctx, const T* x, const T* y, T* z, const
-    // std::vector<int>& xshape, const std::vector<int>& yshape);
-    r = xpu::broadcast_mul(xpu_context, y_grad, x_grad, x_grad, x_dims, x_dims);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
-
-    // int scale(Context* ctx, const T* x, T* y, int len, bool bias_after_scale,
-    // float _scale, float _bias);
-    r = xpu::scale(xpu_context, x_grad, x_grad, x->numel(), false, pow_factor,
-                   0.0f);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+    // int pow_grad(Context* ctx, const T* x, const T* dy, T* dx, int len, float
+    // factor);
+    int r = xpu::pow_grad(xpu_context, x_data, y_grad, x_grad, x->numel(),
+                          pow_factor);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_grad");
   }
 };
 
@@ -472,6 +447,7 @@ struct XPUSwishFunctor : public BaseActivationFunctor<T> {
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    // int swish(Context* ctx, const T* x, T* y, int len);
     int r = xpu::swish(xpu_context, x_data, y_data, x->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
   }
@@ -489,10 +465,8 @@ struct XPUSwishGradFunctor : public BaseActivationFunctor<T> {
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    int r =
-        xpu::swish_grad(xpu_context, reinterpret_cast<const float *>(x_data),
-                        reinterpret_cast<const float *>(y_grad),
-                        reinterpret_cast<float *>(x_grad), dX->numel());
+    // int swish_grad(Context* ctx, const T* x, const T* dy, T* dx, int len);
+    int r = xpu::swish_grad(xpu_context, x_data, y_grad, x_grad, dX->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
   }
 };

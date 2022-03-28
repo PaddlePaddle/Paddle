@@ -365,6 +365,11 @@ class XPUTestPowOP(XPUOpTestWrapper):
             self.x = np.random.uniform(-1, 2, [12]).astype(self.dtype)
             self.factor = 3.0
 
+    class XPUTestPow1(XPUTestPowBase):
+        def init_config(self):
+            self.x = np.random.uniform(-1, 1, [1024, 8]).astype(self.dtype)
+            self.factor = 1
+
     class XPUTestPow2(XPUTestPowBase):
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [1024, 8]).astype(self.dtype)
