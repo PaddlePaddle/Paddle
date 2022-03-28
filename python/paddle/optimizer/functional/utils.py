@@ -14,13 +14,13 @@
 
 import paddle
 from paddle.autograd.functional import vjp, Jacobian
-from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_type, check_dtype
 
 
 def check_input_type(input, name, op_name):
     r"""Check whether the input is tensor or variable."""
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         if not isinstance(input, paddle.Tensor):
             raise ValueError("The input: {} must be tensor.".format(input))
     else:
@@ -44,7 +44,7 @@ def check_initial_inverse_hessian_estimate(H0):
             "The initial_inverse_hessian_estimate should be symmetric and positive definite, but the specified is not."
         )
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         if not is_symmetric:
             raise_func()
         try:
@@ -86,7 +86,7 @@ def _value_and_gradient(f, x, v=None):
         value: a tensor that holds the function value.
         gradient: a tensor that holds the function gradients.  
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         value, gradient = vjp(f, x, v=v)
         gradient = gradient[0]
     else:

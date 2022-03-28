@@ -13,9 +13,7 @@
 # limitations under the License.
 
 from .utils import _value_and_gradient
-
 import paddle
-from paddle.fluid.framework import in_dygraph_mode
 
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
@@ -33,49 +31,30 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     Returns:
         min_pos: the minimun point between the specified points in the cubic curve.
     """
-    if in_dygraph_mode():
-        if x1 <= x2:
-            xmin, xmax = (x1, x2)
-        else:
-            xmin, xmax = (x2, x1)
+    xmin, xmax = paddle.static.nn.cond(x1 <= x2, lambda: (x1, x2),
+                                       lambda: (x2, x1))
+    d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
+    d2_square = d1**2 - g1 * g2
 
-        d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
-        d2_square = d1**2 - g1 * g2
-        if d2_square >= 0:
-            d2 = d2_square.sqrt()
-            if x1 <= x2:
-                min_pos = x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
-            else:
-                min_pos = x1 - (x1 - x2) * ((g1 + d2 - d1) / (g1 - g2 + 2 * d2))
-            return min(max(min_pos, xmin), xmax)
-        else:
-            return (xmin + xmax) / 2.
-    else:
-        xmin, xmax = paddle.static.nn.cond(x1 <= x2, lambda: (x1, x2),
-                                           lambda: (x2, x1))
-        d1 = g1 + g2 - 3 * (f1 - f2) / (x1 - x2)
-        d2_square = d1**2 - g1 * g2
+    def true_func1():
+        d2 = d2_square.sqrt()
 
-        def true_func1():
-            d2 = d2_square.sqrt()
+        def true_fn2():
+            return x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
 
-            def true_fn2():
-                return x2 - (x2 - x1) * ((g2 + d2 - d1) / (g2 - g1 + 2 * d2))
+        def false_fn2():
+            return x1 - (x1 - x2) * ((g1 + d2 - d1) / (g1 - g2 + 2 * d2))
 
-            def false_fn2():
-                return x1 - (x1 - x2) * ((g1 + d2 - d1) / (g1 - g2 + 2 * d2))
+        pred = paddle.less_equal(x=x1, y=x2)
+        min_pos = paddle.static.nn.cond(pred, true_fn2, false_fn2)
 
-            pred = paddle.less_equal(x=x1, y=x2)
-            min_pos = paddle.static.nn.cond(pred, true_fn2, false_fn2)
+        return paddle.minimum(paddle.maximum(min_pos, xmin), xmax)
 
-            return paddle.minimum(paddle.maximum(min_pos, xmin), xmax)
+    def false_func1():
+        return (xmin + xmax) / 2.
 
-        def false_func1():
-            return (xmin + xmax) / 2.
-
-        min_pos = paddle.static.nn.cond(d2_square >= 0., true_func1,
-                                        false_func1)
-        return min_pos
+    min_pos = paddle.static.nn.cond(d2_square >= 0., true_func1, false_func1)
+    return min_pos
 
 
 def strong_wolfe(f,
