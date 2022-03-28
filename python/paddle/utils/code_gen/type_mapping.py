@@ -13,7 +13,12 @@ attr_types_map = {
     # special types
     'ScalarArray': 'const ScalarArray&',
     'Scalar': 'const Scalar&',
+    'Scalar(bool)': 'const Scalar&',
+    'Scalar(int)': 'const Scalar&',
+    'Scalar(int64_t)': 'const Scalar&',
+    'Scalar(float)': 'const Scalar&',
     'Backend': 'Backend',
+    'Place': 'Place',
     'DataLayout': 'DataLayout',
     'DataType': 'DataType',
     # scalar types
@@ -27,6 +32,7 @@ attr_types_map = {
     'bool[]': 'const std::vector<bool>&',
     'int[]': 'const std::vector<int>&',
     'int64[]': 'const std::vector<int64_t>&',
+    'int64_t[]': 'const std::vector<int64_t>&',
     'float[]': 'const std::vector<float>&',
     'double[]': 'const std::vector<double>&',
     'str[]': 'const std::vector<<std::string>&',
@@ -35,8 +41,13 @@ attr_types_map = {
 opmaker_attr_types_map = {
     # special types
     'ScalarArray': 'std::vector<int64_t>',
-    'Scalar': 'double',
+    'Scalar': 'float',
+    'Scalar(bool)': 'bool',
+    'Scalar(int)': 'int',
+    'Scalar(int64_t)': 'int64_t',
+    'Scalar(float)': 'float',
     'Backend': 'int',
+    'Place': 'int',
     'DataLayout': 'int',
     'DataType': 'int',
     # scalar types
@@ -50,6 +61,7 @@ opmaker_attr_types_map = {
     'bool[]': 'std::vector<bool>',
     'int[]': 'std::vector<int>',
     'int64[]': 'std::vector<int64_t>',
+    'int64_t[]': 'std::vector<int64_t>',
     'float[]': 'std::vector<float>',
     'double[]': 'std::vector<double>',
     'str[]': 'std::vector<<std::string>',
