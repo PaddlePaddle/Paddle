@@ -274,7 +274,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   auto fleet_ptr = FleetWrapper::GetInstance();
 #endif
 #ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
+  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
 #endif
 
 #if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_HETERPS)
@@ -331,7 +331,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
+      auto tt = fleet_ptr->worker_ptr_->pull_sparse_ptr(
           reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
