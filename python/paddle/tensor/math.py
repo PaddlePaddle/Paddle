@@ -150,7 +150,16 @@ def pow(x, y, name=None):
 
     """
     # in dynamic graph mode
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        if isinstance(y, (int, float)):
+            return _C_ops.final_state_pow(x, y)
+        #elif isinstance(y, (paddle.Tensor, Variable)):
+        #return _elementwise_op_in_dygraph(
+        #x, y, axis=-1, act=None, op_name='elementwise_pow')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+
+    if _in_legacy_dygraph():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
@@ -707,7 +716,7 @@ def fmax(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.final_state_elementwise_fmax(x, y, axis)
+        return _C_ops.final_state_fmax(x, y, axis)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
@@ -770,7 +779,7 @@ def fmin(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.final_state_elementwise_fmin(x, y, axis)
+        return _C_ops.final_state_fmin(x, y, axis)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)

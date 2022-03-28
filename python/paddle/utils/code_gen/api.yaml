@@ -552,25 +552,25 @@
 
 #  =================================== sep2
 
-- api : elementwise_fmax
+- api : fmax
   args : (Tensor x, Tensor y,  int axis)
   output : Tensor(out)
   infer_meta : 
     param: [x, y]
     func : ElementwiseInferMeta
   kernel : 
-    func : elementwise_fmax
-  backward : elementwise_fmax_grad
+    func : fmax
+  backward : fmax_grad
   
-- api : elementwise_fmin
+- api : fmin
   args : (Tensor x, Tensor y,  int axis)
   output : Tensor(out)
   infer_meta : 
     param: [x, y]
     func : ElementwiseInferMeta
   kernel : 
-    func : elementwise_fmin
-  backward : elementwise_fmin_grad
+    func : fmin
+  backward : fmin_grad
 
 #- api : gather
   #args : (Tensor x, Tensor index, Scalar axis)
@@ -783,4 +783,23 @@
     func : round
   backward : round_grad
   
+- api : pow
+  args : (Tensor x, Scalar s)
+  output : Tensor(out)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : pow
+  backward : pow_grad
+
+- api : p_norm
+  args : (Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false)
+  output : Tensor(out)
+  infer_meta : 
+    func : PNormInferMeta
+  kernel : 
+    func : p_norm
+  backward : p_norm_grad
+
 #  =================================== sep3

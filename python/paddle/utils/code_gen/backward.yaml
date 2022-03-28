@@ -336,25 +336,25 @@
 
 #  =================================== sep2
 
-- backward_api : elementwise_fmax_grad
-  forward : elementwise_fmax(Tensor x, Tensor y, int axis) -> Tensor(out)
+- backward_api : fmax_grad
+  forward : fmax(Tensor x, Tensor y, int axis) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta : 
     func : GeneralBinaryGradInferMeta
     param: [x, y]
   kernel : 
-    func : elementwise_fmax_grad
+    func : fmax_grad
 
-- backward_api : elementwise_fmin_grad
-  forward : elementwise_fmin(Tensor x, Tensor y, int axis) -> Tensor(out)
+- backward_api : fmin_grad
+  forward : fmin(Tensor x, Tensor y, int axis) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta : 
     func : GeneralBinaryGradInferMeta
     param: [x, y]
   kernel : 
-    func : elementwise_fmin_grad
+    func : fmin_grad
 
 #- backward_api : gather_grad
   #forward : gather(Tensor x, Tensor index, Scalar axis) -> Tensor(out)
@@ -537,6 +537,16 @@
   kernel : 
     func : ceil_grad
 
+- backward_api : floor_grad
+  forward : floor(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : floor_grad
+
 - backward_api : round_grad
   forward : round(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -547,6 +557,25 @@
   kernel : 
     func : round_grad
 
+- backward_api : pow_grad
+  forward : pow(Tensor x, Scalar s) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, Scalar s=-1)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : pow_grad
+
+- backward_api : p_norm_grad
+  forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
+  output : Tensor(x_grad)
+  infer_meta : 
+    func : UnchangedInferMeta
+    param: [x]
+  kernel : 
+    func : p_norm_grad
 
 
 #  =================================== sep3
