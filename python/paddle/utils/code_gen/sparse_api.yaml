@@ -22,7 +22,7 @@
   output : Tensor(out@SparseCsrTensor)
   invoke : to_sparse_csr_impl(x)
 
-- api : sparse_relu
+- api : relu
   args : (Tensor x)
   output : Tensor(out@SparseCooTensor)
   kernel :
