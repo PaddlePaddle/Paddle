@@ -26,7 +26,7 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _k
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
-global_process_mesh = get_world_process_group().ranks
+world_process_group = get_world_process_group()
 
 
 class AMPState(object):
@@ -445,7 +445,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         type=core.VarDesc.VarType.LOD_TENSOR,
         persistable=False,
         stop_gradient=False)
-    set_var_dist_attr(dist_context, found_inf, [-1], global_process_mesh)
+    set_var_dist_attr(dist_context, found_inf, [-1], world_process_group.ranks)
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
@@ -457,9 +457,10 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         attrs=attrs)
 
     new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = global_process_mesh
-    if len(global_process_mesh) > 1:
-        new_op_dist_attr.impl_idx = 0
+    new_op_dist_attr.process_mesh = world_process_group.ranks
+    new_op_dist_attr.impl_idx = 0
+    if len(world_process_group.ranks) > 1:
+        new_op_dist_attr.impl_type = "check_finite_and_unscale"
     for g in grads:
         g_dist_attr = dist_context.get_tensor_dist_attr_for_program(g)
         assert g_dist_attr is not None
@@ -550,7 +551,7 @@ class AMPPass(PassBase):
             dtype='float32',
             persistable=True)
         set_var_dist_attr(self.dist_context, self._loss_scaling, [-1],
-                          global_process_mesh)
+                          world_process_group.ranks)
 
         if self.get_attr("use_dynamic_loss_scaling"):
             self._num_good_steps = paddle.static.create_global_var(
@@ -560,7 +561,7 @@ class AMPPass(PassBase):
                 dtype='int32',
                 persistable=True)
             set_var_dist_attr(self.dist_context, self._num_good_steps, [-1],
-                              global_process_mesh)
+                              world_process_group.ranks)
 
             self._num_bad_steps = paddle.static.create_global_var(
                 name=unique_name.generate("num_bad_steps"),
@@ -569,7 +570,7 @@ class AMPPass(PassBase):
                 dtype='int32',
                 persistable=True)
             set_var_dist_attr(self.dist_context, self._num_bad_steps, [-1],
-                              global_process_mesh)
+                              world_process_group.ranks)
 
     def _scale_loss(self):
 
@@ -700,9 +701,10 @@ class AMPPass(PassBase):
             attrs=attrs)
 
         new_op_dist_attr = OperatorDistributedAttribute()
-        new_op_dist_attr.process_mesh = global_process_mesh
-        if len(global_process_mesh) > 1:
-            new_op_dist_attr.impl_idx = 0
+        new_op_dist_attr.process_mesh = world_process_group.ranks
+        new_op_dist_attr.impl_idx = 0
+        if len(world_process_group.ranks) > 1:
+            new_op_dist_attr.impl_type = "update_loss_scaling"
         for g in grads:
             g_dist_attr = self.dist_context.get_tensor_dist_attr_for_program(g)
             assert g_dist_attr is not None

@@ -15,10 +15,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -63,9 +63,9 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       if (x->dims().size() == 1) {
         // DropOutDoMask will get error result when input
         // is 1-D. Make it become 2-D.
-        std::vector<int> vec_dim = framework::vectorize<int>(x->dims());
-        tmp_x.Resize(framework::make_ddim({vec_dim[0], 1}));
-        tmp_out.Resize(framework::make_ddim({vec_dim[0], 1}));
+        std::vector<int> vec_dim = phi::vectorize<int>(x->dims());
+        tmp_x.Resize(phi::make_ddim({vec_dim[0], 1}));
+        tmp_out.Resize(phi::make_ddim({vec_dim[0], 1}));
       }
 
       int seed = 0;
@@ -91,7 +91,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       // the output `Mask`.
       Tensor npu_mask(experimental::DataType::UINT8);
       uint32_t length = (x->numel() + 128 - 1) / 128 * 128;
-      npu_mask.Resize(framework::make_ddim({length / 8}));
+      npu_mask.Resize(phi::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
 
       // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
@@ -100,7 +100,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       // in `npu_op_runner.cc`, which needs to be optimized later.
       NpuOpRunner runner_gen_mask;
       runner_gen_mask.SetType("DropOutGenMask")
-          .AddInput(framework::vectorize(tmp_out.dims()))
+          .AddInput(phi::vectorize(tmp_out.dims()))
           .AddInput(keep_prob_tensor)
           .AddOutput(npu_mask)
           .AddAttr("seed", seed)

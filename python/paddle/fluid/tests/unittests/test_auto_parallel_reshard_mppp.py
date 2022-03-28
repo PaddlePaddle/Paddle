@@ -136,7 +136,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     completer = Completer(dist_context)
     complete_train_program = completer.complete_forward_annotation(
         train_program)
-
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,
@@ -269,6 +269,7 @@ class TestMLPReshard(unittest.TestCase):
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
             train_program)
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
         partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads = partitioner.partition(
             complete_train_program, startup_program, [])
         reshard(partitioned_main_prog, partitioned_startup_prog, rank_id,

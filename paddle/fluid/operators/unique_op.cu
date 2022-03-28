@@ -172,7 +172,7 @@ static void UniqueFlattendCUDATensor(const framework::ExecutionContext& context,
   auto in_data_hat = in_hat.mutable_data<InT>(context.GetPlace());
 
   Tensor* sorted_indices = context.Output<Tensor>("Indices");
-  sorted_indices->Resize(framework::make_ddim({num_input}));
+  sorted_indices->Resize(phi::make_ddim({num_input}));
   auto sorted_indices_data =
       sorted_indices->mutable_data<IndexT>(context.GetPlace());
   thrust::sequence(thrust::device, sorted_indices_data,
@@ -182,7 +182,7 @@ static void UniqueFlattendCUDATensor(const framework::ExecutionContext& context,
 
   // 1. Calculate op result: 'out'
   Tensor range;
-  range.Resize(framework::make_ddim({num_input + 1}));
+  range.Resize(phi::make_ddim({num_input + 1}));
   auto range_data_ptr = range.mutable_data<IndexT>(context.GetPlace());
   thrust::sequence(thrust::device, range_data_ptr,
                    range_data_ptr + num_input + 1);
@@ -193,15 +193,15 @@ static void UniqueFlattendCUDATensor(const framework::ExecutionContext& context,
                                   out_data + num_input, range_data_ptr, equal)
                 .first -
             out_data;
-  out->Resize(framework::make_ddim({num_out}));
+  out->Resize(phi::make_ddim({num_out}));
 
   // 3. Calculate inverse index: 'inverse'
   if (return_inverse) {
     Tensor* inverse = context.Output<Tensor>("Index");
-    inverse->Resize(framework::make_ddim({num_input}));
+    inverse->Resize(phi::make_ddim({num_input}));
     auto inverse_data = inverse->mutable_data<IndexT>(context.GetPlace());
     Tensor inv_loc;
-    inv_loc.Resize(framework::make_ddim({num_input}));
+    inv_loc.Resize(phi::make_ddim({num_input}));
     auto inv_loc_data_ptr = inv_loc.mutable_data<IndexT>(context.GetPlace());
     thrust::adjacent_difference(thrust::device, in_data_hat,
                                 in_data_hat + num_input, inv_loc_data_ptr,
@@ -218,20 +218,20 @@ static void UniqueFlattendCUDATensor(const framework::ExecutionContext& context,
   // 2. Calculate sorted index: 'sorted_indices'
   if (return_index) {
     Tensor indices;
-    indices.Resize(framework::make_ddim({num_input}));
+    indices.Resize(phi::make_ddim({num_input}));
     auto indices_data_ptr = indices.mutable_data<IndexT>(context.GetPlace());
     thrust::copy(thrust::device, in_data_hat, in_data_hat + num_input,
                  indices_data_ptr);
     thrust::unique_by_key(thrust::device, indices_data_ptr,
                           indices_data_ptr + num_input, sorted_indices_data,
                           equal);
-    sorted_indices->Resize(framework::make_ddim({num_out}));
+    sorted_indices->Resize(phi::make_ddim({num_out}));
   }
 
   // 4. Calculate 'counts'
   if (return_counts) {
     Tensor* counts = context.Output<Tensor>("Counts");
-    counts->Resize(framework::make_ddim({num_out}));
+    counts->Resize(phi::make_ddim({num_out}));
     auto count_data = counts->mutable_data<IndexT>(context.GetPlace());
     // init 'count_data' as 0
     thrust::fill(thrust::device, count_data, count_data + num_out, 0);
@@ -253,10 +253,10 @@ static void ComputeUniqueDims(const framework::ExecutionContext& context,
                               not_equal_T not_equal, int64_t row) {
   // 1. inverse indices: 'inverse'
   Tensor* inverse = context.Output<Tensor>("Index");
-  inverse->Resize(framework::make_ddim({row}));
+  inverse->Resize(phi::make_ddim({row}));
   auto inverse_data = inverse->mutable_data<IndexT>(context.GetPlace());
   Tensor inv_loc;
-  inv_loc.Resize(framework::make_ddim({row}));
+  inv_loc.Resize(phi::make_ddim({row}));
   auto inv_loc_data_ptr = inv_loc.mutable_data<IndexT>(context.GetPlace());
   thrust::adjacent_difference(thrust::device, sorted_indices_data,
                               sorted_indices_data + row, inv_loc_data_ptr,
@@ -270,7 +270,7 @@ static void ComputeUniqueDims(const framework::ExecutionContext& context,
 
   // 2. sorted indices
   Tensor range;
-  range.Resize(framework::make_ddim({row + 1}));
+  range.Resize(phi::make_ddim({row + 1}));
   auto range_data_ptr = range.mutable_data<IndexT>(context.GetPlace());
   thrust::sequence(thrust::device, range_data_ptr, range_data_ptr + row + 1);
   int num_out;
@@ -281,11 +281,11 @@ static void ComputeUniqueDims(const framework::ExecutionContext& context,
       sorted_indices_data;
   thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
   range_data_ptr_dev[num_out] = row;
-  sorted_indices->Resize(framework::make_ddim({num_out}));
+  sorted_indices->Resize(phi::make_ddim({num_out}));
 
   // 3. counts: 'counts'
   Tensor* counts = context.Output<Tensor>("Counts");
-  counts->Resize(framework::make_ddim({num_out}));
+  counts->Resize(phi::make_ddim({num_out}));
   auto count_data = counts->mutable_data<IndexT>(context.GetPlace());
   thrust::fill(thrust::device, count_data, count_data + row, 0);
   thrust::adjacent_difference(thrust::device, range_data_ptr + 1,
@@ -304,11 +304,11 @@ static void UniqueDimsCUDATensor(const framework::ExecutionContext& context,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(framework::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   framework::Tensor in_trans;
-  framework::DDim in_trans_dims = framework::make_ddim(in_trans_dims_vec);
+  framework::DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.cuda_device_context();
@@ -319,8 +319,7 @@ static void UniqueDimsCUDATensor(const framework::ExecutionContext& context,
                                    permute);          // index of axis
 
   // Reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  framework::DDim in_trans_flat_dims =
-      framework::flatten_to_2d(in_trans_dims, 1);
+  framework::DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // now 'in_trans' is 2D
@@ -329,7 +328,7 @@ static void UniqueDimsCUDATensor(const framework::ExecutionContext& context,
   const InT* in_trans_data = in_trans.data<InT>();
 
   Tensor* sorted_indices = context.Output<Tensor>("Indices");
-  sorted_indices->Resize(framework::make_ddim({row}));
+  sorted_indices->Resize(phi::make_ddim({row}));
   auto sorted_indices_data =
       sorted_indices->mutable_data<IndexT>(context.GetPlace());
 
@@ -348,13 +347,13 @@ static void UniqueDimsCUDATensor(const framework::ExecutionContext& context,
   Tensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = sorted_indices->numel();
-  out_trans.Resize(framework::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
   out_trans.mutable_data<InT>(context.GetPlace());
 
   IndexSelect<InT, IndexT>(context, in_trans, *sorted_indices, &out_trans, 0);
 
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(framework::make_ddim(out_trans_dims_vec));
+  out->Resize(phi::make_ddim(out_trans_dims_vec));
   out->mutable_data<InT>(context.GetPlace());
   std::vector<framework::Tensor> out_trans_unbind = Unbind(out_trans);
   math::ConcatFunctor<DeviceContext, InT> concat_functor;

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/pten/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {
@@ -39,9 +39,9 @@ TEST(test_reduce_rank_check, all) {
       }
 
       if (is_valid) {
-        pten::kernels::details::CheckReduceRank(reduce_rank, rank);
+        phi::funcs::details::CheckReduceRank(reduce_rank, rank);
       } else {
-        ASSERT_THROW(pten::kernels::details::CheckReduceRank(reduce_rank, rank),
+        ASSERT_THROW(phi::funcs::details::CheckReduceRank(reduce_rank, rank),
                      paddle::platform::EnforceNotMet);
       }
     }

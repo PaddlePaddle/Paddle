@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/core/hostdevice.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -57,9 +57,11 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
     const size_t batch_size = lod.back().size() - 1;
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
-        input->data<T>(), abs_offset_lod[0].CUDAMutableData(dev_ctx.GetPlace()),
+        input->data<T>(), mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
         bbox_width, im_info->data<T>(), output_data);
+    mix_vector.CopyToCPU();
   }
 };
 

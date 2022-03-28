@@ -156,6 +156,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_npus", dest="npus")
 
+    if fluid.core.is_compiled_with_mlu():
+        base_group.add_argument(
+            "--mlus",
+            type=str,
+            default=None,
+            help="It's for mlu training. For example: "
+            "--mlus=\"0,1,2,3\" will launch four training processes each bound to one mlu."
+        )
+        base_group.add_argument("--selected_mlus", dest="mlus")
+
     base_group.add_argument(
         "training_script",
         type=str,
@@ -232,7 +242,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     elastic_group.add_argument(
         "--force", type=bool, default=False, help="update np force")
 
-    return parser.parse_args()
+    known_args, _ = parser.parse_known_args()
+    return known_args
 
 
 def get_cluster_from_args(args, device_mode, devices_per_proc):
@@ -429,6 +440,8 @@ def infer_backend(args):
         args.backend = 'unknown'
     elif fluid.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
+    elif fluid.core.is_compiled_with_mlu():
+        args.backend = 'cncl'
     else:
         args.backend = 'gloo'
 
@@ -472,6 +485,8 @@ def which_distributed_mode(args):
         accelerators = fluid.core.get_npu_device_count()
     elif fluid.core.is_compiled_with_xpu():
         accelerators = fluid.core.get_xpu_device_count()
+    elif fluid.core.is_compiled_with_mlu():
+        accelerators = fluid.core.get_mlu_device_count()
     else:
         accelerators = 0
 
@@ -490,17 +505,18 @@ def which_distributed_mode(args):
         return DistributeMode.COLLECTIVE
     else:
         if not fluid.core.is_compiled_with_cuda(
-        ) and not fluid.core.is_compiled_with_xpu():
+        ) and not fluid.core.is_compiled_with_xpu(
+        ) and not fluid.core.is_compiled_with_mlu():
             if args.servers:
                 logger.warning(
-                    "Not found distinct arguments and not compiled with cuda or xpu or npu. "
+                    "Not found distinct arguments and not compiled with cuda or xpu or npu or mlu. "
                     "But found args.servers not empty, default use ps mode")
                 return DistributeMode.PS
             else:
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda or xpu or npu. "
+                "Not found distinct arguments and compiled with cuda or xpu or npu or mlu. "
                 "Default use collective mode")
             return DistributeMode.COLLECTIVE
 
@@ -535,6 +551,10 @@ def launch():
         - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
         
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
+
+        - ``--mlus``: It's for mlu training. e.g., ``--mlus=0,1,2,3`` will launch four training processes each bound to one mlu.
+
+        - ``--selected_mlus``: mlus aliases, recommend to use ``--mlus``.
 
         - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
 
@@ -688,7 +708,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    #assert args.backend in ['gloo', 'nccl', 'bkcl', 'heter', 'unknown']
+    #assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

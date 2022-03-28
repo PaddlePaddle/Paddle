@@ -31,7 +31,7 @@ std::vector<framework::DDim> RestoreShapes(const std::vector<int>& shape_concat,
   for (int len : ranks) {
     auto start_it = shape_concat.begin() + offset;
     auto end_it = start_it + len;
-    res.push_back(framework::make_ddim(std::vector<int>(start_it, end_it)));
+    res.push_back(phi::make_ddim(std::vector<int>(start_it, end_it)));
     offset += len;
   }
   return res;

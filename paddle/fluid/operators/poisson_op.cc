@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-
-#include "paddle/fluid/operators/poisson_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,14 +24,6 @@ namespace operators {
 class PoissonOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "PoissonOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "PoissonOp");
-
-    auto dim = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", dim);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -58,29 +52,6 @@ class PoissonOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
       const override {
     static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
     return m;
-  }
-};
-
-template <typename T>
-class PoissonKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *x = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-
-    const T *x_data = x->data<T>();
-    T *out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    int64_t size = x->numel();
-
-    auto gen = framework::DefaultCPUGenerator();
-    auto engine = gen->GetCPUEngine();
-
-    for (int64_t i = 0; i < size; ++i) {
-      std::poisson_distribution<> dist(x_data[i]);
-      out_data[i] = static_cast<T>(dist(*engine));
-    }
   }
 };
 
@@ -116,17 +87,13 @@ class PoissonGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(poisson, PoissonInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(poisson, ops::PoissonOp, ops::PoissonOpMaker,
                   ops::PoissonOpInferVarType,
                   ops::PoissonGradOpMaker<paddle::framework::OpDesc>,
-                  ops::PoissonGradOpMaker<paddle::imperative::OpBase>);
+                  ops::PoissonGradOpMaker<paddle::imperative::OpBase>,
+                  PoissonInferShapeFunctor);
 
 REGISTER_OPERATOR(poisson_grad, ops::PoissonGradOp);
-
-REGISTER_OP_CPU_KERNEL(poisson,
-                       ops::PoissonKernel<plat::CPUDeviceContext, float>,
-                       ops::PoissonKernel<plat::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(poisson_grad,
-                       ops::PoissonGradKernel<plat::CPUDeviceContext, float>,
-                       ops::PoissonGradKernel<plat::CPUDeviceContext, double>);

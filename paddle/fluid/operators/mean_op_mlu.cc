@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/mean_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 class MeanMLUKernel : public framework::OpKernel<T> {
@@ -45,12 +47,10 @@ class MeanMLUKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-    MLUCnnlTensorDesc input_desc(
-        *input, CNNL_LAYOUT_ARRAY,
-        ToCnnlDataType(framework::TransToProtoVarType(input->dtype())));
-    MLUCnnlTensorDesc output_desc(
-        *output, CNNL_LAYOUT_ARRAY,
-        ToCnnlDataType(framework::TransToProtoVarType(output->dtype())));
+    MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
+                                 ToCnnlDataType(input->dtype()));
+    MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
+                                  ToCnnlDataType(output->dtype()));
 
     MLUCnnlReduceDesc reduction_desc(
         reduce_dims, CNNL_REDUCE_AVG, ToCnnlDataType<T>(),
@@ -90,21 +90,18 @@ class MeanMLUGradKernel : public framework::OpKernel<T> {
     }
 
     // means
-    Tensor mean_var(framework::TransToProtoVarType(output_grad->dtype()));
+    Tensor mean_var(output_grad->dtype());
     mean_var.mutable_data<T>(input_grad->dims(), context.GetPlace());
-    MLUCnnlTensorDesc mean_var_desc(
-        mean_var, CNNL_LAYOUT_ARRAY,
-        ToCnnlDataType(framework::TransToProtoVarType(mean_var.dtype())));
+    MLUCnnlTensorDesc mean_var_desc(mean_var, CNNL_LAYOUT_ARRAY,
+                                    ToCnnlDataType(mean_var.dtype()));
     auto value = static_cast<T>(1.0 / static_cast<float>(input_grad->numel()));
     MLUCnnl::Fill(context, value, mean_var_desc.get(), GetBasePtr(&mean_var));
 
     // means mul output_grad
-    MLUCnnlTensorDesc in_desc(
-        *output_grad, CNNL_LAYOUT_ARRAY,
-        ToCnnlDataType(framework::TransToProtoVarType(output_grad->dtype())));
-    MLUCnnlTensorDesc out_desc(
-        *input_grad, CNNL_LAYOUT_ARRAY,
-        ToCnnlDataType(framework::TransToProtoVarType(input_grad->dtype())));
+    MLUCnnlTensorDesc in_desc(*output_grad, CNNL_LAYOUT_ARRAY,
+                              ToCnnlDataType(output_grad->dtype()));
+    MLUCnnlTensorDesc out_desc(*input_grad, CNNL_LAYOUT_ARRAY,
+                               ToCnnlDataType(input_grad->dtype()));
 
     MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
                                        CNNL_NOT_PROPAGATE_NAN);

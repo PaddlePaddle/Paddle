@@ -188,6 +188,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_gpu_fp16, UseGPUFp16, bool);
+  DECL_ARGUMENT_FIELD(gpu_fp16_disabled_op_types, GpuFp16DisabledOpTypes,
+                      std::unordered_set<std::string>);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape
@@ -278,10 +281,14 @@ struct Argument {
   // ipu related
   DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
   DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
+  DECL_ARGUMENT_FIELD(ipu_micro_batch_size, IpuMicroBatchSize, int);
   DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
   DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
-  DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
-  DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
+  DECL_ARGUMENT_FIELD(ipu_enable_fp16, IpuEnableFp16, bool);
+  DECL_ARGUMENT_FIELD(ipu_replica_num, IpuReplicaNum, int);
+  DECL_ARGUMENT_FIELD(ipu_available_memory_proportion,
+                      IpuAvailableMemoryProportion, float);
+  DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

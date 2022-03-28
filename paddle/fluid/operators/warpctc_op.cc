@@ -40,7 +40,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
       sequence_width = logits_dims[2];
     } else {
       sequence_width =
-          static_cast<int>(framework::product(logits_dims) / logits_dims[0]);
+          static_cast<int>(phi::product(logits_dims) / logits_dims[0]);
     }
 
     PADDLE_ENFORCE_GE(

@@ -24,6 +24,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from paddle.fluid.framework import _test_eager_guard
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -59,7 +60,7 @@ def optimizer_setting(params, parameter_list=None):
         #bd = [step * e for e in ls["epochs"]]
         #base_lr = params["lr"]
         #lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if fluid.in_dygraph_mode():
+        if fluid._non_static_mode():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01,
                                             parameter_list=parameter_list)
         else:
@@ -310,7 +311,8 @@ class TestImperativeResneXt(unittest.TestCase):
         batch_size = train_parameters["batch_size"]
         batch_num = 1
         epoch_num = 1
-        with fluid.dygraph.guard():
+
+        def run_dygraph():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
@@ -370,6 +372,17 @@ class TestImperativeResneXt(unittest.TestCase):
                     dy_param_value = {}
                     for param in se_resnext.parameters():
                         dy_param_value[param.name] = param.numpy()
+
+                    return dy_out, dy_param_init_value, dy_param_value, dy_grad_value
+
+        with fluid.dygraph.guard():
+            dy_out, dy_param_init_value, dy_param_value, dy_grad_value = run_dygraph(
+            )
+
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                eager_out, eager_param_init_value, eager_param_value, eager_grad_value = run_dygraph(
+                )
 
         with new_program_scope():
             paddle.seed(seed)
@@ -478,6 +491,32 @@ class TestImperativeResneXt(unittest.TestCase):
                     value, dy_param_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
+
+        # check eager
+        self.assertTrue(
+            np.allclose(static_out, eager_out),
+            "\nstatic_out: {}\neager_out: {}".format(static_out, eager_out))
+
+        self.assertEqual(
+            len(eager_param_init_value), len(static_param_init_value))
+
+        for key, value in six.iteritems(static_param_init_value):
+            self.assertTrue(np.allclose(value, eager_param_init_value[key]))
+
+        self.assertEqual(len(eager_grad_value), len(static_grad_value))
+
+        for key, value in six.iteritems(static_grad_value):
+            self.assertTrue(
+                np.allclose(value, eager_grad_value[key]),
+                "\nstatic_grad_value: {}\neager_grad_value: {}".format(
+                    value, eager_grad_value[key]))
+
+        self.assertEqual(len(eager_param_value), len(static_param_value))
+        for key, value in six.iteritems(static_param_value):
+            self.assertTrue(
+                np.allclose(value, eager_param_value[key]),
+                "\nstatic_param_value: {}\neagear_param_value: {}".format(
+                    value, eager_param_value[key]))
 
 
 if __name__ == '__main__':

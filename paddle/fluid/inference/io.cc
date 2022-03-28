@@ -26,8 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/pybind.h"
 
-// pten
-#include "paddle/pten/kernels/declarations.h"
+// phi
+#include "paddle/phi/kernels/declarations.h"
 
 DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
 DEFINE_int32(math_num_threads, 1,

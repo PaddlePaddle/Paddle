@@ -43,7 +43,7 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/core/utils/rw_lock.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
@@ -75,7 +75,7 @@ const CinnCompiledObject& CinnCompiler::Compile(
 
   bool exist = false;
   {
-    pten::AutoRDLock r_guard{&rwlock_};
+    phi::AutoRDLock r_guard{&rwlock_};
     exist = cache_by_address_.count(cur_key_by_address) != 0;
     // if cannot find graph by address, checkout whether the graph structure
     // have been stored in cache.
@@ -96,14 +96,14 @@ const CinnCompiledObject& CinnCompiler::Compile(
     std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
     auto compiled_res =
         CompileGraph(graph, input_tensors, target, compiled_num, stream);
-    pten::AutoWRLock w_guard{&rwlock_};
+    phi::AutoWRLock w_guard{&rwlock_};
     if (!cache_by_struct_.count(cur_key_by_struct)) {
       cache_by_address_[cur_key_by_address] = compiled_num;
       cache_by_struct_[cur_key_by_struct] = compiled_num;
       index2cache_.emplace(compiled_num, std::move(compiled_res));
     }
   }
-  pten::AutoRDLock guard{&rwlock_};
+  phi::AutoRDLock guard{&rwlock_};
   const auto& cached_boj = *index2cache_[cache_by_address_[cur_key_by_address]];
   return cached_boj;
 }
@@ -208,7 +208,7 @@ std::string CinnCompiler::ReadableKey(
 
 void CinnCompiler::Clear() {
   {
-    pten::AutoWRLock guard{&rwlock_};
+    phi::AutoWRLock guard{&rwlock_};
     graphs_.clear();
     cache_by_address_.clear();
     cache_by_struct_.clear();
@@ -241,17 +241,16 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  options.with_buffer_handle_instruction_inserted = true;
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
-  compiled_obj->launch_context =
-      std::make_unique<operators::details::CinnLaunchContext>(
-          compiled_obj->paddle2cinn_varmap, compiled_obj->scope);
   compiled_obj->cached_index = compiled_num;
+  compiled_obj->launch_context =
+      std::make_unique<operators::details::CinnLaunchContext>(graph,
+                                                              *compiled_obj);
   return compiled_obj;
 }
 

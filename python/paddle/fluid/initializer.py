@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 from . import framework
 from . import core
-from .framework import in_dygraph_mode, default_main_program
+from .framework import _non_static_mode, default_main_program
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -137,12 +137,12 @@ class ConstantInitializer(Initializer):
                 isinstance(var, framework.EagerParamBase))
         assert isinstance(block, framework.Block)
 
-        if framework.in_dygraph_mode():
-            var = _C_ops.fill_constant(
-                var, 'value',
-                float(self._value), 'force_cpu', self._force_cpu, 'dtype',
-                int(var.dtype), 'str_value',
-                str(float(self._value)), 'shape', var.shape)
+        if framework._non_static_mode():
+            _C_ops.fill_constant(var, 'value',
+                                 float(self._value), 'force_cpu',
+                                 self._force_cpu, 'dtype',
+                                 int(var.dtype), 'str_value',
+                                 str(float(self._value)), 'shape', var.shape)
             return None
         else:
             # fill constant should set the "str_value" to preserve precision
@@ -244,7 +244,7 @@ class UniformInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             out_var = _C_ops.uniform_random(
                 'shape', var.shape, 'min', self._low, 'max', self._high, 'seed',
                 self._seed, 'dtype', out_dtype, 'diag_num', self._diag_num,
@@ -334,7 +334,7 @@ class NormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             out_var = _C_ops.gaussian_random(
                 'shape', var.shape, 'dtype', var.dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed, 'use_mkldnn', False)
@@ -417,7 +417,7 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             out_var = _C_ops.truncated_gaussian_random(
                 'shape', var.shape, 'dtype', out_dtype, 'mean', self._mean,
                 'std', self._std_dev, 'seed', self._seed)
@@ -548,7 +548,7 @@ class XavierInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             if self._uniform:
                 limit = np.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
@@ -700,7 +700,7 @@ class MSRAInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             if self._uniform:
                 limit = np.sqrt(6.0 / float(fan_in))
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
@@ -875,7 +875,7 @@ class BilinearInitializer(Initializer):
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             out_var = _C_ops.assign_value('shape',
                                           list(shape), 'dtype', out_dtype,
                                           value_name, values)
@@ -984,7 +984,7 @@ class NumpyArrayInitializer(Initializer):
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             out_var = _C_ops.assign_value('shape',
                                           list(self._value.shape), 'dtype',
                                           out_dtype, value_name, values)

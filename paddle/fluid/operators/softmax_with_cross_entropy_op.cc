@@ -153,7 +153,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
                           "Attr(axis) value should be in range [-R, R-1], "
                           "R is the rank of Input(Logits)."));
 
-    axis = CanonicalAxis(axis, logits_rank);
+    axis = phi::funcs::CanonicalAxis(axis, logits_rank);
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
@@ -250,7 +250,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
                           "Attr(axis) value should be in range [-R, R-1], "
                           "R is the rank of Input(Logits)."));
 
-    axis = CanonicalAxis(axis, softmax_rank);
+    axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
     for (int i = 0; i < softmax_rank; i++) {
       if (i != axis) {
         if (ctx->IsRuntime() || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {

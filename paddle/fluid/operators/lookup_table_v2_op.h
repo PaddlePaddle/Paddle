@@ -22,14 +22,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = pten::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
@@ -95,8 +95,8 @@ struct LookupTableV2CPUFunctor {
                  row_width * sizeof(T));
         }
       }
-    } else if (table_var->template IsType<pten::SelectedRows>()) {
-      const auto &table_t = table_var->template Get<pten::SelectedRows>();
+    } else if (table_var->template IsType<phi::SelectedRows>()) {
+      const auto &table_t = table_var->template Get<phi::SelectedRows>();
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().template data<T>();
       auto *output = output_t->template mutable_data<T>(context_.GetPlace());
@@ -124,7 +124,8 @@ struct LookupTableV2CPUFunctor {
             memcpy(output + i * row_width, table + id_index * row_width,
                    row_width * sizeof(T));
           } else {
-            auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context_);
+            auto blas =
+                phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context_);
             blas.VCOPY(row_width, table + id_index * row_width,
                        output + i * row_width);
           }
@@ -161,8 +162,8 @@ struct LookupTableV2GradCPUFunctor {
     DDim table_dim;
     if (table_var->template IsType<LoDTensor>()) {
       table_dim = context_.Input<LoDTensor>("W")->dims();
-    } else if (table_var->template IsType<pten::SelectedRows>()) {
-      auto *table_t = context_.Input<pten::SelectedRows>("W");
+    } else if (table_var->template IsType<phi::SelectedRows>()) {
+      auto *table_t = context_.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -181,7 +182,7 @@ struct LookupTableV2GradCPUFunctor {
     if (is_sparse) {
       auto *d_output = context_.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table =
-          context_.Output<pten::SelectedRows>(framework::GradVarName("W"));
+          context_.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
       d_table->set_rows(ids);
 
@@ -197,7 +198,7 @@ struct LookupTableV2GradCPUFunctor {
 
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "

@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/operators/softmax_op.h"
 
 namespace paddle {
 namespace operators {

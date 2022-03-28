@@ -30,7 +30,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
     bool check = true;
     if ((!ctx->IsRuntime()) &&
-        (framework::product(x_dims) <= 0 || framework::product(y_dims) <= 0)) {
+        (phi::product(x_dims) <= 0 || phi::product(y_dims) <= 0)) {
       check = false;
     }
     if (check) {
@@ -54,7 +54,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
       auto dims = ctx->GetInputDim("InsideWeight");
       bool check = true;
       if ((!ctx->IsRuntime()) &&
-          (framework::product(dims) <= 0 || framework::product(x_dims) <= 0)) {
+          (phi::product(dims) <= 0 || phi::product(x_dims) <= 0)) {
         check = false;
       }
       if (check) {
@@ -69,7 +69,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
       dims = ctx->GetInputDim("OutsideWeight");
       check = true;
       if ((!ctx->IsRuntime()) &&
-          (framework::product(dims) <= 0 || framework::product(x_dims) <= 0)) {
+          (phi::product(dims) <= 0 || phi::product(x_dims) <= 0)) {
         check = false;
       }
       if (check) {

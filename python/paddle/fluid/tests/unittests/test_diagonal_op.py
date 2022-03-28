@@ -30,6 +30,7 @@ paddle.enable_static()
 class TestDiagonalOp(OpTest):
     def setUp(self):
         self.op_type = "diagonal"
+        self.python_api = paddle.diagonal
         self.init_config()
         self.outputs = {'Out': self.target}
 
@@ -122,6 +123,25 @@ class TestDiagonalAPI(unittest.TestCase):
         out = paddle.diagonal(x_tensor)
         out_ref = np.diagonal(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        paddle.enable_static()
+
+    def test_api_eager(self):
+        paddle.disable_static(self.place)
+        with _test_eager_guard():
+            x_tensor = paddle.to_tensor(self.x)
+            out = paddle.diagonal(x_tensor)
+            out2 = paddle.diagonal(x_tensor, offset=0, axis1=2, axis2=1)
+            out3 = paddle.diagonal(x_tensor, offset=1, axis1=0, axis2=1)
+            out4 = paddle.diagonal(x_tensor, offset=0, axis1=1, axis2=2)
+        out_ref = np.diagonal(self.x)
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        out2_ref = np.diagonal(self.x, offset=0, axis1=2, axis2=1)
+        self.assertEqual(np.allclose(out2.numpy(), out2_ref, rtol=1e-08), True)
+        out3_ref = np.diagonal(self.x, offset=1, axis1=0, axis2=1)
+        self.assertEqual(np.allclose(out3.numpy(), out3_ref, rtol=1e-08), True)
+        out4_ref = np.diagonal(self.x, offset=0, axis1=1, axis2=2)
+        self.assertEqual(np.allclose(out4.numpy(), out4_ref, rtol=1e-08), True)
+
         paddle.enable_static()
 
     def test_api_eager_dygraph(self):

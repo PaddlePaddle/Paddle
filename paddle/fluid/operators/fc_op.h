@@ -29,7 +29,7 @@ inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
                          std::vector<int64_t>& out_dims,  // NOLINT
                          int in_num_col_dims, bool padding_weights) {
-  auto in_mat_dims = framework::flatten_to_2d(in_dims, in_num_col_dims);
+  auto in_mat_dims = phi::flatten_to_2d(in_dims, in_num_col_dims);
   auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
   auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
   PADDLE_ENFORCE_EQ(
@@ -40,7 +40,7 @@ inline void FCOutputSize(const framework::DDim& in_dims,
           "%d, input's shape is %s; weight's first dimension is %d, weight's "
           "shape is %s.",
           in_mat_dims[1], in_mat_dims, w_dims0,
-          framework::make_ddim({w_dims0, w_dims1})));
+          phi::make_ddim({w_dims0, w_dims1})));
 
   out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {
@@ -67,13 +67,13 @@ class FCOpKernel : public framework::OpKernel<T> {
     std::vector<int64_t> output_dims;
     FCOutputSize(input->dims(), w_dims, output_dims, in_num_col_dims,
                  padding_weights);
-    output->Resize(framework::make_ddim(output_dims));
+    output->Resize(phi::make_ddim(output_dims));
     output->set_lod(input->lod());
 
     auto out_dims = output->dims();
     auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
     auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
-    int M = framework::product(out_dims) / w_dims1;
+    int M = phi::product(out_dims) / w_dims1;
 
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -47,12 +48,9 @@ struct DistModelConfig {
   std::string current_endpoint{};
   int64_t nranks{1};
   int64_t local_rank{0};
-  int64_t mp_degree{1};
-  int64_t pp_degree{1};
-  int64_t mp_ring_id{-1};
-  int64_t pp_upstream_ring_id{-1};
-  int64_t pp_downstream_ring_id{-1};
   bool enable_timer{false};
+  std::map<int64_t, std::vector<int64_t>> ring_id_to_ranks_{};
+  std::map<int64_t, std::vector<int64_t>> rank_to_ring_ids_{};
 };
 
 class DistModel {

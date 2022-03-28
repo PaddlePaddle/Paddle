@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/where_index_op.h"
+#include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -75,7 +78,7 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
                                       &local_true_num);
     auto true_num = *local_true_num.data<int64_t>();
 
-    out->Resize(framework::make_ddim({true_num, rank}));
+    out->Resize(phi::make_ddim({true_num, rank}));
     out->mutable_data<int64_t>(place);
 
     if (true_num == 0) {

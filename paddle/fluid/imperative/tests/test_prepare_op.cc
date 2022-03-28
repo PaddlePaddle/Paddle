@@ -24,6 +24,13 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(split, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(relu, GPU, ALL_LAYOUT);
+#endif
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -104,7 +111,7 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
 TEST(test_prepare_op, test_get_tensor_from_var) {
   std::shared_ptr<imperative::VarBase> vout_error(
       new imperative::VarBase(false, "vout_error"));
-  vout_error->MutableVar()->GetMutable<pten::SelectedRows>();
+  vout_error->MutableVar()->GetMutable<phi::SelectedRows>();
   auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
 }
@@ -124,7 +131,7 @@ TEST(test_prepare_op, test_prepare_data) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
-  vin_tensor->Resize(framework::make_ddim(dims));
+  vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());
@@ -173,7 +180,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
-  vin_tensor->Resize(framework::make_ddim(dims));
+  vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());
@@ -226,7 +233,7 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 }  // namespace paddle
 
 USE_OP_ITSELF(split);
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 #ifdef PADDLE_WITH_MKLDNN
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 #endif

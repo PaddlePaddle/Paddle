@@ -25,20 +25,20 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/api/lib/api_declare.h"
-#include "paddle/pten/api/lib/ext_compat_utils.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/lib/ext_compat_utils.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -134,7 +134,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "is not initialized.",
                               i, in_name));
         paddle::experimental::Tensor custom_t;
-        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*x));
+        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
@@ -146,7 +146,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
-      custom_in.set_impl(std::make_shared<pten::DenseTensor>(*x));
+      custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
       kernel_ctx.EmplaceBackInput(std::move(custom_in));
     }
   }
@@ -211,7 +211,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
         true_out_ptrs.emplace_back(out);
         paddle::experimental::Tensor custom_t;
         // here only can copy the output tensor into context
-        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*out));
+        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
       kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
@@ -223,7 +223,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       true_out_ptrs.emplace_back(out);
       paddle::experimental::Tensor custom_out;
       // here only can copy the output tensor into context
-      custom_out.set_impl(std::make_shared<pten::DenseTensor>(*out));
+      custom_out.set_impl(std::make_shared<phi::DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));
     }
   }
@@ -244,9 +244,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     for (size_t i = 0; i < true_out_ptrs.size(); ++i) {
       auto* true_out = true_out_ptrs.at(i);
       auto calc_out =
-          std::dynamic_pointer_cast<pten::DenseTensor>(calc_outs->at(i).impl());
+          std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
       // assgin meta info
-      auto* true_out_meta = pten::DenseTensorUtils::GetMutableMeta(true_out);
+      auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
@@ -285,13 +285,13 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
       std::transform(vec_ddim.begin(), vec_ddim.end(),
                      std::back_inserter(vec_shape),
                      [&](const DDim& ddim) -> std::vector<int64_t> {
-                       return framework::vectorize(ddim);
+                       return phi::vectorize(ddim);
                      });
       vec_input_shapes.emplace_back(vec_shape);
     } else {
       OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
       auto ddim = ctx->GetInputDim(in_name);
-      input_shapes.emplace_back(framework::vectorize(ddim));
+      input_shapes.emplace_back(phi::vectorize(ddim));
     }
   }
 
@@ -347,11 +347,11 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
       std::transform(output_shapes.begin(), output_shapes.end(),
                      std::back_inserter(vec_ddim),
                      [&](const std::vector<int64_t>& shape) -> DDim {
-                       return framework::make_ddim(shape);
+                       return phi::make_ddim(shape);
                      });
       ctx->SetOutputsDim(out_name, vec_ddim);
     } else {
-      ctx->SetOutputDim(out_name, framework::make_ddim(output_shapes[i]));
+      ctx->SetOutputDim(out_name, phi::make_ddim(output_shapes[i]));
     }
   }
 }
@@ -779,13 +779,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
             auto dtype = ctx->GetInputDataType(in_name, i);
             vec_custom_dtype.emplace_back(
-                paddle::framework::TransToPtenDataType(dtype));
+                paddle::framework::TransToPhiDataType(dtype));
           }
           vec_input_dtypes.emplace_back(vec_custom_dtype);
         } else {
           auto dtype = ctx->GetInputDataType(in_name);
           input_dtypes.emplace_back(
-              paddle::framework::TransToPtenDataType(dtype));
+              paddle::framework::TransToPhiDataType(dtype));
         }
       }
 
@@ -946,15 +946,16 @@ void RegisterOperatorWithMetaInfoMap(
 ////////////////////// User APIs ///////////////////////
 
 // load op api
-void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
+const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
-
   RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
+  return op_meta_info_map.GetMap();
 }
 
 }  // namespace framework

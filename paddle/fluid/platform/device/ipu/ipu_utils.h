@@ -19,6 +19,7 @@ limitations under the License. */
 #include <popart/tensorinfo.hpp>
 #include <popart/vendored/any.hpp>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -83,14 +84,15 @@ class PaddleIArray final : public popart::IArray {
 };
 
 popart::DataType VarType2PopartType(const framework::proto::VarType::Type type);
+popart::DataType PdDataType2PopartType(
+    const paddle::experimental::DataType type);
 framework::proto::VarType::Type PopartType2VarType(const popart::DataType type);
 popart::DataType OnnxDtype2PopartType(const int type);
 bool GetBoolEnv(std::string str);
 
 template <typename T>
 std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor& tensor) {
-  auto dtype =
-      VarType2PopartType(framework::TransToProtoVarType(tensor.dtype()));
+  auto dtype = PdDataType2PopartType(tensor.dtype());
   auto shape = std::vector<int64_t>();
   for (size_t i = 0; i < tensor.dims().size(); ++i) {
     shape.push_back(tensor.dims().at(i));

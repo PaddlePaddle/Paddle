@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -124,6 +125,8 @@ struct BuildStrategy {
   paddle::optional<bool> fuse_broadcast_ops_{paddle::none};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
+  // Fuse GEMM+Epilogue via cublasLt epilogue.
+  bool fuse_gemm_epilogue_{false};
 
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means

@@ -23,8 +23,8 @@
 #endif
 
 #include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/infermeta/unary.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -66,8 +66,8 @@ class ConjGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(conj, ConjInferShapeFunctor,
-                            PT_INFER_META(pten::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(conj, ConjInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
                   ops::ConjGradMaker<paddle::framework::OpDesc>,
                   ops::ConjGradMaker<paddle::imperative::OpBase>,

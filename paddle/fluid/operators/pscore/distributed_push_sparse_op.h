@@ -13,12 +13,11 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,22 +31,20 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto padding_idx = context.Attr<int64_t>("padding_idx");
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim = context.Attr<int>("size");
-    VLOG(1) << "push_sparse.h::emb_dim: " << emb_dim;
+    auto use_cvm_op = context.Attr<bool>("use_cvm_op");
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto shows = context.Input<framework::LoDTensor>("Shows");
     auto clks = context.Input<framework::LoDTensor>("Clicks");
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
-    // auto fleet = distributed::FleetWrapper::GetInstance();
-    auto *communicator = (distributed::AsyncCommunicator *)
-        distributed::Communicator::GetInstance();
+    auto fleet = distributed::FleetWrapper::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      communicator->PushSparseFromTensorAsync(
-          static_cast<uint64_t>(table_id), emb_dim,
-          static_cast<uint64_t>(padding_idx), context.GetPlace(), &inputs,
-          shows, clks, &outputs);
+      fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
+                                       static_cast<uint64_t>(padding_idx),
+                                       context.GetPlace(), &inputs, shows, clks,
+                                       &outputs, use_cvm_op);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -94,7 +91,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      communicator->PushSparseFromTensorAsync(
+      fleet->PushSparseFromTensorAsync(
           static_cast<uint64_t>(table_id), emb_dim,
           static_cast<uint64_t>(padding_idx), context.GetPlace(),
           &tmp_input_vec, tmp_shows_tensor, tmp_clicks_tensor, &tmp_output_vec);

@@ -26,7 +26,7 @@ from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
-from .framework import in_dygraph_mode
+from .framework import _non_static_mode
 from .layer_helper import LayerHelper
 from .framework import default_main_program
 from paddle import _C_ops
@@ -36,18 +36,41 @@ __all__ = [
     'ClipGradByNorm', 'ClipGradByGlobalNorm'
 ]
 
+_clip_by_global_norm_using_mp_type_flag = False
+
+
+def _clip_by_global_norm_using_mp_type(*args):
+    global _clip_by_global_norm_using_mp_type_flag
+    assert len(args) <= 1
+    if len(args) == 1:
+        assert isinstance(args[0], bool)
+        old_value = _clip_by_global_norm_using_mp_type_flag
+        _clip_by_global_norm_using_mp_type_flag = args[0]
+        return old_value
+    else:
+        return _clip_by_global_norm_using_mp_type_flag
+
+
+def _cast_to_mp_type_if_enabled(x):
+    if x.dtype == core.VarDesc.VarType.FP16 and _clip_by_global_norm_using_mp_type(
+    ):
+        return x.astype(core.VarDesc.VarType.FP32)
+    else:
+        return x
+
 
 def _squared_l2_norm(x):
     r"""
     This OP returns the squared L2 norm of a tensor.
     """
 
+    x = _cast_to_mp_type_if_enabled(x)
     if core.is_compiled_with_xpu() or x.dtype == core.VarDesc.VarType.FP16:
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
@@ -160,7 +183,7 @@ class ClipGradBase(object):
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             return self._dygraph_clip(params_grads)
         else:
             for p, g in params_grads:
@@ -595,9 +618,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     continue
 
                 with p.block.program._optimized_guard([p, g]):
+                    new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    scale_input = (scale_var.astype('float16')
-                                   if g.dtype == core.VarDesc.VarType.FP16 and
+                    scale_input = (scale_var.astype('float16') if
+                                   new_g.dtype == core.VarDesc.VarType.FP16 and
                                    scale_var.dtype != core.VarDesc.VarType.FP16
                                    else scale_var)
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
@@ -607,9 +631,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     block = default_main_program().current_block()
                     block.append_op(
                         type='elementwise_mul',
-                        inputs={'X': g,
+                        inputs={'X': new_g,
                                 'Y': scale_input},
-                        outputs={'Out': g})
+                        outputs={'Out': new_g})
+                    if new_g is not g:
+                        block.append_op(
+                            type='cast',
+                            inputs={'X': new_g},
+                            outputs={'Out': g},
+                            attrs={
+                                'in_dtype': new_g.dtype,
+                                'out_dtype': g.dtype
+                            })
 
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))

@@ -26,7 +26,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/selected_rows.h"
+#include "paddle/phi/core/selected_rows.h"
 namespace paddle {
 namespace imperative {
 
@@ -47,7 +47,7 @@ void InitializeVariable(paddle::framework::Variable *var,
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     var->GetMutable<paddle::framework::LoDTensor>();
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<pten::SelectedRows>();
+    var->GetMutable<phi::SelectedRows>();
   } else if (var_type == paddle::framework::proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<paddle::framework::FeedList>();
   } else if (var_type == paddle::framework::proto::VarType::FETCH_LIST) {
@@ -83,8 +83,8 @@ const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {
   paddle::framework::Variable variable = var->Var();
   if (variable.IsType<paddle::framework::LoDTensor>()) {
     return variable.Get<paddle::framework::LoDTensor>().place();
-  } else if (variable.IsType<pten::SelectedRows>()) {
-    return variable.Get<pten::SelectedRows>().place();
+  } else if (variable.IsType<phi::SelectedRows>()) {
+    return variable.Get<phi::SelectedRows>().place();
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Variable type is %s, expect LoDTensor or SelectedRows.",
@@ -128,7 +128,7 @@ void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
       break;
     }
     case paddle::framework::proto::VarType::SELECTED_ROWS: {
-      var->MutableVar()->GetMutable<pten::SelectedRows>();
+      var->MutableVar()->GetMutable<phi::SelectedRows>();
       break;
     }
     default: {
@@ -170,15 +170,15 @@ framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var) {
 template <>
 framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var) {
-  if (var->Var().IsType<pten::SelectedRows>()) {
+  if (var->Var().IsType<phi::SelectedRows>()) {
     return framework::TransToProtoVarType(
-        var->Var().Get<pten::SelectedRows>().value().type());
+        var->Var().Get<phi::SelectedRows>().value().type());
   } else if (var->Var().IsType<framework::LoDTensor>()) {
     return framework::TransToProtoVarType(
         var->Var().Get<framework::LoDTensor>().type());
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "We only support pten::SelectedRows and framework::LoDTensor in "
+        "We only support phi::SelectedRows and framework::LoDTensor in "
         "eager mode, but we got %s here, please checkout your var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),

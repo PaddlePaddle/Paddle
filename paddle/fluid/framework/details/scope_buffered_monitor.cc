@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -33,9 +33,9 @@ static void GetTensors(Variable *var,
                        std::unordered_set<Tensor *> *tensor_set) {
   if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
     tensor_set->insert(var->GetMutable<LoDTensor>());
-  } else if (var->IsType<pten::SelectedRows>() &&
-             var->Get<pten::SelectedRows>().value().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<pten::SelectedRows>()->mutable_value());
+  } else if (var->IsType<phi::SelectedRows>() &&
+             var->Get<phi::SelectedRows>().value().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<phi::SelectedRows>()->mutable_value());
   } else if (var->IsType<LoDTensorArray>()) {
     auto *tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto &t : *tensor_arr) {
@@ -91,7 +91,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
                                  bool has_fetch) {
   std::unique_ptr<platform::RecordEvent> pre_local_exec_scopes_event(
       new platform::RecordEvent(
-          "ScopeBufferedMonitor::pre_local_exec_scopes_process"));
+          "ScopeBufferedMonitor::pre_local_exec_scopes_process",
+          platform::TracerEventType::UserDefined, 2));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     pre_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -105,7 +106,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
 
   std::unique_ptr<platform::RecordEvent> post_local_exec_scopes_event(
       new platform::RecordEvent(
-          "ScopeBufferedMonitor::post_local_exec_scopes_process"));
+          "ScopeBufferedMonitor::post_local_exec_scopes_process",
+          platform::TracerEventType::UserDefined, 2));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     post_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();

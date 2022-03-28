@@ -53,6 +53,7 @@ option(WITH_IPU         "Compile PaddlePaddle with Graphcore IPU"    OFF)
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
+option(WITH_ONNXRUNTIME         "Compile PaddlePaddle with ONNXRUNTIME"          OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic)            # simplify cmake module
@@ -238,7 +239,8 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
-option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_PYPI   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_ALL   "PaddlePaddle next-level release strategy for all arches cubin package"             OFF)
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
@@ -329,6 +331,7 @@ if(WITH_BRPC_RDMA)
         message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
 endif()
+
 
 if(WITH_GPU)
     include(cuda)

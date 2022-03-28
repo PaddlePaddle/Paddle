@@ -20,7 +20,6 @@ import logging
 import functools
 import numpy as np
 from itertools import chain
-from functools import reduce
 from types import MethodType
 from collections import deque, OrderedDict
 
@@ -28,9 +27,9 @@ import paddle
 from paddle import nn
 from paddle.autograd import PyLayer
 import paddle.fluid.core as core
-import paddle.distributed as dist
 from paddle.fluid.framework import ParamBase
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.distributed import collective as dist
 from paddle.distributed.collective import _get_global_group
 
 from .sharding_utils import Type, ShardingClipGrad, device_guard
@@ -72,7 +71,6 @@ class ShardingStage3(nn.Layer):
                  device="gpu",
                  segment_size=2**15,
                  pertrain_sync_models=True,
-                 accumulate_grads=False,
                  offload=False,
                  sync_comm=False):
         super().__init__()
@@ -82,10 +80,10 @@ class ShardingStage3(nn.Layer):
         self._layer = layer
         self._default_device = device
         self.__sync_buffers = sync_buffers
-        self._accumulate_grads = accumulate_grads
         self._offload = offload
         self._sync_comm = sync_comm
         # segmentation size
+        assert segment_size >= 0, "segment_size must be GE than 0."
         self._segment_size = segment_size
 
         global DEV
@@ -103,7 +101,8 @@ class ShardingStage3(nn.Layer):
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
-        self._global_root_rank = 0  # picking rank 0 as the reference
+        self._global_root_rank = self._group.ranks[
+            0]  # picking rank 0 as the reference
         self._global_ranks = self._group.ranks
 
         # Parameter segmentation for global ranks
@@ -159,7 +158,7 @@ class ShardingStage3(nn.Layer):
         self._redefine_opt_step()
         self._redefine_opt_clear()
 
-    @paddle.no_grad()
+    @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
         """
         Sync all model states for all ranks
@@ -190,6 +189,7 @@ class ShardingStage3(nn.Layer):
             param.fw_storage.clear_gradient(False)
             param.fw_storage._gradient_set_empty(False)
             param.bw_storage._clear()
+            param.bw_storage = None
         # 2.Handle unslice param
         if not self._offload:
             for grad_storage in self._grad_storages.values():
@@ -247,6 +247,17 @@ class ShardingStage3(nn.Layer):
         fw = self._layer(*inputs, **kwargs)
 
         return fw
+
+    def set_state_dict(self, state_dict, use_structured_name=True):
+        self._layer.set_state_dict(
+            state_dict, use_structured_name=use_structured_name)
+
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
+        return self._layer.state_dict(
+            destination=None, include_sublayers=True, structured_name_prefix="")
 
     def _handle_unslice_params(self):
         buffer_size = dict()
@@ -408,7 +419,7 @@ class ShardingStage3(nn.Layer):
         # register post forward hooks
         sub_layer.register_forward_post_hook(_forward_post_hook)
 
-    @paddle.no_grad()
+    @paddle.autograd.no_grad()
     def _sync_buffers(self):
         """
         Sync all the param buffers from all ranks (exp: batch norm statistics).
@@ -446,13 +457,12 @@ class ShardingStage3(nn.Layer):
                 param,
                 "fw_storage"), "Find {} don't have fw_storage attribute".format(
                     param.name)
-
-            if self._accumulate_grads:
-                if self._offload:
-                    with device_guard(device="cpu"):
-                        param.bw_storage.scale_(scale=self._world_size_scaling)
-                else:
+            # Gradient average
+            if self._offload:
+                with device_guard(device="cpu"):
                     param.bw_storage.scale_(scale=self._world_size_scaling)
+            else:
+                param.bw_storage.scale_(scale=self._world_size_scaling)
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
@@ -522,12 +532,10 @@ class ShardingStage3(nn.Layer):
             param._register_backward_hook(allreduce_function)
 
     def _get_allreduce_fn(self, param):
-        @paddle.no_grad()
-        def reduce(*_):
+        @paddle.autograd.no_grad()
+        def allreduce_(*_):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
-                if not self._accumulate_grads:
-                    full_grad.scale_(scale=self._world_size_scaling)
                 # Only support sync allreduce current rank's layer now
                 dist.all_reduce(
                     tensor=full_grad, group=self._group, use_calc_stream=True)
@@ -535,8 +543,7 @@ class ShardingStage3(nn.Layer):
                     tensor=full_grad, group=self._group, use_calc_stream=True)
 
                 start, end = self._param2buffer[param.name][self._rank]
-                if not self._accumulate_grads or param.bw_storage is None or not param.bw_storage.value(
-                ).get_tensor()._is_initialized():
+                if param.bw_storage is None:
                     param.bw_storage = core.VarBase(
                         full_grad._slice(start, end)).detach().clone()
                     if self._offload:
@@ -576,7 +583,7 @@ class ShardingStage3(nn.Layer):
                     if self._offload:
                         param.fw_storage = _device2cpu(param.fw_storage, True)
 
-        return reduce
+        return allreduce_
 
     def _param2align(self, param):
         # CUDA alignment 256 bytes
@@ -844,7 +851,7 @@ def _allgather_buffer(trainable_params,
     return task_flow
 
 
-@paddle.no_grad()
+@paddle.autograd.no_grad()
 def _create_params_grad(trainable_params, param2buffer_size, task_flow):
     for param in trainable_params:
         if param.name in task_flow.full_grad.keys():
@@ -905,7 +912,6 @@ def _device2cpu(trans_param, convert_dtype=False):
 
 def _cpu2device(param):
     tmp_p = param.fw_storage.cuda(DEV_ID)
-    param.fw_storage._clear()
     if tmp_p.dtype == Type.fp32.value and param2dtype[
             param.name] == Type.fp16.value:
         tmp_p = paddle.cast(tmp_p, Type.fp16.value)

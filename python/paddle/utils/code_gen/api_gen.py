@@ -15,22 +15,71 @@
 import os
 import yaml
 import argparse
+import re
 
 from api_base import BaseAPI
 
 
 class ForwardAPI(BaseAPI):
-    prefix_tensor_name = 'dense_'
-
     def __init__(self, api_item_yaml):
         super(ForwardAPI, self).__init__(api_item_yaml)
+        self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
+            api_item_yaml)
+
+    def get_api_func_name(self):
+        if self.is_dygraph_api:
+            return self.api + '_intermediate'
+        else:
+            return self.api
+
+    def parse_intermediate(self, api_item_yaml):
+        if 'intermediate' in api_item_yaml:
+            intermediate_outs = [
+                item.strip()
+                for item in api_item_yaml['intermediate'].split(',')
+            ]
+            return True, intermediate_outs
+        else:
+            return False, []
 
     def get_return_type(self, out_type_list):
         return out_type_list[0] if len(
             out_type_list) == 1 else "std::tuple<" + ",".join(
                 out_type_list) + ">"
 
-    def gene_output(self, output_type_list, set_out_func, code_indent):
+    def gene_return_type_code(self):
+        if self.is_dygraph_api or len(self.intermediate_outs) == 0:
+            return self.outputs['return_type']
+        else:
+            return_out_list = []
+            for i, name in enumerate(self.outputs['names']):
+                if name not in self.intermediate_outs:
+                    return_out_list.append(self.outputs['types'][i])
+            return return_out_list[0] if len(
+                return_out_list) == 1 else "std::tuple<" + ",".join(
+                    return_out_list) + ">"
+
+    def gene_return_code(self):
+        if self.is_dygraph_api or len(self.intermediate_outs) == 0:
+            return "api_output"
+        else:
+            return_out_list = []
+            for i, name in enumerate(self.outputs['names']):
+                if name not in self.intermediate_outs:
+                    return_out_list.append(i)
+            if len(return_out_list) == 1:
+                return f"std::get<{return_out_list[0]}>(api_output)"
+            else:
+                selected_code = [
+                    f"std::get<{i}>(api_output)" for i in return_out_list
+                ]
+            return '{' + ", ".join(selected_code) + '}'
+
+    def gene_output(self,
+                    output_type_list,
+                    set_out_func,
+                    code_indent,
+                    inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
@@ -38,19 +87,27 @@ class ForwardAPI(BaseAPI):
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;"""
+{code_indent}  {self.outputs['return_type']} api_output;"""
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
+                if inplace_flag and self.inplace_map is not None and self.outputs[
+                        'names'][i] in self.inplace_map:
+                    output_create = output_create + f"""
+{code_indent}  std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
+
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(out));"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(api_output));"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -65,9 +122,10 @@ def header_include():
     return """
 #include <tuple>
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 """
 
 
@@ -78,23 +136,19 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/lib/api_registry.h"
-#include "paddle/pten/api/lib/api_utils.h"
-#include "paddle/pten/api/lib/data_transform.h"
-#include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/infermeta/multiary.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/declarations.h"
-"""
+#include "paddle/phi/api/lib/api_custom_impl.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/ternary.h"
 
-
-def api_register():
-    return """
-PT_REGISTER_API(Math);
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
 
@@ -123,20 +177,20 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/api/include/api.h"
+    include_header_file = "paddle/phi/api/include/api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
     for api in apis:
-        api_code = ForwardAPI(api)
-        print(api_code.gene_api_declaration())
-        header_file.write(api_code.gene_api_declaration())
-        source_file.write(api_code.gene_api_code())
+        foward_api = ForwardAPI(api)
+        if foward_api.is_dygraph_api:
+            foward_api.is_dygraph_api = False
+
+        header_file.write(foward_api.gene_api_declaration())
+        source_file.write(foward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    source_file.write(api_register())
 
     header_file.close()
     source_file.close()
@@ -149,15 +203,16 @@ def main():
         '--api_yaml_path',
         help='path to api yaml file',
         default='python/paddle/utils/code_gen/api.yaml')
+
     parser.add_argument(
         '--api_header_path',
         help='output of generated api header code file',
-        default='paddle/pten/api/include/api.h')
+        default='paddle/phi/api/include/api.h')
 
     parser.add_argument(
         '--api_source_path',
         help='output of generated api source code file',
-        default='paddle/pten/api/lib/api.cc')
+        default='paddle/phi/api/lib/api.cc')
 
     options = parser.parse_args()
 

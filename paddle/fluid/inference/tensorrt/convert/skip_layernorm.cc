@@ -47,8 +47,8 @@ class SkipLayerNormOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
-    int bias_size = framework::product(bias_dims);
-    int scale_size = framework::product(scale_dims);
+    int bias_size = phi::product(bias_dims);
+    int scale_size = phi::product(scale_dims);
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     nvinfer1::ILayer* layer = nullptr;
@@ -105,7 +105,7 @@ class SkipLayerNormOpConverter : public OpConverter {
                               "in CustomSkipLayerNormPluginDynamic hidden "
                               "dimension should > 0"));
         if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kINT8);
+          type = static_cast<int>(nvinfer1::DataType::kHALF);
         }
 
         const std::vector<nvinfer1::PluginField> fields{

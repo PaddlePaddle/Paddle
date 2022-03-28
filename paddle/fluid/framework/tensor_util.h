@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -174,7 +174,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
+    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -239,7 +239,7 @@ void TensorFromVector(const std::vector<T>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
+    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -316,7 +316,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
+    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -512,6 +512,6 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod);
 }  // namespace framework
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 std::ostream& operator<<(std::ostream& os, const DenseTensor& t);
 }

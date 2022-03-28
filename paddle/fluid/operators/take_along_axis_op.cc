@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/take_along_axis_op.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -139,16 +140,3 @@ REGISTER_OPERATOR(take_along_axis, ops::TakeAlongAxisOp,
                   ops::TakeAlongAxisGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(take_along_axis_grad, ops::TakeAlongAxisGradOp);
-
-REGISTER_OP_CPU_KERNEL(take_along_axis, ops::TakeAlongAxisOpKernel<float>,
-                       ops::TakeAlongAxisOpKernel<double>,
-                       ops::TakeAlongAxisOpKernel<int>,
-                       ops::TakeAlongAxisOpKernel<uint8_t>,
-                       ops::TakeAlongAxisOpKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(take_along_axis_grad,
-                       ops::TakeAlongAxisGradOpKernel<float>,
-                       ops::TakeAlongAxisGradOpKernel<double>,
-                       ops::TakeAlongAxisGradOpKernel<int>,
-                       ops::TakeAlongAxisGradOpKernel<uint8_t>,
-                       ops::TakeAlongAxisGradOpKernel<int64_t>);

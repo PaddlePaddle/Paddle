@@ -1,11 +1,12 @@
 # A image for building paddle binaries
-# docker build -f Dockerfile.ipu -t paddlepaddle/paddle:latest-ipu-dev .
 
-# /usr/bin/docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK \
-# --device=/dev/infiniband/ --ipc=host --name paddle-with-dev -v $PWD:/paddle \
-# -it paddlepaddle/paddle:latest-ipu-dev /bin/bash
+# build docker image
+# docker build -t paddlepaddle/paddle:ipu-dev-2.3.0 -f tools/dockerfile/Dockerfile.ipu .
 
-FROM graphcore/poplar:latest
+# run a container
+# docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --rm -it paddlepaddle/paddle:ipu-dev-2.3.0 bash
+
+FROM graphcore/poplar:2.3.0
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables

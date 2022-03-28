@@ -14,9 +14,10 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable, _dygraph_tracer
+from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-
+from ..static import Variable
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
 import paddle
@@ -133,7 +134,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
     """
     op_type = 'matmul_v2'
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         op = getattr(_C_ops, op_type)
         return op(x, y, 'trans_x', transpose_x, 'trans_y', transpose_y)
 
@@ -146,7 +147,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
             check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
+                val, name,
+                ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+                'matmul')
 
     __check_input(x, y)
 
@@ -245,7 +248,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
                                              'reduce_all', True)
@@ -282,7 +285,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           axis (int, optional): None for last dimension.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             if axis is None: axis = -1
             return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
                                  'keepdim', keepdim, 'asvector', asvector)
@@ -642,7 +645,7 @@ def cond(x, p=None, name=None):
         axis = axis if axis != None and axis != [] else [0]
         keepdim = False
 
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             abs_out = _C_ops.abs(input)
             sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
                                         keepdim, 'reduce_all', reduce_all)
@@ -699,7 +702,7 @@ def cond(x, p=None, name=None):
         reduce_all = True if axis is None or axis == [] else False
         keepdim = False
 
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
             sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
                                           keepdim, 'reduce_all', reduce_all)
@@ -753,7 +756,7 @@ def cond(x, p=None, name=None):
 
         u, s, vh = svd(input, full_matrices=False)
 
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             if porder == "nuc":
                 return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
                                          'reduce_all', reduce_all)
@@ -820,7 +823,7 @@ def cond(x, p=None, name=None):
             return out
 
     def empty_tensor(input, shape):
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             return input.reshape(shape)
         raise ValueError("only support x is nonempty tensor in static mode")
 
@@ -895,7 +898,7 @@ def dot(x, y, name=None):
     """
     op_type = 'dot'
     # skip var type check in dygraph mode to improve efficiency
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         op = getattr(_C_ops, op_type)
         return op(x, y)
 
@@ -1079,7 +1082,7 @@ def t(input, name=None):
             "Input(input) only support N-D (N<=2) tensor, but received "
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape))
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         if len(input.shape) == 1:
             return input
         # 2-D tensor
@@ -1145,23 +1148,26 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]]
     """
     if in_dygraph_mode():
-        if axis is not None:
-            return _C_ops.cross(x, y, 'dim', axis)
+        return _C_ops.final_state_cross(x, y, axis)
+    else:
+        if _in_legacy_dygraph():
+            if axis is not None:
+                return _C_ops.cross(x, y, 'dim', axis)
+            else:
+                return _C_ops.cross(x, y)
         else:
-            return _C_ops.cross(x, y)
+            helper = LayerHelper("cross", **locals())
+            out = helper.create_variable_for_type_inference(x.dtype)
+            attrs = dict()
+            attrs['dim'] = axis
 
-    helper = LayerHelper("cross", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    attrs = dict()
-    attrs['dim'] = axis
-
-    helper.append_op(
-        type='cross',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+            helper.append_op(
+                type='cross',
+                inputs={'X': x,
+                        'Y': y},
+                outputs={'Out': out},
+                attrs=attrs)
+            return out
 
 
 def cholesky(x, upper=False, name=None):
@@ -1203,7 +1209,7 @@ def cholesky(x, upper=False, name=None):
             #  [1.25450498 0.05600871 0.06400121]]
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
@@ -1257,7 +1263,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         if tol is None:
             tol_tensor = None
             tol_attr = 0.0
@@ -1355,7 +1361,7 @@ def bmm(x, y, name=None):
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.bmm(x, y)
 
     helper = LayerHelper('bmm', **locals())
@@ -1388,7 +1394,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
@@ -1435,7 +1441,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1489,32 +1495,37 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
     """
     if in_dygraph_mode():
-        out = _C_ops.mv(x, vec)
-        return out
+        return _C_ops.final_state_mv(x, vec)
+    else:
+        if _in_legacy_dygraph():
+            out = _C_ops.mv(x, vec)
+            return out
+        else:
 
-    def __check_input(x, vec):
-        var_names = {'x': x, 'vec': vec}
-        for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'], 'mv')
-        x_shape = list(x.shape)
-        vec_shape = list(vec.shape)
-        if len(x_shape) != 2:
-            raise ValueError(
-                "x should be 2-dimensional. But received x's dimention: {}".
-                format(x_shape))
-        if len(vec_shape) != 1:
-            raise ValueError(
-                "vec should be 1-dimensional. But received vec's dimention: {}".
-                format(vec_shape))
+            def __check_input(x, vec):
+                var_names = {'x': x, 'vec': vec}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(val, name, ['float32', 'float64'],
+                                             'mv')
+                x_shape = list(x.shape)
+                vec_shape = list(vec.shape)
+                if len(x_shape) != 2:
+                    raise ValueError(
+                        "x should be 2-dimensional. But received x's dimention: {}".
+                        format(x_shape))
+                if len(vec_shape) != 1:
+                    raise ValueError(
+                        "vec should be 1-dimensional. But received vec's dimention: {}".
+                        format(vec_shape))
 
-    __check_input(x, vec)
+            __check_input(x, vec)
 
-    helper = LayerHelper('mv', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='mv', inputs={'X': x,
-                           'Vec': vec}, outputs={'Out': out})
-    return out
+            helper = LayerHelper('mv', **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='mv', inputs={'X': x,
+                                   'Vec': vec}, outputs={'Out': out})
+            return out
 
 
 def det(x, name=None):
@@ -1541,7 +1552,7 @@ def det(x, name=None):
 
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.determinant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
@@ -1596,7 +1607,7 @@ def slogdet(x, name=None):
         # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -1669,7 +1680,7 @@ def svd(x, full_matrices=False, name=None):
             #                  V * VH == I
     """
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.svd(x, 'full_matrices', full_matrices)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
     check_type(full_matrices, 'full_matrices', bool, 'svd')
@@ -1744,7 +1755,7 @@ def matrix_power(x, n, name=None):
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
@@ -1801,7 +1812,7 @@ def qr(x, mode="reduced", name=None):
             
             # one can verify : X = Q * R ;     
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         q, r = _C_ops.qr(x, 'mode', mode)
         if mode == "r":
             return r
@@ -1900,7 +1911,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
             # one can verify : X = P @ L @ U ;     
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         LU, Piv, Info = _C_ops.lu(x, 'pivots', pivot)
         if get_infos:
             return LU, Piv, Info
@@ -1997,7 +2008,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
             # one can verify : X = P @ L @ U ;   
     """
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
                                    'unpack_pivots', unpack_pivots)
         return P, L, U
@@ -2070,7 +2081,7 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         w, v = _C_ops.eig(x)
         return w, v
 
@@ -2139,7 +2150,7 @@ def eigvals(x, name=None):
             "The last two dimensions of Input(x) should be equal, but received x's shape = {}".
             format(x_shape))
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.eigvals(x)
 
     helper = LayerHelper('eigvals', **locals())
@@ -2210,7 +2221,7 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.multi_dot(x)
 
     check_type(x, 'x', (list, tuple), 'multi_dot')
@@ -2262,7 +2273,7 @@ def eigh(x, UPLO='L', name=None):
             #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.eigh(x, 'UPLO', UPLO)
 
     def __check_input(x, UPLO):
@@ -2361,7 +2372,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # or              out * x * out = x ;
     """
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, 'full_matrices', False)
@@ -2611,7 +2622,7 @@ def solve(x, y, name=None):
         print(out)
         # [2., 3.])
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.solve(x, y)
 
     inputs = {"X": [x], "Y": [y]}
@@ -2675,7 +2686,7 @@ def triangular_solve(x,
         print(out)
         # [7, -2, -5]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, 'upper', upper, 'transpose',
                                        transpose, 'unitriangular',
                                        unitriangular)
@@ -2732,7 +2743,7 @@ def cholesky_solve(x, y, upper=False, name=None):
         print(out)
         # [-2.5, -7, 9.5]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
 
     helper = LayerHelper("cholesky_solve", **locals())
@@ -2776,7 +2787,7 @@ def eigvalsh(x, UPLO='L', name=None):
             print(out_value)
             #[0.17157288, 5.82842712]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
@@ -2791,7 +2802,7 @@ def eigvalsh(x, UPLO='L', name=None):
             raise ValueError(
                 "The input matrix must be batches of square matrices. But received x's dimention: {}".
                 format(x_shape))
-        if UPLO is not 'L' and UPLO is not 'U':
+        if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
                 "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
 
@@ -2904,7 +2915,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
                                                        "driver", driver)
         if x.shape[-2] > x.shape[-1]:

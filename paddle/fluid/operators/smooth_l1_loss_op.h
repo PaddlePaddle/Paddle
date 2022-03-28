@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -92,8 +92,8 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
     auto loss = EigenVector<T>::Flatten(*out1);
     // first dimension of 'X' is the number of samples
     auto mat_dims =
-        framework::make_ddim({static_cast<int>(in0->dims()[0]),
-                              static_cast<int>(in_counts / in0->dims()[0])});
+        phi::make_ddim({static_cast<int>(in0->dims()[0]),
+                        static_cast<int>(in_counts / in0->dims()[0])});
     auto errors_mat_view = EigenMatrix<T>::From(ptensor_errors, mat_dims);
     loss.device(*place) = errors_mat_view.sum(Eigen::array<int, 1>({{1}}));
   }
@@ -133,8 +133,8 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     auto in_dims = in2->dims();
     auto counts = in2->numel();
     auto cols = counts / in_dims[0];
-    auto mat_dims = framework::make_ddim(
-        {static_cast<int>(in_dims[0]), static_cast<int>(cols)});
+    auto mat_dims =
+        phi::make_ddim({static_cast<int>(in_dims[0]), static_cast<int>(cols)});
 
     Tensor ptensor_diff;
     ptensor_diff.mutable_data<T>({static_cast<int>(counts)},

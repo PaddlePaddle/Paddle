@@ -18,7 +18,7 @@ limitations under the License. */
 #include <cmath>
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -39,13 +39,13 @@ class AdagradOp : public framework::OperatorWithKernel {
                    "Adagrad");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(lr_dims), 0,
                       platform::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
                       platform::errors::InvalidArgument(
                           "LearningRate should have one element"));
     auto param_dims = ctx->GetInputDim("Param");
@@ -111,7 +111,7 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 template <typename T>
 struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
-                  const pten::SelectedRows& grad,
+                  const phi::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     // 1. g_m.rows = set(g.rows)

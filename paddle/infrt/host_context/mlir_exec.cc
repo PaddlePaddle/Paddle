@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <llvm/Support/CommandLine.h>
-
+#include <mlir/Pass/PassManager.h>
 #include <iostream>
 #include <string>
 
@@ -28,6 +28,15 @@
 #include "paddle/infrt/kernel/tensor_kernels.h"
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
+#ifdef INFRT_WITH_PHI
+#include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
+#include "paddle/infrt/kernel/phi/registry.h"
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#include "paddle/infrt/kernel/tensorrt/registry.h"
+#endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
+#endif  // INFRT_WITH_PHI
 
 static llvm::cl::list<std::string> cl_shared_libs(  // NOLINT
     "shared_libs",
@@ -53,6 +62,13 @@ int main(int argc, char** argv) {
   kernel::RegisterTensorShapeKernels(&registry);
   kernel::RegisterTensorKernels(&registry);
   kernel::RegisterControlFlowKernels(&registry);
+#ifdef INFRT_WITH_PHI
+  kernel::RegisterPhiKernels(&registry);
+  kernel::RegisterInferShapeLaunchers(&registry);
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+  kernel::RegisterTrtKernels(&registry);
+#endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
+#endif
 
   // load extra shared library
   for (const auto& lib_path : cl_shared_libs) {
@@ -71,6 +87,24 @@ int main(int argc, char** argv) {
       llvm::outs() << "Symbol \"RegisterKernels\" not found in \"" << lib_path
                    << "\". Skip.\n";
     }
+  }
+
+  context->loadAllAvailableDialects();
+  mlir::PassManager pm(context);
+
+#ifdef INFRT_WITH_PHI
+  mlir::OpPassManager& phi_pass_manager = pm.nest<mlir::FuncOp>();
+
+  std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
+                                             infrt::PrecisionType::FLOAT32,
+                                             infrt::LayoutType::NCHW}};
+  phi_pass_manager.addPass(infrt::createPhiOpCvtPass(valid_places));
+  phi_pass_manager.addPass(infrt::createInfrtOpFusePass());
+#endif
+
+  if (mlir::failed(pm.run(*module))) {
+    std::cout << "\npass failed!\n" << std::endl;
+    return 4;
   }
 
   host_context::TestMlir(module.get(), &registry);

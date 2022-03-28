@@ -25,10 +25,9 @@ from collections import OrderedDict
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-import paddle.distributed as dist
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import _get_global_group
+from paddle.distributed.collective import _get_global_group, new_group, broadcast, wait
 
 from ...utils.internal_storage import ParamStorage, GradStorage
 from ...meta_parallel.sharding.sharding_utils import Type, device_guard, ShardingClipGrad
@@ -39,8 +38,6 @@ align = {
     Type.fp16.value: 2,
     Type.fp32.value: 4,
 }
-
-__all__ = ["ShardingOptimizerStage2"]
 
 
 class ShardingOptimizerStage2(Optimizer):
@@ -65,9 +62,9 @@ class ShardingOptimizerStage2(Optimizer):
                  params,
                  optim,
                  group=None,
-                 broadcast_fp16=False,
                  offload=False,
                  device="gpu",
+                 pertrain_sync_models=True,
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
@@ -93,13 +90,17 @@ class ShardingOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        self.group = dist.new_group(_get_global_group()
-                                    .ranks) if group is None else group
+        self.group = new_group(_get_global_group()
+                               .ranks) if group is None else group
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
+        self._global_root_rank = self.group.ranks[0]
 
-        self.broadcast_fp16 = broadcast_fp16
+        # Synchronous all ranks models
+        if pertrain_sync_models:
+            self._sync_params_and_buffers()
+
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
 
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
@@ -131,6 +132,22 @@ class ShardingOptimizerStage2(Optimizer):
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
+
+    @paddle.autograd.no_grad()
+    def _sync_params_and_buffers(self):
+        """
+        Sync all model states for all ranks
+        """
+
+        for p in self._local_params:
+            broadcast(
+                p,
+                src=self._global_root_rank,
+                group=self.group,
+                use_calc_stream=True)
+
+        # Multi stream operation will be supported later
+        wait(tensor=p, group=self.group, use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -367,12 +384,18 @@ class ShardingOptimizerStage2(Optimizer):
         raise RuntimeError(
             "optimizer.minimize() not support now, please use optimizer.step()")
 
+    def set_state_dict(self, state_dict):
+        self._optim.set_state_dict(state_dict)
+
+    def state_dict(self):
+        return self._optim.state_dict()
+
     def _clear_cache(self):
         self.__segment_params.clear()
         self._dtype_rank_params.clear()
         self._param2rank.clear()
 
-    @fluid.dygraph.no_grad
+    @paddle.autograd.no_grad()
     def _broadcast_params(self):
         """Broadcast the parameters of the current rank to each rank"""
 
@@ -381,14 +404,14 @@ class ShardingOptimizerStage2(Optimizer):
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
-                dist.broadcast(
+                broadcast(
                     tensor=internal_storage.buffer,
-                    src=dst_rank,
+                    src=self.group.ranks[dst_rank],
                     group=self.group,
                     use_calc_stream=True)
 
             # Multi stream operation will be supported later
-            dist.wait(
+            wait(
                 tensor=internal_storage.buffer,
                 group=self.group,
                 use_calc_stream=True)

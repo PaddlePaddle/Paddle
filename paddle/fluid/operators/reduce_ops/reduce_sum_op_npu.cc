@@ -114,9 +114,8 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     if (keep_dims || reduce_all) {
-      const auto& runner =
-          NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
-                      {{"shape", framework::vectorize(x->dims())}});
+      const auto& runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
+                                       {{"shape", phi::vectorize(x->dims())}});
       runner.Run(stream);
     } else {
       framework::DDim out_dims;
@@ -134,7 +133,7 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
 
       const auto& runner =
           NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
-                      {{"shape", framework::vectorize(x->dims())}});
+                      {{"shape", phi::vectorize(x->dims())}});
       runner.Run(stream);
     }
   }

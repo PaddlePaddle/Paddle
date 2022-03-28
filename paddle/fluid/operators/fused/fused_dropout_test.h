@@ -25,14 +25,16 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/layer_norm_kernel.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
-USE_OP(dropout);
-USE_OP(layer_norm);
+USE_OP_ITSELF(dropout);
+USE_OP_ITSELF(layer_norm);
 
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
@@ -136,18 +138,23 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const platform::CUDADeviceContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
+  paddle::optional<const framework::LoDTensor &> scale_opt = paddle::none;
   if (scale.size() > 0) {
     auto var_scale = scope.Var("Scale");
     auto tensor_scale = var_scale->GetMutable<framework::LoDTensor>();
     framework::TensorFromVector(scale, ctx, tensor_scale);
     tensor_scale->Resize({cols});
+    scale_opt = *tensor_scale;
   }
 
+  paddle::optional<const framework::LoDTensor &> bias_opt = paddle::none;
   if (bias.size() > 0) {
     auto var_bias = scope.Var("Bias");
     auto tensor_bias = var_bias->GetMutable<framework::LoDTensor>();
     framework::TensorFromVector(bias, ctx, tensor_bias);
     tensor_bias->Resize({cols});
+
+    bias_opt = *tensor_bias;
   }
 
   auto var_x = scope.Var("X");
@@ -157,20 +164,19 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
 
   auto var_y = scope.Var("Y");
   auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  tensor_y->Resize({rows, cols});
 
   auto var_mean = scope.Var("Mean");
   auto tensor_mean = var_mean->GetMutable<framework::LoDTensor>();
+  tensor_mean->Resize({rows});
 
   auto var_variance = scope.Var("Variance");
   auto tensor_variance = var_variance->GetMutable<framework::LoDTensor>();
-
-  framework::AttributeMap attrs;
-  attrs.insert({"epsilon", epsilon});
-
-  auto op = framework::OpRegistry::CreateOp(
-      "layer_norm", {{"X", {"X"}}, {"Scale", {"Scale"}}, {"Bias", {"Bias"}}},
-      {{"Y", {"Y"}}, {"Mean", {"Mean"}}, {"Variance", {"Variance"}}}, attrs);
-  op->Run(scope, place);
+  tensor_variance->Resize({rows});
+  ctx.Wait();
+  phi::LayerNormKernel<T>(static_cast<const phi::GPUContext &>(ctx), *tensor_x,
+                          scale_opt, bias_opt, 1e-5, 1, false, tensor_y,
+                          tensor_mean, tensor_variance);
   framework::TensorToVector(*tensor_y, ctx, y);
   framework::TensorToVector(*tensor_mean, ctx, means);
   framework::TensorToVector(*tensor_variance, ctx, vars);

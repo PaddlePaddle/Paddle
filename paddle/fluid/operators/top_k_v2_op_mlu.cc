@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/top_k_v2_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
 namespace paddle {
@@ -55,7 +55,7 @@ class TopkV2MLUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(place);
 
     // cnnl only support int32/int16 type of indices
-    framework::Tensor indices_int32(VT::INT32);
+    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 

@@ -23,15 +23,18 @@
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
 
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
 TEST(EagerUtils, AutoGradMeta) {
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-  std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -39,7 +42,7 @@ TEST(EagerUtils, AutoGradMeta) {
   dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
   paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
-  std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
+  std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -104,10 +107,10 @@ TEST(EagerUtils, AutoGradMeta) {
 template <typename T>
 paddle::experimental::Tensor CreateTestCPUTensor(
     T val, const paddle::framework::DDim& ddim) {
-  pten::DenseTensorMeta meta =
-      pten::DenseTensorMeta(pten::DataType::FLOAT32, ddim);
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, ddim);
   paddle::experimental::Tensor tensor;
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -159,14 +162,14 @@ TEST(EagerUtils, PassStopGradient) {
   CHECK(auto_grad0->StopGradient() == false);
   egr::EagerUtils::PassStopGradient(true, auto_grad0.get(), auto_grad1.get(),
                                     auto_grad2.get(), auto_grad3.get());
-  CHECK(auto_grad0->StopGradient() == true);
+  CHECK(auto_grad0->StopGradient() == false);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);
 }
 
 TEST(EagerUtils, TrySyncToVar) {
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
   std::vector<std::shared_ptr<egr::EagerVariable>> var_bases = {
       egr::EagerUtils::TrySyncToVar(tensor)};
@@ -184,7 +187,7 @@ TEST(EagerUtils, TrySyncToVar) {
 }
 
 TEST(EagerUtils, TrySyncToVars) {
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   std::vector<paddle::experimental::Tensor> tensors = {
       CreateTestCPUTensor(1.0f, ddim), CreateTestCPUTensor(2.0f, ddim)};
 
@@ -245,6 +248,22 @@ TEST(EagerUtils, GetGradAccumulationNode) {
   autograd_ptr0->SetGradNode(
       std::make_shared<eager_test::GradTestNode>(1, 2.0, 3));
   ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
+}
+
+TEST(EagerUtils, FillZeroForEmptyGradInputs) {
+  std::vector<std::vector<paddle::experimental::Tensor>> grads = {
+      std::vector<paddle::experimental::Tensor>(1)};
+  std::vector<std::vector<GradSlotMeta>> slot_metas = {
+      std::vector<GradSlotMeta>(1)};
+
+  phi::DenseTensorMeta tensor_meta;
+  tensor_meta.dtype = paddle::experimental::DataType::FLOAT32;
+  tensor_meta.dims = {2, 4};
+  slot_metas[0][0].SetTensorMeta(tensor_meta);
+  slot_metas[0][0].SetPlace(phi::CPUPlace());
+
+  EagerUtils::FillZeroForEmptyGradInputs(&grads, slot_metas);
+  eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 
 }  // namespace egr

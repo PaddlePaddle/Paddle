@@ -25,7 +25,7 @@ import threading
 
 import six
 import paddle
-from paddle.fluid import core
+from paddle.fluid import core, dygraph
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten, pack_sequence_as
@@ -39,7 +39,7 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Block, ParamBase, Program, Variable, Parameter
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
-from paddle.fluid.framework import dygraph_only, in_dygraph_mode
+from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
@@ -125,7 +125,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_to_static:
+        if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
@@ -821,7 +821,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, Variable)):
+            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var))
             else:
@@ -898,30 +898,33 @@ def save(layer, path, input_spec=None, **configs):
                 state_var_dict[var.name] = var
 
             # 3. share parameters from Layer to scope & record var info
-            for param_or_buffer in concrete_program.parameters:
-                # share to scope
-                if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
-                    scr_tensor = param_or_buffer.value().get_map_tensor()
-                    tgt_var = scope.var(param_or_buffer.name)
-                    tgt_var.set_vocab(scr_tensor)
-                else:
-                    param_or_buffer_tensor = scope.var(
-                        param_or_buffer.name).get_tensor()
-                    #src_tensor = param_or_buffer.value().get_tensor()
-                    src_tensor = state_var_dict[param_or_buffer.name].value(
-                    ).get_tensor()
-                    param_or_buffer_tensor._share_data_with(src_tensor)
-                # record var info
-                if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
-                    if param_or_buffer.name in state_names_dict:
-                        extra_info_dict['structured_name'] = state_names_dict[
-                            param_or_buffer.name]
-                    extra_info_dict[
-                        'stop_gradient'] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, ParamBase):
-                        extra_info_dict['trainable'] = param_or_buffer.trainable
-                    extra_var_info[param_or_buffer.name] = extra_info_dict
+            with dygraph.guard():
+                for param_or_buffer in concrete_program.parameters:
+                    # share to scope
+                    if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
+                        scr_tensor = param_or_buffer.value().get_map_tensor()
+                        tgt_var = scope.var(param_or_buffer.name)
+                        tgt_var.set_vocab(scr_tensor)
+                    else:
+                        param_or_buffer_tensor = scope.var(
+                            param_or_buffer.name).get_tensor()
+                        #src_tensor = param_or_buffer.value().get_tensor()
+                        src_tensor = state_var_dict[param_or_buffer.name].value(
+                        ).get_tensor()
+                        param_or_buffer_tensor._share_data_with(src_tensor)
+                    # record var info
+                    if param_or_buffer.name not in extra_var_info:
+                        extra_info_dict = dict()
+                        if param_or_buffer.name in state_names_dict:
+                            extra_info_dict[
+                                'structured_name'] = state_names_dict[
+                                    param_or_buffer.name]
+                        extra_info_dict[
+                            'stop_gradient'] = param_or_buffer.stop_gradient
+                        if isinstance(param_or_buffer, ParamBase):
+                            extra_info_dict[
+                                'trainable'] = param_or_buffer.trainable
+                        extra_var_info[param_or_buffer.name] = extra_info_dict
 
         # 4. build input & output of save_infernece_model
         # NOTE(chenweihang): [ Get input variables name ]
@@ -1432,7 +1435,7 @@ class TracedLayer(object):
             "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
-        if in_dygraph_mode():
+        if _non_static_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
         else:

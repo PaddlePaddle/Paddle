@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/common/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace platform {
-using float16 = pten::dtype::float16;
-using namespace pten::dtype;  // NOLINT
+using float16 = phi::dtype::float16;
+using namespace phi::dtype;  // NOLINT
 }  // namespace platform
 }  // namespace paddle

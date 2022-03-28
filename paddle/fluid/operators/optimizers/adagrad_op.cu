@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/operators/optimizers/adagrad_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +72,7 @@ __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
 template <typename T>
 struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
-                  const pten::SelectedRows& grad,
+                  const phi::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     // 1. g_m.rows = set(g.rows)
@@ -96,12 +96,14 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
+    paddle::framework::MixVector<int64_t> mixv_merge_rows(&merge_rows);
     SparseAdagradFunctorKernel<
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
                       .stream()>>>(
-        grad_merge_data, merge_rows.CUDAMutableData(context.GetPlace()), lr,
-        param_data, moment_data, grad_width, epsilon);
+        grad_merge_data, mixv_merge_rows.CUDAMutableData(context.GetPlace()),
+        lr, param_data, moment_data, grad_width, epsilon);
+    mixv_merge_rows.CopyToCPU();
   }
 };
 

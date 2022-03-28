@@ -68,11 +68,11 @@ class ConcatMKLDNNHandler
 
     // Create memory descriptors for each of inputs
     for (size_t i = 0; i < inputs.size(); ++i) {
-      const auto dims = framework::vectorize<int64_t>(inputs[i]->dims());
+      const auto dims = phi::vectorize<int64_t>(inputs[i]->dims());
       srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
     }
 
-    auto dst_dims = framework::vectorize<int64_t>(output->dims());
+    auto dst_dims = phi::vectorize<int64_t>(output->dims());
     auto dst_md = memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
@@ -180,7 +180,7 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       axis = GetDataFromTensor<int>(axis_tensor)[0];
     }
 
-    auto dout_vec_dims = framework::vectorize(dout->dims());
+    auto dout_vec_dims = phi::vectorize(dout->dims());
 
     axis = ComputeAxis(axis, dout_vec_dims.size());
 
@@ -197,7 +197,7 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     for (size_t i = 0; i < dx.size(); ++i) {
       if (out_var_names[i] != framework::kEmptyVarName &&
           dx[i]->numel() != 0UL) {
-        auto dx_vec_dims = framework::vectorize(dx[i]->dims());
+        auto dx_vec_dims = phi::vectorize(dx[i]->dims());
         auto slice_mem_p = reorder_handler.AcquireSubmemory(
             dx_vec_dims, offset, reorder_src_memory_p);
 

@@ -70,11 +70,11 @@ void FusionRepeatedFCReluOp::InferShape(
                           "w_dims[%d].size() = %d.",
                           i, w_dims[i].size()));
     PADDLE_ENFORCE_EQ(
-        framework::product(b_dims[i]), w_dims[i][1],
+        phi::product(b_dims[i]), w_dims[i][1],
         platform::errors::InvalidArgument(
             "The length of Bias must be equal with w_dims[1], but received "
             "product(b_dims[%d]) = %d, w_dims[%d][1] = %d.",
-            i, framework::product(b_dims[i]), i, w_dims[i][1]));
+            i, phi::product(b_dims[i]), i, w_dims[i][1]));
   }
   ctx->SetOutputDim("Out", {i_dims[0], w_dims[sz - 1][1]});
   ctx->ShareLoD("X", /*->*/ "Out");

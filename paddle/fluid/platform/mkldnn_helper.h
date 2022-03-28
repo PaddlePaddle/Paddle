@@ -23,7 +23,7 @@ limitations under the License. */
 #include "dnnl.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = dnnl::memory::format_tag;
@@ -103,18 +103,18 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
   switch (from) {
     case framework::DataLayout::kMKLDNN:
       if (to == framework::DataLayout::kNHWC) {
-        auto dims = framework::vectorize<int>(tensor_in->dims());
+        auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(framework::make_ddim(dims));
+        tensor_in->Resize(phi::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
                 << print_dims(dims);
       }
       break;
     case framework::DataLayout::kNHWC:
       if (to == framework::DataLayout::kMKLDNN) {
-        auto dims = framework::vectorize<int>(tensor_in->dims());
+        auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(framework::make_ddim(dims));
+        tensor_in->Resize(phi::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
                 << print_dims(dims);
       }
@@ -190,7 +190,8 @@ inline void Reorder(dnnl::memory src, dnnl::memory dst,
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
-                                       platform::EventRole::kUniqueOp);
+                                       platform::TracerEventType::UserDefined,
+                                       2, platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }
@@ -555,6 +556,34 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
     std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
     weights_tz[0] = groups;
     weights_tz[1] = weights_tz[1] / groups;
+  }
+}
+
+inline void RegisterModelLayout(
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
+    const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
+                           const std::string& attrib_name) -> bool {
+      if (op->HasAttr(attrib_name)) {
+        auto data_format = op->Attr<std::string>(attrib_name);
+        platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+            data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
+                                             : framework::DataLayout::kNCHW);
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    for (auto& op : ops) {
+      if (check_attrib(op, std::string("data_format"))) {
+        return;
+      }
+      if (check_attrib(op, std::string("data_layout"))) {
+        return;
+      }
+    }
   }
 }
 

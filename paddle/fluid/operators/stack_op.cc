@@ -67,9 +67,9 @@ class StackOp : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize<int>(input_dims[0]);
+    auto vec = phi::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
-    ctx->SetOutputDim("Y", framework::make_ddim(vec));
+    ctx->SetOutputDim("Y", phi::make_ddim(vec));
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -143,11 +143,11 @@ class StackOpGrad : public framework::OperatorWithKernel {
             ctx->Outputs(framework::GradVarName("X")).size(),
             static_cast<size_t>(dy_dim[axis])));
 
-    auto vec = framework::vectorize<int>(dy_dim);
+    auto vec = phi::vectorize<int>(dy_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim(
         framework::GradVarName("X"),
-        std::vector<framework::DDim>(dy_dim[axis], framework::make_ddim(vec)));
+        std::vector<framework::DDim>(dy_dim[axis], phi::make_ddim(vec)));
   }
 };
 

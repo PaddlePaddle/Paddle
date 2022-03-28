@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -21,12 +22,12 @@ namespace operators {
 namespace {
 
 cnnlPoolingMode_t ToCnnlPoolingMode(const std::string &pooling_type,
-                                    bool exclusive) {
+                                    bool exclusive, bool adaptive) {
   cnnlPoolingMode_t pooling_mode;
   if (pooling_type == "max") {
     pooling_mode = CNNL_POOLING_MAX;
   } else if (pooling_type == "avg") {
-    if (exclusive) {
+    if (exclusive && !adaptive) {
       pooling_mode = CNNL_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
     } else {
       pooling_mode = CNNL_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
@@ -64,72 +65,99 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "Only support 4-dims for mlu pool2d kernel."));
 
-    PADDLE_ENFORCE_EQ(adaptive, false,
-                      platform::errors::InvalidArgument(
-                          "Not support adaptive for mlu pool2d kernel."));
-
+    const bool channel_last = data_format == "NHWC";
     // default
     cnnlTensorLayout_t cnnl_layout = CNNL_LAYOUT_NCHW;
     auto out_dims = out->dims();
     int64_t out_h = out_dims[2];
     int64_t out_w = out_dims[3];
     auto in_x_dims = in_x->dims();
-    framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
-    const bool channel_last = data_format == "NHWC";
     if (channel_last) {
       cnnl_layout = CNNL_LAYOUT_NHWC;
       out_h = out_dims[1];
       out_w = out_dims[2];
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
     MLUCnnlTensorDesc in_x_desc(*in_x, cnnl_layout, ToCnnlDataType<T>());
     MLUCnnlTensorDesc out_desc(*out, cnnl_layout, ToCnnlDataType<T>());
 
-    cnnlPoolingMode_t pool_mode = ToCnnlPoolingMode(pooling_type, exclusive);
-    MLUCnnlPoolingDesc pool_desc(
-        pool_mode, CNNL_NOT_PROPAGATE_NAN, ksize[0], ksize[1], paddings[0],
-        paddings[1], paddings[2], paddings[3], strides[0], strides[1],
-        1 /*row_dilation*/, 1 /*col_dilation*/, ceil_mode);
+    cnnlPoolingMode_t pool_mode =
+        ToCnnlPoolingMode(pooling_type, exclusive, adaptive);
 
-    size_t extra_input_size = 0;
-    cnnlHandle_t handle =
-        ctx.template device_context<MLUDeviceContext>().cnnl_handle();
-    cnnlGetPoolingExtraInputSize(handle, pool_mode, out_w, out_h,
-                                 &extra_input_size);
+    if (!adaptive) {
+      MLUCnnlPoolingDesc pool_desc(
+          pool_mode, CNNL_NOT_PROPAGATE_NAN, ksize[0], ksize[1], paddings[0],
+          paddings[1], paddings[2], paddings[3], strides[0], strides[1],
+          1 /*row_dilation*/, 1 /*col_dilation*/, ceil_mode);
 
-    if (extra_input_size > 0) {
-      paddle::platform::CPUDeviceContext cpu_ctx;
-      framework::Tensor extra_host_tensor =
-          ctx.AllocateTmpTensor<int8_t, platform::CPUDeviceContext>(
-              {static_cast<int64_t>(extra_input_size)}, cpu_ctx);
-      cnnlInitPoolingExtraInput(handle, pool_desc.get(), in_x_desc.get(),
-                                out_desc.get(), GetBasePtr(&extra_host_tensor));
-      framework::Tensor extra_device_tensor =
-          ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
-              {static_cast<int64_t>(extra_input_size)}, dev_ctx);
-      // TODO(fwg): use Async copy, and add a callback to stream that free host
-      // memory.
-      framework::TensorCopySync(extra_host_tensor, ctx.GetPlace(),
-                                &extra_device_tensor);
-      MLUCnnl::PoolingForward(
-          ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
-          in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
-          GetBasePtr(&extra_device_tensor) /*params_shape_ptr*/, out_desc.get(),
-          GetBasePtr(out));
+      size_t extra_input_size = 0;
+      cnnlHandle_t handle =
+          ctx.template device_context<MLUDeviceContext>().cnnl_handle();
+      cnnlGetPoolingExtraInputSize(handle, pool_mode, out_w, out_h,
+                                   &extra_input_size);
+
+      if (extra_input_size > 0) {
+        paddle::platform::CPUDeviceContext cpu_ctx;
+        framework::Tensor extra_host_tensor =
+            ctx.AllocateTmpTensor<int8_t, platform::CPUDeviceContext>(
+                {static_cast<int64_t>(extra_input_size)}, cpu_ctx);
+        cnnlInitPoolingExtraInput(handle, pool_desc.get(), in_x_desc.get(),
+                                  out_desc.get(),
+                                  GetBasePtr(&extra_host_tensor));
+        framework::Tensor extra_device_tensor =
+            ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+                {static_cast<int64_t>(extra_input_size)}, dev_ctx);
+        // TODO(fwg): use Async copy, and add a callback to stream that free
+        // host
+        // memory.
+        framework::TensorCopySync(extra_host_tensor, ctx.GetPlace(),
+                                  &extra_device_tensor);
+        MLUCnnl::PoolingForward(
+            ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
+            in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
+            GetBasePtr(&extra_device_tensor) /*params_shape_ptr*/,
+            out_desc.get(), GetBasePtr(out));
+      } else {
+        MLUCnnl::PoolingForward(
+            ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
+            in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
+            nullptr /*params_shape_ptr*/, out_desc.get(), GetBasePtr(out));
+      }
     } else {
-      MLUCnnl::PoolingForward(
-          ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
-          in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
-          nullptr /*params_shape_ptr*/, out_desc.get(), GetBasePtr(out));
+      // cnnl Adaptive pooling only support NHWC layout
+      framework::Tensor trans_in_x;
+      framework::Tensor trans_out;
+      if (channel_last) {
+        trans_in_x = *in_x;
+        trans_out = *out;
+      } else {
+        std::vector<int> perm{0, 2, 3, 1};
+        TransposeFromMLUTensor<T>(ctx, perm, in_x, &trans_in_x,
+                                  true /*need_reshape_or_alloc*/);
+        trans_out = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
+            {out_dims[0], out_dims[2], out_dims[3], out_dims[1]}, dev_ctx);
+      }
+      MLUCnnlTensorDesc trans_in_x_desc(trans_in_x, CNNL_LAYOUT_NHWC,
+                                        ToCnnlDataType<T>());
+      MLUCnnlTensorDesc trans_out_desc(trans_out, CNNL_LAYOUT_NHWC,
+                                       ToCnnlDataType<T>());
+      MLUCnnl::AdaptivePoolingForward(
+          ctx, pool_mode, trans_in_x_desc.get(), GetBasePtr(&trans_in_x),
+          trans_out_desc.get(), GetBasePtr(&trans_out), nullptr, nullptr);
+      if (!channel_last) {
+        std::vector<int> perm{0, 3, 1, 2};
+        TransposeFromMLUTensor<T>(ctx, perm, &trans_out, out,
+                                  false /*need_reshape_or_alloc*/);
+      }
     }
   }
 };
@@ -159,16 +187,15 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
     const bool channel_last = data_format == "NHWC";
 
     auto in_x_dims = in_x->dims();
-    framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
     // inputs need with NHWC layout
@@ -204,7 +231,8 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc trans_in_x_grad_desc(trans_in_x_grad, CNNL_LAYOUT_NHWC,
                                            ToCnnlDataType<T>());
 
-    cnnlPoolingMode_t pool_mode = ToCnnlPoolingMode(pooling_type, exclusive);
+    cnnlPoolingMode_t pool_mode =
+        ToCnnlPoolingMode(pooling_type, exclusive, adaptive);
     MLUCnnlPoolingDesc pool_desc(
         pool_mode, CNNL_NOT_PROPAGATE_NAN, ksize[0], ksize[1], paddings[0],
         paddings[1], paddings[2], paddings[3], strides[0], strides[1],
@@ -219,18 +247,34 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
       MLUCnnl::PoolingIndex(ctx, pool_desc.get(), trans_in_x_desc.get(),
                             GetBasePtr(&trans_in_x), index_tensor_desc.get(),
                             GetBasePtr(&index_tensor));
-      MLUCnnl::PoolingBackward(
-          ctx, pool_desc.get(), nullptr /*alpha*/, index_tensor_desc.get(),
-          GetBasePtr(&index_tensor), trans_out_grad_desc.get(),
-          GetBasePtr(&trans_out_grad), trans_in_x_desc.get(),
-          GetBasePtr(&trans_in_x), nullptr /*beta*/, trans_in_x_grad_desc.get(),
-          GetBasePtr(&trans_in_x_grad));
+      if (adaptive) {
+        MLUCnnl::AdaptivePoolingBackward(
+            ctx, pool_mode, trans_out_grad_desc.get(),
+            GetBasePtr(&trans_out_grad), index_tensor_desc.get(),
+            GetBasePtr(&index_tensor), trans_in_x_grad_desc.get(),
+            GetBasePtr(&trans_in_x_grad));
+      } else {
+        MLUCnnl::PoolingBackward(
+            ctx, pool_desc.get(), nullptr /*alpha*/, index_tensor_desc.get(),
+            GetBasePtr(&index_tensor), trans_out_grad_desc.get(),
+            GetBasePtr(&trans_out_grad), trans_in_x_desc.get(),
+            GetBasePtr(&trans_in_x), nullptr /*beta*/,
+            trans_in_x_grad_desc.get(), GetBasePtr(&trans_in_x_grad));
+      }
     } else {
-      MLUCnnl::PoolingBackward(ctx, pool_desc.get(), nullptr /*alpha*/, nullptr,
-                               nullptr, trans_out_grad_desc.get(),
-                               GetBasePtr(&trans_out_grad), nullptr, nullptr,
-                               nullptr /*beta*/, trans_in_x_grad_desc.get(),
-                               GetBasePtr(&trans_in_x_grad));
+      if (adaptive) {
+        MLUCnnl::AdaptivePoolingBackward(
+            ctx, pool_mode, trans_out_grad_desc.get(),
+            GetBasePtr(&trans_out_grad), nullptr /*index_tensor_desc.get()*/,
+            nullptr /*GetBasePtr(&index_tensor)*/, trans_in_x_grad_desc.get(),
+            GetBasePtr(&trans_in_x_grad));
+      } else {
+        MLUCnnl::PoolingBackward(ctx, pool_desc.get(), nullptr /*alpha*/,
+                                 nullptr, nullptr, trans_out_grad_desc.get(),
+                                 GetBasePtr(&trans_out_grad), nullptr, nullptr,
+                                 nullptr /*beta*/, trans_in_x_grad_desc.get(),
+                                 GetBasePtr(&trans_in_x_grad));
+      }
     }
     if (!channel_last) {
       std::vector<int> perm{0, 3, 1, 2};

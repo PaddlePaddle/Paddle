@@ -26,9 +26,9 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace distributed {
@@ -79,7 +79,7 @@ void SerializeToMultiVarMsgAndIOBuf(
 
     if (var->IsType<framework::LoDTensor>()) {
       SerializeLodTensor(var, ctx, send_var_msg, &temp_iobuf);
-    } else if (var->IsType<pten::SelectedRows>()) {
+    } else if (var->IsType<phi::SelectedRows>()) {
       SerializeSelectedRows(var, ctx, send_var_msg, &temp_iobuf);
     }
     iobuf->append(temp_iobuf);
@@ -103,7 +103,7 @@ void SerializeLodTensor(framework::Variable* var,
   }
   var_msg->set_data_type(static_cast<VarMsg::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
-  for (auto& dim : framework::vectorize(tensor->dims())) {
+  for (auto& dim : phi::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
   // IO Buffer
@@ -134,7 +134,7 @@ void SerializeLodTensor(framework::Variable* var,
 void SerializeSelectedRows(framework::Variable* var,
                            const platform::DeviceContext& ctx, VarMsg* var_msg,
                            butil::IOBuf* iobuf) {
-  pten::SelectedRows* slr = var->GetMutable<pten::SelectedRows>();
+  phi::SelectedRows* slr = var->GetMutable<phi::SelectedRows>();
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
 
@@ -148,7 +148,7 @@ void SerializeSelectedRows(framework::Variable* var,
   memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
   var_msg->set_data_type(static_cast<VarMsg::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
-  for (auto& dim : framework::vectorize(tensor->dims())) {
+  for (auto& dim : phi::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
   // IO Buffer
@@ -224,7 +224,7 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
   for (auto& x : msg.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(framework::make_ddim(vec_dim));
+  tensor->Resize(phi::make_ddim(vec_dim));
 
   framework::LoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
@@ -238,7 +238,7 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
 
   void* tensor_data = tensor->mutable_data(
       place,
-      framework::TransToPtenDataType(VarMessageToVarType(msg.data_type())));
+      framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
 
   // IO Buffer
   if (platform::is_cpu_place(place)) {
@@ -268,7 +268,7 @@ void DeserializeSelectedRows(
     butil::IOBufBytesIterator& io_buffer_itr,  // NOLINT
     const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
-  auto* slr = var->GetMutable<pten::SelectedRows>();
+  auto* slr = var->GetMutable<phi::SelectedRows>();
   framework::Tensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
   std::vector<int64_t> tmp_rows(msg.dims()[0]);
@@ -278,10 +278,10 @@ void DeserializeSelectedRows(
   for (auto& x : msg.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(framework::make_ddim(vec_dim));
+  tensor->Resize(phi::make_ddim(vec_dim));
   void* tensor_data = tensor->mutable_data(
       place,
-      framework::TransToPtenDataType(VarMessageToVarType(msg.data_type())));
+      framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
   // IO Buffer
   if (platform::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT

@@ -123,7 +123,7 @@ class TRTConvertValidation {
 
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(dim_vec));
+    x_tensor->Resize(phi::make_ddim(dim_vec));
     RandomizeTensor(x_tensor, place_, ctx);
   }
   // Declare a variable in a fluid Scope.
@@ -215,7 +215,7 @@ class TRTConvertValidation {
       size_t fluid_out_size = fluid_outs[index].size();
       if (if_add_batch_ == true) {
         fluid_out_size =
-            batch_size * (framework::product(tensor->dims()) / max_batch_size_);
+            batch_size * (phi::product(tensor->dims()) / max_batch_size_);
       }
 
       for (size_t i = 0; i < fluid_out_size; i++) {

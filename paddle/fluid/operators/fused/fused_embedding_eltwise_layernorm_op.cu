@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -34,9 +34,9 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     int input_num = static_cast<int>(ids.size());
 
     framework::Tensor in_ids_(
-        framework::TransToPtenDataType(framework::proto::VarType::INT64)),
+        framework::TransToPhiDataType(framework::proto::VarType::INT64)),
         in_embs_(
-            framework::TransToPtenDataType(framework::proto::VarType::INT64));
+            framework::TransToPhiDataType(framework::proto::VarType::INT64));
     framework::DDim in_dim{input_num};
     int device_id;
 #ifdef PADDLE_WITH_HIP

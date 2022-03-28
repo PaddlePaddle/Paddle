@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -119,19 +117,6 @@ REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
 
 REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_max,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_max_grad,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
 REGISTER_OP_VERSION(elementwise_max)
     .AddCheckpoint(
         R"ROC(Register elementwise_max for adding the attribute of Scale_y)ROC",
@@ -147,21 +132,3 @@ REGISTER_OPERATOR(elementwise_fmax, ops::ElementwiseOp,
                   ops::ElementwiseFMaxGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_fmax_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_fmax,
-    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext,
-                               paddle::platform::float16>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_fmax_grad,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext,
-                                   paddle::platform::float16>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseFMaxGradKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);

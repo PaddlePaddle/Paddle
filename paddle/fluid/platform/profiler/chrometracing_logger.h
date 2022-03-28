@@ -13,11 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <set>
+#include <unordered_map>
+#include <utility>
 #include "paddle/fluid/platform/profiler/output_logger.h"
 
 namespace paddle {
 namespace platform {
 
+// Dump a NodeTrees into a chrome tracing file.
+// A ChromeTracingLogger object can only dump a NodeTrees object,
+// creates a file in the constructor and closes the file in the destructor.
+// should only call LogNodeTrees and LogMetaInfo in order.
 class ChromeTracingLogger : public BaseLogger {
  public:
   explicit ChromeTracingLogger(const std::string& filename);
@@ -28,6 +35,7 @@ class ChromeTracingLogger : public BaseLogger {
   void LogHostTraceEventNode(const HostTraceEventNode&) override;
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
+  void LogMetaInfo(const std::unordered_map<std::string, std::string>);
 
  private:
   void OpenFile();
@@ -36,9 +44,12 @@ class ChromeTracingLogger : public BaseLogger {
   void HandleTypeMemcpy(const DeviceTraceEventNode&);
   void StartLog();
   void EndLog();
+  void RefineDisplayName(std::unordered_map<std::string, std::string>);
   std::string filename_;
   std::ofstream output_file_stream_;
   static const char* categary_name_[];
+  std::set<std::pair<uint64_t, uint64_t>> pid_tid_set_;
+  std::set<std::pair<uint64_t, uint64_t>> deviceid_streamid_set_;
 };
 
 }  // namespace platform

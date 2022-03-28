@@ -17,7 +17,7 @@ if(NOT WITH_XPU_KP)
 endif()
 
 if(NOT XPU_TOOLCHAIN)
-  set(XPU_TOOLCHAIN /workspace/paddle/xpu-demo/XTDK)
+  set(XPU_TOOLCHAIN /workspace/output/XTDK-ubuntu_x86_64)
   get_filename_component(XPU_TOOLCHAIN ${XPU_TOOLCHAIN} REALPATH)
 endif()
 if(NOT IS_DIRECTORY ${XPU_TOOLCHAIN})
@@ -102,7 +102,7 @@ macro(compile_kernel COMPILE_ARGS)
 
   set(XTDK_DIR ${XPU_TOOLCHAIN})
   set(CXX_DIR ${HOST_SYSROOT})
-  set(XPU_CXX_FLAGS  -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DNDEBUG )
+  set(XPU_CXX_FLAGS  -fforce-enable-int128 -Wno-error=pessimizing-move -Wno-error=constant-conversion -Wno-error=c++11-narrowing -Wno-error=shift-count-overflow -Wno-error=unused-local-typedef -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer  -Wall -Wno-inconsistent-missing-override -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function  -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes  -Wno-error=int-in-bool-context -Wno-error=parentheses -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DNDEBUG )
 
   #include path
   get_property(dirs DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
@@ -128,8 +128,10 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
+      cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
+    COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
-       -I.  -o kernel_build/${kernel_name}.bin.o.sec ${kernel_path}/${kernel_name}.xpu
+       -I.  -o kernel_build/${kernel_name}.bin.o.sec kernel_build/${kernel_name}.xpu
         --xpu-device-only -c -v 
     COMMAND
       ${XTDK_DIR}/bin/xpu2-elfconv kernel_build/${kernel_name}.bin.o.sec  kernel_build/${kernel_name}.bin.o ${XPU_CLANG} --sysroot=${CXX_DIR}
@@ -149,8 +151,10 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
+      cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
+    COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
-        -I.  -o kernel_build/${kernel_name}.host.o ${kernel_path}/${kernel_name}.xpu
+        -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
         --xpu-host-only -c -v 
     WORKING_DIRECTORY
       ${CMAKE_CURRENT_BINARY_DIR}
@@ -185,7 +189,7 @@ macro(xpu_add_library TARGET_NAME)
     # Distinguish .xpu file from other files
     foreach(cur_xpu_src IN LISTS xpu_srcs_lists)
       get_filename_component(language_type_name ${cur_xpu_src} EXT)
-      if(${language_type_name} STREQUAL ".xpu")
+      if(${language_type_name} STREQUAL ".kps")
         list(APPEND xpu_kernel_lists ${cur_xpu_src})
       else()
         list(APPEND cc_kernel_lists ${cur_xpu_src})

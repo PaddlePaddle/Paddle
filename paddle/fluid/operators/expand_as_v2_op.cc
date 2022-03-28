@@ -12,7 +12,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/expand_as_v2_op.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,27 +24,6 @@ using framework::Tensor;
 class ExpandAsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAsV2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandAsV2");
-    auto x_dims = ctx->GetInputDim("X");
-    auto target_shape = ctx->Attrs().Get<std::vector<int>>("target_shape");
-    PADDLE_ENFORCE_GE(
-        target_shape.size(), static_cast<size_t>(x_dims.size()),
-        platform::errors::InvalidArgument(
-            "The rank of target_shape must be greater than or equal "
-            "to the rank of Input(X). But received Input(X): input "
-            "rank %u; received target_shape: rank %u.",
-            x_dims.size(), target_shape.size()));
-    PADDLE_ENFORCE_LE(target_shape.size(), MAX_RANK_SUPPORTED,
-                      platform::errors::InvalidArgument(
-                          "The rank of target_shape must be less than or equal "
-                          "to %d. But received: rank %u.",
-                          MAX_RANK_SUPPORTED, target_shape.size()));
-    ctx->SetOutputDim("Out", framework::make_ddim(target_shape));
-  }
 };
 
 class ExpandAsV2OpMaker : public framework::OpProtoAndCheckerMaker {
@@ -116,39 +97,14 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandAsV2GradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(expand_as_v2, ExpandAsInferShapeFunctor,
+                            PD_INFER_META(phi::ExpandAsInferMeta));
 REGISTER_OPERATOR(expand_as_v2, ops::ExpandAsV2Op, ops::ExpandAsV2OpMaker,
                   ops::ExpandAsV2GradOpMaker<paddle::framework::OpDesc>,
-                  ops::ExpandAsV2GradOpMaker<paddle::imperative::OpBase>);
+                  ops::ExpandAsV2GradOpMaker<paddle::imperative::OpBase>,
+                  ExpandAsInferShapeFunctor);
 REGISTER_OPERATOR(expand_as_v2_grad, ops::ExpandAsV2GradOp,
                   ops::ExpandAsV2GradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_v2,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_v2_grad,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, double>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_v2,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_v2_grad,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, double>);
-#endif
 
 REGISTER_OP_VERSION(expand_as_v2)
     .AddCheckpoint(

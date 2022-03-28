@@ -15,16 +15,24 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 
-// run_backward():
+// Backward():
 // tensors corresponds to those lived in the backward graph
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void RunBackward(const std::vector<paddle::experimental::Tensor> &tensors,
-                 const std::vector<paddle::experimental::Tensor> &grad_tensors,
-                 bool retain_graph = false);
+void Backward(const std::vector<paddle::experimental::Tensor>& tensors,
+              const std::vector<paddle::experimental::Tensor>& grad_tensors,
+              bool retain_graph = false);
+
+std::vector<paddle::experimental::Tensor> Grad(
+    const std::vector<paddle::experimental::Tensor>& tensors,
+    const std::vector<paddle::experimental::Tensor>& inputs,
+    const std::vector<paddle::experimental::Tensor>& grad_tensors = {},
+    bool retain_graph = false, bool create_graph = false,
+    bool only_inputs = false, bool allow_unused = false,
+    const std::vector<paddle::experimental::Tensor>& no_grad_vars = {});
 
 // Reserved for gradient()
 

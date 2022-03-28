@@ -17,9 +17,9 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
 from ..fluid.layers import nn, utils
-from ..nn import Layer
+from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-
+from ..fluid.framework import _non_static_mode
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
@@ -194,8 +194,8 @@ def yolo_loss(x,
                                              scale_x_y=1.)
     """
 
-    if in_dygraph_mode() and gt_score is None:
-        loss = _C_ops.yolov3_loss(
+    if _non_static_mode() and gt_score is None:
+        loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
             'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
@@ -377,7 +377,7 @@ def yolo_box(x,
                                                    clip_bbox=True,
                                                    scale_x_y=1.)
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,
@@ -551,7 +551,7 @@ def deform_conv2d(x,
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'deformable_groups', deformable_groups, 'groups', groups,
                  'im2col_step', 1)
@@ -847,7 +847,7 @@ def read_file(filename, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.read_file('filename', filename)
 
     inputs = dict()
@@ -894,7 +894,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             print(img.shape)
     """
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.decode_jpeg(x, "mode", mode)
 
     inputs = {'X': x}
@@ -949,10 +949,10 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     if isinstance(output_size, int):
         output_size = (output_size, output_size)
     pooled_height, pooled_width = output_size
-    assert (len(x.shape) == 4,
-            "Input features with shape should be (N, C, H, W)")
+    assert len(x.shape) == 4, \
+            "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                  output_channels, "spatial_scale",
                                  spatial_scale, "pooled_height", pooled_height,
@@ -1062,7 +1062,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = _C_ops.roi_pool(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
@@ -1217,7 +1217,7 @@ def roi_align(x,
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if _non_static_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
@@ -1297,3 +1297,57 @@ class RoIAlign(Layer):
             output_size=self._output_size,
             spatial_scale=self._spatial_scale,
             aligned=aligned)
+
+
+class ConvNormActivation(Sequential):
+    """
+    Configurable block used for Convolution-Normalzation-Activation blocks.
+    This code is based on the torchvision code with modifications.
+    You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L68
+    Args:
+        in_channels (int): Number of channels in the input image
+        out_channels (int): Number of channels produced by the Convolution-Normalzation-Activation block
+        kernel_size: (int, optional): Size of the convolving kernel. Default: 3
+        stride (int, optional): Stride of the convolution. Default: 1
+        padding (int, tuple or str, optional): Padding added to all four sides of the input. Default: None,
+            in wich case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
+        groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
+        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolutiuon layer.
+            If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2d``
+        activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization
+            layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
+        dilation (int): Spacing between kernel elements. Default: 1
+        bias (bool, optional): Whether to use bias in the convolution layer. By default, biases are included if ``norm_layer is None``.
+    """
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size=3,
+                 stride=1,
+                 padding=None,
+                 groups=1,
+                 norm_layer=BatchNorm2D,
+                 activation_layer=ReLU,
+                 dilation=1,
+                 bias=None):
+        if padding is None:
+            padding = (kernel_size - 1) // 2 * dilation
+        if bias is None:
+            bias = norm_layer is None
+        layers = [
+            Conv2D(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                padding,
+                dilation=dilation,
+                groups=groups,
+                bias_attr=bias)
+        ]
+        if norm_layer is not None:
+            layers.append(norm_layer(out_channels))
+        if activation_layer is not None:
+            layers.append(activation_layer())
+        super().__init__(*layers)

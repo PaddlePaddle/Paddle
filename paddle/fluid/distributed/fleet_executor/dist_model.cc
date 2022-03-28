@@ -44,7 +44,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  framework::LoDTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
-  framework::DDim dims = framework::make_ddim(input_data.shape);
+  framework::DDim dims = phi::make_ddim(input_data.shape);
   void *input_tensor_ptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
@@ -52,8 +52,9 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     input_tensor_ptr = input_tensor->mutable_data<float>(dims, place);
   } else if (input_data.dtype == DistModelDataType::INT32) {
     input_tensor_ptr = input_tensor->mutable_data<int32_t>(dims, place);
+  } else if (input_data.dtype == DistModelDataType::FLOAT16) {
+    input_tensor_ptr = input_tensor->mutable_data<float16>(dims, place);
   } else {
-    // Q(fleet exe dev): for input/output, should we support fp16
     LOG(ERROR) << "unsupported feed type " << input_data.dtype;
     return false;
   }
@@ -111,14 +112,6 @@ std::string DistModelDTypeToString(DistModelDataType dtype) {
       return "int8";
   }
   return "NOT SUPPORT DTYPE";
-}
-
-bool IsPPFirstStage(const DistModelConfig &config) {
-  return config.local_rank - config.mp_degree < 0;
-}
-
-bool IsPPLastStage(const DistModelConfig &config) {
-  return config.local_rank + config.mp_degree >= config.nranks;
 }
 
 class DistModelTimer {
@@ -197,65 +190,34 @@ bool DistModel::PreparePlace() {
 }
 
 bool DistModel::CommInit() {
-  // NOTE (Yuang Liu): The peer endpoints will be obtained with the assumption
-  // that mp part is always on inner side and pp part is always on outer side.
-  // TODO(fleet exe dev): The peer endpoints could be configured by users.
-  PADDLE_ENFORCE_EQ(
-      config_.pp_degree * config_.mp_degree, config_.nranks,
-      platform::errors::InvalidArgument(
-          "The mp_degree multiplies pp_degree is not equal with nranks"));
   std::unique_ptr<framework::ProgramDesc> comm_init_program(
       new framework::ProgramDesc());
   framework::BlockDesc *comm_init_block = comm_init_program->MutableBlock(0);
-  if (config_.mp_degree > 1) {
-    PADDLE_ENFORCE_GE(
-        config_.mp_ring_id, 0,
-        platform::errors::InvalidArgument(
-            "mp ring id must be provided for inference under mp."));
-    VLOG(3) << "Init comm group for mp.";
+  std::vector<int64_t> &ring_ids =
+      config_.rank_to_ring_ids_[config_.local_rank];
+  int64_t order = 0;
+  std::string var_name_base = "comm_init_";
+  for (int64_t ring_id : ring_ids) {
+    VLOG(3) << "Init comm for ring id: " << ring_id;
+    int64_t ranks_in_group = config_.ring_id_to_ranks_[ring_id].size();
+    int64_t rank_in_group = 0;
+    std::vector<int64_t> &ranks = config_.ring_id_to_ranks_[ring_id];
+    for (int64_t rank : ranks) {
+      if (config_.local_rank == rank) {
+        break;
+      }
+      rank_in_group += 1;
+    }
     std::vector<std::string> peer_endpoints;
-    for (int64_t
-             idx = (config_.local_rank / config_.mp_degree) * config_.mp_degree,
-             i = 0;
-         i < config_.mp_degree; ++idx, ++i) {
-      if (config_.trainer_endpoints[idx] == config_.current_endpoint) {
+    for (int64_t rank : ranks) {
+      if (config_.local_rank == rank) {
         continue;
       }
-      peer_endpoints.emplace_back(config_.trainer_endpoints[idx]);
+      peer_endpoints.emplace_back(config_.trainer_endpoints[rank]);
     }
-    // get nranks in a mp group and inner group rank for local rank
-    int64_t mp_group_nranks = config_.nranks / config_.pp_degree;
-    int64_t mp_group_rank = config_.local_rank % config_.mp_degree;
-    InsertCommOp("mp_comm_id", mp_group_nranks, mp_group_rank, peer_endpoints,
-                 comm_init_block, config_.mp_ring_id);
-  }
-  if (config_.pp_degree > 1) {
-    VLOG(3) << "Init comm group for pp.";
-    if (!IsPPFirstStage(config_)) {
-      PADDLE_ENFORCE_EQ(config_.pp_upstream_ring_id >= 0, true,
-                        platform::errors::InvalidArgument(
-                            "pp upstream ring id must be provided for "
-                            "non-first pp stage if inference under pp."));
-      // not the first pp stage, has upstream
-      std::vector<std::string> upstream_peer_endpoints;
-      upstream_peer_endpoints.emplace_back(
-          config_.trainer_endpoints[config_.local_rank - config_.mp_degree]);
-      InsertCommOp("pp_upstream_comm_id", 2, 1, upstream_peer_endpoints,
-                   comm_init_block, config_.pp_upstream_ring_id);
-    }
-
-    if (!IsPPLastStage(config_)) {
-      PADDLE_ENFORCE_EQ(config_.pp_downstream_ring_id >= 0, true,
-                        platform::errors::InvalidArgument(
-                            "pp downstream ring id must be provided for "
-                            "non-last pp stage if inference under pp."));
-      // not the last pp stage, has downstream
-      std::vector<std::string> downstream_peer_endpoints;
-      downstream_peer_endpoints.emplace_back(
-          config_.trainer_endpoints[config_.local_rank + config_.mp_degree]);
-      InsertCommOp("pp_downstream_comm_id", 2, 0, downstream_peer_endpoints,
-                   comm_init_block, config_.pp_downstream_ring_id);
-    }
+    InsertCommOp(var_name_base + std::to_string(order), ranks_in_group,
+                 rank_in_group, peer_endpoints, comm_init_block, ring_id);
+    order += 1;
   }
   framework::NaiveExecutor e(place_);
   e.CreateVariables(*comm_init_program, 0, true, scope_.get());
@@ -409,12 +371,7 @@ bool DistModel::LoadParameters() {
 
 bool DistModel::PrepareFleetExe() {
   task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
-  if (config_.local_rank - config_.mp_degree >= 0) {
-    task_node_->AddUpstreamTask(config_.local_rank - config_.mp_degree);
-  }
-  if (config_.local_rank + config_.mp_degree < config_.nranks) {
-    task_node_->AddDownstreamTask(config_.local_rank + config_.mp_degree);
-  }
+  // With auto cut, there is no concept of pp, no need to add dependency.
   task_node_->SetType("Compute");
   task_node_->Init();
   executor_desc_ = FleetExecutorDesc();
@@ -457,6 +414,8 @@ bool DistModel::PrepareFeedAndFetch() {
         feeds_to_dtype_.insert({var_name, DistModelDataType::INT32});
       } else if (real_var->GetDataType() == framework::proto::VarType::INT64) {
         feeds_to_dtype_.insert({var_name, DistModelDataType::INT64});
+      } else if (real_var->GetDataType() == framework::proto::VarType::FP16) {
+        feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT16});
       } else {
         LOG(ERROR) << "Don't support feed var dtype for: "
                    << real_var->GetDataType();
@@ -473,40 +432,13 @@ bool DistModel::PrepareFeedAndFetch() {
     }
   }
 
-  if (config_.pp_degree == 1) {
-    if (feeds_.size() == 0) {
-      LOG(ERROR) << "No feed ops in the inf program, please check the program.";
-      return false;
-    }
-    if (fetches_.size() == 0) {
-      LOG(ERROR) << "No fetch op in the inf program, please check the program.";
-      return false;
-    }
-  } else {
-    if (IsPPFirstStage(config_)) {
-      if (feeds_.size() == 0) {
-        LOG(ERROR) << "Feed ops are needed for the first pp stage.";
-        return false;
-      }
-    } else {
-      if (feeds_.size() > 0) {
-        LOG(WARNING) << "Feed op is found in the non-first stage of pp.";
-      } else {
-        LOG(INFO) << "No feed ops in non-first pp stage.";
-      }
-    }
-    if (IsPPLastStage(config_)) {
-      if (fetches_.size() == 0) {
-        LOG(WARNING) << "No fetch op was found in the last pp stage. Make sure "
-                        "the result has been sent to frist pp stage.";
-      }
-    } else {
-      if (fetches_.size() > 0) {
-        LOG(WARNING) << "Fetch op is found in the non-last stage of pp.";
-      } else {
-        LOG(INFO) << "No fetch op in non-last pp stage.";
-      }
-    }
+  if (feeds_.size() == 0) {
+    LOG(ERROR) << "No feed ops in the inf program, please check the program.";
+    return false;
+  }
+  if (fetches_.size() == 0) {
+    LOG(ERROR) << "No fetch op in the inf program, please check the program.";
+    return false;
   }
   return true;
 }
@@ -575,9 +507,13 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     } else if (type == framework::proto::VarType::INT32) {
       rst = FetchResult<int32_t>(fetch, output);
       output->dtype = DistModelDataType::INT32;
+    } else if (type == framework::proto::VarType::FP16) {
+      rst = FetchResult<float16>(fetch, output);
+      output->dtype = DistModelDataType::FLOAT16;
     } else {
       LOG(ERROR) << "DistModel meets unknown fetch data type. DistModel only "
-                    "supports float32, int64 and int32 fetch type for now.";
+                    "supports float32, float16, int64 and int32 fetch type "
+                    "for now.";
     }
     if (!rst) {
       LOG(ERROR) << "DistModel fails to fetch result " << idx_to_fetches_[idx];
@@ -590,7 +526,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 template <typename T>
 bool DistModel::FetchResult(const framework::LoDTensor &fetch,
                             DistModelTensor *output_data) {
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = phi::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());
   const T *data = fetch.data<T>();
   int64_t num_elems = fetch.numel();
@@ -606,7 +542,6 @@ bool DistModel::FetchResult(const framework::LoDTensor &fetch,
 
 bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
                     std::vector<DistModelTensor> *output_data) {
-  // TODO(fleet exe dev): support pipeline inf mode
   VLOG(3) << "DistModel run for once.";
 
   DistModelTimer timer;

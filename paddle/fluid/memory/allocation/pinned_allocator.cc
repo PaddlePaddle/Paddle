@@ -18,7 +18,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
-void CPUPinnedAllocator::FreeImpl(pten::Allocation *allocation) {
+void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostFree(allocation->ptr()));
 #else
@@ -26,7 +26,7 @@ void CPUPinnedAllocator::FreeImpl(pten::Allocation *allocation) {
 #endif
   delete allocation;
 }
-pten::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
+phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostMalloc(&ptr, size, hipHostMallocPortable));

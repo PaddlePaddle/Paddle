@@ -40,6 +40,12 @@ class TestVisonModels(unittest.TestCase):
     def test_mobilenetv1(self):
         self.models_infer('mobilenet_v1')
 
+    def test_mobilenetv3_small(self):
+        self.models_infer('mobilenet_v3_small')
+
+    def test_mobilenetv3_large(self):
+        self.models_infer('mobilenet_v3_large')
+
     def test_vgg11(self):
         self.models_infer('vgg11')
 

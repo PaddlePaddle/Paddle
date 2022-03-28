@@ -28,7 +28,7 @@ struct SameDimsElemwiseMul<
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
     blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
   }
 };
@@ -168,52 +168,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::bfloat16>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex<float>>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mul_grad,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mul_grad_grad,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        bool>,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mul_triple_grad,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        bool>,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseMulTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_mul)
     .AddCheckpoint(

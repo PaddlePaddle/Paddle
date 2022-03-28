@@ -59,8 +59,7 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::Tensor in;
     paddle::framework::Tensor out;
 
-    float* ptr =
-        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
+    float* ptr = in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
@@ -86,7 +85,7 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::Tensor out;
 
     paddle::platform::float16* ptr = in.mutable_data<paddle::platform::float16>(
-        paddle::framework::make_ddim({2, 3}), place);
+        phi::make_ddim({2, 3}), place);
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
@@ -126,7 +125,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform float to float16
     float* in_data_float =
-        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_float[i] = i;
     }
@@ -140,7 +139,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform double to float16
     double* in_data_double =
-        in.mutable_data<double>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<double>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_double[i] = i;
     }
@@ -153,8 +152,7 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     // transform int to float16
-    int* in_data_int =
-        in.mutable_data<int>(paddle::framework::make_ddim({2, 3}), place);
+    int* in_data_int = in.mutable_data<int>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int[i] = i;
     }
@@ -168,7 +166,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform int64 to float16
     int64_t* in_data_int64 =
-        in.mutable_data<int64_t>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<int64_t>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int64[i] = i;
     }
@@ -181,8 +179,7 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     // transform bool to float16
-    bool* in_data_bool =
-        in.mutable_data<bool>(paddle::framework::make_ddim({2, 3}), place);
+    bool* in_data_bool = in.mutable_data<bool>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_bool[i] = i;
     }
@@ -201,8 +198,8 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::Tensor out;
 
     paddle::platform::bfloat16* ptr =
-        in.mutable_data<paddle::platform::bfloat16>(
-            paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<paddle::platform::bfloat16>(phi::make_ddim({2, 3}),
+                                                    place);
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
@@ -242,7 +239,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform float to bfloat16
     float* in_data_float =
-        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_float[i] = i;
     }
@@ -256,7 +253,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform double to bfloat16
     double* in_data_double =
-        in.mutable_data<double>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<double>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_double[i] = i;
     }
@@ -269,8 +266,7 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     // transform int to bfloat16
-    int* in_data_int =
-        in.mutable_data<int>(paddle::framework::make_ddim({2, 3}), place);
+    int* in_data_int = in.mutable_data<int>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int[i] = i;
     }
@@ -284,7 +280,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform int64 to bfloat16
     int64_t* in_data_int64 =
-        in.mutable_data<int64_t>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<int64_t>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int64[i] = i;
     }
@@ -297,8 +293,7 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     // transform bool to bfloat16
-    bool* in_data_bool =
-        in.mutable_data<bool>(paddle::framework::make_ddim({2, 3}), place);
+    bool* in_data_bool = in.mutable_data<bool>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_bool[i] = i;
     }
@@ -316,8 +311,7 @@ TEST(DataTypeTransform, CPUTransform) {
     paddle::framework::Tensor in;
     paddle::framework::Tensor out;
 
-    int32_t* ptr =
-        in.mutable_data<int32_t>(paddle::framework::make_ddim({2, 3}), place);
+    int32_t* ptr = in.mutable_data<int32_t>(phi::make_ddim({2, 3}), place);
     int data_number = 2 * 3;
 
     for (int i = 0; i < data_number; ++i) {
@@ -359,7 +353,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform float to int32
     float* in_data_float =
-        in.mutable_data<float>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_float[i] = i;
     }
@@ -372,7 +366,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform double to int32
     double* in_data_double =
-        in.mutable_data<double>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<double>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_double[i] = i;
     }
@@ -385,8 +379,8 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform bfloat16 to int32
     paddle::platform::bfloat16* in_data_bf16 =
-        in.mutable_data<paddle::platform::bfloat16>(
-            paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<paddle::platform::bfloat16>(phi::make_ddim({2, 3}),
+                                                    place);
     for (int i = 0; i < data_number; ++i) {
       in_data_bf16[i] = i;
     }
@@ -399,7 +393,7 @@ TEST(DataTypeTransform, CPUTransform) {
 
     // transform int64 to int32
     int64_t* in_data_int64 =
-        in.mutable_data<int64_t>(paddle::framework::make_ddim({2, 3}), place);
+        in.mutable_data<int64_t>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_int64[i] = i;
     }
@@ -411,8 +405,7 @@ TEST(DataTypeTransform, CPUTransform) {
     }
 
     // transform bool to int32
-    bool* in_data_bool =
-        in.mutable_data<bool>(paddle::framework::make_ddim({2, 3}), place);
+    bool* in_data_bool = in.mutable_data<bool>(phi::make_ddim({2, 3}), place);
     for (int i = 0; i < data_number; ++i) {
       in_data_bool[i] = i;
     }

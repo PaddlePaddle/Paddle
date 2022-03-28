@@ -238,7 +238,7 @@ int32_t BrpcPsClient::initialize() {
       std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
   // for debug
   // _print_thread =
-  //     std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
+  //    std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
 
   return 0;
 }
@@ -414,6 +414,16 @@ std::future<int32_t> BrpcPsClient::load(uint32_t table_id,
   return send_cmd(table_id, PS_LOAD_ONE_TABLE, {epoch, mode});
 }
 
+std::future<int32_t> BrpcPsClient::Load(const LoadSaveContext &load_context) {
+  if (load_context.table_id < 0) {
+    return send_cmd(-1, PS_LOAD_ALL_TABLE,
+                    {load_context.epoch, load_context.mode});
+  } else {
+    return send_cmd(load_context.table_id, PS_LOAD_ONE_TABLE,
+                    {load_context.epoch, load_context.mode});
+  }
+}
+
 std::future<int32_t> BrpcPsClient::save(const std::string &epoch,
                                         const std::string &mode) {
   VLOG(1) << "BrpcPsClient::save path " << epoch;
@@ -425,6 +435,19 @@ std::future<int32_t> BrpcPsClient::save(uint32_t table_id,
   VLOG(1) << "BrpcPsClient::save one table path " << epoch << " table_id "
           << table_id;
   return send_save_cmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
+}
+
+std::future<int32_t> BrpcPsClient::Save(const LoadSaveContext &save_context) {
+  if (save_context.table_id < 0) {
+    VLOG(1) << "BrpcPsClient::save path " << save_context.epoch;
+    return send_save_cmd(-1, PS_SAVE_ALL_TABLE,
+                         {save_context.epoch, save_context.mode});
+  } else {
+    VLOG(1) << "BrpcPsClient::save one table path " << save_context.epoch
+            << " table_id " << save_context.table_id;
+    return send_save_cmd(save_context.table_id, PS_SAVE_ONE_TABLE,
+                         {save_context.epoch, save_context.mode});
+  }
 }
 
 std::future<int32_t> BrpcPsClient::clear() {
@@ -503,6 +526,44 @@ std::future<int32_t> BrpcPsClient::stop_profiler() {
 std::future<int32_t> BrpcPsClient::barrier(size_t table_id,
                                            uint32_t barrier_type) {
   return send_cmd(table_id, PS_BARRIER, {std::to_string(barrier_type)});
+}
+
+std::future<int32_t> BrpcPsClient::Pull(RequestContext &pull_context) {
+  if (pull_context.value_type == Dense) {  // pull dense
+    Region *dense_region =
+        reinterpret_cast<Region *>(pull_context.dense_values);
+    pull_dense(dense_region, pull_context.num, pull_context.table);
+  } else {  // pull sparse
+    uint64_t *keys = reinterpret_cast<uint64_t *>(pull_context.keys);
+    float **select_values =
+        reinterpret_cast<float **>(pull_context.sparse_values);
+    size_t table_id = pull_context.table;
+    size_t num = pull_context.num;
+    bool is_training = pull_context.is_training;
+    if (pull_context.training_mode == Geo) {  // for geo
+      pull_sparse_param(select_values, table_id, keys, num, is_training);
+    } else if (pull_context.training_mode == Async) {  // for async
+      pull_sparse(select_values, table_id, keys, num, is_training);
+    }
+  }
+}
+
+std::future<int32_t> BrpcPsClient::Push(RequestContext &push_context) {
+  if (push_context.value_type == Dense) {  // push dense
+    const Region *dense_region = push_context.push_context.push_dense_values;
+    push_dense(dense_region, push_context.num, push_context.table);
+  } else {  // push sparse
+    size_t table_id = push_context.table;
+    size_t num = push_context.num;
+    bool is_training = push_context.is_training;
+    if (push_context.training_mode == Geo) {  // for geo
+      // TODO(zhaocaibei)
+    } else if (push_context.training_mode == Async) {  // for async
+      const uint64_t *keys = push_context.push_context.keys;
+      const float **update_values = push_context.push_context.push_values;
+      push_sparse(table_id, keys, update_values, num);
+    }
+  }
 }
 
 std::future<int32_t> BrpcPsClient::pull_geo_param(size_t table_id,
@@ -1227,7 +1288,7 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   framework::LoDTensor *var_tensor = var->GetMutable<framework::LoDTensor>();
 
   std::vector<int64_t> vec_dim = {var_num, var_shape};
-  var_tensor->Resize(framework::make_ddim(vec_dim));
+  var_tensor->Resize(phi::make_ddim(vec_dim));
 
   // copy and save
   float *tensor_data = var_tensor->mutable_data<float>(place);
@@ -1254,11 +1315,11 @@ std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
   CostTimer parse_timer("pserver_client_push_sparse_parse");
   int push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
   while (push_sparse_async_num > FLAGS_pserver_max_async_call_num) {
-    // LOG(INFO) << "push_sparse Waiting for async_call_num comsume, task_num:"
-    //    << push_sparse_async_num << ", max_task_limit:" <<
-    //    FLAGS_pserver_max_async_call_num;
+    //    LOG(INFO) << "push_sparse Waiting for async_call_num comsume,
+    //    task_num:"
+    //              << push_sparse_async_num
+    //              << ", max_task_limit:" << FLAGS_pserver_max_async_call_num;
     usleep(5000);  // 5ms
-    // push_sparse_async_num = _push_sparse_task_queue_map[table_id]->size();
     push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
   }
   auto put_timer = std::make_shared<CostTimer>("client_push_sparse_put");
@@ -1320,8 +1381,7 @@ void BrpcPsClient::push_sparse_task_consume() {
   ::ThreadPool async_push_sparse_shard_threads(
       FLAGS_pserver_sparse_merge_thread);
   while (_running) {
-    platform::Timer timeline;
-    timeline.Start();
+    auto async_start_time_ms = butil::gettimeofday_ms();
     // 所有sparseTable的pushTask 进行处理
     for (auto &push_sparse_task_itr : _push_sparse_task_queue_map) {
       auto table_id = push_sparse_task_itr.first;
@@ -1436,9 +1496,8 @@ void BrpcPsClient::push_sparse_task_consume() {
         std::vector<std::future<int>>().swap(merge_status);
       }
     }
-    timeline.Pause();
-    auto wait_ms =
-        FLAGS_pserver_async_push_sparse_interval_ms - (timeline.ElapsedMS());
+    auto wait_ms = FLAGS_pserver_async_push_sparse_interval_ms -
+                   (butil::gettimeofday_ms() - async_start_time_ms);
     if (wait_ms > 0) {
       usleep(wait_ms * 1000);
     }
@@ -1600,9 +1659,10 @@ std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
       std::make_shared<CostTimer>("pserver_client_push_dense_parse");
   int push_dense_async_num = _push_dense_task_queue_map[table_id]->Size();
   while (push_dense_async_num > FLAGS_pserver_max_async_call_num) {
-    LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
-              << push_dense_async_num
-              << ", max_task_limit:" << FLAGS_pserver_max_async_call_num;
+    //    LOG(INFO) << "push_dense Waiting for async_call_num comsume,
+    //    task_num:"
+    //              << push_dense_async_num
+    //              << ", max_task_limit:" << FLAGS_pserver_max_async_call_num;
     usleep(5000);  // 5ms
     push_dense_async_num = _push_dense_task_queue_map[table_id]->Size();
   }
@@ -1640,8 +1700,7 @@ void BrpcPsClient::push_dense_task_consume() {
   static bool scale_gradient = FLAGS_pserver_scale_gradient_by_merge;
   ::ThreadPool async_merge_dense_threads(10);
   while (_running) {
-    platform::Timer timeline;
-    timeline.Start();
+    auto async_start_time_ms = butil::gettimeofday_ms();
     for (auto &task_queue_itr : _push_dense_task_queue_map) {
       auto &task_queue = task_queue_itr.second;
       auto queue_size = task_queue->Size();
@@ -1730,9 +1789,8 @@ void BrpcPsClient::push_dense_task_consume() {
       push_dense_raw_gradient(task_ptr, total_send_data, total_send_data_size,
                               closure);
     }
-    timeline.Pause();
-    auto wait_ms =
-        FLAGS_pserver_async_push_dense_interval_ms - (timeline.ElapsedMS());
+    auto wait_ms = FLAGS_pserver_async_push_dense_interval_ms -
+                   (butil::gettimeofday_ms() - async_start_time_ms);
     if (wait_ms > 0) {
       usleep(wait_ms * 1000);
     }

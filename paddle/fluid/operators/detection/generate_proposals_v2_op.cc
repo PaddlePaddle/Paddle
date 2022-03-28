@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/nms_util.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/gather.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -113,7 +113,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    pten::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans;
+    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
@@ -197,10 +197,10 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     anchor_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     var_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
 
-    CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
-    CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
-    CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
-    CPUGather<T>(ctx, variances, index_t, &var_sel);
+    phi::funcs::CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
+    phi::funcs::CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
+    phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
+    phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
 
     Tensor proposals;
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
@@ -215,7 +215,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
                    pixel_offset);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
-      pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
       Tensor scores_filter;
@@ -227,8 +227,8 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     Tensor scores_filter;
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({keep.numel(), 1}, ctx.GetPlace());
-    CPUGather<T>(ctx, proposals, keep, &bbox_sel);
-    CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
+    phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
+    phi::funcs::CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
     if (nms_thresh <= 0) {
       return std::make_pair(bbox_sel, scores_filter);
     }
@@ -242,8 +242,8 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
 
     proposals.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
     scores_sel.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());
-    CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
-    CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
+    phi::funcs::CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
+    phi::funcs::CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
 
     return std::make_pair(proposals, scores_sel);
   }

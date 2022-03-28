@@ -16,8 +16,6 @@ import paddle.fluid.framework as framework
 from paddle.fluid import core
 from paddle import compat as cpt
 
-ops_having_canonicalization = {"elementwise_add", }
-
 
 # collect original ops: op which has both inference and grid defination
 def get_original_ops():
@@ -110,10 +108,107 @@ def get_all_ops_desc():
     return all_op_protos_dict
 
 
+def generate_all_ops_inputs_outputs_map(op_descs):
+    # 1. Collect input and output name information of each Op
+    original_ops_ = get_original_ops()
+    ops_inputs_map = {}
+    ops_outputs_map = {}
+    for op_type, op_proto in op_descs.items():
+        if op_type not in original_ops_:
+            continue
+        inputs = list()
+        outpus = list()
+        for input_ in op_proto[INPUTS]:
+            if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
+                    input_][INTERMEDIATE] != True:
+                inputs.append(input_)
+        for output_ in op_proto[OUTPUTS]:
+            if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[OUTPUTS][
+                    output_][INTERMEDIATE] != True:
+                outpus.append(output_)
+        ops_inputs_map[op_type] = inputs
+        ops_outputs_map[op_type] = outpus
+
+    # 2. Generate Cpp style map str
+    cpp_style_ops_inputs_map_str = ""
+    start_ = "#include <unordered_map>\n#include <vector>\n#include <string>\n" + \
+            "const std::unordered_map<std::string, std::unordered_map<std::string, uint8_t>> pd_dialect_inputs_info_map_  = {\n"
+    ops_inputs_str = ""
+    for ele in ops_inputs_map.items():
+        op_name = ele[0]
+        op_inputs = ele[1]
+        op_inputs_str = "{"
+        input_idx = 0
+        for op_input in op_inputs:
+            op_input_str = '{left_brace}"{op_input}", {input_idx}{right_brace}, '.format(
+                left_brace="{",
+                op_input=op_input,
+                input_idx=input_idx,
+                right_brace="}")
+            input_idx = input_idx + 1
+            op_inputs_str = op_inputs_str + op_input_str
+        op_inputs_str = op_inputs_str[:-2] + "}"
+        pair = '{left_brace}"{op_name}", {op_inputs}{right_brace},\n'.format(
+            left_brace="{",
+            op_name=op_name,
+            op_inputs=op_inputs_str,
+            right_brace="}")
+        ops_inputs_str = ops_inputs_str + "    " + pair
+    ops_inputs_str = ops_inputs_str[:-2]
+    cpp_style_ops_inputs_map_str = start_ + ops_inputs_str + "\n};"
+
+    cpp_style_ops_outputs_map_str = ""
+    start_ = "const std::unordered_map<std::string, std::unordered_map<std::string, uint8_t>> pd_dialect_outputs_info_map_  = {\n"
+    ops_outputs_str = ""
+    for ele in ops_outputs_map.items():
+        op_name = ele[0]
+        op_outputs = ele[1]
+        op_outputs_str = "{"
+        output_idx = 0
+        for op_output in op_outputs:
+            op_output_str = '{left_brace}"{op_output}", {output_idx}{right_brace}, '.format(
+                left_brace="{",
+                op_output=op_output,
+                output_idx=output_idx,
+                right_brace="}")
+            output_idx = output_idx + 1
+            op_outputs_str = op_outputs_str + op_output_str
+        op_outputs_str = op_outputs_str[:-2] + "}"
+        pair = '{left_brace}"{op_name}", {op_outputs}{right_brace},\n'.format(
+            left_brace="{",
+            op_name=op_name,
+            op_outputs=op_outputs_str,
+            right_brace="}")
+        ops_outputs_str = ops_outputs_str + "    " + pair
+    ops_outputs_str = ops_outputs_str[:-2]
+    cpp_style_ops_outputs_map_str = start_ + ops_outputs_str + "\n};"
+
+    # 3. Write to header file
+    dst_head_file = "../../paddle/infrt/dialect/pd/common/pd_ops_info.h"
+    with open(dst_head_file, 'w') as ops_inputs_outputs_head_file:
+        ops_inputs_outputs_head_file.write(cpp_style_ops_inputs_map_str)
+        ops_inputs_outputs_head_file.write("\n\n")
+        ops_inputs_outputs_head_file.write(cpp_style_ops_outputs_map_str)
+
+
+def get_constraint(op_type, op_proto):
+    # 2.3.1 inputs
+    constraint = "NoSideEffect"
+
+    optional_input_num_ = 0
+    for input_ in op_proto[INPUTS]:
+        if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][input_][
+                INTERMEDIATE] != True and op_proto[INPUTS][input_][
+                    DISPENSABLE] == True:
+            optional_input_num_ += 1
+    if optional_input_num_ > 1:
+        constraint += ", AttrSizedOperandSegments"
+    return constraint
+
+
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
-    dst_dialect_file = "../../paddle/infrt/dialect/pd_ops.td"
-    dialect_info_file = "../../paddle/infrt/dialect/pd_ops_info.h"
+    dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
     custom_dialect_file = "custom_pdop.td"
 
     # 1. Head files
@@ -132,7 +227,7 @@ def convert_op_proto_into_mlir(op_descs):
         "include \"mlir/Interfaces/InferTypeOpInterface.td\"",
         "include \"mlir/Interfaces/LoopLikeInterface.td\"",
         "include \"mlir/IR/OpBase.td\"",
-        "include \"paddle/infrt/dialect/pd_op_base.td\"",
+        "include \"paddle/infrt/dialect/pd/ir/pd_op_base.td\"",
         "",
     ]
 
@@ -153,41 +248,47 @@ def convert_op_proto_into_mlir(op_descs):
 
     original_ops_ = get_original_ops()
     automatically_generated_op_dialect = []
-    ops_inputs_map_ = {}
-    ops_outputs_map_ = {}
-
     for op_type, op_proto in op_descs.items():
         if (op_type in skipped_op_list) or (op_type not in original_ops_):
             continue
         automatically_generated_op_dialect.append(op_type)
+        constraint_ = get_constraint(op_type, op_proto)
         # 2.1 OpDef
-        HEAD = "def PD_" + op_type.capitalize(
-        ) + "Op : PD_Op<\"" + op_type + "\", [NoSideEffect]> {\n"
-        SUMMARY = "  let summary = \"" + op_type + " op\";\n"
-        CANONICALIZATION = "let hasCanonicalizer = 1;" if op_type in ops_having_canonicalization else ""
+        HEAD = 'def PD_{op_type_capitalize}Op : PD_Op<"{op_type}", [{constraint}]> {left_brace}\n'.format(
+            op_type_capitalize=op_type.capitalize(),
+            constraint=constraint_,
+            op_type=op_type,
+            left_brace="{")
+        SUMMARY = '  let summary = "{} op";\n'.format(op_type)
 
         # 2.2 Description
-        DESCRIPTION = "  let description = [{\n"
-        contents = (op_proto[COMMENT]).split("\n")
-        for line_ in contents:
-            DESCRIPTION = DESCRIPTION + "    " + line_ + "\n"
-        DESCRIPTION += "  }];\n"
+        contents = ""
+        origin_contents = (op_proto[COMMENT]).split("\n")
+        for line_ in origin_contents:
+            contents = contents + "    {}\n".format(line_)
+        DESCRIPTION = "  let description = [{left_brace}\n{description}  {right_brace}];\n".format(
+            left_brace="{", description=contents, right_brace="}")
 
         # 2.3 arguments info
         ARGUMENTS = ""
         if (len(op_proto[INPUTS]) > 0 or len(op_proto[ATTRS]) > 0):
             ARGUMENTS = "  let arguments = (ins "
+
             # 2.3.1 inputs
-            ins_cache_list_ = []
             for input_ in op_proto[INPUTS]:
                 if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
                         input_][INTERMEDIATE] != True:
-                    ins_cache_list_.append(input_)
-                    if op_proto[INPUTS][input_][DUPLICABLE] != "true":
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                    if op_proto[INPUTS][input_][DISPENSABLE] != True:
+                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                            ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                        else:
+                            ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
                     else:
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
-            ops_inputs_map_[op_type] = ins_cache_list_
+                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor>:$" + input_ + ","
+                        else:
+                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor_Array>:$" + input_ + ","
+
             # unsupported:   BLOCK = 8;  BLOCKS = 10;
             attr_mlir_converter = {
                 0: 'SI32Attr',
@@ -239,8 +340,8 @@ def convert_op_proto_into_mlir(op_descs):
                         attr_type_ = attr_mlir_converter[op_proto[ATTRS][attr][
                             TYPE]]
                         if (attr_type_ in [
-                                'I32ArrayAttr', 'F32ArrayAttr', 'StrArrayAttr',
-                                'BoolArrayAttr', 'I64ArrayAttr'
+                                'StrAttr', 'I32ArrayAttr', 'F32ArrayAttr',
+                                'StrArrayAttr', 'BoolArrayAttr', 'I64ArrayAttr'
                         ]):
                             attr_list = attr_type_ + ":$" + attr + ","
                             ARGUMENTS += attr_list
@@ -252,54 +353,28 @@ def convert_op_proto_into_mlir(op_descs):
         # 2.4 results info
         RESULTS = ""
         if (len(op_proto[OUTPUTS]) > 0):
-            RESULTS = "\n  let results = (outs "
-            outs_cache_list_ = []
+            outputs = ""
             for output_ in op_proto[OUTPUTS]:
                 if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[
                         OUTPUTS][output_][INTERMEDIATE] != True:
-                    outs_cache_list_.append(output_)
-                    if op_proto[OUTPUTS][output_][DUPLICABLE] != "true":
-                        RESULTS = RESULTS + "PD_Tensor:$" + output_ + ","
+                    if op_proto[OUTPUTS][output_][DUPLICABLE] != True:
+                        outputs = outputs + "PD_Tensor:${},".format(output_)
                     else:
-                        RESULTS = RESULTS + "PD_Tensor_Array:$" + output_ + ","
-                        print(HEAD + " PD_Tensor_Array:$" + output_ + ",")
-            ops_outputs_map_[op_type] = outs_cache_list_
-            RESULTS = RESULTS[:-1] + ");\n"
+                        outputs = outputs + "PD_Tensor_Array:${},".format(
+                            output_)
+            RESULTS = "\n  let results = (outs {});\n".format(outputs[:-1])
+
         with open(dst_dialect_file, 'a') as ops_mlir_file:
             ops_mlir_file.write(HEAD)
             ops_mlir_file.write(SUMMARY)
             ops_mlir_file.write(DESCRIPTION)
             ops_mlir_file.write(ARGUMENTS)
             ops_mlir_file.write(RESULTS)
-            ops_mlir_file.write(CANONICALIZATION)
             ops_mlir_file.write("}\n")
 
     print("Skipped ops num: " + str(len(skipped_op_list)))
     print("Automatically generated op dialects num: " + str(
         len(automatically_generated_op_dialect)))
-
-    with open(dialect_info_file, 'w') as pd_ops_info_file:
-        pd_ops_info_file.write(
-            "#include<map>\n#include<string>\n#include<vector>\n")
-        pd_ops_info_file.write(
-            "const std::map<std::string, std::vector<std::string>> pd_dialect_inputs_info_map_ = {\n"
-        )
-        for data_ in ops_inputs_map_:
-            pd_ops_info_file.write("  {\"" + data_ + "\", {")
-            for var_ in ops_inputs_map_[data_]:
-                pd_ops_info_file.write("\"" + var_ + "\",")
-            pd_ops_info_file.write("}},\n")
-        pd_ops_info_file.write("};\n")
-
-        pd_ops_info_file.write(
-            "const std::map<std::string, std::vector<std::string>> pd_dialect_outputs_info_map_ = {\n"
-        )
-        for data_ in ops_outputs_map_:
-            pd_ops_info_file.write("  {\"" + data_ + "\", {")
-            for var_ in ops_outputs_map_[data_]:
-                pd_ops_info_file.write("\"" + var_ + "\",")
-            pd_ops_info_file.write("}},\n")
-        pd_ops_info_file.write("};\n")
 
     # 3. custom op dialect and end of file
     with open(dst_dialect_file, 'a') as ops_mlir_file:
@@ -313,4 +388,5 @@ def convert_op_proto_into_mlir(op_descs):
 
 if __name__ == "__main__":
     all_op_protos_dict = get_all_ops_desc()
+    generate_all_ops_inputs_outputs_map(all_op_protos_dict)
     convert_op_proto_into_mlir(all_op_protos_dict)

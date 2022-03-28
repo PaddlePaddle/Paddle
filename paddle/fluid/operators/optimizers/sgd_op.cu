@@ -112,7 +112,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
           param->numel(), param_out->mutable_data<T>(ctx.GetPlace()),
           master_in_data, master_out_data);
 
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.
@@ -121,7 +121,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
           platform::errors::InvalidArgument(
               "The input tensor Param of SgdOp should be equal with ParamOut "
               "if variable's type is SelectedRows."));
-      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
+      auto* grad = ctx.Input<phi::SelectedRows>("Grad");
 
       auto in_height = grad->height();
       auto out_dims = param_out->dims();
@@ -148,11 +148,11 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
       int thread_x = kThreadsPerBlock;
       int max_threads = ctx.cuda_device_context().GetMaxPhysicalThreadCount();
       int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-
+      paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
       SparseSGDFunctorKernel<<<max_blocks, thread_x, 0,
                                ctx.cuda_device_context().stream()>>>(
-          in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
-          out_data, in_row_numel, in_rows.size());
+          in_data, mixv_in_rows.CUDAData(ctx.GetPlace()),
+          learning_rate->data<T>(), out_data, in_row_numel, in_rows.size());
 
     } else {
       PADDLE_ENFORCE_EQ(false, true,
@@ -166,10 +166,3 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
 };
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, plat::float16>);

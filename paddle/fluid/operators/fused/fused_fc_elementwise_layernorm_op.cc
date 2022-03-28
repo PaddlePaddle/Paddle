@@ -80,7 +80,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
             "the number of input X's dimensions is %d, input X's shape is %s.",
             x_num_col_dims, x_dims.size(), x_dims));
 
-    auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
+    auto x_mat_dims = phi::flatten_to_2d(x_dims, x_num_col_dims);
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], w_dims[0],
         platform::errors::InvalidArgument(
@@ -97,12 +97,12 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
     fc_out_dims.push_back(w_dims[1]);
 
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(framework::make_ddim(fc_out_dims), y_dims,
+    PADDLE_ENFORCE_EQ(phi::make_ddim(fc_out_dims), y_dims,
                       platform::errors::InvalidArgument(
                           "The output's shape of fc is expected to be equal to "
                           "that of input Y. But recieved output's shape of fc "
                           "is %s, input Y's shape is %s.",
-                          framework::make_ddim(fc_out_dims), y_dims));
+                          phi::make_ddim(fc_out_dims), y_dims));
 
     auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
     PADDLE_ENFORCE_LT(
@@ -114,7 +114,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
             "input Y's dimensions is %d, input Y's shape is %s.",
             begin_norm_axis, y_dims.size(), y_dims));
 
-    auto y_mat_dim = framework::flatten_to_2d(y_dims, begin_norm_axis);
+    auto y_mat_dim = phi::flatten_to_2d(y_dims, begin_norm_axis);
     int64_t dim_0 = y_mat_dim[0];
     int64_t dim_1 = y_mat_dim[1];
     if (ctx->HasInput("Scale")) {

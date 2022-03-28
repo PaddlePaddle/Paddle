@@ -22,8 +22,8 @@ limitations under the License. */
 #include <cmath>
 #include <cstring>
 
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +33,7 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
-void call_gemm(const math::BlasT<DeviceContext, T>& blas,
+void call_gemm(const phi::funcs::BlasT<DeviceContext, T>& blas,
                const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
                const int M, const int N, const int K, const T alpha, const T* A,
                const T* B, const T beta, T* C) {
@@ -49,12 +49,12 @@ void call_gemm(const framework::ExecutionContext& ctx,
                const T* B, const T beta, T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
 template <typename DeviceContext, typename T>
-void call_gemm_with_lda(const math::BlasT<DeviceContext, T>& blas,
+void call_gemm_with_lda(const phi::funcs::BlasT<DeviceContext, T>& blas,
                         const CBLAS_TRANSPOSE TransA,
                         const CBLAS_TRANSPOSE TransB, const int M, const int N,
                         const int K, const T alpha, const T* A, const T* B,

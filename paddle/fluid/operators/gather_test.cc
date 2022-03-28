@@ -15,8 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/gather.h"
 
 TEST(Gather, GatherData) {
   paddle::framework::Tensor* src = new paddle::framework::Tensor();
@@ -25,21 +25,21 @@ TEST(Gather, GatherData) {
 
   int* p_src = nullptr;
   int* p_index = nullptr;
-  p_src = src->mutable_data<int>(paddle::framework::make_ddim({3, 4}),
+  p_src = src->mutable_data<int>(phi::make_ddim({3, 4}),
                                  paddle::platform::CPUPlace());
-  p_index = index->mutable_data<int>(paddle::framework::make_ddim({2}),
+  p_index = index->mutable_data<int>(phi::make_ddim({2}),
                                      paddle::platform::CPUPlace());
 
   for (int i = 0; i < 12; ++i) p_src[i] = i;
   p_index[0] = 1;
   p_index[1] = 0;
 
-  int* p_output = output->mutable_data<int>(
-      paddle::framework::make_ddim({2, 4}), paddle::platform::CPUPlace());
+  int* p_output = output->mutable_data<int>(phi::make_ddim({2, 4}),
+                                            paddle::platform::CPUPlace());
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   paddle::platform::CPUDeviceContext ctx(*cpu_place);
-  paddle::operators::CPUGather<int>(ctx, *src, *index, output);
+  phi::funcs::CPUGather<int>(ctx, *src, *index, output);
   delete cpu_place;
   cpu_place = NULL;
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);

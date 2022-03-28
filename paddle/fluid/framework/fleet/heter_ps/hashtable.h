@@ -23,7 +23,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
 #endif
-#include "paddle/pten/core/utils/rw_lock.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 #include "thrust/pair.h"
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
@@ -81,7 +81,7 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
-  std::unique_ptr<pten::RWLock> rwlock_{nullptr};
+  std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
  private:
   TableContainer<KeyType, ValType>* container_;

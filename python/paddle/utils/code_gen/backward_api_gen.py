@@ -31,10 +31,11 @@ class BackwardAPI(BaseAPI):
     def parse_forward_config(self, forward_config):
         # api_name (const Tensor& input, ... , int attr, ...) -> Tensor(out)
         result = re.search(
-            r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->[^\(]*\((?P<outputs>[^\)]+)\)",
+            r"(?P<api>[a-z][a-z0-9_]+)\s*(?P<args>\([^\)]+\))\s*->\s*(?P<outputs>.+)",
             forward_config)
         api = result.group('api')
-        outputs = [item.strip() for item in result.group('outputs').split(',')]
+        _, outputs, _ = self.parse_output(self.api, result.group('outputs'))
+        outputs = [item.split('@')[0] for item in outputs]
         fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
             api, result.group('args'))
 
@@ -47,7 +48,7 @@ class BackwardAPI(BaseAPI):
 
         # check the inputs of backward
         for input in self.inputs['names']:
-            if input not in fw_inputs and input not in fw_outputs:
+            if input not in fw_inputs['names'] and input not in fw_outputs:
                 if input.endswith('_grad'):
                     original_name = input[:-5]
                     assert original_name in fw_outputs, \
@@ -56,8 +57,9 @@ class BackwardAPI(BaseAPI):
 
         # check the attributes of backward
         for attr in self.attrs['names']:
-            assert attr in fw_attrs['names'] and self.attrs['attr_info'][attr][0] == fw_attrs['attr_info'][attr][0], \
-                f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api. \
+            assert (attr in fw_attrs['names'] and self.attrs['attr_info'][attr][0] == fw_attrs['attr_info'][attr][0]) or \
+                 self.attrs['attr_info'][attr][1] is not None, \
+                f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api or doesn't have default value. \
                  Please check the args of {self.api} in yaml."
 
         # check the output of backward
@@ -69,7 +71,11 @@ class BackwardAPI(BaseAPI):
         return out_type_list[0] if len(
             out_type_list) == 1 else "std::vector<std::vector<Tensor>>"
 
-    def gene_output(self, output_type_list, set_out_func, code_indent):
+    def gene_output(self,
+                    output_type_list,
+                    set_out_func,
+                    code_indent,
+                    inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
@@ -77,24 +83,38 @@ class BackwardAPI(BaseAPI):
         if len(output_type_list) == 1:
             kernel_output = 'kernel_out'
             output_names.append('kernel_out')
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out({len(output_type_list)});"""
+{code_indent}  {self.outputs['return_type']} api_output({len(output_type_list)});"""
 
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 if out_type_item == 'Tensor':
-                    get_out_code = f'&out[{i}][0]'
-                    output_create = output_create + f"""
-{code_indent}  out[{i}].emplace_back();"""
+                    get_out_code = f'&api_output[{i}][0]'
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  api_output[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
+
+                    else:
+                        output_create = output_create + f"""
+{code_indent}  api_output[{i}].emplace_back();"""
 
                 else:
-                    get_out_code = f'&out[{i}]'
+                    get_out_code = f'&api_output[{i}]'
+                    if inplace_flag and self.inplace_map is not None and self.outputs[
+                            'names'][i] in self.inplace_map:
+                        output_create = output_create + f"""
+{code_indent}  api_output[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
 
@@ -111,9 +131,10 @@ def header_include():
     return """
 #include <tuple>
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 """
 
 
@@ -124,14 +145,16 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/lib/api_registry.h"
-#include "paddle/pten/api/lib/api_utils.h"
-#include "paddle/pten/api/lib/data_transform.h"
-#include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/api/include/api.h"
-#include "paddle/pten/infermeta/backward.h"
+#include "paddle/phi/api/lib/api_custom_impl.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/infermeta/backward.h"
+
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
 
@@ -161,7 +184,7 @@ def generate_backward_api(backward_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/api/backward/backward_api.h"
+    include_header_file = "paddle/phi/api/backward/backward_api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -187,12 +210,12 @@ def main():
     parser.add_argument(
         '--backward_header_path',
         help='output of generated backward header code file',
-        default='paddle/pten/api/backward/backward_api.h')
+        default='paddle/phi/api/backward/backward_api.h')
 
     parser.add_argument(
         '--backward_source_path',
         help='output of generated backward source code file',
-        default='paddle/pten/api/lib/backward_api.cc')
+        default='paddle/phi/api/lib/backward_api.cc')
 
     options = parser.parse_args()
 

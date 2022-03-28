@@ -22,15 +22,15 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const DeviceContext &context, const pten::SelectedRows &grad,
+  void operator()(const DeviceContext &context, const phi::SelectedRows &grad,
                   const framework::Tensor &learning_rate, T epsilon,
                   framework::Tensor *moment, framework::Tensor *param);
 };
 
 template <typename DeviceContext, typename T>
-pten::SelectedRows SquareSelectedRows(const DeviceContext &context,
-                                      const pten::SelectedRows &input) {
-  pten::SelectedRows out;
+phi::SelectedRows SquareSelectedRows(const DeviceContext &context,
+                                     const phi::SelectedRows &input) {
+  phi::SelectedRows out;
   out.set_rows(input.rows());
   out.set_height(input.height());
   out.mutable_value()->mutable_data<T>(input.value().dims(),
@@ -87,7 +87,7 @@ class AdagradOpKernel : public framework::OpKernel<T> {
             param -
             lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
       }
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       auto *param_tensor = ctx.Input<framework::Tensor>("Param");
       PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor,
                         platform::errors::InvalidArgument(
@@ -100,7 +100,7 @@ class AdagradOpKernel : public framework::OpKernel<T> {
 
       SparseAdagradFunctor<DeviceContext, T> functor;
       functor(ctx.template device_context<DeviceContext>(),
-              *ctx.Input<pten::SelectedRows>("Grad"),
+              *ctx.Input<phi::SelectedRows>("Grad"),
               *ctx.Input<framework::Tensor>("LearningRate"), epsilon,
               moment_out_tensor, param_out_tensor);
     } else {

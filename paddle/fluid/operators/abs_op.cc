@@ -16,7 +16,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -28,14 +31,19 @@ class AbsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "abs");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "abs");
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    auto in_dims = ctx->GetInputDim("X");
-
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -79,8 +87,17 @@ class AbsGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -148,11 +165,15 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(abs, ops::AbsOp, ops::AbsOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
-                  ops::AbsGradMaker<paddle::imperative::OpBase>);
+                  ops::AbsGradMaker<paddle::imperative::OpBase>,
+                  AbsInferShapeFunctor);
 
 REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,

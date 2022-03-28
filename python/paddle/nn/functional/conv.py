@@ -16,9 +16,8 @@ from paddle.fluid.framework import _global_flags
 
 import numpy as np
 from ...device import get_cudnn_version
-from ...fluid.framework import in_dygraph_mode
 from ...static import Variable
-from ...fluid import core, dygraph_utils, get_flags
+from ...fluid import dygraph_utils
 from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...framework import ParamAttr
@@ -27,6 +26,11 @@ from paddle import _C_ops
 from ...tensor.manipulation import unsqueeze, squeeze
 from ...tensor.math import add
 from ...fluid.layers import nn
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_rocm
+from paddle.device import is_compiled_with_npu
+from paddle import in_dynamic_mode
+from paddle import get_flags
 
 __all__ = []
 
@@ -114,7 +118,7 @@ def _conv_nd(x,
              name=None):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
                  use_mkldnn, 'fuse_relu_before_depthwise_conv', False,
@@ -342,13 +346,13 @@ def conv1d(x,
     l_type = "conv2d"
 
     # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
-    if (core.is_compiled_with_cuda() and num_channels == groups and
+    if (is_compiled_with_cuda() and num_channels == groups and
             num_channels != 1 and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if core.is_compiled_with_npu():
+    if is_compiled_with_npu():
         if (num_channels == groups and num_channels == num_filters):
             l_type = 'depthwise_conv2d'
         else:
@@ -357,7 +361,7 @@ def conv1d(x,
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
@@ -553,7 +557,7 @@ def conv2d(x,
 
     cudnn_version = get_cudnn_version()
 
-    use_cudnn = True if (core.is_compiled_with_cuda() and
+    use_cudnn = True if (is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
     use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
@@ -567,20 +571,20 @@ def conv2d(x,
     if (num_channels == groups and num_channels != 1 and
             num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
-        if core.is_compiled_with_rocm():
+        if is_compiled_with_rocm():
             use_cudnn = True
         else:
             use_cudnn = False
 
     # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if core.is_compiled_with_npu():
+    if is_compiled_with_npu():
         if (num_channels == groups and num_channels == num_filters):
             l_type = 'depthwise_conv2d'
         else:
             l_type = 'conv2d'
 
-    if (core.is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
-        ["FLAGS_conv2d_disable_cudnn"]):
+    if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")[
+            "FLAGS_conv2d_disable_cudnn"]):
         use_cudnn = False
 
     return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
@@ -815,7 +819,7 @@ def conv1d_transpose(x,
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
@@ -1026,7 +1030,7 @@ def conv2d_transpose(x,
 
     cudnn_version = get_cudnn_version()
 
-    use_cudnn = True if (core.is_compiled_with_cuda() and
+    use_cudnn = True if (is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
     # update attrs
@@ -1057,7 +1061,7 @@ def conv2d_transpose(x,
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
@@ -1242,7 +1246,7 @@ def conv3d(x,
                                                                   groups))
 
     cudnn_version = get_cudnn_version()
-    use_cudnn = True if (core.is_compiled_with_cuda() and
+    use_cudnn = True if (is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
@@ -1458,13 +1462,13 @@ def conv3d_transpose(x,
     cudnn_version = get_cudnn_version()
 
     #TODO(LielinJiang): whether to use cudnn according to the version of cudnn
-    use_cudnn = True if (core.is_compiled_with_cuda() and
+    use_cudnn = True if (is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'paddings', padding, "padding_algorithm", padding_algorithm,
                  'strides', stride, 'dilations', dilation, 'groups', groups,

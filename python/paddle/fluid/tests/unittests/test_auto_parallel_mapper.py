@@ -30,7 +30,7 @@ import paddle.utils as utils
 import paddle.static as static
 from paddle.fluid import core
 from paddle.fluid import layers
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
@@ -486,7 +486,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     completer = Completer(dist_context)
     complete_train_program = completer.complete_forward_annotation(
         train_program)
-
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,

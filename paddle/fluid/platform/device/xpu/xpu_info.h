@@ -13,7 +13,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <vector>
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/backends/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -51,9 +51,9 @@ void MemcpySyncD2D(void *dst, const platform::XPUPlace &dst_place,
                    const void *src, const platform::XPUPlace &src_place,
                    size_t count);
 
-using XPUDeviceGuard = pten::backends::xpu::XPUDeviceGuard;
+using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 
-pten::backends::xpu::XPUVersion get_xpu_version(int dev_id);
+phi::backends::xpu::XPUVersion get_xpu_version(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

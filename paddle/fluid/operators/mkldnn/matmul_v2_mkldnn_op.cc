@@ -28,19 +28,19 @@ using paddle::platform::to_void_cast;
 using Tensor = paddle::framework::Tensor;
 using paddle::framework::DDim;
 using paddle::framework::GradVarName;
-using paddle::framework::make_ddim;
-using paddle::framework::vectorize;
+using phi::make_ddim;
+using phi::vectorize;
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
 static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
+  return x_dim.size() > 1 ? x_dim : phi::make_ddim({1, x_dim[0]});
 }
 
 // Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
 // original y_dim is returned.
 static DDim ColumnMatrixDimsFromVector(const DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
+  return y_dim.size() > 1 ? y_dim : phi::make_ddim({y_dim[0], 1});
 }
 
 static std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
@@ -84,11 +84,10 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext& ctx,
 
   auto& MatrixDimsFromVector =
       input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  paddle::operators::math::MatDescriptor mat_dim =
-      paddle::operators::math::CreateMatrixDescriptor(
-          MatrixDimsFromVector(new_dims), 0,
-          ctx.Attr<bool>(std::string("trans_") +
-                         static_cast<char>(std::tolower(input_name[0]))));
+  phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
+      MatrixDimsFromVector(new_dims), 0,
+      ctx.Attr<bool>(std::string("trans_") +
+                     static_cast<char>(std::tolower(input_name[0]))));
 
   std::vector<int64_t> strides;
   if (!shape.empty()) {
@@ -214,7 +213,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
                       i, x_bd_dims[i], i, y_bd_dims[i]));
         out_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
       }
-      out->Resize(make_ddim(out_dims));
+      out->Resize(phi::make_ddim(out_dims));
     }
   }
 
@@ -269,9 +268,9 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       }
     }
 
-    dx_tmp->Resize(make_ddim(dx_bd_dims));
+    dx_tmp->Resize(phi::make_ddim(dx_bd_dims));
     dx_tmp->mutable_data<T>(ctx.GetPlace());
-    dy_tmp->Resize(make_ddim(dy_bd_dims));
+    dy_tmp->Resize(phi::make_ddim(dy_bd_dims));
     dy_tmp->mutable_data<T>(ctx.GetPlace());
   }
 
@@ -393,15 +392,13 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     if (x_dims != dx_bd_dims) {
       ReduceSumForMatmulGradOutput(ctx, dev_ctx, onednn_engine, &dx_tmp, dx,
-                                   x_dims,
-                                   paddle::framework::vectorize(x->dims()));
+                                   x_dims, phi::vectorize(x->dims()));
     } else {
       *dx = std::move(dx_tmp);
     }
     if (y_dims != dy_bd_dims) {
       ReduceSumForMatmulGradOutput(ctx, dev_ctx, onednn_engine, &dy_tmp, dy,
-                                   y_dims,
-                                   paddle::framework::vectorize(y->dims()));
+                                   y_dims, phi::vectorize(y->dims()));
     } else {
       *dy = std::move(dy_tmp);
     }

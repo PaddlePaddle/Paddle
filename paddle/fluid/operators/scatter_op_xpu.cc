@@ -16,7 +16,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/scatter_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -73,7 +76,7 @@ class ScatterOpXPUKernel : public framework::OpKernel<T> {
 
     int dim0 = static_cast<int>(x->dims()[0]);
     int dim1 = static_cast<int>(
-        framework::product(framework::slice_ddim(x_dims, 1, x_dims.size())));
+        phi::product(phi::slice_ddim(x_dims, 1, x_dims.size())));
     T *out_data = out->data<T>();
     const T *updates_data = updates->data<T>();
 

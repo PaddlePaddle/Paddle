@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/put_along_axis_op.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -123,16 +124,3 @@ REGISTER_OPERATOR(put_along_axis, ops::PutAlongAxisOp, ops::PutAlongAxisOpMaker,
                   paddle::operators::PutAlongAxisInplaceInferer);
 
 REGISTER_OPERATOR(put_along_axis_grad, ops::PutAlongAxisGradOp);
-
-REGISTER_OP_CPU_KERNEL(put_along_axis, ops::PutAlongAxisOpKernel<float>,
-                       ops::PutAlongAxisOpKernel<double>,
-                       ops::PutAlongAxisOpKernel<int>,
-                       ops::PutAlongAxisOpKernel<uint8_t>,
-                       ops::PutAlongAxisOpKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(put_along_axis_grad,
-                       ops::PutAlongAxisGradOpKernel<float>,
-                       ops::PutAlongAxisGradOpKernel<double>,
-                       ops::PutAlongAxisGradOpKernel<int>,
-                       ops::PutAlongAxisGradOpKernel<uint8_t>,
-                       ops::PutAlongAxisGradOpKernel<int64_t>);

@@ -20,7 +20,7 @@ from __future__ import print_function
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable, in_dygraph_mode, _varbase_creator
+from ..framework import Variable, _non_static_mode, _varbase_creator
 from .. import core
 from ..param_attr import ParamAttr
 from . import nn
@@ -78,7 +78,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
             #[array([0.], dtype=float32)]
     """
-    if in_dygraph_mode():
+    if _non_static_mode():
         if correct is None:
             correct = _varbase_creator(dtype="int32")
         if total is None:

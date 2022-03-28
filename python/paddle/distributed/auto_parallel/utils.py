@@ -22,7 +22,6 @@ import logging
 from functools import reduce
 
 import paddle.fluid.core as core
-from paddle.framework.io import _to_LodTensor
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
@@ -739,7 +738,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             rank_id = paddle.distributed.get_rank()
             index = cur_attr["process_group"].index(rank_id)
             param = dist_param_dict[var_name][index]
-            dist_param_dict[var_name] = _to_LodTensor(param)
+            dist_param_dict[var_name] = param
             continue
 
         pre_param = dist_param_dict[var_name]
@@ -751,7 +750,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             dist_param_dict[var_name] = complete_param
         else:
             complete_param = pre_param[0]
-            dist_param_dict[var_name] = _to_LodTensor(complete_param)
+            dist_param_dict[var_name] = complete_param
 
         if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
             sliced_param = _slice_parameter_with_dist_attr(complete_param,
@@ -798,7 +797,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
 
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
-    complete_param = _to_LodTensor(partition_param_list[0][0])
+    complete_param = partition_param_list[0][0]
     return complete_param
 
 
@@ -818,7 +817,7 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
     rank_id = paddle.distributed.get_rank()
     sliced_param_index = _get_sliced_param_index(
         rank_id, param.shape, dims_mapping, process_shape, process_group)
-    sliced_param = _to_LodTensor(sliced_param_list[sliced_param_index])
+    sliced_param = sliced_param_list[sliced_param_index]
     return sliced_param
 
 
@@ -1272,7 +1271,6 @@ def get_all_distributed_main_program(serial_program_info, dist_context,
         used_dist_context._dist_op_context = DistributedOperatorContext()
         _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
             rank_id, used_dist_context)
-        # print("dist_main_program: ", dist_main_program)
         all_dist_main_program.append(dist_main_program)
 
     return all_dist_main_program
@@ -1418,3 +1416,11 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     # Third, print error infomation if we cannot find the original id
     else:
         assert False, "Cannot find the original id in the distributed context"
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]

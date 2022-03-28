@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -39,16 +39,16 @@ class FSPOpKernel : public framework::OpKernel<T> {
     auto height = x_dims[2];
     auto width = x_dims[3];
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 
-    math::MatDescriptor x_mat_desc;
+    phi::funcs::MatDescriptor x_mat_desc;
     x_mat_desc.height_ = x_channel;
     x_mat_desc.width_ = height * width;
     x_mat_desc.batch_size_ = batch_size;
     x_mat_desc.stride_ = x_channel * height * width;
     x_mat_desc.trans_ = false;
 
-    math::MatDescriptor y_mat_desc;
+    phi::funcs::MatDescriptor y_mat_desc;
     y_mat_desc.height_ = height * width;
     y_mat_desc.width_ = y_channel;
     y_mat_desc.batch_size_ = batch_size;
@@ -78,8 +78,8 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
     int64_t h = 0;
     int64_t w = 0;
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     if (d_x != nullptr) {
       d_x->mutable_data<T>(context.GetPlace());
       set_zero(context.template device_context<DeviceContext>(), d_x,
@@ -89,14 +89,14 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       h = y_dims[2];
       w = y_dims[3];
 
-      math::MatDescriptor d_out_mat_desc;
+      phi::funcs::MatDescriptor d_out_mat_desc;
       d_out_mat_desc.height_ = x_channel;
       d_out_mat_desc.width_ = y_channel;
       d_out_mat_desc.batch_size_ = batch_size;
       d_out_mat_desc.stride_ = x_channel * y_channel;
       d_out_mat_desc.trans_ = false;
 
-      math::MatDescriptor y_mat_desc;
+      phi::funcs::MatDescriptor y_mat_desc;
       y_mat_desc.height_ = y_channel;
       y_mat_desc.width_ = h * w;
       y_mat_desc.batch_size_ = batch_size;
@@ -116,14 +116,14 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       h = x_dims[2];
       w = x_dims[3];
 
-      math::MatDescriptor d_out_mat_desc;
+      phi::funcs::MatDescriptor d_out_mat_desc;
       d_out_mat_desc.height_ = y_channel;
       d_out_mat_desc.width_ = x_channel;
       d_out_mat_desc.batch_size_ = batch_size;
       d_out_mat_desc.stride_ = x_channel * y_channel;
       d_out_mat_desc.trans_ = true;
 
-      math::MatDescriptor x_mat_desc;
+      phi::funcs::MatDescriptor x_mat_desc;
       x_mat_desc.height_ = x_channel;
       x_mat_desc.width_ = h * w;
       x_mat_desc.batch_size_ = batch_size;

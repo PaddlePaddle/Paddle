@@ -13,9 +13,9 @@ IF(WITH_IPU)
     "ipu_device.cc"
   )
 
-  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart graph graph_helper)
-  cc_library(ipu_info SRCS ${IPU_INFO_SRC} DEPS popart enforce)
-  cc_library(paddle_ipu SHARED SRCS ${PADDLE_IPU_SRC} DEPS popart graph_helper)
+  cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart-only graph graph_helper popdist)
+  cc_library(ipu_info SRCS ${IPU_INFO_SRC} DEPS popart-only enforce)
+  add_library(paddle_ipu SHARED ${PADDLE_IPU_SRC})
   add_dependencies(paddle_ipu ipu_backend)
   set(PADDLE_IPU_LIB "${CMAKE_CURRENT_BINARY_DIR}/libpaddle_ipu.so" CACHE STRING "")
   set(PADDLE_IPU_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "")

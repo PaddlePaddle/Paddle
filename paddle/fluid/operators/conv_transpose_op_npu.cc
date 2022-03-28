@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -48,15 +52,15 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
-                             in_data_dims, stride, ksize);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+    phi::UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
+                                  in_data_dims, stride, ksize);
 
     // construct NPU attr
     std::vector<int> strides(4, 1);
@@ -83,7 +87,7 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     for (auto i = output_padding.size(); i < 4; ++i) {
       output_padding.insert(output_padding.begin(), 0);
     }
-    auto output_dim_vec = framework::vectorize(output_tensor.dims());
+    auto output_dim_vec = phi::vectorize(output_tensor.dims());
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     const auto& runner =
@@ -130,15 +134,15 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
 
     framework::DDim in_data_dims;
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+    phi::UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                                  in_data_dims, strides, ksize);
 
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
@@ -163,15 +167,14 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
-      const auto& runner =
-          NpuOpRunner("Conv2DBackpropFilterD",
-                      {output_grad_tensor, input_tensor}, {*filter_grad},
-                      {{"filter_size", framework::vectorize<int>(filter_dims)},
-                       {"strides", strides_vec},
-                       {"pads", paddings},
-                       {"dilations", dilations_vec},
-                       {"groups", groups},
-                       {"data_format", data_format}});
+      const auto& runner = NpuOpRunner(
+          "Conv2DBackpropFilterD", {output_grad_tensor, input_tensor},
+          {*filter_grad}, {{"filter_size", phi::vectorize<int>(filter_dims)},
+                           {"strides", strides_vec},
+                           {"pads", paddings},
+                           {"dilations", dilations_vec},
+                           {"groups", groups},
+                           {"data_format", data_format}});
       runner.Run(stream);
     }
     if (input_grad) {

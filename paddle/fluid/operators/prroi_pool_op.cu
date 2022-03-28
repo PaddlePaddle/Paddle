@@ -327,7 +327,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
 
       input_grad->mutable_data<T>(ctx.GetPlace());
-      pten::funcs::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.cuda_device_context(), input_grad, static_cast<T>(0));
       input_roi_grad->mutable_data<T>(ctx.GetPlace());
       set_zero(ctx.cuda_device_context(), input_roi_grad, static_cast<T>(0));

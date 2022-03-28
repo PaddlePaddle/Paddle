@@ -45,8 +45,8 @@ class RetryAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  void FreeImpl(pten::Allocation* allocation) override;
-  pten::Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation* allocation) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
   uint64_t ReleaseImpl(const platform::Place& place) override {
     return underlying_allocator_->Release(place);
   }

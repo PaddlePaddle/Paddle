@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,7 +24,7 @@ namespace host_context {
 
 class KernelFrame;
 
-using KernelImplementation = void (*)(KernelFrame *frame);
+using KernelImplementation = std::function<void(KernelFrame *frame)>;
 
 /**
  * Hold the kernels registered in the system.
@@ -33,10 +34,14 @@ class KernelRegistry {
   KernelRegistry();
 
   void AddKernel(const std::string &key, KernelImplementation fn);
-  void AddKernelAttrNameList(const std::string &key,
-                             const std::vector<std::string> &names);
+  void AddKernelWithAttrs(const std::string &key,
+                          KernelImplementation fn,
+                          std::vector<const char *> &&attrs_order);
 
   KernelImplementation GetKernel(const std::string &key) const;
+  const std::vector<const char *> &GetAttrNameList(
+      const std::string &key) const;
+
   std::vector<std::string> GetKernelList() const;
 
   size_t size() const;

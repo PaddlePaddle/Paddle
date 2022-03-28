@@ -230,4 +230,5 @@ def load_tests(loader, standard_tests, pattern):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

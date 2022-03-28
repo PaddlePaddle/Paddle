@@ -320,10 +320,12 @@ class ListWithCondNet(paddle.nn.Layer):
 
         if index > 0:
             res = a[0] * a[0]
+            y = y + 1
         else:
             res = a[-1] * a[-1]
+            y = y - 1
 
-        z = a[-1] * res
+        z = a[-1] * res * y[0]
         return z
 
 
@@ -333,7 +335,7 @@ class TestListWithCondGradInferVarType(unittest.TestCase):
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
         index = paddle.to_tensor([1])
         res = net(x, index)
-        self.assertEqual(res[0], 16.)
+        self.assertEqual(res[0], 48.)
 
 
 if __name__ == '__main__':

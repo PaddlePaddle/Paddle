@@ -28,6 +28,20 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, GPU, ALL_LAYOUT);
+#endif
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -57,11 +71,11 @@ TEST(test_tracer, test_trace_op) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -103,11 +117,11 @@ TEST(test_tracer, test_trace_op_with_backward) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -143,11 +157,11 @@ TEST(test_tracer, test_track_backward_output) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -182,11 +196,11 @@ TEST(test_tracer, test_track_backward_input) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -224,11 +238,11 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(gpu_place);
   paddle::memory::Copy(gpu_place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size(), 0);
@@ -355,11 +369,11 @@ TEST(test_tracer, test_var_without_grad_var) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -560,11 +574,11 @@ TEST(test_tracer, eager_tracer) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -588,8 +602,8 @@ TEST(test_tracer, eager_tracer) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
-USE_OP(mul_grad);
-USE_OP(reduce_sum);
-USE_OP(reduce_sum_grad);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(mul_grad);
+USE_OP_ITSELF(reduce_sum);
+USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);

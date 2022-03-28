@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -64,7 +64,7 @@ class FoldOpKernel : public framework::OpKernel<T> {
     framework::DDim input_matrix_shape({input_dims[0], kernel_sizes[0],
                                         kernel_sizes[1], output_height,
                                         output_width});
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, output, static_cast<T>(0));
 
     for (int i = 0; i < batch_size; i++) {

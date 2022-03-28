@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/maxouting.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -95,67 +96,69 @@ __global__ void KernelMaxoutGrad(const int nthreads, const T* input_data,
 /*
  * All tensors are in NCHW or NHWC format.
  */
-template <typename T>
-class MaxOutFunctor<platform::CUDADeviceContext, T> {
- public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor* output,
-                  const int groups, const int axis) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[axis];
-    const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
-    const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
-    const int output_channels = output->dims()[axis];
+template <typename DeviceContext, typename T>
+void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
+                                                 const framework::Tensor& input,
+                                                 framework::Tensor* output,
+                                                 const int groups,
+                                                 const int axis) {
+  const int batch_size = input.dims()[0];
+  const int input_channels = input.dims()[axis];
+  const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
+  const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
+  const int output_channels = output->dims()[axis];
 
-    const T* input_data = input.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
-    int nthreads = output->numel();
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
+  const T* input_data = input.data<T>();
+  T* output_data = output->mutable_data<T>(context.GetPlace());
+  int nthreads = output->numel();
+  int blocks = (nthreads + 1024 - 1) / 1024;
+  dim3 threads(1024, 1);
+  dim3 grid(blocks, 1);
 
-    KernelMaxOut<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, input_data, input_channels, input_height, input_width, groups,
-        axis, output_data);
-  }
-};
+  KernelMaxOut<T><<<grid, threads, 0, context.stream()>>>(
+      nthreads, input_data, input_channels, input_height, input_width, groups,
+      axis, output_data);
+}
+
 /*
  * All tensors are in NCHW or NHWC format.
  */
-template <typename T>
-class MaxOutGradFunctor<platform::CUDADeviceContext, T> {
- public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor* input_grad,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad, const int groups,
-                  const int axis) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[axis];
-    const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
-    const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
-    const int output_channels = output.dims()[axis];
+template <typename DeviceContext, typename T>
+void MaxOutGradFunctor<DeviceContext, T>::operator()(
+    const DeviceContext& context, const framework::Tensor& input,
+    framework::Tensor* input_grad, const framework::Tensor& output,
+    const framework::Tensor& output_grad, const int groups, const int axis) {
+  const int batch_size = input.dims()[0];
+  const int input_channels = input.dims()[axis];
+  const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
+  const int input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
+  const int output_channels = output.dims()[axis];
 
-    const T* input_data = input.data<T>();
-    const T* output_data = output.data<T>();
-    const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
-    int nthreads = output.numel();
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
+  const T* input_data = input.data<T>();
+  const T* output_data = output.data<T>();
+  const T* output_grad_data = output_grad.data<T>();
+  T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+  int nthreads = output.numel();
+  int blocks = (nthreads + 1024 - 1) / 1024;
+  dim3 threads(1024, 1);
+  dim3 grid(blocks, 1);
 
-    KernelMaxoutGrad<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, input_data, output_data, output_grad_data, input_grad_data,
-        input_channels, input_height, input_width, groups, axis);
-  }
-};
+  KernelMaxoutGrad<T><<<grid, threads, 0, context.stream()>>>(
+      nthreads, input_data, output_data, output_grad_data, input_grad_data,
+      input_channels, input_height, input_width, groups, axis);
+}
 
 template class MaxOutGradFunctor<platform::CUDADeviceContext, float>;
 template class MaxOutGradFunctor<platform::CUDADeviceContext, double>;
 
 template class MaxOutFunctor<platform::CUDADeviceContext, float>;
 template class MaxOutFunctor<platform::CUDADeviceContext, double>;
+
+template class MaxOutGradFunctor<phi::GPUContext, float>;
+template class MaxOutGradFunctor<phi::GPUContext, double>;
+
+template class MaxOutFunctor<phi::GPUContext, float>;
+template class MaxOutFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

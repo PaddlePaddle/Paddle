@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scatter_nd_add_op.h"
 #include <memory>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,73 +26,6 @@ namespace operators {
 class ScatterNdAddOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of ScatterNdAddOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Index"), true,
-        platform::errors::InvalidArgument(
-            "Input(Index) of ScatterNdAddOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Updates"), true,
-        platform::errors::InvalidArgument(
-            "Input(Updates) of ScatterNdAddOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of ScatterNdAddOp should not be null."));
-
-    auto ref_dims = ctx->GetInputDim("X");
-    auto ref_dims_size = ref_dims.size();
-    auto index_dims = ctx->GetInputDim("Index");
-    auto index_dims_size = index_dims.size();
-    auto updates_dims = ctx->GetInputDim("Updates");
-    auto updates_dims_size = updates_dims.size();
-
-    PADDLE_ENFORCE_LE(
-        index_dims[index_dims_size - 1], ref_dims_size,
-        platform::errors::InvalidArgument(
-            "The last dimension of Input(Index)'s shape should be no greater "
-            "than the rank of Input(X), but received the last dimension of "
-            "Input(Index)'s shape is %d, the rank of Input(X) is %d.",
-            index_dims[index_dims_size - 1], ref_dims_size));
-    PADDLE_ENFORCE_GE(index_dims_size, 2UL,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(Index) should be greater than 1, "
-                          "but received the rank of Input(Index) is %d.",
-                          index_dims_size));
-
-    // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
-    std::vector<int64_t> r_updates_dims;
-    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
-      r_updates_dims.emplace_back(index_dims[i]);
-    }
-    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
-      r_updates_dims.emplace_back(ref_dims[i]);
-    }
-
-    PADDLE_ENFORCE_EQ(
-        r_updates_dims.size(), updates_dims_size,
-        platform::errors::InvalidArgument(
-            "Updates has wrong shape. The shape of Updates and Input(Updates) "
-            "should be same, but received the shape of Updates is %d, "
-            "the shape of Input(Updates) is %d.",
-            r_updates_dims.size(), updates_dims_size));
-
-    for (int64_t i = 0; i < updates_dims_size; ++i) {
-      PADDLE_ENFORCE_EQ(
-          r_updates_dims[i], updates_dims[i],
-          platform::errors::InvalidArgument(
-              "Updates has wrong shape. The dimensions of Updates and "
-              "Input(Updates) should match, but received Updates's"
-              "%d-th dimension is %d, Input(Updates)'s %d-th "
-              "dimension is %d.",
-              i, r_updates_dims[i], i, updates_dims[i]));
-    }
-    ctx->SetOutputDim("Out", ref_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -99,7 +35,8 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Ref and Updates must have same type"));
     return framework::OpKernelType(
-        framework::TransToProtoVarType(ctx.Input<Tensor>("X")->type()),
+        framework::TransToProtoVarType(
+            ctx.Input<framework::Tensor>("X")->type()),
         ctx.device_context());
   }
 };
@@ -107,17 +44,6 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
 class ScatterNdAddGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasOutput(framework::GradVarName("Updates"))) {
-      ctx->SetOutputDim(framework::GradVarName("Updates"),
-                        ctx->GetInputDim("Updates"));
-    }
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"),
-                        ctx->GetInputDim(framework::GradVarName("Out")));
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -193,22 +119,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add, ScatterNdAddInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterNdAddInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add_grad,
+                            ScatterNdAddGradInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterNdAddGradInferMeta));
+
 REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
                   ops::ScatterNdAddGradMaker<paddle::framework::OpDesc>,
-                  ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>);
+                  ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>,
+                  ScatterNdAddInferShapeFunctor);
 
 REGISTER_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
-                  ops::ScatterNdAddGradNoNeedBufferVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(scatter_nd_add, ops::ScatterNdAddOpKernel<float>,
-                       ops::ScatterNdAddOpKernel<double>,
-                       ops::ScatterNdAddOpKernel<int64_t>,
-                       ops::ScatterNdAddOpKernel<int>,
-                       ops::ScatterNdAddOpKernel<uint8_t>);
-
-REGISTER_OP_CPU_KERNEL(scatter_nd_add_grad,
-                       ops::ScatterNdAddGradientOpKernel<float>,
-                       ops::ScatterNdAddGradientOpKernel<double>,
-                       ops::ScatterNdAddGradientOpKernel<int64_t>,
-                       ops::ScatterNdAddGradientOpKernel<int>,
-                       ops::ScatterNdAddGradientOpKernel<uint8_t>);
+                  ops::ScatterNdAddGradNoNeedBufferVarsInferer,
+                  ScatterNdAddGradInferShapeFunctor);

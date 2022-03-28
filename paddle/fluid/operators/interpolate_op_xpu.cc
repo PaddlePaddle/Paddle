@@ -31,7 +31,7 @@ inline std::vector<int> get_new_shape_xpu(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
+        tensor->dims(), phi::make_ddim({1}),
         platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
     if (platform::is_xpu_place(tensor->place())) {
       framework::Tensor temp;

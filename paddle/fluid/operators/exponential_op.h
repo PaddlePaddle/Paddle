@@ -17,8 +17,8 @@
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/distribution_helper.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ class ExponentialGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> functor;
+    phi::funcs::SetConstant<DeviceContext, T> functor;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     functor(dev_ctx, dx, static_cast<T>(0));
   }

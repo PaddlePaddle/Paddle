@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
-#include "paddle/pten/core/lod_utils.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -71,8 +71,8 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
       if (lod_size) {
         auto* out_lod = out->mutable_lod();
         for (size_t i = 1; i < ins.size(); ++i) {
-          auto in_lod = pten::ConvertToLengthBasedLoD(ins[i]->lod());
-          pten::AppendLoD(out_lod, in_lod);
+          auto in_lod = phi::ConvertToLengthBasedLoD(ins[i]->lod());
+          phi::AppendLoD(out_lod, in_lod);
         }
       }
     }

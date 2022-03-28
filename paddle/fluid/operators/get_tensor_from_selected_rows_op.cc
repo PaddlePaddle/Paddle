@@ -57,7 +57,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
 class GetTensorFromSelectedRowsKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *x = ctx.Input<pten::SelectedRows>("X");
+    auto *x = ctx.Input<phi::SelectedRows>("X");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
 
     out->Resize(x->value().dims());

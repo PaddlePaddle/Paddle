@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
+
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -40,15 +41,16 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
                           "the npu kernel of softmax_with_cross_entropy."));
 
     const int rank = logits->dims().size();
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    const int n = SizeToAxis(axis, logits->dims());
-    const int d = SizeFromAxis(axis, logits->dims());
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int n = phi::funcs::SizeToAxis(axis, logits->dims());
+    const int d = phi::funcs::SizeFromAxis(axis, logits->dims());
 
     PADDLE_ENFORCE_EQ(
         labels->numel(), n,
         platform::errors::Unimplemented(
-            "The size of labels should be equal to SizeToAxis of logits,"
-            "but got size of labels is %d and SizeToAxis is %d.",
+            "The size of labels should be equal to phi::funcs::SizeToAxis of "
+            "logits,"
+            "but got size of labels is %d and phi::funcs::SizeToAxis is %d.",
             labels->numel(), n));
 
     loss->mutable_data<T>(ctx.GetPlace());
@@ -97,9 +99,9 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     logits_grad->mutable_data<T>(ctx.GetPlace());
 
     const int rank = logits_grad->dims().size();
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    const int n = SizeToAxis(axis, logits_grad->dims());
-    const int d = SizeFromAxis(axis, logits_grad->dims());
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int n = phi::funcs::SizeToAxis(axis, logits_grad->dims());
+    const int d = phi::funcs::SizeFromAxis(axis, logits_grad->dims());
 
     Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
 

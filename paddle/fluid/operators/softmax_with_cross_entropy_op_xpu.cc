@@ -38,14 +38,14 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     Tensor* softmax = context.Output<Tensor>("Softmax");
     Tensor* loss = context.Output<Tensor>("Loss");
     const int rank = logits->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     PADDLE_ENFORCE_EQ(axis, rank - 1, platform::errors::InvalidArgument(
                                           "axis should == rank - 1"));
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
-    const int n = SizeToAxis(axis, logits->dims());
-    const int d = SizeFromAxis(axis, logits->dims());
-    std::vector<int> logits_dims = framework::vectorize<int>(logits->dims());
+    const int n = phi::funcs::SizeToAxis(axis, logits->dims());
+    const int d = phi::funcs::SizeFromAxis(axis, logits->dims());
+    std::vector<int> logits_dims = phi::vectorize<int>(logits->dims());
     const bool soft_label = context.Attr<bool>("soft_label");
 
     // softmax
@@ -53,7 +53,7 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
         context.template device_context<platform::XPUDeviceContext>();
     int r = XPU_SUCCESS;
     if (platform::get_xpu_version(context.GetPlace().GetDeviceId()) ==
-            pten::backends::xpu::XPUVersion::XPU2 &&
+            phi::backends::xpu::XPUVersion::XPU2 &&
         soft_label) {
       r = xpu::soft_softmax_with_cross_entropy(
           dev_ctx.x_context(), logits->data<float>(), labels->data<T>(),
@@ -122,11 +122,11 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
     auto ignore_index = context.Attr<int>("ignore_index");
 
     const int rank = logit_grad->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     PADDLE_ENFORCE_EQ(axis, rank - 1, platform::errors::InvalidArgument(
                                           "axis should == rank - 1"));
-    const int n = SizeToAxis(axis, logit_grad->dims());
-    const int d = SizeFromAxis(axis, logit_grad->dims());
+    const int n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
+    const int d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
 
     auto& dev_ctx =
         context.template device_context<platform::XPUDeviceContext>();

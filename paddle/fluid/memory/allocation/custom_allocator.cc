@@ -21,7 +21,7 @@ namespace memory {
 namespace allocation {
 
 bool CustomAllocator::IsAllocThreadSafe() const { return true; }
-void CustomAllocator::FreeImpl(pten::Allocation* allocation) {
+void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
       platform::errors::PermissionDenied("CustomDevice memory is "
@@ -31,18 +31,17 @@ void CustomAllocator::FreeImpl(pten::Allocation* allocation) {
   delete allocation;
 }
 
-pten::Allocation* CustomAllocator::AllocateImpl(size_t size) {
-  std::call_once(once_flag_,
-                 [this] { platform::DeviceManager::SetDevice(place_); });
+phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
+  std::call_once(once_flag_, [this] { phi::DeviceManager::SetDevice(place_); });
 
   void* ptr =
-      platform::DeviceManager::GetDeviceWithPlace(place_)->MemoryAllocate(size);
+      phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryAllocate(size);
   if (LIKELY(ptr)) {
     return new Allocation(ptr, size, place_);
   }
 
   size_t avail, total;
-  platform::DeviceManager::MemoryStats(place_, &total, &avail);
+  phi::DeviceManager::MemoryStats(place_, &total, &avail);
 
   auto dev_type = platform::PlaceHelper::GetDeviceType(place_);
   auto dev_id = platform::PlaceHelper::GetDeviceId(place_);

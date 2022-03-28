@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
 DECLARE_bool(allreduce_record_one_event);
@@ -68,7 +68,8 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
 }
 
 void FusedAllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   VLOG(4) << this->DebugString();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

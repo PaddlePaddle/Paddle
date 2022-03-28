@@ -189,7 +189,10 @@ struct ThreadEventSection {
 
 class ThreadEventRecorder {
  public:
-  ThreadEventRecorder() { thread_id_ = GetCurrentThreadSysId(); }
+  ThreadEventRecorder() {
+    thread_id_ = GetCurrentThreadSysId();
+    thread_name_ = GetCurrentThreadName();
+  }
 
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 

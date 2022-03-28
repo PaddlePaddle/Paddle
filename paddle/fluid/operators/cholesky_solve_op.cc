@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cholesky_solve_op.h"
-#include "paddle/fluid/operators/solve_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -39,50 +40,6 @@ class CholeskySolveOpMaker : public framework::OpProtoAndCheckerMaker {
 class CholeskySolveOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "CholeskySolve");
-    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "CholeskySolve");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "CholeskySolve");
-    auto u_dims = context->GetInputDim("Y");
-    auto b_dims = context->GetInputDim("X");
-    int u_rank = u_dims.size();
-    int b_rank = b_dims.size();
-    PADDLE_ENFORCE_GE(u_rank, 2,
-                      platform::errors::InvalidArgument(
-                          "the rank of input Y must greater or equal to 2"));
-    PADDLE_ENFORCE_GE(b_rank, 2,
-                      platform::errors::InvalidArgument(
-                          "the rank of input X must greater or equal to 2"));
-    PADDLE_ENFORCE_EQ(u_dims[u_rank - 1], u_dims[u_rank - 2],
-                      platform::errors::InvalidArgument(
-                          "input Matrix Y should be square matrix,"
-                          "But Got last shape of %ld x %ld",
-                          u_dims[u_rank - 1], u_dims[u_rank - 2]));
-    PADDLE_ENFORCE_EQ(
-        b_dims[b_rank - 2], u_dims[u_rank - 2],
-        platform::errors::InvalidArgument(
-            "the first dim of input X must equal to the dim of input Y,"
-            "But Got %ld and %ld",
-            b_dims[b_rank - 2], u_dims[u_rank - 2]));
-
-    std::vector<int64_t> u_dims_vec = paddle::framework::vectorize(u_dims);
-    std::vector<int64_t> b_dims_vec = paddle::framework::vectorize(b_dims);
-
-    std::vector<int64_t> u_dims_vec_cut(u_dims_vec.begin(),
-                                        u_dims_vec.end() - 2);
-    std::vector<int64_t> b_dims_vec_cut(b_dims_vec.begin(),
-                                        b_dims_vec.end() - 2);
-
-    std::vector<int64_t> expand_batch_portion =
-        get_broadcast_batch_portion(u_dims_vec_cut, b_dims_vec_cut);
-
-    std::vector<int64_t> b_broadcast_dims({expand_batch_portion});
-    b_broadcast_dims.insert(b_broadcast_dims.end(),
-                            {b_dims_vec[b_rank - 2], b_dims_vec[b_rank - 1]});
-
-    // dim of 'Out' is the same with 'Y' after broadcast
-    context->SetOutputDim("Out", framework::make_ddim(b_broadcast_dims));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -151,22 +108,15 @@ class CholeskySolveGradOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(cholesky_solve, CholeskySolveInferShapeFunctor,
+                            PD_INFER_META(phi::CholeskySolveInferMeta));
+
 REGISTER_OPERATOR(cholesky_solve, ops::CholeskySolveOp,
                   ops::CholeskySolveOpMaker,
                   ops::CholeskySolveOpVarTypeInference,
                   ops::CholeskySolveOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CholeskySolveOpGradMaker<paddle::imperative::OpBase>);
+                  ops::CholeskySolveOpGradMaker<paddle::imperative::OpBase>,
+                  CholeskySolveInferShapeFunctor);
 
 REGISTER_OPERATOR(cholesky_solve_grad, ops::CholeskySolveGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    cholesky_solve,
-    ops::CholeskySolveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CholeskySolveKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    cholesky_solve_grad,
-    ops::CholeskySolveGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CholeskySolveGradKernel<paddle::platform::CPUDeviceContext, double>);
-// Complex<> is not supported because of TensorExpand, which used to boardcast
-// input Tensor
