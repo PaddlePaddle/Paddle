@@ -34,6 +34,13 @@ namespace phi {
                            {GradVarName("X")});                     \
   }
 
+#define DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(func_name, op_name, attrs)           \
+  KernelSignature func_name##GradOpArgumentMapping(                          \
+      const ArgumentMappingContext& ctx) {                                   \
+    return KernelSignature(                                                  \
+        op_name "_grad", {GradVarName("Out")}, {attrs}, {GradVarName("X")}); \
+  }
+
 #define comma ,
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cos, "cos", );      // NOLINT
@@ -61,6 +68,11 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log, "log", );                 // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log2, "log2", );               // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log10, "log10", );             // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log1p, "log1p", );             // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardSwish,
+                               "hard_swish",
+                               "threshold" comma "scale" comma
+                               "offset");                // NOLINT
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Swish, "swish", "beta");  // NOLINT
 
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );        // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );        // NOLINT
@@ -68,6 +80,10 @@ DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );  // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(HardSigmoid,
                                  "hard_sigmoid",
                                  "slope" comma "offset");  // NOLINT
+
+DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Round, "round", );  // NOLINT
+DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Floor, "floor", );  // NOLINT
+DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Ceil, "ceil", );    // NOLINT
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -135,6 +151,26 @@ KernelSignature LogDoubleGradOpArgumentMapping(
       "log_double_grad", {"X", "DOut", "DDX"}, {}, {"DX", "DDOut"});
 }
 
+KernelSignature PowOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("FactorTensor")) {
+    return KernelSignature("pow", {"X"}, {"FactorTensor"}, {"Out"});
+  } else {
+    return KernelSignature("pow", {"X"}, {"factor"}, {"Out"});
+  }
+}
+
+KernelSignature PowGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("FactorTensor")) {
+    return KernelSignature("pow_grad",
+                           {"X", GradVarName("Out")},
+                           {"FactorTensor"},
+                           {GradVarName("X")});
+  } else {
+    return KernelSignature(
+        "pow_grad", {"X", GradVarName("Out")}, {"factor"}, {GradVarName("X")});
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
@@ -197,3 +233,11 @@ PD_REGISTER_ARG_MAPPING_FN(log_grad_grad, phi::LogDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log2_grad, phi::Log2GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log10_grad, phi::Log10GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log1p_grad, phi::Log1pGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(hard_swish_grad,
+                           phi::HardSwishGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(swish_grad, phi::SwishGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(round_grad, phi::RoundGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(floor_grad, phi::FloorGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(ceil_grad, phi::CeilGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pow_grad, phi::PowGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pow, phi::PowOpArgumentMapping);
