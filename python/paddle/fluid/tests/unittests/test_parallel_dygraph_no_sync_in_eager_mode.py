@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ flag_name = os.path.splitext(__file__)[0]
 class TestParallelDygraphNoSync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
         self._find_unused_parameters = False
@@ -47,6 +48,7 @@ class TestParallelDygraphNoSync(TestDistBase):
 class TestParallelDygraphNoSyncUnusedParam(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
         self._find_unused_parameters = True
@@ -63,6 +65,7 @@ class TestParallelDygraphNoSyncUnusedParam(TestDistBase):
 class TestParallelDygraphNoSyncControlFlow(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._eager_mode = True
         self._nccl2_mode = True
         self._dygraph = True
         self._find_unused_parameters = True
@@ -85,6 +88,7 @@ class TestParallelDygraphNoSyncSpawn(TestDistSpawnRunner):
 class TestParallelDygraphNoSyncUnusedParamSpawn(TestDistSpawnRunner):
     def _args_config(self, args):
         args.find_unused_parameters = True
+        args.eager_mode = True
 
     def test_no_sync_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
@@ -95,6 +99,7 @@ class TestParallelDygraphNoSyncUnusedParamSpawn(TestDistSpawnRunner):
 class TestParallelDygraphNoSyncControlFlowSpawn(TestDistSpawnRunner):
     def _args_config(self, args):
         args.find_unused_parameters = True
+        args.eager_mode = True
 
     def test_no_sync_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):

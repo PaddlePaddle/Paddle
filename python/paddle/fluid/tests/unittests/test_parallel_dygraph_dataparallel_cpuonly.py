@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import time
+import paddle
 import paddle.fluid as fluid
 import copy
 import os
@@ -128,6 +129,11 @@ class TestMultipleGpus(unittest.TestCase):
 class TestDataParallelGradientCheck(TestMultipleGpus):
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
+
+
+class TestDataParallelGradientCheckInEagerMode(TestMultipleGpus):
+    def test_multiple_gpus_dynamic(self):
+        self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
 
 
 if __name__ == "__main__":
