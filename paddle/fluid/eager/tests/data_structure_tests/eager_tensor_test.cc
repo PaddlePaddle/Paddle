@@ -90,7 +90,7 @@ TEST(Tensor, MemberFunction) {
   VLOG(6) << "Set impl";
   CHECK_EQ(et3.initialized(), true);
   CHECK_EQ(et3.is_cpu(), true);
-  CHECK_EQ(et3.is_cuda(), false);
+  CHECK_EQ(et3.is_gpu(), false);
   CHECK_EQ(et3.numel(), 2);
   auto expected_dim = phi::make_ddim({1, 2});
   CHECK_EQ(et3.dims(), expected_dim);
@@ -179,8 +179,8 @@ TEST(EagerVariable, Constructor) {
   paddle::experimental::Tensor t6;
   paddle::experimental::Tensor t9;
   VLOG(6) << "Check Tensor Copy_ Selected Rows";
-  t8.copy_(t7, paddle::platform::CUDAPlace(0), true);
-  t9.copy_(t8, paddle::platform::CPUPlace(), true);
+  t8.copy_(t7, paddle::platform::CUDAPlace(0), false);
+  t9.copy_(t8, paddle::platform::CPUPlace(), false);
   auto* dt9_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())
                           ->value()
                           .data<float>();
@@ -190,14 +190,14 @@ TEST(EagerVariable, Constructor) {
            2);
 
   VLOG(6) << "Check Tensor Copy_ Dense Tensor";
-  t5.copy_(t3, paddle::platform::CUDAPlace(0), true);
-  t6.copy_(t5, paddle::platform::CPUPlace(), true);
+  t5.copy_(t3, paddle::platform::CUDAPlace(0), false);
+  t6.copy_(t5, paddle::platform::CPUPlace(), false);
   auto* dt6_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t6.impl())->data<float>();
   CHECK_EQ(dt6_tmp_ptr[0], 5.0f);
   CHECK_EQ(dt6_tmp_ptr[1], 10.0f);
 #else
-  t5.copy_(t3, paddle::platform::CPUPlace(), true);
+  t5.copy_(t3, paddle::platform::CPUPlace(), false);
   auto* dt5_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t5.impl())->data<float>();
   CHECK_EQ(dt5_tmp_ptr[0], 5.0f);
