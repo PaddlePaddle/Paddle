@@ -120,6 +120,7 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     case TracerEventType::Optimization:
     case TracerEventType::PythonOp:
     case TracerEventType::PythonUserDefined:
+      // cname value comes from tracing.js reservedColorsByName variable
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
