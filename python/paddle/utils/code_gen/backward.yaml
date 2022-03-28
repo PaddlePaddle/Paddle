@@ -741,16 +741,16 @@
     func : gather_nd_grad
 
 
-# forward backward type not match
-- backward_api : top_k_grad 
-  forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : top_k_grad
+# # forward backward type not match
+# - backward_api : top_k_grad 
+#   forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+#   args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
+#   output : Tensor(x_grad)
+#   infer_meta :
+#     func : UnchangedInferMeta
+#     param : [x]
+#   kernel :
+#     func : top_k_grad
 
 
 - backward_api : trace_grad 

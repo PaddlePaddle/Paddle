@@ -18,7 +18,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import layers
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
@@ -847,15 +847,8 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
            # [[1 1 0 0]]
 
     """
-    if in_dygraph_mode():
-        k = k.numpy().item(0) if isinstance(k, Variable) else k
 
-        if axis == None:
-            axis = -1
-        out, indices = _C_ops.final_state_top_k(x, k, axis, largest, sorted)
-        return out, indices
-
-    if _in_legacy_dygraph():
+    if _non_static_mode():
         if axis is None:
             out, indices = _C_ops.top_k_v2(x, 'k',
                                            int(k), 'largest', largest, 'sorted',
