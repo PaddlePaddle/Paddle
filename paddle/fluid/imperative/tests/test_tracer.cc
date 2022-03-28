@@ -32,9 +32,15 @@
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, GPU, ALL_LAYOUT);
 #endif
 
 namespace imperative = paddle::imperative;
@@ -596,8 +602,8 @@ TEST(test_tracer, eager_tracer) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
-USE_OP(mul_grad);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(mul_grad);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);
