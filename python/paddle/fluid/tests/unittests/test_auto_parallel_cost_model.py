@@ -28,7 +28,7 @@ from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.cost_model import estimate_cost
 import paddle.fluid.core as core
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
@@ -232,8 +232,9 @@ class TestCostModel(unittest.TestCase):
             dist_context = DistributedContext()
             distributed_program, dist_startup_prog, dist_params_grads = get_dist_prog(
                 train_program, startup_program, dist_context, rank_id)
-            reshard(distributed_program, dist_startup_prog, rank_id,
-                    dist_context, dist_params_grads)
+            resharder = Resharder(distributed_program, dist_startup_prog,
+                                  rank_id, dist_context, dist_params_grads)
+            resharder.reshard()
             dist_program.append(distributed_program)
         cluster = None
         cost = estimate_cost(

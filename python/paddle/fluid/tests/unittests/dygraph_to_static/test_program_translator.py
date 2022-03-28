@@ -232,7 +232,9 @@ class TestEnableDeclarative(unittest.TestCase):
             dygraph_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(dygraph_func))
             dygraph_output = dygraph_func(self.x, self.weight)
-            self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(dygraph_output, (fluid.core.VarBase,
+                                            fluid.core.eager.Tensor)))
 
     def test_enable_disable_get_program(self):
 
@@ -254,7 +256,9 @@ class TestEnableDeclarative(unittest.TestCase):
         with fluid.dygraph.guard():
             dygraph_output = self.program_translator.get_program(
                 simple_func, self.x, self.weight)
-            self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
+            self.assertTrue(
+                isinstance(dygraph_output, (fluid.core.VarBase,
+                                            fluid.core.eager.Tensor)))
 
     def test_enable_disable_declarative(self):
 
