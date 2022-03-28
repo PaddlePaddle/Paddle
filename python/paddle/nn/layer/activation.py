@@ -435,6 +435,24 @@ class PReLU(Layer):
             self._num_parameters, self._data_format, self._init, self._dtype,
             name_str)
 
+class RReLU(Layer):
+    def __init__(self,
+                 lower=1./8.,
+                 upper=1./3.,
+                 name=None):
+        super(PReLU, self).__init__()
+        self._lower = lower
+        self._upper = upper
+        self._name = name
+
+    def forward(self, x):
+        return F.rrelu(x, lower=self._lower, upper=self._upper, training=self.training)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'lower={}, upper={}, training={}, dtype={}{}'.format(
+            self._lower, self._upper, self.training, self._dtype,
+            name_str)
 
 class ReLU(Layer):
     """

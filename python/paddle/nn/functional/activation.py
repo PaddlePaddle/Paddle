@@ -532,6 +532,46 @@ def prelu(x, weight, data_format="NCHW", name=None):
                "data_format": data_format})
     return out
 
+def rrelu(x, lower, upper, training=False, name=None):
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rrelu')
+
+    if not isinstance(lower, float) or not isinstance(upper, float):
+        raise TypeError(
+            "The lower and upper values must be float type. Received: lower {}, upper {}.".format(
+                lower, upper))
+
+    if lower < 0 or lower > 1:
+        raise ValueError(
+            "The lower value must be no less than zero or greater than one. Received: {}.".format(
+                lower))
+
+    if upper < lower:
+        raise ValueError(
+            "The upper value must be greater than lower value. Received: lower {}, upper {}.".format(
+                lower, upper))
+
+    if upper > 1:
+        raise ValueError(
+            "The upper value must be no greater than one. Received: {}.".format(
+                upper))
+
+    if training:
+        negative_slope = (lower + upper) / 2.0
+        return leaky_relu(x, negative_slope, name)
+
+    if in_dynamic_mode():
+        return _C_ops.rrelu(x, 'lower', lower, 'upper', upper)
+
+    helper = LayerHelper('rrelu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type="rrelu",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"lower": lower,
+               "upper": upper})
+    return out
 
 def relu(x, name=None):
     """
