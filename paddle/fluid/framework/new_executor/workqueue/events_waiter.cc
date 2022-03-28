@@ -142,20 +142,24 @@ std::string EventsWaiter::WaitEvent() {
   }
 
   trigger_event_.store(kEmptyEventId, std::memory_order_relaxed);
-  waiting_.store(false, std::memory_order_relaxed);
   std::string evt_name =
       triggered == kEmptyEventId ? "NoEventNotifier" : GetEventName(triggered);
   VLOG(10) << "Consume event id:" << triggered << ", name:" << evt_name;
   // lazy deletion
   {
+    triggered = trigger_event_;
     std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
     if (deleted_events_.size() > 0) {
       for (auto evt : deleted_events_) {
+        if (evt == triggered) {
+          continue;
+        }
         events_.erase(evt);
       }
       deleted_events_.clear();
     }
   }
+  waiting_.store(false, std::memory_order_relaxed);
   return evt_name;
 }
 

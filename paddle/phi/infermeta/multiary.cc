@@ -66,6 +66,88 @@ void AdadeltaInferMeta(const MetaTensor& param,
   avg_squared_update_out->set_dtype(avg_squared_update.dtype());
 }
 
+void AdamInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment2,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   paddle::optional<const MetaTensor&> master_param,
+                   paddle::optional<const MetaTensor&> skip_update,
+                   const Scalar& beta1,
+                   const Scalar& beta2,
+                   const Scalar& epsilon,
+                   bool lazy_mode,
+                   int64_t min_row_size_to_use_multithread,
+                   bool multi_precision,
+                   bool use_global_beta_pow,
+                   MetaTensor* param_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* master_param_outs) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      errors::InvalidArgument(
+          "The number of LearningRate shall be 1, but received %d. Maybe "
+          "the Input variable LearningRate has not "
+          "been initialized. You may need to confirm "
+          "if you put exe.run(startup_program) "
+          "after optimizer.minimize function.",
+          phi::product(lr_dims)));
+  auto beta1_pow_dims = beta1_pow.dims();
+  VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta1 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta1_pow_dims)));
+  auto beta2_pow_dims = beta2_pow.dims();
+  VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta2 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta2_pow_dims)));
+
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment1.dims(),
+      errors::InvalidArgument(
+          "Param and Moment1 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment1 dims: [%s].",
+          param_dims,
+          moment1.dims()));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment2.dims(),
+      errors::InvalidArgument(
+          "Param and Moment2 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment2 dims: [%s].",
+          param_dims,
+          moment2.dims()));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  moment1_out->set_dims(param_dims);
+  moment1_out->set_dtype(moment1.dtype());
+  moment2_out->set_dims(param_dims);
+  moment2_out->set_dtype(moment2.dtype());
+
+  beta1_pow_out->set_dims(beta1_pow_dims);
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow_dims);
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
+}
+
 void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& grad,
                      const MetaTensor& learning_rate,
@@ -120,6 +202,55 @@ void AdamaxInferMeta(const MetaTensor& param,
 
   inf_norm_out->set_dims(param_dims);
   inf_norm_out->set_dtype(inf_norm.dtype());
+}
+
+void AdamwInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    const MetaTensor& moment1,
+                    const MetaTensor& moment2,
+                    const MetaTensor& beta1_pow,
+                    const MetaTensor& beta2_pow,
+                    paddle::optional<const MetaTensor&> master_param,
+                    paddle::optional<const MetaTensor&> skip_update,
+                    const Scalar& beta1,
+                    const Scalar& beta2,
+                    const Scalar& epsilon,
+                    float lr_ratio,
+                    float coeff,
+                    bool with_decay,
+                    bool lazy_mode,
+                    int64_t min_row_size_to_use_multithread,
+                    bool multi_precision,
+                    bool use_global_beta_pow,
+                    MetaTensor* param_out,
+                    MetaTensor* moment1_out,
+                    MetaTensor* moment2_out,
+                    MetaTensor* beta1_pow_out,
+                    MetaTensor* beta2_pow_out,
+                    MetaTensor* master_param_outs) {
+  AdamInferMeta(param,
+                grad,
+                learning_rate,
+                moment1,
+                moment2,
+                beta1_pow,
+                beta2_pow,
+                master_param,
+                skip_update,
+                beta1,
+                beta2,
+                epsilon,
+                lazy_mode,
+                min_row_size_to_use_multithread,
+                multi_precision,
+                use_global_beta_pow,
+                param_out,
+                moment1_out,
+                moment2_out,
+                beta1_pow_out,
+                beta2_pow_out,
+                master_param_outs);
 }
 
 void AucInferMeta(const MetaTensor& input,
@@ -949,6 +1080,43 @@ void PsroiPoolInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
+}
+
+void WarpctcInferMeta(const MetaTensor& logits,
+                      const MetaTensor& label,
+                      const paddle::optional<const MetaTensor&> logits_length,
+                      const paddle::optional<const MetaTensor&> labels_length,
+                      int blank,
+                      bool norm_by_times,
+                      MetaTensor* warpctc_grad,
+                      MetaTensor* loss) {
+  auto logits_dims = logits.dims();
+  int sequence_width = 0;
+
+  if (logits_length.is_initialized()) {
+    sequence_width = logits_dims[2];
+  } else {
+    sequence_width =
+        static_cast<int>(phi::product(logits_dims) / logits_dims[0]);
+  }
+
+  PADDLE_ENFORCE_GE(
+      blank,
+      0,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+  PADDLE_ENFORCE_LT(
+      blank,
+      sequence_width,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+
+  loss->set_dims({-1, 1});
+  loss->set_dtype(logits.dtype());
 }
 
 void WhereInferMeta(const MetaTensor& condition,
