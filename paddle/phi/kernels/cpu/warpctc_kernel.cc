@@ -12,20 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/warpctc_kernel.h"
+#include "paddle/phi/kernels/impl/warpctc_kernel_impl.h"
 
-#include <vector>
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void FrobeniusNormGradKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& out,
-                             const DenseTensor& dout,
-                             const std::vector<int64_t>& axis,
-                             bool keep_dim,
-                             bool reduce_all,
-                             DenseTensor* dx);
-}  // namespace phi
+PD_REGISTER_KERNEL(
+    warpctc, CPU, ALL_LAYOUT, phi::WarpctcKernel, float, double) {}

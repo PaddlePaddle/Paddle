@@ -14,24 +14,20 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/frobenius_norm_grad_kernel.h"
-
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/impl/reduce_grad.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void FrobeniusNormGradKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& out,
-                             const DenseTensor& dout,
-                             const std::vector<int64_t>& axis,
-                             bool keep_dim,
-                             bool reduce_all,
-                             DenseTensor* dx) {
-  ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
-      ctx, x, out, dout, axis, keep_dim, reduce_all, dx);
-}
+void WarpctcKernel(const Context& dev_ctx,
+                   const DenseTensor& logits,
+                   const DenseTensor& label,
+                   paddle::optional<const DenseTensor&> logits_length,
+                   paddle::optional<const DenseTensor&> labels_length,
+                   int blank,
+                   bool norm_by_times,
+                   DenseTensor* warpctc_grad,
+                   DenseTensor* loss);
 
 }  // namespace phi
