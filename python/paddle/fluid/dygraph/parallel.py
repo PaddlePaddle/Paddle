@@ -574,9 +574,7 @@ class DataParallel(layers.Layer):
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
                  find_unused_parameters=False,
-                 process_group=None,
-                 gradient_as_buffer_view=False,
-                 static_graph=False):
+                 process_group=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
