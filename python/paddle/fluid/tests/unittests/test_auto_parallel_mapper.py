@@ -40,7 +40,7 @@ from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import reshard
+from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.process_group import get_all_process_groups
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.cluster import Cluster
@@ -502,8 +502,9 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         dist_train_program, dist_startup_prog, dist_params_grads)
 
-    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context,
-            dist_params_grads)
+    resharder = Resharder(dist_train_program, dist_startup_prog, rank_id,
+                          dist_context, dist_params_grads)
+    resharder.reshard()
     return dist_train_program, dist_startup_prog
 
 
