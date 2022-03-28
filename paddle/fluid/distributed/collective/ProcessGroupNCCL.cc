@@ -409,8 +409,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduceSparse(
         paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
         const auto* src_rows_ptr = mixv_src_rows.CUDAData(place);
 
-        VLOG(3) << "==== debug 1 ====";
-
         auto* dst_tensor = dst->mutable_value();
         auto dims = src_tensor.dims();
         dims[0] = rows_num;
@@ -420,22 +418,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduceSparse(
             dst_tensor->mutable_data(place, src_tensor.dtype());
         const auto* src_tensor_ptr = src_tensor.data();
 
-        VLOG(3) << "==== debug 2 ====";
-
         auto sizeof_dtype = framework::SizeOfType(dtype);
         int64_t row_offset = 0;
 
         dev_ctx->Wait();
-
-        VLOG(3) << "==== debug 3 ====";
 
         if (std::all_of(
                 cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
                 [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
           // During sparse communication, the number of each card is same.
           // allgather is used to speed up the allreduce by replacing broadcast.
-
-          VLOG(3) << "==== debug 4 ====";
 
           auto row_sendcount = cpu_rows_num_ptr[0];
           VLOG(3)
@@ -448,8 +440,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduceSparse(
               src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype, comm,
               stream));
         } else {
-          VLOG(3) << "==== debug 5 ====";
-
           for (int i = 0; i < size_; ++i) {
             if (cpu_rows_num_ptr[i] > 0) {
               // 2. Broadcast the rows of SelectedRows
@@ -468,8 +458,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduceSparse(
             }
           }
         }
-
-        VLOG(3) << "==== debug 6 ====";
 
         platform::GpuStreamSync(stream);
 
