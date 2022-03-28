@@ -35,26 +35,29 @@ template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
 // As the basic for SearchAlgorithm struct.
-template <typename conv_t>
+template <typename PerfT>
 struct SearchAlgorithm {};
 
 // As the container of searchAlgorithm::Find() result.
-template <typename Algo_t>
-struct AlgoResult {
-  Algo_t algo = static_cast<Algo_t>(0);
+template <typename AlgoT>
+struct SearchResult {
+ public:
+  AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
   size_t workspace_size = -1;
+
+  SearchResult() {}
 };
 
 // As the container of conv relevant descriptors.
-template <typename Handle_t, typename Data_t>
+template <typename HandleT, typename DataT>
 struct ConvArgsBase {
-  Handle_t handle;
+  HandleT handle;
   platform::TensorDescriptor idesc, odesc;
   platform::FilterDescriptor wdesc;
   platform::ConvolutionDescriptor cdesc;
   const framework::Tensor *x, *w, *o;
-  Data_t cudnn_dtype;
+  DataT cudnn_dtype;
 
   // strides
   std::vector<int> s;
@@ -65,7 +68,7 @@ struct ConvArgsBase {
 
   ConvArgsBase(const framework::Tensor* x, const framework::Tensor* w,
                const framework::Tensor* o, const std::vector<int> s,
-               const std::vector<int> p, const std::vector<int> d, Data_t dtype)
+               const std::vector<int> p, const std::vector<int> d, DataT dtype)
       : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
 };
 
@@ -93,9 +96,6 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   out << "]";
   return out;
 }
-
-// template <typename algo_t>
-// struct SearchAlgorithm {};
 
 }  // namespace operators
 }  // namespace paddle

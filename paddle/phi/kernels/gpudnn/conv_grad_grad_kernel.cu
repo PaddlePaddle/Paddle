@@ -289,15 +289,17 @@ void ConvCudnnGradGradKernel(
                                     dtype};
 
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result1;
-  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result2;
-  paddle::operators::AlgoResult<miopenConvBwdDataAlgorithm_t> data_result;
-  paddle::operators::AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result2;
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> data_result;
+  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
+      filter_result;
 #else
-  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
-  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
-  paddle::operators::AlgoResult<cudnnConvolutionBwdDataAlgo_t> data_result;
-  paddle::operators::AlgoResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> data_result;
+  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
+      filter_result;
 #endif
 
   auto layout = paddle::platform::GetCudnnTensorFormat(

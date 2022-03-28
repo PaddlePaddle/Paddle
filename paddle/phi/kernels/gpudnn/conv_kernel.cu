@@ -307,17 +307,16 @@ void ConvCudnnKernel(const Context& ctx,
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result;
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
   fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
   fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  VLOG(3) << "fwd algo: " << fwd_result.algo << ", time " << fwd_result.time;
   workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
 #endif
 
