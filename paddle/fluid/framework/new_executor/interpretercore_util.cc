@@ -581,7 +581,7 @@ std::map<int, std::list<int>> get_downstream_map(
       result[dep_op].push_back(op);
     }
   }
-  return std::move(result);
+  return result;
 }
 
 std::map<int, std::list<int>> build_op_downstream_map(
@@ -643,7 +643,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
       }
     }
   }
-  return std::move(get_downstream_map(op2dependences));
+  return get_downstream_map(op2dependences);
 }
 
 }  // namespace interpreter

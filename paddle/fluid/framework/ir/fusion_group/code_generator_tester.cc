@@ -420,11 +420,7 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(bool backward,
       n->Var()->SetDataType(proto_dtype);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 std::unordered_set<paddle::framework::ir::Node*> DistilGradNodes(

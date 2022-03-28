@@ -74,6 +74,11 @@ class VarDesc {
       : desc_(other.desc_),
         attrs_(other.attrs_),
         original_id_(other.original_id_) {}
+  VarDesc& operator=(VarDesc other) {
+    using std::swap;
+    swap(*this, other);
+    return *this;
+  }
 
   proto::VarDesc *Proto() { return &desc_; }
 
