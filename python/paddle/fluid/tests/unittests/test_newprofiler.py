@@ -125,5 +125,15 @@ class TestProfiler(unittest.TestCase):
         result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
 
 
+class TestNvprof(unittest.TestCase):
+    def test_nvprof(self):
+        for i in range(10):
+            paddle.fluid.profiler._nvprof_range(i, 10, 20)
+            x_value = np.random.randn(2, 3, 3)
+            x = paddle.to_tensor(
+                x_value, stop_gradient=False, place=paddle.CPUPlace())
+            y = x / 2.0
+
+
 if __name__ == '__main__':
     unittest.main()

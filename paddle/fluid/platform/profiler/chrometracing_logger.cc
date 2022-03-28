@@ -112,6 +112,13 @@ void ChromeTracingLogger::LogHostTraceEventNode(
   if (!output_file_stream_) {
     return;
   }
+  std::string dur_display;
+  float dur = nsToMsFloat(host_node.Duration());
+  if (dur > 1.0) {
+    dur_display = string_format(std::string("%.3f ms"), dur);
+  } else {
+    dur_display = string_format(std::string("%.3f us"), dur * 1000);
+  }
   switch (host_node.Type()) {
     case TracerEventType::ProfileStep:
     case TracerEventType::Forward:
@@ -121,11 +128,12 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     case TracerEventType::PythonOp:
     case TracerEventType::PythonUserDefined:
       // cname value comes from tracing.js reservedColorsByName variable
+
       output_file_stream_ << string_format(
           std::string(
               R"JSON(
   { 
-    "name": "%s[%.3f ms]", "pid": %lld, "tid": "%lld(Python)",
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(Python)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
     "cname": "thread_state_runnable",
@@ -135,9 +143,9 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     }
   },
   )JSON"),
-          host_node.Name().c_str(), nsToMsFloat(host_node.Duration()),
-          host_node.ProcessId(), host_node.ThreadId(),
-          nsToUs(host_node.StartNs()), nsToUsFloat(host_node.Duration()),
+          host_node.Name().c_str(), dur_display.c_str(), host_node.ProcessId(),
+          host_node.ThreadId(), nsToUs(host_node.StartNs()),
+          nsToUsFloat(host_node.Duration()),
           categary_name_[static_cast<int>(host_node.Type())],
           nsToUsFloat(host_node.StartNs(), start_time_),
           nsToUsFloat(host_node.EndNs(), start_time_));
@@ -147,7 +155,7 @@ void ChromeTracingLogger::LogHostTraceEventNode(
           std::string(
               R"JSON(
   { 
-    "name": "%s[%.3f ms]", "pid": %lld, "tid": "%lld(C++)",
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
     "cname": "thread_state_runnable",
@@ -157,9 +165,9 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     }
   },
   )JSON"),
-          host_node.Name().c_str(), nsToMsFloat(host_node.Duration()),
-          host_node.ProcessId(), host_node.ThreadId(),
-          nsToUs(host_node.StartNs()), nsToUsFloat(host_node.Duration()),
+          host_node.Name().c_str(), dur_display.c_str(), host_node.ProcessId(),
+          host_node.ThreadId(), nsToUs(host_node.StartNs()),
+          nsToUsFloat(host_node.Duration()),
           categary_name_[static_cast<int>(host_node.Type())],
           nsToUsFloat(host_node.StartNs(), start_time_),
           nsToUsFloat(host_node.EndNs(), start_time_));
@@ -174,11 +182,18 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
   if (!output_file_stream_) {
     return;
   }
+  float dur = nsToMsFloat(runtime_node.Duration());
+  std::string dur_display;
+  if (dur > 1.0) {
+    dur_display = string_format(std::string("%.3f ms"), dur);
+  } else {
+    dur_display = string_format(std::string("%.3f us"), dur * 1000);
+  }
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
   { 
-    "name": "%s[%.3f ms]", "pid": %lld, "tid": "%lld(C++)",
+    "name": "%s[%s]", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
     "cname": "thread_state_running",
@@ -189,7 +204,7 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
     }
   },
   )JSON"),
-      runtime_node.Name().c_str(), nsToMsFloat(runtime_node.Duration()),
+      runtime_node.Name().c_str(), dur_display.c_str(),
       runtime_node.ProcessId(), runtime_node.ThreadId(),
       nsToUs(runtime_node.StartNs()), nsToUsFloat(runtime_node.Duration()),
       categary_name_[static_cast<int>(runtime_node.Type())],
@@ -218,6 +233,7 @@ void ChromeTracingLogger::LogDeviceTraceEventNode(
   if (!output_file_stream_) {
     return;
   }
+
   switch (device_node.Type()) {
     case TracerEventType::Kernel:
       HandleTypeKernel(device_node);
@@ -284,12 +300,18 @@ void ChromeTracingLogger::HandleTypeKernel(
       kernel_info.block_x, kernel_info.block_y, kernel_info.block_z,
       blocks_per_sm);
 #endif
-
+  float dur = nsToMsFloat(device_node.Duration());
+  std::string dur_display;
+  if (dur > 1.0) {
+    dur_display = string_format(std::string("%.3f ms"), dur);
+  } else {
+    dur_display = string_format(std::string("%.3f us"), dur * 1000);
+  }
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
   { 
-    "name": "%s[%.3f ms]", "pid": %lld, "tid": %lld,
+    "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
     "cname": "rail_animation",
@@ -308,9 +330,9 @@ void ChromeTracingLogger::HandleTypeKernel(
     }
   },
   )JSON"),
-      device_node.Name().c_str(), nsToMsFloat(device_node.Duration()),
-      device_node.DeviceId(), device_node.StreamId(),
-      nsToUs(device_node.StartNs()), nsToUsFloat(device_node.Duration()),
+      device_node.Name().c_str(), dur_display.c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUsFloat(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
       nsToUsFloat(device_node.StartNs(), start_time_),
       nsToUsFloat(device_node.EndNs(), start_time_), device_node.DeviceId(),
@@ -329,11 +351,18 @@ void ChromeTracingLogger::HandleTypeMemcpy(
   if (device_node.Duration() > 0) {
     memory_bandwidth = memcpy_info.num_bytes * 1.0 / device_node.Duration();
   }
+  float dur = nsToMsFloat(device_node.Duration());
+  std::string dur_display;
+  if (dur > 1.0) {
+    dur_display = string_format(std::string("%.3f ms"), dur);
+  } else {
+    dur_display = string_format(std::string("%.3f us"), dur * 1000);
+  }
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
   {
-    "name": "%s[%.3f ms]", "pid": %lld, "tid": %lld,
+    "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
     "cname": "rail_animation",
@@ -345,9 +374,9 @@ void ChromeTracingLogger::HandleTypeMemcpy(
     }
   },
   )JSON"),
-      device_node.Name().c_str(), nsToMsFloat(device_node.Duration()),
-      device_node.DeviceId(), device_node.StreamId(),
-      nsToUs(device_node.StartNs()), nsToUsFloat(device_node.Duration()),
+      device_node.Name().c_str(), dur_display.c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUsFloat(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
       nsToUsFloat(device_node.StartNs(), start_time_),
       nsToUsFloat(device_node.EndNs(), start_time_), device_node.StreamId(),
@@ -357,11 +386,18 @@ void ChromeTracingLogger::HandleTypeMemcpy(
 void ChromeTracingLogger::HandleTypeMemset(
     const DeviceTraceEventNode& device_node) {
   MemsetEventInfo memset_info = device_node.MemsetInfo();
+  float dur = nsToMsFloat(device_node.Duration());
+  std::string dur_display;
+  if (dur > 1.0) {
+    dur_display = string_format(std::string("%.3f ms"), dur);
+  } else {
+    dur_display = string_format(std::string("%.3f us"), dur * 1000);
+  }
   output_file_stream_ << string_format(
       std::string(
           R"JSON(
   {
-    "name": "%s[%.3f ms]", "pid": %lld, "tid": %lld,
+    "name": "%s[%s]", "pid": %lld, "tid": %lld,
     "ts": %lld, "dur": %.3f,
     "ph": "X", "cat": "%s", 
     "cname": "rail_animation",
@@ -374,9 +410,9 @@ void ChromeTracingLogger::HandleTypeMemset(
     }
   },
   )JSON"),
-      device_node.Name().c_str(), nsToMsFloat(device_node.Duration()),
-      device_node.DeviceId(), device_node.StreamId(),
-      nsToUs(device_node.StartNs()), nsToUsFloat(device_node.Duration()),
+      device_node.Name().c_str(), dur_display.c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUsFloat(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
       nsToUsFloat(device_node.StartNs(), start_time_),
       nsToUsFloat(device_node.EndNs(), start_time_), device_node.DeviceId(),
