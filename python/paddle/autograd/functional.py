@@ -179,11 +179,11 @@ class Jacobian(object):
 
         * J[:], retrieving the full matrix.
         * J[:, :, j], retrieving the partial derivatives w.r.t. the j'th input
-            variable.
+          variable.
         * J[:, i, :], retrieving the partial derivatives w.r.t. the i'th output
-            variable.
+          variable.
         * J[:, i, j], retrieving the partial derivatives w.r.t. the i'th output
-            variable and the j'th input variable.
+          variable and the j'th input variable.
 
     Notes:
 
