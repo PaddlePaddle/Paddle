@@ -311,11 +311,9 @@ def _getitem_impl_(var, item):
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
-                slice_item):
-            if isinstance(slice_item,
-                          int) and var.shape[dim] is not None and var.shape[
-                              dim] >= 0 and slice_item >= var.shape[dim]:
+        if isinstance(slice_item, int):
+            if var.shape[dim] is not None and var.shape[
+                    dim] >= 0 and slice_item >= var.shape[dim]:
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
                 # throws an IndexError, then stop. The var[0], var[1] will
