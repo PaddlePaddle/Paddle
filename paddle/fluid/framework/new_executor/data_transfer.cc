@@ -149,7 +149,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   // 2. Construct VariableNameMap
   VariableNameMap in_name_map = {{"X", {var_name}}};
   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-  AttributeMap attr_map = {{"dst_layout", static_cast<int>(out_layout)}};
+  AttributeMap attr_map = {{"src_layout", static_cast<int>(in_layout)},
+                           {"dst_layout", static_cast<int>(out_layout)}};
 
   // 3. Create transfer_layout_op
   std::string op_type("transfer_layout");
@@ -157,8 +158,9 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
 
-  VLOG(3) << string::Sprintf("Insert %s(%s) with %s -> %s(%s).", op_type,
-                             var_name, in_layout, *new_var_name, out_layout);
+  VLOG(3) << string::Sprintf("Insert %s for variable %s(%s) -> %s(%s).",
+                             op_type, var_name, in_layout, *new_var_name,
+                             out_layout);
   return op;
 }
 
@@ -242,6 +244,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
+                        VariableValueMap* outs_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
                         bool use_local_scope) {
@@ -251,6 +254,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                        "op_base in apply_data_transform."));
 
   VariableNameMap new_ins(op_base->Inputs());
+  VariableNameMap new_outs(op_base->Outputs());
   // record the no need transform variable index.
   std::unordered_set<int> no_data_transform_index;
 
@@ -258,7 +262,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   for (auto& var_name_item : *ins_map_temp) {
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
-      auto& var_name = new_ins[var_name_item.first].at(i);
+      auto var_name = new_ins[var_name_item.first].at(i);
       const Tensor* tensor_in;
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
@@ -287,6 +291,23 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             var_scope->VarId(new_var_name);
         var_name_item.second[i] = var_scope->Var(new_var_name);
         new_ins[var_name_item.first][i] = new_var_name;
+        for (auto& pair : new_outs) {
+          for (size_t j = 0; j < pair.second.size(); ++j) {
+            VLOG(4) << pair.second[j] << " " << var_name;
+            if (pair.second[j] == var_name) {
+              VLOG(4) << "Found inplace between input(" << var_name_item.first
+                      << ") and output(" << pair.first
+                      << "), the variable name is " << var_name;
+              (*outs_map_temp)[pair.first][j] = var_scope->Var(new_var_name);
+              new_outs[pair.first][j] = new_var_name;
+              op_func_node
+                  ->inplace_back_map[var_scope->GetIdByName(new_var_name)] =
+                  var_scope->GetIdByName(var_name);
+              op_func_node->output_index[pair.first][j] =
+                  var_scope->VarId(new_var_name);
+            }
+          }
+        }
         // NOTE(Aurelius84): avoid deepcopy twice if we already insert data
         // transfer op.
         if (op_base->Type() == "fetch_v2") {
@@ -306,7 +327,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   // with instruction. (hot fix, it is not good design here)
   op_func_node->operator_base_ =
       std::shared_ptr<OperatorBase>(framework::OpRegistry::CreateOp(
-          op_base->Type(), new_ins, op_base->Outputs(), op_base->Attrs()));
+          op_base->Type(), new_ins, new_outs, op_base->Attrs()));
   op_func_node->no_data_transform_index = std::move(no_data_transform_index);
 }
 

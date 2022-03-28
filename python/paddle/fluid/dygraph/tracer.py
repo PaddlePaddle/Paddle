@@ -266,10 +266,9 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        if framework._in_eager_mode():
+        if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
-
             if type in final_state_name_mapping.keys():
                 final_state_type = final_state_name_mapping[type][
                     "final_op_name"]

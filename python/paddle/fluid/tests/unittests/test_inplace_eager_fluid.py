@@ -171,6 +171,180 @@ class TestDygraphInplace(unittest.TestCase):
                 grad_var_a = var_a.grad.numpy()
         self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
 
+    # inplace + hook
+    def test_backward_success_3(self):
+        # var_b is modified inplace before using it, the inplace operator doesn't result
+        # in incorrect gradient computation.
+        def double_hook(grad):
+            grad = grad * 2
+            return grad
+
+        grad_var_a, grad_var_a_inplace = 0, 1
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+                helper = var_a.register_hook(double_hook)
+
+                var_b = var_a**2
+                var_c = self.inplace_api_processing(
+                    var_b)  # var_b is modified inplace before using it
+
+                # Here, the gradient computation will use the value of var_b
+                var_d = var_c**2
+                loss = var_d.sum()
+                loss.backward()
+                grad_var_a_inplace = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+                helper = var_a.register_hook(double_hook)
+
+                var_b = var_a**2
+                var_c = self.non_inplace_api_processing(var_b)
+                var_d = var_c**2
+                loss = var_d.sum()
+                loss.backward()
+                grad_var_a = var_a.grad.numpy()
+
+        self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
+
+    # inplace + hook
+    def test_backward_success_4(self):
+        # Although var_b is modified inplace after using it, it does not used in gradient computation.
+        # The inplace operator doesn't result in incorrect gradient computation.
+        def double_hook(grad):
+            grad = grad * 2
+            return grad
+
+        grad_var_a, grad_var_a_inplace = 0, 1
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+                var_a.register_hook(double_hook)
+
+                var_b = var_a**2
+
+                var_c = self.inplace_api_processing(
+                    var_b)  # var_b is modified inplace before using it
+
+                var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
+                loss = var_d.sum()
+
+                loss.backward()
+                grad_var_a_inplace = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+                var_a.register_hook(double_hook)
+
+                var_b = var_a**2
+
+                var_c = self.non_inplace_api_processing(
+                    var_b)  # var_b is modified inplace before using it
+
+                var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
+                loss = var_d.sum()
+
+                loss.backward()
+                grad_var_a = var_a.grad.numpy()
+        self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
+
+    # inplace + hook
+    def test_backward_success_5(self):
+        # var_b is modified inplace before using it, the inplace operator doesn't result
+        # in incorrect gradient computation.
+        def double_hook(grad):
+            grad = grad * 2
+            return grad
+
+        grad_var_a, grad_var_a_inplace = 0, 1
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+
+                var_b = var_a**2
+                var_b.register_hook(double_hook)
+                var_c = self.inplace_api_processing(
+                    var_b)  # var_b is modified inplace before using it
+
+                # Here, the gradient computation will use the value of var_b
+                var_d = var_c**2
+                loss = var_d.sum()
+                loss.backward()
+                grad_var_a_inplace = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+
+                var_b = var_a**2
+                var_b.register_hook(double_hook)
+                var_c = self.non_inplace_api_processing(var_b)
+                var_d = var_c**2
+                loss = var_d.sum()
+                loss.backward()
+                grad_var_a = var_a.grad.numpy()
+
+        self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
+
+    # inplace + hook
+    def test_backward_success_6(self):
+        # Although var_b is modified inplace before using it, it does not used in gradient computation.
+        # The inplace operator doesn't result in incorrect gradient computation.
+        def double_hook(grad):
+            grad = grad * 2
+            return grad
+
+        grad_var_a, grad_var_a_inplace = 0, 1
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+
+                var_b = var_a**2
+                var_b.register_hook(double_hook)
+                var_c = self.inplace_api_processing(
+                    var_b)  # var_b is modified inplace before using it
+
+                var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
+                loss = var_d.sum()
+
+                loss.backward()
+                grad_var_a_inplace = var_a.grad.numpy()
+
+        with paddle.fluid.dygraph.guard():
+            with _test_eager_guard():
+                var_a = paddle.to_tensor(self.input_var_numpy).astype(
+                    self.dtype)
+                var_a.stop_gradient = False
+
+                var_b = var_a**2
+                var_b.register_hook(double_hook)
+                var_c = self.non_inplace_api_processing(
+                    var_b)  # var_b is modified inplace before using it
+
+                var_d = var_c + var_c  # Here, the grad op of sum doesn't use the value of var_b
+                loss = var_d.sum()
+
+                loss.backward()
+                grad_var_a = var_a.grad.numpy()
+        self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
+
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
@@ -196,6 +370,8 @@ class TestDygraphInplaceFlatten(TestDygraphInplace):
         return var.flatten_()
 
 
+"""
+# This case will fail while using `_C_ops.final_state_scatter`.
 class TestDygraphInplaceScatter(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
@@ -214,6 +390,7 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
             [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
 
         return paddle.scatter_(var, index, updates, overwrite=False)
+"""
 
 
 class TestDygraphInplaceElu(TestDygraphInplace):

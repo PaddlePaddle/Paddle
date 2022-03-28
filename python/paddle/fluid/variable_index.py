@@ -255,6 +255,13 @@ def is_integer_or_scalar_tensor(ele):
     return False
 
 
+def is_bool_tensor(ele):
+    from .framework import Variable
+    if isinstance(ele, Variable) and ele.dtype == paddle.bool:
+        return True
+    return False
+
+
 def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
     from .framework import Variable
     from .layers import utils
@@ -304,7 +311,8 @@ def _getitem_impl_(var, item):
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item):
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
+                slice_item):
             if isinstance(slice_item,
                           int) and var.shape[dim] is not None and var.shape[
                               dim] >= 0 and slice_item >= var.shape[dim]:
@@ -382,7 +390,7 @@ def _getitem_impl_(var, item):
             idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
-        elif isinstance(slice_item, (Variable)):
+        elif isinstance(slice_item, (Variable, core.eager.Tensor)):
             if len(item) == 1:
 
                 from ..tensor import index_select, gather_nd
@@ -523,7 +531,8 @@ def _setitem_impl_(var, item, value):
     slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item):
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
+                slice_item):
             decrease_axes.append(dim)
             start = slice_item
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
@@ -636,7 +645,7 @@ def _setitem_impl_(var, item, value):
         shape = list(value.shape)
         if dtype == core.VarDesc.VarType.BOOL:
             value_name = "bool_values"
-            values = [bool(v) for v in value.flat]
+            values = [int(v) for v in value.flat]
         elif dtype == core.VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in value.flat]
@@ -657,7 +666,7 @@ def _setitem_impl_(var, item, value):
         attrs[value_name] = values
         attrs["shape"] = shape
 
-    elif isinstance(value, Variable):
+    elif isinstance(value, (Variable, core.eager.Tensor)):
         inputs["ValueTensor"] = value
     else:
         raise TypeError(
@@ -665,7 +674,8 @@ def _setitem_impl_(var, item, value):
             "paddle.Tensor to a paddle.Tensor, but received {}".format(
                 type(value)))
 
-    if paddle.fluid.framework.in_dygraph_mode():
+    if paddle.fluid.framework._in_legacy_dygraph():
+        # TODO(pangyoki) add inplace(BumpInplaceVersion) if need
         var._bump_inplace_version()
 
     cur_block = default_main_program().current_block()

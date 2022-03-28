@@ -16,25 +16,36 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 namespace paddle {
 namespace experimental {
 namespace detail {
 
-BackendSet GetTensorBackendSet(const Tensor& t) {
-  BackendSet backend_set(phi::TransToPhiBackend(t.inner_place()));
-  switch (t.layout()) {
-    case DataLayout::MKLDNN:
-      backend_set = backend_set | BackendSet(Backend::MKLDNN);
-      break;
-    default:
-      // do nothing
-      break;
+BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
+  if (t.initialized()) {
+    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
+    switch (t.layout()) {
+      case DataLayout::MKLDNN:
+        backend_set = backend_set | BackendSet(Backend::MKLDNN);
+        break;
+      default:
+        // do nothing
+        break;
+    }
+    return backend_set;
   }
-  return backend_set;
+  return BackendSet(Backend::UNDEFINED);
 }
 
 std::size_t CountLeadingZeros(uint64_t val) {
+#if defined(__clang__) || defined(__GNUC__)
+  return __builtin_clzl(val);
+#elif defined(_MSC_VER)
+  return __lzcnt64(val);
+#else
   if (val == 0) {
     return 64;
   }
@@ -48,6 +59,7 @@ std::size_t CountLeadingZeros(uint64_t val) {
     }
   }
   return zero_bits;
+#endif
 }
 
 }  // namespace detail
@@ -82,13 +94,17 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
   return dtype != DataType::UNDEFINED ? dtype : ParseDataType(tensor);
 }
 
-Backend ParseBackend(Backend backend) { return backend; }
+Backend ParseBackend(const Place& place) {
+  return phi::TransToPhiBackend(place);
+}
 Backend ParseBackend(const Tensor& tensor) {
   return phi::TransToPhiBackend(tensor.inner_place());
 }
 
-Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {
-  return backend != Backend::UNDEFINED ? backend : ParseBackend(tensor);
+Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
+  return place.GetType() != phi::AllocationType::UNDEFINED
+             ? ParseBackend(place)
+             : ParseBackend(tensor);
 }
 
 DataLayout ParseLayout(DataLayout layout) { return layout; }
