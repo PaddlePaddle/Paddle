@@ -15,10 +15,12 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/phi/kernels/yolov3_loss_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/yolov3_loss_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/yolov3_loss_kernel.h"
 
 namespace phi {
 
@@ -47,16 +49,6 @@ static int GetMaskIndex(std::vector<int> mask, int val) {
 }
 
 template <typename T>
-struct Box {
-  T x, y, w, h;
-};
-
-template <typename T>
-static inline T sigmoid(T x) {
-  return 1.0 / (1.0 + std::exp(-x));
-}
-
-template <typename T>
 static inline Box<T> GetYoloBox(const T* x,
                                 std::vector<int> anchors,
                                 int i,
@@ -73,16 +65,6 @@ static inline Box<T> GetYoloBox(const T* x,
   b.y = (j + sigmoid<T>(x[index + stride]) * scale + bias) / grid_size;
   b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] / input_size;
   b.h = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] / input_size;
-  return b;
-}
-
-template <typename T>
-static inline Box<T> GetGtBox(const T* gt, int batch, int max_boxes, int idx) {
-  Box<T> b;
-  b.x = gt[(batch * max_boxes + idx) * 4];
-  b.y = gt[(batch * max_boxes + idx) * 4 + 1];
-  b.w = gt[(batch * max_boxes + idx) * 4 + 2];
-  b.h = gt[(batch * max_boxes + idx) * 4 + 3];
   return b;
 }
 
@@ -104,16 +86,6 @@ static inline T CalcBoxIoU(Box<T> b1, Box<T> b2) {
   T inter_area = (w < 0 || h < 0) ? 0.0 : w * h;
   T union_area = b1.w * b1.h + b2.w * b2.h - inter_area;
   return inter_area / union_area;
-}
-
-static inline int GetEntryIndex(int batch,
-                                int an_idx,
-                                int hw_idx,
-                                int an_num,
-                                int an_stride,
-                                int stride,
-                                int entry) {
-  return (batch * an_num + an_idx) * an_stride + entry * stride + hw_idx;
 }
 
 template <typename T>
@@ -210,7 +182,7 @@ void Yolov3LossKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& gt_box,
                       const DenseTensor& gt_label,
-                      const paddle::optional<const DenseTensor&> gt_score,
+                      paddle::optional<const DenseTensor&> gt_score,
                       const std::vector<int>& anchors,
                       const std::vector<int>& anchor_mask,
                       int class_num,
@@ -248,18 +220,20 @@ void Yolov3LossKernel(const Context& dev_ctx,
   const T* input_data = input->data<T>();
   const T* gt_box_data = gt_box.data<T>();
   const int* gt_label_data = gt_label.data<int>();
-  T* loss_data = loss->mutable_data<T>({n}, dev_ctx.GetPlace());
+  loss->Resize({n});
+  T* loss_data = dev_ctx.template Alloc<T>(loss);
   memset(loss_data, 0, loss->numel() * sizeof(T));
-  T* obj_mask_data =
-      objness_mask->mutable_data<T>({n, mask_num, h, w}, dev_ctx.GetPlace());
+  objness_mask->Resize({n, mask_num, h, w});
+  T* obj_mask_data = dev_ctx.template Alloc<T>(objness_mask);
   memset(obj_mask_data, 0, objness_mask->numel() * sizeof(T));
-  int* gt_match_mask_data =
-      gt_match_mask->mutable_data<int>({n, b}, dev_ctx.GetPlace());
+  gt_match_mask->Resize({n, b});
+  int* gt_match_mask_data = dev_ctx.template Alloc<int>(gt_match_mask);
 
   const T* gt_score_data;
   DenseTensor gtscore;
   if (!(gt_score.is_initialized())) {
-    gtscore.mutable_data<T>({n, b}, dev_ctx.GetPlace());
+    gtscore.Resize({n, b});
+    dev_ctx.template Alloc<T>(&gtscore);
     phi::funcs::SetConstant<Context, T>()(
         dev_ctx, &gtscore, static_cast<T>(1.0));
     gt_score_data = gtscore.data<T>();
@@ -269,8 +243,8 @@ void Yolov3LossKernel(const Context& dev_ctx,
 
   // calc valid gt box mask, avoid calc duplicately in following code
   DenseTensor gt_valid_mask;
-  bool* gt_valid_mask_data =
-      gt_valid_mask.mutable_data<bool>({n, b}, dev_ctx.GetPlace());
+  gt_valid_mask.Resize({n, b});
+  bool* gt_valid_mask_data = dev_ctx.template Alloc<bool>(&gt_valid_mask);
   GtValid<T>(gt_valid_mask_data, gt_box_data, n, b);
 
   for (int i = 0; i < n; i++) {

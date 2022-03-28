@@ -15,10 +15,12 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/phi/kernels/yolov3_loss_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/yolov3_loss_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/yolov3_loss_grad_kernel.h"
 
 namespace phi {
 
@@ -30,36 +32,6 @@ static T SigmoidCrossEntropyGrad(T x, T label) {
 template <typename T>
 static T L1LossGrad(T x, T y) {
   return x > y ? 1.0 : -1.0;
-}
-
-template <typename T>
-struct Box {
-  T x, y, w, h;
-};
-
-template <typename T>
-static inline T sigmoid(T x) {
-  return 1.0 / (1.0 + std::exp(-x));
-}
-
-template <typename T>
-static inline Box<T> GetGtBox(const T* gt, int batch, int max_boxes, int idx) {
-  Box<T> b;
-  b.x = gt[(batch * max_boxes + idx) * 4];
-  b.y = gt[(batch * max_boxes + idx) * 4 + 1];
-  b.w = gt[(batch * max_boxes + idx) * 4 + 2];
-  b.h = gt[(batch * max_boxes + idx) * 4 + 3];
-  return b;
-}
-
-static inline int GetEntryIndex(int batch,
-                                int an_idx,
-                                int hw_idx,
-                                int an_num,
-                                int an_stride,
-                                int stride,
-                                int entry) {
-  return (batch * an_num + an_idx) * an_stride + entry * stride + hw_idx;
 }
 
 template <typename T>
@@ -149,7 +121,7 @@ void Yolov3LossGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& gt_box,
                           const DenseTensor& gt_label,
-                          const paddle::optional<const DenseTensor&> gt_score,
+                          paddle::optional<const DenseTensor&> gt_score,
                           const DenseTensor& loss_grad,
                           const DenseTensor& objectness_mask,
                           const DenseTensor& gt_match_mask,
@@ -193,14 +165,15 @@ void Yolov3LossGradKernel(const Context& dev_ctx,
   const T* loss_grad_data = loss_grad.data<T>();
   const T* obj_mask_data = objness_mask->data<T>();
   const int* gt_match_mask_data = gt_match_mask.data<int>();
-  T* input_grad_data =
-      input_grad->mutable_data<T>({n, c, h, w}, dev_ctx.GetPlace());
+  input_grad->Resize({n, c, h, w});
+  T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
   const T* gt_score_data;
   DenseTensor gtscore;
   if (!(gt_score.is_initialized())) {
-    gtscore.mutable_data<T>({n, b}, dev_ctx.GetPlace());
+    gtscore.Resize({n, b});
+    dev_ctx.template Alloc<T>(&gtscore);
     phi::funcs::SetConstant<Context, T>()(
         dev_ctx, &gtscore, static_cast<T>(1.0));
     gt_score_data = gtscore.data<T>();
