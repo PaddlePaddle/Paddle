@@ -24,7 +24,7 @@ from paddle.distributed.auto_parallel.operators.common import get_distributed_op
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute
 from .process_group import new_process_group
-from .utils import set_dist_op_desc_original_id
+from .utils import set_dist_op_desc_original_id, is_loss_op
 from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
@@ -198,10 +198,35 @@ class Partitioner(object):
         dist_op_context = self._dist_context.dist_op_context
         serial_ops = ref_block.ops
 
+        def _find_op_index(block, cur_op):
+            for idx in range(block.desc.op_size()):
+                if cur_op.desc == block.desc.op(idx):
+                    return idx
+            return -1
+
+        def get_loss_op(block):
+            loss_ops = []
+            for op in block.ops:
+                if is_loss_op(op):
+                    assert len(op.desc.output_arg_names(
+                    )) == 1, "loss op should only output loss var"
+                    loss_ops.append(op)
+            if len(loss_ops) == 0:
+                return None
+            assert len(loss_ops) == 1, "num of loss op is not equal to one"
+            return loss_ops[0]
+
+        loss_op = get_loss_op(ref_block)
+        if loss_op:
+            loss_op_idx = _find_op_index(ref_block, loss_op)
+        else:
+            loss_op_idx = len(serial_ops)
+
         # init mapping
         forward_op_id2forward_op = {}
         for idx in range(len(serial_ops)):
-            if is_forward_op(serial_ops[idx]):
+            if idx <= loss_op_idx:
+                # if is_forward_op(serial_ops[idx]):
                 forward_op_id2forward_op[serial_ops[idx].desc.id(
                 )] = serial_ops[idx]
 
@@ -230,6 +255,34 @@ class Partitioner(object):
                                    serial_output_varname, new_varname)
                     self._serial2dist_varname_mapping[
                         serial_output_varname] = new_varname
+
+            if op.type == 'reshape2':
+                kinputs, koutputs = dist_op_context.prepare_context(op)
+                # replicate op in dist program
+                dist_op_desc = target_block.desc.append_op()
+                dist_op_desc.copy_from(op.desc)
+                # Refer to the related dist op
+                set_dist_op_desc_original_id(dist_op_desc, op.desc,
+                                             self._dist_context)
+                for input_name in op.desc.input_names():
+                    dist_op_desc.set_input(input_name, kinputs[input_name])
+                for output_name in op.desc.output_names():
+                    dist_op_desc.set_output(output_name, koutputs[output_name])
+
+                shape_list = op.desc.attr("shape")
+                Out_var = ref_block.var(koutputs['Out'][0])
+                op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
+                    op)
+                dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
+                process_mesh_shape = op_dist_attr.process_mesh.topology
+                for idx, axis in enumerate(dim_mapping):
+                    if axis >= 0:
+                        if len(shape_list) > idx:
+                            shape_list[idx] = shape_list[
+                                idx] // process_mesh_shape[axis]
+                dist_op_desc._set_attr('shape', shape_list)
+                target_block._sync_with_cpp()
+                continue
 
             # partition op
             op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
@@ -357,10 +410,11 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
     src_var = src_block.var(src_varname)
 
     if src_var.type in __not_shape_var_type__:
+        persist = getattr(src_var, 'persistable', False)
         new_var = dst_block.create_var(
             type=src_var.type,
             name=dst_varname,
-            persistable=True,
+            persistable=persist,
             stop_gradient=True)
         target_shape = None
     else:

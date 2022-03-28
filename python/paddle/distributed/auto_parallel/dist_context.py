@@ -577,6 +577,7 @@ class DistributedOperatorContext:
         self._cur_src_op = None
         self._cur_dist_attr = None
         self.grad_op_id_to_op_id = {}
+        self.grad_to_var = {}
         self._work_block = None
         self.already_init_sync_vars = set()
         self.varname_mapping = None

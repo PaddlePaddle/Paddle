@@ -1001,8 +1001,9 @@ def set_grad_var_shape(program, dist_context):
         if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
             break
 
-        if op.type in ["sum", "concat"]:
+        if op.type in ["sum", "concat", "tanh_grad"]:
             continue
+
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
             assert op_dist_attr is not None
@@ -1028,16 +1029,16 @@ def set_grad_var_shape(program, dist_context):
                 need_set_shape_list = [
                     "reshape2_grad", "softmax_with_cross_entropy_grad",
                     "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
-                    "dropout_grad"
+                    "dropout_grad", "tanh_grad"
                 ]
                 forward_list = [
                     "reshape2", "softmax_with_cross_entropy", "transpose2",
-                    "softmax", "cross_entropy2", "dropout"
+                    "softmax", "cross_entropy2", "dropout", "tanh"
                 ]
                 if op.type in need_set_shape_list:
                     for forward_op in block.ops:
-                        assert int(forward_op.attr('op_role')) != int(
-                            OpRole.Backward)
+                        # assert int(forward_op.attr('op_role')) != int(
+                        #     OpRole.Backward)
                         idx = need_set_shape_list.index(op.type)
                         forward_op_name = forward_list[idx]
                         if forward_op.type == forward_op_name and forward_var_name in forward_op.input_arg_names:
@@ -1045,6 +1046,9 @@ def set_grad_var_shape(program, dist_context):
                                 forward_op)
                             break
 
+                if op.desc.type() == 'fill_constant':
+                    if forward_var_name not in op.input_arg_names and forward_var_name + '_shape' in op.input_arg_names:
+                        forward_var_name = forward_var_name + '_shape'
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
 

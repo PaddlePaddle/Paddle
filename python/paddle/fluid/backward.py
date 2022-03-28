@@ -474,7 +474,7 @@ def _accumulate_gradients_by_add_ops_(var_name,
     renamed_vars[var_name] = [var_name]
 
 
-def _addup_repetitive_outputs_(op_descs, block_idx):
+def _addup_repetitive_outputs_(op_descs, block_idx, distop_context=None):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
@@ -527,6 +527,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                         new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                             str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
+                        if distop_context is not None:
+                            if var_name in distop_context.grad_to_var:
+                                distop_context.grad_to_var[
+                                    new_name] = distop_context.grad_to_var[
+                                        var_name]
+                            else:
+                                distop_context.grad_to_var[new_name] = var_name
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
                         # before change: _rename_arg_(op_descs, var_name,
@@ -552,6 +559,12 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
 
                     new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                         str(var_rename_count[var_name])
+                    if distop_context is not None:
+                        if var_name in distop_context.grad_to_var:
+                            distop_context.grad_to_var[
+                                new_name] = distop_context.grad_to_var[var_name]
+                        else:
+                            distop_context.grad_to_var[new_name] = var_name
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
@@ -1111,6 +1124,14 @@ def _append_backward_ops_(block,
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
         # Build the mapping between the forward op and bacckward op (Only for auto parallel)
         if distop_context is not None:
+            distop_context.grad_to_var.update(op_grad_to_var)
+            for op_desc in grad_op_desc:
+                assert op_desc.id() not in distop_context.grad_op_id_to_op_id
+                distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
+        else:
+            dist_context = paddle.distributed.auto_parallel.dist_context.get_default_distributed_context(
+            )
+            distop_context = dist_context.dist_op_context
             for op_desc in grad_op_desc:
                 assert op_desc.id() not in distop_context.grad_op_id_to_op_id
                 distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
@@ -1146,6 +1167,9 @@ def _append_backward_ops_(block,
                         rename_var_map[name] = new_name
 
                         if name in op_grad_to_var:
+                            if distop_context is not None:
+                                distop_context.grad_to_var[
+                                    new_name] = op_grad_to_var[name]
                             op_grad_to_var[new_name] = op_grad_to_var[name]
                             op_grad_to_var.pop(name)
 
@@ -1178,8 +1202,10 @@ def _append_backward_ops_(block,
             grad_to_var.update(op_grad_to_var)
 
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
-
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx,
+                                               distop_context)
+    # if distop_context is not None:
+    #     print(distop_context.grad_to_var)
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
