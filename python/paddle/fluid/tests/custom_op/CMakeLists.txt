@@ -3,6 +3,7 @@ if(WITH_GPU OR APPLE)
     py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
     py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
     py_test(test_custom_relu_model SRCS test_custom_relu_model.py)
+    py_test(test_context_pool SRCS test_context_pool.py)
 
     # Compiling shared library will cost some time, but running process is very fast.
     set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
