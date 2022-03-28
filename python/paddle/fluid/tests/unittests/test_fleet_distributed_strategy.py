@@ -307,7 +307,7 @@ class TestStrategyConfig(unittest.TestCase):
         configs = {}
         configs['emb'] = {
             "sparse_accessor_class": "DownpourUnitAccessor",
-            "sparse_optimizer": "std_adagrad"
+            "embed_sparse_optimizer": "std_adagrad"
         }
         strategy.fleet_desc_configs = configs
         self.assertEqual(strategy.sparse_table_configs[0]
