@@ -309,7 +309,7 @@ def predict_static(data):
 
 
 def predict_dygraph_jit(data):
-    with fluid.framework._test_eager_guard(place):
+    with fluid.dygraph.guard(place):
         resnet = fluid.dygraph.jit.load(MODEL_SAVE_PREFIX)
         resnet.eval()
 
