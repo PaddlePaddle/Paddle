@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/reshape_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
@@ -558,10 +559,14 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
-    auto xshape_dims = ctx->GetInputDim("XShape");
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->ShareLoD("XShape", framework::GradVarName("X"));
+
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor xshape(ctx->GetInputVarPtrs("XShape")[0],
+                            ctx->IsRuntime());
+    CompatMetaTensor dx(ctx->GetOutputVarPtrs(framework::GradVarName("X"))[0],
+                        ctx->IsRuntime());
+    phi::KernelWithXShapeInferMeta(xshape, &dx);
   }
 
  protected:
@@ -591,15 +596,6 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
                        const framework::VariableNameMap &outputs,
                        const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X@GRAD_GRAD) shouldn't be null."));
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("DOut", "DDOut");
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -659,9 +655,15 @@ REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeGradInplaceInferer);
+
+DECLARE_INFER_SHAPE_FUNCTOR(reshape2_grad_grad,
+                            Reshape2DoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
+
 REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
                   ops::ReshapeDoubleGradInplaceInferer,
-                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer);
+                  ops::ReshapeDoubleGradOpNoNeedBufferVarInferer,
+                  Reshape2DoubleGradInferShapeFunctor);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
