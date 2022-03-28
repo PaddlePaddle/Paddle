@@ -1047,8 +1047,7 @@ def set_grad_var_shape(program, dist_context):
 
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
-
-                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                assert forward_input_dist_attr is not None, f"{forward_var_name, str(op)}"
                 forward_var = vars[forward_var_name]
                 forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     forward_var)

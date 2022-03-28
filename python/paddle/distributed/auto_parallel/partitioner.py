@@ -357,10 +357,11 @@ def _partition_var(dist_context, src_block, dst_block, src_varname,
     src_var = src_block.var(src_varname)
 
     if src_var.type in __not_shape_var_type__:
+        persist = getattr(src_var, 'persistable', False)
         new_var = dst_block.create_var(
             type=src_var.type,
             name=dst_varname,
-            persistable=True,
+            persistable=persist,
             stop_gradient=True)
         target_shape = None
     else:
