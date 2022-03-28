@@ -63,22 +63,6 @@ class BatchDecodeRandomCropOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
             "num_attempts should be a positive integerm, but "
             "received %d", num_attempts));
-
-    // auto mode = ctx->Attrs().Get<std::string>("mode");
-    // std::vector<int> out_dims;
-    //
-    // if (mode == "unchanged") {
-    //   out_dims = {-1, -1, -1};
-    // } else if (mode == "gray") {
-    //   out_dims = {1, -1, -1};
-    // } else if (mode == "rgb") {
-    //   out_dims = {3, -1, -1};
-    // } else {
-    //   PADDLE_THROW(platform::errors::Fatal(
-    //       "The provided mode is not supported for JPEG files on GPU: ", mode));
-    // }
-    //
-    // ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
   }
 
  protected:

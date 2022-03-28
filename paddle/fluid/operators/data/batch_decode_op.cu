@@ -28,7 +28,6 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_threads = ctx.Attr<int>("num_threads");
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads;
     auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     auto program_id = ctx.Attr<int64_t>("program_id");
@@ -65,8 +64,6 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
     }
 
     decode_pool->RunAll(true);
-
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute finish";
   }
 };
 

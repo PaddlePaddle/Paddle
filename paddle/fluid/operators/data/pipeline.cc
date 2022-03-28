@@ -101,7 +101,7 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
     PADDLE_ENFORCE_EQ(success, true, 
         platform::errors::PreconditionNotMet("Read from output queue %s failed", output_var_names_[i]));
     
-    // CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
+    CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
     copy_tensor(outputs.at(0), out_vars[i]->GetMutable<LoDTensor>());
     for (auto &output: outputs) output.clear();
     outputs.clear();

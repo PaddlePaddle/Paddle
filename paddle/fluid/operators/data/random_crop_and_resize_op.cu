@@ -41,8 +41,7 @@ __global__ void KeNearestNeighborInterpFw(
     int out_id_h = tid / output_w;
     // single image's index
     int out_id_w = tid % output_w;
-    // input_w or output_w = c * h * w
-    // img_size = h * w
+    // input_w or output_w = c * h * w, img_size = h * w
     int in_img_size = input_w / num_channels;
     int out_img_size = output_w / num_channels;
 
@@ -96,8 +95,7 @@ __global__ void KeBilinearInterpFw(
     int out_id_h = tid / output_w;
     // single image's index
     int out_id_w = tid % output_w;
-    // input_w or output_w = c * h * w
-    // img_size = h * w
+    // input_w or output_w = c * h * w, img_size = h * w
     int in_img_size = input_w / num_channels;
     int out_img_size = output_w / num_channels;
 
@@ -274,7 +272,6 @@ template <typename T>
 class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "RandomCropAndResizeCUDAKernel Compute start";
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
@@ -284,24 +281,6 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "The size of X must be greater than 0."));
     auto* out = ctx.Output<framework::LoDTensor>("Out");
-
-    // auto* in_var = ctx.InputVar("X");
-    // auto in_queue = in_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-    //
-    // auto* out_var = ctx.OutputVar("Out");
-    // auto out_queue = out_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
-    // if (out_queue == nullptr) {
-    //   LOG(ERROR) << "RandomCropAndResize out_queue init";
-    //   auto* holder = out_var->template GetMutable<LoDTensorBlockingQueueHolder>();
-    //   holder->InitOnce(2);
-    //   out_queue = holder->GetQueue();
-    // }
-    //
-    // bool success = false;
-    // auto x = in_queue->Pop(&success);
-    // PADDLE_ENFORCE_EQ(success, true, 
-    //     platform::errors::PreconditionNotMet("Read from input queue failed"));
-    // framework::LoDTensor out;
 
     // get size, scale, ratio
     auto size = ctx.Attr<std::vector<int64_t>>("size");
@@ -342,12 +321,6 @@ class RandomCropAndResizeCUDAKernel : public framework::OpKernel<T> {
                                 align_corners, align_mode, img_h, img_w, img_c,
                                 idx_h, idx_w, crop_h, crop_w, data_layout);
     }
-
-    // framework::LoDTensorArray out_array;
-    // out_array.reserve(1);
-    // out_array.emplace_back(out);
-    // out_queue->Push(out_array);
-    LOG(ERROR) << "RandomCropAndResizeCUDAKernel Compute finish";
   }
 };
 

@@ -22,7 +22,6 @@ template <typename DeviceContext, typename T>
 class DataLoaderOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "DataLoaderOpKernel enter";
     // Step1: get output vars and attrs
     auto output_vars = ctx.MultiOutputVar("Out");
     auto output_var_names = ctx.OutputNames("Out");
@@ -39,13 +38,10 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
     pipeline->ReadNext(output_vars);
 
     if (!pipeline->IsRunning()) {
-      LOG(ERROR) << "DataLoaderOpKernel Pipeline not running, throw EOF";
-      // data::PipelineManager::Instance()->ShutDownPipeline(program_id);
+      VLOG(4) << "DataLoaderOpKernel Pipeline not running, throw EOF";
       throw platform::EOFException("DataLoaderOpKernel epoch end",
                                     __FILE__, __LINE__);
     }
-
-    LOG(ERROR) << "DataLoaderOpKernel finish";
   }
 };
 

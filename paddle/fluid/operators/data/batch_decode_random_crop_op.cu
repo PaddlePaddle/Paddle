@@ -51,7 +51,6 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
     int batch_size = inputs->size();
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads << ", batch_size: " << batch_size << ", program_id: " << program_id;
 
     auto* out = ctx.OutputVar("Out");
     auto dev = platform::CUDAPlace(local_rank);
@@ -125,8 +124,6 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
         trans(dev_ctx, temp_array[i], &out_array[i], axis);
       }
     }
-
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute finish";
   }
 };
 

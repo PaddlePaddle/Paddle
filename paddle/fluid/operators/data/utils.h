@@ -29,15 +29,12 @@ void ShutDownAllDataLoaders() {
   VLOG(4) << "ShutDownAllDataLoaders enter";
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDown();
-  // LOG(ERROR) << "ShutDownAllDataLoaders reader_wrapper shutdown finish";
   
   // step 2: shutdown decoder
   if (decode_pool) decode_pool->ShutDown();
-  // LOG(ERROR) << "ShutDownAllDataLoaders decode_pool shutdown finish";
 
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
-  // LOG(ERROR) << "ShutDownAllDataLoaders MapRunner shutdown finish";
   
   // step 3: shutdown Pipeline
   PipelineManager::Instance()->ShutDown();
@@ -45,32 +42,29 @@ void ShutDownAllDataLoaders() {
 }
 
 void ShutDownReadersAndDecoders(const int64_t program_id) {
-  LOG(ERROR) << "ShutDownReadersAndDecoders enter, program_id: " << program_id;
   // step 1: shutdown reader
   ReaderManager::Instance()->ShutDownReader(program_id);
 
   // step 2: shutdown decoder
   ImageDecoderThreadPoolManager::Instance()->ShutDownDecoder(program_id);
-  LOG(ERROR) << "ShutDownReadersAndDecoders finish";
 }
 
 void ShutDownMaps(const std::vector<int64_t> program_ids) {
-  LOG(ERROR) << "ShutDownMaps enter, maps size: " << program_ids.size();
   for (auto& program_id : program_ids) {
     MapRunnerManager::Instance()->ShutDownMapRunner(program_id);
   }
-  LOG(ERROR) << "ShutDownMaps finish";
 }
 
 void ShutDownPipeline(const int64_t program_id) {
-  LOG(ERROR) << "ShutDownPipeline program_id " << program_id << " enter";
   PipelineManager::Instance()->ShutDownPipeline(program_id);
-  LOG(ERROR) << "ShutDownPipeline program_id " << program_id << " finish";
 }
 
 void ResetDataLoader(const int64_t reader_id,
                      const std::vector<int64_t> map_ids,
                      const int64_t pipeline_id) {
+  VLOG(4) << "ResetDataLoader enter, reader_id: " << reader_id \
+          << ", map_ids size: " << map_ids.size() << ", pipeline_id: " \
+          << pipeline_id;
   // step 1: reset readers
   ReaderManager::Instance()->ResetReader(reader_id);
 
@@ -81,6 +75,7 @@ void ResetDataLoader(const int64_t reader_id,
 
   // step3: reset pipeline
   PipelineManager::Instance()->ResetPipeline(pipeline_id);
+  VLOG(4) << "ResetDataLoader finish";
 }
 
 }  // namespace data

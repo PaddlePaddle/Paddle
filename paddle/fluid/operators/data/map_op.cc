@@ -20,7 +20,6 @@ using framework::Tensor;
 
 class MapOp : public framework::OperatorBase {
  public:
-  // using framework::OperatorWithKernel::OperatorWithKernel;
   MapOp(const std::string& type,
         const framework::VariableNameMap& inputs,
         const framework::VariableNameMap& outputs,

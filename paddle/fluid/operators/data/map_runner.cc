@@ -60,7 +60,6 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
     // If input queue closed, namely EOE(end of epoch) from
     // dataset reader to here, read failed
     auto queue = input_queues_[i];
-    // if (queue->IsClosed()) return false;
 
     // read LoDTensorArray from queue
     bool success = true;
@@ -98,13 +97,6 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
       dst_tensor_arr.reserve(tensor_arr.size());
       for (size_t i = 0; i < tensor_arr.size(); i++) {
         dst_tensor_arr.emplace_back(tensor_arr[i]);
-        // auto tensor = tensor_arr[i];
-        // auto dst_tensor = dst_tensor_arr[i];
-        // // dst_tensor.Resize(tensor.dims());
-        // // dst_tensor.mutable_data(tensor.place(), tensor.type());
-        // // dst_tensor.ShareDataWith(tensor);
-        // copy_tensor(tensor, &dst_tensor);
-        // // dst_tensor.set_lod(tensor.lod());
       }
     }
   }
@@ -132,7 +124,6 @@ void MapRunner::StartMapThread(const Scope* scope) {
       if (shutdown_) break;
 
       // Step 1: get input LoDTensor and share into Scope
-      // LOG(ERROR) << "MapThread Loop " << program_id_ << " start";
       bool success = ShareInputsIntoScope(&scope_);
       if (!success) {
         for(auto& queue : output_queues_) {
@@ -142,7 +133,6 @@ void MapRunner::StartMapThread(const Scope* scope) {
         running_ = false;
         continue;
       }
-      // LOG(ERROR) << "MapThread Loop " << program_id_ << " ShareInputsIntoScope finish";
 
       // Step 2: run ops by executor without fetch
       try {
@@ -150,7 +140,6 @@ void MapRunner::StartMapThread(const Scope* scope) {
       } catch(...) {
         break;
       }
-      // LOG(ERROR) << "MapThread Loop " << program_id_ << " program run finish";
 
       // Step 3: fetch output variable to LoDTensor vector
       //        and push to output queue
@@ -176,10 +165,8 @@ void MapRunner::StartMapThread(const Scope* scope) {
           output_queues_[i]->Push(t_arr);
         }
       }
-      // LOG(ERROR) << "MapThread Loop " << program_id_ << " push queue finish";
     }
     scope->DeleteScope(&scope_);
-    // LOG(ERROR) << "MapThread Loop " << program_id_ << " delete scope and return";
   });
 }
 

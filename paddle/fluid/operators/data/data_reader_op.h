@@ -50,13 +50,12 @@ class Sampler {
                        drop_last_(drop_last),
                        rank_(rank),
                        world_size_(world_size) {
-      LOG(ERROR) << "Sampler num_samples " << num_samples;
       int trunc_num_samples;
       if (drop_last) {
         int total_batch_size = world_size * batch_size;
         trunc_num_samples = floor(num_samples / total_batch_size) * total_batch_size;
         sample_ids_.reserve(trunc_num_samples);
-        LOG(ERROR) << " Trunc sampler num_samples " << trunc_num_samples;
+        VLOG(4) << "Sampler trunc sampler num_samples " << trunc_num_samples;
       }
       else{
         sample_ids_.reserve(num_samples);
@@ -66,7 +65,6 @@ class Sampler {
         sample_ids_.emplace_back(i);
       }
       num_samples_ = sample_ids_.size();
-      LOG(ERROR) << " Final num_samples " << num_samples_;
       if (shuffle) {
         rnd_.seed(seed);
         std::shuffle(sample_ids_.begin(), sample_ids_.end(), rnd_);
@@ -80,17 +78,14 @@ class Sampler {
       current_iter_++;
 
       if (start_idx >= num_samples_) {
-        LOG(ERROR) << " start idx >= num samples " << start_idx << " >= " << num_samples_;
+        VLOG(4) << " start idx >= num samples " << start_idx << " >= " << num_samples_;
         return;
       }
-      // if (drop_last_ && start_idx + batch_size_ >= num_samples_) return;
 
-      // int64_t batch_len = std::min(batch_size_, num_samples_ - start_idx);
-      // indices->reserve(batch_len);
       for (int64_t i = 0; i < batch_size_; i++) {
         int cur_idx =  start_idx + i * world_size_;
         if (cur_idx >= num_samples_) {
-          LOG(ERROR) << " cur_idx >= num samples " << cur_idx << " >= " << num_samples_;
+          VLOG(4) << " cur_idx >= num samples " << cur_idx << " >= " << num_samples_;
           return;
         }
         indices->emplace_back(sample_ids_[cur_idx]);
@@ -164,7 +159,6 @@ class DataReader {
         sampler_.GetNextIndices(&indices);
         // shutdown reader if indices drained
         if (indices.size() == 0) {
-          LOG(ERROR) << "DataReader indices drained";
           for(auto& queue: output_queues_) {
             while (queue->Size()) sleep(0.5);
             queue->Close();

@@ -38,8 +38,7 @@ __global__ void KeNearestNeighborInterpFw(
     int out_id_h = tid / output_w;
     // single image's index
     int out_id_w = tid % output_w;
-    // input_w or output_w = c * h * w
-    // img_size = h * w
+    // input_w or output_w = c * h * w, img_size = h * w
     int in_img_size = input_w / num_channels;
     int out_img_size = output_w / num_channels;
 
@@ -91,8 +90,7 @@ __global__ void KeBilinearInterpFw(
     int out_id_h = tid / output_w;
     // single image's index
     int out_id_w = tid % output_w;
-    // input_w or output_w = c * h * w
-    // img_size = h * w
+    // input_w or output_w = c * h * w, img_size = h * w
     int in_img_size = input_w / num_channels;
     int out_img_size = output_w / num_channels;
 
@@ -212,7 +210,6 @@ template <typename T>
 class BatchResizeCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "BatchResizeCUDAKernel Compute start";
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
@@ -254,20 +251,11 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
           data_layout == DataLayout::kNCHW ? img->dims()[1] : img->dims()[0];
       img_w =
           data_layout == DataLayout::kNCHW ? img->dims()[2] : img->dims()[1];
-      // GetCropParameters(img_h, img_w, scale, ratio, &idx_h, &idx_w, &crop_h,
-      //                   &crop_w, seed);
-
       auto out_tensor = out->Slice(i, i + 1);
       ResizeFwd<T>(ctx, *img, &out_tensor, size, interp_method,
                    align_corners, align_mode, img_h, img_w, img_c,
                    data_layout);
     }
-
-    // framework::LoDTensorArray out_array;
-    // out_array.reserve(1);
-    // out_array.emplace_back(out);
-    // out_queue->Push(out_array);
-    LOG(ERROR) << "BatchResizeCUDAKernel Compute finish";
   }
 };
 

@@ -62,7 +62,6 @@ class GeneratorManager {
   using Generators = std::vector<std::unique_ptr<RandomROIGenerator>>;
 
   private:
-    // DISABLE_COPY_AND_ASSIGN(GeneratorManager);
 
     static GeneratorManager* gm_instance_ptr_;
     static std::mutex m_;

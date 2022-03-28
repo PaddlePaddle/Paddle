@@ -40,11 +40,6 @@ class RandomCropAndResizeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "w in Attr(size) of Op(RandomCropAndResize) "
                           "should be greater than 0."));
-    // auto x_dim = ctx->GetInputsDim("X");  // NCHW format
-    //
-    // std::vector<int64_t> out_dim = {static_cast<int64_t>(x_dim.size()),
-    //                                 x_dim[0][0], size[0], size[1]};
-    // ctx->SetOutputDim("Out", framework::make_ddim({out_dim}));
   }
 
   framework::OpKernelType GetExpectedKernelType(
