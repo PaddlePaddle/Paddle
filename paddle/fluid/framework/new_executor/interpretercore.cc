@@ -493,6 +493,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  platform::RecordEvent record_prepare(
+      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -500,6 +502,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+  record_prepare.End();
 
   unfinished_op_numer_ = vec_instr.size();
 

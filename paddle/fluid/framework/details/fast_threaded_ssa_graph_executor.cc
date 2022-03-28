@@ -132,6 +132,9 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   if (!fetch_ops.empty()) {
+    platform::RecordEvent record_wait(
+        "FastThreadedSSAGraphExecutor::WaitFetchOps",
+        platform::TracerEventType::UserDefined, 1);
     ClearFetchOp(graph_, &fetch_ops);
 
     for (auto &place : places_) {
