@@ -702,7 +702,6 @@
   output : Tensor
   infer_meta :
     func : FlipInferMeta
-    param : [x]
   kernel :
     func : flip
 
