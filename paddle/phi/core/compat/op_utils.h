@@ -50,8 +50,6 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "matmul",
                                                            "matmul_grad",
                                                            "matmul_grad_grad",
-                                                           "mean",
-                                                           "mean_grad",
                                                            "max",
                                                            "max_grad",
                                                            "min",
@@ -66,9 +64,7 @@ const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "expand_as",
                                                            "expand_grad",
                                                            "expand_as_grad",
-                                                           "sum",
                                                            "one_hot",
-                                                           "sum_grad",
                                                            "top_k",
                                                            "top_k_grad"});
 
@@ -122,6 +118,10 @@ class OpUtilsMap {
             "Operator (%s)'s api name has been registered.", op_type));
     base_kernel_name_map_.insert(
         {std::move(op_type), std::move(base_kernel_name)});
+  }
+
+  bool HasArgumentMappingFn(const std::string& op_type) const {
+    return arg_mapping_fn_map_.count(op_type);
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
