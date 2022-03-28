@@ -50,8 +50,9 @@ class BaseAPI(object):
             self.support_selected_rows_kernel = False if len(self.kernel[
                 'func']) == 1 else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
-            self.inplace_map = self.parse_inplace(api_item_yaml)
-            self.view_map = self.parse_view(api_item_yaml)
+            self.inplace_map = self.parse_inplace_or_view(api_item_yaml,
+                                                          'inplace')
+            self.view_map = self.parse_inplace_or_view(api_item_yaml, 'view')
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['api']
@@ -274,41 +275,22 @@ class BaseAPI(object):
 
         return data_transform
 
-    def parse_inplace(self, api_item_yaml):
-        if 'inplace' in api_item_yaml:
-            inplace_map = {}
-            inplace_list = api_item_yaml['inplace'].split(',')
-            for item in inplace_list:
+    def parse_inplace_or_view(self, api_item_yaml, mode='inplace'):
+        if mode in api_item_yaml:
+            inplace_view_map = {}
+            in_out_mapping_list = api_item_yaml[mode].split(',')
+            for item in in_out_mapping_list:
                 result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
                 in_val = result.group('in')
                 out_val = result.group('out')
                 assert in_val in self.inputs['names'], \
-                    f"{self.api} : Inplace input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
                 assert out_val in self.outputs['names'], \
-                    f"{self.api} : Inplace output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
 
-                inplace_map[out_val] = in_val
+                inplace_view_map[out_val] = in_val
 
-            return inplace_map
-        else:
-            return None
-
-    def parse_view(self, api_item_yaml):
-        if 'view' in api_item_yaml:
-            view_map = {}
-            view_list = api_item_yaml['view'].split(',')
-            for item in view_list:
-                result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
-                in_val = result.group('in')
-                out_val = result.group('out')
-                assert in_val in self.inputs['names'], \
-                    f"{self.api} : View input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                assert out_val in self.outputs['names'], \
-                    f"{self.api} : View output error: the output var name('{out_val}') is not found in the output args of {self.api}."
-
-                view_map[out_val] = in_val
-
-            return view_map
+            return inplace_view_map
         else:
             return None
 
@@ -427,8 +409,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
         kernel_select_args = ""
         for input_name in input_names:
-            if input_name != 'xshape':
-                kernel_select_args = kernel_select_args + input_name + ", "
+            kernel_select_args = kernel_select_args + input_name + ", "
 
         if len(kernel_select_args) > 2:
             kernel_select_args = kernel_select_args[:-2]

@@ -106,6 +106,9 @@
   kernel :
     func : reshape_grad
     param : [out_grad]
+    data_type: out_grad
+    backend: out_grad
+    layout: out_grad
 
 - backward_api : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
