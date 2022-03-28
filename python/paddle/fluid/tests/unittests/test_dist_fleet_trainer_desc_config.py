@@ -15,7 +15,7 @@
 import os
 import time
 import unittest
-
+os.environ["WITH_DISTRIBUTE"] = "ON"
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid.transpiler.details.program_utils as pu
@@ -45,6 +45,8 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         avg_cost = paddle.fluid.layers.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": 0}
         config = {
             "dump_fields_path": "dump_data",
             "dump_fields": ["xxx", "yyy"],
@@ -57,6 +59,17 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         program = paddle.static.default_main_program()
+        self.assertEqual(program._fleet_opt["dump_fields_path"], "dump_data")
+        self.assertEqual(len(program._fleet_opt["dump_fields"]), 2)
+        self.assertEqual(len(program._fleet_opt["dump_param"]), 1)
+        self.assertEqual(program._fleet_opt["mpi_size"],
+                         int(os.environ["PADDLE_TRAINERS_NUM"]))
+
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize([avg_cost])
+
+        program = avg_cost.block.program
         self.assertEqual(program._fleet_opt["dump_fields_path"], "dump_data")
         self.assertEqual(len(program._fleet_opt["dump_fields"]), 2)
         self.assertEqual(len(program._fleet_opt["dump_param"]), 1)
