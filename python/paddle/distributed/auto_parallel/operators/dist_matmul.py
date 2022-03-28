@@ -35,6 +35,8 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 from .dist_default import DistributedDefaultImpl0
+from ..cost import parse_to_desc
+from ..cost import OP_COST_FACTORY
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
@@ -478,6 +480,43 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        # calc comp op cost
+        matmul_desc = parse_to_desc(dist_op=dist_op, dist_context=ctx)
+        matmul_cost = OP_COST_FACTORY["matmul"](op_desc=matmul_desc)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+        op_dist_attr = dist_op.dist_attr
+        X_dist_tensor = ctx.get_dist_tensor_for_program(vars[serial_op.input(
+            "X")])
+        c_identity_desc = {}
+        c_identity_desc["op"] = "c_identity"
+        c_identity_desc["inputs"] = {
+            "X": [(X_dist_tensor.serial_tensor.dtype,
+                   X_dist_tensor.local_sizes())]
+        }
+
+        #infer logic comm presentation
+        parallel_axis = dist_op.op_dist_attr.get_input_dims_mapping(vars[
+            serial_op.input("Y")])[-1]
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
+        c_identity_desc["attrs"] = {
+            "ranks": group_ranks,
+            "use_calc_stream": True,
+            "use_model_parallel": True
+        }
+        c_identity_cost = OP_COST_FACTORY["c_identity"](op_desc=c_identity_desc)
+        res_cost = matmul_cost + c_identity_cost
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx):
+        return 0
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -699,6 +738,52 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        # calc comp op cost
+        matmul_desc = parse_to_desc(dist_op=dist_op, dist_context=ctx)
+        matmul_cost = OP_COST_FACTORY["matmul"](op_desc=matmul_desc)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        op_dist_attr = dist_op.dist_attr
+        vars = serial_op.block.vars
+        out_dist_tensor = ctx.get_dist_tensor_for_program(vars[serial_op.output(
+            "Out")])
+
+        c_allreduce_sum_desc = {}
+        c_allreduce_sum_desc["op"] = "c_allreduce_sum"
+        c_allreduce_sum_desc["inputs"] = {
+            "X": [(out_dist_tensor.serial_tensor.dtype,
+                   out_dist_tensor.local_sizes())]
+        }
+
+        # get comm ranks
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
+
+        parallel_axis = matmul_row_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
+        op_dist_attr = dist_op.dist_attr
+        parallel_axis = dist_op.op_dist_attr.get_input_dims_mapping(vars[
+            serial_op.input("Y")])[-1]
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
+        c_allreduce_sum_desc["attrs"] = {
+            "ranks": group_ranks,
+            "use_calc_stream": True,
+            "use_model_parallel": True
+        }
+        c_allreduce_sum_cost = OP_COST_FACTORY["c_identity"](
+            op_desc=c_allreduce_sum_desc)
+        res_cost = matmul_cost + c_allreduce_sum_cost
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, rank_id=0):
+        return 0
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -907,6 +992,16 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulImpl2, self).__init__(name)
 
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        # calc comp op cost
+        matmul_desc = parse_to_desc(dist_op=dist_op, dist_context=ctx)
+        matmul_cost = OP_COST_FACTORY["matmul"](op_desc=matmul_desc)
+        res_cost = matmul_cost
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, rank_id=0):
+        return 0
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -991,6 +1086,44 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         super(DistributedMatmulV2Impl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        # calc comp op cost
+        # TODO trans shape if trans_x or trans_y is True
+        matmul_desc = parse_to_desc(dist_op=dist_op, dist_context=ctx)
+        matmul_cost = OP_COST_FACTORY["matmul_v2"](op_desc=matmul_desc)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        vars = serial_op.block.vars
+        op_dist_attr = dist_op.dist_attr
+        X_dist_tensor = ctx.get_dist_tensor_for_program(vars[serial_op.input(
+            "X")])
+        c_identity_desc = {}
+        c_identity_desc["op"] = "c_identity"
+        c_identity_desc["inputs"] = {
+            "X": [(X_dist_tensor.serial_tensor.dtype,
+                   X_dist_tensor.local_sizes())]
+        }
+
+        #infer logic comm presentation
+        parallel_axis = dist_op.op_dist_attr.get_input_dims_mapping(vars[
+            serial_op.input("Y")])[-1]
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
+        c_identity_desc["attrs"] = {
+            "ranks": group_ranks,
+            "use_calc_stream": True,
+            "use_model_parallel": True
+        }
+        c_identity_cost = OP_COST_FACTORY["c_identity"](op_desc=c_identity_desc)
+        res_cost = matmul_cost + c_identity_cost
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, rank_id=0):
+        return 0
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
@@ -1209,6 +1342,52 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         self._forward_implemented = True
         self._backward_implemented = True
 
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        # calc comp op cost
+        matmul_desc = parse_to_desc(dist_op=dist_op, dist_context=ctx)
+        matmul_cost = OP_COST_FACTORY["matmul_v2"](op_desc=matmul_desc)
+
+        # calc comm op cost
+        serial_op = dist_op.serial_op
+        op_dist_attr = dist_op.dist_attr
+        vars = serial_op.block.vars
+        out_dist_tensor = ctx.get_dist_tensor_for_program(vars[serial_op.output(
+            "Out")])
+
+        c_allreduce_sum_desc = {}
+        c_allreduce_sum_desc["op"] = "c_allreduce_sum"
+        c_allreduce_sum_desc["inputs"] = {
+            "X": [(out_dist_tensor.serial_tensor.dtype,
+                   out_dist_tensor.local_sizes())]
+        }
+
+        # get comm ranks
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
+
+        parallel_axis = matmul_row_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
+        op_dist_attr = dist_op.dist_attr
+        parallel_axis = dist_op.op_dist_attr.get_input_dims_mapping(vars[
+            serial_op.input("Y")])[-1]
+        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_group = op_dist_attr.process_mesh.processes
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
+        c_allreduce_sum_desc["attrs"] = {
+            "ranks": group_ranks,
+            "use_calc_stream": True,
+            "use_model_parallel": True
+        }
+        c_allreduce_sum_cost = OP_COST_FACTORY["c_identity"](
+            op_desc=c_allreduce_sum_desc)
+        res_cost = matmul_cost + c_allreduce_sum_cost
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, rank_id=0):
+        return 0
+
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
@@ -1412,6 +1591,16 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulV2Impl2, self).__init__(name)
+
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        # calc comp op cost
+        matmul_desc = parse_to_desc(dist_op=dist_op, dist_context=ctx)
+        matmul_cost = OP_COST_FACTORY["matmul_v2"](op_desc=matmul_desc)
+        res_cost = matmul_cost
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, rank_id=0):
+        return 0
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc

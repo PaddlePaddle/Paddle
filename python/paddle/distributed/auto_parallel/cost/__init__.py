@@ -14,6 +14,7 @@
 
 from .base_cost import OP_COST_FACTORY
 from .base_cost import Cost
+from .base_cost import parse_to_desc
 from .comm_op_cost import AllreduceSumCost
 from .comp_op_cost import MatmulV2OpCost
 from .tensor_cost import TensorCost

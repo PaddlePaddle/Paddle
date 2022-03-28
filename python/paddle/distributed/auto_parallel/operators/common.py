@@ -112,6 +112,14 @@ class DistributedOperatorImpl(abc.ABC):
         self._idx = impl_idx
 
     @abc.abstractmethod
+    def calc_fwd_cost(self, dist_op, ctx, rank_id=0):
+        raise NotImplementedError("Please Implement this method in Subclass.")
+
+    @abc.abstractmethod
+    def calc_bwd_cost(self, dist_op, ctx, rank_id=0):
+        raise NotImplementedError("Please Implement this method in Subclass.")
+
+    @abc.abstractmethod
     def is_input_compatible(self, dist_op):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
