@@ -379,9 +379,11 @@ void FleetWrapper::PullDenseVarsSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    float* w = tensor->data<float>();
-    paddle::distributed::Region reg(w, tensor->numel());
-    regions.emplace_back(std::move(reg));
+    if (!platform::is_gpu_place(tensor->place())) {
+      float* w = tensor->data<float>();
+      paddle::distributed::Region reg(w, tensor->numel());
+      regions.emplace_back(std::move(reg));
+    }
   }
   auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   status.wait();
@@ -396,9 +398,11 @@ void FleetWrapper::PushDenseParamSync(
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    float* g = tensor->mutable_data<float>(place);
-    paddle::distributed::Region reg(g, tensor->numel());
-    regions.emplace_back(std::move(reg));
+    if (!platform::is_gpu_place(tensor->place())) {
+      float* g = tensor->mutable_data<float>(place);
+      paddle::distributed::Region reg(g, tensor->numel());
+      regions.emplace_back(std::move(reg));
+    }
   }
   auto push_status =
       worker_ptr_->push_dense_param(regions.data(), regions.size(), table_id);
