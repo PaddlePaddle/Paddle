@@ -103,6 +103,7 @@ int32_t Table::initialize_accessor() {
     return -1;
   }
   _value_accesor.reset(accessor);
+  _value_accesor->GetTableInfo(_table_info);
   return 0;
 }
 
