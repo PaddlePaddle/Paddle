@@ -18,7 +18,7 @@ limitations under the License. */
 
 static const int64_t threadsPerBlock = sizeof(int64_t) * 8;
 
-__host__ __device__ static inline int64_t CeilDivide(int64_t n, int64_t m) {
+__device__ static inline int64_t CeilDivide(int64_t n, int64_t m) {
   return (n + m - 1) / m;
 }
 

@@ -157,7 +157,6 @@ class NMSKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("KeepBoxesIdxs");
     int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
     auto threshold = context.template Attr<float>("iou_threshold");
-    VLOG(3) << "threshold= " << threshold;
     NMS<T>(boxes->data<T>(), output_data, threshold, boxes->dims()[0]);
   }
 };
