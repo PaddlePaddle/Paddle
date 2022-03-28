@@ -52,7 +52,7 @@ def graph_reindex(x,
         index_buffer (Tensor|None): Index buffer for hashtable. The data type should 
                                     be int32, and should be filled with -1.
         flag_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
-                                      Default is False.
+                                      Default is False. Only useful for gpu version currently.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
     
