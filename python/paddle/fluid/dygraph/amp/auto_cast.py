@@ -16,7 +16,7 @@ from __future__ import print_function
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from paddle.fluid import core
 import contextlib
-from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
+from paddle.fluid.framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
 import warnings
 import copy
 import functools
@@ -171,7 +171,7 @@ def pure_fp16_initialize(models):
             if (layer._dtype == 'float16') or isinstance(
                     layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
-                            paddle.nn.LayerNorm)):
+                            paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm)):
                 continue
             layer._to_impl(dtype='float16', include_sublayers=False)
     return models

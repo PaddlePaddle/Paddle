@@ -161,6 +161,13 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   dx->share_meta(dout);
 }
 
+void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
+  auto xshape_dims = xshape.dims();
+  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  dx->set_dims(x_dims);
+  dx->share_lod(xshape);
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

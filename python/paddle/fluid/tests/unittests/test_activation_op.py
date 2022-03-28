@@ -1039,7 +1039,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestCeil(TestActivation):
