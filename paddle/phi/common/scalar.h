@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void ThrowTensorConvertError(int);
-
 template <typename T>
 class ScalarBase {
  public:
@@ -159,7 +157,6 @@ class ScalarBase {
   friend void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst);
   void GetDataFromTensor(const T& tensor) {
     is_from_tensor_ = true;
-    ThrowTensorConvertError(tensor.numel());
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];

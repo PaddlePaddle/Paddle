@@ -20,21 +20,15 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-// NOTE(xiongkun): why we put definition here?
-// test_custom_op can't include enforce.h, because enforce.h includes gflags.
-// so we decouple the include dependence of enforce.h by link.
-void ThrowTensorConvertError(int num) {
-  PADDLE_ENFORCE_EQ(num,
+template <>
+ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
+    : dtype_(tensor_in.dtype()) {  // NOLINT
+  PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
                     phi::errors::InvalidArgument(
                         "The Scalar only supports Tensor with 1 element, but "
                         "now Tensor has `%d` elements",
-                        num));
-}
-
-template <>
-ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
-    : dtype_(tensor_in.dtype()) {  // NOLINT
+                        tensor_in.numel()));
   if (tensor_in.place() == PlaceType::kGPU) {
     GetDataFromTensor(tensor_in.copy_to(phi::CPUPlace(), true));
   } else {

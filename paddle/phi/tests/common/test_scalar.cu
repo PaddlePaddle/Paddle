@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 
 namespace phi {
 namespace tests {
@@ -46,6 +49,28 @@ TEST(Scalar, ConstructFromDenseTensor) {
   FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
   dev_ctx.Wait();
   phi::Scalar scalar_test(dense_x);
+  ASSERT_NEAR(1, scalar_test.to<float>(), 1e-6);
+}
+
+TEST(Scalar, ConstructFromTensor) {
+  // 1. create tensor
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
+  auto dense_x = std::make_shared<phi::DenseTensor>(
+      alloc.get(),
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
+
+  phi::GPUContext dev_ctx;
+  dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(phi::GPUPlace())
+                           .get());
+  dev_ctx.Init();
+  auto* dense_x_data = dev_ctx.Alloc<float>(dense_x.get());
+  FillTensor<<<1, 1, 0, dev_ctx.stream()>>>(dense_x_data);
+  dev_ctx.Wait();
+  paddle::experimental::Tensor x(dense_x);
+  paddle::experimental::Scalar scalar_test(x);
   ASSERT_NEAR(1, scalar_test.to<float>(), 1e-6);
 }
 
