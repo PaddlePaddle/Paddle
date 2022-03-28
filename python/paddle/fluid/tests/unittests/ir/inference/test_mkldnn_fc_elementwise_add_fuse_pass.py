@@ -65,7 +65,7 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
         if FCAsX:
             inputs = {"X": ["fc_output"], "Y": ["input_data"]}
         else:
-            inputs = {"X": ["input_data"], "Y": ["fc_output"]}   
+            inputs = {"X": ["input_data"], "Y": ["fc_output"]}
 
         elt_add_op = OpConfig(
             type="elementwise_add",
@@ -94,7 +94,8 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["fc_mkldnn_pass", "fc_elementwise_add_mkldnn_fuse_pass"])
+            quant=False,
+            passes=["fc_mkldnn_pass", "fc_elementwise_add_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":
