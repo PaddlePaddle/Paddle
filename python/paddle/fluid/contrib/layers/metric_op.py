@@ -195,7 +195,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         outputs={"Out": [local_ins_num]})
 
     #if data is fake, return 0
-    ins_tag_weight_np = ins_tag_weight.to_string()
+    ins_tag_weight_np = ins_tag_weight.to_string(False, False)
     if ins_tag_weight_np[0] == '0':
         local_ins_num = tensor.fill_constant_batch_size_like(
             input=local_ins_num,
