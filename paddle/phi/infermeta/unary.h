@@ -144,6 +144,8 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
 
+void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,
@@ -266,6 +268,16 @@ void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
                       MetaTensor* xshape,
                       MetaTensor* out);
+
+void StridedSliceInferMeta(const MetaTensor& x,
+                           const std::vector<int>& axes,
+                           const ScalarArray& starts,
+                           const ScalarArray& ends,
+                           const ScalarArray& strides,
+                           const std::vector<int>& infer_flags,
+                           const std::vector<int>& decrease_axis,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
 
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,

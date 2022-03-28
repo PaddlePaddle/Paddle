@@ -50,6 +50,10 @@ yaml_types_mapping = {
 #############################
 ###  File Reader Helpers  ###
 #############################
+def AssertMessage(lhs_str, rhs_str):
+    return f"lhs: {lhs_str}, rhs: {rhs_str}"
+
+
 def ReadFwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
@@ -62,10 +66,10 @@ def ReadBwdFile(filepath):
     contents = yaml.load(f, Loader=yaml.FullLoader)
     ret = {}
     for content in contents:
+        assert 'backward_api' in content.keys(), AssertMessage('backward_api',
+                                                               content.keys())
         if 'backward_api' in content.keys():
             api_name = content['backward_api']
-        else:
-            assert False
 
         ret[api_name] = content
     f.close()
@@ -225,7 +229,7 @@ def ParseYamlReturns(string):
         ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
         ret_type = yaml_types_mapping[ret_type]
 
-        assert "Tensor" in ret_type
+        assert "Tensor" in ret_type, AssertMessage("Tensor", ret_type)
         ret_name = RemoveSpecialSymbolsInName(ret_name)
         returns_list.append([ret_name, ret_type, i])
 
@@ -417,3 +421,5 @@ class YamlGeneratorBase:
         api_yaml_path = self.api_yaml_path
         if "sparse" in api_yaml_path:
             self.namespace = "sparse::"
+        elif "strings" in api_yaml_path:
+            self.namespace = "strings::"
