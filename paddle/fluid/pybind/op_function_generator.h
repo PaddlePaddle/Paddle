@@ -98,6 +98,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "CustomDistAlias", "CustomDistAliasProbs"}},
     {"check_finite_and_unscale", {"X", "Scale", "FloatStatus"}},
     {"group_norm", {"X", "Scale", "Bias"}},
+    {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
+    {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
+    {"chunk_eval", {"Inference", "Label", "SeqLength"}},
     {"graph_reindex",
      {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
 };
