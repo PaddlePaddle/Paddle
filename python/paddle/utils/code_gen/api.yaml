@@ -17,7 +17,6 @@
 #     func : pixel_shuffle
 
 # BilinearTensorProductInferMeta
-
 # BroadcastTensorsInferMeta
 
 # - api : equal_all
