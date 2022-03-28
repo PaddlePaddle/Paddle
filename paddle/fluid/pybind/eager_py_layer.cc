@@ -337,7 +337,9 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
-        grad_node->SetGradOutMeta(inputs_tensor[i], i);
+        for (auto t : inputs_tensor[i]) {
+          grad_node->SetGradOutMeta(*t, i);
+        }
         grad_node->AddEdges(&inputs_autograd_meta[i], i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
@@ -349,7 +351,9 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       if (ctx->forward_output_tensor_is_duplicable[i]) {
         egr::EagerUtils::SetOutRankWithSlot(&outputs_autograd_meta[i], i);
         egr::EagerUtils::SetHistory(&outputs_autograd_meta[i], grad_node);
-        grad_node->SetGradInMeta(outputs_tensor[i], i);
+        for (auto t : outputs_tensor[i]) {
+          grad_node->SetGradInMeta(*t, i);
+        }
         egr::EagerUtils::CheckAndRetainGrad(outputs_tensor[i]);
       } else {
         egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
