@@ -32,8 +32,10 @@ class TestInplace(unittest.TestCase):
             self.assertEqual(var.inplace_version, 1)
 
             # TODO1: assign don't support inplace in temporary
-            # paddle.assign(paddle.ones(shape=[3]), var)
-            var[0] = 2
+            if in_dygraph_mode():
+                var[0] = 2
+            else:
+                paddle.assign(paddle.ones(shape=[3]), var)
 
             # NOTE(liym27): assign(input, output) is an inplace operation for output.
             # There is inplace-related processing for api assign, var.inplace_version should be 2 not 1.
