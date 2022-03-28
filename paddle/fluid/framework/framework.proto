@@ -153,6 +153,9 @@ message VarType {
     VOCAB = 27;
     FEED_LIST = 28;
 
+    // The data type of phi::StringTensor
+    PSTRING = 29;
+
     LOD_TENSOR_BLOCKING_QUEUE = 31;
   }
 

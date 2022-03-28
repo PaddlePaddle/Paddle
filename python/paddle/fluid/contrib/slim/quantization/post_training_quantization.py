@@ -35,33 +35,13 @@ from .quantization_pass import _get_output_name_index
 from .quantization_pass import _get_input_name_index
 from .quantization_pass import _channelwise_quant_axis1_ops
 from .cal_kl_threshold import cal_kl_threshold
+from .adaround import run_adaround
+from .utils import load_variable_data, set_variable_data
 
 __all__ = ['PostTrainingQuantization', 'WeightQuantization']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
-
-
-def _load_variable_data(scope, var_name):
-    '''
-    Load variable value from scope
-    '''
-    var_node = scope.find_var(var_name)
-    assert var_node is not None, \
-        "Cannot find " + var_name + " in scope."
-    return np.array(var_node.get_tensor())
-
-
-def _set_variable_data(scope, place, var_name, np_value):
-    '''
-    Set the value of var node by name, if the node exits,
-    '''
-    assert isinstance(np_value, np.ndarray), \
-       'The type of value should be numpy array.'
-    var_node = scope.find_var(var_name)
-    if var_node != None:
-        tensor = var_node.get_tensor()
-        tensor.set(np_value, place)
 
 
 def _all_persistable_var_names(program):
@@ -143,6 +123,8 @@ class PostTrainingQuantization(object):
                  algo="KL",
                  hist_percent=0.99999,
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
+                 round_type='round',
+                 learning_rate=0.001,
                  is_full_quantize=False,
                  bias_correction=False,
                  activation_bits=8,
@@ -198,6 +180,10 @@ class PostTrainingQuantization(object):
             quantizable_op_type(list[str], optional): List the type of ops 
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul"].
+            round_type(str, optional): The method of converting the quantized weights
+                value float->int. Currently supports ['round', 'adaround'] methods.
+                Default is `round`, which is rounding nearest to the nearest whole number.
+            learning_rate(float, optional): The learning rate of adaround method.
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set
                 is_full_quantized as False, only apply quantization to the op type 
@@ -274,6 +260,9 @@ class PostTrainingQuantization(object):
         self._support_algo_type = [
             'KL', 'hist', 'avg', 'mse', 'emd', 'abs_max', 'min_max'
         ]
+        assert round_type in ['adaround', 'round']
+        self._round_type = round_type
+        self._learning_rate = learning_rate
         self._dynamic_quantize_op_type = ['lstm']
         self._support_quantize_op_type = \
             list(set(QuantizationTransformPass._supported_quantizable_op_type +
@@ -401,6 +390,10 @@ class PostTrainingQuantization(object):
             if self._batch_nums and batch_id >= self._batch_nums:
                 break
         _logger.info("Finish sampling stage, all batch: " + str(batch_id))
+
+        if self._round_type == 'adaround':
+            self._adaround_apply()
+
         self._reset_activation_persistable()
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
@@ -436,6 +429,24 @@ class PostTrainingQuantization(object):
                 _op.desc.set_input("X", persistables)
 
         return self._program
+
+    def _adaround_apply(self):
+        if self._algo in ["KL", "hist"]:
+            scale_dict = self._quantized_var_threshold
+        else:
+            scale_dict = self._quantized_threshold
+        run_adaround(
+            self._data_loader,
+            self._program,
+            self._fetch_list,
+            self._executor,
+            self._scope,
+            self._place,
+            self._quantized_op_pairs,
+            self._weight_op_pairs,
+            scale_dict,
+            num_iterations=self._batch_nums,
+            lr=self._learning_rate)
 
     def save_quantized_model(self,
                              save_model_path,
@@ -519,6 +530,7 @@ class PostTrainingQuantization(object):
         '''
         # TODO(juncaipeng), consider the name_scope of skip_quant
         _logger.info("Collect quantized variable names ...")
+        self._quantized_op_pairs = {}
 
         def collect_var_name(var_name_list, persistable_var_names, op_type):
             for var_name in var_name_list:
@@ -544,6 +556,12 @@ class PostTrainingQuantization(object):
                     collect_var_name(
                         _get_op_output_var_names(op), persistable_var_names,
                         op_type)
+                    # collect quanted op output var name
+                    for out_var_name in _get_op_output_var_names(op):
+                        for in_var_name in _get_op_input_var_names(op):
+                            if in_var_name in persistable_var_names:
+                                self._quantized_op_pairs[
+                                    in_var_name] = out_var_name
                 # For other op, only sample output scale
                 elif op_type in self._out_scale_op_list:
                     collect_var_name(
@@ -590,7 +608,7 @@ class PostTrainingQuantization(object):
     def _sample_mse(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
@@ -607,7 +625,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("MSE searching stage ...")
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
             abs_max_value = float(np.max(np.abs(var_tensor)))
             abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value
@@ -629,7 +647,7 @@ class PostTrainingQuantization(object):
     def _sample_emd(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
@@ -646,7 +664,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
         _logger.info("EMD searching stage ...")
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
             abs_max_value = float(np.max(np.abs(var_tensor)))
             abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value
@@ -670,7 +688,7 @@ class PostTrainingQuantization(object):
     def _sample_avg(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
@@ -687,7 +705,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
 
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             abs_max_value = float(np.max(np.abs(var_tensor)))
             if (var_name not in self._quantized_var_avg):
                 self._quantized_var_avg[var_name] = []
@@ -699,7 +717,7 @@ class PostTrainingQuantization(object):
     def _sample_abs_max(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":
@@ -716,7 +734,7 @@ class PostTrainingQuantization(object):
                 self._quantized_threshold[var_name] = abs_max_value
 
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             abs_max_value = float(np.max(np.abs(var_tensor)))
             if (var_name not in self._quantized_threshold) or \
                 (abs_max_value > self._quantized_threshold[var_name]):
@@ -725,7 +743,7 @@ class PostTrainingQuantization(object):
     def _sample_min_max(self):
         if self._quantized_var_min == {} and self._quantized_var_max == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = _load_variable_data(self._scope, var_name)
+                var_tensor = load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     min_value = float(np.min(var_tensor))
                     max_value = float(np.max(var_tensor))
@@ -745,7 +763,7 @@ class PostTrainingQuantization(object):
                 self._quantized_var_max[var_name] = max_value
 
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             min_value = float(np.min(var_tensor))
             max_value = float(np.max(var_tensor))
             if (var_name not in self._quantized_var_min) or \
@@ -757,7 +775,7 @@ class PostTrainingQuantization(object):
 
     def _sample_histogram(self):
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             var_tensor_abs = np.abs(var_tensor)
             bins = self._sampling_act_histogram[var_name][1]
             hist, _ = np.histogram(var_tensor_abs, bins=bins)
@@ -787,7 +805,7 @@ class PostTrainingQuantization(object):
         get the min and max value, and then calculate the threshold.
         '''
         for var_name in self._quantized_act_var_name:
-            var_tensor = _load_variable_data(self._scope, var_name)
+            var_tensor = load_variable_data(self._scope, var_name)
             var_tensor = np.abs(var_tensor)
             min_value = float(np.min(var_tensor))
             max_value = float(np.max(var_tensor))
@@ -821,7 +839,7 @@ class PostTrainingQuantization(object):
 
         # Abs_max threshold for weights
         for var_name in self._quantized_weight_var_name:
-            weight_data = _load_variable_data(self._scope, var_name)
+            weight_data = load_variable_data(self._scope, var_name)
             if self._weight_quantize_type == "abs_max":
                 weight_threshold = float(np.max(np.abs(weight_data)))
             elif self._weight_quantize_type == "channel_wise_abs_max":
@@ -896,13 +914,13 @@ class PostTrainingQuantization(object):
         else:
             scale_dict = self._quantized_threshold
         for key, val in scale_dict.items():
-            _set_variable_data(
+            set_variable_data(
                 self._scope,
                 self._place,
                 key + ".scale",
                 np.array(
                     [val], dtype=np.float32))
-            _set_variable_data(
+            set_variable_data(
                 self._scope,
                 self._place,
                 key + ".quant_dequant.scale",
@@ -915,6 +933,7 @@ class PostTrainingQuantization(object):
             place=self._place,
             bias_correction=self._bias_correction,
             weight_bits=self._weight_bits,
+            round_type=self._round_type,
             activation_bits=self._activation_bits,
             weight_quantize_type=self._weight_quantize_type,
             quantizable_op_type=major_quantizable_op_types)
@@ -961,7 +980,7 @@ class PostTrainingQuantization(object):
                     argname_index[0] + str(argname_index[1]) + "_threshold",
                     "post_hist")
 
-            elif self._algo in ["avg", "abs_max", "mse"]:
+            elif self._algo in ["avg", "abs_max", "mse", "emd"]:
                 save_info(op_node, out_var_name, self._quantized_threshold,
                           "out_threshold", "post_" + str(self._algo))
                 save_info(
@@ -1003,7 +1022,7 @@ class PostTrainingQuantization(object):
         for op in target_ops:
             for var_name in _get_op_input_var_names(op):
                 if var_name in persistable_var_names:
-                    var_data = _load_variable_data(self._scope, var_name)
+                    var_data = load_variable_data(self._scope, var_name)
                     threshold = float(np.max(np.abs(var_data)))
                     argname, index = _get_input_name_index(op, var_name)
                     op._set_attr(argname + str(index) + "_threshold", threshold)
@@ -1249,7 +1268,7 @@ class WeightQuantization(object):
         save_weight_dtype = np.int8 if weight_bits == 8 else np.int16
 
         # Get quantized scale and weight data
-        weight_data = _load_variable_data(scope, var_name)
+        weight_data = load_variable_data(scope, var_name)
         if abs(threshold_rate) < 1e-10:
             threshold_value = np.max(np.abs(weight_data))
         else:
@@ -1263,11 +1282,11 @@ class WeightQuantization(object):
 
         # Set weight data
         if not for_test:
-            _set_variable_data(scope, place, var_name, quantized_weight_data)
+            set_variable_data(scope, place, var_name, quantized_weight_data)
         else:
             dequantized_weight_data = \
                 (quantized_weight_data * scale).astype(np.float32)
-            _set_variable_data(scope, place, var_name, dequantized_weight_data)
+            set_variable_data(scope, place, var_name, dequantized_weight_data)
 
         # Save info
         op._set_attr('quantization_type', 'post_weight_abs_max')
@@ -1284,7 +1303,7 @@ class WeightQuantization(object):
         save_weight_dtype = np.int8 if weight_bits == 8 else np.int16
 
         # Get quantized scale and weight data
-        weight_data = _load_variable_data(scope, var_name)
+        weight_data = load_variable_data(scope, var_name)
         if op.type == "mul":
             scales, quantized_weight_data = \
                 self._mul_channel_wise_quantization(weight_data,
@@ -1298,7 +1317,7 @@ class WeightQuantization(object):
 
         # Set weight data
         if not for_test:
-            _set_variable_data(scope, place, var_name, quantized_weight_data)
+            set_variable_data(scope, place, var_name, quantized_weight_data)
         else:
             if op.type == "mul":
                 dequantized_weight_data = \
@@ -1309,7 +1328,7 @@ class WeightQuantization(object):
             else:
                 _logger.error(op.type +
                               " is not supported by weight quantization")
-            _set_variable_data(scope, place, var_name, dequantized_weight_data)
+            set_variable_data(scope, place, var_name, dequantized_weight_data)
 
         # Save info
         op._set_attr('quantization_type', 'post_weight_channel_wise_abs_max')

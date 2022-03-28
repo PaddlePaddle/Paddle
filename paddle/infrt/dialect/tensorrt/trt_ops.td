@@ -20,15 +20,6 @@ def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<
   let results = (outs TRT_EngineType:$engine);
 }
 
-def TRT_ExecuteOp : TRT_Op<"execute", [NoSideEffect]> {
-  let summary = "trt execute Op";
-  let description = [{
-    Describe a tensorrt runtime.
-  }];
-  let arguments = (ins TRT_EngineType:$engine, Variadic<DenseTensor>:$inputs);
-  let results = (outs Variadic<DenseTensor>:$output);
-}
-
 def TRT_EngineComputeOp : TRT_Op<"compute", [NoSideEffect]> {
   let summary = "trt compute engine";
   let description = [{
