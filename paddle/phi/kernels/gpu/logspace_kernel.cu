@@ -31,8 +31,7 @@ __global__ void LogspaceKernelInner(
     if (index < size / 2) {
       out[index] = static_cast<T>(pow(base, start + step * index));
     } else {
-      out[index] =
-          static_cast<T>(pow(base, stop - step * (size - index - 1)));
+      out[index] = static_cast<T>(pow(base, stop - step * (size - index - 1)));
     }
   }
 }
