@@ -105,9 +105,15 @@ class AutoParallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["loss"] = loss
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-            auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                         self._pass_context)
+            if config["use_pure_fp16"]:
+                config["base_opt"] = self._optimizer
+                auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
+                auto_parallel_fp16_pass.apply(
+                    [main_program], [startup_program], self._pass_context)
+            else:
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                             self._pass_context)
 
         # apply recompute pass
         if self._dist_strategy.recompute:
