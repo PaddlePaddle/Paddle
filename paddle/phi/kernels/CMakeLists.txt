@@ -68,8 +68,6 @@ add_subdirectory(sparse)
 add_subdirectory(selected_rows)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
-# For strings kernels
-add_subdirectory(strings)
 
 # 5. kernel autotune 
 add_subdirectory(autotune)

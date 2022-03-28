@@ -40,12 +40,4 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
-
-bool StringTensorMeta::valid() const noexcept {
-  bool valid{true};
-  valid = valid && (is_scalar || product(dims) >= 0);
-  return valid;
-}
-
 }  // namespace phi

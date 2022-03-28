@@ -29,7 +29,6 @@ enum class DataLayout {
   MKLDNN,
   SPARSE_COO,
   SPARSE_CSR,
-  PSTRING_UNION,
   NUM_DATA_LAYOUTS,
   NDHWC,
   NCDHW,
@@ -77,8 +76,6 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::SPARSE_CSR;
   } else if (s == "NDHWC") {
     return DataLayout::kNDHWC;
-  } else if (s == "PSTRING_UNION") {
-    return DataLayout::PSTRING_UNION;
   } else if (s == "NCDHW") {
     return DataLayout::kNCDHW;
   } else {
@@ -104,8 +101,6 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       return "NDHWC";
     case DataLayout::kNCDHW:
       return "NCDHW";
-    case DataLayout::PSTRING_UNION:
-      return "PSTRING_UNION";
     default:
       PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
   }

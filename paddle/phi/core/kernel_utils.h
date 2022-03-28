@@ -26,7 +26,6 @@
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
 namespace phi {
@@ -233,10 +232,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(StringTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(StringTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(StringTensor);
-
   /* Attribute Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
@@ -271,8 +266,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(StringTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
   /* End case */
   template <typename T>
   struct KernelCallHelper<TypeTag<T>> {
