@@ -99,7 +99,7 @@ pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(mixed_precision_configure_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
-pass_library(data_io_queue_pass base)
+pass_library(dataloader_queue_pass base)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)

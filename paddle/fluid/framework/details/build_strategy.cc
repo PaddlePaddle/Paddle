@@ -84,7 +84,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
 
-    AppendPass("data_io_queue_pass");
+    AppendPass("dataloader_queue_pass");
 
     SetCollectiveContext();
   }
@@ -505,7 +505,7 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
-USE_PASS(data_io_queue_pass);
+USE_PASS(dataloader_queue_pass);
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
 #endif

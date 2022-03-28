@@ -94,7 +94,7 @@ static void ProcessInputArrayOp(ir::Graph* graph) {
   }
 }
 
-class DataIOQueuePass: public Pass {
+class DataLoaderQueuePass: public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override {
     ProcessOutputQueueHolderOp(graph);
@@ -106,4 +106,4 @@ class DataIOQueuePass: public Pass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(data_io_queue_pass, paddle::framework::ir::DataIOQueuePass);
+REGISTER_PASS(dataloader_queue_pass, paddle::framework::ir::DataLoaderQueuePass);
