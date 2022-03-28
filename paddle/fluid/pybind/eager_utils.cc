@@ -606,7 +606,7 @@ PyObject* ToPyObject(
 
 // For Final State Dygraph,
 // We directly use paddle::optional(Tensor) as dispensable Tensor
-paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
@@ -621,10 +621,10 @@ paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
           op_type, arg_name, arg_idx));
     }
-    return {};
+    return paddle::none;
   }
 
-  return paddle::make_optional<paddle::experimental::Tensor>(
+  return paddle::make_optional<const paddle::experimental::Tensor&>(
       reinterpret_cast<TensorObject*>(obj)->tensor);
 }
 
@@ -850,7 +850,7 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  if (type_name == "list") {
+  if (type_name == "list" || type_name == "tuple") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::ScalarArray(value);
 

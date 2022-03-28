@@ -138,7 +138,6 @@ int BasicBfsGraphSampler::run_graph_sampling() {
     int init_size = 0;
     //__sync_fetch_and_add
     std::function<int(int, int64_t)> bfs = [&, this](int i, int id) -> int {
-      VLOG(0) << "in bfs " << i << " " << id;
       if (this->status == GraphSamplerStatus::terminating) {
         int task_left = __sync_sub_and_fetch(&task_size, 1);
         if (task_left == 0) {
@@ -148,13 +147,13 @@ int BasicBfsGraphSampler::run_graph_sampling() {
       }
       size_t ind = i % this->graph_table->task_pool_size_;
       if (nodes_left[i] > 0) {
-        nodes_left[i]--;
         auto iter = sample_neighbors_map[ind].find(id);
         if (iter == sample_neighbors_map[ind].end()) {
-          sample_neighbors_map[ind][id] = std::vector<int64_t>();
-          iter = sample_neighbors_map[ind].find(id);
           Node *node = graph_table->shards[i]->find_node(id);
           if (node != NULL) {
+            nodes_left[i]--;
+            sample_neighbors_map[ind][id] = std::vector<int64_t>();
+            iter = sample_neighbors_map[ind].find(id);
             size_t edge_fetch_size =
                 std::min((size_t) this->edge_num_for_each_node,
                          node->get_neighbor_size());
@@ -179,11 +178,14 @@ int BasicBfsGraphSampler::run_graph_sampling() {
     for (size_t i = 0; i < graph_table->shards.size(); ++i) {
       std::vector<Node *> &v = graph_table->shards[i]->get_bucket();
       if (v.size() > 0) {
-        init_size++;
-        __sync_add_and_fetch(&task_size, 1);
-        int64_t id = v[0]->get_id();
-        graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
-            ->enqueue(bfs, i, id);
+        int search_size = std::min(init_search_size, (int)v.size());
+        for (int k = 0; k < search_size; k++) {
+          init_size++;
+          __sync_add_and_fetch(&task_size, 1);
+          int64_t id = v[k]->get_id();
+          graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
+              ->enqueue(bfs, i, id);
+        }
       }  // if
     }
     if (init_size == 0) {
@@ -301,10 +303,11 @@ void BasicBfsGraphSampler::init(size_t gpu_num, GraphTable *graph_table,
                                 std::vector<std::string> args) {
   this->gpu_num = gpu_num;
   this->graph_table = graph_table;
-  node_num_for_each_shard = args.size() > 0 ? std::stoi(args[0]) : 10;
-  edge_num_for_each_node = args.size() > 1 ? std::stoi(args[1]) : 10;
-  rounds = args.size() > 2 ? std::stoi(args[2]) : 1;
-  interval = args.size() > 3 ? std::stoi(args[3]) : 60;
+  init_search_size = args.size() > 0 ? std::stoi(args[0]) : 10;
+  node_num_for_each_shard = args.size() > 1 ? std::stoi(args[1]) : 10;
+  edge_num_for_each_node = args.size() > 2 ? std::stoi(args[2]) : 10;
+  rounds = args.size() > 3 ? std::stoi(args[3]) : 1;
+  interval = args.size() > 4 ? std::stoi(args[4]) : 60;
 }
 
 #endif
@@ -1092,11 +1095,6 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
 #ifdef PADDLE_WITH_HETERPS
   if (graph.gpups_mode()) {
     gpups_mode = true;
-    if (shard_num == 0) {
-      shard_num = graph.gpups_mode_shard_num();
-      server_num = 1;
-      _shard_idx = 0;
-    }
     auto *sampler =
         CREATE_PSCORE_CLASS(GraphSampler, graph.gpups_graph_sample_class());
     auto slices =
@@ -1107,7 +1105,18 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
     graph_sampler.reset(sampler);
   }
 #endif
+  if (shard_num == 0) {
+    server_num = 1;
+    _shard_idx = 0;
+    shard_num = graph.shard_num();
+  }
   task_pool_size_ = graph.task_pool_size();
+  use_cache = graph.use_cache();
+  if (use_cache) {
+    cache_size_limit = graph.cache_size_limit();
+    cache_ttl = graph.cache_ttl();
+    make_neighbor_sample_cache((size_t)cache_size_limit, (size_t)cache_ttl);
+  }
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));

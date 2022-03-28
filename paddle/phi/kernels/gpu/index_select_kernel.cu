@@ -82,7 +82,6 @@ void IndexSelectKernel(const Context& ctx,
         PADDLE_CUDA_NUM_THREADS,
         0,
         stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
-    phi::backends::gpu::GpuStreamSync(stream);
   } else {
     const int* index_data = index.data<int>();
     index_select_cuda_kernel<
@@ -92,7 +91,6 @@ void IndexSelectKernel(const Context& ctx,
                0,
                stream>>>(
         in_data, out_data, index_data, numel, stride, size, delta);
-    phi::backends::gpu::GpuStreamSync(stream);
   }
 }
 

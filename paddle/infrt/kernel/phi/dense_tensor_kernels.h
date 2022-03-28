@@ -18,6 +18,7 @@
 #include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/infrt/tensor/phi/tensor_map.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
@@ -30,6 +31,13 @@ namespace phi {
     host_context::Attribute<std::vector<int64_t>> lod,
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision);
+
+::phi::DenseTensor CreateInitedDenseTensorF32(
+    const ::phi::CPUContext& context,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<float> value);
 
 ::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
@@ -54,6 +62,12 @@ infrt::phi::DenseTensorMap LoadParams(
     host_context::Attribute<std::string> params_path);
 
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
+
+#ifdef INFRT_WITH_GPU
+::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
+                             const ::phi::GPUContext& context,
+                             bool d2h);
+#endif
 
 }  // namespace phi
 }  // namespace kernel

@@ -159,9 +159,22 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
         dev_ctx, nullptr, &out, &dout, dx, functor);            \
   }
 
+#define DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(name, functor_class)      \
+  template <typename T, typename Context>                                 \
+  void name##GradKernel(                                                  \
+      const Context& dev_ctx, const DenseTensor& dout, DenseTensor* dx) { \
+    funcs::functor_class<T> functor;                                      \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(           \
+        dev_ctx, nullptr, nullptr, &dout, dx, functor);                   \
+  }
+
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, CudaReluGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, CudaTanhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, CudaSigmoidGradFunctor);
+
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, CudaZeroGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, CudaZeroGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, CudaZeroGradFunctor);
 
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, CudaCosGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Tan, CudaTanGradFunctor);
@@ -177,6 +190,10 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, CudaAtanhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, CudaTanhShrinkGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, CudaSiluGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, CudaLogSigmoidGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, CudaLogGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log2, CudaLog2GradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log10, CudaLog10GradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log1p, CudaLog1pGradFunctor);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                CudaLeakyReluGradFunctor,
@@ -190,6 +207,9 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink,
                                                CudaHardShrinkGradFunctor,
                                                threshold);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish,
+                                               CudaSwishGradFunctor,
+                                               beta);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu,
                                                CudaBReluGradFunctor,
@@ -221,6 +241,23 @@ void EluGradKernel(const Context& dev_ctx,
     ins.push_back(&x);
     funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   }
+}
+
+template <typename T, typename Context>
+void HardSwishGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         float threshold,
+                         float scale,
+                         float offset,
+                         DenseTensor* dx) {
+  funcs::CudaHardSwishGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = threshold;
+  *(attrs[1].second) = scale;
+  *(attrs[2].second) = offset;
+  ActivationGradGPUImpl<T, Context, funcs::CudaHardSwishGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
 }  // namespace phi
@@ -300,3 +337,29 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_triple_grad, SigmoidTripleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_sigmoid_grad, HardSigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(logsigmoid_grad, LogSigmoidGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(log2_grad, Log2GradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(log10_grad, Log10GradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(log1p_grad, Log1pGradKernel)
+PD_REGISTER_KERNEL(log_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_swish_grad, HardSwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
+
+PD_REGISTER_KERNEL(pow_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PowGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

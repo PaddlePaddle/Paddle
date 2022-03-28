@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-#include "paddle/phi/kernels/cpu/conv_util.h"
-
 namespace phi {
 namespace detail {
 
@@ -467,6 +465,31 @@ void ConvInferMeta(const MetaTensor& input,
 
   out->set_dims(make_ddim(output_shape));
   out->set_dtype(input.dtype());
+}
+
+void ConvInferInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& paddding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                paddding_algorithm,
+                groups,
+                dilations,
+                data_format,
+                /*use_addto=*/false,
+                /*workspace_size_MB=*/512,  // useless in infermeta
+                /*exhaustive_search=*/false,
+                out,
+                config);
 }
 
 void ConvTransposeInferMeta(const MetaTensor& x,
@@ -1244,6 +1267,81 @@ void MatmulInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void MatmulWithFlattenInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                int x_num_col_dims,
+                                int y_num_col_dims,
+                                MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  VLOG(3) << "mul operator x.shape=" << x_dims << " y.shape=" << y_dims
+          << " x_num_col_dims=" << x_num_col_dims
+          << " y_num_col_dims=" << y_num_col_dims;
+
+  PADDLE_ENFORCE_NE(phi::product(y_dims),
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "The Input variable Y has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function."));
+  PADDLE_ENFORCE_GT(
+      x_dims.size(),
+      x_num_col_dims,
+      phi::errors::InvalidArgument(
+          "The input tensor X's dimensions of MulOp "
+          "should be larger than x_num_col_dims. But received X's "
+          "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
+          x_dims.size(),
+          x_dims,
+          x_num_col_dims));
+  PADDLE_ENFORCE_GT(
+      y_dims.size(),
+      y_num_col_dims,
+      phi::errors::InvalidArgument(
+          "The input tensor Y's dimensions of MulOp "
+          "should be larger than y_num_col_dims. But received Y's "
+          "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
+          y_dims.size(),
+          y_dims,
+          y_num_col_dims));
+
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_num_col_dims);
+  auto y_mat_dims = phi::flatten_to_2d(y_dims, y_num_col_dims);
+
+  PADDLE_ENFORCE_EQ(
+      x_mat_dims[1],
+      y_mat_dims[0],
+      phi::errors::InvalidArgument(
+          "After flatten the input tensor X and Y to 2-D dimensions matrix "
+          "X1 and Y1, the matrix X1's width must be equal with matrix Y1's "
+          "height. But received X's shape = [%s], X1's shape = [%s], X1's "
+          "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = "
+          "%s.",
+          x_dims,
+          x_mat_dims,
+          x_mat_dims[1],
+          y_dims,
+          y_mat_dims,
+          y_mat_dims[0]));
+  std::vector<int64_t> output_dims;
+  output_dims.reserve(
+      static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
+
+  for (int i = 0; i < x_num_col_dims; ++i) {
+    output_dims.push_back(x_dims[i]);
+  }
+
+  for (int i = y_num_col_dims; i < y_dims.size(); ++i) {
+    output_dims.push_back(y_dims[i]);
+  }
+
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_vec = vec.dims();
@@ -1670,3 +1768,4 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
 PD_REGISTER_INFER_META_FN(conv2d, phi::ConvInferMeta);
+PD_REGISTER_INFER_META_FN(conv2d_infer, phi::ConvInferInferMeta);
