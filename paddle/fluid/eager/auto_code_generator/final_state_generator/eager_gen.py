@@ -175,7 +175,8 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
     bool trace_backward = egr::Controller::Instance().HasGrad();
     bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
-    // Check Inplace
+    // Check Inplace & Bump Inplace Version
+{}
 {}
     // Node Creation
 {}
@@ -1007,8 +1008,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_type_str, forward_function_name, inputs_args_definition_str,
             dygraph_event_str, amp_logic_str, inputs_autograd_meta_str,
             forward_call_str, outputs_autograd_meta_str,
-            compute_require_grad_args_str, check_inplace_str, node_creation_str,
-            returns_str)
+            compute_require_grad_args_str, check_inplace_str,
+            bump_inplace_version_str, node_creation_str, returns_str)
         self.forward_declaration_str += f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});\n"
 
         logging.info(
