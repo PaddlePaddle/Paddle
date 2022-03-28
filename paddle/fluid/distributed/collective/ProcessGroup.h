@@ -92,6 +92,12 @@ class ProcessGroup {
         "ProcessGroup%s does not support broadcast", GetBackendName()));
   }
 
+  void Broadcast(const phi::DenseTensor* in, phi::DenseTensor* out) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support broadcast for static",
+        GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(

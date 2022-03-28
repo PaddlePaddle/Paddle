@@ -88,6 +88,8 @@ class ProcessGroupHeter : public ProcessGroup {
       std::vector<Tensor>& tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  void Broadcast(const phi::DenseTensor* in, phi::DenseTensor* out) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupHeter::HeterTask> CreateTask(
       int rank, CommType opType, const std::vector<Tensor>& inputs);

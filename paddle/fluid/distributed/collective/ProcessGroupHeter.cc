@@ -187,5 +187,32 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
   return CreateTask(rank_, CommType::BROADCAST, tensors);
 }
 
+void ProcessGroupHeter::Broadcast(const phi::DenseTensor* in,
+                                  phi::DenseTensor* out) {
+  // Step1: do broadcast in inner cluster
+  auto b_opts = BroadcastOptions();
+  b_opts.source_root = 0;
+  inner_pg_->Broadcast(in, out);
+
+  if (local_rank_ == 0) {
+    Tensor cpu_tensor;
+    auto dense_cpu_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(cpu_tensor.impl());
+    dense_cpu_tensor->Resize(in->dims());
+    framework::TensorCopySync(*in, platform::CPUPlace(),
+                              dense_cpu_tensor.get());
+    if (with_switch_) {
+      // TODO(sandyhouse) send to and recv
+    } else {
+      auto gloo_task = inter_pg_->Broadcast(cpu_tensors, opts);
+      gloo_task->Wait();
+    }
+    framework::TensorCopySync(*dense_cpu_tensor, dense_cpu_tensor->place(),
+                              out);
+  }
+  auto broadcast_task = inner_pg_->Broadcast(out, out);
+  broadcast_task->Wait();
+}
+
 }  //  namespace distributed
 }  //  namespace paddle
