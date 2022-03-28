@@ -1377,15 +1377,15 @@ class Softmax2D(Layer):
             #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
     """
 
-
     def __init__(self, name=None):
         super(Softmax2D, self).__init__()
         self._dtype = None
         self._name = name
 
     def forward(self, x):
-        assert x.ndim == 3 or x.ndim == 4, "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(x.ndim)
-        return F.softmax(x, dim=-3, dtype=self._dtype, name=self._name)
+        assert x.ndim == 3 or x.ndim == 4, "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
+            x.ndim)
+        return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self):
         name_str = 'name={}'.format(self._name) if self._name else ''
