@@ -325,7 +325,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
 
             else:
                 backend_args = [
-                    ele.strip() for ele in kernel['backend'].split(',')
+                    ele.strip() for ele in self.kernel['backend'].split(',')
                 ]
                 backend_select_code = f"""
   kernel_backend = ParseBackend({", ".join(backend_args)});

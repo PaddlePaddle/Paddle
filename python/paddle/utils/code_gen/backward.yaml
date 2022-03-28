@@ -213,6 +213,7 @@
     param : [x, y]
   kernel :
     func : where_grad
+  no_need_buffer : condition, x, y, out_grad
 
 # - backward_api : huber_loss_grad
 #   forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)

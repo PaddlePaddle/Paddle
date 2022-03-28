@@ -88,7 +88,7 @@ class BackwardAPI(BaseAPI):
   kernel_backend = ParseBackend(egr::Controller::Instance().GetExpectedPlace());
 """
         else:
-            return super.gene_kernel_backend_select()
+            return super().gene_kernel_backend_select()
 
     def get_return_type(self, out_type_list):
         return out_type_list[0] if len(
@@ -177,6 +177,7 @@ def source_include(header_file_path):
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
