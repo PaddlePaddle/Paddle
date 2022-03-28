@@ -25,8 +25,6 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
                          DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -36,8 +34,6 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
                           bool reduce_all,
-                          DataType in_dtype,
-                          DataType out_dtype,
                           DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -48,8 +44,6 @@ void ReduceProdGradKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& dims,
                           bool keep_dim,
                           bool reduce_all,
-                          DataType in_dtype,
-                          DataType out_dtype,
                           DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -60,8 +54,6 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
                          DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -72,8 +64,6 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType in_dtype,
-                         DataType out_dtype,
                          DenseTensor* x_grad);
 
 }  // namespace phi

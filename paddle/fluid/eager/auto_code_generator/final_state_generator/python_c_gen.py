@@ -125,7 +125,7 @@ FUNCTION_NAME_TEMPLATE = \
 
 PYTHON_C_FUNCTION_REG_TEMPLATE = \
 """
-{{\"final_state_{}\", (PyCFunction)(void(*)(void)) {}eager_final_state_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
+{{\"final_state_{}{}\", (PyCFunction)(void(*)(void)) {}eager_final_state_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}}
 
 """
 
@@ -142,6 +142,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include  "paddle/phi/common/scalar.h"
 #include  "paddle/phi/common/scalar_array.h"
 #include  "paddle/phi/api/include/sparse_api.h"
+#include  "paddle/phi/api/include/strings_api.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include  "paddle/fluid/pybind/exception.h"
@@ -328,9 +329,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             get_eager_tensor_str, parse_attributes_str, fwd_function_name,
             dygraph_function_call_str, return_str)
 
+        # Set prefix of forward_api_name to avoid conflicts
+        prefix = self.namespace.strip("::")
+        forward_api_name_prefix = "" if prefix == "" else prefix + "_"
         # Generate Python-C Function Registration
         self.python_c_function_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
-            forward_api_name, namespace, forward_api_name, forward_api_name)
+            forward_api_name_prefix, forward_api_name, namespace,
+            forward_api_name, forward_api_name)
 
         if inplace_map:
             inplaced_forward_api_name = GetInplacedFunctionName(
@@ -361,8 +366,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
             # Generate Python-C Function Registration
             self.python_c_function_reg_str += "\n," + PYTHON_C_FUNCTION_REG_TEMPLATE.format(
-                inplaced_forward_api_name, namespace, inplaced_forward_api_name,
-                inplaced_forward_api_name)
+                forward_api_name_prefix, inplaced_forward_api_name, namespace,
+                inplaced_forward_api_name, inplaced_forward_api_name)
 
     def run(self):
         # Initialized is_forward_only
