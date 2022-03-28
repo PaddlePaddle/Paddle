@@ -38,6 +38,12 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
       "phi_dt.create_dense_tensor.cpu",
       INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensor),
       {"dims", "lod", "layout", "precision"});
+
+  registry->AddKernelWithAttrs(
+      "phi_dt.create_inited_dense_tensor.cpu.f32",
+      INFRT_KERNEL(infrt::kernel::phi::CreateInitedDenseTensorF32),
+      {"dims", "lod", "layout", "value"});
+
   registry->AddKernelWithAttrs(
       "phi_dt.fill_dense_tensor.f32",
       INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32),
@@ -52,7 +58,23 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
       "phi_dt.create_dense_tensor.gpu",
       INFRT_KERNEL(infrt::kernel::phi::CreateGPUDenseTensor),
       {"dims", "lod", "layout", "precision"});
+  registry->AddKernelWithAttrs("phi_dt.memcpy.gpu",
+                               INFRT_KERNEL(infrt::kernel::phi::GpuMemCpy),
+                               {"d2h"});
 #endif
+  registry->AddKernelWithAttrs("phi_dt.load_params",
+                               INFRT_KERNEL(infrt::kernel::phi::LoadParams),
+                               {"path"});
+  registry->AddKernelWithAttrs(
+      "phi_dt.load_combined_params",
+      INFRT_KERNEL(infrt::kernel::phi::LoadCombinedParams),
+      {"model_path", "params_path"});
+  registry->AddKernelWithAttrs(
+      "phi_dt.tensor_map_get_tensor",
+      INFRT_KERNEL(infrt::kernel::phi::TensorMapGetTensor),
+      {"name"});
+  registry->AddKernel("phi_dt.tensor_map_get_size",
+                      INFRT_KERNEL(infrt::kernel::phi::TensorMapGetSize));
 }
 
 }  // namespace kernel

@@ -20,11 +20,13 @@ import numpy as np
 import paddle
 import paddle.fluid.dygraph as dg
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexAbsOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = paddle.abs
         self.op_type = "abs"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
@@ -44,20 +46,22 @@ class TestComplexAbsOp(OpTest):
         self.grad_x = self.grad_out * (self.x / np.abs(self.x))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 class TestComplexAbsOpZeroValues(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "abs"
+        self.python_api = paddle.abs
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
@@ -76,14 +80,15 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.grad_x = np.zeros(self.shape, self.dtype)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 class TestAbs(unittest.TestCase):
@@ -101,10 +106,15 @@ class TestAbs(unittest.TestCase):
                     y = paddle.abs(paddle.to_tensor(x))
                     self.assertTrue(np.allclose(np.abs(x), y.numpy()))
 
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_all_positive()
+
 
 class TestRealAbsOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        self.python_api = paddle.abs
         self.op_type = "abs"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
@@ -123,14 +133,15 @@ class TestRealAbsOp(OpTest):
         self.grad_x = self.grad_out * (self.x / np.abs(self.x))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 if __name__ == '__main__':

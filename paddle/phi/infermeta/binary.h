@@ -83,6 +83,30 @@ void ConvInferMeta(const MetaTensor& input,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void ConvInferInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& paddding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+
+void ConvTransposeInferMeta(const MetaTensor& x,
+                            const MetaTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::vector<int>& output_padding,
+                            const std::vector<int>& output_size,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -162,6 +186,12 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_y,
                      MetaTensor* out);
 
+void MatmulWithFlattenInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                int x_num_col_dims,
+                                int y_num_col_dims,
+                                MetaTensor* out);
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,
@@ -190,6 +220,11 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             int ignore_index,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
+
+void TakeAlongAxisInferMeta(const MetaTensor& x,
+                            const MetaTensor& index,
+                            int axis,
+                            MetaTensor* out);
 
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
