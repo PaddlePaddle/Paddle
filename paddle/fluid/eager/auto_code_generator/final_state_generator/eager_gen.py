@@ -155,6 +155,11 @@ FUNCTION_TEMPLATE = \
         // Call grad_api function
         VLOG(3) << \"Final State Running: \" << \"{}\"; 
         auto grad_api_returns = {}{}({});
+        
+        // Create Grad Node
+        {}
+
+        // Return 
         {}
     }}
 """
@@ -1081,13 +1086,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
 
 class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
-    def __init__(self, forward_api_contents, grad_api_contents, namespace):
+    def __init__(self,
+                 forward_api_contents,
+                 grad_api_contents,
+                 namespace,
+                 next_grad_api_contents=None):
         DygraphFunctionGeneratorBase.__init__(self, forward_api_contents,
                                               grad_api_contents, namespace)
 
         # Generated Results
         self.node_declaration_str = ""
         self.node_definition_str = ""
+        self.next_grad_api_contents = next_grad_api_contents
 
     def GenerateNodeDeclaration(self):
         forward_op_name = self.forward_api_name
@@ -1149,7 +1159,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         logging.info(f"Generated Node Declaration: {self.node_declaration_str}")
 
-    def GenerateNodeDefinition(self):
+    def GenerateNodeDefinition(self, grad_node_creation_str):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
@@ -1218,7 +1228,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         self.node_definition_str = FUNCTION_TEMPLATE.format(
             grad_node_name, fill_zero_str, grad_node_name, grad_api_namespace,
-            backward_api_name, grad_api_args_str, returns_str)
+            backward_api_name, grad_api_args_str, grad_node_creation_str,
+            returns_str)
 
         logging.info(f"Generated Node Definition: {self.node_definition_str}")
 
@@ -1229,7 +1240,22 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         ## Code Generation ##
         #####################
         self.GenerateNodeDeclaration()
-        self.GenerateNodeDefinition()
+
+        namespace = self.namespace
+        grad_node_creation_str = ""
+        next_grad_api_contents = self.next_grad_api_contents
+        if next_grad_api_contents:
+            forward_api_contents = self.grad_api_contents
+            forward_api_contents['api'] = forward_api_contents['backward_api']
+            backward_api_contents = next_grad_api_contents
+
+            next_node_generator = DygraphFunctionGeneratorBase(
+                forward_api_contents, backward_api_contents, namespace)
+            next_node_generator.run()
+            next_node_generator.GenerateNodeCreationCodes()
+            grad_node_creation_str = next_node_generator.node_creation_str
+
+        self.GenerateNodeDefinition(grad_node_creation_str)
 
 
 class DygraphYamlGenerator(YamlGeneratorBase):
@@ -1276,18 +1302,34 @@ class DygraphYamlGenerator(YamlGeneratorBase):
                 forward_api_contents)
             if backward_api_contents is None: continue
 
+            # Generate Dygraph Forward Function
             function_generator = DygraphForwardFunctionGenerator(
                 forward_api_contents, backward_api_contents, namespace)
             function_generator.run()
 
-            node_generator = DygraphNodeGenerator(
-                forward_api_contents, backward_api_contents, namespace)
-            node_generator.run()
-
             self.forward_definition_str += function_generator.forward_definition_str + "\n"
             self.forward_declaration_str += function_generator.forward_declaration_str + "\n"
-            self.node_declaration_str += node_generator.node_declaration_str + "\n"
-            self.node_definition_str += node_generator.node_definition_str + "\n"
+
+            while True:
+                next_grad_api_contents = self.GetBackwardAPIContents(
+                    backward_api_contents)
+
+                node_generator = DygraphNodeGenerator(
+                    forward_api_contents, backward_api_contents, namespace,
+                    next_grad_api_contents)
+                node_generator.run()
+                self.node_declaration_str += node_generator.node_declaration_str + "\n"
+                self.node_definition_str += node_generator.node_definition_str + "\n"
+
+                if next_grad_api_contents is None: break
+
+                # Detect if there exists higher-order GradNode
+                forward_api_contents = backward_api_contents
+
+                # Fake forward_api_content
+                forward_api_contents['api'] = forward_api_contents[
+                    'backward_api']
+                backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
             if namespace.endswith("::"):

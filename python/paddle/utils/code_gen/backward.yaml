@@ -85,16 +85,27 @@
     param : [x]
   kernel :
     func : abs_grad
-
+ 
 - backward_api : relu_grad
-  forward : relu (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : relu_grad
+   forward : relu (Tensor x) -> Tensor(out)
+   args : (Tensor out, Tensor out_grad)
+   output : Tensor(x_grad)
+   infer_meta :
+     func : UnchangedInferMeta
+     param : [out]
+   kernel :
+     func : relu_grad
+   backward: relu_double_grad
+
+- backward_api : relu_double_grad
+   forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+   args : (Tensor out, Tensor grad_x_grad)
+   output : Tensor(out_grad), Tensor(grad_out_grad)
+   infer_meta :
+     func : UnchangedInferMeta
+     param : [out]
+   kernel :
+     func : relu_double_grad
 
 - backward_api : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
