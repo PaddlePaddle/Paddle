@@ -50,3 +50,7 @@ class TestExponentialFamilyException(unittest.TestCase):
     def test_entropy_exception(self):
         with self.assertRaises(NotImplementedError):
             paddle.distribution.ExponentialFamily.entropy(self.dist)
+
+
+if __name__ == '__main__':
+    unittest.main()

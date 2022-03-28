@@ -26,6 +26,7 @@ from ....data import data
 from ....layers import mean
 from ....executor import scope_guard
 from ....framework import _get_paddle_place
+from .utils import _channelwise_quant_axis1_ops, quant_tensor
 
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
@@ -232,10 +233,6 @@ _op_real_in_out_name = {
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
-
-_channelwise_quant_axis1_ops = [
-    'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
-]
 
 
 def _get_op_input_var_names(op):
@@ -1206,6 +1203,7 @@ class QuantizationFreezePass(object):
                  bias_correction=False,
                  weight_bits=8,
                  activation_bits=8,
+                 round_type='round',
                  weight_quantize_type='abs_max',
                  quantizable_op_type=None):
         """
@@ -1223,6 +1221,9 @@ class QuantizationFreezePass(object):
                  https://arxiv.org/abs/1810.05723.
             weight_bits(int): quantization bit number for weights.
             activation_bits(int): quantization bit number for activation.
+            round_type(str, optional): The method of converting the quantized weights
+                value from float to int. Currently supports ['round', 'adaround'] methods.
+                Default is `round`, which is rounding nearest to the nearest whole number. 
             weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
                 'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight, 
                 since weights are fixed once the model is well trained.
@@ -1238,6 +1239,7 @@ class QuantizationFreezePass(object):
         self._place = _get_paddle_place(place)
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
+        self._round_type = round_type
         self._weight_quantize_type = weight_quantize_type
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
@@ -1284,18 +1286,22 @@ class QuantizationFreezePass(object):
                     self._quant_var_scale_map[input_arg_name] = scale_v
                     # Quantize weight and restore
                     param_v = self._load_var(input_arg_name)
-                    if isinstance(scale_v, list) and \
-                        any(_check_grandchild_op_node(op_node, op)
-                        for op in _channelwise_quant_axis1_ops):
-                        quant_axis = 1
-                    else:
-                        quant_axis = 0
-                    quantized_param_v = self._quant(
-                        param_v.copy(), scale_v, self._weight_bits, quant_axis)
-                    if self._bias_correction == True:
-                        quantized_param_v = self._bias_correction_w(
-                            param_v, quantized_param_v, scale_v, quant_axis)
-                    self._restore_var(input_arg_name, quantized_param_v)
+                    if self._round_type == 'round':
+                        if any(
+                                _check_grandchild_op_node(op_node, op)
+                                for op in _channelwise_quant_axis1_ops):
+                            quant_axis = 1
+                        else:
+                            quant_axis = 0
+                        quantized_param_v = quant_tensor(param_v.copy(),
+                                                         scale_v, quant_axis,
+                                                         self._weight_bits)
+                        quantized_param_v = np.round(quantized_param_v)
+                        if self._bias_correction == True:
+                            quantized_param_v = self._bias_correction_w(
+                                param_v, quantized_param_v, scale_v, quant_axis)
+                            quantized_param_v = np.round(quantized_param_v)
+                        self._restore_var(input_arg_name, quantized_param_v)
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
 
         # Remove all fake dequant op
@@ -1513,31 +1519,6 @@ class QuantizationFreezePass(object):
         return isinstance(v, float) or isinstance(v, np.float32) \
             or isinstance(v, np.float64)
 
-    def _quant(self, x, scale, num_bits, quant_axis):
-        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
-        bnt = (1 << (num_bits - 1)) - 1
-
-        def _clip(x, scale):
-            x[x > scale] = scale
-            x[x < -scale] = -scale
-            return x
-
-        if isinstance(scale, list):
-            for i, s in enumerate(scale):
-                if s == 0.0:
-                    s = 1e-8
-                if quant_axis == 0:
-                    x[i] = _clip(x[i], s)
-                    x[i] = np.round(x[i] / s * bnt)
-                else:
-                    x[:, i] = _clip(x[:, i], s)
-                    x[:, i] = np.round(x[:, i] / s * bnt)
-        else:
-            scale = 1e-8 if scale == 0.0 else scale
-            x = _clip(x, scale)
-            x = np.round(x / scale * bnt)
-        return x
-
     def _bias_correction_w(self, x, x_quant, scale_v, quant_axis):
         '''
         Bias correction for weight
@@ -1574,8 +1555,8 @@ class QuantizationFreezePass(object):
             mean_bias = np.resize(mean_bias, x.shape)
 
         x_dequant = (mean_bias + x_dequant) * std_bias
-        quantized_param_v = self._quant(x_dequant, scale_v, self._weight_bits,
-                                        quant_axis)
+        quantized_param_v = quant_tensor(x_dequant, scale_v, quant_axis,
+                                         self._weight_bits)
         return quantized_param_v
 
 

@@ -20,15 +20,6 @@ def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<
   let results = (outs TRT_EngineType:$engine);
 }
 
-def TRT_ExecuteOp : TRT_Op<"execute", [NoSideEffect]> {
-  let summary = "trt execute Op";
-  let description = [{
-    Describe a tensorrt runtime.
-  }];
-  let arguments = (ins TRT_EngineType:$engine, Variadic<DenseTensor>:$inputs);
-  let results = (outs Variadic<DenseTensor>:$output);
-}
-
 def TRT_EngineComputeOp : TRT_Op<"compute", [NoSideEffect]> {
   let summary = "trt compute engine";
   let description = [{
@@ -58,6 +49,39 @@ def TRT_ActivationOp : TRT_Op<"Activation", [NoSideEffect]> {
                         DefaultValuedAttr<F32Attr, "0.0">:$beta);
 
   let results = (outs DenseTensor:$output);
+}
+
+def TRT_FullyConnectedOp : TRT_Op<"FullyConnected", [NoSideEffect]> {
+  let summary = "TensorRT IFullyConnectedLayer";
+  let description = [{
+    TensorRT IFullyConnectedLayer
+  }];
+  let arguments = (ins
+    DenseTensor:$input_tensor,
+    DenseTensor:$kernel_weights,
+    DenseTensor:$bias_weights,
+    SI32Attr:$out_channel_num
+  );
+  let results = (outs
+    DenseTensor:$output_tensor
+  );
+}
+
+def TRT_ConvolutionOp : TRT_Op<"Convolution", [NoSideEffect]> {
+  let summary = "TensorRT IConvolutionLayer";
+  let description = [{
+    TensorRT IConvolutionLayer
+  }];
+  let arguments = (ins
+    DenseTensor:$input_tensor,
+    DenseTensor:$kernel_weights,
+    DenseTensor:$bias_weights,
+    SI32Attr:$out_channel_num,
+    I32ArrayAttr:$kernel_size
+  );
+  let results = (outs
+    DenseTensor:$output_tensor
+  );
 }
 
 def TRT_ElementWiseOp : TRT_Op<"ElementWise", [NoSideEffect]> {

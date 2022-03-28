@@ -53,8 +53,7 @@ TEST(API, to_sparse_coo) {
 
   // 1. test dense_to_sparse_coo
   paddle::experimental::Tensor x(dense_x);
-  auto out = paddle::experimental::sparse::to_sparse_coo(
-      x, phi::Backend::CPU, sparse_dim);
+  auto out = paddle::experimental::sparse::to_sparse_coo(x, sparse_dim);
   auto coo = std::dynamic_pointer_cast<phi::SparseCooTensor>(out.impl());
   ASSERT_EQ(coo->nnz(), non_zero_num);
   int cmp_indices = memcmp(coo->non_zero_indices().data<int64_t>(),
@@ -91,8 +90,7 @@ TEST(API, to_sparse_coo) {
   auto csr =
       std::make_shared<phi::SparseCsrTensor>(crows, cols, values, dense_dims);
   paddle::experimental::Tensor csr_x(csr);
-  auto out2 = paddle::experimental::sparse::to_sparse_coo(
-      csr_x, phi::Backend::CPU, sparse_dim);
+  auto out2 = paddle::experimental::sparse::to_sparse_coo(csr_x, sparse_dim);
 
   auto coo2 = std::dynamic_pointer_cast<phi::SparseCooTensor>(out.impl());
   ASSERT_EQ(coo2->nnz(), non_zero_num);
@@ -132,7 +130,7 @@ TEST(API, to_sparse_csr) {
 
   // 1. test dense_to_sparse_csr
   paddle::experimental::Tensor x(dense_x);
-  auto out = paddle::experimental::sparse::to_sparse_csr(x, phi::Backend::CPU);
+  auto out = paddle::experimental::sparse::to_sparse_csr(x);
   auto csr = std::dynamic_pointer_cast<phi::SparseCsrTensor>(out.impl());
   auto check = [&](const phi::SparseCsrTensor& csr) {
     ASSERT_EQ(csr.non_zero_cols().numel(), non_zero_num);
@@ -170,8 +168,7 @@ TEST(API, to_sparse_csr) {
   auto coo =
       std::make_shared<phi::SparseCooTensor>(indices, values, dense_dims);
   paddle::experimental::Tensor coo_x(coo);
-  auto out2 =
-      paddle::experimental::sparse::to_sparse_csr(coo_x, phi::Backend::CPU);
+  auto out2 = paddle::experimental::sparse::to_sparse_csr(coo_x);
 
   auto csr2 = std::dynamic_pointer_cast<phi::SparseCsrTensor>(out.impl());
   check(*csr2);
@@ -212,7 +209,7 @@ TEST(API, to_dense) {
       std::make_shared<phi::SparseCooTensor>(indices, values, dense_dims);
 
   paddle::experimental::Tensor coo_x(coo);
-  auto out = paddle::experimental::sparse::to_dense(coo_x, phi::Backend::CPU);
+  auto out = paddle::experimental::sparse::to_dense(coo_x);
   auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   int cmp1 =
       memcmp(dense_out->data<float>(), &dense_data[0][0], 9 * sizeof(float));
@@ -237,7 +234,7 @@ TEST(API, to_dense) {
   auto csr =
       std::make_shared<phi::SparseCsrTensor>(crows, cols, values, dense_dims);
   paddle::experimental::Tensor csr_x(csr);
-  auto out2 = paddle::experimental::sparse::to_dense(csr_x, phi::Backend::CPU);
+  auto out2 = paddle::experimental::sparse::to_dense(csr_x);
 
   auto dense_out2 = std::dynamic_pointer_cast<phi::DenseTensor>(out.impl());
   int cmp2 =

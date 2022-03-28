@@ -32,6 +32,30 @@
 
 namespace paddle {
 namespace distributed {
+
+enum ValueType { Sparse = 0, Dense = 1 };
+
+struct PullContext {
+  const uint64_t *keys;
+  const PullSparseValue pull_value;
+  float *values;
+  char **ptr_values;
+};
+
+struct TablePushContext {
+  const uint64_t *keys;
+  const float *values;
+  const float **ptr_values;
+};
+
+struct TableContext {
+  ValueType value_type;
+  PullContext pull_context;
+  TablePushContext push_context;
+  size_t num;
+  bool use_ptr;
+};
+
 class Table {
  public:
   Table() {}
@@ -39,6 +63,8 @@ class Table {
   virtual int32_t initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
 
+  virtual int32_t Pull(TableContext &context) = 0;
+  virtual int32_t Push(TableContext &context) = 0;
   virtual int32_t pull_dense(float *values, size_t num) = 0;
   virtual int32_t push_dense(const float *values, size_t num) = 0;
   // for push global_step
