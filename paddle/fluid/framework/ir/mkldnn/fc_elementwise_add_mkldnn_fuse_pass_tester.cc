@@ -36,7 +36,6 @@ OpDesc* Create_Op_FC(ProgramDesc* prog,
   op->SetType("fc");
   op->SetAttr("use_mkldnn", true);
   op->SetAttr("in_num_col_dims", 1);
-  op->SetAttr("fuse_residual_connection", false);
 
   for (const auto& input : inputs) {
     op->SetInput(input.first, {input.second});

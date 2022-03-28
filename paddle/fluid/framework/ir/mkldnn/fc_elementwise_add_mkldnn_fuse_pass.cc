@@ -40,8 +40,6 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End()
-      .AddAttr("fuse_residual_connection")
-      .End()
       .AddAttr("in_num_col_dims")
       .IsNumGE(1)
       .End();
