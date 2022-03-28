@@ -23,7 +23,7 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
         edges = np.unique(edges, axis=0)
-        self.edges_id = np.arange(0, len(edges))
+        self.edges_id = np.arange(0, len(edges)).astype("int64")
         sorted_edges = edges[np.argsort(edges[:, 1])]
 
         # Calculate dst index cumsum counts, also means colptr
