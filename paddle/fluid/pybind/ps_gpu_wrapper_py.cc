@@ -56,6 +56,10 @@ void BindPSGPUWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory", &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
+#ifdef PADDLE_WITH_PSLIB
+      .def("init_afs_api", &framework::PSGPUWrapper::InitAfsApi,
+           py::call_guard<py::gil_scoped_release>())
+#endif
       .def("finalize", &framework::PSGPUWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper

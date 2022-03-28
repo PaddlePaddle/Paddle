@@ -138,6 +138,23 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
     return predict_v
 
 
+def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
+    paddle.set_device(device)
+
+    t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+
+    out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out.stop_gradient = False
+
+    dx = paddle.grad(
+        outputs=[out], inputs=[t], create_graph=True, retain_graph=True)
+
+    dx[0].backward()
+
+    assert dx[0].grad is not None
+    return dx[0].numpy(), dx[0].grad.numpy()
+
+
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -292,6 +309,25 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 "custom op predict: {},\n custom op infer predict: {}".format(
                     predict, predict_infer))
         paddle.disable_static()
+
+    def test_func_double_grad_dynamic(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
+                x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+                out, dx_grad = custom_relu_double_grad_dynamic(
+                    self.custom_ops[0], device, dtype, x)
+                pd_out, pd_dx_grad = custom_relu_double_grad_dynamic(
+                    self.custom_ops[0], device, dtype, x, False)
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(out,
+                                                                     pd_out))
+                self.assertTrue(
+                    np.array_equal(dx_grad, pd_dx_grad),
+                    "custom op dx grad: {},\n paddle api dx grad: {}".format(
+                        dx_grad, pd_dx_grad))
 
 
 if __name__ == '__main__':

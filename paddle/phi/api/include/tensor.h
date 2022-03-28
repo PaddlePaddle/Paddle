@@ -427,9 +427,7 @@ class PADDLE_API Tensor final {
    * @param blocking, Should we copy this in sync way.
    * @return void
    */
-  void copy_(const Tensor& src,
-             const phi::Place& target_place,
-             const bool blocking);
+  void copy_(const Tensor& src, const phi::Place& target_place, bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
@@ -519,6 +517,30 @@ class PADDLE_API Tensor final {
   uint32_t current_inplace_version();
 
   /* Part 10: Auto generated Tensor methods */
+
+  /* Part 11: Methods of converting SparseTensor and DenseTensor to each other
+   */
+  /**
+   * @brief Convert DenseTensor or SparseCsrTensor to SparseCooTensor
+   *
+   * @param sparse_dim, The number of sparse dimensions
+   * @return Tensor
+   */
+  Tensor to_sparse_coo(const int64_t sparse_dim) const;
+
+  /**
+   * @brief Convert DenseTensor or SparseCooTensor to SparseCsrTensor
+   *
+   * @return Tensor
+   */
+  Tensor to_sparse_csr() const;
+
+  /**
+   * @brief Convert SparseCooTensor or SparseCsrTensor to DenseTensor
+   *
+   * @return Tensor
+   */
+  Tensor to_dense() const;
 
  private:
   /**
