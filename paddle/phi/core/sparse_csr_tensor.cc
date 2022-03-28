@@ -17,8 +17,11 @@ limitations under the License. */
 namespace phi {
 
 SparseCsrTensor::SparseCsrTensor() {
-  DenseTensor non_zero_crows, non_zero_cols, non_zero_elements;
-  this->SetMember(non_zero_crows, non_zero_cols, non_zero_elements, {1});
+  DenseTensor crows, cols, values;
+  this->non_zero_crows_ = crows;
+  this->non_zero_cols_ = cols;
+  this->non_zero_elements_ = values;
+  this->dims_ = phi::make_ddim({1, 1});
 }
 
 inline void check_shape(const DDim& dims) {
