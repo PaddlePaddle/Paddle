@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/HCCLTools.h"
+#include "paddle/fluid/distributed/collective/Types.h"
+
+namespace paddle {
+namespace distributed {
 
 HcclReduceOp ToHCCLRedType(ReduceOp reduction) {
   static const std::map<ReduceOp, HcclReduceOp> red_type = {
@@ -37,3 +41,6 @@ std::string SerializeHCCLUniqueId(const HcclRootInfo& hcclID) {
   }
   return oss.str();
 }
+
+}  //  namespace distributed
+}  //  namespace paddle

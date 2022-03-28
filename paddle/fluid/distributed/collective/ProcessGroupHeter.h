@@ -23,8 +23,7 @@
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
-#include "paddle/fluid/distributed/ps/service/heter_client.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
+// #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/distributed/store/store.h"
@@ -36,6 +35,7 @@
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
