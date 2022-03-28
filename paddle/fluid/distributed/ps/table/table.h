@@ -53,7 +53,7 @@ struct TableContext {
   PullContext pull_context;
   TablePushContext push_context;
   size_t num;
-  bool use_ptr;
+  bool use_ptr = false;
 };
 
 class Table {

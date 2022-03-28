@@ -209,7 +209,7 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   res_data->resize(num * table->value_accesor()->select_size() / sizeof(float));
   TableContext table_context;
   table_context.value_type = Dense;
-  table_context.pull_context.values;
+  table_context.pull_context.values = res_data->data();
   table_context.num = num;
   table->Pull(table_context);
 
@@ -270,7 +270,8 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
   uint32_t num = *(const uint32_t *)(request.data().data());
   TableContext table_context;
   table_context.value_type = Dense;
-  table_context.push_context.values = (const float *)(request.data().data() + sizeof(uint32_t));
+  table_context.push_context.values =
+      (const float *)(request.data().data() + sizeof(uint32_t));
   table_context.num = num;
   if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "push_dense failed");
@@ -434,7 +435,8 @@ int32_t BrpcPsService::push_sparse(Table *table,
   TableContext table_context;
   table_context.value_type = Sparse;
   table_context.push_context.keys = (const uint64_t *)push_data.data();
-  table_context.push_context.values = (const float *)(push_data.data() + sizeof(uint64_t) * num);
+  table_context.push_context.values =
+      (const float *)(push_data.data() + sizeof(uint64_t) * num);
   table_context.num = num;
   if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "push_sparse error");

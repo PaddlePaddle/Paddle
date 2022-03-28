@@ -239,7 +239,7 @@ int32_t BrpcPsClient::initialize() {
   // for debug
   // _print_thread =
   //    std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
-  for (auto& itr : _table_accessors) {
+  for (auto &itr : _table_accessors) {
     auto table_id = itr.first;
     AccessorInfo a_info;
     itr.second->GetTableInfo(a_info);
@@ -669,8 +669,7 @@ std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
   auto fea_dim = _table_infos[table_id].fea_dim;
   auto select_size = _table_infos[table_id].select_size;
   size_t request_call_num = _server_channels.size();
-  uint32_t num_per_shard =
-      dense_dim_per_shard(fea_dim, request_call_num);
+  uint32_t num_per_shard = dense_dim_per_shard(fea_dim, request_call_num);
   // callback 将各shard结果，顺序填入region
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, num_per_shard, regions, region_num,
@@ -1636,8 +1635,7 @@ int BrpcPsClient::push_sparse_async_shard_push(
                            sizeof(uint32_t));  // NOLINT
   auto *push_data = push_request->mutable_data();
   int update_size = _table_infos[table_id].update_size;
-  push_data->resize(merged_kv_count *
-                    (sizeof(uint64_t) + update_size));
+  push_data->resize(merged_kv_count * (sizeof(uint64_t) + update_size));
   char *push_data_ptr = const_cast<char *>(push_data->data());
   memcpy(push_data_ptr, merged_key_list.data(),
          merged_kv_count * sizeof(uint64_t));
@@ -1682,12 +1680,10 @@ std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
   auto async_task = new DenseAsyncTask(dense_data, table_id, push_timer);
   size_t request_call_num = _server_channels.size();
 
-  uint32_t num_per_shard =
-      dense_dim_per_shard(fea_dim, request_call_num);
+  uint32_t num_per_shard = dense_dim_per_shard(fea_dim, request_call_num);
 
   // 将region数据拷贝到转置矩阵中
-  async_task->data()->resize(num_per_shard * request_call_num *
-                             update_dim);
+  async_task->data()->resize(num_per_shard * request_call_num * update_dim);
   float *data = async_task->data()->data();
   size_t data_size = async_task->data()->size();
   uint32_t pos = 0;

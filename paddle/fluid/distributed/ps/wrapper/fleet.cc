@@ -347,8 +347,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   req_context.keys = fea_keys.data();
   req_context.num = fea_keys.size();
   req_context.is_training = is_training;
-  auto status =
-      worker_ptr_->Pull(req_context);
+  auto status = worker_ptr_->Pull(req_context);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
