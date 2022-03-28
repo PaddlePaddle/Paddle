@@ -43,7 +43,6 @@ namespace cub = hipcub;
 #endif
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
-DECLARE_bool(bn_no_data_format_transform);
 
 namespace phi {
 
@@ -200,9 +199,6 @@ void BatchNormKernel(const Context &ctx,
                             ? DataLayout::kNHWC
                             : DataLayout::kNCHW;
 #endif
-  if (FLAGS_bn_no_data_format_transform) {
-    compute_format = data_layout;
-  }
 
   DenseTensor transformed_x(x.type());
   DenseTensor transformed_y(y->type());

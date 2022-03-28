@@ -165,8 +165,6 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel");
-  AddOutput("TransX", "");
-  AddOutput("TransY", "");
   AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)

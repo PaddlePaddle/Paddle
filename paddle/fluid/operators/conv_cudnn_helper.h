@@ -192,7 +192,7 @@ static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
 #endif  // CUDA_VERSION >= 11000
   } else {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-        cdesc.desc(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION));
+        cdesc.desc(), CUDNN_DEFAULT_MATH));
     VLOG(5) << "NOT use cudnn_tensor_op_math";
   }
 #endif

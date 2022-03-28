@@ -38,8 +38,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
-DECLARE_bool(conv_no_data_format_transform);
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -79,12 +77,7 @@ void ConvCudnnKernel(const Context& ctx,
 #else
   // Tensor Core introduced from Volta GPUs supports more faster conv op
   // with FP16 in NHWC data format.
-  bool compute_in_nhwc;
-  if (FLAGS_conv_no_data_format_transform) {
-    compute_in_nhwc = channel_last;
-  } else {
-    compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
-  }
+  const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
   // We will only do data format conversion from NHWC to NCHW.
   // cudnn will convert NCHW to NHWC automatically on Tensor Core.
   auto compute_format = compute_in_nhwc && channel_last

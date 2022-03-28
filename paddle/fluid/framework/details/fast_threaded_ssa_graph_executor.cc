@@ -58,11 +58,11 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     }
   }
 
-  LOG(INFO) << "All ops: "
-            << string::join_strings(
-                   ops, ' ', [](OpHandleBase *op) -> std::string {
-                     return op->GetSkipRunning() ? "" : op->Name();
-                   });
+  VLOG(10) << "All ops: "
+           << string::join_strings(
+                  ops, ' ', [](OpHandleBase *op) -> std::string {
+                    return op->GetSkipRunning() ? "" : op->Name();
+                  });
   PADDLE_ENFORCE_GT(op_deps_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The graph doesn't have operators."));
