@@ -465,7 +465,7 @@ void FleetWrapper::PushDenseVarsAsync(
   req_context.value_type = Dense;
   req_context.training_mode = Async;
   req_context.table = table_id;
-  req_context.dense_values = regions.data();
+  req_context.push_context.push_dense_values = regions.data();
   req_context.num = regions.size();
   auto push_status = worker_ptr_->Push(req_context);
 }
