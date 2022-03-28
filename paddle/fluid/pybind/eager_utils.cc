@@ -626,7 +626,7 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
     return paddle::make_optional<const paddle::experimental::Tensor&>(
-      reinterpret_cast<TensorObject*>(obj)->tensor);
+        reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
