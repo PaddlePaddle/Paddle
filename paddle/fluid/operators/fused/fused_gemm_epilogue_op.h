@@ -83,7 +83,7 @@ class GemmEpilogueAlgoCache {
               lt_handle, op_desc, a_desc, b_desc, c_desc, c_desc, preference,
               requested_algo_count_, heuristic_results, &returned_results));
 
-      PADDLE_ENFORCE_GE(
+      PADDLE_ENFORCE_GT(
           returned_results, 0,
           platform::errors::Unavailable("No GEMM epilogue algorithm support!"));
 
@@ -91,7 +91,7 @@ class GemmEpilogueAlgoCache {
           platform::dynload::cublasLtMatmulPreferenceDestroy(preference));
 
       if (search_times_ > 0) {
-        int best_algo_idx = 0;
+        int best_algo_idx = -1;
         float best_algo_time = 0;
 
         // Run 100 times for warmup
@@ -143,8 +143,14 @@ class GemmEpilogueAlgoCache {
             best_algo_time = curr_time;
           }
         }
+
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(start_event));
         PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
+
+        if (best_algo_idx == -1) {
+          PADDLE_THROW(platform::errors::Unavailable(
+              "No GEMM epilogue algorithm support!"));
+        }
 
         ret = heuristic_results[best_algo_idx].algo;
       } else {
