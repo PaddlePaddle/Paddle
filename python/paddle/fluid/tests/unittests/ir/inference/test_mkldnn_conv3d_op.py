@@ -76,11 +76,11 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
 
     @given(
         data_format = st.sampled_from(["NCDHW", "NDHWC"]),
-        dilations = st.sampled_from([[1, 1, 1], [2, 2, 2], [1, 2, 1]]),
-        padding_algorithm = st.sampled_from(["EXPLICIT", "SAME", "VALID"]),
-        groups = st.sampled_from([1, 2, 4]),
-        paddings = st.sampled_from([[0, 3, 2], [1, 2, 3, 4, 3, 1]]),
-        strides = st.sampled_from([[1, 1, 1], [2, 2, 2], [1, 2, 1]]),
+        dilations = st.sampled_from([[1, 2, 1]]),
+        padding_algorithm = st.sampled_from(["EXPLICIT"]),
+        groups = st.sampled_from([2]),
+        paddings = st.sampled_from([[0, 3, 2]]),
+        strides = st.sampled_from([[1, 2, 1]]),
         batch_size = st.integers(min_value=1, max_value=4),
     )
     def test(self, *args, **kwargs):
