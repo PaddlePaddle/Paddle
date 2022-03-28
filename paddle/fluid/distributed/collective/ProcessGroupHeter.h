@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -71,8 +72,9 @@ class ProcessGroupHeter : public ProcessGroup {
   };
 
   ProcessGroupHeter(const std::shared_ptr<Store>& store, int rank, int size,
-                    int local_rank, int local_size, bool with_switch,
-                    int gloo_rank, int gloo_size);
+                    int gid, int local_rank, int local_size, int gloo_rank,
+                    int gloo_size, bool with_switch,
+                    std::string switch_endpoints);
 
   const std::string GetBackendName() const override {
     return std::string(HETER_BACKEND_NAME);
@@ -97,9 +99,9 @@ class ProcessGroupHeter : public ProcessGroup {
 
   int local_rank_;
   int local_size_;
-  bool with_switch_;
   int gloo_rank_;
   int gloo_size_;
+  bool with_switch_;
 };
 
 }  //  namespace distributed

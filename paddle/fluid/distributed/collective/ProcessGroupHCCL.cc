@@ -103,8 +103,8 @@ bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupHCCL::HCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupHCCL::ProcessGroupHCCL(const std::shared_ptr<Store>& store,
-                                   int rank, int size)
-    : ProcessGroup(rank, size), store_(store) {}
+                                   int rank, int size, int gid)
+    : ProcessGroup(rank, size, gid), store_(store) {}
 
 void ProcessGroupHCCL::BroadcastUniqueHCCLID(
     std::vector<HcclRootInfo>& hccl_ids) {  // NOLINT
