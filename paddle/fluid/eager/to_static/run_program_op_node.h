@@ -447,6 +447,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     for (auto &t : param) {
       auto t_meta = egr::EagerUtils::unsafe_autograd_meta(t);
       auto t_grad = egr::EagerUtils::unsafe_autograd_meta(t)->Grad();
+      // In eager mode, the number of param_grad should be the same as
+      // param, so here an empty Tensor is added for the param with
+      // stop_gradient=True
       if (t_meta->StopGradient()) {
         param_grad->emplace_back();
       } else if (t_grad.is_dense_tensor()) {
