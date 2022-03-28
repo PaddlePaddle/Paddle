@@ -174,17 +174,15 @@ def monkey_patch_varbase():
         else:
             value_np = value
             if isinstance(value, base_tensor):
-                value_np = value.numpy()
+                value_np = value.clone()
 
-            self_tensor_np = self.numpy()
-
-            assert self_tensor_np.shape == value_np.shape, \
+            assert self.shape == value_np.shape, \
                 "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                    self.name, self_tensor_np.shape, value_np.shape)
+                    self.name, self.shape, value_np.shape)
 
-            assert self_tensor_np.dtype == value_np.dtype, \
+            assert self.dtype == value_np.dtype, \
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    self.name, self_tensor_np.dtype, value_np.dtype)
+                    self.name, self.dtype, value_np.dtype)
 
             # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
             # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
