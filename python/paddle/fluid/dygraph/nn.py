@@ -869,10 +869,13 @@ class Pool2D(layers.Layer):
         self._l_type = 'pool2d'
 
     def forward(self, input):
-        if _non_static_mode():
-            return _C_ops.final_state_pool2d(input, self._pool_size, self._pool_stride,  self._pool_padding, self._ceil_mode, self._exclusive, self._data_format, self._pool_type, self._global_pooling, False, 'EXPLICIT')
-            
-        if _in_legacy_dygraph:                
+        if in_dygraph_mode():
+            return _C_ops.final_state_pool2d(
+                input, self._pool_size, self._pool_stride, self._pool_padding,
+                self._ceil_mode, self._exclusive, self._data_format,
+                self._pool_type, self._global_pooling, False, 'EXPLICIT')
+
+        if _in_legacy_dygraph():
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
