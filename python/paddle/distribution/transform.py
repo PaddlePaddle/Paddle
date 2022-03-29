@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import enum
+import functools
 import math
 import numbers
+import operator
 import typing
 
 import paddle
 import paddle.nn.functional as F
 from paddle.distribution import (constraint, distribution, tool,
                                  transformed_distribution, variable)
-
 
 __all__ = [  # noqa
     'Transform',
@@ -867,10 +868,11 @@ class ReshapeTransform(Transform):
                 f"Expected type of 'in_event_shape' and 'out_event_shape' is "
                 f"Squence[int], but got 'in_event_shape': {in_event_shape}, "
                 f"'out_event_shape': {out_event_shape}")
-        if math.prod(in_event_shape) != math.prod(out_event_shape):
+        if functools.reduce(operator.mul, in_event_shape) != functools.reduce(
+                operator.mul, out_event_shape):
             raise ValueError(
                 f"The numel of 'in_event_shape' should be 'out_event_shape', "
-                f"but got {math.prod(in_event_shape)}!={math.prod(out_event_shape)}"
+                f"but got {functools.reduce(operator.mul, in_event_shape)}!={functools.reduce(operator.mul, out_event_shape)}"
             )
 
         self._in_event_shape = tuple(in_event_shape)

@@ -12,11 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distribution import tool
 from paddle.distribution import distribution
 
 
 class Independent(distribution.Distribution):
+    r"""
+    Reinterprets some of the batch dimensions of a distribution as event dimensions.
+
+    This is mainly useful for changing the shape of the result of
+    :meth:`log_prob`. 
+
+    Args:
+        base (Distribution): The base distribution.
+        reinterpreted_batch_ndims (int): The number of batch dimensions to 
+            reinterpret as event dimensions.
+    """
+
     def __init__(self, base, reinterpreted_batch_ndims):
         if not isinstance(base, distribution.Distribution):
             raise TypeError(
@@ -53,12 +64,15 @@ class Independent(distribution.Distribution):
         return self._base.rsample(shape)
 
     def log_prob(self, value):
-        return tool._sum_rightmost(
+        return self._sum_rightmost(
             self.base.log_prob(value), self._reinterpreted_batch_ndims)
 
     def prob(self, value):
         return self.log_prob(value).exp()
 
     def entropy(self):
-        return tool._sum_rightmost(self._base.entropy(),
+        return self._sum_rightmost(self._base.entropy(),
                                    self._reinterpreted_batch_ndims)
+
+    def _sum_rightmost(self, value, n):
+        return value.sum(list(range(-n, 0))) if n > 0 else value
