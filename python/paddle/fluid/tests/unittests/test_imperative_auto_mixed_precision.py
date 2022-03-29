@@ -21,7 +21,7 @@ from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_p
 import paddle.nn as nn
 from paddle.static import InputSpec
 from paddle.autograd import PyLayer
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})

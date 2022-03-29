@@ -18,7 +18,7 @@ import unittest
 from functools import reduce
 
 import paddle
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers

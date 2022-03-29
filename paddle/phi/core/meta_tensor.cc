@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/string_tensor.h"
+#include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
@@ -33,6 +35,9 @@ void MetaTensor::set_dims(const DDim& dims) {
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
         dims;
+  } else if (phi::StringTensor::classof(tensor_)) {
+    StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
+        ->dims = dims;
   } else if (phi::SelectedRows::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
@@ -47,6 +52,8 @@ void MetaTensor::set_dtype(DataType dtype) {
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
+  } else if (phi::StringTensor::classof(tensor_)) {
+    // No need to set dtype
   } else if (phi::SelectedRows::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
@@ -61,6 +68,8 @@ void MetaTensor::set_layout(DataLayout layout) {
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->layout = layout;
+  } else if (phi::StringTensor::classof(tensor_)) {
+    // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
