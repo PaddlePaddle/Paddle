@@ -517,7 +517,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
             return task
 
     ring_id = ring_id = 0 if group is None else group.id
-    gsrc = group.get_group_rank(src)
+    gsrc = src if group is None else group.get_group_rank(src)
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if _non_static_mode():
