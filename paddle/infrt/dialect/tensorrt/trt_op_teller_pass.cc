@@ -40,12 +40,12 @@ void TRTOpTellerPass::runOnFunction() {
     if (op->getName().getStringRef().substr(0, 3) != "pd.") continue;
     if (::llvm::dyn_cast_or_null<infrt::pd::FeedOp>(op)) continue;
     if (::llvm::dyn_cast_or_null<infrt::pd::FetchOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<infrt::pd::GraphOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<::infrt::GraphOp>(op)) continue;
     if (::llvm::dyn_cast_or_null<::infrt::ReturnOp>(op)) continue;
 
     builder.setInsertionPoint(op);
     auto loc = getFunction().getLoc();
-    auto graph_op = builder.create<infrt::pd::GraphOp>(
+    auto graph_op = builder.create<::infrt::GraphOp>(
         loc, op->getResultTypes(), op->getOperands());
 
     ::llvm::SmallVector<mlir::Value, 4> tblgen_repl_values;
