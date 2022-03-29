@@ -155,10 +155,16 @@ def AutoTune(Loader):
         min_cost = float("inf")
 
         # evaluate cost with subset of origin dataset
-        dataset = args[0]
-        batch_size = kw['batch_size'] if 'batch_size' in kw.keys() else 1
-        args_tune = (Subset(dataset, indices=list(range(batch_size * 10))), )
+        args_tune = ()
         kw_tune = kw.copy()
+        batch_size = kw_tune['batch_size'] if 'batch_size' in kw_tune.keys(
+        ) else None
+        if kw['batch_sampler'] is not None:
+            batch_size = kw['batch_sampler'].batch_size
+        if len(args):
+            dataset = args[0]
+            args_tune = (Subset(
+                dataset, indices=list(range(batch_size * 10))), )
         kw_tune['shuffle'] = False
         kw_tune['batch_sampler'] = None
         print("Tuning Range for num_workers: ", 0, "~",
