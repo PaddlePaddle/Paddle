@@ -787,15 +787,15 @@
     func : round
   backward : round_grad
   
-- api : pow
-  args : (Tensor x, Scalar s)
-  output : Tensor(out)
-  infer_meta : 
-    func : UnchangedInferMeta
-    param: [x]
-  kernel : 
-    func : pow
-  backward : pow_grad
+#- api : pow
+  #args : (Tensor x, Scalar s)
+  #output : Tensor(out)
+  #infer_meta : 
+    #func : UnchangedInferMeta
+    #param: [x]
+  #kernel : 
+    #func : pow
+  #backward : pow_grad
 
 - api : p_norm
   args : (Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false)
