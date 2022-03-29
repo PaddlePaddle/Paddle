@@ -244,6 +244,7 @@ LIST(REMOVE_ITEM TEST_OPS test_hdfs1)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs2)
 LIST(REMOVE_ITEM TEST_OPS test_hdfs3)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
+LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 
 if(APPLE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
@@ -559,8 +560,6 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
   list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
 endif()
-
-LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
