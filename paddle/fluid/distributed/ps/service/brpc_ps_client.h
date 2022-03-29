@@ -328,7 +328,6 @@ class BrpcPsClient : public PSClient {
   brpc::Server _server;
   DownpourPsClientService _service;
   bool _server_started = false;
-  std::unordered_map<uint32_t, AccessorInfo> _table_infos;
   std::atomic_uint grad_num_{0};
 };
 }  // namespace distributed

@@ -395,11 +395,12 @@ int32_t BrpcPsService::pull_sparse(Table *table,
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * dim);
-  TableContext table_context;
-  table_context.value_type = Sparse;
-  table_context.pull_context.pull_value = value;
-  table_context.pull_context.values = res_data->data();
-  table->Pull(table_context);
+  // TableContext table_context;
+  // table_context.value_type = Sparse;
+  // table_context.pull_context.pull_value = value;
+  // table_context.pull_context.values = res_data->data();
+  // table->Pull(table_context);
+  table->pull_sparse(res_data->data(), value);
 
   cntl->response_attachment().append((char *)(res_data->data()),
                                      res_data->size() * sizeof(float));
