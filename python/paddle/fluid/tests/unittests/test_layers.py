@@ -1819,7 +1819,7 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
-    def test_group_norm(self):
+    def func_group_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -1873,7 +1873,6 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            # TODO(wuweilong): Add with _test_eager_guard():
             groupNorm = nn.GroupNorm(
                 channels=shape[1],
                 groups=2,
@@ -1885,6 +1884,11 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_group_norm(self):
+        with _test_eager_guard():
+            self.func_group_norm()
+        self.func_group_norm()
 
     def test_instance_norm(self):
         if core.is_compiled_with_cuda():
@@ -2348,7 +2352,7 @@ class TestLayer(LayerTest):
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3, batch_shape=[-1])
 
-    def test_while_loop(self):
+    def func_while_loop(self):
         with self.static_graph():
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
@@ -2363,7 +2367,6 @@ class TestLayer(LayerTest):
             static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
 
         with self.dynamic_graph():
-            # TODO(wuweilong): Add with _test_eager_guard():
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
@@ -2383,6 +2386,11 @@ class TestLayer(LayerTest):
                 layers.while_loop(cond1, body2, [j])
 
         self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
+
+    def test_while_loop(self):
+        with _test_eager_guard():
+            self.func_while_loop()
+        self.func_while_loop()
 
     def test_compare(self):
         value_a = np.arange(3)

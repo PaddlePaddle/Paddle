@@ -390,6 +390,26 @@ std::pair<int64_t, int64_t> MemorySparseTable::print_table_stat() {
   return {feasign_size, mf_size};
 }
 
+int32_t MemorySparseTable::Pull(TableContext& context) {
+  CHECK(context.value_type == Sparse);
+  if (context.use_ptr) {
+    char** pull_values = context.pull_context.ptr_values;
+    const uint64_t* keys = context.pull_context.keys;
+    return pull_sparse_ptr(pull_values, keys, context.num);
+  } else {
+    float* pull_values = context.pull_context.values;
+    const PullSparseValue& pull_value = context.pull_context.pull_value;
+    return pull_sparse(pull_values, pull_value);
+  }
+}
+
+int32_t MemorySparseTable::Push(TableContext& context) {
+  CHECK(context.value_type == Sparse);
+
+  const uint64_t* keys = context.push_context.keys;
+  return push_sparse(keys, context.push_context.ptr_values, context.num);
+}
+
 int32_t MemorySparseTable::pull_sparse(float* pull_values,
                                        const PullSparseValue& pull_value) {
   CostTimer timer("pserver_sparse_select_all");
@@ -461,6 +481,52 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
 
 int32_t MemorySparseTable::pull_sparse_ptr(char** pull_values,
                                            const uint64_t* keys, size_t num) {
+  CostTimer timer("pscore_sparse_select_all");
+  size_t value_size = _value_accesor->size() / sizeof(float);
+  size_t mf_value_size = _value_accesor->mf_size() / sizeof(float);
+
+  std::vector<std::future<int>> tasks(_real_local_shard_num);
+  std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
+      _real_local_shard_num);
+  for (size_t i = 0; i < num; ++i) {
+    int shard_id = (keys[i] % _sparse_table_shard_num) % _avg_local_shard_num;
+    task_keys[shard_id].push_back({keys[i], i});
+  }
+  // std::atomic<uint32_t> missed_keys{0};
+  for (size_t shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
+    tasks[shard_id] =
+        _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
+            [this, shard_id, &task_keys, pull_values, value_size,
+             mf_value_size]() -> int {
+              auto& keys = task_keys[shard_id];
+              auto& local_shard = _local_shards[shard_id];
+              float data_buffer[value_size];
+              float* data_buffer_ptr = data_buffer;
+              for (int i = 0; i < keys.size(); ++i) {
+                uint64_t key = keys[i].first;
+                auto itr = local_shard.find(key);
+                size_t data_size = value_size - mf_value_size;
+                FixedFeatureValue* ret = NULL;
+                if (itr == local_shard.end()) {
+                  // ++missed_keys;
+                  auto& feature_value = local_shard[key];
+                  feature_value.resize(data_size);
+                  float* data_ptr = feature_value.data();
+                  _value_accesor->create(&data_buffer_ptr, 1);
+                  memcpy(data_ptr, data_buffer_ptr, data_size * sizeof(float));
+                  ret = &feature_value;
+                } else {
+                  ret = itr.value_ptr();
+                }
+                int pull_data_idx = keys[i].second;
+                pull_values[pull_data_idx] = (char*)ret;
+              }
+              return 0;
+            });
+  }
+  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
+    tasks[shard_id].wait();
+  }
   return 0;
 }
 

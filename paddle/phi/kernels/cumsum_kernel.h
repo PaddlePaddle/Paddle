@@ -18,7 +18,7 @@
 
 namespace phi {
 
-template <typename Functor, typename Context>
+template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,

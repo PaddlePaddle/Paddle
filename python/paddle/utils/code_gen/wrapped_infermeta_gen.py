@@ -43,12 +43,18 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
+                'const paddle::optional<Tensor&>':
+                'const paddle::optional<MetaTensor&>',
+                'paddle::optional<const Tensor&>':
+                'paddle::optional<const MetaTensor&>'
             }
 
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
+            print("@@@", api.api)
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:
+                    print("type", api.inputs['input_info'])
                     args.append(tensor_type_map[api.inputs['input_info'][
                         input_name]] + ' ' + input_name)
             for attr_name in api.attrs['names']:
@@ -98,6 +104,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/ternary.h"
 """
 
 

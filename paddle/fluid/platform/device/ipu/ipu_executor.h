@@ -20,6 +20,7 @@ limitations under the License. */
 #include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
 #include <popart/tensorinfo.hpp>
+#include <popdist/popdist_poplar.hpp>
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -36,8 +37,7 @@ struct ExecutorResources {
   // map<tensor_id, paddle_var_ptr>
   popart::WeightsIO weights_io;
   // <popart_var, paddle_var> pairs, include weights and optimizer states
-  std::vector<std::pair<popart::TensorId, popart::TensorId>>
-      weights_and_opt_state;
+  std::vector<std::pair<popart::TensorId, std::string>> weights_and_opt_state;
 };
 
 class Executor {
@@ -53,13 +53,11 @@ class Executor {
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
+  // sync weights from popart to paddle
+  void WeightsToHost();
+
   // detach IPU
   void Detach();
-
-  void SetWeightsIO();
-  void ConvertWeights(bool align_to_popart);
-  void WeightsFromPaddle();
-  void WeightsToPaddle();
 
   // Scope
   void SetScope(const Scope *scope) { scope_ = scope; }
@@ -79,6 +77,10 @@ class Executor {
 
  private:
   void AcquireDevice();
+  void SetWeightsIO();
+  void ConvertWeights(bool);
+  void WeightsFromPaddle();
+  void WeightsToPaddle();
 
  private:
   // not own
@@ -92,8 +94,6 @@ class Executor {
   std::unique_ptr<popart::Session> session_;
   // one OneSession means a graph
   std::unique_ptr<ExecutorResources> executor_resources_;
-
-  int step_ = 0;
 };
 
 }  // namespace ipu
