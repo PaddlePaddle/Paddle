@@ -37,9 +37,9 @@ def limit_by_capacity(expert_count, _capacity, n_worker):
 
 
 def all_close(exp, out, n_worker):
-    exp = exp.reshape(n_worker, -1)
-    out = out.reshape(n_worker, -1)
-    return np.allclose(exp.sum(0), out.sum(0))
+    exp2 = exp.reshape(n_worker, -1)
+    out2 = out.reshape(n_worker, -1)
+    return np.allclose(exp2.sum(0), out2.sum(0))
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

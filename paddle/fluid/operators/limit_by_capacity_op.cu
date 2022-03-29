@@ -28,11 +28,11 @@ using Tensor = framework::Tensor;
 template <typename T>
 __global__ void limit_by_capacity_impl(const T* expc, T* cap, T* out,
                                        const int n_expert, const int n_worker) {
-  int eid = blockIdx.y;
-  int wid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (wid < n_worker) {
+  int eid, wid;
+  CUDA_KERNEL_LOOP(i, (n_expert * n_worker)) {
+    wid = i / n_expert;
+    eid = i % n_expert;
     auto proposal = expc[wid * n_expert + eid];
-    // int cap_left = atomicSub(cap + eid, proposal);
     auto cap_left = paddle::platform::CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
@@ -54,12 +54,11 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
     auto out = context.Output<Tensor>("Out");
 
     auto n_expert = expert_count->numel() / n_worker;
-    // std::cout << "n_expert" << n_expert << std::endl;
     const auto place = context.GetPlace();
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    dim3 grid_dim(CEIL(n_worker, 1024), n_expert);
+    dim3 grid_dim(256);
     dim3 block_dim(1024);
     auto out_data = out->mutable_data<T>(place);
     const T* ec_data = expert_count->data<T>();
