@@ -23,6 +23,7 @@ import paddle
 
 class TestCreateParameterError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_shape():
