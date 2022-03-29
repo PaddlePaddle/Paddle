@@ -59,6 +59,37 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
       place, out_t, in_t, offsets, extents);
 }
 
+static double ToMegaBytes(size_t bytes) {
+  return static_cast<double>(bytes) / (1 << 20);
+}
+
+static size_t CaclWorkspaceLimitInBytes() {
+  return platform::GpuAvailableMemToAlloc();
+  // return FLAGS_conv_workspace_size_limit * 1024 * 1024;
+}
+
+static size_t RoundUp(size_t workspace_size, size_t workspace_size_limit) {
+  LOG(INFO) << "workspace_size=" << workspace_size;
+  // static size_t max_workspace_size = 0;
+  // static std::mutex mutex;
+  // if (workspace_size > max_workspace_size) {
+  // Round up to 256M.
+  // constexpr int bits = 28;
+  // std::lock_guard<std::mutex> lock(mutex);
+  // max_workspace_size = ((workspace_size + (1 << bits) - 1) >> bits) << bits;
+  // if (round_size < workspace_size_limit) {
+  //   std::lock_guard<std::mutex> lock(mutex);
+  //   max_workspace_size = round_size;
+  // }
+  //}
+  // LOG(INFO) << "max_workspace_size=" << max_workspace_size;
+  return std::min(max_workspace_size, workspace_size_limit);
+  // constexpr int bits = 26;
+  // size_t round_workspace_size = ((workspace_size + (1 << bits) - 1) >> bits)
+  // << bits;
+  // return std::min(workspace_size, workspace_size_limit);
+}
+
 template <typename PerfT>
 std::string GetPerfResultString(const std::vector<PerfT>& perf_results,
                                 int actual_algo_count, size_t workspace_limit) {
@@ -70,14 +101,13 @@ std::string GetPerfResultString(const std::vector<PerfT>& perf_results,
   } else if (std::is_same<PerfT, cudnnConvolutionBwdFilterAlgoPerf_t>::value) {
     out << "BwdFilterAlgo Perf result";
   }
-  out << " (workspace limit="
-      << static_cast<double>(workspace_limit) / (1 << 20) << " MB):\n";
+  out << " (workspace limit=" << ToMegaBytes(workspace_limit) << " MB):\n";
   for (int i = 0; i < actual_algo_count; ++i) {
     const auto& result = perf_results[i];
     auto math_type_str = (result.mathType == CUDNN_TENSOR_OP_MATH) ? "T" : "F";
     out << "  algo=" << result.algo << ": tensor_core=" << math_type_str
         << ", time=" << result.time
-        << " ms, memory=" << static_cast<double>(result.memory) / (1 << 20)
+        << " ms, memory=" << ToMegaBytes(result.memory)
         << " MB, status=" << result.status << "\n";
   }
   return out.str();
@@ -94,19 +124,14 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
       algo_result->time = result.time;
       algo_result->workspace_size = result.memory;
       VLOG(3) << "  algo=" << result.algo << ", time=" << result.time
-              << " ms, memory="
-              << static_cast<double>(result.memory) / (1 << 20) << " MB (limit="
-              << static_cast<double>(workspace_limit) / (1 << 20)
+              << " ms, memory=" << ToMegaBytes(result.memory)
+              << " MB (limit=" << ToMegaBytes(workspace_limit)
               << " MB), status=" << result.status;
       return;
     }
   }
-  VLOG(3) << "Can not find alog that requires memory < "
-          << static_cast<double>(workspace_limit) / (1 << 20) << " MB";
-}
-
-static size_t CaclWorkspaceLimitInBytes() {
-  return platform::GpuAvailableMemToAlloc();
+  VLOG(3) << "Can not find an algorithm that requires memory < "
+          << ToMegaBytes(workspace_limit) << " MB";
 }
 
 static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
@@ -208,10 +233,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           static_cast<int64_t>(args.cudnn_dtype), [&]() {
             int returned_algo_count;
             std::vector<PerfT> perf_results(kNUM_CUDNN_FWD_ALGS);
-            size_t max_workspace_size =
-                std::min(FindMaxWorkspaceSize(args), workspace_size_limit);
-            VLOG(3) << "max_workspace_size="
-                    << static_cast<double>(max_workspace_size) / (1 << 20)
+            size_t max_workspace_size =  // workspace_size_limit;
+                FindMaxWorkspaceSize(args, workspace_size_limit);
+            VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
                     << " MB";
 
             auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
@@ -232,7 +256,9 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             return perf_results[0].algo;
           });
     }
-    VLOG(3) << "choose algo " << result.algo;
+    VLOG(3) << "[cuDNN Convoltion] choose algo=" << result.algo
+            << ", workspace="
+            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
 
@@ -247,7 +273,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   }
 
  private:
-  static size_t FindMaxWorkspaceSize(const ConvArgs& args) {
+  static size_t FindMaxWorkspaceSize(const ConvArgs& args,
+                                     size_t workspace_size_limit) {
     size_t max_workspace_size = 0;
     for (size_t algo = 0; algo < kNUM_CUDNN_FWD_ALGS; ++algo) {
       size_t workspace_size = 0;
@@ -259,7 +286,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
         max_workspace_size = std::max(workspace_size, max_workspace_size);
       }
     }
-    return max_workspace_size;
+    return RoundUp(max_workspace_size, workspace_size_limit);
   }
 };
 
@@ -346,10 +373,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
           static_cast<int64_t>(args.cudnn_dtype), [&]() {
             int returned_algo_count;
             std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_DATA_ALGS);
-            size_t max_workspace_size =
-                std::min(FindMaxWorkspaceSize(args), workspace_size_limit);
-            VLOG(3) << "max_workspace_size="
-                    << static_cast<double>(max_workspace_size) / (1 << 20)
+            size_t max_workspace_size =  // workspace_size_limit;
+                FindMaxWorkspaceSize(args, workspace_size_limit);
+            VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
                     << " MB";
 
             auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
@@ -372,7 +398,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
             return perf_results[0].algo;
           });
     }
-    VLOG(3) << "choose algo " << result.algo;
+    VLOG(3) << "[cuDNN Convoltion] choose algo=" << result.algo
+            << ", workspace="
+            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
 
@@ -387,7 +415,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   }
 
  private:
-  static size_t FindMaxWorkspaceSize(const ConvArgs& args) {
+  static size_t FindMaxWorkspaceSize(const ConvArgs& args,
+                                     size_t workspace_size_limit) {
     size_t max_workspace_size = 0;
     for (size_t algo = 0; algo < kNUM_CUDNN_BWD_DATA_ALGS; ++algo) {
       size_t workspace_size = 0;
@@ -401,7 +430,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         max_workspace_size = std::max(workspace_size, max_workspace_size);
       }
     }
-    return max_workspace_size;
+    return RoundUp(max_workspace_size, workspace_size_limit);
   }
 };
 
@@ -480,11 +509,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             static_cast<int64_t>(args.cudnn_dtype), [&]() {
               int returned_algo_count;
               std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
-              size_t max_workspace_size =
-                  std::min(FindMaxWorkspaceSize(args), workspace_size_limit);
+              size_t max_workspace_size =  // workspace_size_limit;
+                  FindMaxWorkspaceSize(args, workspace_size_limit);
               VLOG(3) << "max_workspace_size="
-                      << static_cast<double>(max_workspace_size) / (1 << 20)
-                      << " MB";
+                      << ToMegaBytes(max_workspace_size) << " MB";
 
               auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
                 PADDLE_ENFORCE_GPU_SUCCESS(
@@ -527,7 +555,9 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             });
       }
     }
-    VLOG(3) << "choose algo " << result.algo;
+    VLOG(3) << "[cuDNN Convoltion] choose algo=" << result.algo
+            << ", workspace="
+            << ToMegaBytes(GetWorkspaceSize(args, result.algo)) << " MB";
     return result;
   }
 
@@ -543,7 +573,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 
  private:
-  static size_t FindMaxWorkspaceSize(const ConvArgs& args) {
+  static size_t FindMaxWorkspaceSize(const ConvArgs& args,
+                                     size_t workspace_size_limit) {
     size_t max_workspace_size = 0;
     for (size_t algo = 0; algo < kNUM_CUDNN_BWD_FILTER_ALGS; ++algo) {
       size_t workspace_size = 0;
@@ -557,7 +588,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         max_workspace_size = std::max(workspace_size, max_workspace_size);
       }
     }
-    return max_workspace_size;
+    return RoundUp(max_workspace_size, workspace_size_limit);
   }
 
   static void ChooseAlgo(const std::vector<PerfT>& perf_results,
