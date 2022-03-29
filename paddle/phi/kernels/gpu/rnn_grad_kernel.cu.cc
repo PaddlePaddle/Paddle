@@ -25,6 +25,56 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_HIP
+template <typename T>
+void TensorToPermutedWeight(const Place &place,
+                            gpuStream_t stream,
+                            const DenseTensor &tensor,
+                            std::vector<DenseTensor *> *weight_grad_list,
+                            const gpuRNNMode_t rnn_mode,
+                            bool is_bidirec) {
+  if (is_bidirec) {
+    for (size_t i = 0; i < weight_grad_list->size(); i += 4) {
+      auto tmp = (*weight_grad_list)[i + 1];
+      (*weight_grad_list)[i + 1] = (*weight_grad_list)[i + 2];
+      (*weight_grad_list)[i + 2] = tmp;
+    }
+  }
+  size_t weight_offset = 0;
+  for (size_t i = 0; i < weight_grad_list->size(); ++i) {
+    auto numel_size = (*weight_grad_list)[i]->numel();
+    DenseTensor temp;
+    temp.Resize({numel_size});
+    temp.ShareDataWith(tensor.Slice(weight_offset, weight_offset + numel_size));
+
+    if (rnn_mode == miopenLSTM) {
+      std::vector<DenseTensor> split_tensor = temp.Chunk(4, 0);
+      WeightListToTensor<T>(
+          place,
+          stream,
+          {split_tensor[0], split_tensor[1], split_tensor[3], split_tensor[2]},
+          (*weight_grad_list)[i]);
+    } else if (rnn_mode == miopenGRU) {
+      std::vector<Tensor> split_tensor = temp.Chunk(3, 0);
+      WeightListToTensor<T>(place,
+                            stream,
+                            {split_tensor[1], split_tensor[0], split_tensor[2]},
+                            (*weight_grad_list)[i]);
+    } else {
+      WeightListToTensor<T>(place, stream, {temp}, (*weight_grad_list)[i]);
+    }
+    weight_offset += numel_size;
+  }
+  if (is_bidirec) {
+    for (size_t i = 0; i < weight_grad_list->size(); i += 4) {
+      auto tmp = (*weight_grad_list)[i + 1];
+      (*weight_grad_list)[i + 1] = (*weight_grad_list)[i + 2];
+      (*weight_grad_list)[i + 2] = tmp;
+    }
+  }
+}
+#endif
+
 template <typename T, typename Context>
 void RnnGradKernel(const Context &dev_ctx,
                    const DenseTensor &x,
