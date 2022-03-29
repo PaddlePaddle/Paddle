@@ -38,7 +38,7 @@ void InfrtOpFusePass::runOnFunction() {
   ::mlir::RewritePatternSet patterns(&getContext());
   populateWithGenerated(patterns);
   (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
-  // Fuse pd.return Operation
+  // Fuse infrt.return Operation
   auto terminator_op = getFunction().front().getTerminator();
   if (nullptr == terminator_op) return;
   for (auto operand : terminator_op->getOperands()) {
