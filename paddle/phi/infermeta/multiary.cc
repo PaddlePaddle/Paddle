@@ -1065,8 +1065,6 @@ static void Interpolate2DInferShapeCheck(
             "Attr(out_shape)'s length must be 2 for 4-D input "
             "tensor, but got size = %d .",
             inputs_name.size()));
-    // int out_h = ctx->Attrs().Get<int>("out_h");
-    // int out_w = ctx->Attrs().Get<int>("out_w");
     phi::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_h, out_w};
@@ -1155,9 +1153,9 @@ static void Interpolate2DInferShapeCheck(
 
   phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
-    dim_out = {dim_x[0], dim_x[1], out_h, out_w};
+    dim_out = {dim_x[0], dim_x[1], out_h_tmp, out_w_tmp};
   } else {
-    dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
+    dim_out = {dim_x[0], out_h_tmp, out_w_tmp, dim_x[3]};
   }
 
   output->set_dims(dim_out);
@@ -1211,9 +1209,6 @@ static void Interpolate3DInferShapeCheck(
             "Attr(out_shape)'s length must be 3 for 5-D input "
             "tensor, but got size = %d .",
             inputs_name.size()));
-    // int out_d = ctx->Attrs().Get<int>("out_d");
-    // int out_h = ctx->Attrs().Get<int>("out_h");
-    // int out_w = ctx->Attrs().Get<int>("out_w");
     phi::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
       dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
@@ -1315,9 +1310,9 @@ static void Interpolate3DInferShapeCheck(
 
   phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
-    dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
+    dim_out = {dim_x[0], dim_x[1], out_d_tmp, out_h_tmp, out_w_tmp};
   } else {
-    dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
+    dim_out = {dim_x[0], out_d_tmp, out_h_tmp, out_w_tmp, dim_x[4]};
   }
   output->set_dims(dim_out);
   output->set_dtype(x.dtype());
