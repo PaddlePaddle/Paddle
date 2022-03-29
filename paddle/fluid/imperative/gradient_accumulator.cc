@@ -340,10 +340,34 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Gradient accumulation of data type (%s) on place (%s) is not "
-        "supported in imperative mode",
-        framework::DataTypeToString(data_type), place));
+    if (place.GetDeviceType() == "Ascend910") {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::DeviceContext* ctx = pool.Get(place);
+      auto dev_ctx = dynamic_cast<phi::CustomContext*>(ctx);
+      if (data_type == framework::DataTypeTrait<float>::DataType()) {
+        dst_tensor->mutable_data<float>(place);
+      } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
+        dst_tensor->mutable_data<double>(place);
+      } else if (data_type ==
+                 framework::DataTypeTrait<platform::float16>::DataType()) {
+        dst_tensor->mutable_data<platform::float16>(place);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Gradient accumulation of data type (%s) on place (%s) is not "
+            "supported in imperative mode",
+            framework::DataTypeToString(data_type), place));
+      }
+      const auto& runner = operators::NpuOpRunner(
+          "Add", {*dst_tensor, src_tensor}, {*dst_tensor}, {});
+      runner.Run(dev_ctx->stream());
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+    }
+    return;
   }
 #endif
 #ifdef PADDLE_WITH_XPU

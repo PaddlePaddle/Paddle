@@ -241,23 +241,26 @@ void BuildDygraphPhiKernelContext(
   auto& output_defs = pt_kernel.args_def().output_defs();
   auto& attr_defs = pt_kernel.args_def().attribute_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of inputs_args names (%d) must be equal to "
-                        "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      input_names.size(), input_defs.size(),
+      platform::errors::InvalidArgument(
+          "the size of inputs_args names (%d) must be equal to "
+          "the size of kernel input_defs (%d) for %s OP.",
+          input_names.size(), input_defs.size(), pt_kernel_signature.name));
 
-  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of outputs_args names (%d) must be equal to "
-                        "the size of kernel output_defs (%d).",
-                        output_names.size(), output_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      output_names.size(), output_defs.size(),
+      platform::errors::InvalidArgument(
+          "the size of outputs_args names (%d) must be equal to "
+          "the size of kernel output_defs (%d) for %s OP.",
+          output_names.size(), output_defs.size(), pt_kernel_signature.name));
 
-  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of attribute_args names (%d) must be equal "
-                        "to the size of kernel attribute_defs (%d).",
-                        attr_names.size(), attr_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      attr_names.size(), attr_defs.size(),
+      platform::errors::InvalidArgument(
+          "the size of attribute_args names (%d) must be equal "
+          "to the size of kernel attribute_defs (%d) for %s OP.",
+          attr_names.size(), attr_defs.size(), pt_kernel_signature.name));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ins.find(input_names[i]);
@@ -538,6 +541,9 @@ void BuildDygraphPhiKernelContext(
                                                        vector_int_attr.end());
           kernel_ctx->EmplaceBackAttr(vector_int64_attr);
         }
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<float>, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));

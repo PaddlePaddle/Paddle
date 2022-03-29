@@ -1992,6 +1992,14 @@ set -x
 }
 
 function parallel_test_base_npu() {
+    # ascend910 plugin
+    if [ ${TEST_PLUGIN_NPU:-ON} == "ON" ] ; then
+        bash ${PADDLE_ROOT}/paddle/scripts/paddle_plugin_build.sh;error_code=$?
+        if [ "$error_code" != 0 ];then
+            exit ${error_code};
+        fi
+    fi
+
     # skipping if no NPU related files changed
     if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
         fetch_upstream_develop_if_not_exist

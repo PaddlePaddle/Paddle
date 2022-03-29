@@ -1795,7 +1795,8 @@ def cross_entropy(input,
                                                  'reduce_all', True)
                 return out_sum / (total_weight + (total_weight == 0.0))
             else:
-                return _C_ops.mean(out)
+                return _C_ops.reduce_mean(out, 'dim', [0], 'keep_dim', False,
+                                          'reduce_all', True)
 
         else:
             if input_dims - 1 == label_dims:
