@@ -246,6 +246,23 @@
 #   # backward : expand_as_grad
 #   # optional : y
 
+# - api : equal_all
+#   args : (Tensor x, Tensor y)
+#   output : Tensor
+#   infer_meta :
+#     func : CompareAllInferMeta
+#   kernel :
+#     func : equal_all
+
+# histogram
+# - api : histogram
+#   args : (Tensor x, int64_t bins, int min, int max)
+#   output : Tensor
+#   infer_meta :
+#     func : HistogramInferMeta
+#   kernel :
+#     func : histogram
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -669,14 +686,6 @@
   kernel :
     func : equal
 
-- api : equal_all
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : CompareAllInferMeta
-  kernel :
-    func : equal_all
-
 # erf
 - api : erf
   args : (Tensor x)
@@ -802,15 +811,6 @@
   kernel :
     func : hard_sigmoid
   backward : hard_sigmoid_grad
-
-# histogram
-- api : histogram
-  args : (Tensor x, int64_t bins, int min, int max)
-  output : Tensor
-  infer_meta :
-    func : HistogramInferMeta
-  kernel :
-    func : histogram
 
 - api : huber_loss
   args : (Tensor input, Tensor label, float delta)
