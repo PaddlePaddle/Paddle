@@ -38,8 +38,9 @@ def vjp(func, xs, v=None):
 
     Returns:
         output(tuple):
-            func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
-            vjp(Tensor|tuple[Tensor]): The vjp result.
+        
+            - func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
+            - vjp(Tensor|tuple[Tensor]): The vjp result.
 
     Examples:
 
@@ -96,8 +97,9 @@ def jvp(func, xs, v=None):
 
     Returns:
         output(tuple):
-            func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
-            jvp(Tensor|tuple[Tensor]): The jvp result.
+
+            - func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
+            - jvp(Tensor|tuple[Tensor]): The jvp result.
 
     Examples:
 
