@@ -21,6 +21,10 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
     "Enable sequential execution for standalone executor, used for debug");
@@ -312,6 +316,10 @@ void build_op_func_list(const platform::Place& place,
       main_program, block.ID(), ops_unique);
   operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       main_program, block.ID(), ops_unique);
+
+#ifdef PADDLE_WITH_MKLDNN
+  platform::RegisterModelLayout(ops_unique, place);
+#endif
 
   // its elements will be moved to vec_func_list
   std::vector<std::shared_ptr<OperatorBase>> ops;
