@@ -1474,6 +1474,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      
       if (!with_dynamic_shape) {
         if (shape.size() == 1) {
           return false;
