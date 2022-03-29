@@ -19,6 +19,22 @@ import json
 import yaml
 from typing import List, Dict, Any
 
+skipped_phi_api_list_file = "./skipped_phi_api.json"
+
+
+def get_skipped_kernel_list():
+    skiped_kernel_list = []
+    with open(skipped_phi_api_list_file, 'r') as f:
+        skiped_api_list = json.load(f)
+    infer_meta_data = get_api_yaml_info("../../")
+    for api in infer_meta_data:
+        if "kernel" not in api or "infer_meta" not in api:
+            continue
+        if api["api"] in skiped_api_list["phi_apis"]:
+            skiped_kernel_list.append(api["kernel"]["func"])
+    skiped_kernel_list += skiped_api_list["phi_kernels"]
+    return skiped_kernel_list
+
 
 def parse_args():
     parser = argparse.ArgumentParser("gather phi kernel and infermate info")
@@ -256,8 +272,11 @@ def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
         # TODO(wilber): handle the unknown inferShape func.
         return ""
 
+    skipped_kernel_list = get_skipped_kernel_list()
     for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
         kernel_func = gen_kernel_func(item[3], ctx_name, origin_dtype)
+        if item[0].lower() in skipped_kernel_list:
+            continue
         ir_name = ir_ctx_name + '.' + item[0].lower(
         ) + '.' + ir_dtype + '.' + item[2].lower()
         if ir_name in attr_data.keys() and attr_data[ir_name] is not None:
