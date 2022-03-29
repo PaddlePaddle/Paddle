@@ -20,8 +20,8 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
-
 namespace phi {
+namespace autotune {
 
 template <typename RetureType, typename... Args>
 class KernelCallback {
@@ -99,4 +99,5 @@ static AutoTuneBase<KernelCallback<RetureType, Args...>> MakeAutoTune(
   return AutoTuneBase<decltype(obj)>(obj);
 }
 
+}  // namespace autotune
 }  // namespace phi

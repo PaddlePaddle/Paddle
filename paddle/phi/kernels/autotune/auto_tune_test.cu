@@ -19,6 +19,8 @@
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
+namespace tune = phi::autotune;
+
 template <typename T, int VecSize>
 __global__ void VecSumTest(T *x, T *y, int N) {
 #ifdef __HIPCC__
@@ -105,9 +107,9 @@ TEST(AutoTune, sum) {
 
   // 1. Test call_back.
   VLOG(3) << "[CallBack]: Test case.";
-  auto callback1 = phi::MakeCallback(Algo<4>);
-  auto callback2 = phi::MakeCallback(Algo<2>);
-  auto callback3 = phi::MakeCallback(Algo<1>);
+  auto callback1 = tune::MakeCallback(Algo<4>);
+  auto callback2 = tune::MakeCallback(Algo<2>);
+  auto callback3 = tune::MakeCallback(Algo<1>);
   std::vector<decltype(callback1)> callbacks{callback1, callback2, callback3};
   for (int i = 0; i < callbacks.size(); ++i) {
     ctx.Wait();
@@ -120,14 +122,15 @@ TEST(AutoTune, sum) {
 
   // 2. Test call_back tune.
   VLOG(3) << "[AutoTune]: Test case.";
-  auto tuner = phi::MakeAutoTune(Algo<4>);
-  tuner.AddCallBack(phi::MakeCallback(Algo<2>));
-  tuner.AddCallBack(phi::MakeCallback(Algo<1>));
+  auto tuner = tune::MakeAutoTune(Algo<4>);
+  tuner.AddCallBack(tune::MakeCallback(Algo<2>));
+  tuner.AddCallBack(tune::MakeCallback(Algo<1>));
 
   /* The 1st ctx works for ctx.Wait(),
      the 2nd is just the param of call_back function. */
   auto best_call_back =
       tuner.PickBestKernel(ctx, ctx, d_in1, d_in2, N, threads, blocks);
+  best_call_back.Call(ctx, d_in1, d_in2, N, threads, blocks);
 
   ctx.Wait();
   phi::GpuTimer timer;
