@@ -103,6 +103,18 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
           << static_cast<double>(workspace_limit) / (1 << 20) << " MB";
 }
 
+static size_t CaclWorkspaceLimitInBytes() {
+  size_t available = 0;
+  size_t total = 0;
+  platform::GpuMemoryUsage(&available, &total);
+  size_t can_alloc = platform::GpuAvailableMemToAlloc();
+  LOG(INFO) << "GPU Memory: total=" << static_cast<double>(total) / (1 << 20)
+            << " MB, available=" << static_cast<double>(available) / (1 << 20)
+            << " MB, can alloc=" << static_cast<double>(can_alloc) / (1 << 20)
+            << " MB";
+  return can_alloc;
+}
+
 static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
                             const platform::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
@@ -138,19 +150,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   template <typename T>
   static SearchResultT Find(const ConvArgs& args, bool exhaustive_search,
                             bool deterministic, const phi::GPUContext& ctx) {
-    size_t gpu_memory_available, gpu_memory_total;
-    platform::GpuMemoryUsage(&gpu_memory_available, &gpu_memory_total);
-    VLOG(3) << "gpu_memory_available="
-            << static_cast<double>(gpu_memory_available) / (1 << 20)
-            << " MB, gpu_memory_total="
-            << static_cast<double>(gpu_memory_total) / (1 << 20) << " MB";
-    size_t workspace_size_limit = platform::GpuAvailableMemToAlloc();
-    VLOG(3) << "workspace_size_limit="
-            << static_cast<double>(workspace_size_limit) / (1 << 20) << " MB";
-
     SearchResultT result;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size = 0;
+    size_t workspace_size_limit = CaclWorkspaceLimitInBytes();
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (!exhaustive_search && !deterministic) {
@@ -211,6 +214,12 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           static_cast<int64_t>(args.cudnn_dtype), [&]() {
             int returned_algo_count;
             std::vector<PerfT> perf_results(kNUM_CUDNN_FWD_ALGS);
+            size_t max_workspace_size = FindMaxWorkspaceSize(args);
+            LOG(INFO) << "workspace_size_limit="
+                      << static_cast<double>(workspace_size_limit) / (1 << 20)
+                      << " MB, max_workspace_size="
+                      << static_cast<double>(max_workspace_size) / (1 << 20)
+                      << " MB";
 
             auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
@@ -220,7 +229,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                       args.odesc.desc(), const_cast<T*>(args.o->data<T>()),
                       kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
                       perf_results.data(), cudnn_workspace_ptr,
-                      workspace_size_limit));
+                      std::min(workspace_size_limit, max_workspace_size)));
             };
             workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
 
@@ -232,6 +241,19 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     }
     VLOG(3) << "choose algo " << result.algo;
     return result;
+  }
+
+  static size_t FindMaxWorkspaceSize(const ConvArgs& args) {
+    LOG(INFO) << "Find maximum workspace size of Fwd:";
+    size_t max_workspace_size = 0;
+    for (size_t algo = 0; algo < kNUM_CUDNN_FWD_ALGS; ++algo) {
+      size_t workspace_size =
+          GetWorkspaceSize(args, static_cast<cudnnConvolutionFwdAlgo_t>(algo));
+      max_workspace_size = std::max(workspace_size, max_workspace_size);
+      LOG(INFO) << "algo=" << algo << ", workspace size="
+                << static_cast<double>(workspace_size) / (1 << 20) << " MB";
+    }
+    return max_workspace_size;
   }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
@@ -253,19 +275,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   template <typename T>
   static SearchResultT Find(const ConvArgs& args, bool exhaustive_search,
                             bool deterministic, const phi::GPUContext& ctx) {
-    size_t gpu_memory_available, gpu_memory_total;
-    platform::GpuMemoryUsage(&gpu_memory_available, &gpu_memory_total);
-    VLOG(3) << "gpu_memory_available="
-            << static_cast<double>(gpu_memory_available) / (1 << 20)
-            << " MB, gpu_memory_total="
-            << static_cast<double>(gpu_memory_total) / (1 << 20) << " MB";
-    size_t workspace_size_limit = platform::GpuAvailableMemToAlloc();
-    VLOG(3) << "workspace_size_limit="
-            << static_cast<double>(workspace_size_limit) / (1 << 20) << " MB";
-
     SearchResultT result;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size = 0;
+    size_t workspace_size_limit = CaclWorkspaceLimitInBytes();
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (!exhaustive_search && !deterministic) {
@@ -381,20 +394,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   template <typename T>
   static SearchResultT Find(const ConvArgs& args, bool exhaustive_search,
                             bool deterministic, const phi::GPUContext& ctx) {
-    size_t gpu_memory_available, gpu_memory_total;
-    platform::GpuMemoryUsage(&gpu_memory_available, &gpu_memory_total);
-    VLOG(3) << "gpu_memory_available="
-            << static_cast<double>(gpu_memory_available) / (1 << 20)
-            << " MB, gpu_memory_total="
-            << static_cast<double>(gpu_memory_total) / (1 << 20) << " MB";
-    size_t workspace_size_limit = platform::GpuAvailableMemToAlloc();
-    VLOG(3) << "workspace_size_limit="
-            << static_cast<double>(workspace_size_limit) / (1 << 20) << " MB";
-
     SearchResultT result;
     platform::CUDAGraphCaptureModeGuard guard;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size = 0;
+    size_t workspace_size_limit = CaclWorkspaceLimitInBytes();
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (!exhaustive_search && !deterministic) {

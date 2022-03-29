@@ -204,7 +204,7 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
-    VLOG(4) << place << " " << DebugStringEx(&scope);
+    VLOG(3) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
