@@ -527,25 +527,25 @@ register_unity_group(cu
     unstack_op.cu
     where_index_op.cu
     where_op.cu
-    layer_norm_op.cu)
-register_unity_group(cu
+    layer_norm_op.cu
     expand_as_op.cu
     stack_op.cu)
 # The following groups are to make better use of `/MP` which MSVC's parallel
 # compilation instruction when compiling in Unity Build.
-register_unity_group(cu activation_op.cu)
-register_unity_group(cu dist_op.cu)
-register_unity_group(cu expand_as_v2_op.cu)
-register_unity_group(cu gru_unit_op.cu)
-register_unity_group(cu top_k_op.cu)
-register_unity_group(cu argsort_op.cu)
-register_unity_group(cu kron_op.cu)
-register_unity_group(cu unique_op.cu)
-register_unity_group(cu tile_op.cu)
-register_unity_group(cu trace_op.cu)
-register_unity_group(cu transpose_op.cu)
-register_unity_group(cu strided_slice_op.cu)
-register_unity_group(cu expand_op.cu)
-register_unity_group(cu matmul_v2_op.cu)
-register_unity_group(cu top_k_v2_op.cu)
-register_unity_group(cu set_value_op.cu)
+register_unity_group(cu 
+    activation_op.cu)
+    dist_op.cu
+    expand_as_v2_op.cu
+    gru_unit_op.cu
+    top_k_op.cu
+    argsort_op.cu
+    kron_op.cu
+    unique_op.cu
+    tile_op.cu
+    trace_op.cu
+    transpose_op.cu
+    strided_slice_op.cu
+    expand_op.cu
+    matmul_v2_op.cu
+    top_k_v2_op.cu
+    set_value_op.cu)
