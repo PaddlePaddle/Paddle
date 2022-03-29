@@ -32,8 +32,9 @@ class _Sampler(object):
     def __init__(self, batch_size, num_samples,
                  shuffle=False, drop_last=False):
         self.batch_size = batch_size
-        self.drop_last = drop_last
         self.num_samples = num_samples
+        self.shuffle = shuffle
+        self.drop_last = drop_last
         self.start_idx = 0
 
         self.sample_ids = np.arange(num_samples)
@@ -181,33 +182,4 @@ def file_label_reader(file_root,
                                  shuffle=shuffle,
                                  drop_last=drop_last,
                                  seed=seed)
-    # inputs = dict()
-    # attrs = {
-    #     'root_dir': file_root,
-    #     'batch_size': batch_size,
-    #     'files': samples,
-    #     'labels': targets,
-    #     'reader_id': unq_reader_id,
-    # }
-    #
-    # helper = LayerHelper("file_label_reader", **locals())
-    # out = helper.create_variable(
-    #     name=unique_name.generate("file_label_reader"),
-    #     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-    #     dtype='uint8')
-    #
-    # label = helper.create_variable(
-    #     name=unique_name.generate("file_label_reader"),
-    #     type=core.VarDesc.VarType.LOD_TENSOR,
-    #     dtype='int')
-    #
-    # helper.append_op(
-    #     type="file_label_reader",
-    #     inputs=inputs,
-    #     attrs=attrs,
-    #     outputs={"Out": out,
-    #              "Label": label
-    #              })
-
-    return out, label
 

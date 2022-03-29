@@ -24,7 +24,7 @@ from ..multiprocess_utils import CleanupFuncRegistrar
 
 from collections.abc import Sequence, Mapping
 
-__all__ = ["Pipeline"]
+__all__ = ["DataPipeline"]
 
 
 CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
@@ -33,7 +33,7 @@ CleanupFuncRegistrar.register(core._shutdown_all_dataloaders)
 AVAILABLE_OP_TYPES = ['data_reader', 'map']
 
 
-class Pipeline:
+class DataPipeline(object):
     """
     Data pipeline
 
@@ -52,7 +52,6 @@ class Pipeline:
         if paddle.distributed.ParallelEnv().nranks > 1:
             paddle.set_device('gpu:%d' % 
                         paddle.distributed.ParallelEnv().dev_id)
-            # paddle.distributed.init_parallel_env()
 
     def _init_programs(self):
         self._main_program = fluid.Program()

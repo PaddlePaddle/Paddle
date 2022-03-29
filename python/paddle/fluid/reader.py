@@ -22,7 +22,7 @@ from .framework import Program, Variable, program_guard, default_main_program, d
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
-from .dataloader import BatchSampler, Dataset, IterableDataset, Pipeline
+from .dataloader import BatchSampler, Dataset, IterableDataset, DataPipeline
 from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind, default_collate_fn
 from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
@@ -327,6 +327,14 @@ class DataLoader(object):
                  timeout=0,
                  worker_init_fn=None,
                  persistent_workers=False):
+
+        if callable(dataset):
+            with DataPipeline() as pipeline:
+                outputs = func(*args, **kwargs)
+                pipeline.set_outputs(outputs)
+            pipeline.build()
+            return pipeline
+
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
@@ -433,14 +441,6 @@ class DataLoader(object):
 
     def __call__(self):
         return self.__iter__()
-
-    @staticmethod
-    def from_pipeline(func, *args, **kwargs):
-        with Pipeline() as pipeline:
-            outputs = func(*args, **kwargs)
-            pipeline.set_outputs(outputs)
-        pipeline.build()
-        return pipeline
 
     @staticmethod
     def from_generator(feed_list=None,
