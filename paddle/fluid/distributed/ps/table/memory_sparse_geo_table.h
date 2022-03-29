@@ -48,6 +48,8 @@ class MemorySparseGeoTable : public SparseTable {
   virtual int32_t save(const std::string& path, const std::string& param) {
     return 0;
   }
+  virtual int32_t Pull(TableContext& context) { return 0; }
+  virtual int32_t Push(TableContext& context) { return 0; }
   virtual int32_t flush() { return 0; }
   virtual int32_t shrink(const std::string& param) { return 0; }
   virtual void clear() { return; }

@@ -24,6 +24,8 @@ static constexpr const char *sIpuIndexAttr = "ipu_index";
 static constexpr const char *sIpuStageAttr = "ipu_stage";
 static constexpr const char *sMatmulSerializeFactor = "serialize_factor";
 static constexpr const char *sMatmulSerializeMode = "serialize_mode";
+static constexpr const char *sAvailMemAttribute = "__available_memory";
+static constexpr const char *sOpNamescope = "op_namescope";
 static constexpr const char *sOpIdentifyIdAttr = "op_identify_id";
 static constexpr const char *sDebugInfoId = "__debug_info_id";
 

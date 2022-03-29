@@ -115,6 +115,8 @@ int32_t CommonDenseTable::initialize_optimizer() {
     // optimizer_->set_global_lr(_global_lr);  //no use
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
+  } else if (name == "summary") {
+    optimizer_ = std::make_shared<DSummary>(common, &values_);
   } else {
     VLOG(0) << "init optimizer failed";
   }
@@ -125,6 +127,21 @@ int32_t CommonDenseTable::initialize_optimizer() {
 int32_t CommonDenseTable::set_global_lr(float* lr) {
   _global_lr = lr;
   optimizer_->set_global_lr(_global_lr);
+  return 0;
+}
+
+int32_t CommonDenseTable::Pull(TableContext& context) {
+  CHECK(context.value_type == Dense);
+  float* pull_values = context.pull_context.values;
+  return pull_dense(pull_values, context.num);
+}
+
+int32_t CommonDenseTable::Push(TableContext& context) {
+  CHECK(context.value_type == Dense);
+  if (context.pull_context.values != nullptr) {
+    const float* values = context.push_context.values;
+    return push_dense(values, context.num);
+  }
   return 0;
 }
 
@@ -324,19 +341,27 @@ int32_t CommonDenseTable::save(const std::string& path,
 
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
-  std::ostringstream os;
-  for (int x = 0; x < size; ++x) {
-    auto& varname = common.params()[x];
-    auto& dim = common.dims()[x];
-    VLOG(0) << "CommonDenseTable::save dim " << x << " size: " << dim;
-    for (int y = 0; y < dim; ++y) {
-      os.clear();
-      os.str("");
-      os << values_[x][y];
-      if (dim == param_dim_) {
-        result_buffer_param[y].emplace_back(std::move(os.str()));
-      } else {
-        result_buffer_fixed_len.emplace_back(std::move(os.str()));
+  if (_config.common().name() == "summary") {
+    for (int x = 0; x < param_dim_; ++x) {
+      result_buffer_param[x].emplace_back(
+          std::to_string(values_[param_idx_][x]));
+    }
+
+  } else {
+    std::ostringstream os;
+    for (int x = 0; x < size; ++x) {
+      auto& varname = common.params()[x];
+      auto& dim = common.dims()[x];
+      VLOG(3) << "CommonDenseTable::save dim " << x << " size: " << dim;
+      for (int y = 0; y < dim; ++y) {
+        os.clear();
+        os.str("");
+        os << values_[x][y];
+        if (dim == param_dim_) {
+          result_buffer_param[y].emplace_back(std::move(os.str()));
+        } else {
+          result_buffer_fixed_len.emplace_back(std::move(os.str()));
+        }
       }
     }
   }

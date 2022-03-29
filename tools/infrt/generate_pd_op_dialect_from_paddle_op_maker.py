@@ -191,10 +191,24 @@ def generate_all_ops_inputs_outputs_map(op_descs):
         ops_inputs_outputs_head_file.write(cpp_style_ops_outputs_map_str)
 
 
+def get_constraint(op_type, op_proto):
+    # 2.3.1 inputs
+    constraint = "NoSideEffect"
+
+    optional_input_num_ = 0
+    for input_ in op_proto[INPUTS]:
+        if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][input_][
+                INTERMEDIATE] != True and op_proto[INPUTS][input_][
+                    DISPENSABLE] == True:
+            optional_input_num_ += 1
+    if optional_input_num_ > 1:
+        constraint += ", AttrSizedOperandSegments"
+    return constraint
+
+
 # funtion to generate paddle op dialect file
 def convert_op_proto_into_mlir(op_descs):
     dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
-    custom_dialect_file = "custom_pdop.td"
 
     # 1. Head files
     comment_ = "/*===- TableGen'source file -----------------------------------------------===*\\\n\
@@ -237,9 +251,11 @@ def convert_op_proto_into_mlir(op_descs):
         if (op_type in skipped_op_list) or (op_type not in original_ops_):
             continue
         automatically_generated_op_dialect.append(op_type)
+        constraint_ = get_constraint(op_type, op_proto)
         # 2.1 OpDef
-        HEAD = 'def PD_{op_type_capitalize}Op : PD_Op<"{op_type}", [NoSideEffect]> {left_brace}\n'.format(
+        HEAD = 'def PD_{op_type_capitalize}Op : PD_Op<"{op_type}", [{constraint}]> {left_brace}\n'.format(
             op_type_capitalize=op_type.capitalize(),
+            constraint=constraint_,
             op_type=op_type,
             left_brace="{")
         SUMMARY = '  let summary = "{} op";\n'.format(op_type)
@@ -256,14 +272,22 @@ def convert_op_proto_into_mlir(op_descs):
         ARGUMENTS = ""
         if (len(op_proto[INPUTS]) > 0 or len(op_proto[ATTRS]) > 0):
             ARGUMENTS = "  let arguments = (ins "
+
             # 2.3.1 inputs
             for input_ in op_proto[INPUTS]:
                 if op_proto[INPUTS][input_][EXTRA] != True and op_proto[INPUTS][
                         input_][INTERMEDIATE] != True:
-                    if op_proto[INPUTS][input_][DUPLICABLE] != "true":
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                    if op_proto[INPUTS][input_][DISPENSABLE] != True:
+                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                            ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
+                        else:
+                            ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
                     else:
-                        ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
+                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor>:$" + input_ + ","
+                        else:
+                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor_Array>:$" + input_ + ","
+
             # unsupported:   BLOCK = 8;  BLOCKS = 10;
             attr_mlir_converter = {
                 0: 'SI32Attr',
@@ -315,8 +339,8 @@ def convert_op_proto_into_mlir(op_descs):
                         attr_type_ = attr_mlir_converter[op_proto[ATTRS][attr][
                             TYPE]]
                         if (attr_type_ in [
-                                'I32ArrayAttr', 'F32ArrayAttr', 'StrArrayAttr',
-                                'BoolArrayAttr', 'I64ArrayAttr'
+                                'StrAttr', 'I32ArrayAttr', 'F32ArrayAttr',
+                                'StrArrayAttr', 'BoolArrayAttr', 'I64ArrayAttr'
                         ]):
                             attr_list = attr_type_ + ":$" + attr + ","
                             ARGUMENTS += attr_list
@@ -332,7 +356,7 @@ def convert_op_proto_into_mlir(op_descs):
             for output_ in op_proto[OUTPUTS]:
                 if op_proto[OUTPUTS][output_][EXTRA] != True and op_proto[
                         OUTPUTS][output_][INTERMEDIATE] != True:
-                    if op_proto[OUTPUTS][output_][DUPLICABLE] != "true":
+                    if op_proto[OUTPUTS][output_][DUPLICABLE] != True:
                         outputs = outputs + "PD_Tensor:${},".format(output_)
                     else:
                         outputs = outputs + "PD_Tensor_Array:${},".format(
@@ -347,18 +371,12 @@ def convert_op_proto_into_mlir(op_descs):
             ops_mlir_file.write(RESULTS)
             ops_mlir_file.write("}\n")
 
+    with open(dst_dialect_file, 'a') as ops_mlir_file:
+        ops_mlir_file.write("\n#endif  // PD_OPS")
+
     print("Skipped ops num: " + str(len(skipped_op_list)))
     print("Automatically generated op dialects num: " + str(
         len(automatically_generated_op_dialect)))
-
-    # 3. custom op dialect and end of file
-    with open(dst_dialect_file, 'a') as ops_mlir_file:
-        with open(custom_dialect_file, 'r') as custom_ops_file:
-            custom_ops = custom_ops_file.readlines()
-            ops_mlir_file.writelines(custom_ops)
-
-        end_ = "\n#endif  // PD_OPS"
-        ops_mlir_file.write(end_)
 
 
 if __name__ == "__main__":

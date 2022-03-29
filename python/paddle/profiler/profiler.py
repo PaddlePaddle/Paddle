@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,29 +24,38 @@ from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
 
 from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import SortedKeys
+from .profiler_statistic import StatisticData, _build_table, SortedKeys
 
 
 class ProfilerState(Enum):
     r"""
-    Profiler state that can be specified to control profiler action.
+    ProfilerState is used to present the state of :ref:`Profiler <api_paddle_profiler_Profiler>` .
 
-    CLOSED: The profilers are closed.
-    READY:  The profilers are open, but the data will not be recorded.
-            This state is used for reducing overhead influence when profilers start.
-    RECORD: The profilers are open, and the data will be recorded.
-    RECORD_AND_RETURN: The profilers are open, and at the last batch of current profiler period, 
-            the collected data will be returned.
+    The meaning of each ProfilerState is as following
+
+    - **ProfilerState.CLOSED** : The profiler is closed, and no profiling data will be recorded.
+
+    - **ProfilerState.READY** : The profiler is open, but the data will not be recorded. This state is used for reducing overhead influence when profiler starts.
+
+    - **ProfilerState.RECORD** : The profiler is open, and the data will be recorded.
+
+    - **ProfilerState.RECORD_AND_RETURN** : The profiler is open, and this state stands for the last batch of "RECORD" state in current profiling period. The collected data will be returned in this state.
     """
     CLOSED = 0
     READY = 1
     RECORD = 2
-    RECORD_AND_RETURN = 3  # the last step of RECORD 
+    RECORD_AND_RETURN = 3  # the last step of RECORD
 
 
 class ProfilerTarget(Enum):
     r"""
-    Target device for profiling.
+    ProfilerTarget is used to specify target device for :ref:`profiling <api_paddle_profiler_Profiler>` . Only CPU and GPU are supported currently.
+
+    The meaning of each ProfilerState is as following
+
+    - **ProfilerTarget.CPU** : Profile events on CPU.
+
+    - **ProfilerTarget.GPU** : Profile events on GPU.
     """
     CPU = 0
     GPU = 1
@@ -59,35 +68,49 @@ def make_scheduler(*,
                    repeat: int=0,
                    skip_first: int=0) -> Callable:
     r"""
-    Return a scheduler function, which scheduler the state according to the setting.
+    Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
 
-    (CLOSED)  (CLOSED)    (CLOSED)  (READY)    (RECORD,last RETURN)      (CLOSED)
-    START -> skip_first -> closed -> ready    ->    record       ->      END
-                            |                        |
-                            |                        | (if has_repeated < repeat)
-                            - - - - - - - - - - - -
-    Note that repeat <= 0 means the cycle will continue until the profiler exits.    
+    .. code-block:: text
 
-    Parameters:
+        (CLOSED)  (CLOSED)    (CLOSED)  (READY)    (RECORD,last RETURN)      (CLOSED)
+        START -> skip_first -> closed -> ready    ->    record       ->      END
+                                |                        |
+                                |                        | (if has_repeated < repeat)
+                                - - - - - - - - - - - -
+        Note that repeat <= 0 means the cycle will continue until the profiler exits.
+
+    Args:
         closed(int): The number of steps in state ProfilerState.CLOSED.
-        ready(int):  The number of steps in state ProfilerState.READY. 
-        record(int): The number of steps in state ProfilerState.RECORD.    
-        repeat(int): The number of cycles to repeat above state transform.
-        skip_first(int): The number of first steps to drop, not participate in the state transform.
+        ready(int):  The number of steps in state ProfilerState.READY.
+        record(int): The number of steps in state ProfilerState.RECORD, and the state in last step will be set as ProfilerState.RECORD_AND_RETURN.
+        repeat(int, optional): The number of cycles to repeat above state transform. Default value is 0, which means it will repeat this cycle until profiler exits.
+        skip_first(int, optional): The number of first steps to drop, not participate in the state transform, and at ProfilerState.CLOSED state. Default value is 0.
 
     Returns:
-        A scheduler function, conforms to above state transform setting.
+        A scheduler function, conforms to above state transform setting. The function will takes one parameter step_num, and returns corresponding ProfilerState.
 
     Examples:
         1. profiling range [2, 5]
-        batch 0: closed, batch 1: ready, batch [2, 5] record
-        .. code-block:: python
-        make_scheduler(closed=1, ready=1, record=4, repeat=1)
+
+        Assume batch 0: closed, batch 1: ready, batch [2, 5] record
+
+            .. code-block:: python
+                :name: code-example1
+
+                import paddle.profiler as profiler
+                profiler.make_scheduler(closed=1, ready=1, record=4, repeat=1)
+
+
         2. profiling range [3,6], [9,12], [15,18]...
-        batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
-        .. code-block:: python
-        make_scheduler(closed=1, ready=1, record=4, skip_first=1)
+
+        Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
+
+            .. code-block:: python
+                :name: code-example2
+
+                import paddle.profiler as profiler
+                profiler.make_scheduler(closed=1, ready=1, record=4, skip_first=1)
     """
 
     def getScheduleState(step: int) -> ProfilerState:
@@ -129,24 +152,31 @@ def export_chrome_tracing(dir_name: str,
                           worker_name: Optional[str]=None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
-    The output file will be saved in directory 'dir_name', and file name will be set as worker_name.
+    The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
     if worker_name is not set, the default name is [hostname]_[pid].
 
-    Parameters:
+    Args:
         dir_name(str): Directory to save profiling data.
-        worker_name(Optional[str]): Prefix of the file name saved, default is [hostname]_[pid].
+        worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
+    
+    Returns:
+        A callable, which takes a Profiler object as parameter and calls its export method to save data to chrome tracing format file.
 
     Examples:
+        The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
+
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = (3, 10),
-                            on_trace_ready = profiler.export_chrome_tracing('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+            :name: code-example1
+
+            # required: gpu
+            import paddle.profiler as profiler
+            with profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 10),
+                    on_trace_ready=profiler.export_protobuf('./log')) as p:
+                for iter in range(10):
+                    #train()
+                    p.step()
     """
     if not os.path.exists(dir_name):
         try:
@@ -172,24 +202,31 @@ def export_chrome_tracing(dir_name: str,
 def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
-    The output file will be saved in directory 'dir_name', and file name will be set as worker_name.
+    The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
     if worker_name is not set, the default name is [hostname]_[pid].
 
-    Parameters:
+    Args:
         dir_name(str): Directory to save profiling data.
-        worker_name(Optional[str]): Prefix of the file name saved, default is [hostname]_[pid].
+        worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
+
+    Returns:
+        A callable, which takes a Profiler object as parameter and calls its export method to save data to protobuf file.
 
     Examples:
+        The return value can be used as parameter ``on_trace_ready`` in :ref:`Profiler <api_paddle_profiler_Profiler>` .
+
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = (3, 10),
-                            on_trace_ready = profiler.export_protobuf('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+            :name: code-example1
+
+            # required: gpu
+            import paddle.profiler as profiler
+            with profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 10),
+                    on_trace_ready = profiler.export_protobuf('./log')) as p:
+                for iter in range(10):
+                    #train()
+                    p.step()
     """
     if not os.path.exists(dir_name):
         try:
@@ -216,58 +253,69 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     r"""
     Get the current supported profiler target in the system.
     """
-    if paddle.device.is_compiled_with_cuda():
+    if _Profiler.is_cupti_supported():
         return [ProfilerTarget.CPU, ProfilerTarget.GPU]
     return [ProfilerTarget.CPU]
 
 
 class Profiler:
     r"""
-    Profiler context manager, user interface to manage profile process.
+    Profiler context manager, user interface to manage profiling process to start, stop, export profiling data and print summary table.
 
-    Parameters:
-        targets (iterable): list of tracing targets, currently supported values:
-        ``paddle.profiler.ProfilerTarget.CPU``,
-        ``paddle.profiler.ProfilerTarget.GPU``.
-        scheduler (callable or tuple): If it is a callable object, it takes a step number as parameter and return the corresponding ``ProfilerState``. 
-            If not provided, the default sheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
+    Args:
+        targets (list, optional): specify target devices to profile, and all existing and supported devices will be chosen by default. Currently supported values, :ref:`ProfilerTarget.CPU <api_paddle_profiler_ProfilerTarget>` and :ref:`ProfilerTarget.GPU <api_paddle_profiler_ProfilerTarget>` .
+        scheduler (Callable|tuple, optional): If it is a callable object, it takes a step number as parameter and return the corresponding :ref:`ProfilerState <api_paddle_profiler_ProfilerState>`. This callable object can be generated by :ref:`make_scheduler <api_paddle_profiler_make_scheduler>` function.
+            If not provided (None), the default scheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
             which means profiling range [start_batch, end_batch).
-        on_trace_ready (callable): callable object, takes the Profiler object as parameter, which provides a way for users to do post-processing.
-            This callable object will be called when ``sheduler`` returns ``ProfilerState.RECORD_AND_RETURN``.
-            
+        on_trace_ready (Callable, optional): Callable object, serves as callback function, and takes the Profiler object as parameter, which provides a way for users to do post-processing.
+            This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
+
     Examples:
-        1. profiling range [2, 5)
-        .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = (2, 5),
-                            on_trace_ready = profiler.export_chrome_tracing('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+        1. profiling range [2, 5).
+
+            .. code-block:: python
+                :name: code-example1
+
+                # required: gpu
+                import paddle.profiler as profiler
+                with profiler.Profiler(
+                        targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                        scheduler = (2, 5),
+                        on_trace_ready = profiler.export_chrome_tracing('./log')) as p:
+                    for iter in range(10):
+                        #train()
+                        p.step()
+
         2. profiling range [2,4], [7, 9], [11,13]
-        .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
-                            on_trace_ready = profiler.export_chrome_tracing('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+
+            .. code-block:: python
+                :name: code-example2
+
+                # required: gpu
+                import paddle.profiler as profiler
+                with profiler.Profiler(
+                        targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                        scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
+                        on_trace_ready = profiler.export_chrome_tracing('./log')) as p:
+                    for iter in range(10):
+                        #train()
+                        p.step()
+
         3. Use profiler without context manager, and use default parameters
-        .. code-block:: python
-        import paddle.profiler as profiler
-        p = profiler.Profiler()
-        p.start()
-        for iter in range(N):
-            train()
-            p.step()
-        p.stop()
-        p.summary()
+
+            .. code-block:: python
+                :name: code-example3
+
+                # required: gpu
+                import paddle.profiler as profiler
+                p = profiler.Profiler()
+                p.start()
+                for iter in range(10):
+                    #train()
+                    p.step()
+                p.stop()
+                p.summary()
+
     """
 
     def __init__(
@@ -334,7 +382,23 @@ class Profiler:
     def start(self):
         r'''
         Start profiler and enter the first profiler step(0).
-        State transformed from CLOSED to self.current_state and trigger corresponding action. 
+        State transformed from CLOSED to self.current_state and trigger corresponding action.
+
+        Examples:
+            .. code-block:: python
+                :name: code-example4
+
+                # required: gpu
+                import paddle.profiler as profiler
+                prof = profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (1, 9),
+                    on_trace_ready = profiler.export_chrome_tracing('./log'))
+                prof.start()
+                for iter in range(10):
+                    #train()
+                    prof.step()
+                prof.stop()
         '''
         # CLOSED -> self.current_state
         if self.current_state == ProfilerState.READY:
@@ -354,6 +418,22 @@ class Profiler:
         r'''
         Stop profiler and State transformed from self.current_state to CLOSED.
         Trigger corresponding action and post-process profiler result using self.on_trace_ready if result exists.
+
+        Examples:
+            .. code-block:: python
+                :name: code-example5
+
+                # required: gpu
+                import paddle.profiler as profiler
+                prof = profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (1, 7),
+                    on_trace_ready = profiler.export_chrome_tracing('./log'))
+                prof.start()
+                for iter in range(10):
+                    #train()
+                    prof.step()
+                prof.stop()
         '''
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
@@ -375,6 +455,23 @@ class Profiler:
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
+
+        Examples:
+            .. code-block:: python
+                :name: code-example6
+
+                # required: gpu
+                import paddle.profiler as profiler
+                prof = profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 7),
+                    on_trace_ready = profiler.export_chrome_tracing('./log'))
+
+                prof.start()
+                for iter in range(10):
+                    #train()
+                    prof.step()
+                prof.stop()
         """
         if self.record_event:
             self.record_event.end()
@@ -447,7 +544,28 @@ class Profiler:
 
     def export(self, path="", format="json"):
         r"""
-        Exports the tracing data in Chrome tracing data format.
+        Exports the tracing data to file.
+
+        Args:
+            path(str): file path of the output.
+            format(str, optional): output format, can be chosen from ['json', 'pb], 'json' for chrome tracing and 'pb' for protobuf, default value is "json".
+
+
+        Examples:
+            .. code-block:: python
+                :name: code-example7
+
+                # required: gpu
+                import paddle.profiler as profiler
+                prof = profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 7))
+                prof.start()
+                for iter in range(10):
+                    #train()
+                    prof.step()
+                prof.stop()
+                prof.export(path="./profiler_data.json", format="json")
         """
         if self.profiler_result:
             self.profiler_result.save(path, format)
@@ -458,12 +576,39 @@ class Profiler:
                 thread_sep=False,
                 time_unit='ms'):
         r"""
-        Print the Summary table.
+        Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
 
-        Parameters:
-            sorted_by: how to rank the op table items.
-            detail: expand each operator detail information.
-            thread_sep: print op table each thread.
-            time_unit: can be chosen form ['s', 'ms', 'us', 'ns']
+        Args:
+            sorted_by( :ref:`SortedKeys <api_paddle_profiler_SortedKeys>` , optional): how to rank the op table items, default value is SortedKeys.CPUTotal.
+            op_detail(bool, optional): expand each operator detail information, default value is True.
+            thread_sep(bool, optional): print op table each thread, default value is False.
+            time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
+
+        Examples:
+            .. code-block:: python
+                :name: code-example8
+
+                # required: gpu
+                import paddle.profiler as profiler
+                prof = profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                    scheduler = (3, 7),
+                    on_trace_ready = profiler.export_chrome_tracing('./log'))
+                prof.start()
+                for iter in range(10):
+                    #train()
+                    prof.step()
+                prof.stop()
+                prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
-        pass
+        if self.profiler_result:
+            statistic_data = StatisticData(
+                self.profiler_result.get_data(),
+                self.profiler_result.get_extra_info())
+            print(
+                _build_table(
+                    statistic_data,
+                    sorted_by=sorted_by,
+                    op_detail=op_detail,
+                    thread_sep=thread_sep,
+                    time_unit=time_unit))
