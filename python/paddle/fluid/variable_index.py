@@ -245,21 +245,10 @@ def replace_none(item):
     return new_item, none_axes
 
 
-def is_integer_or_scalar_tensor(ele):
+def is_scalar_tensor(ele):
     from .framework import Variable
-    if isinstance(ele, int):
-        return True
-    elif isinstance(ele, Variable):
-        if len(ele.shape) == 1 and ele.shape[0] == 1:
-            return True
-    return False
-
-
-def is_bool_tensor(ele):
-    from .framework import Variable
-    if isinstance(ele, Variable) and ele.dtype == paddle.bool:
-        return True
-    return False
+    return isinstance(ele,
+                      Variable) and len(ele.shape) == 1 and ele.shape[0] == 1
 
 
 def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
@@ -311,9 +300,11 @@ def _getitem_impl_(var, item):
     slice_info = SliceInfo()
 
     for dim, slice_item in enumerate(item):
-        if isinstance(slice_item, int):
-            if var.shape[dim] is not None and var.shape[
-                    dim] >= 0 and slice_item >= var.shape[dim]:
+        if isinstance(slice_item, int) or (is_scalar_tensor(slice_item) and
+                                           len(item) > 1):
+            if isinstance(slice_item,
+                          int) and var.shape[dim] is not None and var.shape[
+                              dim] >= 0 and slice_item >= var.shape[dim]:
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
                 # throws an IndexError, then stop. The var[0], var[1] will
@@ -529,8 +520,8 @@ def _setitem_impl_(var, item, value):
     slice_info = SliceInfo()
     dim = 0
     for _, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
-                slice_item):
+        if isinstance(slice_item, int) or (is_scalar_tensor(slice_item) and
+                                           len(item) > 1):
             decrease_axes.append(dim)
             start = slice_item
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
