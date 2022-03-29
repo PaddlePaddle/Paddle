@@ -458,6 +458,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
 
   if (!instr_node.InplaceBackMap().empty()) {
+    platform::RecordEvent inplaceback_event(
+        "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
     for (auto& p : m) {
@@ -493,6 +495,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  platform::RecordEvent record_prepare(
+      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
   // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
   // those for the next step
   auto atomic_deps = async_work_queue_->AtomicDeps();
@@ -500,6 +504,7 @@ void InterpreterCore::ExecuteInstructionList(
 
   async_work_queue_->PrepareAtomicDeps(dependecy_count_);
   async_work_queue_->PrepareAtomicVarRef(global_scope_->VecMetaInfo());
+  record_prepare.End();
 
   unfinished_op_numer_ = vec_instr.size();
 
@@ -536,6 +541,8 @@ void InterpreterCore::RunNextInstructions(
     const Instruction& instr, std::queue<size_t>* reserved_next_ops,
     std::vector<std::atomic<size_t>>* atomic_deps,
     std::vector<std::atomic<size_t>>* atomic_var_ref) {
+  platform::RecordEvent record("RunNextInstructions",
+                               platform::TracerEventType::UserDefined, 10);
   VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
