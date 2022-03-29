@@ -123,6 +123,9 @@ TEST(AutoTune, sum) {
   auto tuner = phi::MakeAutoTune(Algo<4>);
   tuner.AddAlgo(phi::MakeCallback(Algo<2>));
   tuner.AddAlgo(phi::MakeCallback(Algo<1>));
+
+  /* The 1st ctx works for ctx.Wait(),
+     the 2nd is just the param of call_back function. */
   auto best_call_back =
       tuner.PickBestAlgo(ctx, ctx, d_in1, d_in2, N, threads, blocks);
 
