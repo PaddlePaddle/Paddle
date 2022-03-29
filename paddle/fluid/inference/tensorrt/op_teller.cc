@@ -30,11 +30,6 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-// TODO(baoachun) The group_norm trt plugin will check input's dim
-// not -1 failed when dynamic shape mode.
-// #if IS_TRT_VERSION_GE(7130)
-//     teller_set.insert("group_norm");
-// #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
@@ -175,7 +170,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "group_norm"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -421,26 +417,27 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
-    if (op_type == "softmax") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
+
+    if (op_type == "group_norm") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "The group_norm op do not supported dynamic shape mode in "
+                   "tensorrt.";
         return false;
       }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-    }
-    if (op_type == "group_norm") {
-      if (!with_dynamic_shape) return false;
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
-      if (has_attrs == false) return false;
+      if (!has_attrs) {
+        VLOG(3) << "The required attribute of group_norm op was not found.";
+        return false;
+      }
 
-      auto registry = GetPluginRegistry();
-      if (registry == nullptr) return false;
+      std::string layout =
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout"));
+      if (layout != "NCHW") {
+        VLOG(3) << "The group_norm op only supports NCHW layout in tensorrt.";
+        return false;
+      }
     }
+
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
         return false;
@@ -456,6 +453,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
+
     if (op_type == "transpose2" || op_type == "transpose") {
       if (!desc.HasAttr("axis")) {
         return false;

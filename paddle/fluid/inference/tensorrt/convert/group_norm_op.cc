@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -29,89 +30,48 @@ class GroupNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid group_norm op";
+    VLOG(3) << "convert a fluid group_norm op to tensorrt static shape plugin";
 
     framework::OpDesc op_desc(op, nullptr);
-
-    auto* input_itensor = engine_->GetITensor(op_desc.Input("X").front());
-
+    auto* x = engine_->GetITensor(op_desc.Input("X").front());
     int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
-    std::string scale_name = op_desc.Input("Scale").front();
-    std::string bias_name = op_desc.Input("Bias").front();
+    auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
+    auto* bias_var = scope.FindVar(op_desc.Input("Bias")[0]);
+    PADDLE_ENFORCE_NOT_NULL(
+        scale_var,
+        platform::errors::InvalidArgument(
+            "Input [Scale] of group_norm op converter should not be null."));
+    PADDLE_ENFORCE_NOT_NULL(
+        bias_var,
+        platform::errors::InvalidArgument(
+            "Input [Bias] of group_norm op converter should not be null."));
+    auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
+    auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        scale_tensor->numel(), bias_tensor->numel(),
+        platform::errors::InvalidArgument(
+            "Num of input [Scale] and [Bias] of group_norm op converter "
+            "should be equal, but Scale num = %ld and Bias num = %ld.",
+            scale_tensor->numel(), bias_tensor->numel()));
 
-    // get the presistable var's data
-    auto get_persistable_data = [&](const std::string& var_name,
-                                    framework::DDim* dims) -> float* {
-      auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
-      (*dims) = temp_tensor->dims();
-
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor, false);
-      return temp_data;
-    };
-
-    framework::DDim scale_dims;
-    framework::DDim bias_dims;
-    float* scale_data = get_persistable_data(scale_name, &scale_dims);
-    float* bias_data = get_persistable_data(bias_name, &bias_dims);
-
-    int64_t scale_numel = phi::product(scale_dims);
-    int64_t bias_numel = phi::product(bias_dims);
-
-    TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
-                                         static_cast<void*>(scale_data),
-                                         static_cast<size_t>(scale_numel)};
-    TensorRTEngine::Weight bias_weights{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(bias_data),
-                                        static_cast<size_t>(bias_numel)};
-
-    nvinfer1::Dims scale_nv_dims;
-    nvinfer1::Dims bias_nv_dims;
-    scale_nv_dims.nbDims = scale_dims.size();
-    bias_nv_dims.nbDims = bias_dims.size();
-    for (int i = 0; i < scale_dims.size(); i++) {
-      scale_nv_dims.d[i] = scale_dims.at(i);
-    }
-    for (int i = 0; i < bias_dims.size(); i++) {
-      bias_nv_dims.d[i] = bias_dims.at(i);
+    auto* scale_t = scale_tensor->data<float>();
+    auto* bias_t = bias_tensor->data<float>();
+    std::vector<float> scale_v;
+    std::vector<float> bias_v;
+    for (int i = 0; i < scale_tensor->numel(); i++) {
+      scale_v.push_back(scale_t[i]);
+      bias_v.push_back(bias_t[i]);
     }
 
-    auto* scale_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_nv_dims,
-                                             scale_weights.get());
-    auto* bias_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, bias_nv_dims,
-                                            bias_weights.get());
-
-    std::vector<nvinfer1::ITensor*> plugin_inputs;
-    plugin_inputs.emplace_back(input_itensor);
-    plugin_inputs.emplace_back(scale_layer->getOutput(0));
-    plugin_inputs.emplace_back(bias_layer->getOutput(0));
-
-    const std::vector<nvinfer1::PluginField> fields{
-        {"eps", &epsilon, nvinfer1::PluginFieldType::kFLOAT32, 1},
-        {"num_groups", &groups, nvinfer1::PluginFieldType::kINT32, 1},
-    };
-
-    nvinfer1::PluginFieldCollection* plugin_collections =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collections) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
-    plugin_collections->nbFields = static_cast<int>(fields.size());
-    plugin_collections->fields = fields.data();
-
-    auto creator =
-        GetPluginRegistry()->getPluginCreator("GroupNormalizationPlugin", "1");
-    auto group_norm_plugin =
-        creator->createPlugin("GroupNormalizationPlugin", plugin_collections);
-    free(plugin_collections);
-
-    auto group_norm_plugin_layer = engine_->network()->addPluginV2(
-        plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    plugin::GroupNormPlugin* plugin = new plugin::GroupNormPlugin(
+        epsilon, groups, scale_v, bias_v, with_fp16);
+    auto* layer = engine_->AddPluginV2Ext(&x, 1, plugin);
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(group_norm_plugin_layer, "group_norm",
-                             {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "group_norm", {output_name}, test_mode);
   }
 };
 
