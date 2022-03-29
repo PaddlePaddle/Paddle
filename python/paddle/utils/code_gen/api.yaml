@@ -224,6 +224,28 @@
 
 # BroadcastTensorsInferMeta
 
+# bincount
+# - api : bincount
+#   args : (Tensor x, Tensor weight, int minlength)
+#   output : Tensor
+#   infer_meta :
+#     func : BincountInferMeta
+#   kernel :
+#     func : bincount
+#   optional : weight
+
+# expand_as
+# - api : expand_as
+#   args : (Tensor x, Tensor y, int[] target_shape)
+#   output : Tensor
+#   infer_meta :
+#     func : ExpandAsInferMeta
+#   kernel :
+#     func : expand_as
+#   optional : y
+#   # backward : expand_as_grad
+#   # optional : y
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -402,16 +424,6 @@
     func : UnchangedInferMeta
   kernel :
     func : bernoulli
-
-# bincount
-- api : bincount
-  args : (Tensor x, Tensor weight, int minlength)
-  output : Tensor
-  infer_meta :
-    func : BincountInferMeta
-  kernel :
-    func : bincount
-  optional : weight
 
 # bitwise_and
 - api : bitwise_and
@@ -684,18 +696,6 @@
   kernel :
     func : erfinv
   backward : erfinv_grad
-
-# expand_as
-- api : expand_as
-  args : (Tensor x, Tensor y, int[] target_shape)
-  output : Tensor
-  infer_meta :
-    func : ExpandAsInferMeta
-  kernel :
-    func : expand_as
-  optional : y
-  # backward : expand_as_grad
-  # optional : y
 
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
