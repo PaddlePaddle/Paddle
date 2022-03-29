@@ -19,14 +19,15 @@ import json
 import yaml
 from typing import List, Dict, Any
 
-skipped_phi_api_list_file = "./skipped_phi_api.json"
+skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
+api_yaml_file = "/python/paddle/utils/code_gen/api.yaml"
 
 
 def get_skipped_kernel_list():
     skiped_kernel_list = []
     with open(skipped_phi_api_list_file, 'r') as f:
         skiped_api_list = json.load(f)
-    infer_meta_data = get_api_yaml_info("../../")
+    infer_meta_data = get_api_yaml_info(api_yaml_file)
     for api in infer_meta_data:
         if "kernel" not in api or "infer_meta" not in api:
             continue
@@ -66,7 +67,7 @@ def parse_args():
 
 
 def get_api_yaml_info(file_path):
-    f = open(file_path + "/python/paddle/utils/code_gen/api.yaml", "r")
+    f = open(file_path, "r")
     cont = f.read()
     return yaml.load(cont, Loader=yaml.FullLoader)
 
@@ -361,7 +362,9 @@ def gen_phi_kernel_register_code(resources: List[List[str]],
 
 if __name__ == "__main__":
     args = parse_args()
-    infer_meta_data = get_api_yaml_info(args.paddle_root_path)
+    skipped_phi_api_list_file = args.paddle_root_path + skipped_phi_api_list_file
+    api_yaml_file = args.paddle_root_path + api_yaml_file
+    infer_meta_data = get_api_yaml_info(api_yaml_file)
     kernel_data = get_kernel_info(args.kernel_info_file)
     info_meta_wrap_data = get_infermeta_info(args.infermeta_wrap_file)
     attr_data = get_attr_info(args.attr_info_file)
