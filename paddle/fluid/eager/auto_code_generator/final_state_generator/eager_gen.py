@@ -650,8 +650,12 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         num_backward_inputs = len(forward_outputs_position_map.keys())
         num_backward_outputs = len(forward_inputs_position_map.keys())
         grad_node_name = GetGradNodeName(forward_api_name)
-
-        node_construction_str = f"            auto grad_node = std::make_shared<{grad_node_name}>({num_backward_inputs}, {num_backward_outputs});"
+        # NOTE(Aurelius74): DO NOT use make_shared here. Because some Node contains experimental::Scalar
+        # which contains "complex128" as data. "complex128" is memory-aligned manually. But make_shared
+        # request MEMALIGN for allocation (Maybe).
+        # See https://stackoverflow.com/questions/31228656/how-can-shared-ptr-disrupt-alignment
+        # and https://github.com/MRtrix3/mrtrix3/issues/957
+        node_construction_str = f"            auto grad_node = std::shared_ptr<{grad_node_name}>(new {grad_node_name}({num_backward_inputs}, {num_backward_outputs}));"
 
         # SetAttributes
         set_attributes_list = []
