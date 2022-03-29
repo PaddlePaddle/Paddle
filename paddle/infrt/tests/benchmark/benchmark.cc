@@ -56,9 +56,19 @@ void benchmark(size_t layers, size_t num) {
   auto* input_data = reinterpret_cast<float*>(input->data());
   for (int i = 0; i < input->numel(); i++) input_data[i] = 1.0;
 
+  predictor->Run();
+
+  ::phi::DenseTensor* output = predictor->GetOutput(0);
+  float* output_data = reinterpret_cast<float*>(output->data());
+  float sum;
+  for (int64_t i = 0; i < output->numel(); ++i) {
+    sum += output_data[i];
+  }
+  std::cout << "sum = " << sum << '\n';
+
   tests::BenchmarkStats timer;
 
-  for (size_t i = 0; i < 10; ++i) {
+  for (size_t i = 0; i < 9; ++i) {
     predictor->Run();
   }
 

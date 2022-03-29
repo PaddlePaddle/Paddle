@@ -46,6 +46,28 @@ void benchmark(size_t layers, size_t num) {
   auto input_t = predictor->GetInputHandle(input_names[0]);
   input_t->Reshape(input_shape);
   input_t->mutable_data<float>(paddle_infer::PlaceType::kCPU);
+  float* in_p = input_t->mutable_data<float>(paddle_infer::PlaceType::kCPU);
+  for (size_t i = 0; i < num * num; i++) in_p[i] = 1.0;
+
+  predictor->Run();
+
+  auto output_t = predictor->GetInputHandle(output_names[0]);
+  int32_t numel{1};
+  for (auto n : output_t->shape()) {
+    numel = numel * n;
+  }
+  std::vector<float> output(numel);
+
+  float* out_p = output.data();
+  output_t->CopyToCpu(out_p);
+
+  float sum{0};
+
+  for (auto n : output) {
+    sum = sum + n;
+  }
+
+  std::cout << "sum = " << sum << '\n';
 
   infrt::tests::BenchmarkStats timer;
 
