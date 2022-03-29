@@ -317,7 +317,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
-    if not tensor._is_dense_tensor_hold_allocation():
+    if not tensor._is_initialized():
         return "Tensor(Not initialized)"
 
     if tensor.is_sparse():
