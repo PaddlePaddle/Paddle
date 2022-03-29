@@ -1424,7 +1424,7 @@ def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
             Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
         scores(Tensor): Scores corresponding to boxes, it's a 1D-Tensor with 
             shape of [num_boxes]. The data type is float32 or float64.
-        class_idxs(Tensor[N]): Category indices corresponding to boxes. 
+        class_idxs(Tensor): Category indices corresponding to boxes. 
             it's a 1D-Tensor with shape of [num_boxes]. The data type is int64.
         categories(List): A list of unique id of all categories. The data type is int64.
         iou_threshold(float32): IoU threshold for determine overlapping boxes.
