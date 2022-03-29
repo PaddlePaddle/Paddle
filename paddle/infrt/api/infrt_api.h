@@ -17,13 +17,13 @@
 #include <string>
 #include <vector>
 
-#include "paddle/infrt/tensor/dense_host_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 
 class InfRtConfig {
   std::string model_dir_;
-  std::string mlir_path_;
+  std::string param_dir_;
   std::vector<std::string> shared_libs_;
 
  public:
@@ -31,8 +31,8 @@ class InfRtConfig {
   void set_model_dir(const std::string& model_dir) { model_dir_ = model_dir; }
   const std::string& model_dir() const { return model_dir_; }
 
-  void set_mlir_path(const std::string& mlir_path) { mlir_path_ = mlir_path; }
-  const std::string& mlir_path() const { return mlir_path_; }
+  void set_param_dir(const std::string& param_dir) { param_dir_ = param_dir; }
+  const std::string& param_dir() const { return param_dir_; }
 
   void set_shared_libs(const std::vector<std::string>& shared_libs) {
     shared_libs_ = shared_libs;
@@ -49,15 +49,15 @@ class InfRtPredictor {
   void Run();
   int Init(const InfRtConfig& config);
   int GetInputNum();
-  tensor::DenseHostTensor* GetInput(int i);
+  ::phi::DenseTensor* GetInput(int i);
   int GetOutputNum();
-  tensor::DenseHostTensor* GetOutput(int i);
+  ::phi::DenseTensor* GetOutput(int i);
 
  protected:
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };
 
-std::shared_ptr<InfRtPredictor> CreateInfRtPredictor(const InfRtConfig& config);
+std::unique_ptr<InfRtPredictor> CreateInfRtPredictor(const InfRtConfig& config);
 
 }  // namespace infrt

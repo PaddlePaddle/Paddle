@@ -141,7 +141,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       value_t.mutable_data<T>(value_dims, ctx.GetPlace());
       auto value_name =
           GetValueName(framework::TransToProtoVarType(in->dtype()));
-      CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
+      CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
       value_t.Resize(value_dims);
     }
 

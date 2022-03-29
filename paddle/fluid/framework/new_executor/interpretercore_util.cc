@@ -685,6 +685,22 @@ std::map<int, std::list<int>> build_op_downstream_map(
       }
     }
   }
+
+  // add dependences for random op, make sure that the random op is scheduled
+  // sequentially
+  const std::set<std::string> random_op_set = {
+      "bernoulli",      "poisson", "multinomial", "gaussian_random",
+      "uniform_random", "randint", "randperm",    "exponential"};
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
   return std::move(get_downstream_map(op2dependences));
 }
 
