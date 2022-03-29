@@ -219,6 +219,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_reduce", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
+    {"assign", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
@@ -245,4 +246,13 @@ std::map<std::string, std::pair<std::string, std::string>> view_op_map = {
     {"unsqueeze2", {"X", "Out"}},
     {"reshape2", {"X", "Out"}},
     {"flatten_contiguous_range", {"X", "Out"}},
+};
+
+// NOTE(pangyoki): Special inplace ops that are not supported in temporary.
+// The input and output of some inplace ops are special, such as
+// duplicate input. These inplace ops have no usage scenarios and
+// are not supported in temporary.
+std::set<std::string> special_inplace_op_set = {
+    "sum",     // `sum` op has duplicate input
+    "assign",  // output of `assign` op is in `op_passing_outs_map`
 };
