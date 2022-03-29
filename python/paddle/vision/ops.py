@@ -1355,10 +1355,44 @@ class ConvNormActivation(Sequential):
 
 def nms(boxes, threshold):
     """
-    Compute non-maximum suppression
+    This operator implements non-maximum suppression. Non-maximum suppression (NMS)
+    is used to select one box out of many overlapping boxes in object detection. 
+    Boxes with IoU > threshold will be considered as overlapping boxes, 
+    just one with highest score can be kept. Here IoU is Intersection Over Union, 
+    which is computes by:
+
+    .. math::
+        IoU = \frac{intersection_area(box1, box2)}{union_area(box1, box2)}
+
+    
     Args:
-        boxes(Tensor[N, 4]): The input boxes data to be computed. The expected format of one box is ``x1, x2, y1, y2``. Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
-        threshold(float32): Boxes with IoU > iou_threshold will be considered as overlapping boxes, Just one of them can be kept.
+        boxes(Tensor): The input boxes data to be computed,
+            its a 2D-Tensor with the shape of [num_boxes, 4] and boxes should be 
+            sorted by their confidence scores. The data type is float32 or float64. 
+            Given as [[x1, y1, x2, y2], …],  (x1, y1) is the top left coordinates, 
+            and (x2, y2) is the bottom right coordinates. 
+            Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
+        threshold(float32): IoU threshold for determine overlapping boxes.
+
+    Returns:
+        Tensor: 1D-Tensor with the shape of [num_boxes]. Indices of boxes kept by NMS.
+
+    Examples:
+        .. code-block:: python
+                        import paddle
+                        import numpy as np
+
+                        boxes = np.random.rand(4, 4).astype('float32')
+                        boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
+                        boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
+
+                        # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
+                        # [0.74385834 0.8236293  1.4048514  1.3868837 ]
+                        # [0.39436954 0.18261194 1.3834884  0.38191944]
+                        # [0.9617653  0.40089446 1.2982695  1.398673  ]]
+
+                        out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
+                        # [0, 2, 0, 0])
     """
     if _non_static_mode():
         return _C_ops.nms(boxes, 'iou_threshold', threshold)
@@ -1375,18 +1409,56 @@ def nms(boxes, threshold):
 
 def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
     """
-    Perform non-maximum suppression with a batched style, which means NMS will be applied to each category respectively.
+    Perform non-maximum suppression (NMS) with a batched style, 
+    which means NMS will be applied to each category respectively.
+    Please refer to :ref:`api_paddle_vision_ops_nms` to know more about NMS.
 
     Args:
-        boxes(Tensor[N, 4]):  The input boxes data to be computed. The expected format of one box is ``x1, x2, y1, y2``. Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
-        scores(Tensor[N]): Scores corresponding to boxes.
-        class_idxs(Tensor[N]): Category indices corresponding to boxes.
-        categories(List): A list of unique id of all categories.
-        iou_threshold(float32): Boxes with IoU > iou_threshold will be considered as overlapping boxes, Just one of them can be kept.
-        top_k(int64): The top K boxes who has higher score and kepy by nms preds to consider. top_k should be smaller equal than N.
+        boxes(Tensor):  The input boxes data to be computed,
+            it's a 2D-Tensor with the shape of [num_boxes, 4]. 
+            The data type is float32 or float64. 
+            Given as [[x1, y1, x2, y2], …],  (x1, y1) is the top left coordinates, 
+            and (x2, y2) is the bottom right coordinates. 
+            Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
+        scores(Tensor): Scores corresponding to boxes, it's a 1D-Tensor with 
+            shape of [num_boxes]. The data type is float32 or float64.
+        class_idxs(Tensor[N]): Category indices corresponding to boxes. 
+            it's a 1D-Tensor with shape of [num_boxes]. The data type is int64.
+        categories(List): A list of unique id of all categories. The data type is int64.
+        iou_threshold(float32): IoU threshold for determine overlapping boxes.
+        top_k(int64): The top K boxes who has higher score and kept by NMS preds to 
+            consider. top_k should be smaller equal than num_boxes.
 
     Returns:
         Tensor: Indices of boxes kept by nms, sorted in descending order of scores.
+    
+    Examples:
+        .. code-block:: python
+                        import paddle
+                        import numpy as np
+
+                        boxes = np.random.rand(4, 4).astype('float32')
+                        boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
+                        boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
+
+                        # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
+                        # [0.74385834 0.8236293  1.4048514  1.3868837 ]
+                        # [0.39436954 0.18261194 1.3834884  0.38191944]
+                        # [0.9617653  0.40089446 1.2982695  1.398673  ]]
+
+                        scores = np.random.rand(4).astype('float32')
+                        # [0.20447887, 0.6679728 , 0.00704206, 0.14359951]
+                        categories = [0, 1, 2, 3]
+                        category_idxs = np.random.choice(categories, 4)                        
+                        # [1, 3, 0, 1]
+
+                        out =  paddle.vision.ops.batched_nms(paddle.to_tensor(boxes), 
+                                                             paddle.to_tensor(scores), 
+                                                             paddle.to_tensor(category_idxs), 
+                                                             categories, 
+                                                             0.1, 
+                                                             4)
+                        # [1, 0, 2]
     """
     assert top_k <= scores.shape[
         0], "top_k should be smaller equal than the number of boxes"
@@ -1398,6 +1470,11 @@ def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
         shape = cur_category_boxes_idxs.shape[0]
         cur_category_boxes_idxs = paddle.reshape(cur_category_boxes_idxs,
                                                  [shape])
+        if shape == 0:
+            continue
+        elif shape == 1:
+            mask[cur_category_boxes_idxs] = 1
+            continue
         cur_category_boxes = boxes[cur_category_boxes_idxs]
         cur_category_scores = scores[cur_category_boxes_idxs]
         cur_category_sorted_indices = paddle.argsort(
@@ -1416,9 +1493,9 @@ def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
             cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
             updates,
             overwrite=True)
-
     keep_boxes_idxs = paddle.where(mask)[0]
     shape = keep_boxes_idxs.shape[0]
+    top_k = shape if top_k > shape else top_k
     keep_boxes_idxs = paddle.reshape(keep_boxes_idxs, [shape])
     _, topK_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
     return keep_boxes_idxs[topK_sub_indices]
