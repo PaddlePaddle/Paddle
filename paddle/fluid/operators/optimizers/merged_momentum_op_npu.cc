@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/optimizers/merged_momentum_op.h"
 
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -118,11 +119,11 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
     FillNpuTensorWithConstant<T>(&mu_tensor, mu);
 
     for (size_t idx = 0; idx < n; ++idx) {
-      RegularizationType regularization_flag =
+      phi::RegularizationType regularization_flag =
           regularization_methods.size() > 0 &&
                   regularization_methods[idx] == "l2_decay"
-              ? RegularizationType::kL2DECAY
-              : RegularizationType::kNONE;
+              ? phi::RegularizationType::kL2DECAY
+              : phi::RegularizationType::kNONE;
       float regularization_coeff = 0.0;
       if (regularization_coeffs.size() != 0) {
         regularization_coeff = regularization_coeffs[idx];
@@ -136,7 +137,7 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
 
       auto grad = grads[idx];
       Tensor regularized_grad;
-      if (regularization_flag == RegularizationType::kL2DECAY) {
+      if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad.mutable_data<T>(grad->dims(), ctx.GetPlace());
         const auto& runner1 = NpuOpRunner("Muls", {*param}, {regularized_grad},
                                           {{"value", regularization_coeff}});
