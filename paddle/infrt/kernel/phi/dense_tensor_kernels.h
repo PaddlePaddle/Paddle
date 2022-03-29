@@ -50,7 +50,9 @@ void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<float>> values);
 void PrintDenseTensor(::phi::DenseTensor* dense_tensor);
 
-infrt::phi::DenseTensorMap LoadParams(
+::infrt::phi::DenseTensorMap LoadParameters(const std::string& path);
+
+::infrt::phi::DenseTensorMap LoadParams(
     host_context::Attribute<std::string> path);
 
 ::phi::DenseTensor TensorMapGetTensor(
@@ -60,6 +62,9 @@ infrt::phi::DenseTensorMap LoadParams(
 ::infrt::phi::DenseTensorMap LoadCombinedParams(
     host_context::Attribute<std::string> model_path,
     host_context::Attribute<std::string> params_path);
+
+::infrt::phi::DenseTensorMap LoadCombinedParameters(
+    const std::string& model_path, const std::string& params_path);
 
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
 
