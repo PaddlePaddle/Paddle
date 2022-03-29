@@ -88,9 +88,9 @@ int32_t MemorySparseTable::load(const std::string& path,
 
   size_t file_start_idx = _shard_idx * _avg_local_shard_num;
 
-  size_t feature_value_size = _value_accesor->GetTableInfo(SIZE) / sizeof(float);
-  VLOG(0) << "yxf fvs: " << feature_value_size << " acc: " << _value_accesor->size() / sizeof(float);
- 
+  size_t feature_value_size =
+      _value_accesor->GetTableInfo(SIZE) / sizeof(float);
+
   int thread_num = _real_local_shard_num < 15 ? _real_local_shard_num : 15;
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
@@ -174,8 +174,8 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
 
   size_t file_start_idx = _shard_idx * _avg_local_shard_num;
 
-  size_t feature_value_size = _value_accesor->GetTableInfo(SIZE) / sizeof(float);
-  VLOG(0) << "yxf fvs: " << feature_value_size << " acc: " << _value_accesor->size() / sizeof(float);
+  size_t feature_value_size =
+      _value_accesor->GetTableInfo(SIZE) / sizeof(float);
 
   int thread_num = _real_local_shard_num < 15 ? _real_local_shard_num : 15;
   omp_set_num_threads(thread_num);
@@ -409,7 +409,7 @@ int32_t MemorySparseTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
 
   const uint64_t* keys = context.push_context.keys;
-  return push_sparse(keys, context.push_context.ptr_values, context.num);
+  return push_sparse(keys, context.push_context.values, context.num);
 }
 
 int32_t MemorySparseTable::pull_sparse(float* pull_values,
@@ -417,19 +417,10 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
   CostTimer timer("pserver_sparse_select_all");
   std::vector<std::future<int>> tasks(_real_local_shard_num);
 
-  VLOG(0) << "yxf in table pull sparse";
   const size_t value_size = _value_accesor->GetTableInfo(SIZE) / sizeof(float);
-  VLOG(0) << "yxf::value_size: " << value_size;
   size_t mf_value_size = _value_accesor->GetTableInfo(MF_SIZE) / sizeof(float);
-  VLOG(0) << "yxf::mf_value_size: " << mf_value_size;
-  size_t select_value_size = _value_accesor->GetTableInfo(SELECT_SIZE) / sizeof(float);
-  VLOG(0) << "yxf::select_value_size: " << select_value_size;
-  const size_t value_size1 = _value_accesor->size() / sizeof(float);
-  VLOG(0) << "yxf::accvalue_size: " << value_size1;
-  mf_value_size = _value_accesor->mf_size() / sizeof(float);
-  VLOG(0) << "yxf::accmf_value_size: " << mf_value_size;
-  select_value_size = _value_accesor->select_size() / sizeof(float);
-  VLOG(0) << "yxf::accselect_value_size: " << select_value_size;
+  size_t select_value_size =
+      _value_accesor->GetTableInfo(SELECT_SIZE) / sizeof(float);
   // std::atomic<uint32_t> missed_keys{0};
 
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -487,7 +478,6 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  VLOG(0) << "yxf end pull sparse";
   return 0;
 }
 
@@ -508,11 +498,9 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
   }
 
   const size_t value_col = _value_accesor->GetTableInfo(SIZE) / sizeof(float);
-  VLOG(0) << "yxf vc: " << value_col << " acc: " << _value_accesor->size() / sizeof(float);
   size_t mf_value_col = _value_accesor->GetTableInfo(MF_SIZE) / sizeof(float);
-  VLOG(0) << "yxf ms: " << mf_value_col << " acc: " << _value_accesor->mf_size() / sizeof(float);
-  size_t update_value_col = _value_accesor->GetTableInfo(UPDATE_SIZE) / sizeof(float);
-  VLOG(0) << "yxf us: " << update_value_col << " acc: " << _value_accesor->update_size() / sizeof(float);
+  size_t update_value_col =
+      _value_accesor->GetTableInfo(UPDATE_SIZE) / sizeof(float);
 
   for (size_t shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id % _task_pool_size]->enqueue(
@@ -588,11 +576,9 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
   }
 
   size_t value_col = _value_accesor->GetTableInfo(SIZE) / sizeof(float);
-  VLOG(0) << "yxf vc: " << value_col << " acc: " << _value_accesor->size() / sizeof(float);
   size_t mf_value_col = _value_accesor->GetTableInfo(MF_SIZE) / sizeof(float);
-  VLOG(0) << "yxf ms: " << mf_value_col << " acc: " << _value_accesor->mf_size() / sizeof(float);
-  size_t update_value_col = _value_accesor->GetTableInfo(UPDATE_SIZE) / sizeof(float);
-  VLOG(0) << "yxf uvs: " << update_value_col << " acc: " << _value_accesor->update_size() / sizeof(float);
+  size_t update_value_col =
+      _value_accesor->GetTableInfo(UPDATE_SIZE) / sizeof(float);
 
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id % _task_pool_size]->enqueue(

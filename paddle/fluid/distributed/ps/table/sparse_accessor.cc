@@ -50,24 +50,23 @@ void SparseAccessor::SetTableInfo(AccessorInfo& info) {
 }
 
 size_t SparseAccessor::GetTableInfo(InfoKey key) {
-  switch (key)
-  {
-  case DIM:
-    return dim();
-  case SIZE:
-    return size();
-  case SELECT_DIM:
-    return select_dim();
-  case SELECT_SIZE:
-    return select_size();
-  case UPDATE_DIM:
-    return update_dim();
-  case UPDATE_SIZE:
-    return update_size();
-  case MF_SIZE:
-    return mf_size();
-  case FEA_DIM:
-    return fea_dim();
+  switch (key) {
+    case DIM:
+      return dim();
+    case SIZE:
+      return size();
+    case SELECT_DIM:
+      return select_dim();
+    case SELECT_SIZE:
+      return select_size();
+    case UPDATE_DIM:
+      return update_dim();
+    case UPDATE_SIZE:
+      return update_size();
+    case MF_SIZE:
+      return mf_size();
+    case FEA_DIM:
+      return fea_dim();
   }
   return 0;
 }

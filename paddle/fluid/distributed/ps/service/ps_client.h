@@ -88,7 +88,7 @@ struct RequestContext {
   ValueType value_type;          // 1 for sparse, 2 for dense
   uint64_t *keys;
   float **sparse_values;  // for sparse values
-  Region *dense_values;  // for dense values
+  Region *dense_values;   // for dense values
   PushContext push_context;
   size_t num;
   bool is_training;

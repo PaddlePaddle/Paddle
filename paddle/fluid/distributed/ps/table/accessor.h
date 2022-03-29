@@ -57,7 +57,7 @@ struct AccessorInfo {
 };
 
 enum InfoKey {
-  DIM = 0, 
+  DIM = 0,
   SIZE = 1,
   SELECT_SIZE = 2,
   SELECT_DIM = 3,

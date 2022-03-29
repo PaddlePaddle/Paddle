@@ -347,10 +347,11 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   req_context.keys = fea_keys.data();
   req_context.num = fea_keys.size();
   req_context.is_training = is_training;
-  // auto status = worker_ptr_->Pull(req_context);
-  auto status =
-      worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
-                               fea_keys.data(), fea_keys.size(), is_training);
+  auto status = worker_ptr_->Pull(req_context);
+  // auto status =
+  //     worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
+  //                              fea_keys.data(), fea_keys.size(),
+  //                              is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -383,8 +384,8 @@ void FleetWrapper::PullDenseVarsAsync(
   req_context.table = tid;
   req_context.dense_values = regions.data();
   req_context.num = regions.size();
-  // auto status = worker_ptr_->Pull(req_context);
-  auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
+  auto status = worker_ptr_->Pull(req_context);
+  // auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
 }
 
@@ -471,9 +472,9 @@ void FleetWrapper::PushDenseVarsAsync(
   req_context.table = table_id;
   req_context.push_context.push_dense_values = regions.data();
   req_context.num = regions.size();
-  auto push_status =
-      worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
-  // auto push_status = worker_ptr_->Push(req_context);
+  // auto push_status =
+  //     worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
+  auto push_status = worker_ptr_->Push(req_context);
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -654,10 +655,10 @@ void FleetWrapper::PushSparseFromTensorAsync(
   req_context.push_context.push_values = (const float**)push_g_vec.data();
   req_context.push_context.keys = push_keys.data();
   req_context.num = push_keys.size();
-  // auto status = worker_ptr_->Push(req_context);
-  auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
-                                         (const float**)push_g_vec.data(),
-                                         push_keys.size());
+  auto status = worker_ptr_->Push(req_context);
+  // auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
+  //                                        (const float**)push_g_vec.data(),
+  //                                        push_keys.size());
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
