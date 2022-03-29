@@ -711,7 +711,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             return task
 
     ring_id = 0 if group is None else group.id
-    dst = dst if group is None else group.get_group_rank(dst)
+    gdst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, ("dst rank out of group, need global rank")
 
     if _non_static_mode():
