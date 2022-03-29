@@ -85,10 +85,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(tensors), true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInNPUPlace(tensors), true,
-      platform::errors::InvalidArgument("All inputs should be in NPUPlace."));
 #endif
 
   // Step1: do allreduce in inner cluster
@@ -143,10 +139,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(tensors), true,
       platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInNPUPlace(tensors), true,
-      platform::errors::InvalidArgument("All inputs should be in NPUPlace."));
 #endif
 
   // Step1: do broadcast in inner cluster
@@ -190,8 +182,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
 void ProcessGroupHeter::Broadcast(const phi::DenseTensor* in,
                                   phi::DenseTensor* out) {
   // Step1: do broadcast in inner cluster
-  auto b_opts = BroadcastOptions();
-  b_opts.source_root = 0;
   inner_pg_->Broadcast(in, out);
 
   if (local_rank_ == 0) {
@@ -204,14 +194,15 @@ void ProcessGroupHeter::Broadcast(const phi::DenseTensor* in,
     if (with_switch_) {
       // TODO(sandyhouse) send to and recv
     } else {
-      auto gloo_task = inter_pg_->Broadcast(cpu_tensors, opts);
-      gloo_task->Wait();
+      std::vector<Tensor> cpu_tensors = {cpu_tensor};
+      // auto gloo_task = inter_pg_->Broadcast(cpu_tensors);
+      // gloo_task->Wait();
+      inter_pg_->Broadcast(cpu_tensors);
     }
     framework::TensorCopySync(*dense_cpu_tensor, dense_cpu_tensor->place(),
                               out);
   }
-  auto broadcast_task = inner_pg_->Broadcast(out, out);
-  broadcast_task->Wait();
+  inner_pg_->Broadcast(out, out);
 }
 
 }  //  namespace distributed

@@ -11,6 +11,7 @@ if(WITH_NCCL)
     cc_library(processgroup_heter SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc DEPS place cuda_stream enforce collective_helper device_context phi phi_api eager_api)
   endif()
 endif()
+
 if(WITH_ASCEND_CL)
   cc_library(processgroup_hccl SRCS ProcessGroupHCCL.cc HCCLTools.cc Common.cc DEPS place npu_stream enforce collective_helper device_context phi phi_api eager_api)
   if (WITH_DISTRIBUTE)
