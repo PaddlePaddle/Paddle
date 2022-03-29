@@ -529,31 +529,31 @@
 
 - backward_api : ceil_grad
   forward : ceil(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta : 
     func : UnchangedInferMeta
-    param: [x]
+    param: [out_grad]
   kernel : 
     func : ceil_grad
 
 - backward_api : floor_grad
   forward : floor(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta : 
     func : UnchangedInferMeta
-    param: [x]
+    param: [out_grad]
   kernel : 
     func : floor_grad
 
 - backward_api : round_grad
   forward : round(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta : 
     func : UnchangedInferMeta
-    param: [x]
+    param: [out_grad]
   kernel : 
     func : round_grad
 
