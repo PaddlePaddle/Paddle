@@ -84,7 +84,6 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         strides=st.sampled_from([[1, 2, 1]]),
         batch_size=st.integers(
             min_value=1, max_value=4), )
-
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
 
