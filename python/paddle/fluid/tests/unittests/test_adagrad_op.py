@@ -20,7 +20,6 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from op_test import OpTest
 import math
-import paddle
 
 
 class TestAdagradOp1(OpTest):
@@ -190,5 +189,4 @@ class TestSparseAdagradOp(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
