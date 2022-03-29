@@ -34,6 +34,27 @@ from paddle import _C_ops
 _grad_scalar = None
 
 
+def np_dtype_to_tensor_dtype(dtype):
+    if dtype == np.float32:
+        return core.VarDesc.VarType.FP32
+    elif dtype == np.float64:
+        return core.VarDesc.VarType.FP64
+    elif dtype == np.float16:
+        return core.VarDesc.VarType.FP16
+    elif dtype == np.bfloat16:
+        return VarDesc.VarType.BF16
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
+    elif dtype == np.int32:
+        return core.VarDesc.VarType.INT32
+    elif dtype == np.int64:
+        return core.VarDesc.VarType.INT64
+    else:
+        raise ValueError("Not supported data type " + str(dtype))
+
+
 class TensorHookRemoveHelper(object):
     """
     A helper class that for removing Tensor gradient's hook.
@@ -176,12 +197,14 @@ def monkey_patch_varbase():
                 "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
                     self.name, self.shape, value.shape)
 
-            if not isinstance(value, base_tensor):
-                value = paddle.to_tensor(value, dtype=value.dtype)
+            if isinstance(value, base_tensor):
+                dtype = value.dtype
+            else:
+                dtype = np_dtype_to_tensor_dtype(value.dtype)
 
-            assert self.dtype == value.dtype, \
+            assert self.dtype == dtype, \
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    self.name, self.dtype, value.dtype)
+                    self.name, self.dtype, dtype)
 
             # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
             # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
