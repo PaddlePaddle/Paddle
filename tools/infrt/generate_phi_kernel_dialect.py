@@ -65,7 +65,7 @@ def get_skipped_kernel_list():
         if "kernel" not in api or "infer_meta" not in api:
             continue
         if api["api"] in skiped_api_list["phi_apis"]:
-            skiped_kernel_fun_list.append(api["kernel"]["func"])
+            skiped_kernel_list.append(api["kernel"]["func"])
     skiped_kernel_list += skiped_api_list["phi_kernels"]
     return skiped_kernel_list
 
