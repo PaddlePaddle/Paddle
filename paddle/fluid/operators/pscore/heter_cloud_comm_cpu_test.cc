@@ -31,6 +31,8 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::distributed;
 
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+
 void CreateVarsOnScope(framework::Scope* scope) {
   auto var1 = scope->Var("w");
   var1->GetMutable<phi::SelectedRows>();
@@ -67,6 +69,44 @@ void StartSwitchServer(
     std::vector<std::string> peer_endpoints) {
   switch_server_ptr->SetPeerEndPoints(peer_endpoints);
   switch_server_ptr->SetEndPoint(endpoints[0]);
+  /*
+    std::shared_ptr<distributed::SendAndRecvVariableHandler> b_req_handler;
+    b_req_handler.reset(new distributed::SendAndRecvVariableHandler());
+    switch_server_ptr->SetServiceHandler(b_req_handler);
+
+    switch_server_ptr->SetLocalScope();
+
+    switch_server_ptr->RegisterServiceHandler(
+        std::to_string(distributed::PS_SAVE_WITH_SCOPE),
+        [&](const MultiVarMsg* request, MultiVarMsg* response,
+            brpc::Controller* cntl) -> int {
+          return b_req_handler->SaveInSwitchWithScope(request, response, cntl);
+        });
+
+    switch_server_ptr->RegisterServiceHandler(std::to_string(distributed::PS_SAVE_WITH_SHARD),
+                           [&](const MultiVarMsg* request, MultiVarMsg*
+    response,
+                               brpc::Controller* cntl) -> int {
+                             return b_req_handler->SaveInSwitchWithShard(
+                                 request, response, cntl);
+                           });
+
+    switch_server_ptr->RegisterServiceHandler(std::to_string(distributed::PS_QUERY_WITH_SCOPE),
+                           [&](const MultiVarMsg* request, MultiVarMsg*
+    response,
+                               brpc::Controller* cntl) -> int {
+                             return b_req_handler->QueryInSwitchWithScope(
+                                 request, response, cntl);
+                           });
+
+    switch_server_ptr->RegisterServiceHandler(std::to_string(distributed::PS_QUERY_WITH_SHARD),
+                           [&](const MultiVarMsg* request, MultiVarMsg*
+    response,
+                               brpc::Controller* cntl) -> int {
+                             return b_req_handler->QueryInSwitchWithShard(
+                                 request, response, cntl);
+                           });
+  */
   switch_server_ptr->StartHeterService(false);
 }
 
@@ -84,10 +124,10 @@ TEST(HETERSENDANDRECV, CPU) {
   setenv("https_proxy", "", 1);
 
   // 启动 switch server A & B
-  std::string switch_a_endpoint("127.0.0.1:5000");
-  std::string switch_a_endpoint_inter("127.0.0.1:5100");
-  std::string switch_b_endpoint_inter("127.0.0.1:6100");
-  std::string switch_b_endpoint("127.0.0.1:6000");
+  std::string switch_a_endpoint("127.0.0.1:6000");
+  std::string switch_a_endpoint_inter("127.0.0.1:6100");
+  std::string switch_b_endpoint_inter("127.0.0.1:7100");
+  std::string switch_b_endpoint("127.0.0.1:7000");
 
   std::shared_ptr<distributed::HeterServer> switch_server_ptr_a =
       std::make_shared<distributed::HeterServer>();
@@ -132,17 +172,33 @@ TEST(HETERSENDANDRECV, CPU) {
   LOG(INFO) << "InitTensorsOnClient done";
 
   auto send_async = [&]() -> void {
-    std::string message_name = "send";
+    /*
+    //std::string message_name =
+    std::to_string(distributed::PS_SAVE_WITH_SCOPE);
+    std::string message_name = "send and save";
     std::vector<std::string> send_var_names{"w", "x"};
     int ret = heter_client_ptr_->Send(ctx, *send_scope_ptr, message_name,
                                       send_var_names);
     if (!ret) {
       LOG(ERROR) << ">>>> worker send success";
     }
+    */
+    ///*
+    std::vector<int> vars_len{2, 4};
+    std::vector<float> values{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    int64_t data_size = 6;
+    std::vector<std::string> send_var_names{"w", "x"};
+    int group_id = 0;
+    int ret = heter_client_ptr_->Send(group_id, send_var_names, vars_len,
+                                      values.data(), data_size);
+    if (!ret) {
+      LOG(INFO) << ">>>> worker send success";
+    }
+    //*/
   };
   std::thread send_thread(send_async);
-
-  std::string message_name = "recv";
+  /*
+  std::string message_name = std::to_string(distributed::PS_QUERY_WITH_SCOPE);
   std::vector<std::string> recv_var_names{"w", "x"};
   std::shared_ptr<framework::Scope> recv_scope_ptr =
       std::make_shared<framework::Scope>();
@@ -153,12 +209,26 @@ TEST(HETERSENDANDRECV, CPU) {
   } else {
     LOG(INFO) << "worker recv failed";
   }
+  */
+  ///*
+  int group_id = 0;
+  std::vector<std::string> recv_var_names{"w", "x"};
+  std::vector<float> values;
+  int data_size = 6;
+  values.resize(data_size);
+  int ret = heter_client_ptr_->Recv(group_id, recv_var_names, values.data(),
+                                    data_size);
+  if (!ret) {
+    VLOG(4) << "queried data is: ";
+    for (auto f : values) {
+      VLOG(4) << f << " ";
+    }
+    LOG(INFO) << ">>>> worker recv success";
+  }
+  //*/
 
   send_thread.join();
-  /*
-  heter_client_ptr_->Stop();
-  LOG(INFO) << "heter client main thread joined";
-  */
+
   switch_server_ptr_a->Stop();
   LOG(INFO) << "switch server A stopped";
 

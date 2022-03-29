@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -54,6 +55,7 @@ class Scope;
 
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_int32(pserver_timeout_ms);
+DECLARE_int32(heter_world_size);
 namespace paddle {
 namespace distributed {
 
@@ -98,6 +100,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
   SendAndRecvVariableHandler() {
     this->num_microbatch_ = 0;
     this->num_minibatch_ = 0;
+    _local_shards.reset(new shard_type[FLAGS_heter_world_size]);
   }
 
   virtual ~SendAndRecvVariableHandler() {}
@@ -122,112 +125,40 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     return (*task_queue_).size();
   }
 
-  int SaveInSwitch(const MultiVarMsg* request, PsResponseMessage* response,
-                   brpc::Controller* cntl) {
-    VLOG(4) << "entering SaveInSwitch";
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
-    auto& cpu_dev_ctx = *pool.Get(cpu_place);
-    auto message_name = request->message_name();
-    VLOG(4) << "message_name in heter server: " << message_name;
-    std::unique_lock<std::mutex> lk(scope_mutex_);
-    auto local_scope = local_scope_ptr.get();
-    if (!local_scope) {
-      LOG(ERROR) << "local_scope_ptr is null in SaveInSwitch";
-    }
-    for (int idx = 0; idx < request->send_var_names_size(); idx++) {
-      const auto& msg = request->var_messages(idx);
-      std::string var_name = msg.varname();
-      auto* var_exist_ptr = local_scope->FindVar(var_name);
-      if (!var_exist_ptr) {
-        VLOG(4) << "not find var: " << var_name << " in local_scope";
-      }
-      vars_table[var_name] += 1;
-      VLOG(4) << "saved var_name: " << var_name
-              << ", cnt = " << vars_table[var_name];
-    }
-    auto& request_io_buffer = cntl->request_attachment();
-    distributed::DeserializeFromMultiVarMsgAndIOBuf(
-        *request, &request_io_buffer, cpu_dev_ctx, local_scope);
-    lk.unlock();
-    while (true) {
-      int ret = 0;
-      for (int idx = 0; idx < request->send_var_names_size(); idx++) {
-        ret |= vars_table[request->var_messages(idx).varname()];
-      }
-      if (!ret) {
-        VLOG(4) << "all saved vars consumed";
+  int SaveInSwitchWithScope(const MultiVarMsg* request,
+                            PsResponseMessage* response,
+                            brpc::Controller* cntl);
+
+  void WaitForVarsConsumed(int32_t group_id, const std::string& var_name) {
+    auto& local_shard = _local_shards[group_id];
+    while (local_shard.find(var_name) != local_shard.end()) {
+      if (local_shard[var_name].size() == 0) {
         break;
       }
       VLOG(4) << "waiting consume result......";
       sleep(1);
     }
-    VLOG(4) << "SaveInSwitch success";
-    return 0;
+    return;
   }
 
-  int QueryInSwitch(const MultiVarMsg* request, MultiVarMsg* response,
-                    brpc::Controller* cntl) {
-    VLOG(4) << "entering QueryInSwitch";
-    auto local_scope = local_scope_ptr.get();
-    if (!local_scope) {
-      LOG(INFO) << "local_scope is null";
+  void WaitForVarsProduced(int32_t group_id, const std::string& var_name) {
+    auto& local_shard = _local_shards[group_id];
+    while (local_shard.find(var_name) == local_shard.end()) {
+      VLOG(4) << "waiting produce result......";
+      sleep(1);
     }
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
-    auto& cpu_dev_ctx = *pool.Get(cpu_place);
-
-    // get req message_name & req_var_names
-    auto msg_name = request->message_name();
-    auto req_var_nums = request->recv_var_names_size();
-    std::vector<std::string> req_var_names(req_var_nums);
-    for (int var_idx = 0; var_idx < req_var_nums; ++var_idx) {
-      req_var_names[var_idx] = request->recv_var_names(var_idx);
-    }
-    auto& response_io_buffer = cntl->response_attachment();
-
-    // 1. fill message_name(string)
-    response->set_message_name(msg_name);
-
-    // 2. fill var_names(string)
-    for (auto& req_var_name : req_var_names) {
-      response->add_send_var_names(req_var_name);
-    }
-
-    // 3. fill var_messages(VarMessage)
-    for (auto& req_var_name : req_var_names) {
-      LOG(INFO) << "query var_name: " << req_var_name;
-      auto* send_var_msg = response->add_var_messages();
-      send_var_msg->set_varname(req_var_name);
-
-      framework::Variable* var_ptr;
-      while (true) {
-        var_ptr = local_scope->FindVar(req_var_name);
-        if (!var_ptr) {
-          LOG(ERROR) << "local_scope not find var: " << req_var_name;
-        } else {
-          break;
-        }
-        sleep(1);
-      }
-      butil::IOBuf temp_iobuf;
-      if (var_ptr->IsType<framework::LoDTensor>()) {
-        SerializeLodTensor(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);
-      } else if (var_ptr->IsType<phi::SelectedRows>()) {
-        SerializeSelectedRows(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);
-      }
-      response_io_buffer.append(temp_iobuf);
-    }
-    for (auto& req_var_name : req_var_names) {
-      std::unique_lock<std::mutex> lk(scope_mutex_);
-      vars_table[req_var_name] -= 1;
-      VLOG(4) << "remained var: " << req_var_name
-              << ", cnt = " << vars_table[req_var_name];
-      lk.unlock();
-    }
-    VLOG(4) << "heter server QueryInSwitch done";
-    return 0;
+    return;
   }
+
+  int SaveInSwitchWithShard(const MultiVarMsg* request,
+                            PsResponseMessage* response,
+                            brpc::Controller* cntl);
+
+  int QueryInSwitchWithShard(const MultiVarMsg* request, MultiVarMsg* response,
+                             brpc::Controller* cntl);
+
+  int QueryInSwitchWithScope(const MultiVarMsg* request, MultiVarMsg* response,
+                             brpc::Controller* cntl);
 
   void SetTaskQueue(SharedTaskQueue task_queue) { task_queue_ = task_queue; }
 
@@ -314,8 +245,10 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
   }
 
  public:
+  using shard_type = SparseTableShard<std::string, FixedFeatureValue>;
   std::shared_ptr<paddle::framework::Scope> local_scope_ptr;  // for switch
   std::unordered_map<std::string, uint32_t> vars_table;
+  std::unique_ptr<shard_type[]> _local_shards;
 
  private:
   // share with HeterPipelineTrainer
@@ -403,16 +336,23 @@ class HeterService : public PsService {
                               ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    int ret = service_handler_.QueryInSwitch(request, response, cntl);
+    // int ret = service_handler_.QueryInSwitchWithScope(request, response,
+    // cntl);
+    int ret = service_handler_.QueryInSwitchWithShard(request, response, cntl);
+    // std::string message_name = request->message_name();
+    // auto itr = handler_map_.find(message_name);
+    // int ret = itr->second(request, response, cntl);
     if (ret != 0) {
-      LOG(ERROR) << "QueryInSwitch failed!";
+      LOG(ERROR) << "QueryInSwitchWithScope failed!";
     }
+    // response->set_message_name(message_name);
   }
 
   virtual void SendToSwitch(::google::protobuf::RpcController* controller,
                             const MultiVarMsg* request,
                             PsResponseMessage* response,
                             ::google::protobuf::Closure* done) {
+    VLOG(4) << "entering SendToSwitch";
     brpc::ClosureGuard done_guard(done);
     auto& switch_client_ptr_ =
         HeterClient::GetSwitchInstance(peer_endpoints_, PEER_ROLE_IS_SWITCH);
@@ -426,11 +366,13 @@ class HeterService : public PsService {
       auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
       int ret = closure->CheckResponse();
       closure->set_promise_value(ret);
-      PADDLE_ENFORCE_NE(
-          closure->cntl.Failed(), true,
-          platform::errors::Unimplemented(
-              "HeterClient::SendS2S meets brpc error, error message is %s",
-              closure->cntl.ErrorText()));
+      if (closure->cntl.Failed()) {
+        PADDLE_ENFORCE_NE(
+            closure->cntl.Failed(), true,
+            platform::errors::Unimplemented(
+                "HeterClient::SendS2S meets brpc error, error message is %s",
+                closure->cntl.ErrorText()));
+      }
     });
     auto& std_cntl = closure2->cntl;
     std_cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
@@ -446,6 +388,7 @@ class HeterService : public PsService {
     cntl->response_attachment().append(
         std_cntl.response_attachment().movable());
     fut.wait();
+    VLOG(4) << "SendToSwitch done";
   }
 
   void SendS2S(::google::protobuf::RpcController* controller,
@@ -454,9 +397,17 @@ class HeterService : public PsService {
     VLOG(4) << "entering SendS2S";
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    int ret = service_handler_.SaveInSwitch(request, response, cntl);
+    // int ret = service_handler_.SaveInSwitchWithScope(request, response,
+    // cntl);
+    int ret = service_handler_.SaveInSwitchWithShard(request, response, cntl);
+    // std::string message_name = request->message_name();
+    // auto itr = handler_map_.find(message_name);
+    // if (itr == handler_map_.end()) {
+    //    LOG(ERROR) << "can not find func handler";
+    //}
+    // int ret = itr->second(request, response, cntl);
     if (ret != 0) {
-      LOG(ERROR) << "SaveInSwitch failed";
+      LOG(ERROR) << "SaveInSwitchWithScope failed";
     }
     std::string err_msg = "ok";
     response->set_err_msg(err_msg.c_str());
@@ -585,6 +536,11 @@ class HeterServer {
   void SetEndPoint(const std::string& endpoint) {
     this->endpoint_ = endpoint;
     service_.SetEndpoint(endpoint);
+  }
+
+  void SetLocalScope() {
+    request_handler_->local_scope_ptr =
+        std::make_shared<paddle::framework::Scope>();
   }
 
   void SetInterEndpoint(const std::string& endpoint) {

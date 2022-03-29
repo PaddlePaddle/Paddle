@@ -61,6 +61,10 @@ enum PsCmdID {
   PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG = 40;
   PEER_ROLE_IS_WORKER = 41;
   PEER_ROLE_IS_SWITCH = 42;
+  PS_SAVE_WITH_SCOPE = 43;
+  PS_SAVE_WITH_SHARD = 44;
+  PS_QUERY_WITH_SCOPE = 45;
+  PS_QUERY_WITH_SHARD = 46;
 }
 
 message PsRequestMessage {
@@ -119,6 +123,9 @@ message MultiVariableMessage {
   repeated string send_var_names = 2;
   repeated string recv_var_names = 3;
   repeated VariableMessage var_messages = 4;
+  optional bytes data = 5;
+  repeated int32 vars_len = 6;
+  optional int32 group_id = 7;
 };
 
 service PsService {

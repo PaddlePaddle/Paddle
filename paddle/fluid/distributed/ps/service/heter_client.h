@@ -66,8 +66,12 @@ class OnHeterRpcDone : public google::protobuf::Closure {
   int CheckResponse() { return 0; }
   std::vector<std::shared_ptr<std::promise<int32_t>>> _promises;
   HeterRpcCallbackFunc handler_;
+
+  MultiVariableMessage request;
   MultiVariableMessage response;
+
   PsResponseMessage ps_response;
+
   brpc::Controller cntl;
   // PsRequestMessage *request(size_t i) { return &_requests[i]; }
   // PsResponseMessage *response(size_t i) { return &_responses[i]; }
@@ -125,118 +129,20 @@ class HeterClient {
                         const std::vector<std::string>& recv_var_name,
                         const std::string& mode = "forward");
 
+  int Send(int group_id, const std::vector<std::string>& var_names,
+           const std::vector<int>& vars_len, void* data_ptr, int64_t data_size);
+
   int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
            const std::string& message_name,
-           const std::vector<std::string>& send_var_names) {
-    const framework::Scope* p_scope = &scope;  // 注意是 const
-    OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
-      auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
-      int ret = 0;
-      closure->set_promise_value(ret);
-      PADDLE_ENFORCE_NE(
-          closure->cntl.Failed(), true,
-          platform::errors::Unimplemented(
-              "HeterClient::SendToSwitch meets brpc error, error message is %s",
-              closure->cntl.ErrorText()));
-    });
+           const std::vector<std::string>& send_var_names);
 
-    closure->cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
-    auto& request_io_buffer = closure->cntl.request_attachment();
-
-    distributed::MultiVarMsg request;
-    // 1. set req message_name(string)
-    request.set_message_name(message_name);
-
-    // 2. set req send_var_names(<string>)
-    for (auto& send_var_name : send_var_names) {
-      request.add_send_var_names(send_var_name);
-    }
-
-    // 3. set req var_messages(<VarMessage>)
-    for (auto& send_var_name : send_var_names) {
-      auto* send_var_msg = request.add_var_messages();
-      send_var_msg->set_varname(send_var_name);
-      framework::Variable* var = p_scope->FindVar(send_var_name);
-      butil::IOBuf temp_iobuf;
-      if (var->IsType<framework::LoDTensor>()) {
-        SerializeLodTensor(var, ctx, send_var_msg, &temp_iobuf);
-      } else if (var->IsType<phi::SelectedRows>()) {
-        SerializeSelectedRows(var, ctx, send_var_msg, &temp_iobuf);
-      }
-      request_io_buffer.append(temp_iobuf);
-    }
-    auto promise = std::make_shared<std::promise<int32_t>>();
-    closure->add_promise(promise);
-    std::future<int> fut = promise->get_future();
-    if (send_switch_channels_.empty()) {
-      LOG(ERROR) << "send_switch_channels_ is null, get xpu_channels_[0]";
-      if (xpu_channels_.empty()) {
-        LOG(ERROR) << "xpu_channels_ is null";
-      }
-      send_switch_channels_.push_back(xpu_channels_[0]);
-    }
-    brpc::Channel* channel = send_switch_channels_[0].get();
-    // brpc::Channel* channel = xpu_channels_[0].get();
-    ::paddle::distributed::PsService_Stub stub(channel);
-    stub.SendToSwitch(&closure->cntl, &request, &closure->ps_response, closure);
-    VLOG(4) << "waiting SendToSwitch response result......";
-    fut.wait();
-    VLOG(4) << "Send done";
-    return 0;
-  }
+  int Recv(int group_id, const std::vector<std::string>& var_names,
+           void* data_ptr, int64_t data_size);
 
   int Recv(const platform::DeviceContext& ctx,
            framework::Scope& recv_scope,  // NOLINT
            const std::string& message_name,
-           const std::vector<std::string>& recv_var_names) {
-    OnHeterRpcDone* closure = new OnHeterRpcDone([](void* done) {
-      auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
-      VLOG(4) << "Recv service call done";
-      int ret = 0;
-      closure->set_promise_value(ret);
-      PADDLE_ENFORCE_NE(
-          closure->cntl.Failed(), true,
-          platform::errors::Unimplemented("HeterClient::RecvFromSwitch meets "
-                                          "brpc error, error message is %s",
-                                          closure->cntl.ErrorText()));
-    });
-
-    closure->cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
-
-    distributed::MultiVarMsg request;
-    // 1. set req message_name(string)
-    request.set_message_name(message_name);
-
-    // 2. set req recv_var_names(<string>)
-    for (auto& recv_var_name : recv_var_names) {
-      request.add_recv_var_names(recv_var_name);
-    }
-    auto promise = std::make_shared<std::promise<int32_t>>();
-    closure->add_promise(promise);
-    std::future<int> fut = promise->get_future();
-    if (recv_switch_channels_.empty()) {
-      LOG(ERROR) << "peer_switch_channels_ is null, get xpu_channels_[1]";
-      if (xpu_channels_.size() < 2) {
-        LOG(ERROR) << "xpu_channels_ is null";
-      }
-      recv_switch_channels_.push_back(xpu_channels_[1]);
-    }
-    brpc::Channel* channel = recv_switch_channels_[0].get();
-    ::paddle::distributed::PsService_Stub stub(channel);
-    stub.RecvFromSwitch(&closure->cntl, &request, &closure->response, closure);
-    fut.wait();
-    VLOG(4) << "RecvFromSwitch done";
-    // save in worker
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
-    auto& cpu_dev_ctx = *pool.Get(cpu_place);
-    auto& res_io_buffer = closure->cntl.response_attachment();
-    VLOG(4) << "entering DeserializeFromMultiVarMsgAndIOBuf";
-    distributed::DeserializeFromMultiVarMsgAndIOBuf(
-        closure->response, &res_io_buffer, cpu_dev_ctx, &recv_scope);
-    VLOG(4) << "Recv done";
-    return 0;
-  }
+           const std::vector<std::string>& recv_var_names);
 
   // HeterClient singleton
   static std::shared_ptr<HeterClient> GetInstance(
@@ -258,7 +164,7 @@ class HeterClient {
       const std::vector<std::string>& peer_endpoints, int32_t peer_role) {
     static HeterClient switch_s_instance_;
     if (peer_endpoints.empty()) {
-      LOG(ERROR) << "init switch client failed, null peer_endpoints";
+      VLOG(4) << "init switch client failed, null peer_endpoints";
     }
     VLOG(4) << "peer role is: " << peer_role
             << ", addr is: " << peer_endpoints[0];
