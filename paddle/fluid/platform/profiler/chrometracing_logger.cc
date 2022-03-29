@@ -80,8 +80,19 @@ void ChromeTracingLogger::LogNodeTrees(const NodeTrees& node_trees) {
   start_time_ = std::numeric_limits<uint64_t>::max();
   for (auto it = thread2host_event_nodes.begin();
        it != thread2host_event_nodes.end(); ++it) {
-    if ((*(it->second.begin() + 1))->StartNs() < start_time_) {
-      start_time_ = (*(it->second.begin() + 1))->StartNs();
+    if (it->second.begin() + 1 != it->second.end()) {
+      if ((*(it->second.begin() + 1))->StartNs() < start_time_) {
+        start_time_ = (*(it->second.begin() + 1))->StartNs();
+      } else {
+        auto runtimenode =
+            (*(it->second.begin()))->GetRuntimeTraceEventNodes().begin();
+        if (runtimenode !=
+            (*(it->second.begin()))->GetRuntimeTraceEventNodes().end()) {
+          if ((*runtimenode)->StartNs() < start_time_) {
+            start_time_ = (*runtimenode)->StartNs();
+          }
+        }
+      }
     }
   }
 
