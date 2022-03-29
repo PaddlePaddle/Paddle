@@ -80,10 +80,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   DenseTensor x_grad_indices =
-      phi::Empty(dev_ctx,
-                 DenseTensorMeta(x.non_zero_indices().dtype(),
-                                 x.non_zero_indices().dims(),
-                                 x.non_zero_indices().layout()));
+      phi::EmptyLike<int>(dev_ctx, x.non_zero_indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));

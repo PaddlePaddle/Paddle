@@ -32,8 +32,8 @@ namespace sparse {
 template <typename T, typename Context>
 void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
-                      const DenseTensor& rulebook,
                       const DenseTensor& kernel,
+                      const DenseTensor& rulebook,
                       const SparseCooTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
@@ -75,10 +75,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   DenseTensor x_grad_indices =
-      phi::Empty(dev_ctx,
-                 DenseTensorMeta(x.non_zero_indices().dtype(),
-                                 x.non_zero_indices().dims(),
-                                 x.non_zero_indices().layout()));
+      phi::EmptyLike<int>(dev_ctx, x.non_zero_indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   memset(x_grad_values_ptr, 0, sizeof(T) * x_grad_values.numel());
