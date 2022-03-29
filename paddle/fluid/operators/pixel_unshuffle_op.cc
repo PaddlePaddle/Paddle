@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -37,12 +36,7 @@ class PixelUnshuffleOpMaker : public framework::OpProtoAndCheckerMaker {
               "W/factor] or [N, H/factor, W/factor, C*factor^2].");
     AddAttr<int>("downscale_factor",
                  "the factor to decrease spatial resolution by.")
-        .SetDefault(1)
-        .AddCustomChecker([](const int& downscale_factor) {
-          PADDLE_ENFORCE_GE(downscale_factor, 1,
-                            platform::errors::InvalidArgument(
-                                "downscale_factor should be larger than 0."));
-        });
+        .SetDefault(1);
     AddAttr<std::string>(
         "data_format",
         "An optional string from: \"NHWC\", \"NCHW\". "
@@ -70,6 +64,7 @@ class PixelUnshuffleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
+ protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("pixel_unshuffle_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
