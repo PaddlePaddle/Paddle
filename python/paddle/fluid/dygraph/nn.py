@@ -34,6 +34,7 @@ import logging
 import os
 import paddle.utils.deprecated as deprecated
 from paddle import _C_ops
+from ..framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',

@@ -609,7 +609,6 @@ PyObject* ToPyObject(
 paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
-  VLOG(1) << "GetTensorFromArgs: " << op_type << " - " << arg_name;
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -632,7 +631,6 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
 static paddle::experimental::Tensor& GetTensorFromPyObject(
     const std::string& op_type, const std::string& arg_name, PyObject* obj,
     ssize_t arg_idx, bool dispensable) {
-  VLOG(1) << "GetTensorFromPyObject : " << op_type << " - " << arg_name;
   if (PyTuple_Check(obj)) {
     obj = PyTuple_GET_ITEM(obj, 0);
   }
@@ -646,7 +644,7 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     static paddle::experimental::Tensor emptytensor;
     return emptytensor;
   }
-  VLOG(1) << "GetTensorFromPyObject done";
+
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
 
@@ -656,7 +654,6 @@ paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
                                                 PyObject* args, ssize_t arg_idx,
                                                 bool dispensable) {
-  VLOG(1) << "GetTensorFromArgs: " << op_type << " - " << arg_name;
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
@@ -665,7 +662,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
-  VLOG(1) << "GetTensorFromArgs: " << op_type << " - " << arg_name;
+
   if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -722,7 +719,6 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                                    PyObject* args,
                                                    ssize_t arg_idx,
                                                    bool dispensable) {
-  VLOG(1) << "GetTensorFromArgs: " << op_type << " - " << arg_name;
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -745,7 +741,6 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
-  VLOG(1) << "GetTensorFromArgs: " << op_type << " - " << arg_name;
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
 
   if (list == nullptr) {

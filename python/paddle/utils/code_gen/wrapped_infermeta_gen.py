@@ -137,7 +137,6 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
     infermeta_register_code = ''
 
     for api in apis:
-        print("######### ", api['api'])
         api_item = ForwardAPI(api)
         declare_code, defind_code, register_code = gene_wrapped_infermeta_and_register(
             api_item)

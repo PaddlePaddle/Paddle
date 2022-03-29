@@ -106,8 +106,7 @@ class BaseAPI(object):
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
             'int64_t[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&',
-            'str[]': 'const std::vector<std::string>&'
+            'int[]': 'const std::vector<int>&'
         }
         optional_types_trans = {
             'Tensor': 'paddle::optional<const Tensor&>',
@@ -444,8 +443,7 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         infer_meta = self.infer_meta
-        print(f"param : {infer_meta['param']}")
-        print(f"kernel_output_names : {kernel_output_names}")
+
         infer_meta_params = infer_meta[
             'param'] + kernel_output_names if infer_meta[
                 'param'] is not None else input_names + attr_names + kernel_output_names

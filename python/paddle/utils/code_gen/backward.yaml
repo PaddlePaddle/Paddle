@@ -367,16 +367,6 @@
     func : roll_grad
     data_type : x
 
-- backward_api : hierarchical_sigmoid_grad
-  forward : hierarchical_sigmoid(Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias,  int num_classes,  bool remote_prefetch,  int trainer_id, int64_t[] height_sections,  str[] epmap,  str[] table_names,  bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
-  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, Tensor pre_out, Tensor out_grad, int num_classes,  bool remote_prefetch,  int trainer_id, int64_t[] height_sections,  str[] epmap,  str[] table_names,  bool is_sparse)
-  output : Tensor(x_grad), Tensor(w_grad), Tensor(bias_grad)
-  infer_meta : 
-    func : HierarchicalSigmoidGradInferMeta
-  kernel : 
-    func : hierarchical_sigmoid_grad
-  optional : path, code, bias
-
 - backward_api : pool2d_grad
   forward : pool2d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)

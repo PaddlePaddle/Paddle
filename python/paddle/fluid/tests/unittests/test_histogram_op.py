@@ -57,9 +57,7 @@ class TestHistogramOpAPI(unittest.TestCase):
                 (actual.numpy() == expected).all(),
                 msg='histogram output is wrong, out =' + str(actual.numpy()))
 
-    def test_dygraph_check_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
+
 class TestHistogramOpError(unittest.TestCase):
     """Test histogram op error."""
 
@@ -114,12 +112,6 @@ class TestHistogramOpError(unittest.TestCase):
             self.assertRaises(
                 TypeError, paddle.histogram, x_bool, bins=5, min=1, max=5)
 
-    def test_errors_check_eager(self):
-        with _test_eager_guard():
-            self.test_bins_error()
-            self.test_min_max_error()
-            self.test_min_max_range_error()
-            self.test_type_errors()
 
 class TestHistogramOp(OpTest):
     def setUp(self):
@@ -142,7 +134,7 @@ class TestHistogramOp(OpTest):
         self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 if __name__ == "__main__":

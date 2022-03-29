@@ -92,26 +92,6 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 int axis,
                                 MetaTensor* dx);
 
-void HierarchicalSigmoidGradInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& w,
-    const MetaTensor& label,
-    paddle::optional<const MetaTensor&> path,
-    paddle::optional<const MetaTensor&> code,
-    paddle::optional<const MetaTensor&> bias,
-    const MetaTensor& pre_out,
-    const MetaTensor& out_grad,
-    int num_classes,
-    bool remote_prefetch,
-    int trainer_id,
-    const std::vector<int64_t>& height_sections,
-    const std::vector<std::string>& epmap,
-    const std::vector<std::string>& table_names,
-    bool is_sparse,
-    MetaTensor* x_grad,
-    MetaTensor* w_grad,
-    MetaTensor* bias_grad);
-
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
