@@ -96,7 +96,6 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
       }
     }
     */
-
     for (auto out_node : quant_op->outputs) {
       for (auto out_op_node : out_node->outputs) {
         for (auto name : out_op_node->Op()->InputNames()) {
