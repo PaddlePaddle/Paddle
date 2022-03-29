@@ -32,12 +32,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#if defined(PADDLE_WITH_CUDA)
-using ppStream = cudaStream_t;
-#elif defined(PADDLE_WITH_XPU)
-using ppStream = XPUStream;
-#endif
-
 // struct CustomGradMerger {
 //  template <typename T>
 //  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
@@ -77,6 +71,7 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
                    Sgd& sgd);  // NOLINT
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
   void push_sparse_multi_node(int num, KeyType* d_keys, GradType* d_grads,
                               size_t len, Sgd& sgd);  // NOLINT
@@ -90,9 +85,11 @@ class HeterComm {
 
   int gather_multi_node_grad(int num, KeyType* d_keys, GradType* d_grads,
                              int len);
+#endif
 
   int log2i(int x);
 
+#if defined(PADDLE_WITH_CUDA)
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size) {
@@ -107,10 +104,12 @@ class HeterComm {
 
   // void dump_to_cpu(int index);
 
-  void end_pass();
-
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
+#endif
+
+  void end_pass();
+  
   struct Node {
     ppStream in_stream;
     ppStream out_stream;
@@ -194,10 +193,10 @@ class HeterComm {
   int topo_aware_{0};
   int feanum_{1800 * 2048};
   int multi_node_{0};
-  std::vector<ncclComm_t> nccl_inner_comms_;
-  std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;
 #if defined(PADDLE_WITH_CUDA)
+  std::vector<ncclComm_t> nccl_inner_comms_;
+  std::vector<ncclComm_t> nccl_inter_comms_;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
 };

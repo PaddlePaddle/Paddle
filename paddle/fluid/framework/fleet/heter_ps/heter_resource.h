@@ -22,9 +22,19 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 
+
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
+using ppStream = cudaStream_t;
+using ppStreamCreate = cudaStreamCreate;
+#elif defined(PADDLE_WITH_XPU)
+using ppStream = XPUStream;
+using ppStreamCreate = xpu_stream_create;;
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 class GPUResource {
  public:
   GPUResource(std::vector<int>& device_id, int index);
@@ -45,6 +55,35 @@ class GPUResource {
   std::vector<gpuStream_t> local_streams_;
   std::vector<gpuStream_t> comm_streams_;
 };
+#elif defined(PADDLE_WITH_XPU)
+class XPUResource {
+ public:
+  XPUResource(std::vector<int>& device_id, int index);
+  virtual ~XPUResource();
+  XPUResource(const XPUResource&) = delete;
+  XPUResource& operator=(const XPUResource&) = delete;
+
+  int dev_id() const { return dev_id_; }
+  int index() const { return index_; }
+  XPUStream local_stream(int num) { return local_streams_[num]; }
+  XPUStream remote_stream(int num) { return remote_streams_[num]; }
+  XPUStream comm_stream(int num) { return comm_streams_[num]; }
+
+  int dev_id_;
+  int index_;
+  std::vector<int> dev_ids_;
+  std::vector<XPUStream> remote_streams_;
+  std::vector<XPUStream> local_streams_;
+  std::vector<XPUStream> comm_streams_;
+};
+#endif
+
+
+#if defined(PADDLE_WITH_CUDA)
+using DevResource = GPUResource;
+#elif defined(PADDLE_WITH_XPU)
+using DevResource = XPUResource;
+#endif
 
 class HeterPsResource {
  public:
@@ -53,15 +92,15 @@ class HeterPsResource {
   HeterPsResource& operator=(const HeterPsResource&) = delete;
   virtual ~HeterPsResource() {}
   void enable_p2p();
-  int total_gpu();
+  int total_device();
   int get_index_by_devid(int devid);
   int dev_id(int num);
   void set_multi_mf(int multi_mf_dim, int max_mf_dim);
-  gpuStream_t local_stream(int gpu_num, int stream_num);
-  gpuStream_t remote_stream(int gpu_num, int stream_num);
-  gpuStream_t comm_stream(int gpu_num, int stream_num);
+  ppStream local_stream(int dev_num, int stream_num);
+  ppStream remote_stream(int dev_num, int stream_num);
+  ppStream comm_stream(int dev_num, int stream_num);
 
-  std::vector<std::shared_ptr<GPUResource>> resources_;
+  std::vector<std::shared_ptr<DevResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;
   int multi_mf_dim_{0};
