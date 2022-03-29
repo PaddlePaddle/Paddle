@@ -31,16 +31,23 @@ def np_mirror_normalize(image, mirror, mean, std):
         if m[0]:
             image[i] = image[i][:, :, -1::-1]
 
+    mean = np.array(mean)
+    std = np.array(std)
+    if np.size(mean) == 1:
+        mean = np.tile(mean, (3,))
+    if np.size(std) == 1:
+        std = np.tile(std, (3,))
+
     mean = np.array(mean[:]).reshape([1, 3, 1, 1])
     std = np.array(std[:]).reshape([1, 3, 1, 1])
 
     return (image - mean) / std
 
 
-class TestMirrorNormalizeStatic(unittest.TestCase):
+class TestMirrorNormalize(unittest.TestCase):
     def setup(self):
-        self.image_shape = [2, 3, 2, 2]
-        self.mirror_shape = [2, 1]
+        self.image_shape = [16, 3, 32, 32]
+        self.mirror_shape = [16, 1]
         self.mean = [123.675, 116.28, 103.53]
         self.std = [58.395, 57.120, 57.375]
 
@@ -89,6 +96,34 @@ class TestMirrorNormalizeStatic(unittest.TestCase):
             assert np.allclose(self.result, st_result)
 
         paddle.disable_static()
+
+
+class TestMirrorNormalizeSingleMeanStd(TestMirrorNormalize):
+    def setup(self):
+        self.image_shape = [16, 3, 32, 32]
+        self.mirror_shape = [16, 1]
+        self.mean = [123.675]
+        self.std = [58.395]
+
+        self.image = np.random.randint(0, 256, self.image_shape, 'int32').astype("float32")
+        self.mirror = np.random.randint(0, 2, self.mirror_shape, 'int32').astype("bool")
+
+        self.result = np_mirror_normalize(self.image, self.mirror,
+                                          self.mean, self.std)
+
+
+class TestMirrorNormalizeFloatMeanStd(TestMirrorNormalize):
+    def setup(self):
+        self.image_shape = [16, 3, 32, 32]
+        self.mirror_shape = [16, 1]
+        self.mean = 123.675
+        self.std = 58.395
+
+        self.image = np.random.randint(0, 256, self.image_shape, 'int32').astype("float32")
+        self.mirror = np.random.randint(0, 2, self.mirror_shape, 'int32').astype("bool")
+
+        self.result = np_mirror_normalize(self.image, self.mirror,
+                                          self.mean, self.std)
 
 
 if __name__ == '__main__':
