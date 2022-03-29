@@ -81,25 +81,6 @@ void ModuloKernel(const Context& dev_ctx,
   int axis = -1;
   ModuloRawKernel<T>(dev_ctx, x, y, axis, out);
 }
-
-template <typename T, typename Context>
-void FloorDivideKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       DenseTensor* out) {
-  int axis = -1;
-  FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
-template <typename T, typename Context>
-void ElementwisePowKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out) {
-  int axis = -1;
-  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -170,16 +151,6 @@ PD_REGISTER_KERNEL(minimum,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     modulo, CPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
-PD_REGISTER_KERNEL(
-    floor_divide, CPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -255,14 +226,4 @@ PD_REGISTER_KERNEL(minimum,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     modulo, GPU, ALL_LAYOUT, phi::ModuloKernel, float, double, int, int64_t) {}
-PD_REGISTER_KERNEL(
-    floor_divide, GPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
 #endif
