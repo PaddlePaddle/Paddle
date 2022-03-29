@@ -17,8 +17,8 @@ from warnings import warn
 import functools
 from contextlib import ContextDecorator
 
+from paddle.fluid import core
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
-import paddle.fluid.core as core
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -30,13 +30,15 @@ _AllowedEventTypeList = [
 
 class RecordEvent(ContextDecorator):
     r"""
-    Interface for recording a time range.
+    Interface for recording a time range by user defined.
 
-    Parameters:
+    Args:
         name(str): Name of the record event
+        event_type(TracerEventType, optional): Optional, default value is TracerEventType.UserDefined. It is reserved for internal purpose, and it is better not to specify this parameter. 
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             import paddle
             import paddle.profiler as profiler
@@ -53,8 +55,8 @@ class RecordEvent(ContextDecorator):
             result = data1 + data2
             record_event.end()
 
-    Note:
-        RecordEvent will take effect only when profiler is on and at the state of RECORD.
+    **Note**:
+        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of RECORD.
     """
 
     def __init__(self,
@@ -76,6 +78,7 @@ class RecordEvent(ContextDecorator):
         Record the time of begining.
 
         .. code-block:: python
+            :name: code-example2
 
             import paddle
             import paddle.profiler as profiler
@@ -100,6 +103,7 @@ class RecordEvent(ContextDecorator):
         Record the time of ending.
 
         .. code-block:: python
+            :name: code-example3
 
             import paddle
             import paddle.profiler as profiler
@@ -118,14 +122,15 @@ def load_profiler_result(filename: str):
     r"""
     Load dumped profiler data back to memory.
 
-    Parameters:
+    Args:
         filename(str): Name of the exported protobuf file of profiler data.
 
     Returns:
-        ProfilerResult object.
+        ProfilerResult object, which stores profiling data.
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
