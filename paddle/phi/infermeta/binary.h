@@ -221,6 +221,11 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
+void TakeAlongAxisInferMeta(const MetaTensor& x,
+                            const MetaTensor& index,
+                            int axis,
+                            MetaTensor* out);
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,

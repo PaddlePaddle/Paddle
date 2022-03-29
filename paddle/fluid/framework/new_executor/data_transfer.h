@@ -54,6 +54,7 @@ class DataTranferHelper {
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         const platform::Place& place,
                         VariableValueMap* ins_map_temp,
+                        VariableValueMap* outs_map_temp,
                         VariableScope* var_scope, OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* op_func_nodes,
                         bool use_local_scope = true);
