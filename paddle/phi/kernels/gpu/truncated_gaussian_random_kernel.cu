@@ -33,27 +33,23 @@ struct GPUTruncatedNormal {
   T mean, std;
   T a_normal_cdf;
   T b_normal_cdf;
-
   unsigned int seed;
   T numeric_min;
 
   __host__ __device__ GPUTruncatedNormal(T mean, T std, T numeric_min, int seed)
       : mean(mean), std(std), seed(seed), numeric_min(numeric_min) {
-    auto normal_cdf = [](float x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    a_normal_cdf = normal_cdf((-2.0 - mean) / std);
-    b_normal_cdf = normal_cdf((2.0 - mean) / std);
+    a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
+    b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
   }
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(2.0 * a_normal_cdf - 1.0,
-                                              2.0 * b_normal_cdf - 1.0);
+    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
     rng.discard(n);
     T value = dist(rng);
-    return std::sqrt(2.0) * erfinvf(value) * std + mean;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
   }
 };
 
@@ -73,21 +69,18 @@ struct TruncatedNormalOffset {
         seed(seed),
         numeric_min(numeric_min),
         offset_(offset) {
-    auto normal_cdf = [](float x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    a_normal_cdf = normal_cdf((-2.0 - mean) / std);
-    b_normal_cdf = normal_cdf((2.0 - mean) / std);
+    a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
+    b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
   }
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(2.0 * a_normal_cdf - 1.0,
-                                              2.0 * b_normal_cdf - 1.0);
+    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
     rng.discard(n + offset_);
     T value = dist(rng);
-    return std::sqrt(2.0) * erfinvf(value) * std + mean;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
   }
 };
 

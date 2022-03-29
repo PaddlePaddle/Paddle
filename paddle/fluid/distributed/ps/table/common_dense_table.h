@@ -40,6 +40,8 @@ class CommonDenseTable : public DenseTable {
                                   const std::string& name);
   virtual int32_t initialize_value();
   virtual int32_t initialize_optimizer();
+  virtual int32_t Pull(TableContext& context);
+  virtual int32_t Push(TableContext& context);
   int32_t pull_dense(float* pull_values, size_t num) override;
   int32_t push_dense_param(const float* values, size_t num) override;
   int32_t push_dense(const float* values, size_t num) override;

@@ -23,16 +23,6 @@ def PD_FetchOp : PD_Op<"fetch", [Terminator]> {
   let arguments = (ins PD_Tensor :$inputs, StrAttr:$name);
 }
 
-def PD_GraphOp : PD_Op<"graph", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
-  let summary = "paddle graph Op";
-  let description = [{
-    Describe a paddle graph or subgraph.
-  }];
-  let regions = (region SizedRegion<1>:$body);
-  let arguments = (ins Variadic<PD_Tensor>:$inputs);
-  let results = (outs Variadic<PD_Tensor>:$outputs);
-}
-
 def PD_ConstantOp : PD_Op<"constant", [NoSideEffect, ConstantLike, DeclareOpInterfaceMethods<InferTypeOpInterface>, AllTypesMatch<["value", "output"]>]> {
   let summary = "constant Op";
   let description = [{}];
@@ -42,6 +32,6 @@ def PD_ConstantOp : PD_Op<"constant", [NoSideEffect, ConstantLike, DeclareOpInte
   let hasFolder = 1;
 
   let builders = [
-    OpBuilder<(ins "Attribute":$value)>,
+    OpBuilder<(ins "mlir::Attribute":$value)>,
   ];
 }

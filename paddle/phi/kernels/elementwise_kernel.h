@@ -20,18 +20,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ElementwiseFMaxKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out);
+void FMaxKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out);
 
 template <typename T, typename Context>
-void ElementwiseFMinKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           int axis,
-                           DenseTensor* out);
+void FMinKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                int axis,
+                DenseTensor* out);
 
 template <typename T, typename Context>
 void AddRawKernel(const Context& dev_ctx,
@@ -86,6 +86,71 @@ void MultiplyKernel(const Context& dev_ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
+void MaximumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out);
+
+template <typename T, typename Context>
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out);
+
+template <typename T, typename Context>
+void MinimumRawKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      int axis,
+                      DenseTensor* out);
+
+template <typename T, typename Context>
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out);
+
+template <typename T, typename Context>
+void ModuloRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out);
+
+template <typename T, typename Context>
+void ModuloKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* out);
+
+template <typename T, typename Context>
+void FloorDivideRawKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out);
+
+template <typename T, typename Context>
+void FloorDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out);
+
+template <typename T, typename Context>
+void ElementwisePowRawKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             int axis,
+                             DenseTensor* out);
+
+template <typename T, typename Context>
+void ElementwisePowKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out);
+
+template <typename T, typename Context>
 DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
@@ -126,6 +191,61 @@ DenseTensor Multiply(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   MultiplyKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor Maximum(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  MaximumKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor Minimum(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  MinimumKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor Modulo(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  ModuloKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor FloorDivide(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  FloorDivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor ElementwisePow(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  ElementwisePowKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 

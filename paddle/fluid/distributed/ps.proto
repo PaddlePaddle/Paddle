@@ -115,6 +115,7 @@ message TableParameter {
   optional CommonAccessorParameter common = 6;
   optional TableType type = 7;
   optional bool compress_in_save = 8 [ default = false ];
+  optional GraphParameter graph_parameter = 9;
 }
 
 message TableAccessorParameter {
@@ -210,4 +211,26 @@ message SparseAdamSGDParameter { // SparseAdamSGDRule
   optional double beta2_decay_rate = 4 [ default = 0.999 ];
   optional double ada_epsilon = 5 [ default = 1e-08 ];
   repeated float weight_bounds = 6;
+}
+
+message GraphParameter {
+  optional int32 task_pool_size = 1 [ default = 24 ];
+  optional bool gpups_mode = 2 [ default = false ];
+  optional string gpups_graph_sample_class = 3
+      [ default = "CompleteGraphSampler" ];
+  optional string gpups_graph_sample_args = 4 [ default = "" ];
+  optional bool use_cache = 5 [ default = false ];
+  optional int32 cache_size_limit = 6 [ default = 100000 ];
+  optional int32 cache_ttl = 7 [ default = 5 ];
+  optional GraphFeature graph_feature = 8;
+  optional string table_name = 9 [ default = "" ];
+  optional string table_type = 10 [ default = "" ];
+  optional int32 shard_num = 11 [ default = 127 ];
+  optional int32 gpu_num = 12 [ default = 1 ];
+}
+
+message GraphFeature {
+  repeated string name = 1;
+  repeated string dtype = 2;
+  repeated int32 shape = 3;
 }

@@ -40,6 +40,13 @@ class FeedVariableVisitor : public boost::static_visitor<void> {
         out_var_->GetMutable<framework::LoDTensor>();
     if (platform::is_same_place(in_tensor.place(), place_)) {
       out_tensor->ShareDataWith(in_tensor);
+#ifdef PADDLE_WITH_IPU
+    } else if (platform::is_ipu_place(place_)) {
+      // For ipu, both in_tensor and out_tensor are allocated on cpu,
+      // PopART will copy tensor from host automatically,
+      // no TensorCopy() is required here.
+      out_tensor->ShareDataWith(in_tensor);
+#endif
     } else {
       platform::DeviceContext *context =
           platform::DeviceContextPool::Instance().Get(place_);

@@ -114,8 +114,6 @@ class TestElementwisePow(OpTest):
         self.out = np.power(self.x, self.y)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
@@ -184,8 +182,6 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePow):
         self.out = np.power(self.x, self.y)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
@@ -218,8 +214,6 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePow):
         self.out = np.power(self.x, self.y.reshape(1, 100, 1))
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
@@ -252,8 +246,6 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePow):
         self.out = np.power(self.x, self.y.reshape(100, 1, 1))
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
-            return
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
