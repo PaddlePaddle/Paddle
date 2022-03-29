@@ -47,7 +47,7 @@ void AssignArrayKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
     const Context& dev_ctx,
     const std::vector<Scalar>& values,
     DenseTensor* out) {
@@ -72,10 +72,10 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
 }
 
 template <typename T, typename Context>
-typename std::enable_if<!std::is_same<T, bool>::value>::type
-CopyVecotorToTensor(const Context& dev_ctx,
-                    const std::vector<Scalar>& values,
-                    DenseTensor* out) {
+typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const Context& dev_ctx,
+    const std::vector<Scalar>& values,
+    DenseTensor* out) {
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
@@ -98,7 +98,7 @@ void AssignValueKernel(const Context& dev_ctx,
                                    "argument dtype is %s, kernel dtype is %s.",
                                    dtype,
                                    template_dtype));
-  CopyVecotorToTensor<T>(dev_ctx, values, out);
+  CopyVectorToTensor<T>(dev_ctx, values, out);
   out->Resize(phi::make_ddim(shape));
 }
 
