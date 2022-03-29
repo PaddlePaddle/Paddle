@@ -607,8 +607,7 @@ class PostTrainingQuantization(object):
     def _sample_mse(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
-                var_tensor = utils.utils.load_variable_data(self._scope,
-                                                            var_name)
+                var_tensor = utils.load_variable_data(self._scope, var_name)
                 if self._weight_quantize_type == "abs_max":
                     abs_max_value = float(np.max(np.abs(var_tensor)))
                 elif self._weight_quantize_type == "channel_wise_abs_max":

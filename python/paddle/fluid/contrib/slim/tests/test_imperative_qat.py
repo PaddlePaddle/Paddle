@@ -53,7 +53,7 @@ class TestImperativeQat(unittest.TestCase):
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
-        print('weight_quantize_type', self.weight_quantize_type)
+        self.onnx_format = False
 
     def func_qat(self):
         self.set_vars()
@@ -171,7 +171,8 @@ class TestImperativeQat(unittest.TestCase):
                 input_spec=[
                     paddle.static.InputSpec(
                         shape=[None, 1, 28, 28], dtype='float32')
-                ])
+                ],
+                onnx_format=self.onnx_format)
             print('Quantized model saved in %s' % tmpdir)
 
             if core.is_compiled_with_cuda():
@@ -197,6 +198,11 @@ class TestImperativeQat(unittest.TestCase):
         with _test_eager_guard():
             self.func_qat()
         self.func_qat()
+
+
+class TestImperativeQatONNXFormat(unittest.TestCase):
+    def set_vars(self):
+        self.onnx_format = True
 
 
 if __name__ == '__main__':

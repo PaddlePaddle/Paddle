@@ -1036,8 +1036,12 @@ class QuantizationFreezePass(object):
                             self._weight_bits)
                         quantized_param_v = np.round(quantized_param_v)
                         if self._bias_correction == True:
-                            quantized_param_v = self._bias_correction_w(
-                                param_v, quantized_param_v, scale_v, quant_axis)
+                            quantized_param_v = utils.bias_correction_w(
+                                param_v,
+                                quantized_param_v,
+                                scale_v,
+                                quant_axis,
+                                weight_bits=self._weight_bits)
                             quantized_param_v = np.round(quantized_param_v)
                         self._restore_var(input_arg_name, quantized_param_v)
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
@@ -1256,46 +1260,6 @@ class QuantizationFreezePass(object):
     def _is_float(self, v):
         return isinstance(v, float) or isinstance(v, np.float32) \
             or isinstance(v, np.float64)
-
-    def _bias_correction_w(self, x, x_quant, scale_v, quant_axis):
-        '''
-        Bias correction for weight
-        '''
-        eps = 1e-8
-        bnt = (1 << (self._weight_bits - 1)) - 1
-        x_dequant = x_quant.copy()
-        if isinstance(scale_v, list):
-            if quant_axis == 0:
-                for i, s in enumerate(scale_v):
-                    x_dequant[i] = x_dequant[i] * s / bnt
-                quant_bias = x - x_dequant
-                mean_bias = quant_bias.reshape(quant_bias.shape[0], -1).mean(-1)
-                std_orig = x.reshape(x.shape[0], -1).std(-1)
-                std_quant = x_dequant.reshape(x_dequant.shape[0], -1).std(-1)
-                std_bias = std_orig / (std_quant + eps)
-            else:
-                for i, s in enumerate(scale_v):
-                    x_dequant[:, i] = x_quant[:, i] * s / bnt
-                quant_bias = x - x_dequant
-                mean_bias = np.array([
-                    quant_bias[:, i].mean() for i in range(quant_bias.shape[1])
-                ])
-                std_orig = np.array([x[:, i].std() for i in range(x.shape[1])])
-                std_quant = np.array(
-                    [x_dequant[:, i].std() for i in range(x_dequant.shape[1])])
-                std_bias = std_orig / (std_quant + eps)
-        else:
-            x_dequant = x_quant * scale_v / bnt
-            mean_bias = (x - x_dequant).mean()
-            std_bias = x.std() / (x_dequant.std() + eps)
-        if mean_bias.ndim == 1:
-            std_bias = np.resize(std_bias, x.shape)
-            mean_bias = np.resize(mean_bias, x.shape)
-
-        x_dequant = (mean_bias + x_dequant) * std_bias
-        quantized_param_v = utils.quant_tensor(x_dequant, scale_v, quant_axis,
-                                               self._weight_bits)
-        return quantized_param_v
 
 
 class ConvertToInt8Pass(object):
@@ -2566,8 +2530,12 @@ class QuantWeightPass(object):
                 quantized_param_v = utils.quant_tensor(param_v.copy(), scale_v,
                                                        quant_axis, bits_length)
                 if self._bias_correction == True:
-                    quantized_param_v = self._bias_correction_w(
-                        param_v, quantized_param_v, scale_v, quant_axis)
+                    quantized_param_v = utils.bias_correction_w(
+                        param_v,
+                        quantized_param_v,
+                        scale_v,
+                        quant_axis,
+                        weight_bits=bits_length)
                 if self._quant_bits == 8:
                     save_weight_dtype = np.int8
                 elif self._quant_bits == 4:
@@ -2604,43 +2572,3 @@ class QuantWeightPass(object):
     def _restore_var(self, name, array):
         tensor = self._scope.find_var(name).get_tensor()
         tensor.set(array, self._place)
-
-    def _bias_correction_w(self, x, x_quant, scale_v, quant_axis):
-        '''
-        Bias correction for weight
-        '''
-        eps = 1e-8
-        bnt = (1 << (self._weight_bits - 1)) - 1
-        x_dequant = x_quant.copy()
-        if isinstance(scale_v, list):
-            if quant_axis == 0:
-                for i, s in enumerate(scale_v):
-                    x_dequant[i] = x_dequant[i] * s / bnt
-                quant_bias = x - x_dequant
-                mean_bias = quant_bias.reshape(quant_bias.shape[0], -1).mean(-1)
-                std_orig = x.reshape(x.shape[0], -1).std(-1)
-                std_quant = x_dequant.reshape(x_dequant.shape[0], -1).std(-1)
-                std_bias = std_orig / (std_quant + eps)
-            else:
-                for i, s in enumerate(scale_v):
-                    x_dequant[:, i] = x_quant[:, i] * s / bnt
-                quant_bias = x - x_dequant
-                mean_bias = np.array([
-                    quant_bias[:, i].mean() for i in range(quant_bias.shape[1])
-                ])
-                std_orig = np.array([x[:, i].std() for i in range(x.shape[1])])
-                std_quant = np.array(
-                    [x_dequant[:, i].std() for i in range(x_dequant.shape[1])])
-                std_bias = std_orig / (std_quant + eps)
-        else:
-            x_dequant = x_quant * scale_v / bnt
-            mean_bias = (x - x_dequant).mean()
-            std_bias = x.std() / (x_dequant.std() + eps)
-        if mean_bias.ndim == 1:
-            std_bias = np.resize(std_bias, x.shape)
-            mean_bias = np.resize(mean_bias, x.shape)
-
-        x_dequant = (mean_bias + x_dequant) * std_bias
-        quantized_param_v = self._quant(x_dequant, scale_v, self._weight_bits,
-                                        quant_axis)
-        return quantized_param_v

@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/fake_dequantize_op.h"
+#include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
@@ -26,53 +28,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-inline HOSTDEVICE T inverse(T s) {
-  T eps = static_cast<T>(1e-6);
-  T one = static_cast<T>(1.0);
-  return s <= static_cast<T>(1e-30) ? one / (s + eps) : one / s;
-}
-
-template <typename DeviceContext, typename T>
-struct FindAbsMaxFunctor {
-  void operator()(const DeviceContext& ctx, const T* in, const int num, T* out);
-};
-
-template <typename DeviceContext, typename T>
-struct ClipAndFakeQuantFunctor {
-  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
-                  const framework::Tensor& scale, const int bin_cnt,
-                  framework::Tensor* out);
-};
-
-template <typename DeviceContext, typename T>
-struct FindChannelAbsMaxFunctor {
-  void operator()(const DeviceContext& ctx, const framework::Tensor& in_tensor,
-                  const int quant_axis, T* out_abs_max);
-};
-
-template <typename DeviceContext, typename T>
-struct ChannelClipAndFakeQuantFunctor {
-  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
-                  const framework::Tensor& scale, const int bin_cnt,
-                  const int quant_axis, framework::Tensor* out);
-};
-
-template <typename DeviceContext, typename T>
-struct DequantizeFunctor {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
-                  const framework::Tensor* scale, T max_range,
-                  framework::Tensor* out);
-};
-
-template <typename DeviceContext, typename T>
-struct ChannelDequantizeFunctor {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
-                  const framework::Tensor** scales, const int scale_num,
-                  T max_range, const int quant_axis, const int x_num_col_dims,
-                  framework::Tensor* out);
-};
 
 template <typename DeviceContext, typename T>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
