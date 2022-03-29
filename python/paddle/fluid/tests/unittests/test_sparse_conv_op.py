@@ -40,9 +40,9 @@ class TestSparseConv(unittest.TestCase):
             correct_out_values = [[4], [10]]
             sparse_input = core.eager.sparse_coo_tensor(indices, values,
                                                         dense_shape, False)
-            out = _C_ops.final_state_conv3d(sparse_input, dense_kernel,
-                                            paddings, dilations, strides, 1,
-                                            False)
+            out = _C_ops.final_state_sparse_conv3d(sparse_input, dense_kernel,
+                                                   paddings, dilations, strides,
+                                                   1, False)
             out.backward(out)
             #At present, only backward can be verified to work normally
             #TODO(zhangkaihuo): compare the result with dense conv
