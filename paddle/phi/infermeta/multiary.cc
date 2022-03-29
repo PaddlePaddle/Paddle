@@ -987,7 +987,7 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->share_lod(*x.at(0));
 }
 
-void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
+void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
 

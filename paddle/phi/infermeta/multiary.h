@@ -207,7 +207,7 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* pre_out,
                                   MetaTensor* w_out);
 
-void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
+void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
 void MomentumInferMeta(const MetaTensor& param,

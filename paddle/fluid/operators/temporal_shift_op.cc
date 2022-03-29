@@ -148,7 +148,7 @@ class TemporalShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(temporal_shift, TemporalShiftInferShapeFunctor,
-                            PD_INFER_META(phi::TemporalShiftnferMeta));
+                            PD_INFER_META(phi::TemporalShiftInferMeta));
 REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
                   ops::TemporalShiftOpMaker,
                   ops::TemporalShiftGradOpMaker<paddle::framework::OpDesc>,
