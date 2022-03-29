@@ -368,8 +368,16 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
             out = F.pixel_unshuffle(x, 3)
             # out.shape = [2, 9, 4, 4]
     """
+    if len(x.shape) != 4:
+        raise ValueError(
+            "Input x should be 4D tensor, but received x with the shape of {}".
+            format(x.shape))
+
     if not isinstance(downscale_factor, int):
-        raise TypeError("downscale factor must be int type")
+        raise TypeError("Downscale factor must be int type")
+
+    if downscale_factor <= 0:
+        raise ValueError("Downscale factor must be positive")
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."

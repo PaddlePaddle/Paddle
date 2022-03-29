@@ -130,7 +130,10 @@ class PixelUnshuffle(Layer):
         super(PixelUnshuffle, self).__init__()
 
         if not isinstance(downscale_factor, int):
-            raise TypeError("downscale factor must be int type")
+            raise TypeError("Downscale factor must be int type")
+
+        if downscale_factor <= 0:
+            raise ValueError("Downscale factor must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError("Data format should be 'NCHW' or 'NHWC'."
