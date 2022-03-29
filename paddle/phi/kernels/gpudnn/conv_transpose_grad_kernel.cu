@@ -188,11 +188,13 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                                     dtype};
 
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result;
-  paddle::operators::AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
+  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
+      filter_result;
 #else
-  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-  paddle::operators::AlgoResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
+      filter_result;
 #endif
 
   auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
@@ -653,15 +655,17 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                                     dilations_,
                                     dtype};
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::AlgoResult<miopenConvBwdDataAlgorithm_t> bwd_result1;
-  paddle::operators::AlgoResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
-  paddle::operators::AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
-  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result;
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result1;
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
+  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
+      filter_result;
+  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
 #else
-  paddle::operators::AlgoResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
-  paddle::operators::AlgoResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
-  paddle::operators::AlgoResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
-  paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
+  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
+      filter_result;
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
 #endif
 
   auto layout = paddle::platform::GetCudnnTensorFormat(GPUDNNDataLayout::kNCHW);
