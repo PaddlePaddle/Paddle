@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 class TestPRROIPoolOp(OpTest):
@@ -280,4 +281,5 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

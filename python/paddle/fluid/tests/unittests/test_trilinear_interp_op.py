@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
+import paddle
 
 
 def trilinear_interp_np(input,
@@ -639,4 +640,5 @@ class TestTrilinearInterpOpException(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

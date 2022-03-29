@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle
 
 
 class TestFakeQuantizeOp(OpTest):
@@ -375,4 +376,5 @@ class TestChannelWiseFakeQuantDequantOp3(TestChannelWiseFakeQuantDequantOp):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

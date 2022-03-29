@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle
 
 
 def crop(data, offsets, crop_shape):
@@ -262,4 +263,5 @@ class TestCropTensorException(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

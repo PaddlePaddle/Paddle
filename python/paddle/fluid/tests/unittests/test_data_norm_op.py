@@ -25,6 +25,7 @@ import os
 from op_test import OpTest
 from paddle.fluid.framework import grad_var_name
 from paddle.fluid import Program, program_guard
+import paddle
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
@@ -504,4 +505,5 @@ class TestDataNormOpErrorr(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

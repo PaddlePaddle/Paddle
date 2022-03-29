@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 def crop(data, offsets, crop_shape):
@@ -125,4 +126,5 @@ class TestCase6(TestCropOp):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
