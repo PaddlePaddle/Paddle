@@ -92,8 +92,8 @@ void TopkKernel(const Context& dev_ctx,
         // Successed, return.
         return;
       } else {
-        LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
-                     "default topk kernel.";
+        VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
+                   "default topk kernel.";
       }
     }
 
@@ -150,8 +150,8 @@ void TopkKernel(const Context& dev_ctx,
           Copy(dev_ctx, sorted_output, out->place(), false, out);
           return;
         } else {
-          LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
-                       "default topk kernel.";
+          VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
+                     "default topk kernel.";
         }
       } else {
         return;
@@ -262,8 +262,8 @@ void TopkKernel(const Context& dev_ctx,
             ndims, dev_ctx, trans_out, out, trans);
         return;
       } else {
-        LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
-                     "default topk kernel.";
+        VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
+                   "default topk kernel.";
       }
     }
 
