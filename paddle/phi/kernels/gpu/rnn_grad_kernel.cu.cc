@@ -295,7 +295,7 @@ void RnnGradKernel(const Context &dev_ctx,
               const_cast<uint8_t *>(reserve_data),
               reserve_size));
       // permute weight grad list from weight grad tensor
-      tensor_to_permuted_weight<T>(
+      TensorToPermutedWeight<T>(
           place, stream, weight_grad, &weight_grad_list, rnn_mode, is_bidirec);
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(

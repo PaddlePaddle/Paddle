@@ -30,23 +30,23 @@
 namespace phi {
 
 template <typename T>
-void backup_tensor(const CPUContext& dev_ctx,
-                   DenseTensor* dst,
-                   DenseTensor* src) {
+void BackupTensor(const CPUContext& dev_ctx,
+                  DenseTensor* dst,
+                  DenseTensor* src) {
   dst->Resize(src->dims());
   dev_ctx.Alloc<T>(dst);
   Copy(dev_ctx, *src, dev_ctx.GetPlace(), false, dst);
 }
 
 template <typename T>
-void create_lstm_value(phi::funcs::LstmMetaValue<T>* lstm_value) {
+void CreateLstmValue(phi::funcs::LstmMetaValue<T>* lstm_value) {
   lstm_value->check_ig = nullptr;
   lstm_value->check_fg = nullptr;
   lstm_value->check_og = nullptr;
 }
 
 template <typename T>
-void create_lstm_grad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
+void CreateLstmGrad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
   lstm_grad->check_ig_grad = nullptr;
   lstm_grad->check_fg_grad = nullptr;
   lstm_grad->check_og_grad = nullptr;
@@ -182,7 +182,7 @@ struct SimpleRNNGradCell : GradCell<T> {
                   bool has_sequence_length) const override {
     DenseTensor grad_pre_hidden_bak;
     if (has_sequence_length) {
-      backup_tensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
+      BackupTensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
     }
     // h = act(z)
     // update dz
@@ -237,7 +237,7 @@ struct GRUGradCell : GradCell<T> {
     size_t batch_size = pre_hidden->dims()[1];
     DenseTensor grad_pre_hidden_bak;
     if (has_sequence_length) {
-      backup_tensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
+      BackupTensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
     }
     // zero pre_hidden
     phi::funcs::SetConstant<CPUContext, T> zero;
@@ -304,14 +304,14 @@ struct LSTMGradCell : GradCell<T> {
     DenseTensor grad_pre_hidden_bak;
     DenseTensor grad_pre_state_bak;
     if (has_sequence_length) {
-      backup_tensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
-      backup_tensor<T>(dev_ctx, &grad_pre_state_bak, grad_pre_state);
+      BackupTensor<T>(dev_ctx, &grad_pre_hidden_bak, grad_pre_hidden);
+      BackupTensor<T>(dev_ctx, &grad_pre_state_bak, grad_pre_state);
     }
 
     phi::funcs::LstmMetaValue<T> lstm_value;
     phi::funcs::LstmMetaGrad<T> lstm_grad;
-    create_lstm_value(&lstm_value);
-    create_lstm_grad(&lstm_grad);
+    CreateLstmValue(&lstm_value);
+    CreateLstmGrad(&lstm_grad);
     lstm_value.gate_value = gate_tensor->data<T>();
     lstm_value.state_value = state_tensor->data<T>();
     lstm_value.state_active_value = act_state_tensor->data<T>();
