@@ -396,7 +396,7 @@ struct GradLayer {
     int mask_min_length = time_step;
     if (has_sequence_length) {
       mask_matrix.Resize(phi::make_ddim({time_step, input->dims()[1]}));
-      create_mask_matrix<T>(
+      CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
@@ -958,7 +958,7 @@ void dropout_cpu_grad_function_inplace(const CPUContext& dev_ctx,
                                        DenseTensor* grad_x,
                                        const DenseTensor* mask,
                                        float dropout_prob) {
-  dropout_helper<T>(dev_ctx, grad_x, grad_x, mask, dropout_prob);
+  DropoutHelper<T>(dev_ctx, grad_x, grad_x, mask, dropout_prob);
 }
 
 template <typename GradCellType,
@@ -1032,7 +1032,7 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   // reset the parameter to sorted order and allocate the memory
   std::vector<std::vector<DenseTensor>> parameter_lists;
   parameter_lists.reserve(num_layers);
-  reset_parameter_vector(
+  ResetParameterVector(
       weight_list, num_layers, gate_num, is_bidirec, &parameter_lists);
 
   for (unsigned int i = 0; i < weight_grad_list.size(); ++i) {
@@ -1040,11 +1040,11 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   }
   std::vector<std::vector<DenseTensor>> parameter_lists_grad;
   parameter_lists_grad.reserve(num_layers);
-  reset_parameter_vector(weight_grad_list,
-                         num_layers,
-                         gate_num,
-                         is_bidirec,
-                         &parameter_lists_grad);
+  ResetParameterVector(weight_grad_list,
+                       num_layers,
+                       gate_num,
+                       is_bidirec,
+                       &parameter_lists_grad);
 
   // resolve the state of reverse_state
   DenseTensor gate_tensor;
@@ -1148,11 +1148,11 @@ void RnnGradFunc(const CPUContext& dev_ctx,
         layer_input.Resize(hidden_tensor_unbind[i - 1].dims());
         dev_ctx.Alloc<T>(&layer_input);
       }
-      dropout_helper<T>(dev_ctx,
-                        &hidden_tensor_unbind[i - 1],
-                        &layer_input,
-                        &dropout_state,
-                        dropout_prob);
+      DropoutHelper<T>(dev_ctx,
+                       &hidden_tensor_unbind[i - 1],
+                       &layer_input,
+                       &dropout_state,
+                       dropout_prob);
     } else {
       layer_input.ShareDataWith(x);
     }

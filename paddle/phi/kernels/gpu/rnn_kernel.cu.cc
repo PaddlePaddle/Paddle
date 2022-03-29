@@ -234,7 +234,7 @@ void RnnKernel(const Context &dev_ctx,
       0,
       [](int64_t num, const DenseTensor *t) { return num + t->numel(); });
   bool continuous =
-      is_continuous<T, std::vector<const DenseTensor *>>(weight_list);
+      IsContinuous<T, std::vector<const DenseTensor *>>(weight_list);
 #ifdef PADDLE_WITH_HIP
   // Need to permute weight, set continuous to false
   continuous = false;
@@ -248,10 +248,11 @@ void RnnKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<T>(&weight_whole);
 #ifdef PADDLE_WITH_HIP
     // MIOPEN need to permute weight for miopenLSTM or miopenGRU
-    weight_to_permuted_tensor<T>(
-        place, stream, &weight_list, &weight_whole, rnn_mode, is_bidirec);
+    std::vector<const DenseTensor *> weight_list_tmp = weight_list;
+    WeightToPermutedTensor<T>(
+        place, stream, &weight_list_tmp, &weight_whole, rnn_mode, is_bidirec);
 #else
-    weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
+    WeightToTensor<T>(place, stream, weight_list, &weight_whole);
 #endif
     w_data = weight_whole.data<T>();
 #ifndef PADDLE_WITH_HIP

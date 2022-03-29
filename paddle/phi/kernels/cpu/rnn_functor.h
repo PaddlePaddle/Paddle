@@ -43,11 +43,11 @@ inline void SwapPoniter(DenseTensor** a, DenseTensor** b) {
 }
 
 template <typename T>
-void create_mask_matrix(const CPUContext& dev_ctx,
-                        const DenseTensor* sequence_length,
-                        DenseTensor* mask_matrix,
-                        const bool& is_reverse,
-                        int* min_seq_len) {
+void CreateMaskMatrix(const CPUContext& dev_ctx,
+                      const DenseTensor* sequence_length,
+                      DenseTensor* mask_matrix,
+                      const bool& is_reverse,
+                      int* min_seq_len) {
   const auto& seq_len_vec =
       paddle::operators::GetDataFromTensor<int>(sequence_length);
   const int table_width = mask_matrix->dims()[0];
@@ -80,11 +80,11 @@ void create_mask_matrix(const CPUContext& dev_ctx,
 }
 
 template <typename TensorType>
-void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
-                            int num_layers,
-                            int gate_num,
-                            bool is_bidirec,
-                            std::vector<std::vector<DenseTensor>>* params_vec) {
+void ResetParameterVector(const std::vector<TensorType>& raw_params_vec,
+                          int num_layers,
+                          int gate_num,
+                          bool is_bidirec,
+                          std::vector<std::vector<DenseTensor>>* params_vec) {
   // the parameter raw seuquence is [FWhi, FWhh, BWhi, BWhh] * num_layers
   // + [FBhi, FBhh, BBhi, BBhh] * num_layers, we will reset the parameter to
   // ([FWhi, FWhh, FBhi, FBhh] + [BWhi, BWhh, BBhi, BBhh]) * num_layers
@@ -113,11 +113,11 @@ void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
 }
 
 template <typename T>
-void dropout_helper(const CPUContext& dev_ctx,
-                    DenseTensor* x,
-                    DenseTensor* y,
-                    const DenseTensor* mask,
-                    float dropout_prob) {
+void DropoutHelper(const CPUContext& dev_ctx,
+                   DenseTensor* x,
+                   DenseTensor* y,
+                   const DenseTensor* mask,
+                   float dropout_prob) {
   auto& place = *dev_ctx.eigen_device();
   auto dropout_mask = EigenVector<uint8_t>::Flatten(*mask);
   auto in = EigenVector<T>::Flatten(*x);
@@ -131,14 +131,14 @@ void dropout_helper(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void dropout_cpu_function_inplace(const CPUContext& dev_ctx,
-                                  DenseTensor* x,
-                                  DenseTensor* y,
-                                  DenseTensor* mask,
-                                  const float& dropout_prob,
-                                  const int& seed_number,
-                                  bool is_test,
-                                  bool* is_has_reset) {
+void DropoutCpuFunctionInplace(const CPUContext& dev_ctx,
+                               DenseTensor* x,
+                               DenseTensor* y,
+                               DenseTensor* mask,
+                               const float& dropout_prob,
+                               const int& seed_number,
+                               bool is_test,
+                               bool* is_has_reset) {
   if (is_test) {
     return;
   }
@@ -161,7 +161,7 @@ void dropout_cpu_function_inplace(const CPUContext& dev_ctx,
     }
     *is_has_reset = true;
   }
-  dropout_helper<T>(dev_ctx, x, y, mask, dropout_prob);
+  DropoutHelper<T>(dev_ctx, x, y, mask, dropout_prob);
 }
 
 template <typename Context, typename TensorType>
@@ -302,7 +302,7 @@ void RnnFunc(const Context& dev_ctx,
 
   std::vector<std::vector<DenseTensor>> parameter_lists;
   parameter_lists.reserve(num_layers);
-  reset_parameter_vector(
+  ResetParameterVector(
       weight_list, num_layers, gate_num, is_bidirec, &parameter_lists);
 
   DenseTensor gate_data, cell_data, cell_act_data, hidden_data;
@@ -373,14 +373,14 @@ void RnnFunc(const Context& dev_ctx,
         prev_hidden_data = hidden_data.Slice(i - 1, i);
         input_holder->Resize(output->dims());
         if (dropout_prob != 0) {
-          dropout_cpu_function_inplace<T>(dev_ctx,
-                                          &prev_hidden_data,
-                                          input_holder,
-                                          dropout_mask,
-                                          dropout_prob,
-                                          seed,
-                                          is_test,
-                                          &has_dropout_reset);
+          DropoutCpuFunctionInplace<T>(dev_ctx,
+                                       &prev_hidden_data,
+                                       input_holder,
+                                       dropout_mask,
+                                       dropout_prob,
+                                       seed,
+                                       is_test,
+                                       &has_dropout_reset);
         } else {
           input_holder = &prev_hidden_data;
           input_holder->Resize(output->dims());

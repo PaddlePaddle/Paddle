@@ -283,7 +283,7 @@ class RNNDescriptors {
 };
 
 template <typename T, typename Type>
-bool is_continuous(const Type &weight_list) {
+bool IsContinuous(const Type &weight_list) {
   bool continuous = true;
   for (size_t i = 0; i < weight_list.size() - 1; ++i) {
     auto *in_data = weight_list[i]->template data<T>();
@@ -296,10 +296,10 @@ bool is_continuous(const Type &weight_list) {
 }
 
 template <typename T>
-void weight_to_tensor(const Place &place,
-                      gpuStream_t stream,
-                      const std::vector<const DenseTensor *> &weight_list,
-                      DenseTensor *weight) {
+void WeightToTensor(const Place &place,
+                    gpuStream_t stream,
+                    const std::vector<const DenseTensor *> &weight_list,
+                    DenseTensor *weight) {
   auto weight_data = weight->data<T>();
   int weight_offset = 0;
   for (size_t i = 0; i < weight_list.size(); ++i) {
@@ -318,11 +318,11 @@ void weight_to_tensor(const Place &place,
 
 #ifdef PADDLE_WITH_HIP
 template <typename T>
-void weight_list_to_tensor(const Place &place,
-                           gpuStream_t stream,
-                           const std::vector<DenseTensor> &tensor_list,
-                           DenseTensor *weight_whole,
-                           const size_t offset = 0UL) {
+void WeightListToTensor(const Place &place,
+                        gpuStream_t stream,
+                        const std::vector<DenseTensor> &tensor_list,
+                        DenseTensor *weight_whole,
+                        const size_t offset = 0UL) {
   size_t weight_offset = offset;
   auto weight_data = weight_whole->data<T>();
 
@@ -340,12 +340,12 @@ void weight_list_to_tensor(const Place &place,
 }
 
 template <typename T>
-void weight_to_permuted_tensor(const Place &place,
-                               gpuStream_t stream,
-                               std::vector<const DenseTensor *> *weight_list,
-                               DenseTensor *weight_whole,
-                               const gpuRNNMode_t rnn_mode,
-                               const bool is_bidirec) {
+void WeightToPermutedTensor(const Place &place,
+                            gpuStream_t stream,
+                            std::vector<const DenseTensor *> *weight_list,
+                            DenseTensor *weight_whole,
+                            const gpuRNNMode_t rnn_mode,
+                            const bool is_bidirec) {
   if (is_bidirec) {
     for (size_t i = 0; i < weight_list->size(); i += 4) {
       auto tmp = (*weight_list)[i + 1];
@@ -357,7 +357,7 @@ void weight_to_permuted_tensor(const Place &place,
   for (size_t i = 0; i < weight_list->size(); ++i) {
     if (rnn_mode == miopenLSTM) {
       std::vector<DenseTensor> split_tensor = (*weight_list)[i]->Chunk(4, 0);
-      weight_list_to_tensor<T>(
+      WeightListToTensor<T>(
           place,
           stream,
           {split_tensor[0], split_tensor[1], split_tensor[3], split_tensor[2]},
@@ -365,14 +365,13 @@ void weight_to_permuted_tensor(const Place &place,
           weight_offset);
     } else if (rnn_mode == miopenGRU) {
       std::vector<DenseTensor> split_tensor = (*weight_list)[i]->Chunk(3, 0);
-      weight_list_to_tensor<T>(
-          place,
-          stream,
-          {split_tensor[1], split_tensor[0], split_tensor[2]},
-          weight_whole,
-          weight_offset);
+      WeightListToTensor<T>(place,
+                            stream,
+                            {split_tensor[1], split_tensor[0], split_tensor[2]},
+                            weight_whole,
+                            weight_offset);
     } else {
-      weight_list_to_tensor<T>(
+      WeightListToTensor<T>(
           place, stream, {*(*weight_list)[i]}, weight_whole, weight_offset);
     }
     weight_offset += (*weight_list)[i]->numel();

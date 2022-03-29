@@ -357,7 +357,7 @@ struct Layer {
     if (has_sequence_length) {
       mask_matrix.Resize(phi::make_ddim({time_step, input->dims()[1]}));
 
-      create_mask_matrix<T>(
+      CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
@@ -556,7 +556,7 @@ struct Layer {
     int mask_min_length = time_step;
     if (has_sequence_length) {
       mask_matrix.Resize(phi::make_ddim({time_step, input->dims()[1]}));
-      create_mask_matrix<T>(
+      CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
