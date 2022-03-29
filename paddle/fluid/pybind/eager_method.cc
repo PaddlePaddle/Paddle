@@ -705,6 +705,22 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self, PyObject* args,
       offset += index * strides[i];
     }
   }
+#define PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(_) \
+  _(bool, DataType::BOOL)                     \
+  _(int8_t, DataType::INT8)                   \
+  _(uint8_t, DataType::UINT8)                 \
+  _(int16_t, DataType::INT16)                 \
+  _(uint16_t, DataType::UINT16)               \
+  _(int32_t, DataType::INT32)                 \
+  _(uint32_t, DataType::UINT32)               \
+  _(int64_t, DataType::INT64)                 \
+  _(uint64_t, DataType::UINT64)               \
+  _(bfloat16, DataType::BFLOAT16)             \
+  _(float16, DataType::FLOAT16)               \
+  _(float, DataType::FLOAT32)                 \
+  _(double, DataType::FLOAT64)                \
+  _(complex64, DataType::COMPLEX64)           \
+  _(complex128, DataType::COMPLEX128)
 
 #define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
   if (tensor.dtype() == proto_type) {                                        \
@@ -727,7 +743,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self, PyObject* args,
     return array;                                                            \
   }
 
-  PD_FOR_EACH_DATA_TYPE(TENSOR_TO_PY_SCALAR);
+  PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(TENSOR_TO_PY_SCALAR);
 #undef TENSOR_TO_PY_SCALAR
   PADDLE_THROW(platform::errors::Unimplemented(
       "Unsupported tensor data type: %s", tensor.dtype()));
