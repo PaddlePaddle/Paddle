@@ -27,6 +27,10 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#ifdef PADDLE_WITH_GLOO
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
+
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
