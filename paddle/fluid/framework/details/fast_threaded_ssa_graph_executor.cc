@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -49,20 +48,13 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     strategy_.num_threads_ = 1;
   }
   pool_.reset(new ::ThreadPool(strategy.num_threads_));
-  auto ops = ir::FilterByNodeWrapper<OpHandleBase>(*graph_);
-  for (auto &op : ops) {
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
     if (dep == 0) {
       bootstrap_ops_.emplace_back(op);
     }
   }
-
-  VLOG(10) << "All ops: "
-           << string::join_strings(
-                  ops, ' ', [](OpHandleBase *op) -> std::string {
-                    return op->GetSkipRunning() ? "" : op->Name();
-                  });
   PADDLE_ENFORCE_GT(op_deps_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The graph doesn't have operators."));

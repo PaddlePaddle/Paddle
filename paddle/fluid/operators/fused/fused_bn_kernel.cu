@@ -39,13 +39,13 @@ struct alignas(sizeof(T) * 2) SumPair {
 
   HOSTDEVICE SumPair(T x, T y) : x(x), y(y) {}
 
-  SumPair<T> &operator+=(const SumPair<T> &other) {
+  HOSTDEVICE SumPair<T> &operator+=(const SumPair<T> &other) {
     x += other.x;
     y += other.y;
     return *this;
   }
 
-  SumPair<T> operator+(const SumPair<T> &other) const {
+  HOSTDEVICE SumPair<T> operator+(const SumPair<T> &other) const {
     return SumPair<T>(x + other.x, y + other.y);
   }
 };
@@ -54,12 +54,19 @@ template <typename T, int Size, bool IsAligned = true>
 struct VectorizedArray : public phi::AlignedVector<T, Size> {
   static constexpr int kSize = Size;
 
+  static constexpr int kMaxVecSize = 128 / 8 / sizeof(T);
+
+  static_assert(Size % kMaxVecSize == 0 || kMaxVecSize % Size == 0,
+                "Invalid VecSize.");
+
+  using BaseClass = phi::AlignedVector<T, Size>;
+
   HOSTDEVICE void Load(const T *x) {
-    phi::Load(x, static_cast<phi::AlignedVector<T, Size> *>(this));
+    phi::Load(x, static_cast<BaseClass *>(this));
   }
 
   HOSTDEVICE void Store(T *x) const {
-    phi::Store(*static_cast<const phi::AlignedVector<T, Size> *>(this), x);
+    phi::Store(*static_cast<const BaseClass *>(this), x);
   }
 };
 
@@ -87,23 +94,19 @@ struct VectorizedArray<T, Size, false> {
   }
 };
 
-template <bool IsAligned, bool HasResidualAdd>
-static __global__ void Vectorized8FP32MaskedReluFwdCUDAKernel(
-    const float *x, const float *z, float *y, void *mask, size_t n) {
+template <typename T, bool IsAligned, bool HasResidualAdd>
+static __global__ void Vectorized8MaskedAddReluFwdCUDAKernel(const T *x,
+                                                             const T *z, T *y,
+                                                             void *mask,
+                                                             size_t n) {
   size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x) * 8;
   size_t stride = static_cast<size_t>(blockDim.x * gridDim.x) * 8;
   for (; idx + 8 <= n; idx += stride) {
-    VectorizedArray<float, 8, IsAligned> x_vec, z_vec;
-    auto *x_vec_ptr =
-        reinterpret_cast<VectorizedArray<float, 4, IsAligned> *>(&x_vec);
-    x_vec_ptr[0].Load(x + idx);
-    x_vec_ptr[1].Load(x + idx + 4);
+    VectorizedArray<T, 8, IsAligned> x_vec, z_vec;
+    x_vec.Load(x + idx);
 
     if (HasResidualAdd) {
-      auto *z_vec_ptr =
-          reinterpret_cast<VectorizedArray<float, 4, IsAligned> *>(&z_vec);
-      z_vec_ptr[0].Load(z + idx);
-      z_vec_ptr[1].Load(z + idx + 4);
+      z_vec.Load(z + idx);
     }
 
     uint8_t mask_val = 0;
@@ -111,12 +114,11 @@ static __global__ void Vectorized8FP32MaskedReluFwdCUDAKernel(
 #pragma unroll
     for (int i = 0; i < 8; ++i) {
       auto tmp = HasResidualAdd ? (x_vec[i] + z_vec[i]) : x_vec[i];
-      bool flag = (tmp > 0);
-      x_vec[i] *= flag;
+      bool flag = (tmp > static_cast<T>(0));
+      x_vec[i] *= static_cast<T>(flag);
       mask_val |= (static_cast<uint8_t>(flag) << i);
     }
-    x_vec_ptr[0].Store(y + idx);
-    x_vec_ptr[1].Store(y + idx + 4);
+    x_vec.Store(y + idx);
     reinterpret_cast<uint8_t *>(mask)[idx / 8] = mask_val;
   }
 
@@ -126,34 +128,30 @@ static __global__ void Vectorized8FP32MaskedReluFwdCUDAKernel(
     for (size_t i = 0; i < left; ++i) {
       uint8_t mask_val = 0;
       auto tmp = HasResidualAdd ? (x[idx + i] + z[idx + i]) : x[idx + i];
-      bool flag = (tmp > 0);
-      y[idx + i] = tmp * flag;
+      bool flag = (tmp > static_cast<T>(0));
+      y[idx + i] = tmp * static_cast<T>(flag);
       mask_val |= (static_cast<uint8_t>(flag) << i);
     }
     reinterpret_cast<uint8_t *>(mask)[idx / 8] = mask_val;
   }
 }
 
-template <bool IsAligned>
-static __global__ void Vectorized8FP32MaskedReluBwdCUDAKernel(const float *dy,
-                                                              const void *mask,
-                                                              float *dx,
-                                                              size_t n) {
+template <typename T, bool IsAligned>
+static __global__ void Vectorized8MaskedReluBwdCUDAKernel(const T *dy,
+                                                          const void *mask,
+                                                          T *dx, size_t n) {
   size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x) * 8;
   size_t stride = static_cast<size_t>(blockDim.x * gridDim.x) * 8;
   for (; idx + 8 <= n; idx += stride) {
     uint8_t mask_val = reinterpret_cast<const uint8_t *>(mask)[idx / 8];
-    VectorizedArray<float, 8, IsAligned> dy_vec;
-    auto *dy_vec_ptr =
-        reinterpret_cast<VectorizedArray<float, 4, IsAligned> *>(&dy_vec);
-    dy_vec_ptr[0].Load(dy + idx);
-    dy_vec_ptr[1].Load(dy + idx + 4);
+    VectorizedArray<T, 8, IsAligned> dy_vec;
+    dy_vec.Load(dy + idx);
 #pragma unroll
     for (int i = 0; i < 8; ++i) {
-      dy_vec[i] *= ((mask_val & (static_cast<uint8_t>(1) << i)) != 0);
+      bool flag = ((mask_val & (static_cast<uint8_t>(1) << i)) != 0);
+      dy_vec[i] *= static_cast<T>(flag);
     }
-    dy_vec_ptr[0].Store(dx + idx);
-    dy_vec_ptr[1].Store(dx + idx + 4);
+    dy_vec.Store(dx + idx);
   }
 
   if (idx < n) {
@@ -162,69 +160,80 @@ static __global__ void Vectorized8FP32MaskedReluBwdCUDAKernel(const float *dy,
     for (size_t i = 0; i < left; ++i) {
       auto tmp = dy[idx + i];
       bool flag = ((mask_val & (static_cast<uint8_t>(1) << i)) != 0);
-      dx[idx + i] = tmp * flag;
+      dx[idx + i] = tmp * static_cast<T>(flag);
     }
   }
 }
 
-void LaunchFP32MaskedAddReluFwdKernel(
-    const platform::CUDADeviceContext &dev_ctx, const float *x, const float *z,
-    float *y, void *reserve_space, size_t n) {
+template <typename T>
+void LaunchMaskedAddReluFwdKernel(const platform::CUDADeviceContext &dev_ctx,
+                                  const T *x, const T *z, T *y, void *mask,
+                                  size_t n) {
   int vec_size = std::min(phi::GetVectorizedSize(x), phi::GetVectorizedSize(z));
   vec_size = std::min(vec_size, phi::GetVectorizedSize(z));
   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, 8);
   auto stream = dev_ctx.stream();
-#define LAUNCH_FP32_MASKED_ADD_RELU_FWD_KERNEL(__is_aligned, __has_residual) \
-  do {                                                                       \
-    Vectorized8FP32MaskedReluFwdCUDAKernel<__is_aligned, __has_residual><<<  \
-        config.block_per_grid, config.thread_per_block, 0, stream>>>(        \
-        x, z, y, reserve_space, n);                                          \
+  constexpr auto kMaxVecSize = VectorizedArray<T, 8, true>::kMaxVecSize;
+#define LAUNCH_MASKED_ADD_RELU_FWD_KERNEL(__is_aligned, __has_residual)        \
+  do {                                                                         \
+    Vectorized8MaskedAddReluFwdCUDAKernel<T, __is_aligned, __has_residual><<<  \
+        config.block_per_grid, config.thread_per_block, 0, stream>>>(x, z, y,  \
+                                                                     mask, n); \
   } while (0)
-  if (vec_size % 4 == 0) {
+  if (vec_size % kMaxVecSize == 0) {
     if (z != nullptr) {
-      LAUNCH_FP32_MASKED_ADD_RELU_FWD_KERNEL(true, true);
+      LAUNCH_MASKED_ADD_RELU_FWD_KERNEL(true, true);
     } else {
-      LAUNCH_FP32_MASKED_ADD_RELU_FWD_KERNEL(true, false);
+      LAUNCH_MASKED_ADD_RELU_FWD_KERNEL(true, false);
     }
   } else {  // almost impossible case
     if (z != nullptr) {
-      LAUNCH_FP32_MASKED_ADD_RELU_FWD_KERNEL(false, true);
+      LAUNCH_MASKED_ADD_RELU_FWD_KERNEL(false, true);
     } else {
-      LAUNCH_FP32_MASKED_ADD_RELU_FWD_KERNEL(false, false);
+      LAUNCH_MASKED_ADD_RELU_FWD_KERNEL(false, false);
     }
   }
-#undef LAUNCH_FP32_MASKED_ADD_RELU_FWD_KERNEL
+#undef LAUNCH_MASKED_ADD_RELU_FWD_KERNEL
 }
 
-void LaunchFP32MaskedReluBwdKernel(const platform::CUDADeviceContext &dev_ctx,
-                                   const float *dy, const void *reserve_space,
-                                   float *dx, size_t n) {
+template <typename T>
+void LaunchMaskedReluBwdKernel(const platform::CUDADeviceContext &dev_ctx,
+                               const T *dy, const void *mask, T *dx, size_t n) {
   int vec_size =
       std::min(phi::GetVectorizedSize(dx), phi::GetVectorizedSize(dy));
   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, 8);
   auto stream = dev_ctx.stream();
-  if (vec_size % 4 == 0) {
-    Vectorized8FP32MaskedReluBwdCUDAKernel<
-        true><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-        dy, reserve_space, dx, n);
+  constexpr auto kMaxVecSize = VectorizedArray<T, 8, true>::kMaxVecSize;
+  static_assert(8 % kMaxVecSize == 0, "8 % kMaxVecSize must be 0.");
+  if (vec_size % kMaxVecSize == 0) {
+    Vectorized8MaskedReluBwdCUDAKernel<
+        T, true><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+        dy, mask, dx, n);
   } else {
-    Vectorized8FP32MaskedReluBwdCUDAKernel<
+    Vectorized8MaskedReluBwdCUDAKernel<
+        T,
         false><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-        dy, reserve_space, dx, n);
+        dy, mask, dx, n);
   }
 }
 
+#define INSTANTIZE_MASKED_RELU_KERNEL(__type)                              \
+  template void LaunchMaskedAddReluFwdKernel<__type>(                      \
+      const platform::CUDADeviceContext &, const __type *, const __type *, \
+      __type *, void *, size_t);                                           \
+  template void LaunchMaskedReluBwdKernel<__type>(                         \
+      const platform::CUDADeviceContext &, const __type *, const void *,   \
+      __type *, size_t)
+
+INSTANTIZE_MASKED_RELU_KERNEL(platform::float16);
+INSTANTIZE_MASKED_RELU_KERNEL(float);
+INSTANTIZE_MASKED_RELU_KERNEL(double);
+
 static size_t RoundUpFactor(size_t n, size_t m) { return (n + m - 1) / m; }
 
-size_t GetFP32BNReserveSpaceSize(uint32_t N, uint32_t C, uint32_t H,
-                                 uint32_t W) {
+size_t GetBNMaskSpaceSize(uint32_t N, uint32_t C, uint32_t H, uint32_t W) {
   size_t n = static_cast<size_t>(N) * C * H * W;
   return RoundUpFactor(n, 8);
-}
-
-bool CanUseFusedNCHWFP32BNTrainingKernel(uint32_t N, uint32_t C, uint32_t H,
-                                         uint32_t W) {
-  return static_cast<size_t>(H) * W % 8 == 0;
 }
 
 template <typename T>
@@ -245,9 +254,9 @@ struct BNStatusUpdater {
   template <bool IsAligned>
   HOSTDEVICE void Update(int idx, T mean_val, T variance_val) {
     save_mean[idx] = mean_val;
-    T tmp_inv_var = 1.0f / sqrt(variance_val + epsilon);
+    auto tmp_inv_var = 1. / sqrt(variance_val + epsilon);
     save_inv_variance[idx] = tmp_inv_var;
-    T one_minus_factor = static_cast<T>(1) - factor;
+    auto one_minus_factor = 1. - factor;
     running_mean[idx] =
         one_minus_factor * running_mean[idx] + factor * mean_val;
     running_variance[idx] =
@@ -371,15 +380,9 @@ static __global__ void BNFinalizeOutputKernel(const float *x, const float *z,
   size_t stride = static_cast<size_t>(blockDim.x) * gridDim.x * 8;
   for (; idx < NCHW; idx += stride) {
     VectorizedArray<float, 8, IsAligned> x_vec, z_vec;
-    auto *x_vec_ptr =
-        reinterpret_cast<VectorizedArray<float, 4, IsAligned> *>(&x_vec);
-    x_vec_ptr[0].Load(x + idx);
-    x_vec_ptr[1].Load(x + idx + 4);
+    x_vec.Load(x + idx);
     if (NeedResidual) {
-      auto *z_vec_ptr =
-          reinterpret_cast<VectorizedArray<float, 4, IsAligned> *>(&z_vec);
-      z_vec_ptr[0].Load(z + idx);
-      z_vec_ptr[1].Load(z + idx + 4);
+      z_vec.Load(z + idx);
     }
     uint8_t mask_val = 0;
     size_t c_idx = (idx - idx % HW) / HW % C;
@@ -388,8 +391,10 @@ static __global__ void BNFinalizeOutputKernel(const float *x, const float *z,
 
 #pragma unroll
     for (int i = 0; i < 8; ++i) {
-      auto tmp = NeedResidual ? (x_vec[i] + z_vec[i]) : x_vec[i];
-      tmp = scale_bias_vec[0] * tmp + scale_bias_vec[1];
+      auto tmp = scale_bias_vec[0] * x_vec[i] + scale_bias_vec[1];
+      if (NeedResidual) {
+        tmp += z_vec[i];
+      }
 
       if (NeedRelu) {
         bool flag = (tmp > 0);
@@ -399,27 +404,28 @@ static __global__ void BNFinalizeOutputKernel(const float *x, const float *z,
         x_vec[i] = tmp;
       }
     }
-    x_vec_ptr[0].Load(y + idx);
-    x_vec_ptr[1].Load(y + idx + 4);
+    x_vec.Store(y + idx);
     if (NeedRelu) {
       reinterpret_cast<uint8_t *>(mask)[idx / 8] = mask_val;
     }
   }
 }
 
-void LaunchFusedNCHWFP32BNTrainingKernel(
+bool TryLaunchFusedNCHWFP32BNTrainingKernel(
     const platform::CUDADeviceContext &dev_ctx, const float *x, const float *z,
     const float *scale, const float *bias, float *y, float *save_mean,
     float *save_inv_variance, float *running_mean, float *running_variance,
-    void *reserve_space, uint32_t N, uint32_t C, uint32_t H, uint32_t W,
-    double factor, double epsilon, bool need_relu) {
+    void *mask, uint32_t N, uint32_t C, uint32_t H, uint32_t W, double factor,
+    double epsilon, bool need_relu) {
+  size_t HW = static_cast<size_t>(H) * W;
+  if (HW % 8 != 0) {
+    return false;
+  }
+
   constexpr int kBlockDim = 512;
   constexpr int kMaxReduceNum = 128;
   constexpr int kVecSize = 4;
 
-  PADDLE_ENFORCE_EQ(CanUseFusedNCHWFP32BNTrainingKernel(N, C, H, W), false,
-                    phi::errors::InvalidArgument(
-                        "H(%d) * W(%d) should be exactly divided by 8.", H, W));
   framework::Tensor tmp_scale_bias_tensor;
   tmp_scale_bias_tensor.Resize({static_cast<int64_t>(C) * 2});
   auto *tmp_scale_bias = dev_ctx.Alloc<float>(&tmp_scale_bias_tensor);
@@ -434,7 +440,6 @@ void LaunchFusedNCHWFP32BNTrainingKernel(
                      alignof(VectorizedArray<float, 2, true>) ==
                  0);
 
-  size_t HW = static_cast<size_t>(H) * W;
   size_t NHW = N * HW;
   size_t K = RoundUpFactor(NHW, kMaxReduceNum / kVecSize * kBlockDim);
   K = std::min<size_t>(dev_ctx.GetCUDAMaxGridDimSize()[0] / C, K);
@@ -444,6 +449,8 @@ void LaunchFusedNCHWFP32BNTrainingKernel(
   framework::Tensor tmp_mean_tensor, tmp_var_tensor;
   if (K > 1) {
     mean_var_stride = RoundUpFactor(K, kVecSize) * kVecSize;
+    tmp_mean_tensor.Resize({static_cast<int64_t>(C * mean_var_stride)});
+    tmp_var_tensor.Resize({static_cast<int64_t>(C * mean_var_stride)});
     tmp_mean = dev_ctx.Alloc<float>(&tmp_mean_tensor);
     tmp_var = dev_ctx.Alloc<float>(&tmp_var_tensor);
     is_aligned &= (phi::GetVectorizedSize(tmp_mean) % kVecSize == 0);
@@ -514,7 +521,7 @@ void LaunchFusedNCHWFP32BNTrainingKernel(
   do {                                                                    \
     BNFinalizeOutputKernel<__need_residual, __need_relu, __is_aligned><<< \
         config.block_per_grid, config.thread_per_block, 0, stream>>>(     \
-        x, z, tmp_scale_bias, y, reserve_space, C, HW, NCHW);             \
+        x, z, tmp_scale_bias, y, mask, C, HW, NCHW);                      \
   } while (0)
 
   if (z != nullptr) {
@@ -546,6 +553,7 @@ void LaunchFusedNCHWFP32BNTrainingKernel(
       }
     }
   }
+  return true;
 }
 
 }  // namespace operators

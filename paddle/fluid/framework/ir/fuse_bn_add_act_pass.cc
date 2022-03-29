@@ -27,17 +27,19 @@ void FuseBatchNormAddActPass::ApplyImpl(ir::Graph *graph) const {
 #if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 4, 1)
   // forward
   std::unordered_set<std::string> act_types = {"relu"};
-  graph = FuseBatchNormAddAct(graph, act_types);
+  std::unordered_map<const Node *, Node *> x_to_mask;
+  graph = FuseBatchNormAddAct(graph, act_types, &x_to_mask);
   // backward
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
-  graph = FuseBatchNormAddActGrad(graph, act_grad_types);
+  graph = FuseBatchNormAddActGrad(graph, act_grad_types, x_to_mask);
 #endif
 #endif
 }
 
 // act(bn(x) + z)
 ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
-    ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
+    ir::Graph *graph, const std::unordered_set<std::string> &act_types,
+    std::unordered_map<const Node *, Node *> *x_to_mask) const {
   PADDLE_ENFORCE_NE(
       graph, nullptr,
       platform::errors::InvalidArgument(
@@ -85,7 +87,8 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
     GET_IR_NODE_FROM_SUBGRAPH(elewise_add, elewise_add, bn_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_add_act_pattern);
 
-    std::string bn_x_n = subgraph.at(x)->Name();
+    Node *bn_x_node = subgraph.at(x);
+    std::string bn_x_n = bn_x_node->Name();
     std::string elewise_add_in_n = elewise_add_in->Name();
     std::string bn_scale_n = bn_scale->Name();
     std::string bn_bias_n = bn_bias->Name();
@@ -102,6 +105,14 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
         g, act, elewise_add, batch_norm, bn_x_n, elewise_add_in_n, bn_scale_n,
         bn_bias_n, bn_mean_out_n, bn_variance_out_n, bn_saved_variance_n,
         bn_saved_mean_n, bn_reserve_space_n, act_out_n);
+
+    VarDesc mask_var_desc(bn_x_n + "@mask");
+    mask_var_desc.SetType(proto::VarType::LOD_TENSOR);
+    mask_var_desc.SetDataType(proto::VarType::UINT8);
+    Node *mask_var_node = g->CreateVarNode(&mask_var_desc);
+    (*x_to_mask)[bn_x_node] = mask_var_node;
+    fused_bn_add_act_node->outputs.push_back(mask_var_node);
+    mask_var_node->inputs.push_back(fused_bn_add_act_node);
 
     VLOG(4) << "\n\t " << bn_x_n << ", " << bn_scale_n << ", " << bn_bias_n
             << " -> " << batch_norm->Name() << " -> " << bn_mean_out_n << ", "
@@ -144,6 +155,7 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
                  std::vector<std::string>({bn_saved_variance_n}));
   desc.SetOutput("ReserveSpace",
                  std::vector<std::string>({bn_reserve_space_n}));
+  desc.SetOutput("Mask", {bn_x_n + "@mask"});
   desc.SetType("fused_bn_add_activation");
 
   desc.SetAttr("act_type", act->Name());
@@ -160,8 +172,8 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
 
 // the backward of act(bn(x) + z)
 ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
-    ir::Graph *graph,
-    const std::unordered_set<std::string> &act_grad_types) const {
+    ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
+    const std::unordered_map<const Node *, Node *> &x_to_mask) const {
   PADDLE_ENFORCE_NE(
       graph, nullptr,
       platform::errors::InvalidArgument(
@@ -225,6 +237,7 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
     desc.SetType("fused_bn_add_activation_grad");
     desc.SetInput("X", {bn_x_n});
     desc.SetInput("Y", std::vector<std::string>({act_out_n}));
+    desc.SetInput("Mask", {bn_x_n + "@mask"});
     desc.SetInput(GradVarName("Y"), std::vector<std::string>({d_act_out_n}));
     desc.SetInput("Scale", std::vector<std::string>({bn_scale_n}));
     desc.SetInput("Bias", std::vector<std::string>({bn_bias_n}));
@@ -252,6 +265,14 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
     }
 
     auto fused_node = g->CreateOpNode(&desc);
+
+    auto iter = x_to_mask.find(bn_x);
+    PADDLE_ENFORCE_NE(
+        iter, x_to_mask.end(),
+        phi::errors::InvalidArgument("Cannot find mask var for %s", bn_x_n));
+    auto mask_node = iter->second;
+    fused_node->inputs.push_back(mask_node);
+    mask_node->outputs.push_back(fused_node);
 
     VLOG(4) << "\n\t " << d_act_out_n << " and " << act_out_n << " -> "
             << act_grad->Name() << " -> " << d_act_x_n << "\n\t ";

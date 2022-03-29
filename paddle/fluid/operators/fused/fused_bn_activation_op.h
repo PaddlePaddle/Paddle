@@ -73,6 +73,7 @@ class FusedBatchNormActGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SavedMean", this->Output("SavedMean"));
     op->SetInput("SavedVariance", this->Output("SavedVariance"));
     op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+    op->SetInput("Mask", this->Output("Mask"));
 
     op->SetAttrMap(this->Attrs());
 

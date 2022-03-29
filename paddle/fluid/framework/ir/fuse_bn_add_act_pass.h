@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -42,11 +43,12 @@ class FuseBatchNormAddActPass : public FusePassBase {
   void ApplyImpl(ir::Graph *graph) const override;
 
   ir::Graph *FuseBatchNormAddAct(
-      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types,
+      std::unordered_map<const Node *, Node *> *x_to_mask) const;
 
   ir::Graph *FuseBatchNormAddActGrad(
-      ir::Graph *graph,
-      const std::unordered_set<std::string> &act_grad_types) const;
+      ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
+      const std::unordered_map<const Node *, Node *> &x_to_mask) const;
 
   void LinkOutputsToFuseOp(
       Node *op_1, Node *op_2, Node *fused_op,

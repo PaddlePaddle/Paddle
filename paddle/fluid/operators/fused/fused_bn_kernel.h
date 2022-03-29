@@ -19,26 +19,23 @@
 namespace paddle {
 namespace operators {
 
-size_t GetFP32BNReserveSpaceSize(uint32_t N, uint32_t C, uint32_t H,
-                                 uint32_t W);
+size_t GetBNMaskSpaceSize(uint32_t N, uint32_t C, uint32_t H, uint32_t W);
 
-void LaunchFP32MaskedAddReluFwdKernel(
-    const platform::CUDADeviceContext &dev_ctx, const float *x, const float *z,
-    float *y, void *reserve_space, size_t n);
+template <typename T>
+void LaunchMaskedAddReluFwdKernel(const platform::CUDADeviceContext &dev_ctx,
+                                  const T *x, const T *z, T *y, void *mask,
+                                  size_t n);
 
-void LaunchFP32MaskedReluBwdKernel(const platform::CUDADeviceContext &dev_ctx,
-                                   const float *dy, const void *reserve_space,
-                                   float *dx, size_t n);
+template <typename T>
+void LaunchMaskedReluBwdKernel(const platform::CUDADeviceContext &dev_ctx,
+                               const T *dy, const void *mask, T *dx, size_t n);
 
-bool CanUseFusedNCHWFP32BNTrainingKernel(uint32_t N, uint32_t C, uint32_t H,
-                                         uint32_t W);
-
-void LaunchFusedNCHWFP32BNTrainingKernel(
+bool TryLaunchFusedNCHWFP32BNTrainingKernel(
     const platform::CUDADeviceContext &dev_ctx, const float *x, const float *z,
     const float *scale, const float *bias, float *y, float *save_mean,
     float *save_inv_variance, float *running_mean, float *running_variance,
-    void *reserve_space, uint32_t N, uint32_t C, uint32_t H, uint32_t W,
-    double factor, double epsilon, bool need_relu);
+    void *mask, uint32_t N, uint32_t C, uint32_t H, uint32_t W, double factor,
+    double epsilon, bool need_relu);
 
 }  // namespace operators
 }  // namespace paddle

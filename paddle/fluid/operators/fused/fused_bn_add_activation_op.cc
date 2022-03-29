@@ -16,7 +16,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -165,6 +164,7 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel");
+  AddOutput("Mask", "The relu output mask.");
   AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
