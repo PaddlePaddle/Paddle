@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import paddle
 
 
 class Constraint(object):
@@ -33,7 +34,7 @@ class Range(Constraint):
         super(Range, self).__init__()
 
     def __call__(self, value):
-        return self._lower <= value <= self.upper
+        return self._lower <= value <= self._upper
 
 
 class Positive(Constraint):
@@ -43,7 +44,7 @@ class Positive(Constraint):
 
 class Simplex(Constraint):
     def __call__(self, value):
-        return paddle.all(value >= 0, dim=-1) and (
+        return paddle.all(value >= 0, axis=-1) and (
             (value.sum(-1) - 1).abs() < 1e-6)
 
 

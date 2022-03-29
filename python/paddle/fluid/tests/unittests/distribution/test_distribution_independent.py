@@ -75,5 +75,18 @@ class TestIndependent(unittest.TestCase):
         self.assertEqual(data.dtype, self.base.alpha.dtype)
 
 
+@param.place(config.DEVICES)
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank',
+     'expected_exception'),
+    [('base_not_transform', '', 1, TypeError),
+     ('rank_less_than_zero', paddle.distribution.Transform(), -1, ValueError)])
+class TestIndependentException(unittest.TestCase):
+    def test_init(self):
+        with self.assertRaises(self.expected_exception):
+            paddle.distribution.IndependentTransform(
+                self.base, self.reinterpreted_batch_rank)
+
+
 if __name__ == '__main__':
     unittest.main()

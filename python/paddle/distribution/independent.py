@@ -66,9 +66,6 @@ class Independent(distribution.Distribution):
             event_shape=shape[len(base.batch_shape) -
                               reinterpreted_batch_rank:])
 
-    def _expand(self, batch_shape):
-        raise NotImplementedError()
-
     @property
     def mean(self):
         return self._base.mean
@@ -79,9 +76,6 @@ class Independent(distribution.Distribution):
 
     def sample(self, shape=()):
         return self._base.sample(shape)
-
-    def rsample(self, shape=()):
-        return self._base.rsample(shape)
 
     def log_prob(self, value):
         return self._sum_rightmost(

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
 import unittest
 
 import numpy as np
 import paddle
-from paddle.distribution import transform, variable, constraint
+from paddle.distribution import constraint, transform, variable
 
 import config
 import parameterize as param
@@ -26,6 +27,15 @@ import parameterize as param
 class TestTransform(unittest.TestCase):
     def setUp(self):
         self._t = transform.Transform()
+
+    @param.param_func([
+        (paddle.distribution.Distribution(),
+         paddle.distribution.TransformedDistribution),
+        (paddle.distribution.ExpTransform(), paddle.distribution.ChainTransform)
+    ])
+    def test_call(self, input, expected_type):
+        t = transform.Transform()
+        self.assertIsInstance(t(input), expected_type)
 
     @param.param_func(
         [(transform.Type.BIJECTION, True), (transform.Type.INJECTION, True),
@@ -72,7 +82,7 @@ class TestTransform(unittest.TestCase):
     @param.param_func([(0, TypeError)])
     def test_inverse_shape(self, shape, expected):
         with self.assertRaises(expected):
-            self._t.forward_shape(shape)
+            self._t.inverse_shape(shape)
 
 
 @param.place(config.DEVICES)
@@ -156,6 +166,20 @@ class TestAffineTransform(unittest.TestCase):
     def setUp(self):
         self._t = transform.AffineTransform(
             paddle.to_tensor(self.loc), paddle.to_tensor(self.scale))
+
+    @param.param_func([
+        (paddle.rand([1]), 0, TypeError),
+        (0, paddle.rand([1]), TypeError),
+    ])
+    def test_init_exception(self, loc, scale, exc):
+        with self.assertRaises(exc):
+            paddle.distribution.AffineTransform(loc, scale)
+
+    def test_scale(self):
+        np.testing.assert_allclose(self._t.scale, self.scale)
+
+    def test_loc(self):
+        np.testing.assert_allclose(self._t.loc, self.loc)
 
     def test_is_injective(self):
         self.assertTrue(self._t._is_injective())
@@ -301,6 +325,12 @@ class TestExpTransform(unittest.TestCase):
 
 @param.place(config.DEVICES)
 class TestChainTransform(unittest.TestCase):
+    @param.param_func([(paddle.distribution.Transform, TypeError),
+                       ([0], TypeError)])
+    def test_init_exception(self, transforms, exception):
+        with self.assertRaises(exception):
+            paddle.distribution.ChainTransform(transforms)
+
     @param.param_func((
         (transform.ChainTransform(
             (transform.AbsTransform(),
@@ -390,7 +420,7 @@ class TestChainTransform(unittest.TestCase):
         paddle.to_tensor(-1.0)), transform.ExpTransform())), (2, 3, 5),
                         (2, 3, 5)), ])
     def test_inverse_shape(self, chain, shape, expected_shape):
-        self.assertEqual(chain.forward_shape(shape), expected_shape)
+        self.assertEqual(chain.inverse_shape(shape), expected_shape)
 
 
 @param.place(config.DEVICES)
@@ -402,6 +432,12 @@ class TestIndependentTransform(unittest.TestCase):
     def setUp(self):
         self._t = transform.IndependentTransform(self.base,
                                                  self.reinterpreted_batch_rank)
+
+    @param.param_func([(0, 0, TypeError),
+                       (paddle.distribution.Transform(), -1, ValueError)])
+    def test_init_exception(self, base, rank, exc):
+        with self.assertRaises(exc):
+            paddle.distribution.IndependentTransform(base, rank)
 
     def test_is_injective(self):
         self.assertEqual(self._t._is_injective(), self.base._is_injective())
@@ -611,6 +647,12 @@ class TestReshapeTransform(unittest.TestCase):
         self._t = transform.ReshapeTransform(self.in_event_shape,
                                              self.out_event_shape)
 
+    @param.param_func([(0, 0, TypeError), ((1, 2), (1, 3), ValueError)])
+    def test_init_exception(self, in_event_shape, out_event_shape, exc):
+        with self.assertRaises(exc):
+            paddle.distribution.ReshapeTransform(in_event_shape,
+                                                 out_event_shape)
+
     def test_is_injective(self):
         self.assertTrue(self._t._is_injective())
 
@@ -643,6 +685,22 @@ class TestReshapeTransform(unittest.TestCase):
             paddle.zeros([1]).numpy(),
             rtol=config.RTOL.get(str(x.numpy().dtype)),
             atol=config.ATOL.get(str(x.numpy().dtype)))
+
+    def test_in_event_shape(self):
+        self.assertEqual(self._t.in_event_shape, self.in_event_shape)
+
+    def test_out_event_shape(self):
+        self.assertEqual(self._t.out_event_shape, self.out_event_shape)
+
+    @param.param_func([((), ValueError), ((1, 2), ValueError)])
+    def test_forward_shape_exception(self, shape, exc):
+        with self.assertRaises(exc):
+            self._t.forward_shape(shape)
+
+    @param.param_func([((), ValueError), ((1, 2), ValueError)])
+    def test_inverse_shape_exception(self, shape, exc):
+        with self.assertRaises(exc):
+            self._t.inverse_shape(shape)
 
 
 def _np_softplus(x, beta=1., threshold=20.):
@@ -745,9 +803,19 @@ class TestSoftmaxTransform(unittest.TestCase):
     def test_forward_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
 
+    @param.param_func([((), ValueError)])
+    def test_forward_shape_exception(self, shape, exc):
+        with self.assertRaises(exc):
+            self._t.forward_shape(shape)
+
+    @param.param_func([((), ValueError)])
+    def test_inverse_shape_exception(self, shape, exc):
+        with self.assertRaises(exc):
+            self._t.inverse_shape(shape)
+
     @param.param_func([((2, 3, 5), (2, 3, 5))])
     def test_inverse_shape(self, shape, expected_shape):
-        self.assertEqual(self._t.forward_shape(shape), expected_shape)
+        self.assertEqual(self._t.inverse_shape(shape), expected_shape)
 
 
 class TestStickBreakingTransform(unittest.TestCase):
@@ -775,9 +843,14 @@ class TestStickBreakingTransform(unittest.TestCase):
     def test_forward_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
 
-    @param.param_func([((2, 3, 5), (2, 3, 6))])
+    @param.param_func([((2, 3, 5), (2, 3, 4))])
     def test_inverse_shape(self, shape, expected_shape):
-        self.assertEqual(self._t.forward_shape(shape), expected_shape)
+        self.assertEqual(self._t.inverse_shape(shape), expected_shape)
+
+    @param.param_func(((np.random.random((10)), ), ))
+    def test_forward_log_det_jacobian(self, x):
+        self.assertEqual(
+            self._t.forward_log_det_jacobian(paddle.to_tensor(x)).shape, [1])
 
 
 # Todo
@@ -825,6 +898,19 @@ class TestStackTransform(unittest.TestCase):
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
+
+    def test_axis(self):
+        self.assertEqual(self._t.axis, self.axis)
+
+    @param.param_func(
+        [(0, 0, TypeError), ([0], 0, TypeError),
+         ([paddle.distribution.ExpTransform()], 'axis', TypeError)])
+    def test_init_exception(self, transforms, axis, exc):
+        with self.assertRaises(exc):
+            paddle.distribution.StackTransform(transforms, axis)
+
+    def test_transforms(self):
+        self.assertIsInstance((self._t.transforms), typing.Sequence)
 
 
 if __name__ == '__main__':

@@ -171,7 +171,8 @@ class Transform(object):
             [Tensor|TransformedDistribution|ChainTransform]: The return value.
         """
         if isinstance(input, distribution.Distribution):
-            return transformed_distribution.TransformedDistribution(input, self)
+            return transformed_distribution.TransformedDistribution(input,
+                                                                    [self])
         if isinstance(input, Transform):
             return ChainTransform([self, input])
         return self.forward(x)
