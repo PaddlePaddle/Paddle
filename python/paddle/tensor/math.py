@@ -160,7 +160,7 @@ def pow(x, y, name=None):
     #raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
 
     #if _in_legacy_dygraph():
-    if _non_static_mode:
+    if _non_static_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
