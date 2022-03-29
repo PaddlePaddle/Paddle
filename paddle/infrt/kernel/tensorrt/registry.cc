@@ -22,8 +22,9 @@ namespace infrt {
 namespace kernel {
 
 void RegisterTrtKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("trt.create_engine",
-                      INFRT_KERNEL(tensorrt::CreateTrtEngine));
+  registry->AddKernelWithAttrs("trt.create_engine",
+                               INFRT_KERNEL(tensorrt::CreateTrtEngine),
+                               {"run_once"});
   registry->AddKernel("trt.inspect_engine",
                       INFRT_KERNEL(tensorrt::PrintTrtLayer));
   registry->AddKernel("trt.compute", INFRT_KERNEL(tensorrt::TrtEngineCompute));

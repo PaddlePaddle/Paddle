@@ -93,7 +93,7 @@ function infrt_gen_and_build() {
     # step2. compile infrt
     cd ${PADDLE_ROOT}/build
     rm -f infrt_summary.txt
-    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
+    cmake ..  -DWITH_MKL=OFF -DWITH_GPU=ON -DWITH_TENSORRT=ON -DWITH_CRYPTO=OFF -DCMAKE_BUILD_TYPE=Release -DWITH_INFRT=ON -DINFRT_WITH_GPU=ON -DINFRT_WITH_TRT=ON -DWITH_PYTHON=OFF -DWITH_TESTING==${WITH_TESTING:-ON}; build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi

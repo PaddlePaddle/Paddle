@@ -97,7 +97,7 @@ void InfrtWeightsFoldPass::runOnFunction() {
                          tensor->dims().Get() + tensor->dims().size()}),
                     ::infrt::LayoutAttr::get(builder.getContext(),
                                              ::infrt::LayoutType::NCHW),
-                    builder.getI64ArrayAttr({}),
+                    builder.getI64ArrayAttr({0}),
                     builder.getF32ArrayAttr(
                         {tensor->data<float>(),
                          static_cast<size_t>(tensor->numel())}));
