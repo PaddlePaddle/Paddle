@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph
+from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -591,6 +591,8 @@ def assign(input, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
+    if output is not None:
+        print("yoki enter api: ", output.inplace_version)
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray, list, tuple, float,
                                 int, bool), 'assign')
@@ -606,20 +608,41 @@ def assign(input, output=None):
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        check_dtype(input.dtype, 'input', [
-            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
-            'uint8', 'bool'
-        ], 'assign', '(When the type of input in assign is Variable.)')
-        if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
-            if in_dygraph_mode():
-                output = core.eager.Tensor()
-            else:
-                output = core.VarBase()
-        helper.append_op(
-            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
+        print("yoki: is_inplace: ", is_inplace)
+        print("yoki: _non_static_mode(): ", _non_static_mode())
+        if _non_static_mode():
+            if output is None:
+                if in_dygraph_mode():
+                    output = core.eager.Tensor()
+                else:
+                    output = core.VarBase()
+            #print("yoki api core_ops 1: ", output.inplace_version)
+            _C_ops.assign(input, output)
+            print("yoki api core_ops 2: ", output.inplace_version)
+        else:
+            #print("yoki api variable: ", output.inplace_version)
+            check_dtype(input.dtype, 'input', [
+                'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+                'uint8', 'bool'
+            ], 'assign', '(When the type of input in assign is Variable.)')
+            print("yoki api variable 2: ", output)
+            if output is None:
+                if in_dygraph_mode():
+                    print("yoki2.1: eagerTensor")
+                    output = core.eager.Tensor()
+                elif _in_legacy_dygraph():
+                    output = core.VarBase()
+                    print("yoki2.2: Tensor")
+                else:
+                    output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
+                    print("yoki2.3: variable")
+            print("yoki api variable 3: ", output)
+            helper.append_op(
+                type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
+            print("yoki api variable 4: ", output.inplace_version)
     elif isinstance(input, numpy.ndarray):
+        #print("yoki api dnarray: ", output.inplace_version)
         # Not support [var, var, ...] currently.
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             raise TypeError(
@@ -666,10 +689,14 @@ def assign(input, output=None):
                 value_name: values
             })
 
+    print("api yoki1: is_inplace: ", is_inplace)
+    print("api yoki2: _non_static_mode: ", _non_static_mode())
     if is_inplace and _non_static_mode():
         # TODO(jiabin): Remove this when we support inplace
-        if _in_legacy_dygraph():
-            output._bump_inplace_version()
+        #if _in_legacy_dygraph():
+        print("api yoki3: ", output.inplace_version)
+        output._bump_inplace_version()
+        print("api yoki4: ", output.inplace_version)
 
     return output
 
