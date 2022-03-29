@@ -46,11 +46,11 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     out->mutable_data(dev_ctx.GetPlace(),
                       static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    auto pt_out_dtype = framework::TransToPtenDataType(
+    auto pt_out_dtype = framework::TransToPhiDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
-    // call pten kernel
+    // call phi kernel
     phi::CastKernel<InT>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in, pt_out_dtype, out);
   }

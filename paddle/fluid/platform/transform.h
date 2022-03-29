@@ -59,7 +59,7 @@ struct Transform {
                   BinaryOperation op);
 };
 
-// NOTE: After the pten kernel is migrated, it needs to be deleted.
+// NOTE: After the phi kernel is migrated, it needs to be deleted.
 template <>
 struct Transform<platform::CPUDeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>

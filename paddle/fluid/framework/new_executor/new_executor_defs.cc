@@ -688,11 +688,13 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
 
-phi::Kernel* Instruction::PtenKernel() const {
-  return op_func_node_.pt_kernel_;
-}
+phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
+
+const std::map<int, int>& Instruction::InplaceBackMap() const {
+  return op_func_node_.inplace_back_map;
+}
 
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;

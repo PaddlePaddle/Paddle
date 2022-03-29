@@ -1,4 +1,4 @@
-cc_test(test_custom_kernel SRCS test_custom_kernel.cc DEPS phi_custom_kernel)
+cc_test(test_custom_kernel SRCS test_custom_kernel.cc DEPS custom_kernel)
 cc_test(test_dense_tensor SRCS test_dense_tensor.cc DEPS dense_tensor)
 cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
@@ -23,5 +23,5 @@ endif()
 if (NOT WIN32)
 cc_test(test_rw_lock SRCS test_rw_lock.cc)
 endif (NOT WIN32)
-
+cc_test(test_string_tensor SRCS test_string_tensor.cc DEPS string_tensor)
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)

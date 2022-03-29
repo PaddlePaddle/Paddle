@@ -54,6 +54,46 @@ constexpr int NPY_BFLOAT16_ = 256;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
 
+// cast numpy type form S to T, this may allocate new memory
+template <class T, class S>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  if (std::is_same<T, S>::value) {
+    return array;
+  }
+  auto dim = array.ndim();
+  std::vector<py::ssize_t> result_shape(dim);
+  for (auto i = 0; i < dim; i++) {
+    result_shape[i] = array.shape(i);
+  }
+
+  py::array_t<T> result(result_shape);
+
+  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
+}
+
+template <class T>
+static py::array_t<T> CastNumpyArray(const py::object &array) {
+  if (py::isinstance<py::array_t<float>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<float>>());
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<double>>());
+  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Value type error. The assign numpy value allows integer, float, "
+        "double and bool, "
+        "but received %s.",
+        Py_TYPE(array.ptr())->tp_name));
+  }
+  // can't reach here
+  return py::array_t<T>();
+}
+
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
@@ -326,7 +366,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
+      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -350,7 +390,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
+      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
       // IPU does not store Tensor data, Tensor will be created on CPU
       if (!self->initialized()) {
@@ -395,10 +435,10 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::Place tmp_place = place;
-    platform::DeviceGuard guard(tmp_place);
+    phi::DeviceGuard guard(tmp_place);
     auto dst = self->mutable_data<T>(place);
 
-    platform::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
+    phi::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
         array.nbytes());
@@ -525,7 +565,7 @@ void SetUVATensorFromPyArray(
           cuda_device_pointer, need_allocate_size,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder,
-                                   framework::TransToPtenDataType(data_type));
+                                   framework::TransToPhiDataType(data_type));
 #endif
 }
 
@@ -592,14 +632,20 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
   const framework::DDim &srcDDim = self.dims();
-  if (dim < 0 || dim >= srcDDim.size()) {
-    throw py::index_error();
-  }
+  PADDLE_ENFORCE(
+      0 <= dim && dim < srcDDim.size(),
+      platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
+                                   "shound be in the range of [0, %d).",
+                                   dim, srcDDim.size()));
+
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
     py::slice s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[dim], &lstart, &lstop, &lstep, &lslicelength)) {
-      throw py::index_error();
+      PADDLE_THROW(platform::errors::OutOfRange(
+          "Slice on dim: %d is error, please check the validity of tensor "
+          "dims or slice item.",
+          dim));
     }
     start = static_cast<int64_t>(lstart);
     stop = static_cast<int64_t>(lstop);
@@ -607,15 +653,19 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
     slicelength = static_cast<int64_t>(lslicelength);
   } else if (py::isinstance<py::int_>(obj)) {
     start = static_cast<int64_t>(static_cast<py::int_>(obj));
-    if (std::abs(start) >= srcDDim[dim]) {
-      throw py::index_error();
-    }
+    PADDLE_ENFORCE(
+        std::abs(start) < srcDDim[dim],
+        platform::errors::OutOfRange("The start %d of slice is out of bounds, "
+                                     "it shound be in the range of (%d, %d).",
+                                     start, -srcDDim[dim], srcDDim[dim]));
     start = (start >= 0) ? start : srcDDim[dim] - start;
     stop = start + 1;
     step = 1;
     slicelength = 1;
   } else {
-    throw py::index_error();
+    PADDLE_THROW(
+        platform::errors::OutOfRange("Index object error, the index object for "
+                                     "slice only supports slice(::) and int."));
   }
 }
 

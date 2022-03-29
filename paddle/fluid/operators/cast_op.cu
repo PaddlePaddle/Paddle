@@ -29,9 +29,5 @@ using CUDA = paddle::platform::CUDADeviceContext;
       ops::CastOpKernel<CUDA, plat::complex<float>>,                      \
       ops::CastOpKernel<CUDA, plat::complex<double>>, ##__VA_ARGS__);
 
-#if !defined(PADDLE_WITH_HIP)
 // See [ why register transfer_dtype_op alias with cast_op? ] in cast_op.cc
 REGISTER_CAST_CUDA_BASE(transfer_dtype, ops::CastOpKernel<CUDA, plat::bfloat16>)
-#else
-REGISTER_CAST_CUDA_BASE(transfer_dtype)
-#endif

@@ -43,35 +43,35 @@ TEST(ConvertUtils, DataType) {
   CHECK(paddle::framework::TransToProtoVarType(paddle::DataType::FLOAT16) ==
         paddle::framework::proto::VarType::FP16);
   // proto -> enum
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::FP64) ==
         paddle::DataType::FLOAT64);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::FP32) ==
         paddle::DataType::FLOAT32);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::INT64) ==
         paddle::DataType::INT64);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::INT32) ==
         paddle::DataType::INT32);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::INT8) == paddle::DataType::INT8);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::UINT8) ==
         paddle::DataType::UINT8);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::INT16) ==
         paddle::DataType::INT16);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::BOOL) == paddle::DataType::BOOL);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::COMPLEX64) ==
         paddle::DataType::COMPLEX64);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::COMPLEX128) ==
         paddle::DataType::COMPLEX128);
-  CHECK(paddle::framework::TransToPtenDataType(
+  CHECK(paddle::framework::TransToPhiDataType(
             paddle::framework::proto::VarType::FP16) ==
         paddle::DataType::FLOAT16);
 }

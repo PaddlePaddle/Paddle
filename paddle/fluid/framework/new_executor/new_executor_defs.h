@@ -297,10 +297,12 @@ struct OpFuncNode {
   std::map<std::string, std::vector<int>> output_index;
   std::unordered_set<int> no_data_transform_index;
 
+  std::map<int, int> inplace_back_map;
+
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
 
-  // fit for pten kernel
+  // fit for phi kernel
   phi::Kernel* pt_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
@@ -321,9 +323,11 @@ class Instruction {
 
   OpKernelComputeFunc KernelFunc() const;
 
-  phi::Kernel* PtenKernel() const;
+  phi::Kernel* PhiKernel() const;
 
   OpFuncType KernelType() const;
+
+  const std::map<int, int>& InplaceBackMap() const;
 
   OperatorBase* OpBase() const;
 

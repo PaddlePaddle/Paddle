@@ -28,7 +28,7 @@ import paddle
 class TestBatchNorm(unittest.TestCase):
     def test_name(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             with fluid.dygraph.guard(p):
@@ -36,7 +36,7 @@ class TestBatchNorm(unittest.TestCase):
 
     def test_error(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             #paddle.disable_static()
@@ -83,7 +83,7 @@ class TestBatchNorm(unittest.TestCase):
 
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
@@ -135,7 +135,7 @@ class TestBatchNorm(unittest.TestCase):
 
     def test_static(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
@@ -177,7 +177,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
         else:
             paddle.set_default_dtype("float64")
         self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
     def tearDown(self):
@@ -247,7 +247,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
 class TestBatchNormUseGlobalStats(unittest.TestCase):
     def setUp(self):
         self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
         self.init_test()
 
@@ -300,4 +300,6 @@ class TestBatchNormUseGlobalStatsCase3(TestBatchNormUseGlobalStats):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

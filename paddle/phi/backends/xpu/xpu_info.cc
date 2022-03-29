@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
 
-// TODO(wilber): The pten computing library requires a component to manage
+// TODO(wilber): The phi computing library requires a component to manage
 // flags.
 #include "paddle/fluid/platform/flags.h"
 

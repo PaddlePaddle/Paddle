@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/frobenius_norm_op.h"
-
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -56,22 +59,12 @@ class FrobeniusNormOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce frobenius_norm"; }
 };
 
+DECLARE_INFER_SHAPE_FUNCTOR(frobenius_norm, FrobeniusNormInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+
 REGISTER_OPERATOR(frobenius_norm, ops::ReduceOp, FrobeniusNormOpMaker,
                   ops::FrobeniusNormOpGradMaker<paddle::framework::OpDesc>,
-                  ops::FrobeniusNormOpGradMaker<paddle::imperative::OpBase>);
+                  ops::FrobeniusNormOpGradMaker<paddle::imperative::OpBase>,
+                  FrobeniusNormInferShapeFunctor);
 
 REGISTER_OPERATOR(frobenius_norm_grad, ops::ReduceGradOp);
-
-REGISTER_OP_CPU_KERNEL(frobenius_norm,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         float, ops::FrobeniusNormFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         double, ops::FrobeniusNormFunctor>);
-
-template <typename T>
-using CPUFrobeniusNormGradKernel =
-    ops::FrobeniusNormGradKernel<paddle::platform::CPUDeviceContext, T,
-                                 ops::FrobeniusNormGradFunctor>;
-
-REGISTER_OP_CPU_KERNEL(frobenius_norm_grad, CPUFrobeniusNormGradKernel<float>,
-                       CPUFrobeniusNormGradKernel<double>);

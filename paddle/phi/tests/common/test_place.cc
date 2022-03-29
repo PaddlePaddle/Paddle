@@ -20,7 +20,7 @@ limitations under the License. */
 namespace phi {
 namespace tests {
 
-TEST(PtenPlace, place) {
+TEST(PhiPlace, place) {
   phi::Place place;
   EXPECT_EQ(place.GetType(), phi::AllocationType::UNDEFINED);
 

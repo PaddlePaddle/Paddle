@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/split_op.h"
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace operators {
 using framework::Tensor;

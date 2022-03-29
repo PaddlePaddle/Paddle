@@ -395,6 +395,8 @@ struct ConcatFunctor<phi::GPUContext, T> {
     auto* data_alloc_released = data_alloc.release();
     auto* col_alloc_released = col_alloc.release();
     context.AddStreamCallback([data_alloc_released, col_alloc_released] {
+      VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
+      VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
       paddle::memory::allocation::Allocator::AllocationDeleter(
           data_alloc_released);
       paddle::memory::allocation::Allocator::AllocationDeleter(

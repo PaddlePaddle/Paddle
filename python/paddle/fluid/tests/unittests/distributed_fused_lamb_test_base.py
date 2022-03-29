@@ -144,6 +144,11 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
             grad_clip = kwargs.get('grad_clip', None)
             clip_after_allreduce = kwargs.get('clip_after_allreduce', True)
 
+            parameters = [p.name for p in main.all_parameters()]
+            exclude_fn = lambda var: var.name in parameters[::4]
+            kwargs['exclude_from_weight_decay_fn'] = exclude_fn
+            kwargs['lamb_weight_decay'] = 0.1
+
             if use_distributed_lamb:
                 optimizer_class = DistributedFusedLamb
                 kwargs = dict(kwargs)

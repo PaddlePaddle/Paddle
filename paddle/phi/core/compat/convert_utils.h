@@ -22,10 +22,10 @@ limitations under the License. */
 
 namespace phi {
 
-std::string TransToPtenKernelName(const std::string& fluid_op_name);
-const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
+std::string TransToPhiKernelName(const std::string& fluid_op_name);
+const std::string& TransToFluidOpName(const std::string& phi_kernel_name);
 
-Backend TransToPtenBackend(const phi::Place& place);
-phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id = true);
+Backend TransToPhiBackend(const phi::Place& place);
+phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);
 
 }  // namespace phi

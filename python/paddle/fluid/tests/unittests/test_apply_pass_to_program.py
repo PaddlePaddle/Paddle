@@ -162,6 +162,7 @@ class TestIRPassBase(unittest.TestCase):
         for k, v in self.get_strategy().items():
             setattr(build_strategy, k, v)
         self.check_before_applied(main2, startup2)
+
         apply_build_strategy(main2, startup2, build_strategy,
                              {"use_cuda": self.use_cuda})
         self.check_after_applied(main2, startup2)

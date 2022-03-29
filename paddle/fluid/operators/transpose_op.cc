@@ -339,6 +339,14 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class TransposeGradInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType(framework::GradVarName("Out"),
+                             framework::GradVarName("X"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -347,59 +355,13 @@ REGISTER_OPERATOR(
     transpose, ops::TransposeOp, ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>);
+REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad,
+                  ops::TransposeGradInferVarType);
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
+                  ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::TransposeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    transpose2_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>,
-    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>);

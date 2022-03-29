@@ -27,14 +27,14 @@ template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 
 template <typename T>
-struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::funcs::Real<T>>> {
-  __device__ __forceinline__ phi::funcs::Real<T> operator()(const T x) const {
+struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
+  __device__ __forceinline__ phi::dtype::Real<T> operator()(const T x) const {
     return abs(x);
   }
 };
 
 template <typename T>
-struct CudaAbsFunctor<T, phi::funcs::NoComplex<T, phi::funcs::Real<T>>> {
+struct CudaAbsFunctor<T, phi::funcs::NoComplex<T, phi::dtype::Real<T>>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -42,12 +42,12 @@ struct CudaAbsFunctor<T, phi::funcs::NoComplex<T, phi::funcs::Real<T>>> {
 
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<phi::funcs::Real<T>>(out);
+  ctx.template Alloc<phi::dtype::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
 
-  funcs::ElementwiseKernel<phi::funcs::Real<T>>(ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<phi::dtype::Real<T>>(ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

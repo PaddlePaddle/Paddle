@@ -161,7 +161,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   tensor->set_lod(lod);
 
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPtenDataType(ToVarType(req_var.data_type())));
+      place, framework::TransToPhiDataType(ToVarType(req_var.data_type())));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   memory::Copy(place, tensor_data, platform::CPUPlace(), req_var.data().data(),
@@ -202,7 +202,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   tensor->set_lod(lod);
 
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPtenDataType(ToVarType(req_var.data_type())));
+      place, framework::TransToPhiDataType(ToVarType(req_var.data_type())));
 
 #ifdef PADDLE_WITH_XPU
   memory::Copy(place, tensor_data, platform::CPUPlace(), req_var.data().data(),

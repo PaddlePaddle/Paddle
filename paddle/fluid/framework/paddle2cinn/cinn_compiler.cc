@@ -241,7 +241,6 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
       std::make_unique<GraphCompiler>(target, scope, cinn_graph);
   GraphCompiler::CompileOptions options;
   options.with_instantiate_variables = false;
-  options.with_buffer_handle_instruction_inserted = true;
   auto compiled_res =
       graph_compiler->Build(options, std::move(fetch_ids), stream);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();

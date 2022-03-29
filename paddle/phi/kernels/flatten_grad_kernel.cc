@@ -25,9 +25,10 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
+  dev_ctx.Alloc(x_grad, out_grad.dtype());
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  phi::Copy(dev_ctx, out_grad, false, x_grad);
-  x_grad->ResizeAndAllocate(x_dims);
+  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  x_grad->Resize(x_dims);
 }
 
 }  // namespace phi

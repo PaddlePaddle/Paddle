@@ -282,10 +282,6 @@ REGISTER_OPERATOR(
     paddle::operators::UniformRandomOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
-    uniform_random, paddle::operators::CPUUniformRandomKernel<float>,
-    paddle::operators::CPUUniformRandomKernel<double>,
-    paddle::operators::CPUUniformRandomKernel<paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
     uniform_random_batch_size_like,
     paddle::operators::CPUUniformRandomKernel<float>,
     paddle::operators::CPUUniformRandomKernel<double>,

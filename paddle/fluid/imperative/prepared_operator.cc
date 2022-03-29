@@ -121,7 +121,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_type_(kernel_type),
       func_(nullptr),
       dev_ctx_(dev_ctx),
-      run_pten_kernel_(true),
+      run_phi_kernel_(true),
       pt_kernel_signature_(kernel_signature),
       pt_kernel_(pt_kernel) {}
 
@@ -151,7 +151,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
   // NOTE(zhiqiu): for kernels on given device, for example NPU, the order to
   // choose is:
-  // pten npu kernel > fluid npu kernel > pten cpu kernel > fluid cpu kernel
+  // phi npu kernel > fluid npu kernel > phi cpu kernel > fluid cpu kernel
 
   // 1. get expected kernel key
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
@@ -168,12 +168,12 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                                                expected_kernel_key) ||
       paddle::platform::is_in_xpu_black_list(op.Type());
 #endif
-  if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
-    pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
+  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
+    pt_kernel_signature = op.GetExpectedPhiKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
-    pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
+    pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
                                                                  pt_kernel_key);
 
@@ -186,16 +186,15 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
-        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_kernel, cpu_ctx);
+      if (expected_kernel_key.place_ != place) {
+        dev_ctx = pool.Get(expected_kernel_key.place_);
       }
+
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {
-      VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
+      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
               << "` not found.";
     }
   }
@@ -211,7 +210,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       || is_xpu_unsupport
 #endif
       ) {
-    if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
       auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
@@ -235,7 +234,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-#ifdef PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {
     VLOG(3) << "missing XPU kernel: " << op.Type()
@@ -244,28 +243,36 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
-
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  bool use_xpu_kp_kernel_rt =
-      FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
-  bool use_xpu_kp_kernel_debug =
-      paddle::platform::is_in_xpu_kpwhite_list(op.Type());
-  if (use_xpu_kp_kernel_rt) {
-    VLOG(3) << "xpu_kp using rt mode ";
-  }
-  if (use_xpu_kp_kernel_debug) {
-    VLOG(3) << "xpu_kp using debug mode ";
-  }
-  if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
-    expected_kernel_key.place_ = platform::XPUPlace();
-    expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
-    kernel_iter = kernels.find(expected_kernel_key);
-    VLOG(3) << "using XPU KP kernel: " << op.Type()
-            << ", using_kernel_key:" << expected_kernel_key;
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
+    bool use_xpu_kp_kernel_rt =
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_in_xpu_kpwhite_list(op.Type());
+    if (use_xpu_kp_kernel_rt) {
+      VLOG(3) << "xpu_kp using rt mode ";
+    }
+    if (use_xpu_kp_kernel_debug) {
+      VLOG(3) << "xpu_kp using debug mode ";
+    }
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+    if (is_xpu_kp_support) {
+      expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
+      kernel_iter = kernels.find(expected_kernel_key);
+      VLOG(3) << "using XPU KP kernel: " << op.Type()
+              << ", using_kernel_key:" << expected_kernel_key;
+    }
+    if (!is_xpu_kp_support &&
+        (kernel_iter == kernels.end() || is_xpu_unsupport)) {
+      VLOG(3) << "missing XPU kernel: " << op.Type()
+              << ", expected_kernel_key:" << expected_kernel_key
+              << ", fallbacking to CPU one!";
+      expected_kernel_key.place_ = platform::CPUPlace();
+      kernel_iter = kernels.find(expected_kernel_key);
+    }
   }
 #endif
 
@@ -423,12 +430,12 @@ static void PreparedOpRunPtImpl(
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
 
-    PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
+    PreparePhiData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
     phi::KernelContext pt_kernel_context;
-    BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
-                                           outs, attrs, default_attrs, dev_ctx,
-                                           &pt_kernel_context);
+    BuildDygraphPhiKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
+                                          outs, attrs, default_attrs, dev_ctx,
+                                          &pt_kernel_context);
 
     pt_kernel(&pt_kernel_context);
   }
@@ -451,7 +458,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
                                  pt_kernel_, dev_ctx_, ins, outs, attrs,
                                  default_attrs);
@@ -465,7 +472,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);
@@ -479,7 +486,7 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                      const NameVarMap<egr::EagerVariable>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<egr::EagerVariable>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);

@@ -258,4 +258,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>);

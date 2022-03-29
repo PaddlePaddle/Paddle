@@ -79,6 +79,28 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
           model_input_shape_str, runtime_input_shape_str));
 }
 
+static paddle::experimental::DataType TRT2FluidDataType(
+    nvinfer1::DataType type) {
+  switch (type) {
+    case nvinfer1::DataType::kFLOAT:
+      return paddle::experimental::DataType::FLOAT32;
+    case nvinfer1::DataType::kINT32:
+      return paddle::experimental::DataType::INT32;
+    case nvinfer1::DataType::kHALF:
+      return paddle::experimental::DataType::FLOAT16;
+    case nvinfer1::DataType::kINT8:
+      return paddle::experimental::DataType::INT8;
+#if IS_TRT_VERSION_GE(7000)
+    case nvinfer1::DataType::kBOOL:
+      return paddle::experimental::DataType::BOOL;
+#endif
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unknown fluid datatype in Fluid op converter"));
+      return paddle::experimental::DataType::FLOAT32;
+  }
+}
+
 static void RuntimeDynamicShapeCheck(
     const std::string &x, const std::vector<int32_t> &runtime_input_shape,
     const std::vector<int32_t> &min_input_shape,
@@ -520,9 +542,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
       } else if (type == framework::proto::VarType::INT32) {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
+      } else if (type == framework::proto::VarType::FP16) {
+        buffers[bind_index] = static_cast<void *>(t.data<float16>());
       } else {
-        PADDLE_THROW(platform::errors::Fatal(
-            "The TRT Engine OP only support float/int32_t/int64_t input."));
+        PADDLE_THROW(
+            platform::errors::Fatal("The TRT Engine OP only support "
+                                    "float/int32_t/int64_t/float16 input."));
       }
     }
 
@@ -570,9 +595,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "than the number of bindings, but got binding "
                             "index = %d, number of bindings = %d.",
                             bind_index, num_bindings));
-      buffers[bind_index] =
-          static_cast<void *>(fluid_t->mutable_data<float>(dev_place));
-
+      auto trt_type = engine->engine()->getBindingDataType(bind_index);
+      // get adr and set type
+      buffers[bind_index] = static_cast<void *>(
+          fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
       output_index += 1;
     }
 

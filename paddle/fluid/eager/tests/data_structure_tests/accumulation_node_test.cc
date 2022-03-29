@@ -23,6 +23,7 @@
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/utils.h"
 
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -79,13 +80,15 @@ TEST(AccumulationNode, Tensor) {
   grad_meta->SetStopGradient(false);
 
   // operator()
-  paddle::experimental::Tensor ret_et0 = node->operator()({{et0}})[0][0];
+  std::vector<std::vector<paddle::experimental::Tensor>> et0_vec = {{et0}};
+  paddle::experimental::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et0.impl())
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
-  paddle::experimental::Tensor ret_et1 = node->operator()({{et1}})[0][0];
+  std::vector<std::vector<paddle::experimental::Tensor>> et1_vec = {{et1}};
+  paddle::experimental::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
 
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
@@ -116,10 +119,11 @@ TEST(AccumulationNode, Tensor) {
     VLOG(6) << "Running Reduce Hook";
   };
 
-  node->RegisterReduceHook(reduce_hook_1);
+  node->RegisterReduceHook(
+      std::make_shared<egr::CppTensorVoidHook>(reduce_hook_1));
 
   // operator()
-  paddle::experimental::Tensor _ret = node->operator()({{et0}})[0][0];
+  paddle::experimental::Tensor _ret = node->operator()(et0_vec)[0][0];
 
   // Check operator() result, should be 36.0
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
@@ -141,7 +145,8 @@ TEST(AccumulationNode, Tensor) {
     ret_et0_ptr[0] = 100.0;  // set to 100.0
     VLOG(6) << "Running Reduce Hook";
   };
-  node->RegisterReduceHook(reduce_hook_2);
+  node->RegisterReduceHook(
+      std::make_shared<egr::CppTensorVoidHook>(reduce_hook_2));
   node->ApplyReduceHooks();
 
   // Check ApplyReduceHooks result

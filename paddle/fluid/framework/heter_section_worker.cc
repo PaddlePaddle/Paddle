@@ -38,7 +38,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   std::vector<int> dims{1};
   tensor->Resize(phi::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPtenDataType(framework::proto::VarType::FP32));
+      place, framework::TransToPhiDataType(framework::proto::VarType::FP32));
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;

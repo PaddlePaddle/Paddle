@@ -20,19 +20,20 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/phi/backends/device_manager.h"
 #endif
 
 namespace phi {
 
-Backend TransToPtenBackend(const phi::Place& place) {
-  if (place.GetType() == phi::AllocationType::CPU) {
+Backend TransToPhiBackend(const phi::Place& place) {
+  auto allocation_type = place.GetType();
+  if (allocation_type == phi::AllocationType::CPU) {
     return Backend::CPU;
-  } else if (place.GetType() == phi::AllocationType::GPU) {
+  } else if (allocation_type == phi::AllocationType::GPU) {
     return Backend::GPU;
-  } else if (place.GetType() == phi::AllocationType::XPU) {
+  } else if (allocation_type == phi::AllocationType::XPU) {
     return Backend::XPU;
-  } else if (place.GetType() == phi::AllocationType::CUSTOM) {
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
         GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
@@ -41,7 +42,7 @@ Backend TransToPtenBackend(const phi::Place& place) {
   }
 }
 
-phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
+phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
   // always needed.
   // So, add set_device_id parameter here.
@@ -67,6 +68,14 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       return phi::XPUPlace(
           set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
+    case phi::Backend::KPS:
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      return phi::GPUPlace(
+          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
+#elif defined(PADDLE_WITH_XPU_KP)
+      return phi::XPUPlace(
+          set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
+#endif
     default: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
@@ -75,9 +84,7 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       if (!device_type.empty()) {
         return phi::CustomPlace(
             device_type,
-            set_device_id
-                ? paddle::platform::DeviceManager::GetDevice(device_type)
-                : 0);
+            set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -87,21 +94,21 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
   }
 }
 
-std::string TransToPtenKernelName(const std::string& fluid_op_name) {
+std::string TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
-const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
+const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
   auto it = std::find_if(base_kernel_name_map.begin(),
                          base_kernel_name_map.end(),
-                         [&pten_kernel_name](const auto& pair) {
-                           return pair.second == pten_kernel_name;
+                         [&phi_kernel_name](const auto& pair) {
+                           return pair.second == phi_kernel_name;
                          });
   if (it != base_kernel_name_map.end()) {
     return it->first;
   }
-  return pten_kernel_name;
+  return phi_kernel_name;
 }
 
 }  // namespace phi

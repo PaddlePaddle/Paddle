@@ -1,4 +1,5 @@
 add_subdirectory(phi)
+add_subdirectory(tensorrt)
 
 core_gather_headers()
 

@@ -111,10 +111,10 @@ op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc)
     # warpctc_op needs cudnn 7 above
     elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
@@ -161,7 +161,7 @@ cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEP
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
-sequence_pooling segment_pooling executor device_memory_aligment generator)
+sequence_pooling executor device_memory_aligment generator)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc matrix_inverse matrix_solve)

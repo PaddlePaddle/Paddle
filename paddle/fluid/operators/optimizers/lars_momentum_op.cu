@@ -88,8 +88,8 @@ __device__ inline void VectorizeLarsUpdate(
     T* param_out, MT* velocity_out, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
     const int grid_stride, const int numel, MT* master_param_out = nullptr) {
-  using VecType = paddle::platform::AlignedVector<T, VecSize>;
-  using VecMType = paddle::platform::AlignedVector<MT, VecSize>;
+  using VecType = phi::AlignedVector<T, VecSize>;
+  using VecMType = phi::AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
   int tail_offset = main * VecSize;
 
@@ -204,7 +204,7 @@ __forceinline__ __device__ void MomentumUpdate(
     const bool is_amp) {
   const MT lr = learning_rate[0];
   MT local_lr = lr;
-  if (lars_weight_decay > static_cast<MT>(0)) {
+  if (param_norm > static_cast<MT>(0) && grad_norm > static_cast<MT>(0)) {
     local_lr = lr * lars_coeff * param_norm /
                (fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
   }

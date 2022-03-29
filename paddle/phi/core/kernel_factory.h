@@ -197,7 +197,15 @@ class Kernel {
 
   const KernelArgsDef& args_def() const { return args_def_; }
 
+  const TensorArgDef& InputAt(size_t idx) const {
+    return args_def_.input_defs().at(idx);
+  }
+
   TensorArgDef& InputAt(size_t idx) { return args_def_.input_defs().at(idx); }
+
+  const TensorArgDef& OutputAt(size_t idx) const {
+    return args_def_.output_defs().at(idx);
+  }
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
@@ -225,8 +233,8 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
-  bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
+  bool HasCompatiblePhiKernel(const std::string& op_type) const {
+    return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
   }
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,

@@ -19,8 +19,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/fc.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

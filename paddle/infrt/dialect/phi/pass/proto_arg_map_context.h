@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <mlir/IR/Operation.h>
 #include <unordered_map>
-#include "paddle/infrt/dialect/pd_ops_info.h"
+#include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace infrt {
-class ProtoArgumentMappingContext : public phi::ArgumentMappingContext {
+class ProtoArgumentMappingContext : public ::phi::ArgumentMappingContext {
  public:
   // only support op in pd dialect
   explicit ProtoArgumentMappingContext(mlir::Operation* op)
@@ -42,9 +42,12 @@ class ProtoArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorInput(const std::string& name) const override;
   bool IsSelectedRowsInput(const std::string& name) const override;
+  bool IsDenseTensorVectorInput(const std::string& name) const override;
 
   bool IsDenseTensorOutput(const std::string& name) const override;
   bool IsSelectedRowsOutput(const std::string& name) const override;
+
+  bool IsForInferShape() const override { return false; }
 
  private:
   mlir::Operation* op_;

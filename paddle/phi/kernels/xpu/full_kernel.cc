@@ -59,7 +59,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
   FullValueXPU<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -69,6 +69,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   auto value = val.to<float>();
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<

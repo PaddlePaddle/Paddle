@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -86,7 +86,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
     Tensor transformed_input;
     std::vector<int> padding_common(data_dim, 0);
@@ -118,13 +118,13 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_input_channel, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_input_channel, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
         default:

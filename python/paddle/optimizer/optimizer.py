@@ -42,6 +42,7 @@ from .. import compat as cpt
 from .lr import LRScheduler
 import copy
 from paddle import _C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 __all__ = []
 
@@ -147,7 +148,7 @@ class Optimizer(object):
             self._parameter_list = None
 
         self._name = name
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
@@ -432,7 +433,7 @@ class Optimizer(object):
         self._learning_rate = float(value)
         current_lr = self._global_learning_rate()
         if current_lr is not None:
-            if framework.in_dygraph_mode():
+            if framework._non_static_mode():
                 _C_ops.fill_constant(current_lr, 'value',
                                      float(value), 'dtype', current_lr.dtype,
                                      'shape', list(current_lr.shape))
@@ -587,7 +588,7 @@ class Optimizer(object):
             name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            if framework.in_dygraph_mode():
+            if framework._non_static_mode():
                 return self._accumulators[name][param.name]
             raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
@@ -604,8 +605,8 @@ class Optimizer(object):
             persistable=True,
             dtype=dtype or param.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR
-            if framework._in_eager_mode() else (param.type
-                                                if type is None else type),
+            if framework._in_eager_without_dygraph_check() else
+            (param.type if type is None else type),
             shape=shape,
             belong_to_optimizer=True)
         if device is None:
@@ -614,7 +615,7 @@ class Optimizer(object):
             self.helper.set_variable_initializer(
                 var, initializer=Constant(value=float(fill_value)))
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             if len(self._accumulators_holder) > 0:
                 assert var_name in self._accumulators_holder, \
                         "Optimizer set error, {} should in state dict".format( var_name )
@@ -716,7 +717,7 @@ class Optimizer(object):
                         p[0] for p in parameters_and_grads['params']
                         if not p[0].stop_gradient
                     ])
-            if framework.in_dygraph_mode():
+            if framework._non_static_mode():
                 self._append_optimize_multi_tensor_op(target_block,
                                                       parameters_and_grads)
             else:
@@ -737,7 +738,7 @@ class Optimizer(object):
                         self._append_optimize_multi_tensor_op(
                             target_block, parameters_and_grads)
         else:
-            if not framework.in_dygraph_mode():
+            if not framework._non_static_mode():
                 params_grads_device_map = parameters_and_grads[
                     'params'] if isinstance(parameters_and_grads,
                                             dict) else parameters_and_grads
@@ -756,7 +757,7 @@ class Optimizer(object):
                 ]
                 self._create_accumulators(target_block, params_acc_dict)
 
-            if framework.in_dygraph_mode():
+            if framework._non_static_mode():
                 if isinstance(parameters_and_grads, list):
                     for param_and_grad in parameters_and_grads:
                         if param_and_grad[1] is None:
@@ -845,7 +846,7 @@ class Optimizer(object):
                 adam.clear_grad()
         """
         act_no_grad_set = None
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             pass
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
@@ -854,7 +855,7 @@ class Optimizer(object):
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             parameter_list = parameters if parameters \
                 else self._parameter_list
 
@@ -943,7 +944,7 @@ class Optimizer(object):
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
                 if isinstance(params_grads, list):
@@ -986,7 +987,7 @@ class Optimizer(object):
 
         assert regularization_term is not None
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             return _C_ops.sum([grad, regularization_term])
 
         new_grad = grad
@@ -1032,7 +1033,7 @@ class Optimizer(object):
             Exception: Unknown regularization type
         """
         params_and_grads = []
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(param, grad,
                                                                regularization)
@@ -1108,7 +1109,13 @@ class Optimizer(object):
                 for p in param_group['params']:
                     if not p.stop_gradient:
                         param_list.append(p)
-        core.clear_gradients(param_list, set_to_zero)
+
+        if _in_eager_without_dygraph_check():
+            for p in param_list:
+                clear_func = p._zero_grads if set_to_zero else p.clear_gradient
+                clear_func()
+        else:
+            core.clear_gradients(param_list, set_to_zero)
 
     @imperative_base.no_grad
     def minimize(self,

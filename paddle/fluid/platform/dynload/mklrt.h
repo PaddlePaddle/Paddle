@@ -17,7 +17,8 @@ limitations under the License. */
 #include <mkl_dfti.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/mklrt.h"
 #include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {

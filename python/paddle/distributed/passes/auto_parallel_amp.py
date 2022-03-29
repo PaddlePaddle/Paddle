@@ -503,8 +503,6 @@ class AMPPass(PassBase):
             return False
         if self.get_attr("decr_ratio") < 0:
             return False
-        if len(self.get_attr("params_grads")) <= 0:
-            return False
         if self.get_attr("dist_context") is None:
             return False
         return True
@@ -576,6 +574,8 @@ class AMPPass(PassBase):
 
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
+        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
         loss = self.get_attr("loss")
         assert loss is not None
         loss_op = loss.op
@@ -583,6 +583,37 @@ class AMPPass(PassBase):
             loss_op)
 
         if loss.dtype != core.VarDesc.VarType.FP32:
+            # cast loss here will change the effective loss tensor for the computation graph
+            # and therefore will effect all following passes whose logic is based on the loss tensor(Recompute & Gradient Merge), 
+            # so we it is not allowed by now. fixed it in future.   
+            raise NotImplementedError(
+                "Loss's generator op is not support in FP16 in Auto Parallel by now, please put that op into your black-list."
+            )
+
+            tmp_name = unique_name.generate(loss.name + ".cast_fp32")
+            cast_loss = main_block.create_var(name=tmp_name, dtype=dtype)
+            loss_dist_attr = self.dist_context.get_tensor_dist_attr_for_program(
+                loss)
+            ref_mesh = loss_op_dist_attr.process_mesh
+            self.dist_context.set_tensor_dist_attr_for_program(cast_loss,
+                                                               loss_dist_attr)
+
+            loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
+            cast_op = main_block._insert_op(
+                loss_op_idx + 1,
+                type='cast',
+                inputs={'X': [loss]},
+                outputs={'Out': [cast_loss]},
+                attrs={
+                    "in_dtype": loss.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                    'op_role': loss_op.all_attrs()[OP_ROLE_KEY],
+                })
+
+            loss_op._set_attr(OP_ROLE_KEY,
+                              core.op_proto_and_checker_maker.OpRole.Forward)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                cast_op, ref_mesh, [-1], self.dist_context)
             loss = loss.astype('float32')
 
         if self.get_attr("use_dynamic_loss_scaling") or self.get_attr(
@@ -600,7 +631,6 @@ class AMPPass(PassBase):
             set_var_dist_attr(self.dist_context, self._scaled_loss, [-1],
                               ref_mesh)
 
-            OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
             elementwise_mul_op = main_block._insert_op(
                 loss_op_idx + 1,
                 type='elementwise_mul',
@@ -667,8 +697,11 @@ class AMPPass(PassBase):
         for e in grads:
             check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                      'update_loss_scaling')
-            assert self._loss_scaling.dtype == e.dtype, \
-                "The dtype of prev_loss_scaling should be equal to the dtype of x."
+            if e.dtype == core.VarDesc.VarType.FP16:
+                assert self._loss_scaling.dtype == core.VarDesc.VarType.FP32, \
+                    "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+            else:
+                assert self._loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
 
         inputs = {
             'X': grads,

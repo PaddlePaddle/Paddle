@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 
 import paddle
 import paddle.fluid.core as core
@@ -603,7 +604,7 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
         self.groups = 3
 
 
-#----------------Conv2DCUDNN----------------
+# #----------------Conv2DCUDNN----------------
 
 create_test_cudnn_class(TestConv2DOp)
 create_test_cudnn_class(TestWithPad)
@@ -1001,4 +1002,5 @@ create_test_cudnn_channel_last_fp16_class(
     TestWithDilation_AsyPadding, grad_check=False)
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

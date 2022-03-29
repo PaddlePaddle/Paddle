@@ -27,12 +27,19 @@ namespace phi {
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
+          Place dst_place,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
-  auto* dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+  void* dst_ptr = nullptr;
+
+  dst->Resize(src.dims());
+  if (paddle::platform::is_cpu_place(dst_place)) {
+    dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
+  } else {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+  }
   const auto& src_place = src.place();
-  const auto& dst_place = dst->place();
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -43,7 +50,7 @@ void Copy(const Context& dev_ctx,
 
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
-  dst->ResizeAndAllocate(src.dims());
+
   CHECK(dst->layout() == src.layout());
   auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 

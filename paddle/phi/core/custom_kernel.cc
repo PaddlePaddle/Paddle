@@ -16,25 +16,42 @@
 
 namespace phi {
 
-void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
-  auto& kernel_info_map = custom_kernel_map.GetMap();
-  VLOG(3) << "Size of custom_kernel_map: " << kernel_info_map.size();
+void CustomKernelMap::RegisterCustomKernel(const std::string& name,
+                                           const KernelKey& key,
+                                           const Kernel& kernel) {
+  PADDLE_ENFORCE_EQ(kernels_[name].find(key),
+                    kernels_[name].end(),
+                    phi::errors::AlreadyExists(
+                        "The custom kernel [%s:%s] has been already existed in "
+                        "CustomKernelMap, please check if any duplicate kernel "
+                        "info in your lib(s) before load again.",
+                        name,
+                        key));
+  kernels_[name][key] = kernel;
+}
 
-  for (auto& pair : kernel_info_map) {
-    PADDLE_ENFORCE_EQ(
-        KernelFactory::Instance().HasCompatiblePtenKernel(pair.first),
-        true,
+void CustomKernelMap::RegisterCustomKernels() {
+  VLOG(3) << "Size of custom_kernel_map: " << kernels_.size();
+
+  if (kernels_.size() <= 0) {
+    LOG(INFO) << "No custom kernel info found in loaded lib(s).";
+    return;
+  }
+  auto& kernels = KernelFactory::Instance().kernels();
+  for (auto& pair : kernels_) {
+    PADDLE_ENFORCE_NE(
+        kernels.find(pair.first),
+        kernels.end(),
         phi::errors::InvalidArgument(
             "The kernel %s is not ready for custom kernel registering.",
             pair.first));
 
     for (auto& info_pair : pair.second) {
-      auto& kernels = KernelFactory::Instance().kernels();
       PADDLE_ENFORCE_EQ(
           kernels[pair.first].find(info_pair.first),
           kernels[pair.first].end(),
-          phi::errors::InvalidArgument(
-              "The operator <%s>'s kernel: %s has been already existed "
+          phi::errors::AlreadyExists(
+              "The kernel [%s:%s] has been already existed "
               "in Paddle, please contribute PR if it is necessary "
               "to optimize the kernel code. Custom kernel does NOT support "
               "to replace existing kernel in Paddle.",
@@ -43,24 +60,15 @@ void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
 
       kernels[pair.first][info_pair.first] = info_pair.second;
 
-      VLOG(3) << "Successed in registering operator <" << pair.first
-              << ">'s kernel: " << info_pair.first
-              << " to Paddle. It will be used like native ones.";
+      VLOG(3) << "Successed in registering kernel [" << pair.first << ":"
+              << info_pair.first
+              << "] to Paddle. It will be used like native ones.";
     }
   }
+  LOG(INFO) << "Successed in loading " << kernels_.size()
+            << " custom kernel(s) from loaded lib(s), will be "
+            << "used like native ones.";
+  kernels_.clear();
 }
 
 }  // namespace phi
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// C-API to get global CustomKernelMap.
-phi::CustomKernelMap& PD_GetCustomKernelMap() {
-  return phi::CustomKernelMap::Instance();
-}
-
-#ifdef __cplusplus
-}  // end extern "C"
-#endif

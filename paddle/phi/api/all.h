@@ -24,13 +24,12 @@ limitations under the License. */
 #endif
 #endif
 
-// new pten apis
+// new phi apis
 #include "paddle/phi/api/include/api.h"
-#include "paddle/phi/api/include/manual_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/include/tensor.h"
 
-// pten common headers
+// phi common headers
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"

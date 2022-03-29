@@ -25,4 +25,4 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out);
-}  // pten
+}  // phi

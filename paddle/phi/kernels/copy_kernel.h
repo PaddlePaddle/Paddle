@@ -22,6 +22,7 @@ namespace phi {
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
+          Place dst_place,
           bool blocking,
           DenseTensor* dst);
 }  // namespace phi

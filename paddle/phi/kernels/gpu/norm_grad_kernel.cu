@@ -75,9 +75,9 @@ __global__ void NormalizeGradient(const T* x,
 
 template <typename T, typename Context>
 void NormGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& x,
                     const DenseTensor& norm,
+                    const DenseTensor& out_grad,
                     int axis,
                     float epsilon,
                     bool is_test,

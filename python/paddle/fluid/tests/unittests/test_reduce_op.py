@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -59,6 +59,37 @@ class TestSumOp_fp16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSumOp_bf16(OpTest):
+    def setUp(self):
+        np.random.seed(100)
+        self.op_type = "reduce_sum"
+        self.dtype = np.uint16
+        self.x = np.random.uniform(0, 0.1, (2, 5, 10)).astype(np.float32)
+        self.attrs = {'dim': [0, 1, 2]}
+        self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+        self.gradient = self.calc_gradient()
+
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.gradient = self.calc_gradient()
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', user_defined_grads=self.gradient)
+
+    def calc_gradient(self):
+        x = self.x
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return [grad]
 
 
 class TestSumOp_fp16_withInt(OpTest):

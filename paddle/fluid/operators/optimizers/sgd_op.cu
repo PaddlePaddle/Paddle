@@ -166,10 +166,3 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
 };
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, plat::float16>);

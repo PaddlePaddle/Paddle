@@ -18,6 +18,7 @@
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk, false,
@@ -47,6 +48,8 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
+  platform::RecordEvent("AutoGrowthBestFitAllocator::Allocate",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   size_t size = AlignedSize(unaligned_size, alignment_);
   VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
 
@@ -108,6 +111,8 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
+  platform::RecordEvent("AutoGrowthBestFitAllocator::Free",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
            << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);

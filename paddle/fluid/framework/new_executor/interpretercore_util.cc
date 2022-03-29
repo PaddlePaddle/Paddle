@@ -29,6 +29,8 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
+constexpr size_t kPrepareWorkQueueIdx = 2;
+
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
   // NOTE(zhiqiu): use thhe second queue of size of, so only one thread is used.
@@ -44,32 +46,34 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
+void AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  if (atomic_deps_.size() != dependecy_count.size()) {
-    atomic_deps_.clear();
-    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    atomic_deps_[i]->store(dependecy_count[i]);
-  }
-  return atomic_deps_;
+  VLOG(4) << "PrepareAtomicDeps";
+  atomic_deps_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&dependecy_count] {
+        auto op_deps = std::make_unique<std::vector<std::atomic<size_t>>>(
+            dependecy_count.size());
+        for (size_t i = 0; i < dependecy_count.size(); ++i) {
+          (*op_deps)[i] = dependecy_count[i];
+        }
+        VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
+        return op_deps;
+      });
 }
 
-AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
+void AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
-  if (atomic_var_ref_.size() != vec_meta_info.size()) {
-    atomic_var_ref_.clear();
-    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
-                    [] { return std::make_unique<std::atomic<size_t>>(0); });
-  }
-
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
-  }
-  return atomic_var_ref_;
+  VLOG(4) << "PrepareAtomicVarRef";
+  atomic_var_ref_ =
+      queue_group_->AddAwaitableTask(kPrepareWorkQueueIdx, [&vec_meta_info] {
+        auto var_ref = std::make_unique<std::vector<std::atomic<size_t>>>(
+            vec_meta_info.size());
+        for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+          (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
+        }
+        VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
+        return var_ref;
+      });
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -133,7 +137,9 @@ get_unused_vars(const BlockDesc& block,
     size_t op_idx = name_op_idx_pair.second;
 
     result[ops[op_idx].get()].emplace_back(name);
+    VLOG(4) << ops[op_idx].get()->Type() << " " << name;
   }
+  VLOG(4) << "gc map size:" << result.size();
   return result;
 }
 
@@ -306,8 +312,8 @@ void build_op_func_list(const platform::Place& place,
   operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       main_program, block.ID(), ops_unique);
 
-  std::vector<std::shared_ptr<OperatorBase>>
-      ops;  // its elements will be moved to vec_func_list
+  // its elements will be moved to vec_func_list
+  std::vector<std::shared_ptr<OperatorBase>> ops;
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }
@@ -343,27 +349,20 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+    VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-    if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
+    if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
+      VLOG(4) << "End run " << place << " "
+              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
-      auto op_with_kernel =
-          static_cast<const framework::OperatorWithKernel*>(op);
+      auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(op));
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
-
-      // see OperatorWithKernel::RunImpl in operator.cc for why
-      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-        // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted
-        // from OperatorWithKernel.
-        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
-      }
 
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -371,6 +370,7 @@ void build_op_func_list(const platform::Place& place,
       Scope scope;
       auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(
           ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+      op_with_kernel->ResetKernelType(new OpKernelType(expected_kernel_key));
 
       // change device by the device_guard()
       apply_device_guard(op, place, &expected_kernel_key);
@@ -378,13 +378,16 @@ void build_op_func_list(const platform::Place& place,
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
+      VariableValueMap& outs_map_temp = runtime_context.outputs;
 
       // NOTE(zhiqiu): op_func_node->operator_base_ maybe changed in
       // ApplyDataTransform
-      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, vec_func_list, use_local_scope);
-      op_with_kernel = static_cast<const framework::OperatorWithKernel*>(
-          op_func_node.operator_base_.get());
+      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp,
+                         &outs_map_temp, var_scope, &op_func_node,
+                         vec_func_list, use_local_scope);
+      op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(
+              op_func_node.operator_base_.get()));
 
       // step 4. Run op kernel
       VLOG(3) << op_with_kernel->Type()
@@ -407,14 +410,24 @@ void build_op_func_list(const platform::Place& place,
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
-      auto run_pten_kernel = false;
-      if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(
-              op_with_kernel->Type())) {
-        auto pt_kernel_key = op_with_kernel->ChoosePtenKernel(exec_ctx);
-        auto pt_kernel_name = op_with_kernel->PtenKernelSignature()->name;
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        // TODO(Aurelius84): In case of control flow ops, they are NOT
+        // inheritted
+        // from OperatorWithKernel.
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+      }
 
-        if (op_with_kernel->PtenKernel()->IsValid()) {
-          run_pten_kernel = true;
+      auto run_phi_kernel = false;
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+              op_with_kernel->Type())) {
+        auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+        auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+
+        if (op_with_kernel->PhiKernel()->IsValid()) {
+          run_phi_kernel = true;
         } else {
           auto kernels_iter = all_op_kernels.find(op_with_kernel->Type());
           if (kernels_iter == all_op_kernels.end() ||
@@ -422,26 +435,26 @@ void build_op_func_list(const platform::Place& place,
                   kernels_iter->second.end()) {
             auto pt_cpu_kernel_key = FallBackToCpu(
                 expected_kernel_key, pt_kernel_key, *op_with_kernel);
-            op_with_kernel->ResetPtenKernel(
+            op_with_kernel->ResetPhiKernel(
                 new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                     pt_kernel_name, pt_cpu_kernel_key)));
-            if (op_with_kernel->PtenKernel()->IsValid()) {
+            if (op_with_kernel->PhiKernel()->IsValid()) {
               VLOG(6) << "Static mode PrepareImpl - kernel name: "
                       << pt_kernel_name
                       << " | kernel key: " << pt_cpu_kernel_key
-                      << " | kernel: " << *(op_with_kernel->PtenKernel());
-              run_pten_kernel = true;
+                      << " | kernel: " << *(op_with_kernel->PhiKernel());
+              run_phi_kernel = true;
             }
           }
         }
       }
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
-      if (run_pten_kernel) {
+      if (run_phi_kernel) {
         phi::KernelContext pt_kernel_context;
-        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx,
-                                               &pt_kernel_context);
-        op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
+        op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
+                                              &pt_kernel_context);
+        op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
 
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
@@ -471,9 +484,28 @@ void build_op_func_list(const platform::Place& place,
             op_func_node, place, outputs_names, &runtime_context.outputs,
             var_scope, vec_func_list, local_scope);
       }
+      if (!op_func_node.inplace_back_map.empty()) {
+        auto& m = op_func_node.inplace_back_map;
+        // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+        for (auto& p : m) {
+          auto* transformed_tensor =
+              GetMutableLoDTensorOrSelectedRowsValueFromVar(
+                  var_scope->Var(p.first));
+          auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+              var_scope->Var(p.second));
+          original_tensor->ShareDataWith(*transformed_tensor);
+          VLOG(4) << "Transfer inplace variable back form "
+                  << var_scope->GetNameById(p.first) << " to "
+                  << var_scope->GetNameById(p.second);
+        }
+      }
     }
 
+    VLOG(4) << "End run " << place << " "
+            << op_func_node.operator_base_->DebugStringEx(local_scope);
+
     vec_func_list->emplace_back(op_func_node);
+
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
@@ -509,10 +541,7 @@ void build_op_func_list(const platform::Place& place,
             framework::ToTypeName(var->Type()), var_name));
       }
     }
-
     delete garbages;  // free mem
-
-    VLOG(3) << "run " << op->Type() << " done.";
   }
 }
 
@@ -637,7 +666,40 @@ std::map<int, std::list<int>> build_op_downstream_map(
         }
       }
     }
+
+    // NOTE(zhiqiu): The inplace op with `transfer` also changes
+    // original output after that so add original output as well
+    // original: a->op->a
+    // after: a->data_transfer->a'->op->a'->transfer_back->a
+    // which means op writes a and a'
+    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
+      auto& m = vec_instruction[op_idx].InplaceBackMap();
+      for (auto& p : m) {
+        auto var = p.second;
+        var2recent_write_op[var] = op_idx;
+        // var in input list and in output list, so remove it.
+        if (remove_duplicate.count(var) == 0) {
+          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+        }
+      }
+    }
   }
+
+  // add dependences for random op, make sure that the random op is scheduled
+  // sequentially
+  const std::set<std::string> random_op_set = {
+      "bernoulli",      "poisson", "multinomial", "gaussian_random",
+      "uniform_random", "randint", "randperm",    "exponential"};
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
   return std::move(get_downstream_map(op2dependences));
 }
 

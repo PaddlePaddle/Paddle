@@ -15,8 +15,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/gather.h"
 
 TEST(Gather, GatherData) {
   paddle::framework::Tensor* src = new paddle::framework::Tensor();
@@ -39,7 +39,7 @@ TEST(Gather, GatherData) {
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   paddle::platform::CPUDeviceContext ctx(*cpu_place);
-  paddle::operators::CPUGather<int>(ctx, *src, *index, output);
+  phi::funcs::CPUGather<int>(ctx, *src, *index, output);
   delete cpu_place;
   cpu_place = NULL;
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);

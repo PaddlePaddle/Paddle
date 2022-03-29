@@ -230,14 +230,14 @@ class CustomStreamGarbageCollector : public GarbageCollector {
 
   void Wait() const override;
 
-  platform::stream::Stream *stream() const;
+  phi::stream::Stream *stream() const;
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
 
  private:
-  std::unique_ptr<platform::stream::Stream> stream_;
-  std::unique_ptr<platform::CallbackManager> callback_manager_;
+  std::unique_ptr<phi::stream::Stream> stream_;
+  std::unique_ptr<phi::CallbackManager> callback_manager_;
 };
 #endif
 
