@@ -71,7 +71,8 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
 
 class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
     def init_dtype_type(self):
-        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+        if fluid.is_compiled_with_cuda():
+            fluid.set_flags({'FLAGS_cudnn_deterministic': True})
         self.x_type = np.float32
         self.index_type = np.int32
         self.dim = -2
