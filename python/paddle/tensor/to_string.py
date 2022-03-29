@@ -292,7 +292,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         elements_tensor = tensor.non_zero_elements()
         indices_data = _format_dense_tensor(indices_tensor, indent)
         elements_data = _format_dense_tensor(elements_tensor, indent)
-        data = 'non_zero_indices=' + indices_data + ',\nnon_zero_elements=' + elements_data
+        data = 'indices=' + indices_data + ',\nvalues=' + elements_data
     else:
         crows_tensor = tensor.non_zero_crows()
         cols_tensor = tensor.non_zero_cols()
@@ -300,7 +300,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         crows_data = _format_dense_tensor(crows_tensor, indent)
         cols_data = _format_dense_tensor(cols_tensor, indent)
         elements_data = _format_dense_tensor(elements_tensor, indent)
-        data = 'non_zero_crows=' + crows_data + ',\nnon_zero_cols=' + cols_data + ',\nnon_zero_elements=' + elements_data
+        data = 'crows=' + crows_data + ',\ncrows=' + cols_data + ',\nvalues=' + elements_data
 
     return _template.format(
         prefix=prefix,
@@ -317,11 +317,12 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
-    if not tensor._is_initialized():
-        return "Tensor(Not initialized)"
-
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if not tensor._is_dense_tensor_hold_allocation():
+        return "Tensor(Not initialized)"
+
     else:
         data = _format_dense_tensor(tensor, indent)
         return _template.format(
