@@ -39,6 +39,8 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
+#include "paddle/fluid/pybind/paddle_bfloat/bfloat16.h"
+
 namespace py = pybind11;
 
 namespace pybind11 {
@@ -82,7 +84,7 @@ struct npy_format_descriptor<paddle::platform::bfloat16> {
     // Note: "H" represents UINT16.
     // Details at:
     // https://docs.python.org/3/library/struct.html#format-characters.
-    return "E";
+    return "H";
   }
   static constexpr auto name = _("bfloat16");
 };
@@ -189,7 +191,7 @@ inline std::string TensorDTypeToPyDTypeStr(
       return "e";                                                           \
     } else if (std::is_same<T, platform::bfloat16>::value) {                \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
-      return "E";                                                           \
+      return "H";                                                           \
     } else if (std::is_same<T, platform::complex<float>>::value) {          \
       return "F";                                                           \
     } else if (std::is_same<T, platform::complex<double>>::value) {         \
@@ -444,6 +446,9 @@ void SetTensorFromPyArrayT(
 template <typename P>
 void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                           const P &place, bool zero_copy) {
+  static const bool is_numpy_bf16_initialized =
+      paddle_bfloat::RegisterNumpyBfloat16();
+
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
     SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
@@ -471,6 +476,10 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
     SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
         self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::bfloat16>>(array)) {
+    py::handle bfloat16(paddle_bfloat::Bfloat16Dtype());
+    py::dtype dtype =
+        py::dtype::from_args(py::reinterpret_borrow<py::object>(bfloat16));
+
     SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(self, array, place,
                                                          zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
@@ -814,14 +823,21 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
 
+  py::handle bfloat16(paddle_bfloat::Bfloat16Dtype());
+
+  py::dtype tensor_pydtype =
+      tensor_dtype == paddle::framework::proto::VarType::BF16
+          ? py::dtype::from_args(py::reinterpret_borrow<py::object>(bfloat16))
+          : py::dtype(py_dtype_str.c_str());
+
   if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor &&
       !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
-      return py::array(py::dtype(py_dtype_str.c_str()), py_dims, py_strides,
+      return py::array(py::dtype(tensor_pydtype), py_dims, py_strides,
                        const_cast<void *>(tensor_buf_ptr), base);
     } else {
-      py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+      py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
       PADDLE_ENFORCE_EQ(
           py_arr.writeable(), true,
           platform::errors::InvalidArgument(
@@ -840,7 +856,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     }
   } else if (is_xpu_tensor) {
 #ifdef PADDLE_WITH_XPU
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
     PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
@@ -863,7 +879,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 #endif
   } else if (is_gpu_tensor) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
     PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
@@ -886,7 +902,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 #endif
   } else if (is_npu_tensor) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
     PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
@@ -914,7 +930,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 #endif
   } else if (is_mlu_tensor) {
 #ifdef PADDLE_WITH_MLU
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
     PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "
@@ -942,7 +958,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 #endif
   } else if (is_custom_device_tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    py::array py_arr(py::dtype(tensor_pydtype), py_dims, py_strides);
     PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
                       platform::errors::InvalidArgument(
                           "PyArray is not writable, in which case memory leak "

@@ -56,6 +56,7 @@ if(WITH_PYTHON)
 endif()
 
 set(PYBIND_SRCS
+  paddle_bfloat/bfloat16.cc
   pybind.cc
   exception.cc
   protobuf.cc
