@@ -83,12 +83,11 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         paddings=st.sampled_from([[0, 3, 2]]),
         strides=st.sampled_from([[1, 2, 1]]),
         batch_size=st.integers(
-            min_value=1, max_value=4),
-    )
+            min_value=1, max_value=4), )
+
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
 
 
 if __name__ == "__main__":
     unittest.main()
-
