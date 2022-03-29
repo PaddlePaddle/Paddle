@@ -121,7 +121,6 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
       }
     }
     quant_op->Op()->SetAttr("support_int8", inscale_flag && outscale_flag);
-
     quant_op->Op()->Flush();
     found_count++;
   };
