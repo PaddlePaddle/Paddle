@@ -40,21 +40,12 @@ void ConcatGradKernel(const Context& dev_ctx,
       x[0], phi::errors::NotFound("The first input tensor is not initalized."));
 
   auto axis = axis_scalar.to<int>();
-  /*
-  if (axis_scalar.FromTensor()) {
-    auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-    axis = GetDataFromTensor<int>(axis_tensor)[0];
-  }
-  */
   axis = funcs::ComputeAxis(static_cast<int64_t>(axis),
                             static_cast<int64_t>(x[0]->dims().size()));
   // get output tensor that the name is not kEmptyVarName
   std::vector<DenseTensor*> outputs;
   for (size_t j = 0; j < outs.size(); ++j) {
-    // if (out_var_names[j] != framework::kEmptyVarName && outs[j]->numel() !=
-    // 0UL) {
     if (outs[j]->numel() != 0UL) {
-      // outs[j]->mutable_data<T>(ctx.GetPlace());
       dev_ctx.template Alloc<T>(outs[j]);
 
       outputs.push_back(outs[j]);
