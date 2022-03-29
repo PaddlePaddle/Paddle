@@ -325,11 +325,13 @@ void ConvCudnnGradKernel(const Context& ctx,
 
 // ------------------- cudnn backward algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::AlgoResult<miopenConvBwdDataAlgorithm_t> bwd_result;
-  paddle::operators::AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
+  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
+  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
+      filter_result;
 #else
-  paddle::operators::AlgoResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  paddle::operators::AlgoResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
+  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
+  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
+      filter_result;
 #endif
   // input data workspace_size
   size_t workspace_size_d = 0;
@@ -371,8 +373,6 @@ void ConvCudnnGradKernel(const Context& ctx,
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     bwd_result = search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
-    VLOG(3) << "bwd data algo: " << bwd_result.algo << ", time "
-            << bwd_result.time;
     workspace_size_d = std::max(
         workspace_size_d, search1::GetWorkspaceSize(args1, bwd_result.algo));
 #endif
