@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// .part used to speed up nvcc compile
-#include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
+#include "paddle/phi/kernels/logsumexp_kernel.h"
 
-namespace ops = paddle::operators;
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    logsumexp_grad,
-    ops::LogsumexpGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LogsumexpGradKernel<paddle::platform::CUDADeviceContext, double>);
+#include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
+
+PD_REGISTER_KERNEL(
+    logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {}
