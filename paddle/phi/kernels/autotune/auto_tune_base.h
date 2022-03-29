@@ -23,11 +23,10 @@
 
 namespace phi {
 
-template <typename R, typename... Args>
+template <typename RetureType, typename... Args>
 class KernelCallback {
  public:
-  using RetureType = R;
-  using FuncType = R (*)(Args...);
+  using FuncType = RetureType (*)(Args...);
 
   KernelCallback() {}
   explicit KernelCallback(FuncType func_) : func(func_) {}
@@ -39,9 +38,10 @@ class KernelCallback {
   FuncType func;
 };
 
-template <typename R, typename... Args>
-static KernelCallback<R, Args...> MakeCallback(R (*cb)(Args...)) {
-  return KernelCallback<R, Args...>(cb);
+template <typename RetureType, typename... Args>
+static KernelCallback<RetureType, Args...> MakeCallback(
+    RetureType (*cb)(Args...)) {
+  return KernelCallback<RetureType, Args...>(cb);
 }
 
 template <typename KernelType>
@@ -89,9 +89,9 @@ class AutoTuneBase {
   std::vector<KernelType> kernels_;
 };
 
-template <typename R, typename... Args>
-static AutoTuneBase<KernelCallback<R, Args...>> MakeAutoTune(
-    R (*func)(Args...)) {
+template <typename RetureType, typename... Args>
+static AutoTuneBase<KernelCallback<RetureType, Args...>> MakeAutoTune(
+    RetureType (*func)(Args...)) {
   auto obj = MakeCallback(func);
   return AutoTuneBase<decltype(obj)>(obj);
 }
