@@ -59,7 +59,8 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
 
         program_config = ProgramConfig(
             ops=[conv3d_op],
-            weights={"conv_weight":
+            weights={
+                "conv_weight":
                 TensorConfig(data_gen=partial(generate_weight, *args, **kwargs))
             },
             inputs={
@@ -75,13 +76,14 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         yield config, (1e-5, 1e-5)
 
     @given(
-        data_format = st.sampled_from(["NCDHW", "NDHWC"]),
-        dilations = st.sampled_from([[1, 2, 1]]),
-        padding_algorithm = st.sampled_from(["EXPLICIT"]),
-        groups = st.sampled_from([2]),
-        paddings = st.sampled_from([[0, 3, 2]]),
-        strides = st.sampled_from([[1, 2, 1]]),
-        batch_size = st.integers(min_value=1, max_value=4),
+        data_format=st.sampled_from(["NCDHW", "NDHWC"]),
+        dilations=st.sampled_from([[1, 2, 1]]),
+        padding_algorithm=st.sampled_from(["EXPLICIT"]),
+        groups=st.sampled_from([2]),
+        paddings=st.sampled_from([[0, 3, 2]]),
+        strides=st.sampled_from([[1, 2, 1]]),
+        batch_size=st.integers(
+            min_value=1, max_value=4),
     )
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
