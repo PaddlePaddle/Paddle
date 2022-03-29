@@ -19,6 +19,7 @@
 #include "paddle/infrt/kernel/phi/context_kernels.h"
 #include "paddle/infrt/paddle/model_parser.h"
 #include "paddle/infrt/paddle/scope.h"
+#include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 
@@ -167,9 +168,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 #undef PRINT_META_DATA
 }
 
-::infrt::phi::DenseTensorMap LoadParams(
-    host_context::Attribute<std::string> path) {
-  const auto& file_path = path.get();
+::infrt::phi::DenseTensorMap LoadParameters(const std::string& file_path) {
   std::cout << "loading params from: " << file_path << std::endl;
   ::infrt::phi::DenseTensorMap map;
 
@@ -201,17 +200,19 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   return map;
 }
 
-::infrt::phi::DenseTensorMap LoadCombinedParams(
-    host_context::Attribute<std::string> model_path,
-    host_context::Attribute<std::string> params_path) {
-  const auto& model = model_path.get();
-  std::cout << "loading params from: " << model << std::endl;
+::infrt::phi::DenseTensorMap LoadParams(
+    host_context::Attribute<std::string> path) {
+  return LoadParameters(path.get());
+}
+
+::infrt::phi::DenseTensorMap LoadCombinedParameters(
+    const std::string& model_path, const std::string& params_path) {
   ::infrt::phi::DenseTensorMap map;
 
-  auto pb_proto_prog = paddle::LoadProgram(model);
+  auto pb_proto_prog = paddle::LoadProgram(model_path);
   auto main_block = pb_proto_prog->blocks(0);
 
-  std::ifstream param_file(params_path.get(), std::ios::binary);
+  std::ifstream param_file(params_path, std::ios::binary);
 
   std::set<std::string> tmp;
   for (auto& var : main_block.vars()) {
@@ -235,6 +236,12 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
   }
 
   return map;
+}
+
+::infrt::phi::DenseTensorMap LoadCombinedParams(
+    host_context::Attribute<std::string> model_path,
+    host_context::Attribute<std::string> params_path) {
+  return LoadCombinedParameters(model_path.get(), params_path.get());
 }
 
 ::phi::DenseTensor TensorMapGetTensor(
