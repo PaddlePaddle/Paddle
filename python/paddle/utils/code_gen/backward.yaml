@@ -357,15 +357,15 @@
   kernel : 
     func : fmin_grad
 
-- backward_api : gather_grad
-  forward : gather(Tensor x, Tensor index, Scalar axis) -> Tensor(out)
-  args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=-1, bool overwrite=false)
-  output : Tensor(x_grad)
-  infer_meta : 
-    func : GeneralUnaryGradInferMeta
-    param: [x]
-  kernel : 
-    func : gather_grad
+#- backward_api : gather_grad
+  #forward : gather(Tensor x, Tensor index, Scalar axis) -> Tensor(out)
+  #args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=-1, bool overwrite=false)
+  #output : Tensor(x_grad)
+  #infer_meta : 
+    #func : GeneralUnaryGradInferMeta
+    #param: [x]
+  #kernel : 
+    #func : gather_grad
 
 - backward_api : mean_grad
   forward: mean (Tensor x,  int64_t[] dims={},  bool keep_dim=false) -> Tensor(out)

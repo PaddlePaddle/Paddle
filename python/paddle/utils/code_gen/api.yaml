@@ -574,15 +574,15 @@
     func : fmin
   backward : fmin_grad
 
-- api : gather
-  args : (Tensor x, Tensor index, Scalar axis)
-  output : Tensor(out)
-  infer_meta : 
-    func : GatherInferMeta
-  kernel : 
-    func : gather
-    data_type : x
-  backward : gather_grad
+#- api : gather
+  #args : (Tensor x, Tensor index, Scalar axis)
+  #output : Tensor(out)
+  #infer_meta : 
+    #func : GatherInferMeta
+  #kernel : 
+    #func : gather
+    #data_type : x
+  #backward : gather_grad
 
 - api : kthvalue
   args : (Tensor x, int k, int axis, bool keepdim)
