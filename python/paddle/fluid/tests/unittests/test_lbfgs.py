@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 
-from paddle.optimizer.functional.lbfgs import minimize_lbfgs
+from paddle.incubate.optimizer.functional.lbfgs import minimize_lbfgs
 
 np.random.seed(123)
 
