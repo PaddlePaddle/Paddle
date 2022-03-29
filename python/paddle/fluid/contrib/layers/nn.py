@@ -1,24 +1,10 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,7 +44,7 @@ __all__ = [
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
     'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
-    'correlation', 'fused_bn_add_act'
+    'correlation', 'fused_bn_add_act', 'fused_seqpool_cvm'
 ]
 
 
@@ -535,6 +521,64 @@ def fused_embedding_seq_pool(input,
             'padding_idx': padding_idx
         })
     return out
+
+
+def fused_seqpool_cvm(input,
+                      pool_type,
+                      cvm,
+                      pad_value=0.0,
+                      use_cvm=True,
+                      cvm_offset=2):
+    """
+    **Embedding Sequence pool**
+
+    This layer is the fusion of sequence_pool and continuous_value_model.
+
+    **Notes: The Op only receives List of LoDTensor as input, only support SUM pooling now.
+
+    Args:
+        input(Variable|list of Variable): Input is List of LoDTensor.
+        pool_type(str): pooling type, only support SUM pooling now.
+        cvm(Variable): cvm Variable.
+        pad_value(float): padding value of sequence pool.
+        use_cvm(bool): use cvm or not.
+    Returns:
+        Variable|list of Variable: The tensor variable storing sequence pool and cvm
+        of input.
+    """
+    helper = LayerHelper('fused_seqpool_cvm', **locals())
+
+    if pool_type.upper() != 'SUM':
+        raise ValueError(
+            "fused_seqpool_cvm only support SUM pooling now, and your type is: "
+            + pool_type)
+
+    check_type(input, 'input', list, 'fused_seqpool_cvm')
+    if isinstance(input, list):
+        for _input in input:
+            check_variable_and_dtype(_input, 'input', ['float32'],
+                                     'fused_seqpool_cvm')
+
+    dtype = helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+
+    helper.append_op(
+        type="fused_seqpool_cvm",
+        inputs={"X": inputs,
+                "CVM": cvm},
+        outputs={"Out": outs},
+        attrs={
+            "pooltype": pool_type.upper(),
+            "pad_value": pad_value,
+            "use_cvm": use_cvm,
+            "cvm_offset": cvm_offset,
+        })
+
+    return outs
 
 
 def multiclass_nms2(bboxes,
@@ -1050,7 +1094,7 @@ def sparse_embedding(input,
             vectors can be loaded with the :attr:`param_attr` parameter. The local word vector needs 
             to be transformed into numpy format, and the shape of local word vector should be consistent 
             with :attr:`size` .
-        dtype(str|core.VarDesc.VarType): It refers to the data type of output Tensor. It must be float32 or 
+        dtype(str): It refers to the data type of output Tensor. It must be float32 or 
             float64. Default: float32.
             
     Returns:

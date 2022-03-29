@@ -74,7 +74,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = False
+_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
