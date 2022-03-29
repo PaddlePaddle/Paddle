@@ -28,7 +28,7 @@ from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from paddle.static import Variable
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -150,16 +150,17 @@ def pow(x, y, name=None):
 
     """
     # in dynamic graph mode
-    if in_dygraph_mode():
-        if isinstance(y, (int, float)):
-            return _C_ops.final_state_pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            return _elementwise_op_in_dygraph(
-            x, y, axis=-1, act=None, op_name='elementwise_pow')
-        else:
-            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    #if in_dygraph_mode():
+    #if isinstance(y, (int, float)):
+    #return _C_ops.final_state_pow(x, y)
+    #elif isinstance(y, (paddle.Tensor, Variable)):
+    #return _elementwise_op_in_dygraph(
+    #x, y, axis=-1, act=None, op_name='elementwise_pow')
+    #else:
+    #raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
 
-    if _in_legacy_dygraph():
+    #if _in_legacy_dygraph():
+    if _non_static_mode:
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
