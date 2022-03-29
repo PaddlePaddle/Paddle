@@ -256,7 +256,7 @@ void BindDistributed(py::module *m) {
                                                        gid, opts);
            }),
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::arg("group_id"), py::call_guard<py::gil_scoped_release>())
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);
 #endif
