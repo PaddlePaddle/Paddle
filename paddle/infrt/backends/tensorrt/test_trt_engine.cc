@@ -185,7 +185,7 @@ TEST(trt, run_fc_static) {
       phi::make_ddim({inference_options.batch, 1, 28, 28}));
   phi::DenseTensor input;
   input.set_meta(meta);
-  context.Alloc<float>(&input, input.numel() * sizeof(float));
+  context.Alloc<float>(&input, false, input.numel() * sizeof(float));
   std::vector<float> host_data(inference_options.batch * 1 * 28 * 28, 0);
   for (size_t i = 0; i < host_data.size(); ++i) {
     host_data[i] = i % 100 * 0.016f;
@@ -231,7 +231,7 @@ TEST(trt, run_conv_static) {
       phi::make_ddim({inference_options.batch, 3, 28, 28}));
   phi::DenseTensor input;
   input.set_meta(meta);
-  context.Alloc<float>(&input, input.numel() * sizeof(float));
+  context.Alloc<float>(&input, false, input.numel() * sizeof(float));
   std::vector<float> host_data(inference_options.batch * 3 * 28 * 28, 0);
   for (size_t i = 0; i < host_data.size(); ++i) {
     host_data[i] = i % 100 * 0.016f;
@@ -275,7 +275,7 @@ TEST(trt, run_static) {
       phi::make_ddim({inference_options.batch, 3, 28, 28}));
   phi::DenseTensor input;
   input.set_meta(meta);
-  context.Alloc<float>(&input, input.numel() * sizeof(float));
+  context.Alloc<float>(&input, false, input.numel() * sizeof(float));
   std::vector<float> host_data(inference_options.batch * 3 * 28 * 28, 0);
   for (size_t i = 0; i < host_data.size(); ++i) {
     host_data[i] = i % 100 * 0.016f;
@@ -361,7 +361,7 @@ TEST(trt, run_dynamic) {
       phi::make_ddim({inference_options.batch, 3, 16, 16}));
   phi::DenseTensor input, output, output2;
   input.set_meta(meta);
-  context.Alloc<float>(&input, input.numel() * sizeof(float));
+  context.Alloc<float>(&input, false, input.numel() * sizeof(float));
   std::vector<float> host_data(inference_options.batch * 3 * 16 * 16, 0);
   for (size_t i = 0; i < host_data.size(); ++i) {
     host_data[i] = i % 100 * 0.016f;

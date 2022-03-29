@@ -39,8 +39,8 @@ void LgammaGradKernel(const Context& dev_ctx,
   auto numel = d_out.numel();
   auto* dout_data = d_out.data<T>();
   auto* x_data = x.data<T>();
-  auto* dx_data =
-      dev_ctx.template Alloc<T>(d_x, static_cast<size_t>(numel * sizeof(T)));
+  auto* dx_data = dev_ctx.template Alloc<T>(
+      d_x, false, static_cast<size_t>(numel * sizeof(T)));
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   LgammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);

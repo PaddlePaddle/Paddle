@@ -25,8 +25,8 @@ void RealGradKernel(const Context& dev_ctx,
                     DenseTensor* dx) {
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
-  auto* dx_data =
-      dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
+  auto* dx_data = dev_ctx.template Alloc<T>(
+      dx, false, static_cast<size_t>(numel * sizeof(T)));
 
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
@@ -39,8 +39,8 @@ void ImagGradKernel(const Context& dev_ctx,
                     DenseTensor* dx) {
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
-  auto* dx_data =
-      dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
+  auto* dx_data = dev_ctx.template Alloc<T>(
+      dx, false, static_cast<size_t>(numel * sizeof(T)));
 
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);

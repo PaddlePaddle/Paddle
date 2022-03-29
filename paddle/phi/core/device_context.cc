@@ -108,8 +108,8 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator = tensor->numel() == 0 ? zero_allocator_
-                                           : alloc_pinned ? pinned_allocator_
-                                                          : device_allocator_;
+                                           : (alloc_pinned ? pinned_allocator_
+                                                           : device_allocator_);
     return tensor->AllocateFrom(
         const_cast<Allocator*>(allocator), dtype, requested_size);
   }
