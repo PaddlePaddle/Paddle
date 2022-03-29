@@ -28,6 +28,10 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
   ComputePropagateScalesMkldnnPass() = default;
   virtual ~ComputePropagateScalesMkldnnPass() {}
 
+#ifdef PADDLE_WITH_TESTING
+  friend class ComputePropagateScalesMkldnnPassTest;
+#endif
+
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
