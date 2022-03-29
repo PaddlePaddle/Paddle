@@ -854,12 +854,13 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
     return paddle::experimental::ScalarArray(value);
 
-  } else if (type_name == "paddle.Tensor") {
+  } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::ScalarArray(value);
 
   } else {
+    LOG(ERROR) << type_name;
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or Tensor, but got %s",

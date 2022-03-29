@@ -11189,18 +11189,16 @@ def slice(input, axes, starts, ends):
         infer_flags = list(1 for i in range(len(axes)))
 
         tmp_tensor_type = core.eager.Tensor
-
+        print(type(starts))
         if isinstance(starts, (list, tuple)):
             starts = [
                 item.numpy().item(0)
                 if isinstance(item, tmp_tensor_type) else item
                 for item in starts
             ]
-            attrs += ('starts', starts)
         elif isinstance(starts, tmp_tensor_type):
-            starts_tensor = starts
-            starts.stop_gradient = True
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = starts.numpy()
+            starts = [ele for ele in tensor_t]
 
         if isinstance(ends, (list, tuple)):
             ends = [
@@ -11209,12 +11207,11 @@ def slice(input, axes, starts, ends):
             ]
             attrs += ('ends', ends)
         elif isinstance(ends, tmp_tensor_type):
-            ends_tensor = ends
-            ends_tensor.stop_gradient = True
-            infer_flags = list(-1 for i in range(len(axes)))
+            tensor_t = ends.numpy()
+            ends = [ele for ele in tensor_t]
 
-        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                            'axes', axes, 'infer_flags', infer_flags, *attrs)
+        return _C_ops.final_state_slice(input, axes, starts, ends, infer_flags,
+                                        [])
     else:
         if _in_legacy_dygraph():
             attrs = ()

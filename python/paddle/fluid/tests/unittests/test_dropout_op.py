@@ -25,6 +25,8 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 import os
 
+from paddle import _C_ops
+
 
 class TestDropoutOp(OpTest):
     def setUp(self):
@@ -967,12 +969,12 @@ class TestDropoutBackward(unittest.TestCase):
                 with _test_eager_guard():
                     input = paddle.uniform([40, 40], dtype="float32")
                     input.stop_gradient = False
-                    out = paddle.nn.functional.dropout(input, 0.5)
-                    # out.backward()
-
-                    # self.assertTrue(
-                    #     np.array_equal(input.gradient(
-                    #     ), self.cal_grad_downscale_in_infer(mask.numpy())))
+                    out, mask = _C_ops.final_state_dropout(
+                        input, None, 0.5, False, "downgrade_in_infer", 0, False)
+                    out.backward()
+                    self.assertTrue(
+                        np.array_equal(input.gradient(
+                        ), self.cal_grad_downscale_in_infer(mask.numpy())))
 
     def test_backward_upscale_train(self):
         for place in self.places:
@@ -989,6 +991,21 @@ class TestDropoutBackward(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(input.gradient(
                     ), self.cal_grad_upscale_train(mask.numpy(), prob)))
+
+    def test_backward_upscale_train_eager(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                with _test_eager_guard():
+                    prob = 0.5
+                    input = paddle.uniform([40, 40], dtype="float32")
+                    input.stop_gradient = False
+                    out, mask = _C_ops.final_state_dropout(
+                        input, None, 0.5, False, "upscale_in_train", 0, False)
+                    out.backward()
+
+                    self.assertTrue(
+                        np.allclose(input.gradient(
+                        ), self.cal_grad_upscale_train(mask.numpy(), prob)))
 
     def test_backward_upscale_train_2(self):
         for place in self.places:
