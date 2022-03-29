@@ -151,7 +151,7 @@ function(kernel_library TARGET)
                 # NOTE(chenweihang): If we can be sure that the *.kps suffix is no longer used, it can be copied directly to *.xpu
                 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/${TARGET}.cu DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps)
                 file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}.cu ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}_kps.kps)
-                list(APPEND kps_srcs ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}.kps)
+                list(APPEND kps_srcs ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}_kps.kps)
             endif()
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cpu/${TARGET}.cc )
                 list(APPEND kps_srcs ${CMAKE_CURRENT_SOURCE_DIR}/cpu/${TARGET}.cc)
