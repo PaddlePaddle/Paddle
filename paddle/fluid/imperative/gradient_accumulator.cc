@@ -341,6 +341,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place)) {
     if (place.GetDeviceType() == "Ascend910") {
+#ifdef PADDLE_WITH_ASCEND_CL
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       platform::DeviceContext* ctx = pool.Get(place);
@@ -361,6 +362,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
       const auto& runner = operators::NpuOpRunner(
           "Add", {*dst_tensor, src_tensor}, {*dst_tensor}, {});
       runner.Run(dev_ctx->stream());
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
