@@ -45,7 +45,6 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::init_path() {
   int total_device = resource_->total_device();
   path_.resize(total_device);
-
   if (!topo_aware_) {
     VLOG(0) << "init path without topo aware";
     for (int i = 0; i < total_device; ++i) {
@@ -100,10 +99,10 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
                                                            int end_index,
                                                            int keylen,
                                                            int vallen) {
+#if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
-#if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].gpu_num));
     allocator->DeviceAllocate(
         resource_->dev_id(nodes[i].gpu_num),
@@ -113,16 +112,21 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
         resource_->dev_id(nodes[i].gpu_num),
         (void**)&(nodes[i].val_storage),  // NOLINT
         vallen, resource_->remote_stream(nodes[i].gpu_num, start_index));
+    nodes[i].key_bytes_len = keylen;
+    nodes[i].val_bytes_len = vallen;
+  }
 #elif defined(PADDLE_WITH_XPU)
+  auto& nodes = path_[start_index][end_index].nodes_;
+  for (size_t i = 0; i < nodes.size(); ++i) {
     platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].gpu_num));
     auto node_keys_mem = memory::Alloc(place_, keylen);
     nodes[i].key_storage = reinterpret_cast<char*>(node_keys_mem->ptr());
     auto node_vals_mem = memory::Alloc(place_, vallen);
     nodes[i].val_storage = reinterpret_cast<char*>(node_vals_mem->ptr());
-#endif
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
   }
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -557,7 +561,7 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
     KeyType* d_keys, int* d_idx_ptr, size_t len, int* left, int* right,
     int xpu_num) {
 
-  int total_device = resource_->total_device();
+  int total_xpu = resource_->total_device();
   int dev_id = resource_->dev_id(xpu_num);
 
   platform::XPUPlace place = platform::XPUPlace(dev_id);
@@ -576,10 +580,10 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   int grid_size = (len - 1) / block_size_ + 1;
 
   heter_comm_kernel_->fill_idx(d_idx_tmp_ptr, len, stream);
-  heter_comm_kernel_->calc_shard_index(d_keys, len, d_shard_index_tmp_ptr, total_device, stream);
+  heter_comm_kernel_->calc_shard_index(d_keys, len, d_shard_index_tmp_ptr, total_xpu, stream);
 
   size_t temp_storage_bytes;
-  const int num_bits = 1 + log2i(total_device);
+  const int num_bits = 1 + log2i(total_xpu);
 
   PADDLE_ENFORCE_XPU_SUCCESS(SortPairs(
       NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
@@ -589,7 +593,7 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   PADDLE_ENFORCE_XPU_SUCCESS(SortPairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
       d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
-  heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len, total_device, stream);
+  heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len, total_xpu, stream);
   xpu_wait(stream);
 }
 #endif
@@ -604,7 +608,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     return;
   }
 
-  int total_device = resource_->total_device();
+  int total_gpu = resource_->total_device();
   int dev_id = resource_->dev_id(num);
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
   platform::CUDADeviceGuard guard(dev_id);
@@ -612,16 +616,16 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   int grid_size = (len - 1) / block_size_ + 1;
 
-  int h_left[total_device];   // NOLINT
-  int h_right[total_device];  // NOLINT
+  int h_left[total_gpu];   // NOLINT
+  int h_right[total_gpu];  // NOLINT
 
-  auto d_left = memory::Alloc(place, total_device * sizeof(int));
-  auto d_right = memory::Alloc(place, total_device * sizeof(int));
+  auto d_left = memory::Alloc(place, total_gpu * sizeof(int));
+  auto d_right = memory::Alloc(place, total_gpu * sizeof(int));
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
-  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
-  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
+  cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream);
 
   auto d_idx = memory::Alloc(place, len * sizeof(int));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
@@ -637,12 +641,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   cudaStreamSynchronize(stream);
 
-  cudaMemcpy(h_left, d_left_ptr, total_device * sizeof(int),
+  cudaMemcpy(h_left, d_left_ptr, total_gpu * sizeof(int),
              cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_right, d_right_ptr, total_device * sizeof(int),
+  cudaMemcpy(h_right, d_right_ptr, total_gpu * sizeof(int),
              cudaMemcpyDeviceToHost);
 
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
     if (shard_len == 0) {
       continue;
@@ -651,7 +655,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                    shard_len * sizeof(ValType));
   }
 
-  walk_to_dest(num, total_device, h_left, h_right, d_shard_keys_ptr, NULL);
+  walk_to_dest(num, total_gpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
@@ -674,9 +678,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     tables_[i]->rwlock_->UNLock();
   }
 
-  walk_to_src(num, total_device, h_left, h_right, d_shard_vals_ptr);
+  walk_to_src(num, total_gpu, h_left, h_right, d_shard_vals_ptr);
 
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_gpu; ++i) {
     auto& node = path_[num][i].nodes_.front();
     cudaStreamSynchronize(node.out_stream);
   }
@@ -684,7 +688,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
                                  stream);
   cudaStreamSynchronize(stream);
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_gpu; ++i) {
     destroy_storage(num, i);
   }
 }
@@ -699,7 +703,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     return;
   }
 
-  int total_device = resource_->total_device();
+  int total_xpu = resource_->total_device();
   int dev_id = resource_->dev_id(num);
   platform::XPUPlace place = platform::XPUPlace(dev_id);
   platform::XPUDeviceGuard guard(dev_id);
@@ -707,11 +711,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   int grid_size = (len - 1) / block_size_ + 1;
 
-  int h_left[total_device];   // NOLINT
-  int h_right[total_device];  // NOLINT
+  int h_left[total_xpu];   // NOLINT
+  int h_right[total_xpu];  // NOLINT
 
-  auto d_left = memory::Alloc(place, total_device * sizeof(int));
-  auto d_right = memory::Alloc(place, total_device * sizeof(int));
+  auto d_left = memory::Alloc(place, total_xpu * sizeof(int));
+  auto d_right = memory::Alloc(place, total_xpu * sizeof(int));
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
@@ -719,12 +723,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
-  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
+  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_xpu, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r,
                         XPUAPIErrorMsg[r]));
-  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
+  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_xpu, -1);
   PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
@@ -741,17 +745,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
   heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr, len);
 
-  //void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
-  //                                                void* dst,
-  //                                                platform::XPUPlace src_place,
-  //                                                const void* src, size_t num) {
-  // need to check
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
-  memory::Copy(dst_place, h_left, src_place, d_left_ptr, total_device * sizeof(int));
-  memory::Copy(dst_place, h_right, src_place, d_right_ptr, total_device * sizeof(int));
+  memory::Copy(dst_place, h_left, src_place, d_left_ptr, total_xpu * sizeof(int));
+  memory::Copy(dst_place, h_right, src_place, d_right_ptr, total_xpu * sizeof(int));
 
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_xpu; ++i) {
     int shard_len = h_right[i] - h_left[i] + 1;
     if (shard_len == 0) {
       continue;
@@ -760,9 +759,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                    shard_len * sizeof(ValType));
   }
 
-  walk_to_dest(num, total_device, h_left, h_right, d_shard_keys_ptr, NULL);
+  walk_to_dest(num, total_xpu, h_left, h_right, d_shard_keys_ptr, NULL);
 
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_xpu; ++i) {
     if (h_left[i] == -1) {
       continue;
     }
@@ -776,7 +775,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                     resource_->remote_stream(i, num));
   }
 
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_xpu; ++i) {
     xpu_wait(resource_->remote_stream(i, num)); 
     if (h_left[i] == -1) {
       continue;
@@ -784,11 +783,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     tables_[i]->rwlock_->UNLock();
   }
 
-  walk_to_src(num, total_device, h_left, h_right, d_shard_vals_ptr);
+  walk_to_src(num, total_xpu, h_left, h_right, d_shard_vals_ptr);
 
   heter_comm_kernel_->fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len, stream);
   xpu_wait(stream);
-  for (int i = 0; i < total_device; ++i) {
+  for (int i = 0; i < total_xpu; ++i) {
     destroy_storage(num, i);
   }
 
@@ -1001,12 +1000,6 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int xpu_num,
 
   xpu_wait(stream);
 
-   
-  //void Copy<platform::CPUPlace, platform::XPUPlace>(platform::CPUPlace dst_place,
-  //                                                void* dst,
-  //                                                platform::XPUPlace src_place,
-  //                                                const void* src, size_t num) {
-  // need to check
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
   memory::Copy(dst_place, h_left, src_place, d_left_ptr, total_xpu * sizeof(int));

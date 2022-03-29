@@ -32,21 +32,42 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// struct CustomGradMerger {
-//  template <typename T>
-//  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
-//  operator()(const T& a, const T& b) const {
-//    T out;
-//    out.slot = a.slot;
-//    out.show = a.show + b.show;
-//    out.clk = a.clk + b.clk;
-//    out.lr_g = a.lr_g + b.lr_g;
-//    for (int i = 0; i < MF_DIM; ++i) {
-//      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
-//    }
-//    return out;
-//  }
-//};
+#if defined(PADDLE_WITH_CUDA)
+struct CustomGradMerger {
+  template <typename T>
+  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
+  operator()(const T& a, const T& b) const {
+    T out;
+    out.slot = a.slot;
+    out.show = a.show + b.show;
+    out.clk = a.clk + b.clk;
+    out.lr_g = a.lr_g + b.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+    }
+    return out;
+  }
+};
+#elif defined(PADDLE_WITH_XPU)
+
+struct CustomGradMerger {
+  template <typename T>
+  __forceinline__ __device__ T
+  operator()(const T& a, const T& b) const {
+    T out;
+    out.slot = a.slot;
+    out.show = a.show + b.show;
+    out.clk = a.clk + b.clk;
+    out.lr_g = a.lr_g + b.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+    }
+    return out;
+  }
+};
+
+#endif
+
 
 template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
@@ -189,7 +210,7 @@ class HeterComm {
  private:
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
   std::vector<LocalStorage> storage_;
-  // CustomGradMerger merger_;
+  CustomGradMerger merger_;
   int topo_aware_{0};
   int feanum_{1800 * 2048};
   int multi_node_{0};
