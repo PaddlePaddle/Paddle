@@ -74,7 +74,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh",
       "pad",
       "elementwise_add",
+      "elementwise_sub",
       "elementwise_mul",
+      "elementwise_div",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -133,7 +135,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh",
       "pad",
       "elementwise_add",
+      "elementwise_sub",
       "elementwise_mul",
+      "elementwise_div",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -958,7 +962,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+    if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
+        op_type == "elementwise_sub" || op_type == "elementwise_div") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "

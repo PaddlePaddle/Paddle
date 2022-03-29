@@ -14,6 +14,7 @@ if ((NOT WITH_GPU) AND (NOT WITH_XPU) AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
     list(REMOVE_ITEM TEST_OPS "test_auto_parallel_amp_pass")
     list(REMOVE_ITEM TEST_OPS "test_auto_parallel_recompute_pass")
     list(REMOVE_ITEM TEST_OPS "test_auto_parallel_sharding_pass")
+    list(REMOVE_ITEM TEST_OPS "test_auto_parallel_fp16_pass")
 endif()
 
 foreach(TEST_OP ${TEST_OPS})

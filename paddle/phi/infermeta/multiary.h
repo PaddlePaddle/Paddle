@@ -230,6 +230,15 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         float spatial_scale,
                         MetaTensor* out);
 
+void WarpctcInferMeta(const MetaTensor& logits,
+                      const MetaTensor& label,
+                      const paddle::optional<const MetaTensor&> logits_length,
+                      const paddle::optional<const MetaTensor&> labels_length,
+                      int blank,
+                      bool norm_by_times,
+                      MetaTensor* warpctc_grad,
+                      MetaTensor* loss);
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
