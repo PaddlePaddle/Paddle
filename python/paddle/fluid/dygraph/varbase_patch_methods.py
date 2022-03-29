@@ -20,6 +20,7 @@ import sys
 
 import paddle
 from .. import framework
+from ..framework import convert_np_dtype_to_dtype_
 from .. import core
 from .. import unique_name
 from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
@@ -32,27 +33,6 @@ import paddle.profiler as profiler
 from paddle import _C_ops
 
 _grad_scalar = None
-
-
-def np_dtype_to_tensor_dtype(dtype):
-    if dtype == np.float32:
-        return core.VarDesc.VarType.FP32
-    elif dtype == np.float64:
-        return core.VarDesc.VarType.FP64
-    elif dtype == np.float16:
-        return core.VarDesc.VarType.FP16
-    elif dtype == np.bfloat16:
-        return VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
-    elif dtype == np.int64:
-        return core.VarDesc.VarType.INT64
-    else:
-        raise ValueError("Not supported data type " + str(dtype))
 
 
 class TensorHookRemoveHelper(object):
@@ -200,7 +180,7 @@ def monkey_patch_varbase():
             if isinstance(value, base_tensor):
                 dtype = value.dtype
             else:
-                dtype = np_dtype_to_tensor_dtype(value.dtype)
+                dtype = convert_np_dtype_to_dtype_(value.dtype)
 
             assert self.dtype == dtype, \
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
