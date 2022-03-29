@@ -221,6 +221,16 @@
     func : sum
     data_type : x
 
+# top_k
+- api : top_k
+  args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopKInferMeta
+  kernel :
+    func : top_k
+  backward : top_k_grad
+
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
