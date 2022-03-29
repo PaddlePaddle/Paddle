@@ -11589,7 +11589,11 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_shape(input)
+        out.stop_gradient = True
+        return out
+    if _in_legacy_dygraph():
         out = _C_ops.shape(input)
         out.stop_gradient = True
         return out

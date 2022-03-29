@@ -182,6 +182,14 @@
     func : scale, scale_sr
   inplace : (x -> out)
 
+- api: shape
+  args : (Tensor input)
+  output : Tensor
+  infer_meta :
+    func : ShapeInferMeta
+  kernel :
+    func : shape, shape_sr
+
 - api : sign
   args : (Tensor x)
   output : Tensor
