@@ -33,7 +33,7 @@ class KernelCallback {
   explicit KernelCallback(FuncType func_) : func(func_) {}
   virtual ~KernelCallback() {}
 
-  RetureType Call(Args&&... args) { return func(args...); }
+  RetureType Call(Args... args) { return func(args...); }
 
  private:
   FuncType func;
@@ -71,7 +71,7 @@ class AutoTuneBase {
     for (int i = 0; i < kernels_.size(); ++i) {
       ctx.Wait();
       timer.Start(0);
-      kernels_[i].Call(std::forward<Args...>(args...));
+      kernels_[i].Call(args...);
       timer.Stop(0);
       auto time = timer.ElapsedTime();
       VLOG(3) << "kernel[" << i << "]: time cost is " << time;

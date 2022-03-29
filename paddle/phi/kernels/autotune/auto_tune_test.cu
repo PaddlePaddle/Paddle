@@ -103,16 +103,35 @@ TEST(AutoTune, sum) {
                        .get());
   ctx.PartialInitWithAllocator();
 
-  // 1. set call_back instance obj for each kernel.
+  // 1. Test call_back.
+  VLOG(3) << "[CallBack]: Test case.";
+  auto callback1 = phi::MakeCallback(Algo<4>);
+  auto callback2 = phi::MakeCallback(Algo<2>);
+  auto callback3 = phi::MakeCallback(Algo<1>);
+  std::vector<decltype(callback1)> callbacks{callback1, callback2, callback3};
+  for (int i = 0; i < callbacks.size(); ++i) {
+    ctx.Wait();
+    phi::GpuTimer timer;
+    timer.Start(0);
+    callbacks[i].Call(ctx, d_in1, d_in2, N, threads, blocks);
+    timer.Stop(0);
+    VLOG(3) << "kernel[" << i << "]: time cost is " << timer.ElapsedTime();
+  }
+
+  // 2. Test call_back tune.
+  VLOG(3) << "[AutoTune]: Test case.";
   auto tuner = phi::MakeAutoTune(Algo<4>);
   tuner.AddAlgo(phi::MakeCallback(Algo<2>));
   tuner.AddAlgo(phi::MakeCallback(Algo<1>));
-
-  // 2. set the container of obj_1
-  auto best_call =
+  auto best_call_back =
       tuner.PickBestAlgo(ctx, ctx, d_in1, d_in2, N, threads, blocks);
 
-// 3. best kernel test.
+  ctx.Wait();
+  phi::GpuTimer timer;
+  timer.Start(0);
+  best_call_back.Call(ctx, d_in1, d_in2, N, threads, blocks);
+  timer.Stop(0);
+  VLOG(3) << "Best CallBackKernel time cost is " << timer.ElapsedTime();
 #endif
 
 #ifdef __HIPCC__
