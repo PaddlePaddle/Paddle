@@ -24,27 +24,47 @@ class Independent(distribution.Distribution):
 
     Args:
         base (Distribution): The base distribution.
-        reinterpreted_batch_ndims (int): The number of batch dimensions to 
+        reinterpreted_batch_rank (int): The number of batch dimensions to 
             reinterpret as event dimensions.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import paddle
+            from paddle.distribution import independent
+
+            beta = paddle.distribution.Beta(paddle.to_tensor([0.5, 0.5]), paddle.to_tensor([0.5, 0.5]))
+            print(beta.batch_shape, beta.event_shape)
+            # (2,) ()
+            print(beta.log_prob(paddle.to_tensor(0.2)))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.22843921, -0.22843921])
+            reinterpreted_beta = independent.Independent(beta, 1)
+            print(reinterpreted_beta.batch_shape, reinterpreted_beta.event_shape)
+            # () (2,)
+            print(reinterpreted_beta.log_prob(paddle.to_tensor([0.2,  0.2])))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.45687842])
     """
 
-    def __init__(self, base, reinterpreted_batch_ndims):
+    def __init__(self, base, reinterpreted_batch_rank):
         if not isinstance(base, distribution.Distribution):
             raise TypeError(
                 f"Expected type of 'base' is Distribution, but got {type(base)}")
-        if not (0 < reinterpreted_batch_ndims <= len(base.batch_shape)):
+        if not (0 < reinterpreted_batch_rank <= len(base.batch_shape)):
             raise ValueError(
-                f"Expected 0 < reinterpreted_batch_ndims <= {len(base.batch_shape)}, but got {reinterpreted_batch_ndims}"
+                f"Expected 0 < reinterpreted_batch_rank <= {len(base.batch_shape)}, but got {reinterpreted_batch_rank}"
             )
         self._base = base
-        self._reinterpreted_batch_ndims = reinterpreted_batch_ndims
+        self._reinterpreted_batch_rank = reinterpreted_batch_rank
 
         shape = base.batch_shape + base.event_shape
         super(Independent, self).__init__(
             batch_shape=shape[:len(base.batch_shape) -
-                              reinterpreted_batch_ndims],
+                              reinterpreted_batch_rank],
             event_shape=shape[len(base.batch_shape) -
-                              reinterpreted_batch_ndims:])
+                              reinterpreted_batch_rank:])
 
     def _expand(self, batch_shape):
         raise NotImplementedError()
@@ -65,14 +85,14 @@ class Independent(distribution.Distribution):
 
     def log_prob(self, value):
         return self._sum_rightmost(
-            self.base.log_prob(value), self._reinterpreted_batch_ndims)
+            self._base.log_prob(value), self._reinterpreted_batch_rank)
 
     def prob(self, value):
         return self.log_prob(value).exp()
 
     def entropy(self):
         return self._sum_rightmost(self._base.entropy(),
-                                   self._reinterpreted_batch_ndims)
+                                   self._reinterpreted_batch_rank)
 
     def _sum_rightmost(self, value, n):
         return value.sum(list(range(-n, 0))) if n > 0 else value

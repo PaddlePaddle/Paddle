@@ -14,6 +14,9 @@
 
 
 class Constraint(object):
+    """Constraint condition for random variable.
+    """
+
     def __call__(self, value):
         raise NotImplementedError
 

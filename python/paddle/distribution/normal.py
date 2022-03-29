@@ -22,9 +22,9 @@ from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
                                       check_variable_and_dtype, convert_dtype)
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import (control_flow, elementwise_add,
-                                 elementwise_div, elementwise_mul,
-                                 elementwise_sub, nn, ops, tensor)
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
 
 
 class Normal(distribution.Distribution):
@@ -128,6 +128,7 @@ class Normal(distribution.Distribution):
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = tensor.cast(self.loc, dtype=self.dtype)
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
+        super(Normal, self).__init__(self.loc.shape)
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.

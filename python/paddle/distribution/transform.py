@@ -21,7 +21,7 @@ import typing
 
 import paddle
 import paddle.nn.functional as F
-from paddle.distribution import (constraint, distribution, tool,
+from paddle.distribution import (constraint, distribution,
                                  transformed_distribution, variable)
 
 __all__ = [  # noqa
@@ -33,7 +33,6 @@ __all__ = [  # noqa
     'IndependentTransform',
     'PowerTransform',
     'ReshapeTransform',
-    'PowerTransform',
     'SigmoidTransform',
     'SoftmaxTransform',
     'StackTransform',
@@ -58,7 +57,7 @@ class Type(enum.Enum):
 
 
 class Transform(object):
-    r"""Base class for the random varlable transformation.
+    r"""Base class for the transformations of random variables.
 
     ``Transform`` can be used to represent any differentiable and injective 
     function from the subset of :math:`R^n` to subset of :math:`R^m`, generally 
@@ -114,8 +113,6 @@ class Transform(object):
 
         * _forward_shape
         * _inverse_shape
-
-    Non-injective tansformation currently are not supported.
 
     Examples:
 
@@ -189,7 +186,7 @@ class Transform(object):
                 from ``Distribution``.
 
         Returns:
-            Tensor: Outcome of forward transform.
+            Tensor: Outcome of forward transformation.
         """
         if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
@@ -201,7 +198,7 @@ class Transform(object):
         return self._forward(x)
 
     def inverse(self, y):
-        """Inverse transform :math:`x = f^{-1}(y)`. It's useful for 'reversing' 
+        """Inverse transformation :math:`x = f^{-1}(y)`. It's useful for "reversing" 
         a transformation to compute one probability in terms of another.
 
         Args:
@@ -251,7 +248,7 @@ class Transform(object):
         evaluated at :math:`f^{-1}(y)`.
 
         Args:
-            y (Tensor): The input to the 'inverse' Jacobian determinant 
+            y (Tensor): The input to the ``inverse`` Jacobian determinant 
                 evaluation.
 
         Returns:
@@ -437,15 +434,15 @@ class AffineTransform(Transform):
             import paddle
 
             x = paddle.to_tensor([1., 2.])
-            power = paddle.distribution.AffineTransform(paddle.to_tensor(0.), paddle.to_tensor(1.))
+            affine = paddle.distribution.AffineTransform(paddle.to_tensor(0.), paddle.to_tensor(1.))
 
-            print(power.forward(x))
+            print(affine.forward(x))
             # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 2.])
-            print(power.inverse(power.forward(x)))
+            print(affine.inverse(power.forward(x)))
             # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 2.])
-            print(power.forward_log_det_jacobian(x))
+            print(affine.forward_log_det_jacobian(x))
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [0.])
     """
@@ -503,7 +500,7 @@ class ChainTransform(Transform):
     r"""Composes multiple transforms in a chain.
 
     Args:
-        transforms (Sequence[int]): A sequence of transformations.
+        transforms (Sequence[Transform]): A sequence of transformations.
 
     Examples:
 

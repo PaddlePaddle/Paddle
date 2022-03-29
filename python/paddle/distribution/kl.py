@@ -15,7 +15,6 @@ import functools
 import warnings
 
 import paddle
-from paddle.distribution import tool
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
@@ -201,6 +200,10 @@ def _kl_expfamily_expfamily(p, q):
     for p_param, q_param, p_grad in zip(p_natural_params, q_natural_params,
                                         p_grads):
         term = (q_param - p_param) * p_grad
-        kl -= tool._sum_rightmost(term, len(q.event_shape))
+        kl -= _sum_rightmost(term, len(q.event_shape))
 
     return kl
+
+
+def _sum_rightmost(value, n):
+    return value.sum(list(range(-n, 0))) if n > 0 else value

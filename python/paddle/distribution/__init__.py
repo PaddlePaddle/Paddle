@@ -18,10 +18,13 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.independent import Independent
 from paddle.distribution.kl import kl_divergence, register_kl
 from paddle.distribution.multinomial import Multinomial
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import *  # noqa: F403
+from paddle.distribution.transformed_distribution import \
+    TransformedDistribution
 from paddle.distribution.uniform import Uniform
 
 __all__ = [  # noqa
@@ -35,6 +38,8 @@ __all__ = [  # noqa
     'Uniform',
     'kl_divergence',
     'register_kl',
+    'Independent',
+    'TransformedDistribution'
 ]
 
 __all__.extend(transform.__all__)
