@@ -86,7 +86,7 @@ void EmbeddingInferMeta(const MetaTensor& input,
   PADDLE_ENFORCE_EQ(
       table_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "ShapeError: The dimensions of the 'lookup table' must be 2. "
           "But received lookup table's dimensions = %d, "
           "lookup table's shape = [%s].",
