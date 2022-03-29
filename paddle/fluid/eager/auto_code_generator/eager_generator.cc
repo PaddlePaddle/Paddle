@@ -2780,7 +2780,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     // Inplace Function Generator.
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
-    if (op_type != "sum" && infer_inplace) {
+    if (op_type != "sum" && op_type != "assign" && infer_inplace) {
       auto in_to_outs = infer_inplace(true);
       for (auto& inplace_pair : in_to_outs) {
         inplace_map[inplace_pair.second] = inplace_pair.first;
