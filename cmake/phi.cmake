@@ -181,7 +181,7 @@ function(kernel_library TARGET)
             string(REGEX MATCHALL "#include \"paddle\/phi\/kernels\/${kernel_library_SUB_DIR}\/[a-z0-9_]+_kernel.h\"" include_kernels ${target_content})
             list(APPEND all_include_kernels ${include_kernels})
         endif()
-        
+
         foreach(include_kernel ${all_include_kernels})
             if ("${kernel_library_SUB_DIR}" STREQUAL "")
                 string(REGEX REPLACE "#include \"paddle\/phi\/kernels\/" "" kernel_name ${include_kernel})
@@ -214,7 +214,7 @@ function(kernel_library TARGET)
     list(LENGTH kps_srcs kps_srcs_len)
 
     # kernel source file level
-    # level 1: base device kernel (if any device or dnn kernel exists, the cpu_kernel must be exists)
+    # level 1: base device kernel (if any device or dnn kernel exists, the cpu_kernel must be exists!!!)
     # - cpu_srcs / gpu_srcs / xpu_srcs / kps_srcs
     # = dnn srcs: gpudnn_srcs
     # level 2: device-independent kernel
@@ -245,14 +245,14 @@ function(kernel_library TARGET)
         if (WITH_GPU)
             if (${dnn_kernels_len} GREATER 0)
                 nv_library(${TARGET}_base${target_suffix} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
-                nv_library(${TARGET}${target_suffix} DEPS ${kernel_library_DEPS} ${kernel_deps} ${dnn_kernels})
+                nv_library(${TARGET}${target_suffix} DEPS ${TARGET}_base${target_suffix} ${dnn_kernels})
             else()
                 nv_library(${TARGET}${target_suffix} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
             endif()
         elseif (WITH_ROCM)
             if (${dnn_kernels_len} GREATER 0)
                 hip_library(${TARGET}_base${target_suffix} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
-                hip_library(${TARGET}${target_suffix} DEPS ${kernel_library_DEPS} ${kernel_deps} ${dnn_kernels})
+                hip_library(${TARGET}${target_suffix} DEPS ${TARGET}_base${target_suffix} ${dnn_kernels})
             else()
                 hip_library(${TARGET}${target_suffix} SRCS ${cpu_srcs} ${gpu_srcs} DEPS ${kernel_library_DEPS} ${kernel_deps})
             endif()
