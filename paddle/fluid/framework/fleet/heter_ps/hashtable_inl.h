@@ -87,6 +87,7 @@ __global__ void dy_mf_search_kernel(Table* table,
     }
   }
 }
+
 template <typename Table, typename GradType, typename Sgd>
 __global__ void update_kernel(Table* table,
                               const typename Table::key_type* const keys,
