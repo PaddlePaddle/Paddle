@@ -121,13 +121,13 @@ TEST(AutoTune, sum) {
   // 2. Test call_back tune.
   VLOG(3) << "[AutoTune]: Test case.";
   auto tuner = phi::MakeAutoTune(Algo<4>);
-  tuner.AddAlgo(phi::MakeCallback(Algo<2>));
-  tuner.AddAlgo(phi::MakeCallback(Algo<1>));
+  tuner.AddCallBack(phi::MakeCallback(Algo<2>));
+  tuner.AddCallBack(phi::MakeCallback(Algo<1>));
 
   /* The 1st ctx works for ctx.Wait(),
      the 2nd is just the param of call_back function. */
   auto best_call_back =
-      tuner.PickBestAlgo(ctx, ctx, d_in1, d_in2, N, threads, blocks);
+      tuner.PickBestKernel(ctx, ctx, d_in1, d_in2, N, threads, blocks);
 
   ctx.Wait();
   phi::GpuTimer timer;

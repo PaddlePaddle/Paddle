@@ -49,16 +49,18 @@ class AutoTuneBase {
  public:
   AutoTuneBase() {}
   virtual ~AutoTuneBase() {}
-  explicit AutoTuneBase(KernelType kernel) { kernels_.push_back(kernel); }
+  explicit AutoTuneBase(KernelType kernel) : default_kernel(kernel) {
+    kernels_.push_back(kernel);
+  }
 
   template <typename T>
-  void AddAlgo(T kernel) {
+  void AddCallBack(T kernel) {
     static_assert(std::is_same<T, KernelType>::value, "Type must be the same");
     kernels_.push_back(kernel);
   }
 
   template <typename Context, typename... Args>
-  KernelType PickBestAlgo(const Context& ctx, Args&&... args) {
+  KernelType PickBestKernel(const Context& ctx, Args&&... args) {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
@@ -86,6 +88,7 @@ class AutoTuneBase {
   }
 
  private:
+  KernelType default_kernel;
   std::vector<KernelType> kernels_;
 };
 
