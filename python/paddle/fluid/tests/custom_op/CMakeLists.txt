@@ -9,6 +9,7 @@ if(WITH_GPU OR APPLE)
     set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
     set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
     set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
 endif()
 
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
