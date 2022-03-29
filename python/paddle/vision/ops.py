@@ -1020,7 +1020,6 @@ def image_decode_random_crop(x,
         name=unique_name.generate("image_decode_random_crop"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=x.dtype)
-    # out = helper.create_variable_for_type_inference('uint8')
     helper.append_op(
         type="batch_decode_random_crop", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
@@ -1034,17 +1033,6 @@ def random_flip(x, prob=0.5, name=None):
     rand_vec = layers.uniform_random_batch_size_like(
                                     x, [1, 1], min=0., max=1.)
     return rand_vec < prob
-    # helper = LayerHelper("random_flip", **locals())
-    # out = helper.create_variable(
-    #     name=unique_name.generate("random_flip"),
-    #     type=core.VarDesc.VarType.LOD_TENSOR,
-    #     dtype=core.VarDesc.VarType.BOOL)
-    # helper.append_op(
-    #     type="random_flip",
-    #     inputs={"X": x},
-    #     outputs={"Out": out},
-    #     attrs={"probability": prob})
-    # return out
 
 
 def mirror_normalize(x, mirror,
@@ -1064,6 +1052,10 @@ def mirror_normalize(x, mirror,
     x = paddle.cast(x, dtype='float32')
     mean = _to_list_3(mean)
     std = _to_list_3(std)
+
+    if _non_static_mode():
+        return _C_ops.mirror_normalize(x, mirror, "mean", mean,
+                                       "std", std)
 
     helper = LayerHelper("mirror_normalize", **locals())
     dtype = helper.input_dtype()
