@@ -263,14 +263,14 @@
 #   kernel :
 #     func : histogram
 
-- api : abs
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : abs
-  backward : abs_grad
+# - api : abs
+#   args : (Tensor x)
+#   output : Tensor
+#   infer_meta :
+#     func : UnchangedInferMeta
+#   kernel :
+#     func : abs
+#   backward : abs_grad
 
 # accuracy
 - api : accuracy
