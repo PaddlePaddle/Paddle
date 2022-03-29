@@ -613,6 +613,10 @@ def assign(input, output=None):
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
+            if in_dygraph_mode():
+                output = core.eager.Tensor()
+            else:
+                output = core.VarBase()
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
