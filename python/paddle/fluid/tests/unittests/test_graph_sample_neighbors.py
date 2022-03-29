@@ -80,6 +80,7 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
                 sample_size=self.sample_size,
                 flag_perm_buffer=True)
             out_neighbors = paddle.split(out_neighbors, list(out_count))
+
             for neighbors, node, count in zip(out_neighbors, self.nodes,
                                               out_count):
                 self.assertTrue(count == self.sample_size or
@@ -120,6 +121,74 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
                     neighbors.shape[0] == np.unique(neighbors).shape[0])
                 in_neighbors = np.isin(neighbors, self.dst_src_dict[node])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
+
+    def test_raise_errors(self):
+        paddle.disable_static()
+        row = paddle.to_tensor(self.row)
+        colptr = paddle.to_tensor(self.colptr)
+        nodes = paddle.to_tensor(self.nodes)
+
+        def check_eid_error():
+            paddle.incubate.graph_sample_neighbors(
+                row,
+                colptr,
+                nodes,
+                sample_size=self.sample_size,
+                return_eids=True)
+
+        def check_perm_buffer_error():
+            paddle.incubate.graph_sample_neighbors(
+                row,
+                colptr,
+                nodes,
+                sample_size=self.sample_size,
+                flag_perm_buffer=True)
+
+        self.assertRaises(ValueError, check_eid_error)
+        self.assertRaises(ValueError, check_perm_buffer_error)
+
+    def test_sample_result_with_eids(self):
+        # Note: Currently return eid results is not initialized.
+        paddle.disable_static()
+        row = paddle.to_tensor(self.row)
+        colptr = paddle.to_tensor(self.colptr)
+        nodes = paddle.to_tensor(self.nodes)
+        eids = paddle.to_tensor(self.edges_id)
+
+        out_neighbors, out_count, _ = paddle.incubate.graph_sample_neighbors(
+            row,
+            colptr,
+            nodes,
+            eids=eids,
+            sample_size=self.sample_size,
+            return_eids=True)
+
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            row = paddle.static.data(
+                name="row", shape=self.row.shape, dtype=self.row.dtype)
+            colptr = paddle.static.data(
+                name="colptr", shape=self.colptr.shape, dtype=self.colptr.dtype)
+            nodes = paddle.static.data(
+                name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype)
+            eids = paddle.static.data(
+                name="eids", shape=self.edges_id.shape, dtype=self.nodes.dtype)
+
+            out_neighbors, out_count, _ = paddle.incubate.graph_sample_neighbors(
+                row,
+                colptr,
+                nodes,
+                eids,
+                sample_size=self.sample_size,
+                return_eids=True)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            ret = exe.run(feed={
+                'row': self.row,
+                'colptr': self.colptr,
+                'nodes': self.nodes,
+                'eids': self.edges_id
+            },
+                          fetch_list=[out_neighbors, out_count])
 
 
 if __name__ == "__main__":
