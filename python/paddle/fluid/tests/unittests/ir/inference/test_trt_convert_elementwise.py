@@ -150,7 +150,10 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
             return np.random.random(shape).astype(np.float32)
 
         for shape in [[4], [4, 32], [2, 64, 32], [1, 8, 16, 32]]:
-            for op_type in ["elementwise_add", "elementwise_mul"]:
+            for op_type in [
+                    "elementwise_add", "elementwise_mul", "elementwise_sub",
+                    "elementwise_div"
+            ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)
                     dics = [{"axis": axis}]
@@ -306,7 +309,10 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
             input1_shape = input1_shape_list[i]
             for j in range(6):
                 input2_shape = input2_shape_list[j][i]
-                for op_type in ["elementwise_add", "elementwise_mul"]:
+                for op_type in [
+                        "elementwise_add", "elementwise_mul", "elementwise_sub",
+                        "elementwise_div"
+                ]:
                     for axis in axis_list[j][i]:
                         self.shape1 = input1_shape
                         self.shape2 = input2_shape

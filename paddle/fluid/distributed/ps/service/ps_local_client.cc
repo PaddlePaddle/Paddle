@@ -25,9 +25,9 @@ int32_t PsLocalClient::initialize() {
   for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto* table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
+    table->set_shard(0, 1);
     table->initialize(downpour_param.downpour_table_param(i),
                       _config.fs_client_param());
-    table->set_shard(0, 1);
     _table_map[downpour_param.downpour_table_param(i).table_id()].reset(table);
   }
   return 0;
