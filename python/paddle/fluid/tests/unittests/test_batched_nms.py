@@ -14,8 +14,8 @@
 
 import unittest
 import numpy as np
-
 import paddle
+from test_nms_op import nms
 
 
 def _find(condition):
@@ -33,56 +33,6 @@ def _find(condition):
         if condition[i]:
             res.append(i)
     return np.array(res)
-
-
-def iou(box_a, box_b):
-    """Apply intersection-over-union overlap between box_a and box_b
-    """
-    xmin_a = min(box_a[0], box_a[2])
-    ymin_a = min(box_a[1], box_a[3])
-    xmax_a = max(box_a[0], box_a[2])
-    ymax_a = max(box_a[1], box_a[3])
-
-    xmin_b = min(box_b[0], box_b[2])
-    ymin_b = min(box_b[1], box_b[3])
-    xmax_b = max(box_b[0], box_b[2])
-    ymax_b = max(box_b[1], box_b[3])
-
-    area_a = (ymax_a - ymin_a) * (xmax_a - xmin_a)
-    area_b = (ymax_b - ymin_b) * (xmax_b - xmin_b)
-    if area_a <= 0 and area_b <= 0:
-        return 0.0
-
-    xa = max(xmin_a, xmin_b)
-    ya = max(ymin_a, ymin_b)
-    xb = min(xmax_a, xmax_b)
-    yb = min(ymax_a, ymax_b)
-
-    inter_area = max(xb - xa, 0.0) * max(yb - ya, 0.0)
-
-    iou_ratio = inter_area / (area_a + area_b - inter_area)
-    return iou_ratio
-
-
-def nms(boxes, nms_threshold):
-    selected_indices = np.zeros(boxes.shape[0], dtype=np.int64)
-    keep = np.ones(boxes.shape[0], dtype=int)
-    io_ratio = np.ones((boxes.shape[0], boxes.shape[0]), dtype=np.float64)
-    cnt = 0
-    for i in range(boxes.shape[0]):
-        if keep[i] == 0:
-            continue
-        selected_indices[cnt] = i
-        cnt += 1
-        for j in range(i + 1, boxes.shape[0]):
-            io_ratio[i][j] = iou(boxes[i], boxes[j])
-            if keep[j]:
-                overlap = iou(boxes[i], boxes[j])
-                keep[j] = 1 if overlap <= nms_threshold else 0
-            else:
-                continue
-
-    return selected_indices
 
 
 def batched_nms(boxes, scores, category_idxs, iou_threshold, top_k):
@@ -132,8 +82,6 @@ class TestBatchedNMS(unittest.TestCase):
     def test_batched_nms_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                if device == 'cpu' and dtype == 'float16':
-                    continue
                 boxes, scores, category_idxs, categories = gen_args(
                     self.num_boxes, dtype)
                 paddle.set_device(device)
@@ -152,8 +100,6 @@ class TestBatchedNMS(unittest.TestCase):
     def test_batched_nms_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                if device == 'cpu' and dtype == 'float16':
-                    continue
                 paddle.enable_static()
                 paddle.set_device(device)
                 boxes, scores, category_idxs, categories = gen_args(
@@ -170,6 +116,8 @@ class TestBatchedNMS(unittest.TestCase):
                     boxes_static, scores_static, category_idxs_static,
                     categories, self.threshold, self.topk)
                 place = paddle.CPUPlace()
+                if device == 'gpu':
+                    place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 out = exe.run(paddle.static.default_main_program(),
                               feed={
@@ -186,6 +134,40 @@ class TestBatchedNMS(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(out, out_py),
                     "paddle out: {}\n py out: {}\n".format(out, out_py))
+
+    def test_batched_nms_dynamic_to_static(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+
+                def fun(x):
+                    scores = np.arange(0, 64).astype('float32')
+                    categories = np.array([0, 1, 2, 3])
+                    category_idxs = categories.repeat(16)
+                    out = paddle.vision.ops.batched_nms(
+                        x,
+                        paddle.to_tensor(scores),
+                        paddle.to_tensor(category_idxs), categories, 0.1, 10)
+                    return out.numpy()
+
+                path = "./net"
+                boxes = np.random.rand(64, 4).astype('float32')
+                boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
+                boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
+
+                origin = fun(paddle.to_tensor(boxes))
+                paddle.jit.save(
+                    fun,
+                    path,
+                    input_spec=[
+                        paddle.static.InputSpec(
+                            shape=[None, 4], dtype='float32', name='x')
+                    ], )
+                load_func = paddle.jit.load(path)
+                res = load_func(paddle.to_tensor(boxes))
+                self.assertTrue(
+                    np.array_equal(origin, res),
+                    "origin out: {}\n inference model out: {}\n".format(origin,
+                                                                        res))
 
 
 if __name__ == '__main__':

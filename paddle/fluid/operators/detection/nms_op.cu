@@ -13,44 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/detection/nms_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 static const int64_t threadsPerBlock = sizeof(int64_t) * 8;
-
-HOSTDEVICE static inline int64_t CeilDivide(int64_t n, int64_t m) {
-  return (n + m - 1) / m;
-}
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-
-template <typename T>
-static __device__ inline bool CalculateIoU(const T* const box_1,
-                                           const T* const box_2,
-                                           const float threshold) {
-  auto box_1_x0 = box_1[0], box_1_y0 = box_1[1];
-  auto box_1_x1 = box_1[2], box_1_y1 = box_1[3];
-  auto box_2_x0 = box_2[0], box_2_y0 = box_2[1];
-  auto box_2_x1 = box_2[2], box_2_y1 = box_2[3];
-
-  auto inter_box_x0 = max(box_1_x0, box_2_x0);
-  auto inter_box_y0 = max(box_1_y0, box_2_y0);
-  auto inter_box_x1 = min(box_1_x1, box_2_x1);
-  auto inter_box_y1 = min(box_1_y1, box_2_y1);
-
-  auto inter_width =
-      inter_box_x1 - inter_box_x0 > 0 ? inter_box_x1 - inter_box_x0 : 0;
-  auto inter_height =
-      inter_box_y1 - inter_box_y0 > 0 ? inter_box_y1 - inter_box_y0 : 0;
-  auto inter_area = inter_width * inter_height;
-  auto union_area = (box_1_x1 - box_1_x0) * (box_1_y1 - box_1_y0) +
-                    (box_2_x1 - box_2_x0) * (box_2_y1 - box_2_y0) - inter_area;
-  return inter_area / union_area > threshold;
-}
 
 template <typename T>
 static __global__ void NMS(const T* boxes_data, float threshold,

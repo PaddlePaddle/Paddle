@@ -12,16 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/detection/nms_op.h"
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-
-inline int64_t CeilDivide(int64_t n, int64_t m) { return (n + m - 1) / m; }
 
 class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -31,7 +28,7 @@ class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "Boxes is a Tensor with shape [N, 4] "
              "N is the number of boxes "
              "in last dimension in format [x1, x2, y1, y2] "
-             "the relation shold be ``0 <= x1 < x2 && 0 <= y1 < y2``.");
+             "the relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.");
 
     AddOutput("KeepBoxesIdxs",
               "(Tensor) "
@@ -89,29 +86,6 @@ class NMSOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "Boxes"), ctx.GetPlace());
   }
 };
-
-template <typename T>
-static inline bool CalculateIoU(const T* box_1, const T* box_2,
-                                float threshold) {
-  auto box_1_x0 = box_1[0], box_1_y0 = box_1[1];
-  auto box_1_x1 = box_1[2], box_1_y1 = box_1[3];
-  auto box_2_x0 = box_2[0], box_2_y0 = box_2[1];
-  auto box_2_x1 = box_2[2], box_2_y1 = box_2[3];
-
-  auto inter_box_x0 = std::max<T>(box_1_x0, box_2_x0);
-  auto inter_box_y0 = std::max<T>(box_1_y0, box_2_y0);
-  auto inter_box_x1 = std::min<T>(box_1_x1, box_2_x1);
-  auto inter_box_y1 = std::min<T>(box_1_y1, box_2_y1);
-  auto inter_width =
-      inter_box_x1 - inter_box_x0 > 0 ? inter_box_x1 - inter_box_x0 : 0;
-  auto inter_height =
-      inter_box_y1 - inter_box_y0 > 0 ? inter_box_y1 - inter_box_y0 : 0;
-  auto inter_area = inter_width * inter_height;
-
-  auto union_area = (box_1_x1 - box_1_x0) * (box_1_y1 - box_1_y0) +
-                    (box_2_x1 - box_2_x0) * (box_2_y1 - box_2_y0) - inter_area;
-  return inter_area / union_area > threshold;
-}
 
 template <typename T>
 static void NMS(const T* boxes_data, int64_t* output_data, float threshold,
