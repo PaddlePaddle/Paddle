@@ -467,7 +467,8 @@ class FCPrimitiveFactory {
     attributes.set_output_scales(mask, output_shift_scale);
     float sum_scale = 1.0f;
 
-    if (ctx.Attr<bool>("fuse_residual_connection")) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
       post_operations.append_sum(sum_scale);
     }
 
@@ -534,7 +535,8 @@ class FCPrimitiveFactory {
   dnnl::memory CreateDstMemory(
       const dnnl::inner_product_forward::primitive_desc& fc_prim_desc,
       const ExecutionContext& ctx, Tensor* output) {
-    if (ctx.Attr<bool>("fuse_residual_connection")) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_param = ctx.Input<Tensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(

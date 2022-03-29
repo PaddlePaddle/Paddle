@@ -70,7 +70,6 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     desc->SetAttr("use_mkldnn", true);
-    desc->SetAttr("fuse_residual_connection", false);
 
     found_fc_count++;
   };
