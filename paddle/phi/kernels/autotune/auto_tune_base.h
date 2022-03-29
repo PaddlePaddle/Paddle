@@ -48,8 +48,8 @@ template <typename KernelType>
 class AutoTuneBase {
  public:
   AutoTuneBase() {}
-  virtual ~AutoTuneBase() {}
   explicit AutoTuneBase(KernelType kernel) { kernels_.push_back(kernel); }
+  virtual ~AutoTuneBase() {}
 
   template <typename T>
   void AddAlgo(T kernel) {
