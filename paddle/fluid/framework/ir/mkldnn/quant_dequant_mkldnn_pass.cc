@@ -295,45 +295,37 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
 }
 
 void QuantDequantMkldnnPass::TransposeWeight(Tensor* input) const {
-  const auto input_dims = input->dims();
-  std::vector<int> orders;
-  for (int i = input_dims.size() - 1; i >= 0; i--) {
-    orders.push_back(i);
+  const auto in_dims = input->dims();
+  std::vector<int> out_dim_v;
+  std::vector<int> axis;
+  for (int i = in_dims.size() - 1; i >= 0; i--) {
+    axis.push_back(i);
+    out_dim_v.push_back(in_dims[i]);
   }
 
+  const auto out_dims = phi::make_ddim(out_dim_v);
+  const int rank = axis.size();
+  auto in_stride = phi::stride(in_dims);
+  auto out_stride = phi::stride(out_dims);
+  const int count = input->numel();
+
   Tensor trans_tensor;
-  trans_tensor.Resize(input_dims);
+  trans_tensor.Resize(out_dims);
   float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
   float* in_data = input->mutable_data<float>(platform::CPUPlace());
 
-  auto in_dims = input->dims();
-  auto out_dims = trans_tensor.dims();
-  int num_axes = in_dims.size();
-  int count = 1;
-  for (int i = 0; i < num_axes; i++) {
-    count *= in_dims[i];
-  }
-
-  std::vector<int> old_steps(
-      {static_cast<int>(in_dims[1] * in_dims[2] * in_dims[3]),
-       static_cast<int>(in_dims[2] * in_dims[3]), static_cast<int>(in_dims[3]),
-       1});
-  std::vector<int> new_steps(
-      {static_cast<int>(out_dims[1] * out_dims[2] * out_dims[3]),
-       static_cast<int>(out_dims[2] * out_dims[3]),
-       static_cast<int>(out_dims[3]), 1});
-
-  for (int i = 0; i < count; ++i) {
-    int old_idx = 0;
-    int idx = i;
-    for (int j = 0; j < num_axes; ++j) {
-      int order = orders[j];
-      old_idx += (idx / new_steps[j]) * old_steps[order];
-      idx %= new_steps[j];
+  for (int64_t out_idx = 0; out_idx < count; ++out_idx) {
+    int64_t in_idx = 0;
+    int64_t tmp_idx = out_idx;
+    for (int i = 0; i < rank; ++i) {
+      const int64_t coordinate = tmp_idx / out_stride[i];
+      tmp_idx -= coordinate * out_stride[i];
+      in_idx += coordinate * in_stride[axis[i]];
     }
-    trans_data[i] = in_data[old_idx];
+    trans_data[out_idx] = in_data[in_idx];
   }
 
+  input->Resize(out_dims);
   for (int i = 0; i < input->numel(); i++) {
     in_data[i] = trans_data[i];
   }
@@ -400,23 +392,15 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
         weight_data[i] *= scales[0];
       }
     } else {
-      int step = 1;
-      for (int i = 1; i < weight_dims.size(); i++) {
-        step *= weight_dims[i];
-      }
-
-      for (int i = 0; i < size; i++) {
-        int begin = i * step;
-        for (int j = begin; j < begin + step; j++) {
-          weight_data[j] *= scales[i];
-        }
+      for (int i = 0; i < weight_tensor->numel(); i++) {
+        weight_data[i] *= scales[i % size];
       }
     }
 
     TransposeWeight(weight_tensor);
   } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
     auto* weight_data =
-        weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
+        weight_tensor->mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < weight_tensor->numel(); i++) {
       weight_data[i] /= 127;
     }
