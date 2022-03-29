@@ -667,8 +667,7 @@ static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
                          paddle::experimental::Tensor* buffer_tensor) {
     auto* src_data = src_tensor.data<float>();
     auto* index_data = index_tensor.data<int64_t>();
-    auto* buffer_data =
-        buffer_tensor->mutable_data<float>(buffer_tensor->place());
+    auto* buffer_data = buffer_tensor->data<float>();
     const int& slice_size = src_tensor.numel() / src_tensor.dims()[0];
     const int& copy_bytes = slice_size * sizeof(float);
     int64_t c = 0;
@@ -689,6 +688,88 @@ static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  auto& src = GetTensorFromArgs("async_write", "src", args, 0, false);
+  auto& dst = GetTensorFromArgs("async_write", "dst", args, 1, false);
+  auto& offset = GetTensorFromArgs("async_write", "offset", args, 2, false);
+  auto& count = GetTensorFromArgs("async_write", "count", args, 3, false);
+  PADDLE_ENFORCE_EQ(
+      src.is_gpu(), true,
+      platform::errors::InvalidArgument(
+          "Required `src` device should be CUDAPlace, but received %d. ",
+          src.inner_place()));
+  PADDLE_ENFORCE_EQ(dst.is_gpu_pinned(), true,
+                    platform::errors::InvalidArgument(
+                        "Required `dst` device should be CUDAPinnedPlace, "
+                        "but received %d. ",
+                        dst.inner_place()));
+  PADDLE_ENFORCE_EQ(
+      offset.is_cpu(), true,
+      platform::errors::InvalidArgument("Required `offset` device should "
+                                        "be CPUPlace, but received %d. ",
+                                        offset.inner_place()));
+  PADDLE_ENFORCE_EQ(
+      count.is_cpu(), true,
+      platform::errors::InvalidArgument(
+          "Required `count` device should be CPUPlace, but received %d. ",
+          count.inner_place()));
+
+  // TODO(daisiming): In future, add index as arguments following
+  // async_read.
+  auto& src_tensor = src;
+  auto* dst_tensor = &dst;
+  auto& offset_tensor = offset;
+  auto& count_tensor = count;
+  const auto& deviceId = paddle::platform::GetCurrentDeviceId();
+
+  PADDLE_ENFORCE_EQ(offset_tensor.dims().size(), 1,
+                    platform::errors::InvalidArgument(
+                        "`offset` tensor should be one-dimensional."));
+  PADDLE_ENFORCE_EQ(count_tensor.dims().size(), 1,
+                    platform::errors::InvalidArgument(
+                        "`count` tensor should be one-dimensional."));
+  PADDLE_ENFORCE_EQ(offset_tensor.numel(), count_tensor.numel(),
+                    platform::errors::InvalidArgument(
+                        "`offset` and `count` tensor size dismatch."));
+  PADDLE_ENFORCE_EQ(src_tensor.dims().size(), dst_tensor->dims().size(),
+                    platform::errors::InvalidArgument(
+                        "`src` and `dst` should have the same tensor shape, "
+                        "except for the first dimension."));
+  for (int i = 1; i < src_tensor.dims().size(); i++) {
+    PADDLE_ENFORCE_EQ(src_tensor.dims()[i], dst_tensor->dims()[i],
+                      platform::errors::InvalidArgument(
+                          "`src` and `dst` should have the same tensor shape, "
+                          "except for the first dimension."));
+  }
+
+  auto stream =
+      paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
+
+  int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+  auto* src_data = src_tensor.data<float>();
+  auto* dst_data = dst_tensor->data<float>();
+  const int64_t* offset_data = offset_tensor.data<int64_t>();
+  const int64_t* count_data = count_tensor.data<int64_t>();
+  int64_t src_offset = 0, dst_offset, c;
+  for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+    dst_offset = offset_data[i], c = count_data[i];
+    PADDLE_ENFORCE_LE(
+        src_offset + c, src_tensor.dims()[0],
+        platform::errors::InvalidArgument("Invalid offset or count index"));
+    PADDLE_ENFORCE_LE(
+        dst_offset + c, dst_tensor->dims()[0],
+        platform::errors::InvalidArgument("Invalid offset or count index"));
+    cudaMemcpyAsync(dst_data + (dst_offset * size),
+                    src_data + (src_offset * size), c * size * sizeof(float),
+                    cudaMemcpyDeviceToHost, stream);
+    src_offset += c;
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
@@ -713,6 +794,8 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"async_read", (PyCFunction)(void (*)(void))eager_api_async_read,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"async_write", (PyCFunction)(void (*)(void))eager_api_async_write,
      METH_VARARGS | METH_KEYWORDS, NULL},
     /**sparse functions**/
     {NULL, NULL, 0, NULL}};

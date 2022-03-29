@@ -278,7 +278,6 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
-  std::cout << "wanghuan place = " << place << std::endl;
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor = self->tensor.copy_to(place, blocking);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);

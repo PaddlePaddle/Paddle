@@ -119,7 +119,10 @@ class TestAsyncWrite(unittest.TestCase):
             np.array(
                 [40, 60], dtype="int64"), place=paddle.CPUPlace())
         with cuda.stream_guard(self.stream):
-            core.async_write(self.src, self.dst, offset, count)
+            if _in_legacy_dygraph():
+                core.async_write(self.src, self.dst, offset, count)
+            else:
+                core.eager.async_write(self.src, self.dst, offset, count)
 
         offset_a = paddle.gather(self.dst, paddle.to_tensor(np.arange(0, 40)))
         offset_b = paddle.gather(self.dst, paddle.to_tensor(np.arange(60, 120)))
