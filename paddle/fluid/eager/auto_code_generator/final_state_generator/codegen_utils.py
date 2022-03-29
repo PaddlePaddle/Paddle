@@ -89,6 +89,10 @@ def FindForwardName(string):
     return string[:-5]
 
 
+def IsGradName(string):
+    return string.endswith("_grad")
+
+
 def IsPlainTensorType(string):
     plain_tensor_types = ['Tensor&', 'Tensor', 'const Tensor&', 'const Tensor']
     if string in plain_tensor_types:
@@ -164,6 +168,12 @@ def GetInplacedFunctionName(function_name):
 
 def GetForwardFunctionName(string):
     return f"{string}_final_state_dygraph_function"
+
+
+def TransformGradVarNameForDoubleGradGeneration(string):
+    if IsGradName(string):
+        string = "grad_" + string[:-5]
+    return string
 
 
 ######################
