@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <mutex>
 #include <string>
 

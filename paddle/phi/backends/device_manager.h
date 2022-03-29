@@ -15,6 +15,8 @@
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 
+#include <unordered_map>
+
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/event.h"
