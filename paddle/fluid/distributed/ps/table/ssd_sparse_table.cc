@@ -61,6 +61,21 @@ int32_t SSDSparseTable::initialize() {
   return 0;
 }
 
+int32_t SSDSparseTable::Pull(TableContext& context) {
+  CHECK(context.value_type == Sparse);
+  if (context.use_ptr) {
+    char** pull_values = context.pull_context.ptr_values;
+    const uint64_t* keys = context.pull_context.keys;
+    return pull_sparse_ptr(pull_values, keys, context.num);
+  } else {
+    float* pull_values = context.pull_context.values;
+    const PullSparseValue& pull_value = context.pull_context.pull_value;
+    return pull_sparse(pull_values, pull_value);
+  }
+}
+
+int32_t SSDSparseTable::Push(TableContext& context) { return 0; }
+
 int32_t SSDSparseTable::pull_sparse(float* pull_values,
                                     const PullSparseValue& pull_value) {
   auto shard_num = task_pool_size_;

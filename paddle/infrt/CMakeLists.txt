@@ -102,7 +102,6 @@ set(infrt_mlir_incs
         test_kernels_inc
         tensor_shape_inc
         dense_tensor_inc
-        pd_ops_inc
         pd_extra_ops_inc
         trt_ops_inc
         )

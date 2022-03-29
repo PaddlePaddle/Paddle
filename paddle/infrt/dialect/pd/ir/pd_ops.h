@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,49 +14,20 @@
 
 #pragma once
 
-#include <mlir/Dialect/Traits.h>
-#include <mlir/IR/Attributes.h>
-#include <mlir/IR/Builders.h>
-#include <mlir/IR/BuiltinOps.h>
+//===----------------------------------------------------------------------===//
+// Dialect
+//===----------------------------------------------------------------------===//
+#include <llvm/ADT/StringMap.h>
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Dialect.h>
-#include <mlir/IR/Matchers.h>
+#include <mlir/IR/OpDefinition.h>
 #include <mlir/IR/OpImplementation.h>
-#include <mlir/IR/TypeUtilities.h>
-#include <mlir/Interfaces/CallInterfaces.h>
-#include <mlir/Interfaces/DerivedAttributeOpInterface.h>
 #include <mlir/Interfaces/InferTypeOpInterface.h>
-#include <mlir/Interfaces/LoopLikeInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
+
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
-
-namespace mlir {
-namespace pd {
-
-class PaddleDialect : public Dialect {
- public:
-  explicit PaddleDialect(MLIRContext* context);
-
-  static StringRef getDialectNamespace() { return "pd"; }
-
-  /// A hook used to materialize constant values with the given type.
-  Operation* materializeConstant(OpBuilder& builder,
-                                 Attribute value,
-                                 Type type,
-                                 Location loc) override;
-
-  Type parseType(DialectAsmParser& parser) const override {
-    return Dialect::parseType(parser);
-  }
-  void printType(Type type, DialectAsmPrinter& printer) const override {
-    Dialect::printType(type, printer);
-  }
-};
-
-}  // namespace pd
-}  // namespace mlir
-
+#include "paddle/infrt/dialect/pd/ir/pd_opsDialect.h.inc"
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_ops.hpp.inc"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h.inc"
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_extra_ops.hpp.inc"
+#include "paddle/infrt/dialect/pd/ir/pd_extra_ops.hpp.inc"

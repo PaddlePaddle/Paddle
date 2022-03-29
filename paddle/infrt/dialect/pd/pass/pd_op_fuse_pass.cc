@@ -11,12 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/infrt/dialect/pd/pass/pd_op_fuse_pass.h"  // NOLINT
 
-#include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
+
 namespace {
-#include "paddle/infrt/dialect/rewrite.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/pd/pass/pd_op_fuse.cpp.inc"  // NOLINT
 
 /*
  * PdOpFusePass.

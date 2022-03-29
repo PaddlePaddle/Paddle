@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
@@ -57,8 +58,9 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
       cinn_buffer_t* buffer = launch_context->GetCinnBufferOfVar(var_name);
       framework::Variable* var = ctx.scope().GetVar(var_name);
       auto* tensor = var->template GetMutable<framework::LoDTensor>();
-      buffer->memory =
-          reinterpret_cast<uint8_t*>(tensor->mutable_data<T>(ctx.GetPlace()));
+      buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
+          ctx.GetPlace(),
+          framework::paddle2cinn::TransToPaddleDataType(buffer->type)));
     };
     std::vector<std::string> in_args = ctx.InputNames(kX);
     std::for_each(in_args.begin(), in_args.end(), share_argument_buffer_fn);

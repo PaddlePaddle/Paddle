@@ -52,6 +52,12 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
+  EAGER_TRY
+  return ToPyObject(egr::egr_utils_api::IsLeafTensor(self->tensor));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 int tensor_properties_set_name(TensorObject* self, PyObject* value,
                                void* closure) {
   EAGER_TRY
@@ -96,7 +102,7 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
                      "Detected NULL grad"
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
-  grad->copy_(src, true);
+  grad->copy_(src, self->tensor.inner_place(), true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
@@ -106,6 +112,9 @@ int tensor_properties_set_stop_gradient(TensorObject* self, PyObject* value,
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
+  if (!meta->GradNode()) {
+    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+  }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
@@ -179,6 +188,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
+    {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind

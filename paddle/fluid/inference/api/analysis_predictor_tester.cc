@@ -375,6 +375,19 @@ TEST(AnalysisPredictor, enable_onnxruntime) {
   ASSERT_TRUE(!config.use_onnxruntime());
 }
 
+TEST(AnalysisPredictor, exp_enable_use_gpu_fp16) {
+  AnalysisConfig config;
+  config.SwitchIrOptim();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  config.EnableUseGpu(100, 0);
+  config.Exp_EnableUseGpuFp16();
+  ASSERT_TRUE(config.gpu_fp16_enabled());
+#else
+  config.DisableGpu();
+#endif
+  LOG(INFO) << config.Summary();
+}
+
 }  // namespace paddle
 
 namespace paddle_infer {
@@ -431,6 +444,19 @@ TEST(Predictor, EnableONNXRuntime) {
   config.SetModel(FLAGS_dirname);
   config.EnableONNXRuntime();
   config.EnableORTOptimization();
+  auto predictor = CreatePredictor(config);
+}
+
+TEST(Predictor, Exp_EnableUseGpuFp16) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  config.EnableUseGpu(100, 0);
+  config.Exp_EnableUseGpuFp16();
+#else
+  config.DisableGpu();
+#endif
   auto predictor = CreatePredictor(config);
 }
 

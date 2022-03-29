@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/layer_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace operators {
@@ -139,7 +140,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     layer_norm_p->execute(astream, args);
     astream.wait();
 
-    y->set_layout(DataLayout::kMKLDNN);
+    y->set_layout(phi::DataLayout::kMKLDNN);
     y->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };

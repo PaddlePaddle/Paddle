@@ -33,13 +33,14 @@ void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
   registry.insert<ts::TensorShapeDialect,
                   InfrtDialect,
                   dt::DTDialect,
-                  mlir::pd::PaddleDialect,
+                  pd::PaddleDialect,
+                  trt::TensorRTDialect
 #ifdef INFRT_WITH_PHI
+                  ,
                   phi::PHIDenseTensorDialect,
                   phi::PHICPUKernelDialect,
                   phi::PHIGPUKernelDialect,
-                  phi::PHIDialect,
-                  infrt::trt::TensorRTDialect
+                  phi::PHIDialect
 #endif
                   >();
 }
