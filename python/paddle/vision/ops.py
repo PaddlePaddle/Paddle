@@ -1356,14 +1356,15 @@ class ConvNormActivation(Sequential):
 
 
 def nms(boxes, threshold):
-    """
+    r"""
     This operator implements non-maximum suppression. Non-maximum suppression (NMS)
     is used to select one box out of many overlapping boxes in object detection. 
     Boxes with IoU > threshold will be considered as overlapping boxes, 
     just one with highest score can be kept. Here IoU is Intersection Over Union, 
     which is computes by:
-    
+
     ..  math::
+    
         IoU = \frac{intersection_area(box1, box2)}{union_area(box1, box2)}
 
     Args:
