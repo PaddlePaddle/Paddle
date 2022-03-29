@@ -86,7 +86,7 @@ struct DeviceContext::Impl {
         pinned_allocator_,
         phi::errors::InvalidArgument("Required pinned_allocator_ shall not be "
                                      "nullptr, but received nullptr."));
-    return *zero_allocator_;
+    return *pinned_allocator_;
   }
 
   void* Alloc(TensorBase* tensor,
