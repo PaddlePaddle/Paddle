@@ -168,7 +168,7 @@ function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary 
              --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
-function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
+function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path enable_quant_int8)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
         ARGS --fp32_model=${fp32_model_dir}
@@ -176,6 +176,7 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --infer_data=${data_path}
              --batch_size=50
              --enable_int8=true
+             --enable_quant_int8=${enable_quant_int8}
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
@@ -554,7 +555,20 @@ if(WITH_MKLDNN)
       download_quant_data_without_verify(${QUANT2_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
   endif(NOT LINUX)
   download_quant_data_without_verify(${QUANT2_INT8_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
-  inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
+  inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH} false)
+
+  # Quant2 MobileNetV1
+  inference_analysis_api_quant_test_run(test_analyzer_quant2_mobilenetv1_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${IMAGENET_DATA_PATH} true)
+
+  # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+  # with weight scales in `fake_channel_wise_dequantize_max_abs` operators
+  set(QUANT2_RESNET50_CHANNELWISE_MODEL_DIR "${QUANT_DATA_DIR}/ResNet50_quant2_channelwise")
+  set(QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE "ResNet50_qat_channelwise.tar.gz")
+  if(NOT LINUX)
+      download_quant_data_without_verify(${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR} ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE})
+  endif(NOT LINUX)
+  set(QUANT2_RESNET50_MODEL ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise)
+  inference_analysis_api_quant_test_run(test_analyzer_quant2_resnet50_channelwise_mkldnn ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL} ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
 
   ### Other tests
  
