@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 
+#include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -30,7 +31,7 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
   if (tensor_in.place() == PlaceType::kGPU) {
-    GetDataFromTensor(tensor_in.copy_to(phi::CPUPlace(), true));
+    GetDataFromTensor(copy_to(tensor_in, phi::CPUPlace(), true));
   } else {
     GetDataFromTensor(tensor_in);
   }
