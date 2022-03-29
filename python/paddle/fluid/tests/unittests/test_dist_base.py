@@ -786,7 +786,8 @@ class TestParallelDyGraphRunnerBase(object):
 
     def run_use_fleet_api_trainer(self, args):
         if args.eager_mode:
-            self.run_use_fleet_api_trainer_in_eager_mode(args)
+            with _test_eager_guard():
+                self.run_use_fleet_api_trainer_func(args)
         else:
             self.run_use_fleet_api_trainer_func(args)
 
@@ -833,52 +834,6 @@ class TestParallelDyGraphRunnerBase(object):
             opt.step()
             if not args.accumulate_gradient:
                 opt.clear_grad()
-        print_to_out(out_losses)
-
-    def run_use_fleet_api_trainer_in_eager_mode(self, args):
-        import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
-        # 1. enable dygraph
-        paddle.disable_static()
-
-        # 2. init seed
-        seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
-        np.random.seed(seed)
-        random.seed(seed)
-        # get trainer id
-        args.trainer_id = paddle.distributed.get_rank()
-
-        # set strategy
-        strategy = fleet.DistributedStrategy()
-        if args.find_unused_parameters:
-            strategy.find_unused_parameters = True
-
-        # 3. init parallel env
-        if args.update_method == "nccl2" or "bkcl" or "hccl":
-            fleet.init(is_collective=True, strategy=strategy)
-
-        # 4. train model
-        with _test_eager_guard():
-            model, train_reader, opt = self.get_model()
-            if args.update_method == "nccl2" or "bkcl" or "hccl":
-                opt = fleet.distributed_optimizer(opt)
-                model = fleet.distributed_model(model)
-
-            out_losses = []
-            for step_id, data in enumerate(train_reader()):
-                data = self._get_data(data, args)
-                if step_id == RUN_STEP:
-                    break
-                loss = self.run_one_loop(model, opt, data)
-                out_losses.append(loss.numpy())
-
-                loss.backward()
-
-                opt.step()
-                if not args.accumulate_gradient:
-                    opt.clear_grad()
         print_to_out(out_losses)
 
 

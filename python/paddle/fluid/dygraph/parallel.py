@@ -604,8 +604,7 @@ class DataParallel(layers.Layer):
             "constructing the DataParallel."
 
             if self.process_group is None and in_dygraph_mode():
-                raise RuntimeError(
-                    "Process group should be built for DataParallel in eager mode."
+                self.process_group = paddle.distributed.collective._init_parallel_env(
                 )
 
             # sync buffer and params
