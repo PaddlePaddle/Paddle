@@ -138,7 +138,9 @@ get_unused_vars(const BlockDesc& block,
     size_t op_idx = name_op_idx_pair.second;
 
     result[ops[op_idx].get()].emplace_back(name);
+    VLOG(4) << ops[op_idx].get()->Type() << " " << name;
   }
+  VLOG(4) << "gc map size:" << result.size();
   return result;
 }
 
@@ -311,8 +313,8 @@ void build_op_func_list(const platform::Place& place,
   operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       main_program, block.ID(), ops_unique);
 
-  std::vector<std::shared_ptr<OperatorBase>>
-      ops;  // its elements will be moved to vec_func_list
+  // its elements will be moved to vec_func_list
+  std::vector<std::shared_ptr<OperatorBase>> ops;
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }
@@ -348,27 +350,20 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+    VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-    if (dynamic_cast<const framework::OperatorWithKernel*>(op) == nullptr) {
+    if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
+      VLOG(4) << "End run " << place << " "
+              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
-      auto op_with_kernel =
-          static_cast<const framework::OperatorWithKernel*>(op);
+      auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(op));
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
-
-      // see OperatorWithKernel::RunImpl in operator.cc for why
-      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
-        // TODO(Aurelius84): In case of control flow ops, they are NOT
-        // inheritted
-        // from OperatorWithKernel.
-        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
-      }
 
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -376,6 +371,7 @@ void build_op_func_list(const platform::Place& place,
       Scope scope;
       auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(
           ExecutionContext(*op, scope, *dev_ctx, runtime_context));
+      op_with_kernel->ResetKernelType(new OpKernelType(expected_kernel_key));
 
       // change device by the device_guard()
       apply_device_guard(op, place, &expected_kernel_key);
@@ -383,13 +379,16 @@ void build_op_func_list(const platform::Place& place,
 
       // step 3. apply data transforms and insert data transfer ops
       VariableValueMap& ins_map_temp = runtime_context.inputs;
+      VariableValueMap& outs_map_temp = runtime_context.outputs;
 
       // NOTE(zhiqiu): op_func_node->operator_base_ maybe changed in
       // ApplyDataTransform
-      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp, var_scope,
-                         &op_func_node, vec_func_list, use_local_scope);
-      op_with_kernel = static_cast<const framework::OperatorWithKernel*>(
-          op_func_node.operator_base_.get());
+      ApplyDataTransform(expected_kernel_key, place, &ins_map_temp,
+                         &outs_map_temp, var_scope, &op_func_node,
+                         vec_func_list, use_local_scope);
+      op_with_kernel = const_cast<framework::OperatorWithKernel*>(
+          static_cast<const framework::OperatorWithKernel*>(
+              op_func_node.operator_base_.get()));
 
       // step 4. Run op kernel
       VLOG(3) << op_with_kernel->Type()
@@ -411,6 +410,16 @@ void build_op_func_list(const platform::Place& place,
               << " : expected_kernel_key : " << expected_kernel_key;
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+        // TODO(Aurelius84): In case of control flow ops, they are NOT
+        // inheritted
+        // from OperatorWithKernel.
+        op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+      }
 
       auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
@@ -476,9 +485,28 @@ void build_op_func_list(const platform::Place& place,
             op_func_node, place, outputs_names, &runtime_context.outputs,
             var_scope, vec_func_list, local_scope);
       }
+      if (!op_func_node.inplace_back_map.empty()) {
+        auto& m = op_func_node.inplace_back_map;
+        // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+        for (auto& p : m) {
+          auto* transformed_tensor =
+              GetMutableLoDTensorOrSelectedRowsValueFromVar(
+                  var_scope->Var(p.first));
+          auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+              var_scope->Var(p.second));
+          original_tensor->ShareDataWith(*transformed_tensor);
+          VLOG(4) << "Transfer inplace variable back form "
+                  << var_scope->GetNameById(p.first) << " to "
+                  << var_scope->GetNameById(p.second);
+        }
+      }
     }
 
+    VLOG(4) << "End run " << place << " "
+            << op_func_node.operator_base_->DebugStringEx(local_scope);
+
     vec_func_list->emplace_back(op_func_node);
+
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
@@ -514,10 +542,7 @@ void build_op_func_list(const platform::Place& place,
             framework::ToTypeName(var->Type()), var_name));
       }
     }
-
     delete garbages;  // free mem
-
-    VLOG(3) << "run " << op->Type() << " done.";
   }
 }
 
@@ -642,7 +667,40 @@ std::map<int, std::list<int>> build_op_downstream_map(
         }
       }
     }
+
+    // NOTE(zhiqiu): The inplace op with `transfer` also changes
+    // original output after that so add original output as well
+    // original: a->op->a
+    // after: a->data_transfer->a'->op->a'->transfer_back->a
+    // which means op writes a and a'
+    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
+      auto& m = vec_instruction[op_idx].InplaceBackMap();
+      for (auto& p : m) {
+        auto var = p.second;
+        var2recent_write_op[var] = op_idx;
+        // var in input list and in output list, so remove it.
+        if (remove_duplicate.count(var) == 0) {
+          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+        }
+      }
+    }
   }
+
+  // add dependences for random op, make sure that the random op is scheduled
+  // sequentially
+  const std::set<std::string> random_op_set = {
+      "bernoulli",      "poisson", "multinomial", "gaussian_random",
+      "uniform_random", "randint", "randperm",    "exponential"};
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < vec_instruction.size(); ++op_idx) {
+    if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
+      if (dependence_op_idx != -1) {
+        op2dependences[op_idx].insert(dependence_op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
   return std::move(get_downstream_map(op2dependences));
 }
 
