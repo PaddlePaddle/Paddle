@@ -30,8 +30,10 @@ KernelSignature ConcatGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                            {"AxisTensor"},
                            {{GradVarName("X")}});
   }
-  return KernelSignature(
-      "concat", {"X", {GradVarName("Out")}}, {"axis"}, {{GradVarName("X")}});
+  return KernelSignature("concat_grad",
+                         {"X", {GradVarName("Out")}},
+                         {"axis"},
+                         {{GradVarName("X")}});
 }
 
 }  // namespace phi
