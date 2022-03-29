@@ -538,7 +538,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self, PyObject* args,
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
-
+#if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self, PyObject* args,
                                       PyObject* kwargs) {
   EAGER_TRY
@@ -770,6 +770,7 @@ static PyObject* eager_api_async_write(PyObject* self, PyObject* args,
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+#endif
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
@@ -793,10 +794,12 @@ PyMethodDef variable_functions[] = {
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)(void))eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
+#if defined(PADDLE_WITH_CUDA)
     {"async_read", (PyCFunction)(void (*)(void))eager_api_async_read,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"async_write", (PyCFunction)(void (*)(void))eager_api_async_write,
      METH_VARARGS | METH_KEYWORDS, NULL},
+#endif
     /**sparse functions**/
     {NULL, NULL, 0, NULL}};
 
