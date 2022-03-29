@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-from paddle.fluid.framework import _global_flags
 
 import numpy as np
 from ...device import get_cudnn_version
@@ -22,15 +21,18 @@ from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...framework import ParamAttr
 from ...fluid.layer_helper import LayerHelper
-from paddle import _C_ops
 from ...tensor.manipulation import unsqueeze, squeeze
 from ...tensor.math import add
 from ...fluid.layers import nn
-from paddle.device import is_compiled_with_cuda
-from paddle.device import is_compiled_with_rocm
-from paddle.device import is_compiled_with_npu
-from paddle import in_dynamic_mode
+from paddle import _C_ops
 from paddle import get_flags
+from paddle import in_dynamic_mode
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_npu
+from paddle.device import is_compiled_with_rocm
+from paddle.fluid.framework import _global_flags
+from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -1061,7 +1063,15 @@ def conv2d_transpose(x,
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        final_state_op = _C_ops.final_state_conv2d_transpose if op_type == 'conv2d_transpose' else _C_ops.final_state_depthwise_conv2d_transpose
+        pre_bias = final_state_op(x, weight, stride, padding, output_padding, output_size, padding_algorithm, groups, dilation, data_format)
+        if bias is not None:
+            return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+        else:
+            return  pre_bias
+
+    if _in_legacy_dygraph():    
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
@@ -1468,7 +1478,14 @@ def conv3d_transpose(x,
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        pre_bias = _C_ops.final_state_conv3d_transpose(x, weight, stride, padding, output_padding, output_size, padding_algorithm, groups, dilation, data_format_)
+        if bias is not None:
+            return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+        else:
+            return  pre_bias
+
+    if _in_legacy_dygraph():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
                  'paddings', padding, "padding_algorithm", padding_algorithm,
                  'strides', stride, 'dilations', dilation, 'groups', groups,

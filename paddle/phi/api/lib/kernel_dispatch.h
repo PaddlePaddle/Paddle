@@ -93,6 +93,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
+    VLOG(1) << "KernelKeyParser ";
     const phi::TensorBase& tensor = *x.impl();
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
@@ -103,6 +104,17 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
+    }
+    VLOG(2) << "KernelKeyParser  Finish";
+  }
+
+  void operator()(const paddle::optional<Tensor>& x) {
+    VLOG(1) << "KernelKeyParser ";
+
+    if (x) {
+      this->operator()(x.get());
+    } else {
+      VLOG(1) << "optioanl is null";
     }
   }
 

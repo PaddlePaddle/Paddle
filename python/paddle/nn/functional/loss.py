@@ -401,7 +401,13 @@ def hsigmoid_loss(input,
             #  [2.2407534]]
     """
 
-    if in_dynamic_mode():
+    print(f"in python api :\n {path_table}\n {path_code}\n {bias}")
+
+    if in_dygraph_mode():
+        out, _, _ = _C_ops.final_state_hierarchical_sigmoid(input, weight, label, path_table, path_code, bias, num_classes, is_sparse, 0, [], [], [], is_sparse)
+        return out
+
+    if _in_legacy_dygraph():
         out, _, _ = _C_ops.hierarchical_sigmoid(
             input, weight, label, path_table, path_code, bias, 'num_classes',
             num_classes, 'is_sparse', is_sparse, 'remote_prefetch', is_sparse)

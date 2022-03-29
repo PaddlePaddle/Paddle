@@ -311,7 +311,10 @@ def index_select(x, index, axis=0, name=None):
             # [ 9. 10. 10.]]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_index_select(x, index, axis)
+
+    if _in_legacy_dygraph():
         return _C_ops.index_select(x, index, 'dim', axis)
 
     helper = LayerHelper("index_select", **locals())
@@ -927,8 +930,10 @@ def searchsorted(sorted_sequence,
             #         [1, 3, 4, 5]])
             
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_searchsorted(sorted_sequence, values, out_int32, right)
 
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.searchsorted(sorted_sequence, values, "out_int32",
                                    out_int32, "right", right)
 

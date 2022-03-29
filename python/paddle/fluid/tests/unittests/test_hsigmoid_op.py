@@ -14,15 +14,16 @@
 
 from __future__ import print_function
 
+import math
+import paddle
 import unittest
 import numpy as np
-import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
-import paddle.fluid.initializer as I
-import math
+from paddle.fluid.framework import _test_eager_guard
 from op_test import OpTest, skip_check_grad_ci
 
 paddle.enable_static()
@@ -170,8 +171,20 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
     return pre_output, out
 
 
+def hsigmoid_loss(input,
+                  weight,
+                  path_table=None,
+                  path_code=None,
+                  label=None,
+                  bias=None,
+                  num_classes=None,
+                  is_sparse=False):
+    paddle.nn.functional.hsigmoid_loss(input, label, num_classes, weight, bias, path_table, path_code, is_sparse)
+    
+
 class TestHSigmoidOp(OpTest):
     def setUp(self):
+        self.python_api = hsigmoid_loss
         self.op_type = "hierarchical_sigmoid"
         num_classes = 101
         feature_size = 5
@@ -190,18 +203,20 @@ class TestHSigmoidOp(OpTest):
         self.user_grads = hsigmoid_grad(x, w, label, bias, num_classes)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X', 'W', 'Bias'], ['Out'], user_defined_grads=self.user_grads)
+            ['X', 'W', 'Bias'], ['Out'], user_defined_grads=self.user_grads, check_eager=True)
 
-
+'''
 @skip_check_grad_ci(
     reason="For 'TestHSigmoidOpSparse', check_grad is is separately calculated by 'TestHSigmoidOpWithSparseGrad'."
 )
+
 class TestHSigmoidOpSparse(OpTest):
     def setUp(self):
+        self.python_api = hsigmoid_loss
         self.op_type = "hierarchical_sigmoid"
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
@@ -232,8 +247,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
-
+        self.check_output(check_eager=True)
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
     def hs_net_conf(self, is_sparse):
@@ -302,12 +316,17 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
         sparse_result = self.training_test(is_sparse=True)
         assert (dense_result == sparse_result)
 
+    def test_hs_grad_with_sparse_grad_check_eager(self):
+        with _test_eager_guard():
+            self.test_hs_grad_with_sparse()
+
 
 @skip_check_grad_ci(
     reason="[skip shape check] The huffman tree is structed separately. It will be complicated if use large shape."
 )
 class TestHSigmoidOpWithCostumTree(OpTest):
     def setUp(self):
+        self.python_api = hsigmoid_loss
         self.op_type = "hierarchical_sigmoid"
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
@@ -338,10 +357,10 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
+        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'), check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -349,6 +368,7 @@ class TestHSigmoidOpWithCostumTree(OpTest):
 )
 class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
     def setUp(self):
+        self.python_api = hsigmoid_loss
         self.op_type = "hierarchical_sigmoid"
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
@@ -384,14 +404,14 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
+        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'), check_eager=True)
 
-
+            
 class TestHSigmoidLossAPI(unittest.TestCase):
-    # test paddle.nn.functional.hsigmoid_loss, paddle.nn.HSigmoidLoss
+    # test hsigmoid_loss, paddle.nn.HSigmoidLoss
     def setUp(self):
         self.dtype = 'float32'
         self.batch_size = 4
@@ -524,7 +544,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             # test paddle.nn.HSigmoidLoss
             self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, 6, 1)
 
-            # test paddle.nn.functional.hsigmoid_loss
+            # test hsigmoid_loss
             x = paddle.static.data('x', [4, 6])
             label = paddle.static.data('label', [4, 1], 'int64')
             weight = paddle.static.data('weight', [7, 6])
@@ -582,7 +602,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         label = paddle.to_tensor(0, dtype='int64')
         self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, x, label)
 
-        # test paddle.nn.functional.hsigmoid_loss
+        # test hsigmoid_loss
         x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
         label = paddle.to_tensor([], dtype='int64')
         weight = paddle.to_tensor([], dtype='float32')
@@ -609,6 +629,11 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.hsigmoid, x_fp32,
                               label_int32, 2)
 
+        def test_hsigmoid_loss_api_check_eager(self):
+            with _test_eager_guard(self):
+                self.test_dygraph_api()
+                self.test_fluid_api()
+                self.test_errors()
 
 class TestHSigmoidLossAPICustom(TestHSigmoidLossAPI):
     def set_attrs(self):
@@ -620,7 +645,7 @@ class TestHSigmoidLossAPICustom(TestHSigmoidLossAPI):
 
     def test_errors(self):
         pass
-
+'''
 
 if __name__ == '__main__':
     unittest.main()

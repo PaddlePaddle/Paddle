@@ -145,14 +145,6 @@
   output : Tensor
   invoke : full_like(x, 1, dtype, place)
 
-- api : pool2d
-  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
-  output : Tensor(out)
-  infer_meta :
-    func : PoolInferMeta
-  kernel:
-    func : pool2d
-
 - api : reshape
   args : (Tensor x, ScalarArray shape)
   output : Tensor(out)
@@ -550,6 +542,125 @@
 
 #  =================================== sep1
 
+- api : frobenius_norm
+  args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
+  output : Tensor(out)
+  infer_meta : 
+    func : ReduceInferMetaBase
+  kernel : 
+    func : frobenius_norm
+  backward : frobenius_norm_grad
+
+- api : tril_triu
+  args : (Tensor x,  int diagonal,  bool lower)
+  output : Tensor(out)
+  infer_meta : 
+    func : TrilTriuInferMeta
+  kernel : 
+    func : tril_triu
+  backward : tril_triu_grad
+
+- api : index_select
+  args : (Tensor x, Tensor index,  int dim)
+  output : Tensor(out)
+  infer_meta : 
+    func : IndexSelectInferMeta
+  kernel : 
+    func : index_select
+    data_type : x
+  backward : index_select_grad
+
+- api : roll
+  args : (Tensor x, ScalarArray shifts, int64_t[] axis)
+  output : Tensor(out)
+  infer_meta : 
+    func : RollInferMeta
+  kernel : 
+    func : roll
+  backward : roll_grad
+
+- api : hierarchical_sigmoid
+  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias,  int num_classes,  bool remote_prefetch,  int trainer_id, int64_t[] height_sections,  str[] epmap,  str[] table_names,  bool is_sparse)
+  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
+  infer_meta : 
+    func : HierarchicalSigmoidInferMeta
+  kernel : 
+    func : hierarchical_sigmoid
+    data_type : x
+  backward : hierarchical_sigmoid_grad
+  optional : path, code, bias
+
+- api : pool2d
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool2d
+  backward : pool2d_grad 
+
+- api : max_pool2d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool2d_with_index
+  backward : max_pool2d_with_index_grad
+
+- api : pool3d
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+  kernel :
+    func : pool3d
+  backward : pool3d_grad
+
+- api : max_pool3d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool3d_with_index
+  backward : max_pool3d_with_index_grad
+
+
+- api : conv2d_transpose
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(out)
+  infer_meta :
+    func : ConvTransposeInferMeta
+  kernel :
+    func : conv2d_transpose
+  backward : conv2d_transpose_grad
+
+- api : conv3d_transpose
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(out)
+  infer_meta :
+    func : ConvTransposeInferMeta
+  kernel :
+    func : conv3d_transpose
+  backward : conv3d_transpose_grad
+
+- api : depthwise_conv2d_transpose
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(out)
+  infer_meta :
+    func : ConvTransposeInferMeta
+  kernel :
+    func : depthwise_conv2d_transpose
+  backward : depthwise_conv2d_transpose_grad
+  
+- api : searchsorted
+  args : (Tensor sorted_sequence, Tensor value, bool out_int32, bool right)
+  output : Tensor(out)
+  infer_meta :
+    func : SearchsortedInferMeta
+  kernel :
+    func : searchsorted
 
 #  =================================== sep2
 
