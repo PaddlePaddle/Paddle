@@ -200,6 +200,7 @@ class HeterComm {
                    ValType* src_val);
 
  protected:
+
   using Table = HashTable<KeyType, ValType>;
   std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
@@ -215,11 +216,13 @@ class HeterComm {
   int feanum_{1800 * 2048};
   int multi_node_{0};
   int node_size_;
+
 #if defined(PADDLE_WITH_CUDA)
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
+
 };
 
 }  // end namespace framework
