@@ -121,7 +121,7 @@ inline ::llvm::SmallVector<::mlir::Value, 4> createTrtFcOp(
 
   auto* y_producer = matmul_y.getDefiningOp();
   auto create_inited_tensor_op =
-      llvm::dyn_cast<::infrt::phi::CreateInitedDenseTensorOp>(y_producer);
+      llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(y_producer);
   CHECK_NOTNULL(create_inited_tensor_op);
 
   mlir::ArrayAttr dims = create_inited_tensor_op.dims();
@@ -135,14 +135,16 @@ inline ::llvm::SmallVector<::mlir::Value, 4> createTrtFcOp(
   }
   auto insert_point = builder.saveInsertionPoint();
   builder.setInsertionPoint(create_inited_tensor_op);
-  auto new_inited_op = builder.create<::infrt::phi::CreateInitedDenseTensorOp>(
-      create_inited_tensor_op->getLoc(),
-      create_inited_tensor_op.output().getType(),
-      create_inited_tensor_op.context(),
-      builder.getI64ArrayAttr(new_dims),
-      ::infrt::LayoutAttr::get(builder.getContext(), ::infrt::LayoutType::NCHW),
-      create_inited_tensor_op.lod(),
-      TransposeWeight(builder, create_inited_tensor_op.values(), dims));
+  auto new_inited_op =
+      builder.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
+          create_inited_tensor_op->getLoc(),
+          create_inited_tensor_op.output().getType(),
+          create_inited_tensor_op.context(),
+          builder.getI64ArrayAttr(new_dims),
+          ::infrt::LayoutAttr::get(builder.getContext(),
+                                   ::infrt::LayoutType::NCHW),
+          create_inited_tensor_op.lod(),
+          TransposeWeight(builder, create_inited_tensor_op.values(), dims));
   builder.replaceOp(create_inited_tensor_op, new_inited_op->getResults());
   builder.restoreInsertionPoint(insert_point);
 

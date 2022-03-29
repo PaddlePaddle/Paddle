@@ -20,6 +20,6 @@ namespace infrt {
 /*
  * InfrtWeightsFoldPass.
  */
-std::unique_ptr<mlir::Pass> createInfrtWeightsUnfoldPass();
+std::unique_ptr<mlir::Pass> CreateInfrtWeightsUnfoldPass();
 
 }  // namespace infrt

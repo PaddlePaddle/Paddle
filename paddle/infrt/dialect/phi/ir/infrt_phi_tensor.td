@@ -28,7 +28,7 @@ class CreateDenseTensorOp<string target>
   let results = (outs DenseTensor:$output);
 }
 
-def CreateInitedDenseTensorOp : PDT_Op<"create_host_inited_dense_tensor.f32", [NoSideEffect]> {
+def CreateHostInitedDenseTensorOp : PDT_Op<"create_host_inited_dense_tensor.f32", [NoSideEffect]> {
   let arguments = (ins
     Context:$context,
     I64ArrayAttr:$dims,

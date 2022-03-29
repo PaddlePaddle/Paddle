@@ -71,7 +71,7 @@ void TrtTypeConvertPass::runOnFunction() {
         res.setType(replace_type);
       }
     } else if (auto create_inited_tensor_op =
-                   llvm::dyn_cast<::infrt::phi::CreateInitedDenseTensorOp>(
+                   llvm::dyn_cast<::infrt::phi::CreateHostInitedDenseTensorOp>(
                        op)) {
       auto res = create_inited_tensor_op.output();
       if (auto t = res.getType().dyn_cast<::infrt::DenseTensorType>()) {

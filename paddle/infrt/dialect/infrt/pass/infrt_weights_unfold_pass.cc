@@ -30,19 +30,17 @@
 #include "paddle/infrt/paddle/model_parser.h"
 #include "paddle/infrt/tensor/phi/tensor_map.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace platform {
-using DeviceContext = ::phi::DeviceContext;
-}  // namespace platform
-namespace framework {
-using LoDTensor = ::phi::DenseTensor;
-void DeserializeFromStream(std::istream& is,
-                           LoDTensor* tensor,
-                           const platform::DeviceContext& dev_ctx);
-}  // namespace framework
-}  // namespace paddle
+namespace infrt {
+namespace kernel {
+namespace phi {
+::infrt::phi::DenseTensorMap LoadCombinedParameters(
+    const std::string& model_path, const std::string& params_path);
+}  // namespace phi
+}  // namespace kernel
+}  // namespace infrt
 
 namespace {
 
@@ -53,39 +51,6 @@ class InfrtWeightsFoldPass
 
   void runOnFunction() override;
 };
-
-static ::infrt::phi::DenseTensorMap LoadCombinedParams(
-    llvm::StringRef model_path, llvm::StringRef params_path) {
-  ::infrt::phi::DenseTensorMap map;
-
-  auto pb_proto_prog = ::infrt::paddle::LoadProgram(model_path.str());
-  auto main_block = pb_proto_prog->blocks(0);
-
-  std::ifstream param_file(params_path.str(), std::ios::binary);
-
-  std::set<std::string> tmp;
-  for (auto& var : main_block.vars()) {
-    if (var.name() == "feed" || var.name() == "fetch" || !var.persistable()) {
-      continue;
-    }
-    if (var.type().type() ==
-        ::paddle::framework::proto::VarType_Type_LOD_TENSOR) {
-      tmp.emplace(var.name());
-    } else {
-      llvm_unreachable("the tensor type is illegal.");
-    }
-  }
-
-  for (auto& var : tmp) {
-    std::unique_ptr<::phi::DenseTensor> tensor{
-        std::make_unique<::phi::DenseTensor>()};
-    ::phi::CPUContext ctx;
-    ::paddle::framework::DeserializeFromStream(param_file, tensor.get(), ctx);
-    map.SetDenseTensor(var, std::move(tensor));
-  }
-
-  return map;
-}
 
 void InfrtWeightsFoldPass::runOnFunction() {
   mlir::Block& block = getFunction().body().front();
@@ -106,7 +71,8 @@ void InfrtWeightsFoldPass::runOnFunction() {
       params_path = op.params_path();
 
       // Load params.
-      auto map = LoadCombinedParams(model_path, params_path);
+      auto map = ::infrt::kernel::phi::LoadCombinedParameters(
+          model_path.str(), params_path.str());
       bool delete_load_combined_op{false};
       // Find all use of map.
       for (auto map_arg : op.getODSResults(0)) {
@@ -115,10 +81,14 @@ void InfrtWeightsFoldPass::runOnFunction() {
                   llvm::dyn_cast<::infrt::phi::TensorMapGetTensorOp>(user_op)) {
             ::llvm::StringRef arg_name = tensor_map_get_op.name();
             ::phi::DenseTensor* tensor = map.GetDenseTensor(arg_name.str());
+            if (tensor->dtype() != ::phi::DataType::FLOAT32) {
+              CHECK(false)
+                  << "the weight tensor type now only support float32.";
+            }
 
             builder.setInsertionPoint(tensor_map_get_op);
             auto inited_weight_op =
-                builder.create<::infrt::phi::CreateInitedDenseTensorOp>(
+                builder.create<::infrt::phi::CreateHostInitedDenseTensorOp>(
                     tensor_map_get_op.getLoc(),
                     tensor_map_get_op.output().getType(),
                     context_op.output(),
@@ -151,6 +121,6 @@ void InfrtWeightsFoldPass::runOnFunction() {
 
 }  // namespace
 
-std::unique_ptr<mlir::Pass> infrt::createInfrtWeightsUnfoldPass() {
+std::unique_ptr<mlir::Pass> infrt::CreateInfrtWeightsUnfoldPass() {
   return std::make_unique<InfrtWeightsFoldPass>();
 }
