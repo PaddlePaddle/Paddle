@@ -17,8 +17,9 @@ from ..fluid.layer_helper import LayerHelper
 from ..framework import _varbase_creator, _dygraph_tracer
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import _in_legacy_dygraph
 from ..fluid.layers import transpose, cast  # noqa: F401
+
 from ..fluid import layers
 import paddle
 from paddle.common_ops_import import core
@@ -1147,7 +1148,7 @@ def cross(x, y, axis=None, name=None):
             #  [0. 0. 0.]
             #  [0. 0. 0.]]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.final_state_cross(x, y, axis)
     else:
         if _in_legacy_dygraph():
@@ -1494,7 +1495,7 @@ def mv(x, vec, name=None):
             vec = paddle.to_tensor(vec_data).astype("float64")
             out = paddle.mv(x, vec)
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.final_state_mv(x, vec)
     else:
         if _in_legacy_dygraph():
