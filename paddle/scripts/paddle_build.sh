@@ -1365,6 +1365,7 @@ function parallel_test_base_gpu() {
     ========================================
 EOF
 
+
 set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
@@ -1522,7 +1523,7 @@ set +x
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
-        card_test "$single_card_tests_forth_high_parallel" 1 7          # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_forth_high_parallel" 1 5          # run cases 5 job each time with single GPU
         card_test "$single_card_tests_fifth_high_parallel" 1 4          # run cases 4 job each time with single GPU
         card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU

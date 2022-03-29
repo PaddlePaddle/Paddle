@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,9 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/optimizers/rmsprop_op.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    rmsprop, ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, double>);
+#pragma once
+
+#include "paddle/phi/core/sparse_coo_tensor.h"
+
+namespace phi {
+namespace sparse {
+
+template <typename T, typename Context>
+void SparseReluGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const SparseCooTensor& out_grad,
+                          SparseCooTensor* x_grad);
+
+}  // namespace sparse
+}  // namespace phi
