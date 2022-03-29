@@ -1362,15 +1362,13 @@ def nms(boxes, threshold):
     Boxes with IoU > threshold will be considered as overlapping boxes, 
     just one with highest score can be kept. Here IoU is Intersection Over Union, 
     which is computes by:
-
     .. math::
-        IoU = \frac{intersection_area(box1, box2)}{union_area(box1, box2)}
+        IoU = \\frac{intersection_area(box1, box2)}{union_area(box1, box2)}
 
-    
     Args:
-        boxes(Tensor): The input boxes data to be computed,
-            its a 2D-Tensor with the shape of [num_boxes, 4] and boxes should be 
-            sorted by their confidence scores. The data type is float32 or float64. 
+        boxes(Tensor): The input boxes data to be computed, it's a 2D-Tensor with 
+            the shape of [num_boxes, 4] and boxes should be sorted by their 
+            confidence scores. The data type is float32 or float64. 
             Given as [[x1, y1, x2, y2], …],  (x1, y1) is the top left coordinates, 
             and (x2, y2) is the bottom right coordinates. 
             Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
@@ -1381,20 +1379,21 @@ def nms(boxes, threshold):
 
     Examples:
         .. code-block:: python
-                        import paddle
-                        import numpy as np
+        
+            import paddle
+            import numpy as np
 
-                        boxes = np.random.rand(4, 4).astype('float32')
-                        boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
-                        boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
+            boxes = np.random.rand(4, 4).astype('float32')
+            boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
+            boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
 
-                        # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
-                        # [0.74385834 0.8236293  1.4048514  1.3868837 ]
-                        # [0.39436954 0.18261194 1.3834884  0.38191944]
-                        # [0.9617653  0.40089446 1.2982695  1.398673  ]]
+            # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
+            # [0.74385834 0.8236293  1.4048514  1.3868837 ]
+            # [0.39436954 0.18261194 1.3834884  0.38191944]
+            # [0.9617653  0.40089446 1.2982695  1.398673  ]]
 
-                        out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
-                        # [0, 2, 0, 0])
+            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
+            # [0, 2, 0, 0])
     """
     if _non_static_mode():
         return _C_ops.nms(boxes, 'iou_threshold', threshold)
@@ -1436,31 +1435,32 @@ def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
     
     Examples:
         .. code-block:: python
-                        import paddle
-                        import numpy as np
 
-                        boxes = np.random.rand(4, 4).astype('float32')
-                        boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
-                        boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
+            import paddle
+            import numpy as np
 
-                        # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
-                        # [0.74385834 0.8236293  1.4048514  1.3868837 ]
-                        # [0.39436954 0.18261194 1.3834884  0.38191944]
-                        # [0.9617653  0.40089446 1.2982695  1.398673  ]]
+            boxes = np.random.rand(4, 4).astype('float32')
+            boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
+            boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
 
-                        scores = np.random.rand(4).astype('float32')
-                        # [0.20447887, 0.6679728 , 0.00704206, 0.14359951]
-                        categories = [0, 1, 2, 3]
-                        category_idxs = np.random.choice(categories, 4)                        
-                        # [1, 3, 0, 1]
+            # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
+            # [0.74385834 0.8236293  1.4048514  1.3868837 ]
+            # [0.39436954 0.18261194 1.3834884  0.38191944]
+            # [0.9617653  0.40089446 1.2982695  1.398673  ]]
 
-                        out =  paddle.vision.ops.batched_nms(paddle.to_tensor(boxes), 
-                                                             paddle.to_tensor(scores), 
-                                                             paddle.to_tensor(category_idxs), 
-                                                             categories, 
-                                                             0.1, 
-                                                             4)
-                        # [1, 0, 2]
+            scores = np.random.rand(4).astype('float32')
+            # [0.20447887, 0.6679728 , 0.00704206, 0.14359951]
+            categories = [0, 1, 2, 3]
+            category_idxs = np.random.choice(categories, 4)                        
+            # [1, 3, 0, 1]
+
+            out =  paddle.vision.ops.batched_nms(paddle.to_tensor(boxes), 
+                                                    paddle.to_tensor(scores), 
+                                                    paddle.to_tensor(category_idxs), 
+                                                    categories, 
+                                                    0.1, 
+                                                    4)
+            # [1, 0, 2]
     """
     assert top_k <= scores.shape[
         0], "top_k should be smaller equal than the number of boxes"
