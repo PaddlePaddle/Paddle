@@ -78,8 +78,6 @@ class DenseHostTensor : public HostTensor {
   const TensorShape& shape() const;
   TensorShape* mutable_shape();
 
-  DType dtype() const;
-
   const Buffer* buffer() const;
 
   void* raw_data() const;
