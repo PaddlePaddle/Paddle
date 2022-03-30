@@ -29,7 +29,6 @@ add_custom_target(infrt_register_phi_kernel
 cc_library(infrt_naive SRCS infershaped/infershaped_kernel_launcher.cc
         infershaped/infershaped_kernel_launchers.cc
         DEPS phi wrapped_infermeta)
-add_dependencies(infrt_naive infrt_register_phi_kernel)
 
 cc_test_tiny(test_infrt_infershape_launchers SRCS
 infershaped/infershape_launchers_test.cc DEPS infrt)
