@@ -476,23 +476,38 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   }
 
   bool IsDenseTensorInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::DenseTensor>();
+    });
   }
 
   bool IsSelectedRowsInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<phi::SelectedRows>();
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SelectedRows>();
+    });
   }
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {
-    return ctx_.InputVar(name)->IsType<framework::LoDTensorArray>();
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<framework::LoDTensorArray>();
+    });
   }
 
   bool IsDenseTensorOutput(const std::string& name) const override {
-    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::DenseTensor>();
+    });
   }
 
   bool IsSelectedRowsOutput(const std::string& name) const override {
-    return ctx_.OutputVar(name)->IsType<phi::SelectedRows>();
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SelectedRows>();
+    });
   }
 
   bool IsForInferShape() const override { return false; }
@@ -648,6 +663,10 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   const OpKernelType* kernel_type() const { return kernel_type_.get(); }
+
+  void ResetKernelType(OpKernelType* kernel_type) {
+    kernel_type_.reset(kernel_type);
+  }
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;

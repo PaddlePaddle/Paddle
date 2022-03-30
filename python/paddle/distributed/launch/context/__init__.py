@@ -25,12 +25,13 @@ class Context(object):
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
-        self.logger = self.get_logger()
+
+        self.set_env_in_args()
 
         self.node = Node()
         self.status = Status()
 
-        self.set_env_in_args()
+        self.logger = self.get_logger()
 
         # design for event queue, later
         self.events = []

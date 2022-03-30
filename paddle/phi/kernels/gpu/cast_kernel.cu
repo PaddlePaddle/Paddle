@@ -12,41 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/cast_kernel.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/gpu/cast_impl.h"
 
 namespace phi {
-
-template <typename InT, typename OutT>
-struct CastFuctor {
-  __device__ __forceinline__ OutT operator()(const InT x) const {
-    return static_cast<OutT>(x);
-  }
-};
-
-template <typename InT, typename OutT>
-void CastCUDAKernelImpl(const GPUContext& dev_ctx,
-                        const DenseTensor& x,
-                        DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  std::vector<DenseTensor*> outputs;
-  inputs.emplace_back(&x);
-  outputs.emplace_back(out);
-  dev_ctx.Alloc<OutT>(out);
-  phi::funcs::ElementwiseKernel<OutT>(
-      dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
-}
 
 template <typename T, typename Context>
 void CastKernel(const Context& dev_ctx,

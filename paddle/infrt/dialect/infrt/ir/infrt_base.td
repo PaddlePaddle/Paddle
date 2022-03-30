@@ -10,6 +10,7 @@ def Infrt_Dialect : Dialect {
 
   let name = "infrt";
   let cppNamespace = "::infrt";
+  let hasConstantMaterializer = 1;
   let useDefaultAttributePrinterParser = 1;
 }
 
