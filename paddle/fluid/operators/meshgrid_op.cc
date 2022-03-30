@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/meshgrid_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -145,29 +146,3 @@ REGISTER_OPERATOR(meshgrid, ops::MeshgridOp, ops::MeshgridOpMaker,
                   ops::MeshgridGradOpMaker<paddle::framework::OpDesc>,
                   ops::MeshgridGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(meshgrid_grad, ops::MeshgridGradOp);
-REGISTER_OP_CPU_KERNEL(
-    meshgrid, ops::MeshgridKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MeshgridKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MeshgridKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MeshgridKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(
-    meshgrid_grad,
-    ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, double>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    meshgrid, ops::MeshgridKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    meshgrid_grad,
-    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-#endif

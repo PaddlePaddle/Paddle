@@ -1107,10 +1107,12 @@ static std::string GenerateGradNodeCreationContent(
   size_t bwd_in_slot_num = out_vars.size();
   size_t bwd_out_slot_num = in_vars.size();
   const char* GRAD_OP_NODE_TEMPLATE =
-      "      auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
+      "      auto grad_node = std::shared_ptr<GradNode%s>(new GradNode%s(%d, "
+      "%d));\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
-  grad_node_creation_str += paddle::string::Sprintf(
-      GRAD_OP_NODE_TEMPLATE, op_type, bwd_in_slot_num, bwd_out_slot_num);
+  grad_node_creation_str +=
+      paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE, op_type, op_type,
+                              bwd_in_slot_num, bwd_out_slot_num);
   grad_node_creation_str += "\n";
 
   VLOG(6) << "Generated GradOpNode construction";
@@ -2108,6 +2110,10 @@ static std::string GenerateSingleOpBase(
             GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, grads_position);
 
       } else {
+        if (dispensable_input_name_set.count(fwd_name) &&
+            grad_ins_fwd_slotname_map.count(fwd_name)) {
+          continue;
+        }
         size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
         if (duplicable_input_name_set.count(fwd_name) &&
             !is_op_base_per_duplicable_input) {
@@ -2144,6 +2150,42 @@ static std::string GenerateSingleOpBase(
       BWD_OUTS_MAP_TEMPLATE, outs_name, outs_contents_str);
   generated_grad_function_body += outs_map_str;
   generated_grad_function_body += "\n";
+  for (auto iter : grad_outs) {
+    const std::string& grad_output_name = iter.first;
+
+    if (grad_outs_slotname_map.count(grad_output_name)) {
+      // Fwd Tensor
+      const std::string& fwd_name = grad_outs_slotname_map.at(grad_output_name);
+      if (fwd_inputs_name_pos_map.count(fwd_name)) {
+        if (dispensable_input_name_set.count(fwd_name) &&
+            grad_ins_fwd_slotname_map.count(fwd_name)) {
+          if (duplicable_input_name_set.count(fwd_name) &&
+              !is_op_base_per_duplicable_input) {
+            size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
+            const char* DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE =
+                "  if(%s.size() > 0) %s[\"%s\"] = egr::EagerUtils::CreateVars( "
+                "this->OutputMeta()[%d].size() );\n";
+            generated_grad_function_body += paddle::string::Sprintf(
+                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE, fwd_name, outs_name,
+                grad_output_name, fwd_input_position);
+          } else {
+            const char* DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE =
+                "  if(%s.initialized()) %s[\"%s\"] = "
+                "{std::make_shared<egr::EagerVariable>(egr::Controller::"
+                "Instance().GenerateUniqueName())};\n";
+            generated_grad_function_body += paddle::string::Sprintf(
+                DISPENSABLE_GRAD_OUTS_FWD_CONTENT_TEMPLATE, fwd_name, outs_name,
+                grad_output_name);
+          }
+        }
+      }
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Detected mismatched slot names."
+          "Unable to find forward slot name that matches %s",
+          grad_output_name));
+    }
+  }
 
   VLOG(6) << "Generated Outs Map";
 
@@ -2587,6 +2629,7 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
+      "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
       "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);

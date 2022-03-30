@@ -53,7 +53,7 @@ USE_OP_ITSELF(tanh_grad);
 USE_OP(sum);
 USE_OP_ITSELF(slice_grad);
 USE_OP_ITSELF(lookup_table_grad);
-USE_OP(sqrt);
+USE_OP_ITSELF(sqrt);
 USE_OP_ITSELF(elementwise_max);
 USE_OP_ITSELF(elementwise_div);
 USE_OP_ITSELF(sgd);
@@ -81,6 +81,9 @@ PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(max_raw, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sgd, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(slice, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
 
 DECLARE_double(eager_delete_tensor_gb);
 
