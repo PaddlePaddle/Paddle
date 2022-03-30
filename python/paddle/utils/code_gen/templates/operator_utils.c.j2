@@ -222,8 +222,14 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   {% for attr in api["attrs"] %}
     {% set attr_name = attr["name"] %}
     {% if attr_name in forward_attr_names %}
+      {% if attr["typename"] == "ScalarArray" %}
+    grad_op->SetInput("{{input["name"] | to_pascal_case}}Tensor", this->Input("{{input["name"] | to_pascal_case}}Tensor"));
+    grad_op->SetInput("{{input["name"] | to_pascal_case}}TensorList", this->Input("{{input["name"] | to_pascal_case}}TensorList"));
+      {% elif  attr["typename"] == "Scalar" %}
+    grad_op->SetInput("{{input["name"] | to_pascal_case}}Tensor", this->Input("{{input["name"] | to_pascal_case}}Tensor"));
+      {% endif %}
     grad_op->SetAttr({{attr_name}}, this->GetAttr({{forward_attr_orig_names[forward_attr_names.index(attr_name)]}}));
-    {% else %}
+    {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}
     grad_op->AddAttr<{{attr["typename"] | to_op_attr_type}}>({{attr_name}}, "attr {{attr_name}}");
     grad_op->SetAttr({{attr_name}}, {{attr["default_value"]}});
     {% endif %}
