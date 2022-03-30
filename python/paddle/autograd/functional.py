@@ -52,14 +52,14 @@ def vjp(func, xs, v=None):
                 return paddle.matmul(x, x)
 
             x = paddle.ones(shape=[2, 2], dtype='float32')
-            _, vjp_result = paddle.autograd.vjp(func, x)
+            _, vjp_result = paddle.incubate.autograd.vjp(func, x)
             print(vjp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[4., 4.],
             #         [4., 4.]])
 
             v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
-            _, vjp_result = paddle.autograd.vjp(func, x, v)
+            _, vjp_result = paddle.incubate.autograd.vjp(func, x, v)
             print(vjp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[2., 1.],
@@ -113,13 +113,13 @@ def jvp(func, xs, v=None):
 
 
             x = paddle.ones(shape=[2, 2], dtype='float32')
-            _, jvp_result = paddle.autograd.jvp(func, x)
+            _, jvp_result = paddle.incubate.autograd.jvp(func, x)
             print(jvp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[4., 4.],
             #         [4., 4.]])
             v = paddle.to_tensor([[1.0, 0.0], [0.0, 0.0]])
-            _, jvp_result = paddle.autograd.jvp(func, x, v)
+            _, jvp_result = paddle.incubate.autograd.jvp(func, x, v)
             print(jvp_result)
             # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[2., 1.],
