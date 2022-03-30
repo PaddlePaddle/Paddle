@@ -671,6 +671,20 @@
     func : relu_grad
   backward: relu_double_grad
 
+- backward_api : reshape_grad
+  forward : reshape_with_xshape (Tensor x, ScalarArray shape) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param : [xshape]
+  kernel :
+    func : reshape_grad
+    param : [out_grad]
+    data_type: out_grad
+    backend: out_grad
+    layout: out_grad
+
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale, float bias=0.0, bool bias_after_scale=true)

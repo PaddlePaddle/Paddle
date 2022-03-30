@@ -1126,12 +1126,15 @@
 
 - api : reshape
   args : (Tensor x, ScalarArray shape)
-  output : Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : ReshapeInferMeta
+    func : ReshapeWithXShapeInferMeta
   kernel :
-    func : reshape
+    func : reshape_with_xshape
   inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward: reshape_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
