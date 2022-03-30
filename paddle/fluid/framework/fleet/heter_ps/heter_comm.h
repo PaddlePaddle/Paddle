@@ -201,12 +201,26 @@ class HeterComm {
   void sync_stream(StreamType& stream) {
     if (stream >= 0) {
 #if defined(PADDLE_WITH_CUDA)
-      cudaStreamSynchronize(stream);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #elif defined(PADDLE_WITH_XPU)
-      xpu_wait(stream);
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(stream));
 #endif
     }
   }
+
+  template <typename KeyT, typename ValueT, typename StreamType>
+  void sort_pairs(void * d_temp_storage, size_t & temp_storage_bytes,
+                  const KeyT * d_keys_in, KeyT * d_keys_out, const ValueT * d_values_in,
+                  ValueT * d_values_out, int  num_items, int  begin_bit = 0, int  end_bit = sizeof(KeyT) * 8,
+                  StreamType stream = 0, bool debug_synchronous = false);
+
+  
+  template<typename KeysInputIteratorT, typename UniqueOutputIteratorT, typename ValuesInputIteratorT, typename AggregatesOutputIteratorT, typename NumRunsOutputIteratorT, typename ReductionOpT>
+  void ReduceByKey(void* d_temp_storage, size_t& temp_storage_bytes, KeysInputIteratorT d_keys_in,
+                  UniqueOutputIteratorT d_unique_out, ValuesInputIteratorT d_values_in, AggregatesOutputIteratorT d_aggregates_out,
+                  NumRunsOutputIteratorT d_num_runs_out, ReductionOpT reduction_op, int num_items,
+                  cudaStream_t stream = 0, bool debug_synchronous = false);
+
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
