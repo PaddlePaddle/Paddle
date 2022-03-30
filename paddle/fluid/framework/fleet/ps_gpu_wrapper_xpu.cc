@@ -25,6 +25,7 @@ limitations under the License. */
 #include "xpu/kernel/debug.h"           // NOLINT
 #include "xpu/kernel/math.h"            // NOLINT
 
+
 namespace paddle {
 namespace framework {
 
