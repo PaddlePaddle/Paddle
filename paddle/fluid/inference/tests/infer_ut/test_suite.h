@@ -184,7 +184,7 @@ void CopyAndSort(const std::vector<float> &src,
     }
   }
   // sort vector
-  std::sort(dst.bigin(), dst.end(), CompareVector);
+  std::sort(dst->begin(), dst->end(), CompareVector);
 }
 
 void CompareUnorderedRecord(std::map<std::string, Record> *truth_output_data,
