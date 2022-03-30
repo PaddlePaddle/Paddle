@@ -43,7 +43,7 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
       INFRT_KERNEL(infrt::kernel::phi::CreateInitedDenseTensorF32),
       {"dims", "lod", "layout", "value"});
 
-  registry->AddKernelWithAttrs(
+  registry->AddKernel(
       "phi_dt.create_host_inited_dense_tensor.f32",
       INFRT_KERNEL(infrt::kernel::phi::CreateHostInitedDenseTensorF32),
       {"dims", "lod", "layout", "values"});
