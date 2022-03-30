@@ -1508,12 +1508,15 @@ class RoIAlign(Layer):
 
 def random_crop_and_resize(x,
                            size,
-                           scale=(0.08, 1.0),
-                           ratio=(3. / 4., 4. / 3.),
+                           aspect_ratio_min=3./4.,
+                           aspect_ratio_max=4./3.,
+                           area_min=0.08,
+                           area_max=1.,
+                           num_attempts=10,
                            interp_method='bilinear',
                            align_corners=True,
                            align_mode=1,
-                           data_layout='NCHW',
+                           data_format='NCHW',
                            seed=0,
                            name=None):
     """
@@ -1540,7 +1543,7 @@ def random_crop_and_resize(x,
         align_mode (int32, optional): Optional for bilinear interpolation,
             can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
             src_idx = scale*dst_index. Default: 1
-        data_layout (str, optional): Only used in an optional string
+        data_format (str, optional): Only used in an optional string
             from: NHWC, NCHW. Specify that the data format of the input
             and output data is channel_first or channel_last. Default: NCHW
         seed (int, optional): The random seed. Default: 0
@@ -1556,42 +1559,46 @@ def random_crop_and_resize(x,
         .. code-block:: python
 
             import paddle
-            from paddle.vision.ops import random_crop_and_resize
+            from paddle.vision.ops import batch_random_crop_and_resize
 
             data = paddle.rand([3, 256, 256])
-            out = random_crop_and_resize([data])
+            out = batch_random_crop_and_resize([data])
     """
-    check_type(size, 'size', (int, tuple), 'random_crop_and_resize')
-    check_type(scale, 'scale', (list, tuple), 'random_crop_and_resize')
-    check_type(ratio, 'ratio', (list, tuple), 'random_crop_and_resize')
+    check_type(size, 'size', (int, tuple), 'batch_random_crop_and_resize')
     assert interp_method in ['bilinear', 'nearest']
-    assert data_layout in ['NCHW', 'NHWC']
+    assert data_format in ['NCHW', 'NHWC']
     if isinstance(size, int):
         size = (size, size)
 
     if in_dygraph_mode():
-        out = _C_ops.random_crop_and_resize(
-            x, "size", size, "scale", scale, "ratio", ratio, "interp_method",
-            interp_method, "align_corners", align_corners, "align_mode",
-            align_mode, "data_layout", data_layout, "seed", seed)
+        out = _C_ops.batch_random_crop_and_resize(
+            x, "size", size, "aspect_ratio_min", aspect_ratio_min,
+            "aspect_ratio_max", aspect_ratio_max, "area_max", area_max,
+            "area_min", area_min, "num_attempts", num_attempts,
+            "interp_method", interp_method, "align_corners",
+            align_corners, "align_mode", align_mode,
+            "data_format", data_format, "seed", seed)
         return out
 
-    helper = LayerHelper('random_crop_and_resize', **locals())
+    helper = LayerHelper('batch_random_crop_and_resize', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     inputs = {"X": x}
     attrs = {
         "size": size,
-        "scale": scale,
-        "ratio": ratio,
+        "aspect_ratio_min": aspect_ratio_min,
+        "aspect_ratio_max": aspect_ratio_max,
+        "area_min": area_min,
+        "area_max": area_max,
+        "num_attempts": num_attempts,
         "interp_method": interp_method,
         "align_corners": align_corners,
         "align_mode": align_mode,
-        "data_layout": data_layout,
+        "data_format": data_format,
         "seed": seed,
     }
     helper.append_op(
-        type="random_crop_and_resize",
+        type="batch_random_crop_and_resize",
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs)

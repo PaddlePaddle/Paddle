@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.vision.ops import image_resize
+from paddle.vision.ops import image_resize, random_crop_and_resize
 
 
 def np_nearest_interp(image,
@@ -166,13 +166,13 @@ def np_image_resize(images, size, interp_method,
 
 class TestImageResizeNearestNCHW(unittest.TestCase):
     def setup(self):
-        self.image_shape1 = [3, 8, 8]
-        self.image_shape2 = [3, 2, 2]
-        self.size = (4, 4)
+        self.image_shape1 = [3, 32, 32]
+        self.image_shape2 = [3, 16, 16]
+        self.size = (20, 30)
         self.interp_method = "nearest"
         self.data_format = "NCHW"
         self.align_corners = False
-        self.align_mode = 0
+        self.align_mode = 1
 
         self._is_np_built = False
         self.build_np_data()
@@ -370,6 +370,229 @@ class TestImageResizeBilinearNHWCAlignCorner(TestImageResizeNearestNHWC):
         self.data_format = "NHWC"
         self.align_corners = True
         self.align_mode = 1
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeNearestNCHW(unittest.TestCase):
+    def setup(self):
+        self.image_shape1 = [3, 16, 16]
+        self.image_shape2 = [3, 32, 32]
+        self.size = (20, 30)
+        self.interp_method = "nearest"
+        self.data_format = "NCHW"
+        self.align_corners = False
+        self.align_mode = 1
+
+        self.out_shape = (2, 3, 20, 30)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+    def build_np_data(self):
+        if not self._is_np_built:
+            self.image1 = np.random.randint(0, 256, self.image_shape1, dtype="uint8")
+            self.image2 = np.random.randint(0, 256, self.image_shape2, dtype="uint8")
+            self._is_np_built = True
+
+    def test_output_dynamic(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        paddle.disable_static()
+        self.setup()
+
+        images = paddle.tensor.create_array(dtype="uint8")
+        images = paddle.tensor.array_write(paddle.to_tensor(self.image1), 
+                                           paddle.to_tensor(0), images)
+        images = paddle.tensor.array_write(paddle.to_tensor(self.image2),
+                                           paddle.to_tensor(1), images)
+
+        # NOTE: image_resize takes TensorArray as input, which cannot
+        #       create by Python API in dynamic mode
+        try:
+            dy_result = random_crop_and_resize(
+                                     images, self.size,
+                                     interp_method=self.interp_method,
+                                     align_corners=self.align_corners,
+                                     align_mode=self.align_mode,
+                                     data_format=self.data_format)
+        except:
+            pass
+
+    def test_output_static(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        paddle.enable_static()
+        self.setup()
+
+        images = paddle.tensor.create_array(dtype="uint8")
+
+        idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
+        image1 = fluid.layers.assign(self.image1.astype('int32'))
+        image1 = fluid.layers.cast(image1, dtype='uint8')
+        images = paddle.tensor.array_write(image1, idx, images)
+
+        image2 = fluid.layers.assign(self.image2.astype('int32'))
+        image2 = fluid.layers.cast(image2, dtype='uint8')
+        images = paddle.tensor.array_write(image2, idx + 1, images)
+
+        out = random_crop_and_resize(
+                           images, self.size,
+                           interp_method=self.interp_method,
+                           align_corners=self.align_corners,
+                           align_mode=self.align_mode,
+                           data_format=self.data_format)
+
+        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+        result, = exe.run(paddle.static.default_main_program(),
+                         fetch_list=[out])
+        assert result.shape == self.out_shape
+
+        paddle.disable_static()
+
+
+class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [16, 16, 3]
+        self.image_shape2 = [32, 32, 3]
+        self.size = 20
+        self.interp_method = "nearest"
+        self.data_format = "NHWC"
+        self.align_corners = False
+        self.align_mode = 1
+
+        self.out_shape = (2, 20, 20, 3)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeNearestNCHWAlignCorner(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [3, 16, 16]
+        self.image_shape2 = [3, 32, 32]
+        self.size = 20
+        self.interp_method = "nearest"
+        self.data_format = "NCHW"
+        self.align_corners = True
+        self.align_mode = 1
+
+        self.out_shape = (2, 3, 20, 20)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [16, 16, 3]
+        self.image_shape2 = [32, 32, 3]
+        self.size = (20, 30)
+        self.interp_method = "nearest"
+        self.data_format = "NHWC"
+        self.align_corners = True
+        self.align_mode = 1
+
+        self.out_shape = (2, 20, 30, 3)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeBilinearNCHW(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [3, 16, 16]
+        self.image_shape2 = [3, 32, 32]
+        self.size = (20, 30)
+        self.interp_method = "bilinear"
+        self.data_format = "NCHW"
+        self.align_corners = False
+        self.align_mode = 1
+
+        self.out_shape = (2, 3, 20, 30)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeNearestNHWC(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [16, 16, 3]
+        self.image_shape2 = [32, 32, 3]
+        self.size = (20, 30)
+        self.interp_method = "bilinear"
+        self.data_format = "NHWC"
+        self.align_corners = False
+        self.align_mode = 1
+
+        self.out_shape = (2, 20, 30, 3)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeBilinearNCHWAlignMode0(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [3, 16, 16]
+        self.image_shape2 = [3, 32, 32]
+        self.size = (20, 30)
+        self.interp_method = "bilinear"
+        self.data_format = "NCHW"
+        self.align_corners = False
+        self.align_mode = 0
+
+        self.out_shape = (2, 3, 20, 30)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeNearestNHWCAlignMode0(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [16, 16, 3]
+        self.image_shape2 = [32, 32, 3]
+        self.size = (20, 30)
+        self.interp_method = "bilinear"
+        self.data_format = "NHWC"
+        self.align_corners = False
+        self.align_mode = 0
+
+        self.out_shape = (2, 20, 30, 3)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeBilinearNCHWAlignCorner(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [3, 16, 16]
+        self.image_shape2 = [3, 32, 32]
+        self.size = (20, 30)
+        self.interp_method = "bilinear"
+        self.data_format = "NCHW"
+        self.align_corners = True
+        self.align_mode = 1
+
+        self.out_shape = (2, 3, 20, 30)
+
+        self._is_np_built = False
+        self.build_np_data()
+
+
+class TestImageCropResizeNearestNHWCAlignCorner(TestImageCropResizeNearestNCHW):
+    def setup(self):
+        self.image_shape1 = [16, 16, 3]
+        self.image_shape2 = [32, 32, 3]
+        self.size = (20, 30)
+        self.interp_method = "bilinear"
+        self.data_format = "NHWC"
+        self.align_corners = True
+        self.align_mode = 1
+
+        self.out_shape = (2, 20, 30, 3)
 
         self._is_np_built = False
         self.build_np_data()

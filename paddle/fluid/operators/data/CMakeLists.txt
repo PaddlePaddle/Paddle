@@ -17,7 +17,7 @@ cc_library(image_decoder SRCS image_decoder.cc DEPS random_roi_generator ${OP_HE
 op_library(batch_decode_random_crop_op SRCS batch_decode_random_crop_op.cc batch_decode_random_crop_op.cu DEPS image_decoder ${OP_HEADER_DEPS})
 op_library(batch_decode_op SRCS batch_decode_op.cc batch_decode_op.cu DEPS image_decoder ${OP_HEADER_DEPS})
 
-op_library(random_crop_and_resize_op SRCS random_crop_and_resize_op.cc random_crop_and_resize_op.cu DEPS ${OP_HEADER_DEPS})
+op_library(batch_random_crop_and_resize_op SRCS batch_random_crop_and_resize_op.cc batch_random_crop_and_resize_op.cu DEPS ${OP_HEADER_DEPS})
 op_library(batch_resize_op SRCS batch_resize_op.cc batch_resize_op.cu DEPS ${OP_HEADER_DEPS})
 
 op_library(file_label_loader_op SRCS file_label_loader_op.cc DEPS ${OP_HEADER_DEPS})

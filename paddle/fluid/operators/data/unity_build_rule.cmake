@@ -15,7 +15,7 @@ register_unity_group(cc
     batch_decode_op.cc
     batch_resize_op.cc
     mirror_normalize_op.cc
-    random_crop_and_resize_op.cc)
+    batch_random_crop_and_resize_op.cc)
 
 register_unity_group(cu
     dataloader_op.cu.cc
@@ -24,4 +24,4 @@ register_unity_group(cu
     batch_decode_op.cu
     batch_resize_op.cu
     mirror_normalize_op.cu
-    random_crop_and_resize_op.cu)
+    batch_random_crop_and_resize_op.cu)

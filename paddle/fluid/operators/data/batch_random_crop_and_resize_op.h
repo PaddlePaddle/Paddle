@@ -22,21 +22,19 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <thrust/random.h>
-#endif
+#include "paddle/fluid/operators/data/random_roi_generator.h"
 
 namespace paddle {
 namespace operators {
 namespace data {
 
 template <typename T>
-class RandomCropAndResizeCPUKernel : public framework::OpKernel<T> {
+class BatchRandomCropAndResizeCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // no cpu kernel.
     PADDLE_THROW(platform::errors::Unimplemented(
-        "RandomCropAndResize op only supports GPU now."));
+        "BatchRandomCropAndResize op only supports GPU now."));
   }
 };
 
