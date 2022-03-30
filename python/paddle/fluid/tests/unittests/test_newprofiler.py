@@ -128,7 +128,6 @@ class TestProfiler(unittest.TestCase):
         result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
 
 
-
 class TestNvprof(unittest.TestCase):
     def test_nvprof(self):
         for i in range(10):
@@ -137,6 +136,7 @@ class TestNvprof(unittest.TestCase):
             x = paddle.to_tensor(
                 x_value, stop_gradient=False, place=paddle.CPUPlace())
             y = x / 2.0
+
 
 class RandomDataset(Dataset):
     def __init__(self, num_samples):
