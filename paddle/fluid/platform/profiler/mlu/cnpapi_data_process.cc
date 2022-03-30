@@ -17,6 +17,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
+#ifdef PADDLE_WITH_MLU
 namespace paddle {
 namespace platform {
 
@@ -259,3 +260,4 @@ void ProcessCnpapiActivityRecord(const cnpapiActivity* record,
 }  // namespace details
 }  // namespace platform
 }  // namespace paddle
+#endif

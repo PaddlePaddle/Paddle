@@ -15,16 +15,20 @@
 #pragma once
 
 #include <unordered_map>
+#ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 
 namespace paddle {
 namespace platform {
 namespace details {
 
+#ifdef PADDLE_WITH_MLU
 void ProcessCnpapiActivityRecord(const cnpapiActivity* record,
                                  uint64_t start_ns,
                                  TraceEventCollector* collector);
+#endif
 
 }  // namespace details
 }  // namespace platform

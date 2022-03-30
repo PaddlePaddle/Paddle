@@ -58,9 +58,11 @@ void BufferCompletedCallback(uint64_t* buffer, size_t size, size_t valid_size) {
 }  // namespace
 
 MluTracer::MluTracer() {
+#ifdef PADDLE_WITH_MLU
   CNPAPI_CALL(cnpapiInit());
   CNPAPI_CALL(cnpapiActivityRegisterCallbacks(BufferRequestedCallback,
                                               BufferCompletedCallback));
+#endif
 }
 
 void MluTracer::PrepareTracing() {
@@ -107,6 +109,7 @@ void MluTracer::CollectTraceData(TraceEventCollector* collector) {
 }
 
 void MluTracer::ProcessCnpapiActivity(uint64_t* buffer, size_t valid_size) {
+#ifdef PADDLE_WITH_MLU
   cnpapiActivity* record = nullptr;
   while (true) {
     cnpapiResult status =
@@ -121,18 +124,22 @@ void MluTracer::ProcessCnpapiActivity(uint64_t* buffer, size_t valid_size) {
       CNPAPI_CALL(status);
     }
   }
+#endif
 }
 
 void MluTracer::EnableCnpapiActivity() {
+#ifdef PADDLE_WITH_MLU
   CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_KERNEL));
   CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_MEMCPY));
   CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_MEMCPY_PTOP));
   CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_MEMSET));
   CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_CNDRV_API));
   VLOG(3) << "enable cnpapi activity";
+#endif
 }
 
 void MluTracer::DisableCnpapiActivity() {
+#ifdef PADDLE_WITH_MLU
   CNPAPI_CALL(cnpapiActivityFlushAll());
   CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_KERNEL));
   CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_MEMCPY));
@@ -140,6 +147,7 @@ void MluTracer::DisableCnpapiActivity() {
   CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_MEMSET));
   CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_CNDRV_API));
   VLOG(3) << "disable cnpapi activity";
+#endif
 }
 
 }  // namespace platform

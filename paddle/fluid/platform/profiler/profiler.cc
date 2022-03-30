@@ -25,11 +25,9 @@
 #endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
-#endif
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 

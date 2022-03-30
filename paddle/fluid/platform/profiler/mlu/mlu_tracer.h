@@ -16,7 +16,9 @@
 
 #include <cstdint>
 #include <vector>
+#ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
