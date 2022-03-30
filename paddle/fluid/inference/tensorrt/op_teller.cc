@@ -681,6 +681,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
            desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
       if (has_attrs == false) return false;
 
+      // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
+      // plugin are not constient with those of multiclass_nms3
+      if (desc.HasAttr("nms_eta") == false) return false;
+      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      if (nms_eta <= 1.0) return false;
+
       auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
 

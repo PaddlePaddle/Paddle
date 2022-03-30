@@ -191,6 +191,7 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         self.normalized = False
         self.num_classes = 8
         self.num_boxes = 8
+        self.nms_eta = 1.1
         self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, self.bs, 2, self.precision, self.serialize, False)
 
@@ -210,7 +211,8 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
                 nms_top_k=self.nms_top_k,
                 nms_threshold=self.nms_threshold,
                 keep_top_k=self.keep_top_k,
-                normalized=self.normalized)
+                normalized=self.normalized,
+                nms_eta=self.nms_eta)
             mutliclass_nms_out = multiclass_nms_out + 1.
             multiclass_nms_out = fluid.layers.reshape(
                 multiclass_nms_out, [self.bs, 1, self.keep_top_k, 6],
