@@ -126,10 +126,10 @@ class MultiClassNMS3OpConverter : public OpConverter {
     auto constant_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Constant, nvinfer1::Dims2(keep_top_k, 1),
         nvinfer1::Weights{nvinfer1::DataType::kINT32,
-                          static_cast<void*>(index.data()), keep_top_k})
+                          static_cast<void*>(index.data()), keep_top_k});
 
-        RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
-                                 {rois_num_name}, test_mode);
+    RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
+                             {rois_num_name}, test_mode);
     RreplenishLayerAndOutput(nms_concat_layer, "multiclass_nms3", {output_name},
                              test_mode);
     RreplenishLayerAndOutput(constant_layer, "multiclass_nms3", {index_name},

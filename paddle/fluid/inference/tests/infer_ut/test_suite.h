@@ -165,7 +165,7 @@ void CompareRecord(std::map<std::string, Record> *truth_output_data,
 }
 
 bool CompareVector(const std::vector<float> &v1, const std::vector<float> &v2) {
-  ASSERT_LT(v1.size(), v2.size());
+  ASSERT_EQ(v1.size(), v2.size());
   for (size_t i = 0; i < v1.size(); ++i) {
     if (v1[i] != v2[i]) {
       return v1[i] < v2[i];
