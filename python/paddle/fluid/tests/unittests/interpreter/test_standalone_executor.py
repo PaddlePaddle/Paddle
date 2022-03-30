@@ -352,5 +352,23 @@ class TestException(unittest.TestCase):
             self.fetch_vars.name))
 
 
+class TestInplaceApiWithDataTransform(unittest.TestCase):
+    def test_increment(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            with paddle.fluid.device_guard("gpu:0"):
+                x = paddle.fluid.layers.fill_constant([1], "float32", 0)
+            with paddle.fluid.device_guard("cpu"):
+                x = paddle.increment(x)
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+
+            for i in range(10):
+                a, = exe.run(paddle.static.default_main_program(),
+                             fetch_list=[x])
+                self.assertEqual(a[0], 1)
+
+            del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+
+
 if __name__ == "__main__":
     unittest.main()

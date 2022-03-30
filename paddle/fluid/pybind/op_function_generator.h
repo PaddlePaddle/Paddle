@@ -96,8 +96,12 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nce",
      {"Input", "Label", "Weight", "Bias", "SampleWeight", "CustomDistProbs",
       "CustomDistAlias", "CustomDistAliasProbs"}},
+    {"yolov3_loss", {"X", "GTBox", "GTLabel", "GTScore"}},
     {"check_finite_and_unscale", {"X", "Scale", "FloatStatus"}},
     {"group_norm", {"X", "Scale", "Bias"}},
+    {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
+    {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
+    {"chunk_eval", {"Inference", "Label", "SeqLength"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

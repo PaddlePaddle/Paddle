@@ -182,6 +182,10 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+bool IsEagerTensor(PyObject* obj) {
+  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
+}
+
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
@@ -434,7 +438,12 @@ PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
 }
 
-PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     bool return_py_none_if_not_initialize) {
+  if (return_py_none_if_not_initialize && !value.initialized()) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
   PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
@@ -606,7 +615,7 @@ PyObject* ToPyObject(
 
 // For Final State Dygraph,
 // We directly use paddle::optional(Tensor) as dispensable Tensor
-paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
@@ -621,11 +630,18 @@ paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
           op_type, arg_name, arg_idx));
     }
-    return {};
+    return paddle::none;
   }
 
-  return paddle::make_optional<paddle::experimental::Tensor>(
-      reinterpret_cast<TensorObject*>(obj)->tensor);
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return paddle::make_optional<const paddle::experimental::Tensor&>(
+        reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 static paddle::experimental::Tensor& GetTensorFromPyObject(
@@ -645,7 +661,14 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     return emptytensor;
   }
 
-  return reinterpret_cast<TensorObject*>(obj)->tensor;
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject*>(obj)->tensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 // For Intermediate State Dygraph,
@@ -735,7 +758,14 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     return &emptytensor;
   }
 
-  return &(reinterpret_cast<TensorObject*>(obj)->tensor);
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return &(reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
@@ -790,6 +820,92 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
   }
 
   return result;
+}
+
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
+    PyObject* obj) {
+  std::vector<paddle::experimental::Tensor*> result;
+
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    if (len == 0) {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("The list of Tensor is empty."));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    if (len == 0) {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("The tuple of Tensor is empty."));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The PyObject must be list of Tensors, but got "
+        "%s",
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+  }
+
+  return result;
+}
+
+std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
+    PyObject* obj) {
+  std::vector<paddle::experimental::Tensor> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument must be "
+            "list of Tensor, but got %s at pos %d",
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument must be "
+            "list of Tensor, but got %s at pos %d",
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument must be "
+        "list or tuple, but got %s",
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
+  if (!IsEagerTensor(obj)) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument must be "
+        "Tensor, but got %s",
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,

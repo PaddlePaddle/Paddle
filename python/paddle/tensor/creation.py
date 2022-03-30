@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,7 +127,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, (paddle.Tensor, core.eager.Tensor)):
+        elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
+            data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
+            return data
+        elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
             data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -136,7 +141,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to VarBase first
             # Currenly, there is no copy when places are same
-            data = paddle.Tensor(data)
+            if in_dygraph_mode():
+                data = core.eager.Tensor(data)
+            else:
+                data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
@@ -512,7 +520,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             it is the istance between two adjacent values, out[i+1] - out[i].
             If ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with
             data type int32, int64, float32, float64. Default is 1.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+        dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
             If ``dytpe`` is None, the data type is float32. Default is None.
         name(str, optional): The default value is None. Normally there is no

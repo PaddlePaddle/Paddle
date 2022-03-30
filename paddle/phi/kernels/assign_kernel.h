@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <vector>
+
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -30,5 +33,12 @@ template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& x,
                        std::vector<DenseTensor*> out);
+
+template <typename T, typename Context>
+void AssignValueKernel(const Context& dev_ctx,
+                       const std::vector<int>& shape,
+                       DataType dtype,
+                       const std::vector<Scalar>& values,
+                       DenseTensor* out);
 
 }  // namespace phi

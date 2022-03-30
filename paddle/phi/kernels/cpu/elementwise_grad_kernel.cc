@@ -332,3 +332,12 @@ PD_REGISTER_KERNEL(elementwise_heaviside_grad,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(elementwise_pow_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
