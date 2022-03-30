@@ -33,7 +33,9 @@ namespace paddle {
 namespace experimental {
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
-  return copy_to(x, place, blocking);
+  Tensor out;
+  copy(x, &out, place, blocking);
+  return out;
 }
 
 std::vector<Tensor> split_impl(const Tensor& x,

@@ -31,7 +31,9 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
   if (tensor_in.place() == PlaceType::kGPU) {
-    GetDataFromTensor(copy_to(tensor_in, phi::CPUPlace(), true));
+    Tensor dst_tensor;
+    copy(tensor_in, &dst_tensor, phi::CPUPlace(), true);
+    GetDataFromTensor(dst_tensor);
   } else {
     GetDataFromTensor(tensor_in);
   }

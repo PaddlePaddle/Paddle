@@ -24,8 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-Tensor copy_to(const Tensor& x, Place place, bool blocking) {
-  auto kernel_key_set = ParseKernelKeyByInputArgs(x);
+void copy(const Tensor& src, Tensor* dst, Place place, bool blocking) {
+  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
@@ -37,10 +37,9 @@ Tensor copy_to(const Tensor& x, Place place, bool blocking) {
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
 
-  auto dense_x = TensorToDenseTensor(x);
+  auto dense_x = TensorToDenseTensor(src);
 
-  Tensor out;
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), dst);
   phi::MetaTensor meta_out(kernel_out);
   phi::UnchangedInferMeta(*dense_x, &meta_out);
 
@@ -52,8 +51,6 @@ Tensor copy_to(const Tensor& x, Place place, bool blocking) {
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(*dev_ctx, *dense_x, place, blocking, kernel_out);
-
-  return out;
 }
 
 }  // namespace experimental
