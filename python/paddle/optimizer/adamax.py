@@ -16,6 +16,7 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
+from paddle import _C_ops
 
 __all__ = []
 
