@@ -98,6 +98,10 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* xshape);
 
+void FlipInferMeta(const MetaTensor& x,
+                   const std::vector<int>& axis,
+                   MetaTensor* out);
+
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
                                 const Scalar& val,
@@ -133,6 +137,11 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaConfig = MetaConfig());
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
+
+void MaxOutInferMeta(const MetaTensor& x,
+                     int groups,
+                     int axis,
+                     MetaTensor* out);
 
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& kernel_size,
@@ -229,8 +238,8 @@ void ReshapeInferMeta(const MetaTensor& x,
 
 void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 const ScalarArray& shape,
-                                MetaTensor* xshape,
                                 MetaTensor* out,
+                                MetaTensor* xshape,
                                 MetaConfig config = MetaConfig());
 
 void ReverseInferMeta(const MetaTensor& x,

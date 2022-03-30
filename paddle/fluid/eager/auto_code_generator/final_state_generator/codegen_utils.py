@@ -334,10 +334,10 @@ class FunctionGeneratorBase:
             self.inplace_map[key] = val
 
     def ParseNoNeedBuffer(self):
-        forward_api_contents = self.forward_api_contents
+        grad_api_contents = self.grad_api_contents
 
-        if 'no_need_buffer' in forward_api_contents.keys():
-            no_need_buffer_str = forward_api_contents['no_need_buffer']
+        if 'no_need_buffer' in grad_api_contents.keys():
+            no_need_buffer_str = grad_api_contents['no_need_buffer']
             for name in no_need_buffer_str.split(","):
                 name = name.strip()
                 name = RemoveSpecialSymbolsInName(name)
@@ -421,3 +421,5 @@ class YamlGeneratorBase:
         api_yaml_path = self.api_yaml_path
         if "sparse" in api_yaml_path:
             self.namespace = "sparse::"
+        elif "strings" in api_yaml_path:
+            self.namespace = "strings::"
