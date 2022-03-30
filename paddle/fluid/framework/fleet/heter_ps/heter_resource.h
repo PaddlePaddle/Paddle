@@ -61,6 +61,19 @@ class GPUResource {
   std::vector<XPUStream> remote_streams_;
   std::vector<XPUStream> local_streams_;
   std::vector<XPUStream> comm_streams_;
+
+};
+#endif
+
+
+#if defined(PADDLE_WITH_CUDA)
+using DevResource = GPUResource;
+using DevPlace = platform::CUDAPlace;
+using AnyDeviceGuard= platform::CUDADeviceGuard
+#elif defined(PADDLE_WITH_XPU_KP)
+using DevResource = XPUResource;
+using DevPlace = platform::XPUPlace;
+using AnyDeviceGuard= platform::XPUDeviceGuard
 #endif
 };
 

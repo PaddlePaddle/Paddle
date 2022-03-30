@@ -101,6 +101,34 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename KeyType, typename ValType, typename GradType>
+template <typename DstPlace, typename SrcPlace, typename StreamType>
+void HeterComm<KeyType, ValType, GradType>::memory_copy(DstPlace dst_place, void* dst, SrcPlace src_place, const void* src, size_t count, StreamType stream = 0) {
+  // stream=0 means launch copy operation in default stream
+  if (paddle::platform::is_xpu_place(dst_place)) {
+    memory::Copy(dst_place, dst, src_place, src,
+               count);
+  } else if (paddle::platform::is_gpu_place(dst_place)) {
+    cudaMemcpyAsync(dst,
+                    src,
+                    count, cudaMemcpyDefault, stream);
+    if (stream == 0) {
+      cudaStreamSynchronize(0);
+    }
+  } else if (paddle::platform::is_cpu_place(dst_place)) { // ds_place == cpu place
+    if (paddle::platform::is_xpu_place(src_place)) {
+      memory::Copy(dst_place, dst, src_place, src, count);
+    } else if (paddle::platform::is_gpu_place(src_place)) {
+      cudaMemcpyAsync(dst,
+                      src,
+                      count, cudaMemcpyDefault, stream);
+      if (stream == 0) {
+        cudaStreamSynchronize(0);
+      }
+    }
+  }
+}
+
+template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
                                                            int end_index,
                                                            int keylen,
@@ -169,68 +197,48 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
     }
     int size = path_[start_index][i].nodes_.size();
     auto& node = path_[start_index][i].nodes_[0];
+
     CopyTask t(&path_[start_index][i], 0);
     que.push(t);
-    cudaMemcpyAsync(node.key_storage,
-                    reinterpret_cast<char*>(src_key + h_left[i]),
-                    node.key_bytes_len, cudaMemcpyDefault, node.in_stream);
+  
+    auto src_dev_id = resource_->dev_id(start_index);
+    auto dst_dev_id = resource_->dev_id(i);
+    auto src_place = DevPlace(src_dev_id);
+    auto dst_place = DevPlace(dst_dev_id);
+  
+    memory_copy(dst_place, node.key_storage, src_place, reinterpret_cast<char*>(src_key + h_left[i]), node.key_bytes_len, node.in_stream);
     if (need_copy_val) {
-      cudaMemcpyAsync(node.val_storage,
-                      reinterpret_cast<char*>(src_val + h_left[i]),
-                      node.val_bytes_len, cudaMemcpyDefault, node.in_stream);
+      memory_copy(dst_place, node.key_storage, src_place, reinterpret_cast<char*>(src_key + h_left[i]), node.key_bytes_len, node.in_stream);
     }
+
   }
   while (!que.empty()) {
     CopyTask& cur_task = que.front();
     que.pop();
     if (cur_task.path->nodes_[cur_task.step].sync) {
-      cudaStreamSynchronize(cur_task.path->nodes_[cur_task.step].in_stream);
+      sync_stream(cur_task.path->nodes_[cur_task.step].in_stream);
+
     }
     if (cur_task.step != cur_task.path->nodes_.size() - 1) {
       int cur_step = cur_task.step;
       CopyTask c(cur_task.path, cur_step + 1);
       que.push(c);
-      cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].key_storage,
-                      cur_task.path->nodes_[cur_step].key_storage,
-                      cur_task.path->nodes_[cur_step + 1].key_bytes_len,
-                      cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step + 1].in_stream);
-      if (need_copy_val) {
-        cudaMemcpyAsync(cur_task.path->nodes_[cur_step + 1].val_storage,
-                        cur_task.path->nodes_[cur_step].val_storage,
-                        cur_task.path->nodes_[cur_step + 1].val_bytes_len,
-                        cudaMemcpyDefault,
-                        cur_task.path->nodes_[cur_step + 1].in_stream);
-      }
-    }
-  }
-}
-#endif
 
-#ifdef PADDLE_WITH_XPU_KP
-template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
-    int start_index, int gpu_num, int* h_left, int* h_right, KeyType* src_key,
-    GradType* src_val) {
-  int need_copy_val = 0;
-  if (src_val) {
-    need_copy_val = 1;
-  }
-  std::queue<CopyTask> que;
-  for (int i = 0; i < gpu_num; i++) {
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
-    }
-    int size = path_[start_index][i].nodes_.size();
-    auto& node = path_[start_index][i].nodes_[0];
-    // CopyTask t(&path_[start_index][i], 0);
-    // que.push(t);
-    // XPU_DEVICE_TO_DEVICE?
-    xpu_memcpy(node.key_storage, reinterpret_cast<char*>(src_key + h_left[i]),
-               node.key_bytes_len, XPU_DEVICE_TO_DEVICE);
-    if (need_copy_val) {
-      xpu_memcpy(node.val_storage, reinterpret_cast<char*>(src_val + h_left[i]),
-                 node.val_bytes_len, XPU_DEVICE_TO_DEVICE);
+      auto src_dev_id = resource_->dev_id(cur_task.path->nodes_[cur_step].gpu_num);
+      auto dst_dev_id = resource_->dev_id(cur_task.path->nodes_[cur_step + 1].gpu_num);
+      auto src_place = DevPlace(src_dev_id);
+      auto dst_place = DevPlace(dst_dev_id);
+
+      memory_copy(dst_place, cur_task.path->nodes_[cur_step + 1].key_storage,
+                  src_place, cur_task.path->nodes_[cur_step].key_storage,
+                  cur_task.path->nodes_[cur_step + 1].key_bytes_len,
+                  cur_task.path->nodes_[cur_step + 1].in_stream);
+      if (need_copy_val) {
+        memory_copy(dst_place, cur_task.path->nodes_[cur_step + 1].val_storage,
+                    src_place, cur_task.path->nodes_[cur_step].val_storage,
+                    cur_task.path->nodes_[cur_step + 1].val_bytes_len,
+                    cur_task.path->nodes_[cur_step + 1].in_stream)
+      }
     }
   }
 }
@@ -241,68 +249,74 @@ template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_src(
     int start_index, int gpu_num, int* h_left, int* h_right, ValType* src_val) {
   std::queue<CopyTask> que;
-  for (int i = 0; i < gpu_num; i++) {
+
+  for (int i = 0; i < num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     int cur_step = path_[start_index][i].nodes_.size() - 1;
     auto& node = path_[start_index][i].nodes_[cur_step];
+  
+    auto src_dev_id = resource_->dev_id(i);
+    auto src_place = DevPlace(src_dev_id);
+    
     if (cur_step == 0) {
-      cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[i]),
-                      node.val_storage, node.val_bytes_len, cudaMemcpyDefault,
-                      node.out_stream);
-    } else {
+      auto dst_dev_id = resource_->dev_id(start_index);
+      auto dst_place = DevPlace(dst_dev_id);
+      memory_copy(dst_place, reinterpret_cast<char*>(src_val + h_left[i]),
+                src_place, node.val_storage,  node.val_bytes_len, node.out_stream);
+    else {
       CopyTask t(&path_[start_index][i], cur_step - 1);
       que.push(t);
-      cudaMemcpyAsync(path_[start_index][i].nodes_[cur_step - 1].val_storage,
-                      node.val_storage,
-                      path_[start_index][i].nodes_[cur_step - 1].val_bytes_len,
-                      cudaMemcpyDefault,
-                      path_[start_index][i].nodes_[cur_step - 1].out_stream);
+
+      auto dst_dev_id = resource_->dev_id(path_[start_index][i].nodes_[cur_step - 1].gpu_num);
+      auto dst_place = DevPlace(dst_dev_id);
+
+      memory_copy(dst_place, path_[start_index][i].nodes_[cur_step - 1].val_storage,
+                  src_place, node.val_storage, path_[start_index][i].nodes_[cur_step - 1].val_bytes_len,
+                  path_[start_index][i].nodes_[cur_step - 1].out_stream);
+
     }
   }
+
   while (!que.empty()) {
     CopyTask& cur_task = que.front();
     que.pop();
     int cur_step = cur_task.step;
     if (cur_task.path->nodes_[cur_step].sync) {
-      cudaStreamSynchronize(cur_task.path->nodes_[cur_step].out_stream);
+      sync_stream(cur_task.path->nodes_[cur_step].out_stream);
     }
+     
+    auto src_dev_id = resource_->dev_id(cur_task.path->nodes_[cur_step].gpu_num);
+    auto src_place = DevPlace(src_dev_id);
+
     if (cur_step > 0) {
+
       CopyTask c(cur_task.path, cur_step - 1);
       que.push(c);
-      cudaMemcpyAsync(cur_task.path->nodes_[cur_step - 1].val_storage,
-                      cur_task.path->nodes_[cur_step].val_storage,
-                      cur_task.path->nodes_[cur_step - 1].val_bytes_len,
-                      cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step - 1].out_stream);
-    } else if (cur_step == 0) {
-      int end_index = cur_task.path->nodes_.back().gpu_num;
-      cudaMemcpyAsync(reinterpret_cast<char*>(src_val + h_left[end_index]),
-                      cur_task.path->nodes_[cur_step].val_storage,
-                      cur_task.path->nodes_[cur_step].val_bytes_len,
-                      cudaMemcpyDefault,
-                      cur_task.path->nodes_[cur_step].out_stream);
-    }
-  }
-}
-#endif
+     
+      auto dst_dev_id = resource_->dev_id(cur_task.path->nodes_[cur_step - 1].gpu_num);
+      auto dst_place = DevPlace(dst_dev_id);
+     
+      memory_copy(dst_place, cur_task.path->nodes_[cur_step - 1].val_storage,
+                  src_place, cur_task.path->nodes_[cur_step].val_storage,
+                  cur_task.path->nodes_[cur_step - 1].val_bytes_len,
+                  cur_task.path->nodes_[cur_step - 1].out_stream) 
 
-#ifdef PADDLE_WITH_XPU_KP
-template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::walk_to_src(
-    int start_index, int gpu_num, int* h_left, int* h_right, ValType* src_val) {
-  for (int i = 0; i < gpu_num; i++) {
-    if (h_left[i] == -1 || h_right[i] == -1) {
-      continue;
-    }
-    int cur_step = path_[start_index][i].nodes_.size() - 1;
-    auto& node = path_[start_index][i].nodes_[cur_step];
-    if (cur_step == 0) {
-      xpu_memcpy(reinterpret_cast<char*>(src_val + h_left[i]), node.val_storage,
-                 node.val_bytes_len, XPU_DEVICE_TO_DEVICE);
+    } else if (cur_step == 0) {
+
+      int end_index = cur_task.path->nodes_.back().gpu_num;
+
+      auto dst_dev_id = resource_->dev_id(end_index);
+      auto dst_place = DevPlace(dst_dev_id);
+
+      memory_copy(dst_place, reinterpret_cast<char*>(src_val + h_left[end_index]),
+                  src_place, cur_task.path->nodes_[cur_step].val_storage,
+                  cur_task.path->nodes_[cur_step].val_bytes_len,
+                  cur_task.path->nodes_[cur_step].out_stream) 
     }
   }
+
 }
 #endif
 

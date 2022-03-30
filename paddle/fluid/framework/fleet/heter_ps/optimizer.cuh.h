@@ -171,10 +171,14 @@ class Optimizer {
 
     g2sum += add_g2sum / n;
   }
+
   __device__ void update_value(ValType& val, const GradType& grad) {
+    
+    
     val.slot = grad.slot;
     val.show += grad.show;
     val.clk += grad.clk;
+
     val.delta_score += optimizer_config::nonclk_coeff * (grad.show - grad.clk) +
                        optimizer_config::clk_coeff * grad.clk;
 
@@ -184,15 +188,25 @@ class Optimizer {
       if (optimizer_config::mf_create_thresholds <=
           optimizer_config::nonclk_coeff * (val.show - val.clk) +
               optimizer_config::clk_coeff * val.clk) {
+
         val.mf_size = MF_DIM + 1;
         val.mf[0] = 0;
-        int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-        curandState state;
-        curand_init(clock64(), tid_x, 0, &state);
+
+        
         for (int i = 0; i < MF_DIM; ++i) {
-          val.mf[i + 1] =
-              (curand_uniform(&state)) * optimizer_config::mf_initial_range;
+           val.mf[i + 1] =
+               (xpurand_uniform(&state)) * optimizer_config::mf_initial_range;
         }
+
+        // int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+        // curandState state;
+        // curand_init(clock64(), tid_x, 0, &state);
+        // for (int i = 0; i < MF_DIM; ++i) {
+        //   val.mf[i + 1] =
+        //       (curand_uniform(&state)) * optimizer_config::mf_initial_range;
+        // }
+
+
       }
     } else {
       update_mf(MF_DIM, &val.mf[1], val.mf[0], grad.mf_g, grad.show);
