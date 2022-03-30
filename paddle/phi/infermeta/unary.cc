@@ -2874,6 +2874,16 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         input_dims.size()));
+  PADDLE_ENFORCE_GE(groups,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "groups should be larger than 0."));
+  PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "data_format must be one of "
+                        "NCHW and NHWC. But recevied data_format: %s",
+                        data_format));
 
   const bool channel_last = (data_format == "NHWC");
 
