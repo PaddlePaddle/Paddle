@@ -60,7 +60,7 @@ g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda:
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
-    Determines whether dtype of output tensor is as expected.
+    Determines whether is dtype of output tensor is as expected.
 
     Args:
         api_fn(callable):  paddle api function
