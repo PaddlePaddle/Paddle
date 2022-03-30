@@ -1053,8 +1053,7 @@ class Fleet(object):
                 last_comm_buffer_size=self._user_defined_strategy.
                 last_comm_group_size_MB,
                 find_unused_parameters=self._user_defined_strategy.
-                find_unused_parameters,
-                static_graph=True if recompute_enable else False)
+                find_unused_parameters)
         elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
             model = TensorParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)

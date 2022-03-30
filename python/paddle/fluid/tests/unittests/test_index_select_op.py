@@ -69,6 +69,17 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
         self.index_size = 10
 
 
+class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
+    def init_dtype_type(self):
+        if fluid.is_compiled_with_cuda():
+            fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+        self.x_type = np.float32
+        self.index_type = np.int32
+        self.dim = -2
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
+
+
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],

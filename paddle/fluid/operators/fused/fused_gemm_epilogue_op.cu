@@ -57,7 +57,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
-      scale_type = CUDA_R_16F;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
@@ -222,7 +221,6 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
-      scale_type = CUDA_R_16F;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
