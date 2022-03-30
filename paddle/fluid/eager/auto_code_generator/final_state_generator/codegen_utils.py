@@ -421,3 +421,5 @@ class YamlGeneratorBase:
         api_yaml_path = self.api_yaml_path
         if "sparse" in api_yaml_path:
             self.namespace = "sparse::"
+        elif "strings" in api_yaml_path:
+            self.namespace = "strings::"

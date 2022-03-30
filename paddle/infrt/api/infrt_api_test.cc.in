@@ -1,0 +1,60 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <gtest/gtest.h>
+
+#include <iostream>
+#include <vector>
+
+#include "llvm/Support/raw_ostream.h"
+#include "paddle/infrt/api/infrt_api.h"
+#include "paddle/infrt/backends/host/phi_allocator.h"
+#include "paddle/infrt/common/buffer.h"
+#include "paddle/infrt/common/dtype.h"
+
+using infrt::InfRtConfig;
+using infrt::InfRtPredictor;
+using infrt::CreateInfRtPredictor;
+
+namespace infrt {
+
+TEST(InfRtPredictor, predictor) {
+  std::vector<std::string> shared_libs;
+
+  InfRtConfig config;
+
+  config.set_model_dir("@CMAKE_BINARY_DIR@/linear/linear.pdmodel");
+  config.set_param_dir("@CMAKE_BINARY_DIR@/linear/linear.pdiparams");
+
+  std::unique_ptr<InfRtPredictor> predictor = CreateInfRtPredictor(config);
+
+  ::infrt::backends::CpuPhiAllocator cpu_allocator;
+  ::phi::DenseTensor* input = predictor->GetInput(0);
+  input->Resize({16, 784});
+  input->AllocateFrom(&cpu_allocator, ::phi::DataType::FLOAT32);
+  auto* input_data = reinterpret_cast<float*>(input->data());
+  for (int i = 0; i < input->numel(); i++) input_data[i] = 1.0;
+
+  predictor->Run();
+
+  // get and print output tensor
+  auto* output = predictor->GetOutput(0);
+
+  // TODO(Shixiaowei02): Automatic result validation for training then inference.
+  // auto* output_data = reinterpret_cast<float*>(output->data());
+
+  ASSERT_EQ(output->dims(), ::phi::DDim({16, 10}));
+}
+
+}  // namespace infrt

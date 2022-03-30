@@ -129,9 +129,9 @@ void NaiveMatmul(const DenseHostTensor &x,
 /// ===== Kernel end ====
 
 void RegisterTensorKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernelWithAttrs("dt.create_uninit_tensor.f32",
-                               INFRT_KERNEL(CreateUninitTensor<float>),
-                               {"shape"});
+  registry->AddKernel("dt.create_uninit_tensor.f32",
+                      INFRT_KERNEL(CreateUninitTensor<float>),
+                      {"shape"});
   registry->AddKernel("dt.print_tensor", INFRT_KERNEL(PrintTensor));
   registry->AddKernel("dt.fill_tensor_with_constant.f32",
                       INFRT_KERNEL(FillTensorWithConstant<float>));
@@ -146,7 +146,7 @@ void RegisterTensorKernels(host_context::KernelRegistry *registry) {
 
 // TensorList related methods.
 #ifdef INFRT_WITH_PHI
-  registry->AddKernelWithAttrs(
+  registry->AddKernel(
       "dt.tensor_list_get_tensor", INFRT_KERNEL(TensorListGetTensor), {"id"});
   registry->AddKernel("dt.tensor_list_get_size",
                       INFRT_KERNEL(TensorListGetSize));

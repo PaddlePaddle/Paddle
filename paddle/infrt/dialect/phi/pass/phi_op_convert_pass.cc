@@ -110,6 +110,8 @@ void PhiOpConvertPass::convertStage() {
       ::phi::KernelSignature kernel_sign =
           ::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
               infrt::ProtoArgumentMappingContext(op));
+      VLOG(3) << "IncompatiblePhiKernel: op(" << op_name << "), kernel("
+              << kernel_sign.name << ")";
       // resort input&output according to kernel_sign
       ::llvm::SmallVector<mlir::Value, 4> inputs, ori_output;
       ::llvm::SmallVector<mlir::Type, 4> output_types;

@@ -56,6 +56,17 @@ struct AccessorInfo {
   size_t fea_dim;
 };
 
+enum InfoKey {
+  DIM = 0,
+  SIZE = 1,
+  SELECT_SIZE = 2,
+  SELECT_DIM = 3,
+  UPDATE_SIZE = 4,
+  UPDATE_DIM = 5,
+  MF_SIZE = 6,
+  FEA_DIM = 7
+};
+
 class ValueAccessor {
  public:
   ValueAccessor() {}
@@ -79,7 +90,8 @@ class ValueAccessor {
   }
   virtual int initialize() = 0;
 
-  virtual void GetTableInfo(AccessorInfo& info) = 0;
+  virtual void SetTableInfo(AccessorInfo& info) = 0;
+  virtual size_t GetTableInfo(InfoKey key) = 0;
 
   // value维度
   virtual size_t dim() = 0;
