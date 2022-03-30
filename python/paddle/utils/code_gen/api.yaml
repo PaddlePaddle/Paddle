@@ -254,24 +254,6 @@
 #   kernel :
 #     func : equal_all
 
-# histogram
-# - api : histogram
-#   args : (Tensor x, int64_t bins, int min, int max)
-#   output : Tensor
-#   infer_meta :
-#     func : HistogramInferMeta
-#   kernel :
-#     func : histogram
-
-# - api : abs
-#   args : (Tensor x)
-#   output : Tensor
-#   infer_meta :
-#     func : UnchangedInferMeta
-#   kernel :
-#     func : abs
-#   backward : abs_grad
-
 # accuracy
 - api : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
@@ -1462,3 +1444,12 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+histogram
+- api : histogram
+  args : (Tensor x, int64_t bins, int min, int max)
+  output : Tensor
+  infer_meta :
+    func : HistogramInferMeta
+  kernel :
+    func : histogram
