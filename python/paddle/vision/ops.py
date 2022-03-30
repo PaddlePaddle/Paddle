@@ -1500,5 +1500,10 @@ def batched_nms(boxes, scores, category_idxs, categories, iou_threshold, top_k):
     keep_boxes_idxs = paddle.where(mask)[0]
     shape = keep_boxes_idxs.shape[0]
     keep_boxes_idxs = paddle.reshape(keep_boxes_idxs, [shape])
-    _, topK_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
-    return keep_boxes_idxs[topK_sub_indices]
+    if _non_static_mode():
+        top_k = shape if shape < top_k else top_k
+        _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
+        return keep_boxes_idxs[topk_sub_indices]
+    sorted_sub_indices = paddle.argsort(
+        scores[keep_boxes_idxs], descending=True)
+    return keep_boxes_idxs[sorted_sub_indices][:top_k]

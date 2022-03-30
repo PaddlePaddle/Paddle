@@ -101,7 +101,6 @@ class TestBatchedNMS(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.enable_static()
-                paddle.set_device(device)
                 boxes, scores, category_idxs, categories = gen_args(
                     self.num_boxes, dtype)
                 boxes_static = paddle.static.data(
@@ -138,6 +137,7 @@ class TestBatchedNMS(unittest.TestCase):
     def test_batched_nms_dynamic_to_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                paddle.set_device(device)
 
                 def fun(x):
                     scores = np.arange(0, 64).astype('float32')
@@ -147,7 +147,7 @@ class TestBatchedNMS(unittest.TestCase):
                         x,
                         paddle.to_tensor(scores),
                         paddle.to_tensor(category_idxs), categories, 0.1, 10)
-                    return out.numpy()
+                    return out
 
                 path = "./net"
                 boxes = np.random.rand(64, 4).astype('float32')
