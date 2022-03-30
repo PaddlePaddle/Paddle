@@ -13,22 +13,25 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/selected_rows.h"
+#if defined(PADDLE_WITH_GLOO)
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
-namespace phi {
-namespace sr {
+namespace paddle {
+namespace operators {
 
-template <typename T, typename Context>
-void SquareKernel(const Context& dev_ctx,
-                  const SelectedRows& x,
-                  SelectedRows* out);
+template <typename T>
+class LimitByCapacityOpCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Do not support limit by capacity op for cpu kernel now."));
+  }
+};
 
-template <typename T, typename Context>
-void SqrtKernel(const Context& dev_ctx,
-                const SelectedRows& x,
-                SelectedRows* out);
-
-}  // namespace sr
-}  // namespace phi
+}  // namespace operators
+}  // namespace paddle

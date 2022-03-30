@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle
 from op_test import OpTest
 
 import paddle.fluid as fluid
@@ -154,5 +153,4 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

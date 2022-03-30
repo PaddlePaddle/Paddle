@@ -16,7 +16,6 @@ def Paddle_Dialect : Dialect {
 
     This dialect contains the PaddlePaddle operators.
   }];
-  let hasConstantMaterializer = 1;
   let cppNamespace = "infrt::pd";
 }
 
