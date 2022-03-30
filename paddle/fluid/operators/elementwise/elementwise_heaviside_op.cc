@@ -21,11 +21,15 @@ class ElementwiseHeavisideOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = Heaviside(X, Y)"; }
 
   void AddInputX() override {
-    AddInput("X", "The input tensor of Heaviside step function.");
+    AddInput("X",
+             "(Tensor), The input tensor of Heaviside step function. "
+             "Its dtype can be int32, int64, float32 and float64");
   }
 
   void AddInputY() override {
-    AddInput("Y", "The tensor determining a Heaviside step function.");
+    AddInput("Y",
+             "(Tensor), The tensor determining a Heaviside step function, "
+             "which is the value when X = 0. Its dtype should be same as X.");
   }
 
   std::string GetOpFuntionality() const override {
