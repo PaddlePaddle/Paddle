@@ -15,20 +15,12 @@
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
-
-namespace {
-template <typename Context>
-void LimitGridDim(const Context& ctx, unsigned int* grid_dim) {
-  auto max_grid_dim =
-      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
-  *grid_dim = *grid_dim < max_grid_dim[0] ? *grid_dim : max_grid_dim[0];
-}
-}  // namespace
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
@@ -97,10 +89,10 @@ void IndexSelectGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
 
-  unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-  unsigned int grid_dim =
-    (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
-  LimitGridDim(ctx, &grid_dim);
+  dim3 block_dim = dim3(PADDLE_CUDA_NUM_THREADS);
+  dim3 grid_dim = dim3(
+    (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS);
+  paddle::platform::LimitGridDim(ctx, &grid_dim);
 
   index_select_grad_init<
       T><<<grid_dim,
