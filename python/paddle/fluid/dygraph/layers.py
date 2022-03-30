@@ -764,7 +764,7 @@ class Layer(object):
         elif tensor is not None and not (type(tensor) == core.VarBase or
                                          type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a core.VarBase, but received {}.".
+                "The registered buffer should be a Paddle.Tensor, but received {}.".
                 format(type(tensor).__name__))
         else:
             self._buffers[name] = tensor
@@ -1158,8 +1158,7 @@ class Layer(object):
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase or \
-                    type(value) == core.eager.Tensor:
+                if isinstance(value, (core.VarBase, core.eager.Tensor)):
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
