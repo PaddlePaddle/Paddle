@@ -82,7 +82,11 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
 
   if (FLAGS_enable_host_event_recorder_hook == false) {
     if (g_state != ProfilerState::kDisabled) {  // avoid temp string
-      OriginalConstruct(name, role, "none");
+      if (type == TracerEventType::Operator ||
+          type == TracerEventType::OperatorInner ||
+          type == TracerEventType::UserDefined) {
+        OriginalConstruct(name, role, "none");
+      }
     }
     return;
   }
@@ -109,7 +113,11 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
   }
 
   if (FLAGS_enable_host_event_recorder_hook == false) {
-    OriginalConstruct(name, role, "none");
+    if (type == TracerEventType::Operator ||
+        type == TracerEventType::OperatorInner ||
+        type == TracerEventType::UserDefined) {
+      OriginalConstruct(name, role, "none");
+    }
     return;
   }
 
@@ -137,7 +145,11 @@ RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
   }
 
   if (FLAGS_enable_host_event_recorder_hook == false) {
-    OriginalConstruct(name, role, attr);
+    if (type == TracerEventType::Operator ||
+        type == TracerEventType::OperatorInner ||
+        type == TracerEventType::UserDefined) {
+      OriginalConstruct(name, role, attr);
+    }
     return;
   }
 
