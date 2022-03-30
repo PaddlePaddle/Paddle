@@ -2169,6 +2169,11 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
 }
 
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({1});
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);

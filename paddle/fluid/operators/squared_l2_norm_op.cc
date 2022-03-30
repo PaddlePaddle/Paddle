@@ -11,10 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#include "paddle/fluid/operators/squared_l2_norm_op.h"
-
 #include <memory>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/operators/squared_l2_norm_op.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,13 +26,6 @@ using framework::Tensor;
 class SquaredL2NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SquaredL2NormOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SquaredL2NormOp");
-
-    ctx->SetOutputDim("Out", {1});
-  }
 };
 
 template <typename T>
@@ -86,8 +81,11 @@ $$Out = \sum_{i} X_{i}^2$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm, SquaredL2NormInferShapeFunctor,
+                            PD_INFER_META(phi::SquaredL2NormInferMeta));
 REGISTER_OPERATOR(squared_l2_norm, ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
                   ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>,
+                  SquaredL2NormInferShapeFunctor);
 REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);

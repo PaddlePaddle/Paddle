@@ -326,4 +326,6 @@ void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
+
 }  // namespace phi
