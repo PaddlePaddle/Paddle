@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from typing import List, Dict
+import re
+
+from jinja2.filters import do_xmlattr
 from type_mapping import (input_types_map, optional_input_types_map,
                           attr_types_map, opmaker_attr_types_map,
                           output_type_map)
@@ -81,7 +84,7 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(s.rstrip("_grad").capitalize())
+        return 'GradVarName("{}")'.format(to_pascal_case(s.removesuffix("_grad")))
     else:
         return '"{}"'.format(to_pascal_case(s))
 
@@ -89,3 +92,20 @@ def to_opmaker_name(s):
 def to_pascal_case(s):
     words = s.split("_")
     return "".join([word.capitalize() for word in words])
+
+def to_input_name(s):
+    """find input variable name in api yaml for higher order backward api.
+    x -> dx
+    x -> d2x
+    x -> d3x
+    
+    NOTE: for first order backward api
+    x -> x_grad 
+    is more common.
+    """
+    match = re.match(r"(d\d*)(\w+)", s)
+    assert(match.group(1) != ""), "it should be a grad style name."
+    return match.group(2)
+
+def to_grad_name(s):
+    return 'GradVarName("{}")'.format(to_pascal_case(s))

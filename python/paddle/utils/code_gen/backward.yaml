@@ -195,7 +195,7 @@
     func : scatter_nd_grad
 
 - backward_api : addmm_grad
-  forward : scatter (Tensor input, Tensor x, Tensor y, float alpha, float beta) -> Tensor(out)
+  forward : addmm (Tensor input, Tensor x, Tensor y, float alpha, float beta) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha, float beta)
   output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
   infer_meta :

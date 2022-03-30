@@ -6,13 +6,19 @@ class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndChecker
   void Make() override {
   {% filter indent(4, True) %}
     {% for input in api["inputs"] %}
+      {% if input["name"] in api["kernel"]["param"] %}
 {{add_input(loop.index0, input, api_name)}};
+      {% endif %}
     {% endfor %}
     {% for output in api["outputs"] %}
+      {% if output["name"] in api["kernel"]["param"] %}
 {{add_output(loop.index0, output, api_name)}};
+      {% endif %}
     {% endfor %}
     {% for attr in api["attrs"] %}
+      {% if attr["name"] in api["kernel"]["param"] %}
 {{add_attr(loop.index0, attr, api_name)}};
+      {% endif %}
     {% endfor %}
   {% endfilter %}
     AddComment(R"DOC(
@@ -68,9 +74,12 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "attribute {{i}} for {{op_na
 {% macro process_default_value(attr) %}{# inline #}
   {% set default_value = attr["default_value"] %}
   {% set typename = attr["typename"] %}
-  {% set enum_types = ["DataType", "DataLayout", "Backend"] %}
-  {% if typename in enum_types %}
+  {% if typename == "DataType" %}
 static_cast<int>(experimental::{{default_value}})
+  {%- elif typename == "DataLayout" %}
+process_layout({{default_value}})
+  {%- elif typename == "Place" %}
+static_cast<int>(phi::Place({{default_value}}.GetType()))
   {%- elif typename == "str" %}{# warp string #}
 "{{default_value}}"
   {%- else %}
@@ -78,10 +87,10 @@ static_cast<int>(experimental::{{default_value}})
   {%- endif %}
 {%- endmacro %}
 
+
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(api) %}
 KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  // build inputs, attrs, outputs
   {% set kernel_args = api["kernel"]["param"] %}
   {{get_input_list(api["inputs"], kernel_args)}};
   paddle::SmallVector<std::string> attrs;
@@ -98,7 +107,7 @@ KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const Argumen
 
 {% macro register_name_map(api) %}
 PD_REGISTER_ARG_MAPPING_FN({{api["name"]}}, phi::{{api["name"] | to_pascal_case}}OpArgumentMapping);
-{% endmacro %}
+{%- endmacro %}
 
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
 paddle::SmallVector<std::string> inputs {
@@ -160,7 +169,6 @@ DECLARE_INPLACE_OP_INFERER({{api["name"] | to_pascal_case}}InplaceInferer,
 {% endmacro%}
 
 {% macro register_op_with_components(api) %}
-namespace ops = paddle::operators;
 {% set name = api["name"] %}
 {% if "backward" in api and api["backward"] is not none %}
 {% set backward_name = api["backward"] %}
@@ -175,11 +183,15 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op, ops::{{name | to_p
 {% endmacro %}
 
 
-{# --------------------------------------- op maker ---------------------------------------------- #}
-{% macro backward_op_maker(api) %}
+{# --------------------------------------- backward op maker ---------------------------------------------- #}
+{% macro backward_op_maker(api, forward_api) %}
   {% set name = api["name"] %}
   {% set forward_input_names = api["forward"]["inputs"] | map(attribute="name") | list %}
   {% set forward_output_names = api["forward"]["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_names = api["forward"]["attrs"] | map(attribute="name") | list %}
+  {% set forward_input_orig_names = forward_api["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_orig_names = forward_api["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_orig_names = forward_api["attrs"] | map(attribute="name") | list %}
 template <typename T>
 class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -190,34 +202,68 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     grad_op->SetType("{{name}}");
 
   {% for input in api["inputs"] %}
-    gard_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_from_forward(input["name"], forward_input_names, forward_output_names)}});
+    gard_op->SetInput("{{input["name"] | to_pascal_case}}", this->{{extract_input_from_forward(
+      input["name"], 
+      forward_input_names, 
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
   {% endfor %}
 
   {% for output in api["outputs"] %}
-    gard_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_from_forward(output["name"], forward_input_names, forward_output_names)}});
+    gard_op->SetOutput("{{output["name"] | to_pascal_case}}", this->{{extract_output_from_forward(
+      output["name"], 
+      forward_input_names, 
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
   {% endfor %}
 
   {% for attr in api["attrs"] %}
-    grad_op->SetAttr("{{attr["name"]}}", this->GetAttr("{{attr["name"]}}"));
+    {% set attr_name = attr["name"] %}
+    {% if attr_name in forward_attr_names %}
+    grad_op->SetAttr({{attr_name}}, this->GetAttr({{forward_attr_orig_names[forward_attr_names.index(attr_name)]}}));
+    {% else %}
+    grad_op->AddAttr<{{attr["typename"] | to_op_attr_type}}>({{attr_name}}, "attr {{attr_name}}");
+    grad_op->SetAttr({{attr_name}}, {{attr["default_value"]}});
+    {% endif %}
   {% endfor %}
   }
 };
 {% endmacro %}
 
 
-{% macro extract_from_forward(name, input_names, output_names) %}
-  {% if not name.endswith("_grad") %}
-    {% if name in input_names %}
-Input("{{name | to_pascal_case}}")
-    {%- elif name in output_names %}
+{% macro extract_input_from_forward(name, 
+  input_names, output_names, 
+  input_orig_names, output_orig_names) %}{# inline #}
+  {% if name in input_names %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
+Input("{{name_in_forward_orig | to_pascal_case}}")
+  {%- elif name in output_names %}
+    {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
 Output("{{name | to_pascal_case}}")
-    {%- endif %}
-  {% else %}
-    {% set fw_name = name.rstrip("_grad") %}
-    {% if fw_name in input_names %}
-InputGrad("{{name | to_pascal_case}}")
-    {%- elif fw_name in output_names %}
-OutputGrad("{{name | to_pascal_case}}")
+  {%- elif name.endswith("_grad") %}{# output grad#}
+    {% set name_in_forward = name.removesuffix("_grad") %}
+    {% if name_in_forward in output_names %}
+      {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
+OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
     {%- endif %}
   {%- endif %}
+{%- endmacro %}
+
+{% macro extract_output_from_forward(name, input_names, output_names,
+  input_orig_names, output_orig_names) %}{# inline #}
+  {% if name.removesuffix("_grad") in input_names %}
+    {% set name_in_forward = name.removesuffix("_grad") %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+InputGrad("{{name.removesuffix("_grad") | to_pascal_case}}")
+  {%- elif (name | to_input_name) in input_names %}
+    {% set name_in_forward = name | to_input_name %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+InputGrad("{{name | to_input_name | to_pascal_case}}")
+  {%- endif %}
+{%- endmacro %}
+
+{% macro extract_attr_from_forward(name, attr_names, attr_origin_names) %}
+this->GetAttr("{{name}}")
 {%- endmacro %}

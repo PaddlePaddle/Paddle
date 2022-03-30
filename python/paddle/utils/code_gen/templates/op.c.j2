@@ -1,6 +1,4 @@
-{% from "operator_utils.c.j2" import op_maker, operator, register_op_with_components %}
-{% if api is base_api%}
-// filename: {{api["name"]}}_op.cc
+{% from "operator_utils.c.j2" import op_maker, backward_op_maker, operator, register_op_with_components %}
 #include <string>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -13,12 +11,29 @@
 
 namespace paddle {
 namespace operators {
+{% for api in apis %}
+  {% if api is base_api %}
 
 {{op_maker(api)}}
 
 {{operator(api)}}
+  {% endif %}
+{% endfor %}
+
+{% for api in backward_apis %}
+  {% if api is base_api %}
+
+{{backward_op_maker(api, api_dict[api["forward"]["name"]])}}
+
+{{operator(api)}}
+  {% endif %}
+{% endfor %}
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+{% for api in apis + backward_apis %}
+{% if api is base_api %}
 {{register_op_with_components(api)}}
 {% endif %}
+{% endfor %}

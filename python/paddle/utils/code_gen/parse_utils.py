@@ -239,15 +239,17 @@ def parse_api_entry(api_entry: Dict[str, Any], name_field="api"):
         invoke = parse_invoke(api_name, api_entry["invoke"])
         api["invoke"] = invoke
 
-    # forward or backward 
-    is_backward_api = name_field == "backward_api"
-    if not is_backward_api:
-        if "backward" in api_entry:
-            backward = api_entry["backward"]
-        else:
-            backward = None
-        api["backward"] = backward
+    
+    # backward
+    if "backward" in api_entry:
+        backward = api_entry["backward"]
     else:
+        backward = None
+    api["backward"] = backward
+    
+    # forward for backward_apis
+    is_backward_api = name_field == "backward_api"
+    if is_backward_api:
         if "forward" in api_entry:
             forward = parse_forward(api_name, api_entry["forward"])
         else:
