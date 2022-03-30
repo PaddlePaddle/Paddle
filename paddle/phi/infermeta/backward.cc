@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 
+#include "paddle/phi/common/type_traits.h"
+
 namespace phi {
 
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
@@ -207,6 +209,12 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             float spatial_scale,
                             MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
+  dx->set_dims(out_grad.dims());
+  dx->set_dtype(dtype::ToComplex(out_grad.dtype()));
+  dx->set_layout(out_grad.layout());
 }
 
 void ScatterGradInferMeta(const MetaTensor& index,

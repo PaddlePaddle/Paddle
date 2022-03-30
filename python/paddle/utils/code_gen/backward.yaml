@@ -491,6 +491,12 @@
   kernel :
     func : hard_sigmoid_grad
 
+- backward_api : imag_grad
+  forward : imag (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : imag_grad_impl(out_grad)
+
 - backward_api : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
@@ -648,6 +654,12 @@
     param : [x, index]
   kernel :
     func : put_along_axis_grad
+
+- backward_api : real_grad
+  forward : real (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : real_grad_impl(out_grad)
 
 - backward_api : relu_grad
   forward : relu (Tensor x) -> Tensor(out)

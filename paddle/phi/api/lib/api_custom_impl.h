@@ -28,5 +28,11 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const ScalarArray& num_or_sections,
                                const Scalar& axis);
 
+/************************   backward api impl   ***************************/
+
+Tensor imag_grad_impl(const Tensor& x);
+
+Tensor real_grad_impl(const Tensor& x);
+
 }  // namespace experimental
 }  // namespace paddle

@@ -821,6 +821,15 @@
     func : huber_loss
   # backward : huber_loss_grad
 
+- api : imag
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : imag
+  backward : imag_grad
+
 # increment
 - api : increment
   args : (Tensor x, float value)
@@ -1104,6 +1113,15 @@
     func : put_along_axis
     data_type : x
   backward : put_along_axis_grad
+
+- api : real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : real
+  backward : real_grad
 
 # reduce_prod
 - api : reduce_prod
