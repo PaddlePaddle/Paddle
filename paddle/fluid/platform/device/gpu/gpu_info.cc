@@ -228,6 +228,8 @@ class RecordedGpuMallocHelper {
     if (err != hipErrorDeinitialized) {
 #else
     auto err = cudaFree(ptr);
+    VLOG(10) << "[cudaFree] size=" << static_cast<double>(size) / (1 << 20)
+             << " MB";
     if (err != cudaErrorCudartUnloading) {
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(err);

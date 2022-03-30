@@ -68,28 +68,6 @@ static size_t CaclWorkspaceLimitInBytes() {
   // return FLAGS_conv_workspace_size_limit * 1024 * 1024;
 }
 
-static size_t RoundUp(size_t workspace_size, size_t workspace_size_limit) {
-  LOG(INFO) << "workspace_size=" << workspace_size;
-  // static size_t max_workspace_size = 0;
-  // static std::mutex mutex;
-  // if (workspace_size > max_workspace_size) {
-  // Round up to 256M.
-  // constexpr int bits = 28;
-  // std::lock_guard<std::mutex> lock(mutex);
-  // max_workspace_size = ((workspace_size + (1 << bits) - 1) >> bits) << bits;
-  // if (round_size < workspace_size_limit) {
-  //   std::lock_guard<std::mutex> lock(mutex);
-  //   max_workspace_size = round_size;
-  // }
-  //}
-  // LOG(INFO) << "max_workspace_size=" << max_workspace_size;
-  return std::min(max_workspace_size, workspace_size_limit);
-  // constexpr int bits = 26;
-  // size_t round_workspace_size = ((workspace_size + (1 << bits) - 1) >> bits)
-  // << bits;
-  // return std::min(workspace_size, workspace_size_limit);
-}
-
 template <typename PerfT>
 std::string GetPerfResultString(const std::vector<PerfT>& perf_results,
                                 int actual_algo_count, size_t workspace_limit) {
@@ -249,6 +227,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                       max_workspace_size));
             };
             workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size);
+            // Avoid cache of workspace allocated during searching algorithm.
+            memory::Release(dev_ctx.GetPlace());
 
             VLOG(3) << GetPerfResultString<PerfT>(
                 perf_results, returned_algo_count, workspace_size_limit);
@@ -286,7 +266,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
         max_workspace_size = std::max(workspace_size, max_workspace_size);
       }
     }
-    return RoundUp(max_workspace_size, workspace_size_limit);
+    return std::min(max_workspace_size, workspace_size_limit);
   }
 };
 
@@ -391,6 +371,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                           max_workspace_size));
             };
             workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size);
+            // Avoid cache of workspace allocated during searching algorithm.
+            memory::Release(dev_ctx.GetPlace());
 
             VLOG(3) << GetPerfResultString<PerfT>(
                 perf_results, returned_algo_count, workspace_size_limit);
@@ -430,7 +412,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
         max_workspace_size = std::max(workspace_size, max_workspace_size);
       }
     }
-    return RoundUp(max_workspace_size, workspace_size_limit);
+    return std::min(max_workspace_size, workspace_size_limit);
   }
 };
 
@@ -527,6 +509,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                             max_workspace_size));
               };
               workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size);
+              // Avoid cache of workspace allocated during searching algorithm.
+              memory::Release(dev_ctx.GetPlace());
 
               VLOG(3) << GetPerfResultString<PerfT>(
                   perf_results, returned_algo_count, workspace_size_limit);
@@ -588,7 +572,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         max_workspace_size = std::max(workspace_size, max_workspace_size);
       }
     }
-    return RoundUp(max_workspace_size, workspace_size_limit);
+    return std::min(max_workspace_size, workspace_size_limit);
   }
 
   static void ChooseAlgo(const std::vector<PerfT>& perf_results,
