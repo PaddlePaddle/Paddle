@@ -21,6 +21,8 @@
 void Algo() { VLOG(3) << "algo test"; }
 
 TEST(AlgosCache, AlgosCache) {
+  auto cache = phi::autotune::AutoTuneCache::Instance().GetOrRegisterAlgoCache(
+      "conv_fw");
   phi::autotune::AlgorithmsCache<std::function<void()>> cache;
   std::vector<int64_t> x_shape = {4, 224, 224, 3};
   std::vector<int64_t> w_shape = {32, 3, 3, 3};

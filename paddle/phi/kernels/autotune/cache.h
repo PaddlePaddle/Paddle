@@ -118,5 +118,29 @@ class AlgorithmsCache {
   int64_t cache_misses_ = 0;
 };
 
+class AutoTuneCache {
+ public:
+  // AlgoType->KernelCache
+  AutoTuneCacheBase& AutoTuneCacheBase::Instance() {
+    static AutoTuneCacheBase autotune_cache;
+    return autotune_cache;
+  }
+
+  AlgorithmsCache GetOrRegisterAlgoCache(const std::string& name) {
+    std::lock_guard<std::mutex> lock(autotune_cache_mutex_);
+    if (auto_tune_map_.find(name) == auto_tune_map_.end()) {
+      AlgorithmsCache cache;
+      auto_tune_map_[name] = cache;
+    } else {
+      return auto_tune_map_[name];
+    }
+  }
+
+ private:
+  AutoTuneCache() = default;
+  std::unordered_map<std::string, AlgorithmsCache> auto_tune_map_;
+  std::mutex autotune_cache_mutex_;
+};
+
 }  // namespace autotune
 }  // namespace phi
