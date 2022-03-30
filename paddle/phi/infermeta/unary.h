@@ -363,7 +363,8 @@ void UnfoldInferMeta(const MetaTensor& x,
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const ScalarArray& axes,
                         MetaTensor* xshape,
-                        MetaTensor* out);
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
 
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
