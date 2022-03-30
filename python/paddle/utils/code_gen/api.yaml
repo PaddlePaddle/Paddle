@@ -1208,7 +1208,6 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
-    param : [x]
   kernel :
     func : mean
   backward : mean_grad
