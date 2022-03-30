@@ -20,7 +20,7 @@ import string
 
 from six.moves import cStringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, _non_static_mode
+from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
 from paddle import _C_ops
@@ -257,7 +257,10 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if _non_static_mode():
+        if in_dygraph_mode():
+            op = getattr(_C_ops, "final_state_%s" % op_type)
+            return op(x)
+        if _in_legacy_dygraph():
             op = getattr(_C_ops, op_type)
             return op(x)
 

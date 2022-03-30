@@ -29,6 +29,7 @@ class TestElementwiseModOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_mod"
+        self.python_api = paddle.mod
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
@@ -43,7 +44,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -76,7 +77,7 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
