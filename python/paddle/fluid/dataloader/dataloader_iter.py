@@ -41,6 +41,7 @@ from .worker import ParentWatchDog, get_worker_info, _worker_loop, \
         _DatasetKind, _IterableDatasetStopIteration, _WorkerException, \
         _ResumeIteration
 from .flat import _flatten_batch, _restore_batch
+from paddle.profiler.timer import benchmark
 
 __all__ = ['get_worker_info']
 
@@ -256,6 +257,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
         try:
+            benchmark().check_if_need_record(self)
+            benchmark().before_reader()
             if in_dygraph_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0])
@@ -283,6 +286,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                             data = data[0]
                     else:
                         data = self._reader.read_next()
+            benchmark().after_reader()
 
             return data
         except StopIteration:
@@ -708,6 +712,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
         try:
+            benchmark().check_if_need_record(self)
+            benchmark().before_reader()
             # _batches_outstanding here record the total batch data number
             # in 'from after _try_put_indices to beforeoutput data', this
             # value should be _outstanding_capacity if data is not drained,
@@ -750,6 +756,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     else:
                         data = self._reader.read_next()
             self._on_output_batch()
+            benchmark().after_reader()
             return data
         except StopIteration:
             if not self._persistent_workers:
