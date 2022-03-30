@@ -60,7 +60,7 @@ g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda:
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
-    Determines whether dtype of output tensor is as expected.
+    Determines whether is dtype of output tensor is as expected.
 
     Args:
         api_fn(callable):  paddle api function
@@ -1321,7 +1321,7 @@ class OpTest(unittest.TestCase):
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None,
-                                check_eager=False):
+                                check_eager=True):
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1695,7 +1695,7 @@ class OpTest(unittest.TestCase):
                      equal_nan=False,
                      check_dygraph=True,
                      inplace_atol=None,
-                     check_eager=False):
+                     check_eager=True):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1788,7 +1788,7 @@ class OpTest(unittest.TestCase):
                    user_defined_grads=None,
                    user_defined_grad_outputs=None,
                    check_dygraph=True,
-                   check_eager=False):
+                   check_eager=True):
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -1817,7 +1817,7 @@ class OpTest(unittest.TestCase):
                               user_defined_grad_outputs=None,
                               check_dygraph=True,
                               numeric_place=None,
-                              check_eager=False):
+                              check_eager=True):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1961,7 +1961,7 @@ class OpTest(unittest.TestCase):
                           output_names,
                           user_defined_grad_outputs=None,
                           no_grad_set=None,
-                          check_eager=False):
+                          check_eager=True):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
