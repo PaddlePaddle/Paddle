@@ -33,23 +33,25 @@ _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    Sorted keys for printing summary table.
+    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_paddle_profiler_profiler_summary>` table.
 
-    CPUTotal: Sorted by CPU total time.
+    The meaning of each SortedKeys is as following
 
-    CPUAvg: Sorted by CPU average time.
+    - **SortedKeys.CPUTotal** :  Sorted by CPU total time.
 
-    CPUMax: Sorted by CPU max time.
+    - **SortedKeys.CPUAvg**  : Sorted by CPU average time.
 
-    CPUMin: Sorted by CPU min time.
+    - **SortedKeys.CPUMax**  : Sorted by CPU max time.
 
-    GPUTotal: Sorted by GPU total time.
+    - **SortedKeys.CPUMin**  : Sorted by CPU min time.
 
-    GPUAvg: Sorted by GPU average time.
+    - **SortedKeys.GPUTotal**  : Sorted by GPU total time.
 
-    GPUMax: Sorted by GPU max time.
+    - **SortedKeys.GPUAvg**  : Sorted by GPU average time.
 
-    GPUMin: Sorted by GPU min time.
+    - **SortedKeys.GPUMax**  : Sorted by GPU max time.
+
+    - **SortedKeys.GPUMin**  : Sorted by GPU min time.
     """
     CPUTotal = 0
     CPUAvg = 1
@@ -119,6 +121,23 @@ def traverse_tree(nodetrees):
     return results
 
 
+def get_device_nodes(hostnode):
+    '''
+    Get all device nodes called in the time range of hostnode.
+    '''
+    stack = []
+    device_nodes = []
+    stack.append(hostnode)
+    while stack:
+        current_node = stack.pop()
+        for childnode in current_node.children_node:
+            stack.append(childnode)
+        for runtimenode in current_node.runtime_node:
+            for devicenode in runtimenode.device_node:
+                device_nodes.append(devicenode)
+    return device_nodes
+
+
 def wrap_tree(nodetrees):
     '''
     Using HostStatisticNode to wrap original profiler result tree, and calculate node statistic metrics.
@@ -186,16 +205,6 @@ class TimeRangeSummary:
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns))
                 self.call_times[hostnode.type] += 1
-                if hostnode.type == TracerEventType.Operator and any([
-                        name in hostnode.name for name in _CommunicationOpName
-                ]):  # special case, communication op
-                    CPUTimeRange[TracerEventType.Communication].append(
-                        (hostnode.start_ns, hostnode.end_ns))
-                    self.call_times[TracerEventType.Communication] += 1
-                is_communication_node = (
-                    hostnode.type == TracerEventType.Communication
-                ) or (hostnode.type == TracerEventType.Operator and any(
-                    [name in hostnode.name for name in _CommunicationOpName]))
                 for runtimenode in hostnode.runtime_node:
                     CPUTimeRange[runtimenode.type].append(
                         (runtimenode.start_ns, runtimenode.end_ns))
@@ -205,12 +214,6 @@ class TimeRangeSummary:
                             devicenode.stream_id].append(
                                 (devicenode.start_ns, devicenode.end_ns))
                         self.call_times[devicenode.type] += 1
-                        if is_communication_node:  # gpu activity for communication node
-                            GPUTimeRange[devicenode.device_id][
-                                TracerEventType.Communication][
-                                    devicenode.stream_id].append((
-                                        devicenode.start_ns, devicenode.end_ns))
-                            self.call_times[TracerEventType.Communication] += 1
 
             for event_type, time_ranges in CPUTimeRange.items():
                 time_ranges = merge_self_ranges(time_ranges, is_sorted=False)
@@ -241,6 +244,74 @@ class TimeRangeSummary:
 
     def get_cpu_range_sum(self, event_type):
         return self.CPUTimeRangeSum[event_type]
+
+
+class DistributedSummary:
+    r"""
+    Analysis communication and computation time range, and their overlap.
+    The computation time is all kernel except kernels for communication like nccl.
+    """
+
+    def __init__(self):
+        self.cpu_communication_range = []
+        self.gpu_communication_range = []
+        self.communication_range = []
+        self.computation_range = []
+        self.overlap_range = []
+
+    def parse(self, nodetrees):
+        '''
+        Collect all communication and computation time ranges.
+        '''
+        thread2hostnodes = traverse_tree(nodetrees)
+        for threadid, hostnodes in thread2hostnodes.items():
+            for hostnode in hostnodes[1:]:  #skip root node
+                # case 1: TracerEventType is Communication
+                if hostnode.type == TracerEventType.Communication:
+                    self.cpu_communication_range.append(
+                        (hostnode.start_ns, hostnode.end_ns))
+                    device_nodes = get_device_nodes(hostnode)
+                    for device_node in device_nodes:
+                        if device_node.type == TracerEventType.Kernel:
+                            self.gpu_communication_range.append(
+                                (device_node.start_ns, device_node.end_ns))
+
+                #case 2: TracerEventType is Operator but is communication op
+                elif hostnode.type == TracerEventType.Operator and any([
+                        name in hostnode.name.lower()
+                        for name in _CommunicationOpName
+                ]):
+                    self.cpu_communication_range.append(
+                        (hostnode.start_ns, hostnode.end_ns))
+                    device_nodes = get_device_nodes(hostnode)
+                    for device_node in device_nodes:
+                        if device_node.type == TracerEventType.Kernel:
+                            self.gpu_communication_range.append(
+                                (device_node.start_ns, device_node.end_ns))
+
+                #case 3: Others, filter kernels named with nccl
+                else:
+                    for runtimenode in hostnode.runtime_node:
+                        for devicenode in runtimenode.device_node:
+                            if devicenode.type == TracerEventType.Kernel:
+                                if 'nccl' in devicenode.name.lower():
+                                    self.gpu_communication_range.append((
+                                        devicenode.start_ns, devicenode.end_ns))
+                                else:
+                                    self.computation_range.append((
+                                        devicenode.start_ns, devicenode.end_ns))
+        self.cpu_communication_range = merge_self_ranges(
+            self.cpu_communication_range, is_sorted=False)
+        self.gpu_communication_range = merge_self_ranges(
+            self.gpu_communication_range, is_sorted=False)
+        self.communication_range = merge_ranges(
+            self.cpu_communication_range,
+            self.gpu_communication_range,
+            is_sorted=True)
+        self.computation_range = merge_self_ranges(
+            self.computation_range, is_sorted=False)
+        self.overlap_range = intersection_ranges(
+            self.communication_range, self.computation_range, is_sorted=True)
 
 
 class EventSummary:
@@ -473,8 +544,10 @@ class StatisticData:
         self.extra_info = extra_info
         self.time_range_summary = TimeRangeSummary()
         self.event_summary = EventSummary()
+        self.distributed_summary = DistributedSummary()
         self.time_range_summary.parse(node_trees)
         self.event_summary.parse(node_trees)
+        self.distributed_summary.parse(node_trees)
 
 
 def _build_table(statistic_data,
@@ -610,7 +683,11 @@ def _build_table(statistic_data,
     gpu_type_time = collections.defaultdict(int)
     for event_type, value in statistic_data.time_range_summary.CPUTimeRangeSum.items(
     ):
-        cpu_type_time[event_type] = value
+        if event_type != TracerEventType.Communication:
+            cpu_type_time[event_type] = value
+    if statistic_data.distributed_summary.cpu_communication_range:
+        cpu_type_time[TracerEventType.Communication] = sum_ranges(
+            statistic_data.distributed_summary.cpu_communication_range)
 
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
@@ -620,6 +697,9 @@ def _build_table(statistic_data,
                 gpu_time_range[event_type], time_range, is_sorted=True)
     for event_type, time_range in gpu_time_range.items():
         gpu_type_time[event_type] = sum_ranges(time_range)
+    if statistic_data.distributed_summary.gpu_communication_range:
+        gpu_type_time[TracerEventType.Communication] = sum_ranges(
+            statistic_data.distributed_summary.gpu_communication_range)
 
     sorted_items = sorted(
         cpu_type_time.items(), key=lambda x: x[1], reverse=True)
@@ -735,7 +815,7 @@ def _build_table(statistic_data,
         append('')
 
     ###### Print Distribution Summary Report ######
-    if TracerEventType.Communication in statistic_data.time_range_summary.CPUTimeRange:
+    if statistic_data.distributed_summary.communication_range:
         headers = [
             'Name',
             'Total Time',
@@ -759,33 +839,12 @@ def _build_table(statistic_data,
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
-        cpu_communication_time_range = []
-        gpu_communication_time_range = []
-        cpu_communication_time_range = merge_ranges(
-            statistic_data.time_range_summary.CPUTimeRange[
-                TracerEventType.Communication], cpu_communication_time_range)
-        kernel_time_range = []
-        for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
-        ):
-            kernel_time_range = merge_ranges(
-                device_time_ranges[TracerEventType.Kernel],
-                kernel_time_range,
-                is_sorted=True)
-            gpu_communication_time_range = merge_ranges(
-                device_time_ranges[TracerEventType.Communication],
-                gpu_communication_time_range,
-                is_sorted=True)
-        communication_time_range = merge_ranges(
-            cpu_communication_time_range,
-            gpu_communication_time_range,
-            is_sorted=True)
-        computation_time_range = subtract_ranges(kernel_time_range,
-                                                 gpu_communication_time_range)
-        overlap_time_range = intersection_ranges(communication_time_range,
-                                                 computation_time_range)
-        communication_time = sum_ranges(communication_time_range)
-        computation_time = sum_ranges(computation_time_range)
-        overlap_time = sum_ranges(overlap_time_range)
+        communication_time = sum_ranges(
+            statistic_data.distributed_summary.communication_range)
+        computation_time = sum_ranges(
+            statistic_data.distributed_summary.computation_range)
+        overlap_time = sum_ranges(
+            statistic_data.distributed_summary.overlap_range)
         row_values = [
             'Communication', format_time(
                 communication_time, unit=time_unit),
@@ -808,9 +867,9 @@ def _build_table(statistic_data,
         append(row_format.format(*row_values))
         append(header_sep)
         append(
-            "Note:\nCommunication time: Communication Op time and its kernel time on gpu.\n"
-            "Computation time: Kernel time, substract kernels belong to communication op.\n"
-            "Overlap time: Communication time intersect with computation time.\n"
+            "Note:\nCommunication time: Communication Event time, Communication Op time and its kernel time on gpu.\n"
+            "Computation time: Kernel time, except kernels belong to communication(nccl kernels).\n"
+            "Overlap time: Communication time intersects with computation time.\n"
             "Example:\n"
             "Communication:\n"
             "  CPU:              |_________________|\n"
@@ -976,7 +1035,7 @@ def _build_table(statistic_data,
                                                                 - 5]
                             device_node_name += "..."
                         row_values = [
-                            '    {}'.format(device_node_name), devicenode.call,
+                            '  {}'.format(device_node_name), devicenode.call,
                             '- / - / - / - / -',
                             '{} / {} / {} / {} / {}'.format(
                                 format_time(
@@ -1001,10 +1060,14 @@ def _build_table(statistic_data,
             'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
             'GPU Total / Avg / Max / Min / Ratio(%)'
         ]
+        name_column_width = 0
+        for name, item in statistic_data.event_summary.memory_manipulation_items.items(
+        ):
+            name_column_width = max(len(name), name_column_width)
         row_format_list = [""]
         header_sep_list = [""]
         line_length_list = [-SPACING_SIZE]
-        name_column_width = 30
+        name_column_width = min(name_column_width, 45)
         add_column(name_column_width)
         add_column(6)
         add_column(40)
@@ -1059,7 +1122,7 @@ def _build_table(statistic_data,
         row_format_list = [""]
         header_sep_list = [""]
         line_length_list = [-SPACING_SIZE]
-        name_column_width = 30
+        name_column_width = 35
         add_column(name_column_width)
         add_column(6)
         add_column(40)

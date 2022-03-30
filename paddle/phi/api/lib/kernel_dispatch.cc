@@ -25,16 +25,19 @@ namespace experimental {
 namespace detail {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
-  BackendSet backend_set(phi::TransToPhiBackend(t.place()));
-  switch (t.layout()) {
-    case DataLayout::MKLDNN:
-      backend_set = backend_set | BackendSet(Backend::MKLDNN);
-      break;
-    default:
-      // do nothing
-      break;
+  if (t.initialized()) {
+    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
+    switch (t.layout()) {
+      case DataLayout::MKLDNN:
+        backend_set = backend_set | BackendSet(Backend::MKLDNN);
+        break;
+      default:
+        // do nothing
+        break;
+    }
+    return backend_set;
   }
-  return backend_set;
+  return BackendSet(Backend::UNDEFINED);
 }
 
 std::size_t CountLeadingZeros(uint64_t val) {

@@ -134,7 +134,10 @@ class Accessor:
 
         if not accessor_proto.HasField("accessor_class"):
             # DownpourSparseValueAccessor
-            accessor_proto.accessor_class = "SparseAccessor"
+            if context['use_ps_gpu']:
+                accessor_proto.accessor_class = "CtrCommonAccessor"
+            else:
+                accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
             if accessor_proto.accessor_class == "SparseAccessor":
                 accessor_proto.fea_dim = embedding_dim + 2
@@ -1010,6 +1013,7 @@ class TheOnePSRuntime(RuntimeBase):
                     self._init_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
+
         self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 

@@ -306,4 +306,5 @@ __all__ = [     #noqa
            'MaxUnPool2D',
            'MaxUnPool3D',
            'HingeEmbeddingLoss',
+           'Identity',
 ]

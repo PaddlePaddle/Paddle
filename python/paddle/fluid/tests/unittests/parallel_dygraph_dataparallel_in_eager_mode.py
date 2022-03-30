@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import unittest
 import os
+import copy
 import numpy as np
 import random
 import socket
@@ -30,28 +31,22 @@ import paddle.distributed as dist
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.optimizer import SGD
 from paddle.fluid.initializer import NumpyArrayInitializer
-
-
-def net_is_used(port, ip='127.0.0.1'):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        s.connect((ip, port))
-        s.shutdown(2)
-        return True
-    except Exception as e:
-        return False
+from test_parallel_dygraph_dataparallel import get_dist_port_from_flags
 
 
 def init_process_group(strategy=None):
     nranks = ParallelEnv().nranks
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
-    for port in range(20000, 21000):
-        if not net_is_used(port):
-            store = paddle.fluid.core.TCPStore("127.0.0.1", port, is_master,
-                                               nranks)
-            group = core.ProcessGroupNCCL(store, rank, nranks)
-            return group
+    envs = copy.copy(os.environ.copy())
+    port = get_dist_port_from_flags()
+    store = paddle.fluid.core.TCPStore("127.0.0.1", port, is_master, nranks)
+    if 'PADDLE_DISTRI_BACKEND' in envs.keys() and envs[
+            'PADDLE_DISTRI_BACKEND'] == 'gloo':
+        group = core.ProcessGroupGloo(store, rank, nranks)
+    else:
+        group = core.ProcessGroupNCCL(store, rank, nranks)
+    return group
 
 
 class LinearModel(nn.Layer):
@@ -75,11 +70,12 @@ class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
         process_group = init_process_group()
         self.generate_reducer("float32", process_group)
-        self.generate_reducer("float16", process_group)
+        if paddle.get_device() != "cpu":
+            self.generate_reducer("float16", process_group)
 
     def generate_reducer(self, dtype, process_group):
-        dev_id = ParallelEnv().dev_id
-        np.random.seed(2022 + dev_id)
+        local_rank = ParallelEnv().local_rank
+        np.random.seed(2022 + local_rank)
         paddle.set_default_dtype(dtype)
 
         w_1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
