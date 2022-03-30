@@ -1527,8 +1527,8 @@ void ReshapeInferMeta(const MetaTensor& x,
 
 void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 const ScalarArray& shape,
-                                MetaTensor* xshape,
                                 MetaTensor* out,
+                                MetaTensor* xshape,
                                 MetaConfig config) {
   PADDLE_ENFORCE_NOT_NULL(
       xshape,

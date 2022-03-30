@@ -887,7 +887,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Forward Full Logic
         function_name = forward_api_name
         if len(intermediate_outputs) > 0:
-            function_name = GetIntermediateAPIFunctionName(function_name)
+            if is_inplaced:
+                function_name = GetIntermediateAPIFunctionName(
+                    forward_api_name[:-1]) + '_'
+            else:
+                function_name = GetIntermediateAPIFunctionName(function_name)
 
         forward_call_str = f"auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
 
