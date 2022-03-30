@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -23,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
+@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -45,12 +45,14 @@ class TestBase(IPUOpTest):
 
     def set_attrs(self):
         self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 0.0,
+            "weight_decay": 4.0,
             "loss_scaling": 1.0,
         }
 
     def _test_optimizer(self, run_ipu=True):
+        def exclude_fn(param):
+            return param.name.endswith('.w_0')
+
         scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -62,20 +64,17 @@ class TestBase(IPUOpTest):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')
+                bias = paddle.fluid.layers.create_parameter(
+                    shape=[1, 3, 10, 10], is_bias=True, dtype='float32')
+                add1 = image + bias
                 conv1 = paddle.static.nn.conv2d(
-                    image, num_filters=3, filter_size=3, bias_attr=False)
+                    add1, num_filters=3, filter_size=3, bias_attr=False)
+
                 loss = paddle.mean(conv1)
-
-                weight_decay = self.attrs['weight_decay']
-                opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                           weight_decay=weight_decay)
-                if self.attrs['optimizer'] == 'adam':
-                    opt = paddle.optimizer.Adam(
-                        learning_rate=1e-1, weight_decay=weight_decay)
-                elif self.attrs['optimizer'] == 'lamb':
-
-                    opt = paddle.optimizer.Lamb(
-                        learning_rate=1e-1, lamb_weight_decay=weight_decay)
+                opt = paddle.optimizer.Lamb(
+                    learning_rate=1e-1,
+                    lamb_weight_decay=self.attrs['weight_decay'],
+                    exclude_from_weight_decay_fn=exclude_fn)
                 opt.minimize(loss)
 
             if run_ipu:
@@ -84,6 +83,7 @@ class TestBase(IPUOpTest):
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
+            paddle.static.save(main_prog, "weight_decay")
 
             if run_ipu:
                 feed_list = [image.name]
@@ -93,15 +93,6 @@ class TestBase(IPUOpTest):
                 ipu_strategy.set_options({
                     'loss_scaling': self.attrs["loss_scaling"]
                 })
-                if "use_no_bias_optimizer" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "use_no_bias_optimizer":
-                        self.attrs["use_no_bias_optimizer"]
-                    })
-                if "accl1_type" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "accl1_type": self.attrs["accl1_type"]
-                    })
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -121,99 +112,6 @@ class TestBase(IPUOpTest):
         cpu_loss = self._test_optimizer(False).flatten()
 
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
-
-
-@unittest.skip('do not support L2 regularization')
-class TestSGD(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 0.1,
-            "loss_scaling": 2.0,
-        }
-
-
-@unittest.skip('do not support L2 regularization')
-class TestAdamCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.1,
-            "loss_scaling": 3.0,
-        }
-
-
-class TestAdamCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-        }
-
-
-@unittest.skip('cpu do not support AdamNoBias')
-class TestAdamNoBias(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-            "use_no_bias_optimizer": True,
-        }
-
-
-@unittest.skip('cpu do not support FLOAT16')
-class TestAdamCase3(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-            "accl1_type": "FLOAT16",
-        }
-
-
-@unittest.skip('seems cpu output wrong')
-class TestLambCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.0,
-            "loss_scaling": 5.0,
-        }
-
-
-@unittest.skip('seems cpu output wrong')
-class TestLamb(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-        }
-
-
-@unittest.skip('cpu do not support LambNoBias')
-class TestLambNoBias(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-            "use_no_bias_optimizer": True
-        }
-
-
-@unittest.skip('cpu do not support FLOAT16')
-class TestLambCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-            "accl1_type": "FLOAT16"
-        }
 
 
 if __name__ == "__main__":
