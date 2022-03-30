@@ -50,11 +50,11 @@ struct CustomGradMerger {
     return out;
   }
 };
-#elif defined(PADDLE_WITH_XPU_KP)
+
+#elif defined(PADDLE_WITH_XPU)
 struct CustomGradMerger {
   template <typename T>
-  __forceinline__ __device__ T
-  operator()(const T& a, const T& b) const {
+  __forceinline__ __device__ T operator()(const T& a, const T& b) const {
     T out;
     out.slot = a.slot;
     out.show = a.show + b.show;
@@ -67,7 +67,6 @@ struct CustomGradMerger {
   }
 };
 #endif
-
 
 template <typename KeyType, typename ValType, typename GradType>
 class HeterComm {
@@ -95,12 +94,9 @@ class HeterComm {
 
   int log2i(int x);
 
-  
-
   template <typename DstPlace, typename SrcPlace, typename StreamType>
-  void memory_copy(DstPlace dst_place, void* dst, SrcPlace src_place, const void* src, size_t count, StreamType stream = 0) {
-
-
+  void memory_copy(DstPlace dst_place, void* dst, SrcPlace src_place,
+                   const void* src, size_t count, StreamType stream = 0);
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
@@ -137,6 +133,9 @@ class HeterComm {
 
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
+
+  void end_pass();
+
   struct Node {
     ppStream in_stream;
     ppStream out_stream;
@@ -145,7 +144,7 @@ class HeterComm {
     int sync;
     int key_bytes_len;
     int val_bytes_len;
-    int gpu_num;
+    int dev_num;
   };
 
   struct Path {
@@ -201,7 +200,7 @@ class HeterComm {
   void init_path();
 
   template <typename StreamType>
-  void sync_stream(StreamType& stream) {
+  void sync_stream(const StreamType& stream) {
     if (stream >= 0) {
 #if defined(PADDLE_WITH_CUDA)
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
@@ -212,18 +211,24 @@ class HeterComm {
   }
 
   template <typename KeyT, typename ValueT, typename StreamType>
-  void sort_pairs(void * d_temp_storage, size_t & temp_storage_bytes,
-                  const KeyT * d_keys_in, KeyT * d_keys_out, const ValueT * d_values_in,
-                  ValueT * d_values_out, int  num_items, int  begin_bit = 0, int  end_bit = sizeof(KeyT) * 8,
-                  StreamType stream = 0, bool debug_synchronous = false);
+  void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+                  const KeyT* d_keys_in, KeyT* d_keys_out,
+                  const ValueT* d_values_in, ValueT* d_values_out,
+                  int num_items, int begin_bit = 0,
+                  int end_bit = sizeof(KeyT) * 8, StreamType stream = 0,
+                  bool debug_synchronous = false);
 
-  
-  template<typename KeysInputIteratorT, typename UniqueOutputIteratorT, typename ValuesInputIteratorT, typename AggregatesOutputIteratorT, typename NumRunsOutputIteratorT, typename ReductionOpT>
-  void ReduceByKey(void* d_temp_storage, size_t& temp_storage_bytes, KeysInputIteratorT d_keys_in,
-                  UniqueOutputIteratorT d_unique_out, ValuesInputIteratorT d_values_in, AggregatesOutputIteratorT d_aggregates_out,
-                  NumRunsOutputIteratorT d_num_runs_out, ReductionOpT reduction_op, int num_items,
-                  cudaStream_t stream = 0, bool debug_synchronous = false);
-
+  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
+            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+            typename NumRunsOutputIteratorT, typename ReductionOpT>
+  void ReduceByKey(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+                   KeysInputIteratorT d_keys_in,
+                   UniqueOutputIteratorT d_unique_out,
+                   ValuesInputIteratorT d_values_in,
+                   AggregatesOutputIteratorT d_aggregates_out,
+                   NumRunsOutputIteratorT d_num_runs_out,
+                   ReductionOpT reduction_op, int num_items,
+                   cudaStream_t stream = 0, bool debug_synchronous = false);
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
@@ -233,7 +238,6 @@ class HeterComm {
                    ValType* src_val);
 
  protected:
-
   using Table = HashTable<KeyType, ValType>;
   std::vector<Table*> tables_;
 #endif
@@ -260,10 +264,11 @@ class HeterComm {
 #elif defined(PADDLE_WITH_XPU_KP)
   // std::vector<std::shared_ptr<>> allocators_;
 #endif
-
 };
 
 }  // end namespace framework
 }  // end namespace paddle
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
+
 #endif
