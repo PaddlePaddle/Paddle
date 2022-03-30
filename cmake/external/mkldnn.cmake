@@ -22,6 +22,7 @@ SET(MKLDNN_REPOSITORY     ${GIT_URL}/oneapi-src/oneDNN.git)
 SET(MKLDNN_TAG            52b5f107dd9cf10910aaa19cb47f3abf9b349815)
 
 
+
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
 INCLUDE(GNUInstallDirs)

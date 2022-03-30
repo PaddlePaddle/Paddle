@@ -145,6 +145,7 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
                             const std::string& pool_type,
+                            int64_t out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count) {
   auto src_index_dims = src_index.dims();
@@ -187,11 +188,23 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                         "Src_index and Dst_index should have the same shape."));
 
   auto dims = x.dims();
-  out->set_dims(dims);
+  if (out_size <= 0) {
+    out->set_dims(dims);
+  } else {
+    std::vector<int64_t> dims_ = phi::vectorize(dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->set_dims(phi::make_ddim(dims_));
+  }
   out->set_dtype(x.dtype());
 
   if (pool_type == "MEAN") {
-    dst_count->set_dims({dims[0]});
+    if (out_size <= 0) {
+      dst_count->set_dims({dims[0]});
+    } else {
+      dst_count->set_dims({out_size});
+    }
     dst_count->set_dtype(DataType::INT32);
   }
 }
@@ -320,6 +333,16 @@ void NllLossRawInferMeta(const MetaTensor& input,
   total_weight->set_dims({1});
   out->set_dtype(input.dtype());
   total_weight->set_dtype(input.dtype());
+}
+
+void PutAlongAxisInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& value,
+                           int axis,
+                           const std::string& reduce,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void RoiAlignInferMeta(const MetaTensor& x,

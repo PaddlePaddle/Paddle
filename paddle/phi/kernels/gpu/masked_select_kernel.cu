@@ -17,10 +17,11 @@
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
 #include "paddle/phi/kernels/masked_select_kernel.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 

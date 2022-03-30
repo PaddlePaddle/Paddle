@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
 
+#include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -27,14 +28,14 @@ namespace paddle {
 namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
-Tensor copy_to(const Tensor &x, Backend backend, bool blocking);
+Tensor copy_to(const Tensor &x, Place place, bool blocking);
 
 Tensor Tensor::cast(DataType target_type) const {
   return experimental::cast(*this, target_type);
 }
 
-Tensor Tensor::copy_to(Backend backend, bool blocking) const {
-  return experimental::copy_to(*this, backend, blocking);
+Tensor Tensor::copy_to(Place place, bool blocking) const {
+  return experimental::copy_to(*this, place, blocking);
 }
 
 template <typename T>
@@ -44,7 +45,7 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
                   "`copy_to` method without template argument instead. "
                   "reason: copying a Tensor to another device does not need "
                   "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
+  return copy_to(ConvertExtPlaceToInnerPlace(target_place), /*blocking=*/false);
 }
 
 template PADDLE_API Tensor
@@ -84,26 +85,26 @@ void Tensor::copy_(const Tensor &src,
   if (is_initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
                       src.dtype(),
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s, "
                           "Tensor Copy cannot be performed!",
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(impl()->type_info().id(),
                       src.impl()->type_info().id(),
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "Copy cannot be performed!",
                           name(),
                           src.name()));
     PADDLE_ENFORCE_EQ(target_place,
                       inner_place(),
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Place is different of dst tensor and args %s, which "
                           "current tensor holds %s "
                           "Copy cannot be performed!",
-                          target_place.DebugString(),
-                          inner_place().DebugString()));
+                          target_place,
+                          inner_place()));
     kernel_key_set.backend_set =
         kernel_key_set.backend_set |
         BackendSet(phi::TransToPhiBackend(inner_place()));
@@ -177,10 +178,22 @@ void Tensor::copy_(const Tensor &src,
                  blocking,
                  static_cast<phi::SelectedRows *>(impl_.get()));
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "
         "copy selected rows please raise a issue."));
   }
+}
+
+Tensor Tensor::to_sparse_coo(const int64_t sparse_dim) const {
+  return experimental::sparse::to_sparse_coo(*this, sparse_dim);
+}
+
+Tensor Tensor::to_sparse_csr() const {
+  return experimental::sparse::to_sparse_csr(*this);
+}
+
+Tensor Tensor::to_dense() const {
+  return experimental::sparse::to_dense(*this);
 }
 
 }  // namespace experimental

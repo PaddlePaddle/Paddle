@@ -231,6 +231,12 @@ if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 6888866 39303645
   fi
 
+HAS_MODIFIED_DECLARATIONS=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels/declarations.h" || true`
+if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by chenwhql for any use of paddle/phi/kernels/declarations.h. Thanks!\n"
+    check_approval 1 22561442
+  fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
