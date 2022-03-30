@@ -50,9 +50,8 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         self.assertTrue(np.array_equal(var_numpy, view_var_numpy))
 
     def test_view_api(self):
-        if self.flag_test_eager_mode:
-            with _test_eager_guard():
-                self.func_test_view_api()
+        with _test_eager_guard():
+            self.func_test_view_api()
         self.func_test_view_api()
 
     def func_test_forward_version(self):
@@ -73,9 +72,8 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         self.assertEqual(view_var_2.inplace_version, 2)
 
     def test_forward_version(self):
-        if self.flag_test_eager_mode:
-            with _test_eager_guard():
-                self.func_test_forward_version()
+        with _test_eager_guard():
+            self.func_test_forward_version()
         self.func_test_forward_version()
 
     def func_test_backward_error(self):
@@ -107,9 +105,8 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
                     loss.backward()
 
     def test_backward_error(self):
-        if self.flag_test_eager_mode:
-            with _test_eager_guard():
-                self.func_test_backward_error()
+        with _test_eager_guard():
+            self.func_test_backward_error()
         self.func_test_backward_error()
 
 
