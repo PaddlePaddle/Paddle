@@ -361,7 +361,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
 }
 
 /*---------------------------Radix TopK Begin------------------*/
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
 constexpr int RADIX_BITS = 2;  // digits are base-(2 ^ RADIX_BITS)
 constexpr int RADIX_SIZE = 4;  // 2 ^ RADIX_BITS
 constexpr int RADIX_MASK = (RADIX_SIZE - 1);
