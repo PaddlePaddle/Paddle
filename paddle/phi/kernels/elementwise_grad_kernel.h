@@ -159,4 +159,13 @@ void MinimumGradKernel(const Context& dev_ctx,
                        int axis,
                        DenseTensor* dx,
                        DenseTensor* dy);
+
+template <typename T, typename Context>
+void ElementwisePowGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy);
 }  // namespace phi
