@@ -31,9 +31,9 @@ from paddle.fluid import core
 from paddle.fluid.data_feeder import (check_dtype, check_type,
                                       check_variable_and_dtype, convert_dtype)
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import (control_flow, elementwise_add,
-                                 elementwise_div, elementwise_mul,
-                                 elementwise_sub, nn, ops, tensor)
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
 from paddle.tensor import arange, concat, gather_nd, multinomial
 
 
@@ -78,8 +78,22 @@ class Distribution(object):
         """
         return self._event_shape
 
+    @property
+    def mean(self):
+        """Mean of distribution"""
+        raise NotImplementedError
+
+    @property
+    def variance(self):
+        """Variance of distribution"""
+        raise NotImplementedError
+
     def sample(self, shape=()):
         """Sampling from the distribution."""
+        raise NotImplementedError
+
+    def rsample(self, shape=()):
+        """reparameterized sample"""
         raise NotImplementedError
 
     def entropy(self):

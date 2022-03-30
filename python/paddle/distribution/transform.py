@@ -113,31 +113,7 @@ class Transform(object):
 
         * _forward_shape
         * _inverse_shape
-
-    Examples:
-
-        .. code-block:: python
-
-            class ExpTransform(Transform):
-
-                _type = _Type.BIJECTION
-
-                def __init__(self):
-                    super(ExpTransform, self).__init__()
-
-                def _forward(self, x):
-                    return x.exp()
-
-                def _inverse(self, y):
-                    return y.log()
-
-                def _forward_log_det_jacobian(self, x):
-                    return x
-
-                # Optional, this has been implemented in Base classs.
-                def _inverse_log_det_jacobian(self, y):
-                    return -self._forward_log_det_jacobian(self._inverse(y))
-
+        
     """
     _type = Type.INJECTION
 

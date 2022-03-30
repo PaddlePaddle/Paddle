@@ -68,11 +68,11 @@ class Independent(Variable):
             base.is_discrete, base.event_rank + reinterpreted_batch_rank)
 
     def constraint(self, value):
-        ret = self.base.constraint(value)
-        if ret.dim() < self.reinterpreted_batch_rank:
+        ret = self._base.constraint(value)
+        if ret.dim() < self._reinterpreted_batch_rank:
             raise ValueError(
                 "Input dimensions must be equal or grater than  {}".format(
-                    self.reinterpreted_batch_rank))
+                    self._reinterpreted_batch_rank))
         return ret.reshape(ret.shape[:ret.dim() - self.reinterpreted_batch_rank]
                            + (-1, )).all(-1)
 
@@ -94,9 +94,9 @@ class Stack(Variable):
         return rank
 
     def constraint(self, value):
-        if not (-value.dim() <= self.rank < value.dim()):
+        if not (-value.dim() <= self._axis < value.dim()):
             raise ValueError(
-                f'Input dimensions {v.dim()} should be grater than stack '
+                f'Input dimensions {value.dim()} should be grater than stack '
                 f'constraint axis {self._axis}.')
 
         return paddle.stack([

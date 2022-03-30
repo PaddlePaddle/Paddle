@@ -168,5 +168,22 @@ class TestDistributionShape(unittest.TestCase):
                 shape + self.dist.batch_shape + self.dist.event_shape)
 
 
+class TestDistributionException(unittest.TestCase):
+    def setUp(self):
+        self._d = paddle.distribution.Distribution()
+
+    def test_mean(self):
+        with self.assertRaises(NotImplementedError):
+            self._d.mean
+
+    def test_variance(self):
+        with self.assertRaises(NotImplementedError):
+            self._d.variance
+
+    def test_rsample(self):
+        with self.assertRaises(NotImplementedError):
+            self._d.rsample(())
+
+
 if __name__ == '__main__':
     unittest.main()
