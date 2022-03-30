@@ -79,22 +79,6 @@ class ReduceOp:
     AVG = 4
 
 
-class Task(object):
-    """
-    The abstract representation of a task. It is only used for static mode
-    to emulate the c++ task structure of ProcessGroup for dynamic mode.
-    """
-
-    def __init__(self, tensor, group, use_calc_stream=True):
-        self.tensor = tensor
-        self.group = group
-        self.use_calc_stream = use_calc_stream
-
-    def wait(self):
-        assert not in_dygraph_mode(), "Python Task only works in static mode."
-        wait(self.tensor, self.group, self.use_calc_stream)
-
-
 class Group():
     """
     The abstract representation of group.
@@ -537,7 +521,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         outputs={'Out': [tensor]},
         attrs={
             'root': gsrc,
-            'use_calc_stream': False if async_op else True,
+            'use_calc_stream': use_calc_stream,
             'ring_id': ring_id,
         })
 
@@ -815,7 +799,6 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
         out = paddle.concat(tensor_list)
-        wait(out, group, use_calc_stream=True)
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
@@ -927,7 +910,6 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         for _ in range(nranks):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
-    wait(temp, group, use_calc_stream=True)
     if framework._in_eager_mode_ and in_dygraph_mode():
         task = group.process_group.scatter(temp, tensor, gsrc)
         if use_calc_stream:
@@ -1102,8 +1084,7 @@ def _mp_allreduce(tensor,
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
         if op == ReduceOp.SUM:
@@ -1330,8 +1311,7 @@ def _parallel_linear(x,
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    ring_id = 0 if group is None else group.id
 
     if axis == 0:
         if split_tensor:
@@ -1416,8 +1396,7 @@ def _parallel_embedding(x,
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    ring_id = 0 if group is None else group.id
 
     helper = LayerHelper("_parallel_embedding", **locals())
 
@@ -1718,17 +1697,12 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
     temp = paddle.concat(in_tensor_list, axis=0)
     nranks = len(in_tensor_list)
-    wait(temp, group, use_calc_stream=True)
     if framework._in_eager_mode_ and in_dygraph_mode():
         out = paddle.concat(out_tensor_list, axis=0)
-        wait(out, group, use_calc_stream=True)
         task = group.process_group.alltoall(temp, out)
         task.wait()
-        #assert use_calc_stream, ("For alltoall, only use_calc_stream=True "
-        #                         "is supported.")
         out_tensor_list.clear()
         out_tensor_list.extend(paddle.split(out, nranks, 0))
-        wait(temp, group, use_calc_stream=True)
         return
 
     if _non_static_mode():
