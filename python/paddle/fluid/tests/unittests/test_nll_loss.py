@@ -749,6 +749,7 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.python_api = paddle.nn.functional.nll_loss
+        self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
@@ -794,6 +795,7 @@ class TestNLLLossOp1DNoReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.python_api = paddle.nn.functional.nll_loss
+        self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
@@ -840,6 +842,7 @@ class TestNLLLossOp2DWithReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.python_api = paddle.nn.functional.nll_loss
+        self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
@@ -885,6 +888,7 @@ class TestNLLLossOp2DNoReduce(OpTest):
         self.init_test_case()
         self.op_type = "nll_loss"
         self.python_api = paddle.nn.functional.nll_loss
+        self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
         input_np = np.random.uniform(0.1, 0.8,
