@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -28,12 +27,12 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-HOSTDEVICE inline T cubic_convolution1(T x, T A) {
+HOSTDEVICE inline T CubicConvolution1(T x, T A) {
   return ((A + 2) * x - (A + 3)) * x * x + 1;
 }
 
 template <typename T>
-HOSTDEVICE inline T cubic_convolution2(T x, T A) {
+HOSTDEVICE inline T CubicConvolution2(T x, T A) {
   return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
 }
 
@@ -42,13 +41,13 @@ HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
   T A = -0.75;
 
   T x1 = t;
-  coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
-  coeffs[1] = cubic_convolution1<T>(x1, A);
+  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
+  coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
   T x2 = 1.0 - t;
-  coeffs[2] = cubic_convolution1<T>(x2, A);
-  coeffs[3] = cubic_convolution2<T>(x2 + 1.0, A);
+  coeffs[2] = CubicConvolution1<T>(x2, A);
+  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,

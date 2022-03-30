@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-// #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -301,10 +300,10 @@ __device__ __forceinline__ static T Kecubic_interp(
   T a = -0.75;
   T x_1 = t;
   T x_2 = 1.0 - t;
-  coeffs[0] = funcs::cubic_convolution2<T>(x_1 + 1.0, a);
-  coeffs[1] = funcs::cubic_convolution1<T>(x_1, a);
-  coeffs[2] = funcs::cubic_convolution1<T>(x_2, a);
-  coeffs[3] = funcs::cubic_convolution2<T>(x_2 + 1.0, a);
+  coeffs[0] = funcs::CubicConvolution2<T>(x_1 + 1.0, a);
+  coeffs[1] = funcs::CubicConvolution1<T>(x_1, a);
+  coeffs[2] = funcs::CubicConvolution1<T>(x_2, a);
+  coeffs[3] = funcs::CubicConvolution2<T>(x_2 + 1.0, a);
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
 
