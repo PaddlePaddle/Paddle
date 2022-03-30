@@ -95,12 +95,21 @@ def _keep_fp32_output(op, out_name):
 
 
 class FP16State(object):
-    def __init__(self, program, amp_list, dist_context, use_fp16_guard):
+    def __init__(self,
+                 program,
+                 amp_list,
+                 dist_context,
+                 use_fp16_guard,
+                 input_data_var_names=None):
         self.program = program
         self.amp_list = amp_list
         self.use_fp16_guard = use_fp16_guard
         self.dist_context = dist_context
         self.grad_op_to_op_map = self.dist_context.dist_op_context.grad_op_id_to_op_id
+        if input_data_var_names:
+            self.input_data_var_names = input_data_var_names
+        else:
+            self.input_data_var_names = []
         self._op_fp16_dict = {
         }  # op_id --> True/False. 'True' means that the op is should run in fp16 mode.
         # a trick to determine leaf tensor node in program {varname: generator_op_id}
@@ -191,7 +200,7 @@ class FP16State(object):
                         if _keep_fp32_input(op, in_name):
                             continue
                         for in_var_name in op.input(in_name):
-                            if in_var_name not in self.forward_non_leaf_tensors:
+                            if in_var_name not in self.forward_non_leaf_tensors and in_var_name not in self.input_data_var_names:
                                 self.set_var_to_fp16(in_var_name, block)
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
@@ -498,10 +507,14 @@ class FP16Pass(AMPPass):
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")), None)
 
-        # TODO support multiple blocks
+        # NOTE don't not change input data dtype, since it is controled by dataloader 
+        # and which is out of control of FP16 Pass
+        input_data_var_names = [var.name for var in self.get_attr("input_data")]
+
         with paddle.static.program_guard(main_program, startup_program):
             fp16_state = FP16State(main_program, amp_list, self.dist_context,
-                                   self.get_attr("use_fp16_guard"))
+                                   self.get_attr("use_fp16_guard"),
+                                   input_data_var_names)
             is_train = fp16_state._build_state()
 
         if is_train:

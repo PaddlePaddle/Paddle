@@ -22,6 +22,8 @@ from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
+from ..utils import _get_comm_group, _get_corresponding_rank
+from ..process_group import new_process_group
 
 
 class DistributedFusedAttention(DistributedOperatorImplContainer):
@@ -90,7 +92,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
 
         # none of output should be sharded 
-        for out_name in op_desc.output_name:
+        for out_name in op_desc.output_names():
             out = op_desc.output(out_name)[0]
             out_dims_mapping = op_dist_attr.get_output_dims_mapping(out)
             for mapping in out_dims_mapping[1:-1]:
@@ -98,7 +100,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
                     return False
         return True
 
-    def is_compatible(self, dist_op):
+    def is_auto_compatible(self, dist_op):
         if (not self.is_input_compatible(dist_op)) or \
             (not self.is_output_compatible(dist_op)):
             return False
@@ -133,10 +135,6 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
 
         return changed
 
-    def is_auto_compatible(self, dist_op):
-        raise NotImplementedError(
-            "Auto Search is not supported by dist split yet.")
-
     @staticmethod
     def forward(ctx, *args, **kwargs):
 
@@ -153,7 +151,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
 
         # infer logic comm presentation
         head_axis = 1
-        qkv_w = op_desc.input('QKVW')[0]
+        qkv_w = src_op.input('QKVW')[0]
         qkv_w_col_dim_mapping = op_dist_attr.get_input_dims_mapping(qkv_w)[
             head_axis]
         assert qkv_w_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
@@ -188,7 +186,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
                                               rank_id)
 
         # infer logic comm presentation
-        out_w = op_desc.input('OutLinearW')[0]
+        out_w = src_op.input('OutLinearW')[0]
         out_w_col_dim_mapping = op_dist_attr.get_input_dims_mapping(out_w)[-1]
         assert out_w_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             out_w_col_dim_mapping)
@@ -209,5 +207,5 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
         new_op._set_attr("ring_id", int(group.id))
 
 
-register_distributed_operator_impl("fused_attention",
-                                   DistributedSplitImpl("tensor_parallel"))
+register_distributed_operator_impl(
+    "fused_attention", DistributedFusedAttentionImpl("tensor_parallel"))
