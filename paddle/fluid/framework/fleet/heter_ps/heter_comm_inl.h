@@ -435,13 +435,10 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
                 src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
 
     cur_use_stream = streams[cur_stream];
-#if defined(PADDLE_WITH_XPU)
-    cur_use_stream =
-        0
+#if defined(PADDLE_WITH_XPU_KP)
+    cur_use_stream = 0
 #endif
-
-        tables_[num]
-            ->insert(reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
+    tables_[num]->insert(reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
                      reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()),
                      tmp_len, cur_use_stream);
 
