@@ -364,11 +364,7 @@ void Tensor::bump_inplace_version() {
     auto &inplace_version_counter =
         std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
             ->InplaceVersionCounter();
-    VLOG(3) << "yoki: before bump inplace version: "
-            << inplace_version_counter.CurrentVersion();
     inplace_version_counter.Bump();
-    VLOG(3) << "yoki: after bump inplace version: "
-            << inplace_version_counter.CurrentVersion();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "bump_inplace_version is only supported on DenseTensor now."));
@@ -380,8 +376,6 @@ uint32_t Tensor::current_inplace_version() {
     auto &inplace_version_counter =
         std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
             ->InplaceVersionCounter();
-    VLOG(3) << "yoki: print version: "
-            << inplace_version_counter.CurrentVersion();
     return inplace_version_counter.CurrentVersion();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
