@@ -71,7 +71,6 @@ void SquaredL2Norm(const DeviceContext& ctx,
   cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
   size_t temp_storage_bytes = 0;
   void* d_temp_storage = nullptr;
-  auto stream = ctx.stream();
 #pragma unroll 2
   for (size_t i = 0; i < 2; ++i) {
     if (temp_storage_bytes > 0) {
