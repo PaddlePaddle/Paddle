@@ -26,4 +26,5 @@ KernelSignature SquaredL2NormGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(abs_grad, phi::SquaredL2NormGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(squared_l2_norm_grad,
+                           phi::SquaredL2NormGradOpArgumentMapping);
