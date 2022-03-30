@@ -92,6 +92,15 @@ class HeterComm {
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
                    Sgd& sgd);  // NOLINT
 
+  int log2i(int x);
+
+  
+
+  template <typename DstPlace, typename SrcPlace, typename StreamType>
+  void memory_copy(DstPlace dst_place, void* dst, SrcPlace src_place, const void* src, size_t count, StreamType stream = 0) {
+
+
+
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
   void push_sparse_multi_node(int num, KeyType* d_keys, GradType* d_grads,
@@ -106,11 +115,7 @@ class HeterComm {
 
   int gather_multi_node_grad(int num, KeyType* d_keys, GradType* d_grads,
                              int len);
-#endif
 
-  int log2i(int x);
-
-#if defined(PADDLE_WITH_CUDA)
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size) {
@@ -191,6 +196,15 @@ class HeterComm {
   };
 
   void init_path();
+
+  template <typename StreamType>
+  void sync_stream(StreamType& stream) {
+#if defined(PADDLE_WITH_CUDA)
+  cudaStreamSynchronize(stream);
+#elif defined(PADDLE_WITH_XPU)
+  xpu_wait(stream);
+#endif
+  }
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
