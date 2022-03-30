@@ -38,14 +38,37 @@ int CtrCommonAccessor::initialize() {
   return 0;
 }
 
-void CtrCommonAccessor::GetTableInfo(AccessorInfo& info) {
+void CtrCommonAccessor::SetTableInfo(AccessorInfo& info) {
   info.dim = dim();
   info.size = size();
   info.select_dim = select_dim();
   info.select_size = select_size();
   info.update_dim = update_dim();
   info.update_size = update_size();
+  info.mf_size = mf_size();
   info.fea_dim = fea_dim();
+}
+
+size_t CtrCommonAccessor::GetTableInfo(InfoKey key) {
+  switch (key) {
+    case DIM:
+      return dim();
+    case SIZE:
+      return size();
+    case SELECT_DIM:
+      return select_dim();
+    case SELECT_SIZE:
+      return select_size();
+    case UPDATE_DIM:
+      return update_dim();
+    case UPDATE_SIZE:
+      return update_size();
+    case MF_SIZE:
+      return mf_size();
+    case FEA_DIM:
+      return fea_dim();
+  }
+  return 0;
 }
 
 size_t CtrCommonAccessor::dim() { return common_feature_value.dim(); }

@@ -28,6 +28,9 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def get_api_func_name(self):
         return self.api
 
+    def gene_kernel_backend_select(self):
+        return BackwardAPI.gene_kernel_backend_select(self)
+
     def get_return_type(self, out_type_list):
         return BackwardAPI.get_return_type(self, out_type_list)
 
