@@ -128,6 +128,41 @@ void HeterComm<KeyType, ValType, GradType>::memory_copy(DstPlace dst_place, void
   }
 }
 
+template <typename KeyT, typename ValueT, typename StreamType>
+void HeterComm<KeyType, ValType, GradType>::sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,
+                const KeyT* d_keys_in, KeyT* d_keys_out, const ValueT* d_values_in,
+                ValueT* d_values_out, int num_items, int begin_bit = 0, int end_bit = sizeof(KeyT) * 8,
+                StreamType stream = 0, bool debug_synchronous = false) {
+
+#if defined(PADDLE_WITH_CUDA)
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(d_temp_storage, temp_storage_bytes,
+                             d_keys_in, d_keys_out, d_values_in, d_values_out,
+                             num_items, begin_bit, end_bit, stream, debug_synchronous));
+
+#elif defined(PADDLE_WITH_XPU)
+
+
+#endif
+
+}
+
+template<typename KeysInputIteratorT, typename UniqueOutputIteratorT, typename ValuesInputIteratorT, typename AggregatesOutputIteratorT, typename NumRunsOutputIteratorT, typename ReductionOpT, typename StreamType>
+void HeterComm<KeyType, ValType, GradType>::reduce_by_key(void* d_temp_storage, size_t& temp_storage_bytes, KeysInputIteratorT d_keys_in,
+                 UniqueOutputIteratorT d_unique_out, ValuesInputIteratorT d_values_in, AggregatesOutputIteratorT d_aggregates_out,
+                 NumRunsOutputIteratorT d_num_runs_out, ReductionOpT reduction_op, int num_items,
+                 StreamType stream = 0, bool debug_synchronous = false) {
+
+
+#if defined(PADDLE_WITH_CUDA)
+PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, 
+                           d_values_in, d_aggregates_out, d_num_runs_out, reduction_op, num_items, stream, debug_synchronous));
+#elif defined(PADDLE_WITH_XPU)
+
+
+#endif
+
+}
+
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
                                                            int end_index,
@@ -437,59 +472,14 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::merge_grad(
-    int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
+    int dev_num, KeyType* d_keys, GradType* d_grads, size_t len,
     int& uniq_len) {  // NOLINT
-  int dev_id = resource_->dev_id(gpu_num);
-#ifdef PADDLE_WITH_CUDA
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
-  platform::CUDADeviceGuard guard(dev_id);
-  auto stream = resource_->local_stream(gpu_num, 0);
+  int dev_id = resource_->dev_id(dev_num);
+  DevPlace place = DevPlace(dev_id);
+  AnyDeviceGuard guard(dev_id);
+  auto stream = resource_->local_stream(dev_num, 0);
 
   size_t temp_storage_bytes;
-
-  auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
-  KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
-
-  auto d_merge_grads = memory::Alloc(place, len * sizeof(GradType));
-  GradType* d_merge_grads_ptr =
-      reinterpret_cast<GradType*>(d_merge_grads->ptr());
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-      NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_grads,
-      d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false));
-
-  void* d_buff = NULL;
-  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-      d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
-      d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false));
-  temp_storage_bytes = 0;
-
-  auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
-  int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
-      NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys, d_merge_grads_ptr,
-      d_grads, d_num_runs_out, merger_, len, stream, false));
-
-  if (d_temp_storage->size() < temp_storage_bytes) {
-    d_temp_storage = NULL;
-    d_temp_storage = memory::Alloc(place, temp_storage_bytes);
-  }
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
-      d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
-      d_merge_grads_ptr, d_grads, d_num_runs_out, merger_, len, stream, false));
-
-  cudaMemcpyAsync(&uniq_len, d_num_runs_out, sizeof(int),
-                  cudaMemcpyDeviceToHost, stream);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-#endif
-#ifdef PADDLE_WITH_XPU_KP
-  platform::XPUPlace place = platform::XPUPlace(dev_id);
-  platform::XPUDeviceGuard guard(dev_id);
-  auto stream = resource_->local_stream(gpu_num, 0);
 
   KeyType* d_merge_keys_ptr = nullptr;
   xpu_malloc(reinterpret_cast<void**>(&d_merge_keys_ptr),
@@ -499,44 +489,44 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   xpu_malloc(reinterpret_cast<void**>(&d_merge_grads_ptr),
              len * sizeof(GradType));
 
-  // TODO(zhipeng): xpu::SortPairs 接口待实现
-  // size_t temp_storage_bytes;
-  // PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-  //     NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_grads,
-  //     d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false));
+
+  sort_pairs(
+      NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_grads,
+      d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
 
   // void* d_buff = NULL;
   // auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-  // PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-  //     d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
-  //     d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream,
-  //     false));
-  // temp_storage_bytes = 0;
+
+  sort_pairs(
+      d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
+      d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
+  temp_storage_bytes = 0;
 
   int* d_num_runs_out = nullptr;
   xpu_malloc(reinterpret_cast<void**>(&d_num_runs_out), sizeof(int));
 
-// TODO(zhipeng): xpu::ReduceByKey 接口待实现
-// PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
-//     NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys, d_merge_grads_ptr,
-//     d_grads, d_num_runs_out, merger_, len, stream, false));
+
+  reduce_by_key(
+      NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys, d_merge_grads_ptr,
+      d_grads, d_num_runs_out, merger_, len, stream, false);
 
 // if (d_temp_storage->size() < temp_storage_bytes) {
 //   d_temp_storage = NULL;
 //   d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 // }
 
-// PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
-//     d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
-//     d_merge_grads_ptr, d_grads, d_num_runs_out, merger_, len, stream,
-//     false));
 
-// cudaMemcpyAsync(&uniq_len, d_num_runs_out, sizeof(int),
-//                 cudaMemcpyDeviceToHost, stream);
+  reduce_by_key(
+      d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
+      d_merge_grads_ptr, d_grads, d_num_runs_out, merger_, len, stream, false);
 
-// PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-#endif
+  auto dst_place = platform::CPUPlace();
+  auto src_place = place;
+  memory_copy(dst_place, &uniq_len, src_place, d_num_runs_out, sizeof(int), stream);
+
+  sync_stream(stream);
+
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -570,22 +560,13 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
 
   sort_pairs(
       NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
-      d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
-
-  //PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-  //    NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
-  //    d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
+      d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
 
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   sort_pairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
-      d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
-
-  //PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-  //    d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
-  //    d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
-
+      d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
 
   heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len,
                                         total_device, stream);
