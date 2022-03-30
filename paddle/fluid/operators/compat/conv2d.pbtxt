@@ -50,6 +50,10 @@ extra {
     type: FLOAT
   }
   attrs {
+    name: "weight_scale"
+    type: FLOAT
+  }
+  attrs {
     name: "quantization_type"
     type: STRING
   } 
