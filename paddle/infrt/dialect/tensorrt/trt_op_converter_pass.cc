@@ -21,6 +21,7 @@
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
+#include "paddle/infrt/dialect/tensorrt/convert.h"
 #include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
