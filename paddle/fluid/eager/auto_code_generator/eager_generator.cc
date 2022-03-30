@@ -1570,7 +1570,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         outs_contents_str += paddle::string::Sprintf(
             FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
       }
-      core_ops_args_info[op_type].push_back(output_var_name);
+      core_ops_args_info[op_type].push_back(output_name);
 
     } else if (!inplace_map.empty() && inplace_map.count(output_name)) {
       // In inplace op, replace the output with the input directly.
