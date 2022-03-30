@@ -23,7 +23,8 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/allocator.h"
 #ifdef PADDLE_WITH_ONNXRUNTIME
-#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#include "onnxruntime_c_api.h"    // NOLINT
+#include "onnxruntime_cxx_api.h"  // NOLINT
 #endif
 
 namespace paddle_infer {
