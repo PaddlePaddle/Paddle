@@ -35,7 +35,7 @@ def _find(condition):
     return np.array(res)
 
 
-def batched_nms(boxes, scores, category_idxs, iou_threshold, top_k):
+def multiclass_nms(boxes, scores, category_idxs, iou_threshold, top_k):
     mask = np.zeros_like(scores)
 
     for category_id in np.unique(category_idxs):
@@ -69,7 +69,7 @@ def gen_args(num_boxes, dtype):
     return boxes, scores, category_idxs, categories
 
 
-class TestBatchedNMS(unittest.TestCase):
+class TestOpsNMS(unittest.TestCase):
     def setUp(self):
         self.num_boxes = 64
         self.threshold = 0.5
@@ -79,25 +79,38 @@ class TestBatchedNMS(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             self.devices.append('gpu')
 
-    def test_batched_nms_dynamic(self):
+    def test_nms(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 boxes, scores, category_idxs, categories = gen_args(
                     self.num_boxes, dtype)
                 paddle.set_device(device)
-                out = paddle.vision.ops.batched_nms(
-                    paddle.to_tensor(boxes),
-                    paddle.to_tensor(scores),
-                    paddle.to_tensor(category_idxs), categories, self.threshold,
-                    self.topk)
-                out_py = batched_nms(boxes, scores, category_idxs,
-                                     self.threshold, self.topk)
+                out = paddle.vision.ops.nms(
+                    paddle.to_tensor(boxes), self.threshold)
+                out_py = nms(boxes, self.threshold)
 
                 self.assertTrue(
                     np.array_equal(out.numpy(), out_py),
                     "paddle out: {}\n py out: {}\n".format(out, out_py))
 
-    def test_batched_nms_static(self):
+    def test_multiclass_nms_dynamic(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                boxes, scores, category_idxs, categories = gen_args(
+                    self.num_boxes, dtype)
+                paddle.set_device(device)
+                out = paddle.vision.ops.nms(
+                    paddle.to_tensor(boxes), self.threshold,
+                    paddle.to_tensor(scores),
+                    paddle.to_tensor(category_idxs), categories, self.topk)
+                out_py = multiclass_nms(boxes, scores, category_idxs,
+                                        self.threshold, self.topk)
+
+                self.assertTrue(
+                    np.array_equal(out.numpy(), out_py),
+                    "paddle out: {}\n py out: {}\n".format(out, out_py))
+
+    def test_multiclass_nms_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.enable_static()
@@ -111,9 +124,9 @@ class TestBatchedNMS(unittest.TestCase):
                     shape=category_idxs.shape,
                     dtype=category_idxs.dtype,
                     name="category_idxs")
-                out = paddle.vision.ops.batched_nms(
-                    boxes_static, scores_static, category_idxs_static,
-                    categories, self.threshold, self.topk)
+                out = paddle.vision.ops.nms(boxes_static, self.threshold,
+                                            scores_static, category_idxs_static,
+                                            categories, self.topk)
                 place = paddle.CPUPlace()
                 if device == 'gpu':
                     place = paddle.CUDAPlace(0)
@@ -126,15 +139,15 @@ class TestBatchedNMS(unittest.TestCase):
                               },
                               fetch_list=[out])
                 paddle.disable_static()
-                out_py = batched_nms(boxes, scores, category_idxs,
-                                     self.threshold, self.topk)
+                out_py = multiclass_nms(boxes, scores, category_idxs,
+                                        self.threshold, self.topk)
                 out = np.array(out)
                 out = np.squeeze(out)
                 self.assertTrue(
                     np.array_equal(out, out_py),
                     "paddle out: {}\n py out: {}\n".format(out, out_py))
 
-    def test_batched_nms_dynamic_to_static(self):
+    def test_multiclass_nms_dynamic_to_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.set_device(device)
@@ -143,10 +156,10 @@ class TestBatchedNMS(unittest.TestCase):
                     scores = np.arange(0, 64).astype('float32')
                     categories = np.array([0, 1, 2, 3])
                     category_idxs = categories.repeat(16)
-                    out = paddle.vision.ops.batched_nms(
-                        x,
-                        paddle.to_tensor(scores),
-                        paddle.to_tensor(category_idxs), categories, 0.1, 10)
+                    out = paddle.vision.ops.nms(x, 0.1,
+                                                paddle.to_tensor(scores),
+                                                paddle.to_tensor(category_idxs),
+                                                categories, 10)
                     return out
 
                 path = "./net"
