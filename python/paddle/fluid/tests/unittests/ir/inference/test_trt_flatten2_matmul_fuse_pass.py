@@ -48,7 +48,7 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
             use_calib_mode=False)
-        yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
+        yield config, ['mul', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
@@ -139,7 +139,6 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=50,
-            max_duration=1000,
             passes=["trt_flatten2_matmul_fuse_pass"])
 
 
