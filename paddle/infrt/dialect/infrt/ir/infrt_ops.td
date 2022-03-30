@@ -1,3 +1,4 @@
+include "mlir/Interfaces/InferTypeOpInterface.td"
 include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 
 // Op definition
@@ -9,7 +10,7 @@ class Infrt_Op<string mnemonic, list<OpTrait> traits = []> : Op<Infrt_Dialect, m
   // let parser = [{ return infrt::parse$cppClass(parser, result); }];
 }
 
-def PD_GraphOp : Infrt_Op<"graph", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
+def Infrt_GraphOp : Infrt_Op<"graph", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
   let summary = "paddle graph Op";
   let description = [{
     Describe a paddle graph or subgraph.
@@ -68,4 +69,17 @@ def Infrt_TensorCastOp : Infrt_Op<"tensor_cast", [NoSideEffect]> {
   let description = [{cast tensor type op!}];
   let arguments = (ins AnyType:$input);
   let results = (outs AnyType:$output);
+}
+
+def Infrt_ConstantOp : Infrt_Op<"constant", [NoSideEffect, ConstantLike, DeclareOpInterfaceMethods<InferTypeOpInterface>, AllTypesMatch<["value", "output"]>]> {
+  let summary = "constant Op";
+  let description = [{}];
+
+  let arguments = (ins ElementsAttr:$value);
+  let results = (outs AnyType:$output);
+  let hasFolder = 1;
+
+  let builders = [
+    OpBuilder<(ins "mlir::Attribute":$value)>,
+  ];
 }

@@ -4,3 +4,10 @@
   output : Tensor(x_grad@DenseTensor), Tensor(kernel_grad@DenseTensor)
   kernel :
     func : sparse_conv3d_grad
+
+- backward_api : sparse_relu_grad
+  forward : sparse_relu(Tensor x) -> Tensor(out@SparseCooTensor)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad@SparseCooTensor)
+  kernel : 
+    func : sparse_relu_grad
