@@ -215,7 +215,8 @@ void BindDistributed(py::module *m) {
       *m, "ProcessGroupNCCL", ProcessGroup)
       .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
                     int>(),
-           py::call_guard<py::gil_scoped_release>());
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -224,7 +225,8 @@ void BindDistributed(py::module *m) {
       *m, "ProcessGroupHCCL", ProcessGroup)
       .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
                     int>(),
-           py::call_guard<py::gil_scoped_release>());
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
