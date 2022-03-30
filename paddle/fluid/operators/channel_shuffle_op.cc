@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -38,11 +37,7 @@ class ChannelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor, default Tensor<float>), the output of "
               "ChannelShuffleOp. The layout is also [N, C, "
               "H, W] or [N, H, W, C].");
-    AddAttr<int>("groups", "number of groups to divide channels in.")
-        .AddCustomChecker([](const int& groups) {
-          PADDLE_ENFORCE_GE(groups, 1, platform::errors::InvalidArgument(
-                                           "groups should be larger than 0."));
-        });
+    AddAttr<int>("groups", "number of groups to divide channels in.");
     AddAttr<std::string>(
         "data_format",
         "An optional string from: \"NHWC\", \"NCHW\". "
