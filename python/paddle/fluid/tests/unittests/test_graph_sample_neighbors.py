@@ -86,7 +86,6 @@ class TestGraphSampleNeighbors(unittest.TestCase):
                 perm_buffer=perm_buffer,
                 sample_size=self.sample_size,
                 flag_perm_buffer=True)
-            out_neighbors = paddle.split(out_neighbors, list(out_count))
             out_count_cumsum = paddle.cumsum(out_count)
             for i in range(len(out_count)):
                 if i == 0:
