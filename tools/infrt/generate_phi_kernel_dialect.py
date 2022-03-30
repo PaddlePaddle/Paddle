@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import yaml
 import sys
 import os
 from get_compat_kernel_signature import get_compat_kernels_info
@@ -27,7 +28,7 @@ attr_type_converter = {
     "St6vectorIiSaIiEE": 'I32ArrayAttr'
 }
 
-target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
+target_type_converter = {"CPU": "CPU", "GPU": "GPU", "Undefined": "UNK"}
 layout_type_converter = {
     "NCHW": "NCHW",
     "NHWC": "NHWC",
@@ -51,6 +52,28 @@ precision_type_converter = {
 
 kernel_types_info_file = "./kernels.json"
 kernel_signature_info_file = "./kernel_signature.json"
+
+skipped_phi_api_list_file = "./skipped_phi_api.json"
+
+
+def get_skipped_kernel_list():
+    skiped_kernel_list = []
+    with open(skipped_phi_api_list_file, 'r') as f:
+        skiped_api_list = json.load(f)
+    infer_meta_data = get_api_yaml_info("../../")
+    for api in infer_meta_data:
+        if "kernel" not in api or "infer_meta" not in api:
+            continue
+        if api["api"] in skiped_api_list["phi_apis"]:
+            skiped_kernel_list.append(api["kernel"]["func"])
+    skiped_kernel_list += skiped_api_list["phi_kernels"]
+    return skiped_kernel_list
+
+
+def get_api_yaml_info(file_path):
+    f = open(file_path + "/python/paddle/utils/code_gen/api.yaml", "r")
+    cont = f.read()
+    return yaml.load(cont, Loader=yaml.FullLoader)
 
 
 def generate_kernel_name(op_name, place_str):
@@ -140,6 +163,10 @@ def generate_supported_kernel_list(load_dict):
                 if flag and op_name in kernel_attrs_names:
                     supported_kernels_list_.append(op_name)
     supported_kernels_list_ = list(set(supported_kernels_list_))
+    skipped_kernel_list = get_skipped_kernel_list()
+    for skipped_kernel in skipped_kernel_list:
+        if skipped_kernel in skipped_kernel_list:
+            supported_kernels_list_.remove(skipped_kernel)
     return supported_kernels_list_
 
 
@@ -250,6 +277,7 @@ def main():
         cpu_registry_ = ""
         gpu_registry_ = ""
         supported_kernels = generate_supported_kernel_list(load_dict)
+
         print("Supported kernels:")
         print(supported_kernels)
         for op_name in load_dict:

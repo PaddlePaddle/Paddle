@@ -147,7 +147,6 @@ class GradNodeBase {
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                       size_t slot_rank);
-
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -278,5 +277,30 @@ class Edge {
   size_t in_rank_;
   std::shared_ptr<GradNodeBase> grad_node_{nullptr};
 };
+
+inline void CheckTensor(const paddle::experimental::Tensor& pre,
+                        const paddle::experimental::Tensor& post) {
+  if (!pre.initialized() && post.initialized()) {
+    PADDLE_THROW(paddle::platform::errors::PermissionDenied(
+        "The tensor in before and after hook are not consistent"));
+  }
+  if (pre.initialized() && post.initialized()) {
+    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
+            << paddle::framework::DataType2String(post.dtype());
+    PADDLE_ENFORCE_EQ(
+        pre.dtype(), post.dtype(),
+        paddle::platform::errors::PermissionDenied(
+            "The dtype of tensor before(%s) and after(%s) hook are not "
+            "consistent",
+            paddle::framework::DataType2String(pre.dtype()),
+            paddle::framework::DataType2String(post.dtype())));
+    PADDLE_ENFORCE_EQ(
+        pre.inner_place(), post.inner_place(),
+        paddle::platform::errors::PermissionDenied(
+            "The place of tensor before(%s) and after(%s) "
+            "hook are not consistent",
+            pre.inner_place().DebugString(), post.inner_place().DebugString()));
+  }
+}
 
 }  // namespace egr
