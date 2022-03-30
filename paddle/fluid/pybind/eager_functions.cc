@@ -538,9 +538,9 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-#if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_to_uva_tensor(PyObject* self, PyObject* args,
                                          PyObject* kwargs) {
+#if defined(PADDLE_WITH_CUDA)
   EAGER_TRY
   VLOG(4) << "Running in eager_api_to_uva_tensor.";
   auto new_tensor = std::shared_ptr<paddle::experimental::Tensor>(
@@ -584,8 +584,8 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self, PyObject* args,
 
   return ToPyObject(*(new_tensor.get()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
-}
 #endif
+}
 
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
