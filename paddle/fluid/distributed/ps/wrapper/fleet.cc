@@ -337,9 +337,21 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
-  auto status =
-      worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
-                               fea_keys.data(), fea_keys.size(), is_training);
+  // ps client pull sparse
+  // construct client request context
+  RequestContext req_context;
+  req_context.value_type = Sparse;
+  req_context.training_mode = Async;
+  req_context.table = table_id;
+  req_context.sparse_values = pull_result_ptr.data();
+  req_context.keys = fea_keys.data();
+  req_context.num = fea_keys.size();
+  req_context.is_training = is_training;
+  auto status = worker_ptr_->Pull(req_context);
+  // auto status =
+  //     worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
+  //                              fea_keys.data(), fea_keys.size(),
+  //                              is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -366,7 +378,14 @@ void FleetWrapper::PullDenseVarsAsync(
     paddle::distributed::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
   }
-  auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
+  RequestContext req_context;
+  req_context.value_type = Dense;
+  req_context.training_mode = Async;
+  req_context.table = tid;
+  req_context.dense_values = regions.data();
+  req_context.num = regions.size();
+  auto status = worker_ptr_->Pull(req_context);
+  // auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
 }
 
@@ -379,9 +398,11 @@ void FleetWrapper::PullDenseVarsSync(
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    float* w = tensor->data<float>();
-    paddle::distributed::Region reg(w, tensor->numel());
-    regions.emplace_back(std::move(reg));
+    if (!platform::is_gpu_place(tensor->place())) {
+      float* w = tensor->data<float>();
+      paddle::distributed::Region reg(w, tensor->numel());
+      regions.emplace_back(std::move(reg));
+    }
   }
   auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   status.wait();
@@ -396,9 +417,11 @@ void FleetWrapper::PushDenseParamSync(
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    float* g = tensor->mutable_data<float>(place);
-    paddle::distributed::Region reg(g, tensor->numel());
-    regions.emplace_back(std::move(reg));
+    if (!platform::is_gpu_place(tensor->place())) {
+      float* g = tensor->mutable_data<float>(place);
+      paddle::distributed::Region reg(g, tensor->numel());
+      regions.emplace_back(std::move(reg));
+    }
   }
   auto push_status =
       worker_ptr_->push_dense_param(regions.data(), regions.size(), table_id);
@@ -447,8 +470,15 @@ void FleetWrapper::PushDenseVarsAsync(
             << g[tensor->numel() - 1];
   }
 
-  auto push_status =
-      worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
+  RequestContext req_context;
+  req_context.value_type = Dense;
+  req_context.training_mode = Async;
+  req_context.table = table_id;
+  req_context.push_context.push_dense_values = regions.data();
+  req_context.num = regions.size();
+  // auto push_status =
+  //     worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
+  auto push_status = worker_ptr_->Push(req_context);
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -620,9 +650,19 @@ void FleetWrapper::PushSparseFromTensorAsync(
     push_g_vec[i] = push_values.at(i).data();
   }
 
-  auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
-                                         (const float**)push_g_vec.data(),
-                                         push_keys.size());
+  // ps client push sparse
+  // construct request context
+  RequestContext req_context;
+  req_context.value_type = Sparse;
+  req_context.training_mode = Async;
+  req_context.table = table_id;
+  req_context.push_context.push_values = (const float**)push_g_vec.data();
+  req_context.push_context.keys = push_keys.data();
+  req_context.num = push_keys.size();
+  auto status = worker_ptr_->Push(req_context);
+  // auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
+  //                                        (const float**)push_g_vec.data(),
+  //                                        push_keys.size());
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
