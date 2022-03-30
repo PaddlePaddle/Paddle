@@ -633,8 +633,15 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     return paddle::none;
   }
 
-  return paddle::make_optional<const paddle::experimental::Tensor&>(
-      reinterpret_cast<TensorObject*>(obj)->tensor);
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return paddle::make_optional<const paddle::experimental::Tensor&>(
+        reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 static paddle::experimental::Tensor& GetTensorFromPyObject(
@@ -654,7 +661,14 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     return emptytensor;
   }
 
-  return reinterpret_cast<TensorObject*>(obj)->tensor;
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject*>(obj)->tensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 // For Intermediate State Dygraph,
@@ -744,7 +758,14 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     return &emptytensor;
   }
 
-  return &(reinterpret_cast<TensorObject*>(obj)->tensor);
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return &(reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
