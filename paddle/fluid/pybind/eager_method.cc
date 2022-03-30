@@ -703,8 +703,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     }
   });
 
-  // TODO(pangyoki) add inplace(BumpInplaceVersion) if need
-
   // 1. Check argumnets
   bool parse_index = true;
 
@@ -753,12 +751,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
 
     if (PyCheckTensor(value_obj)) {
       value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
-
-      // pass the stop_gradient from value to tensor
-      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
-          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
-        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
-      }
     } else if (py::isinstance<py::array>(value_obj)) {
       paddle::experimental::Tensor value_tensor_tmp(
           std::make_shared<phi::DenseTensor>(),
@@ -858,8 +850,18 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     {
       // Release gil and do tracing
       py::gil_scoped_release release;
-      self->tensor = set_value_dygraph_function(self->tensor, value_tensor, {},
-                                                {}, {}, attrs);
+      // use inplace set_value_ operator
+      self->tensor = set_value__dygraph_function(self->tensor, value_tensor, {},
+                                                 {}, {}, attrs);
+    }
+    if (PyCheckTensor(value_obj)) {
+      // pass the stop_gradient from value to tensor.
+      // pass stop gradient should be done after CheckInplace in
+      // set_value__dygraph_function.
+      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
+          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
+        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+      }
     }
   } else {
     auto self_numpy = TensorToPyArray(*self_tensor);
@@ -1179,6 +1181,15 @@ static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__bump_inplace_version(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  self->tensor.bump_inplace_version();
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_is_selected_rows(TensorObject* self,
                                                 PyObject* args,
                                                 PyObject* kwargs) {
@@ -1286,6 +1297,9 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     /***the method of sparse tensor****/
     {"_inplace_version", (PyCFunction)(void (*)(void))tensor__inplace_version,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_bump_inplace_version",
+     (PyCFunction)(void (*)(void))tensor__bump_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"is_selected_rows",
      (PyCFunction)(void (*)(void))tensor_method_is_selected_rows,
