@@ -1041,12 +1041,11 @@ def _c_split(tensor, group=None):
     """
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    ring_id = 0 if group is None else group.id
 
     global_rank = _get_global_env().rank
-    rank = group.get_group_rank(global_rank)
-    nranks = group.nranks
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
 
     if _non_static_mode():
         return _C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
@@ -1189,11 +1188,10 @@ def _c_softmax_with_cross_entropy(logits,
                                   return_softmax=False):
     if group is not None and not group.is_member():
         return
-    group = _get_default_group() if group is None else group
-    ring_id = group.id
+    ring_id = 0 if group is None else group.id
     global_rank = _get_global_env().rank
-    rank = group.get_group_rank(global_rank)
-    nranks = group.nranks
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
 
     input_dims = len(list(logits.shape))
     label_dims = len(list(label.shape))
