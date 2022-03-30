@@ -65,7 +65,7 @@ AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}}
     .AsDuplicable()
     .AsDispensable();
   {% endif %}
-AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "attribute {{i}} for {{op_name}} op.")
+AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
   {%- if "default_value" in attr +%}
     .SetDefault({{process_default_value(attr)}})
   {%- endif %}
