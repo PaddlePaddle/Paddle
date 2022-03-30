@@ -914,6 +914,20 @@
   kernel :
     func : relu_grad
 
+- backward_api : reshape_grad
+  forward : reshape_with_xshape (Tensor x, ScalarArray shape) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param : [xshape]
+  kernel :
+    func : reshape_grad
+    param : [out_grad]
+    data_type: out_grad
+    backend: out_grad
+    layout: out_grad
+
 - backward_api : round_grad
   forward : round(Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
