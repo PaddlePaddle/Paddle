@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -22,8 +20,6 @@ import paddle
 import paddle.nn.functional as F
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-
-paddle.enable_static()
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -69,10 +65,14 @@ class TestChannelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
+        paddle.enable_static()
         self.check_output()
+        paddle.disable_static()
 
     def test_check_grad(self):
+        paddle.enable_static()
         self.check_grad(['X'], 'Out')
+        paddle.disable_static()
 
 
 class TestChannelLast(TestChannelShuffleOp):
@@ -190,12 +190,27 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 class TestChannelShuffleError(unittest.TestCase):
     def test_error_functional(self):
-        def error_upscale_factor():
+
+        def error_input():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([9, 4, 4]).astype("float64")
+                channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3)
+
+        self.assertRaises(ValueError, error_input)
+
+        def error_groups_1():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3.33)
 
-        self.assertRaises(TypeError, error_upscale_factor)
+        self.assertRaises(TypeError, error_groups_1)
+
+        def error_groups_2():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([2, 9, 4, 4]).astype("float64")
+                channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), -1)
+
+        self.assertRaises(ValueError, error_groups_2)
 
         def error_data_format():
             with paddle.fluid.dygraph.guard():
@@ -206,12 +221,27 @@ class TestChannelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_data_format)
 
     def test_error_layer(self):
-        def error_upscale_factor_layer():
+        def error_input_layer():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([9, 4, 4]).astype("float64")
+                cs = paddle.nn.ChannelShuffle(3)
+                cs(paddle.to_tensor(x))
+
+        self.assertRaises(ValueError, error_input_layer)
+
+        def error_groups_layer_1():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3.33)
 
-        self.assertRaises(TypeError, error_upscale_factor_layer)
+        self.assertRaises(TypeError, error_groups_layer_1)
+
+        def error_groups_layer_2():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([2, 9, 4, 4]).astype("float64")
+                cs = paddle.nn.ChannelShuffle(-1)
+
+        self.assertRaises(ValueError, error_groups_layer_2)
 
         def error_data_format_layer():
             with paddle.fluid.dygraph.guard():
