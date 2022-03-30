@@ -33,7 +33,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace paddle {
 namespace framework {

@@ -15,17 +15,19 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
+#ifdef PADDLE_WITH_CUDA
 #include "cub/cub.cuh"
 #include "cub/util_allocator.cuh"
 #include "hashtable.h"       // NOLINT
-#include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#include "thrust/pair.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+#include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/place.h"
-#include "thrust/pair.h"
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -93,6 +95,7 @@ class HeterComm {
 
   int log2i(int x);
 
+#ifdef PADDLE_WITH_CUDA
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size) {
@@ -100,6 +103,7 @@ class HeterComm {
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
+#endif
 
   bool need_transfer(int send_id, int receive_id) {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
@@ -182,8 +186,10 @@ class HeterComm {
                    ValType* src_val);
 
  protected:
+#ifdef PADDLE_WITH_CUDA
   using Table = HashTable<KeyType, ValType>;
   std::vector<Table*> tables_;
+#endif
   std::shared_ptr<HeterPsResource> resource_;
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
@@ -203,7 +209,7 @@ class HeterComm {
 #if defined(PADDLE_WITH_CUDA)
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #elif defined(PADDLE_WITH_XPU_KP)
-  std::vector<std::shared_ptr<>> allocators_;
+  // std::vector<std::shared_ptr<>> allocators_;
 #endif
 };
 

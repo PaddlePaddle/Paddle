@@ -16,7 +16,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
+#endif
 
 #ifdef PADDLE_WITH_HETERPS
 

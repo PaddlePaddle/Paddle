@@ -14,8 +14,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "heter_resource.h"  //NOLINT
-#include "xpu/runtime.h"
-
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -73,17 +75,18 @@ GPUResource::~GPUResource() {
 #ifdef PADDLE_WITH_XPU_KP
   platform::XPUDeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(local_streams_[i]));
+    xpu_stream_destroy(local_streams_[i]);
   }
   for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(comm_streams_[i]));
+    xpu_stream_destroy(comm_streams_[i]);
   }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(remote_streams_[i]));
+    xpu_stream_destroy(remote_streams_[i]);
   }
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 void HeterPsResource::enable_p2p() {
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     platform::CUDADeviceGuard guard(dev_ids_[i]);
@@ -105,6 +108,7 @@ void HeterPsResource::enable_p2p() {
     }
   }
 }
+#endif
 
 HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
   dev_ids_ = dev_ids;

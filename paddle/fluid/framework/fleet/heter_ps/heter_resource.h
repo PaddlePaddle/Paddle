@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
+#ifdef PADDLE_WITH_XPU_KP
+#include <xpu/runtime.h>  // NOLINT
+#endif
 
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
