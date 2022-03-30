@@ -58,6 +58,7 @@ class TestStrideSliceOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'strided_slice'
+        self.python_api = paddle.strided_slice
         self.output = strided_slice_native_forward(
             self.input, self.axes, self.starts, self.ends, self.strides)
 
@@ -72,7 +73,7 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(set(['Input']), 'Out')

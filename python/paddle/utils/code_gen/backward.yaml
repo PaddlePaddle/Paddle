@@ -194,6 +194,16 @@
   kernel :
     func : scatter_nd_grad
 
+- backward_api: strided_slice_grad
+  forward : strided_slice (Tensor x, int[] axes, ScalarArray starts, ScalarArray ends, ScalarArray strides) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] axes, ScalarArray starts, ScalarArray ends, ScalarArray strides)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : strided_slice_grad
+
 - backward_api : addmm_grad
   forward : scatter (Tensor input, Tensor x, Tensor y, float alpha, float beta) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha, float beta)

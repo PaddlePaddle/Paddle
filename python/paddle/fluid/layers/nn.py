@@ -11425,6 +11425,10 @@ def strided_slice(input, axes, starts, ends, strides):
             sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_strided_slice(input, axes, starts, ends,
+                                                strides)
+
     helper = LayerHelper('strided_slice', **locals())
 
     check_variable_and_dtype(input, 'input',

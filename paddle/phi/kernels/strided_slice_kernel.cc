@@ -14,15 +14,30 @@
 
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/strided_slice_kernel_impl.h"
 
-PD_REGISTER_KERNEL(strided_slice_raw,
-                   GPU,
+namespace phi {
+
+template <typename T, typename Context>
+void StridedSliceKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const std::vector<int>& axes,
+                        const ScalarArray& starts,
+                        const ScalarArray& ends,
+                        const ScalarArray& strides,
+                        DenseTensor* out) {
+  std::vector<int> infer_flags(axes.size(), 1);
+  std::vector<int> decrease_axis;
+  StridedSliceRawKernel<T, Context>(
+      dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
+}
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(strided_slice,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::StridedSliceRawKernel,
+                   phi::StridedSliceKernel,
                    bool,
                    int,
                    int64_t,
@@ -30,11 +45,11 @@ PD_REGISTER_KERNEL(strided_slice_raw,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(strided_slice_array,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(strided_slice,
                    GPU,
                    ALL_LAYOUT,
-                   phi::StridedSliceArrayKernel,
+                   phi::StridedSliceKernel,
                    bool,
                    int,
                    int64_t,
@@ -42,3 +57,4 @@ PD_REGISTER_KERNEL(strided_slice_array,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+#endif
