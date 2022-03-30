@@ -26,6 +26,7 @@ from paddle.nn.functional import avg_pool3d, max_pool3d
 from paddle.fluid.framework import _test_eager_guard
 from test_pool3d_op import adaptive_start_index, adaptive_end_index, pool3D_forward_naive, avg_pool3D_forward_naive, max_pool3D_forward_naive
 
+
 class TestPool3D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
@@ -331,6 +332,7 @@ class TestPool3D_API(unittest.TestCase):
         with _test_eager_guard():
             self.test_pool3d()
 
+
 class TestPool3DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
@@ -506,6 +508,7 @@ class TestPool3DError_API(unittest.TestCase):
     def test_dygraph_final_state_api(self):
         with _test_eager_guard():
             self.test_error_api()
+
 
 if __name__ == '__main__':
     unittest.main()

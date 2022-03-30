@@ -329,6 +329,7 @@ class TestPool2D_API(unittest.TestCase):
         with _test_eager_guard():
             self.test_pool2d()
 
+
 class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
@@ -531,6 +532,7 @@ class TestPool2DError_API(unittest.TestCase):
     def test_dygraph_final_state_api(self):
         with _test_eager_guard():
             self.test_error_api()
+
 
 if __name__ == '__main__':
     unittest.main()

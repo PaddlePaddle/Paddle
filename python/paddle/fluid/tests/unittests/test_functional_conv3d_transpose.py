@@ -22,6 +22,7 @@ from paddle import fluid
 from paddle.fluid.framework import _test_eager_guard
 from unittest import TestCase
 
+
 class TestFunctionalConv3DTranspose(TestCase):
     batch_size = 4
     spatial_shape = (8, 8, 8)
@@ -180,6 +181,7 @@ class TestFunctionalConv3DTranspose(TestCase):
     def test_identity_gpu_check_eager(self):
         with _test_eager_guard():
             self.test_identity_gpu()
+
 
 class TestFunctionalConv3DTransposeError(TestCase):
     batch_size = 4
@@ -550,8 +552,8 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
             self.dygraph_case()
 
     def test_dygraph_exception_check_eager(self):
-       with _test_eager_guard():
-           self.test_dygraph_exception()
+        with _test_eager_guard():
+            self.test_dygraph_exception()
 
     def test_static_exception(self):
         with self.assertRaises(ValueError):

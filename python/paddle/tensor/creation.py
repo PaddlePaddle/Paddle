@@ -652,7 +652,7 @@ def tril(x, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_tril_triu(x, diagonal, True)
-        
+
     if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", True)
@@ -722,7 +722,7 @@ def triu(x, diagonal=0, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_tril_triu(x, diagonal, False)
-        
+
     if _in_legacy_dygraph():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", False)

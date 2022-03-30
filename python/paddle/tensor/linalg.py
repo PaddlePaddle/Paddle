@@ -251,7 +251,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
-        
+
         if in_dygraph_mode():
             if dim is None:
                 return _C_ops.final_state_frobenius_norm(input, keepdim, True)
@@ -3008,4 +3008,3 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         singular_values = paddle.static.data(name='singular_values', shape=[0])
 
     return solution, residuals, rank, singular_values
-    

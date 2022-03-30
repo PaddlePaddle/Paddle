@@ -67,8 +67,10 @@ def frobenius_norm(x, axis=None, keepdims=False):
         x, ord='fro', axis=axis, keepdims=keepdims).astype(x.dtype)
     return r
 
+
 def final_state_frobenius_norm(x, dim, keep_dim, reduce_all):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
+
 
 class TestFrobeniusNormOp(OpTest):
     def setUp(self):

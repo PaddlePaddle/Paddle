@@ -22,6 +22,7 @@ from paddle import fluid
 from paddle.fluid.framework import _test_eager_guard
 from unittest import TestCase
 
+
 class TestFunctionalConv2D(TestCase):
     batch_size = 4
     spatial_shape = (16, 16)
@@ -174,6 +175,7 @@ class TestFunctionalConv2D(TestCase):
     def test_identity_gpu_check_eager(self):
         with _test_eager_guard():
             self.test_identity_gpu()
+
 
 class TestFunctionalConv2DError(TestCase):
     batch_size = 4
@@ -530,8 +532,8 @@ class TestFunctionalConv2DErrorCase10(TestCase):
             self.dygraph_case()
 
     def test_dygraph_exception_check_eager(self):
-       with _test_eager_guard():
-           self.test_dygraph_exception()
+        with _test_eager_guard():
+            self.test_dygraph_exception()
 
     def test_static_exception(self):
         with self.assertRaises(ValueError):

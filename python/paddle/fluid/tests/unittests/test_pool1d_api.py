@@ -22,6 +22,7 @@ from op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
+
 def adaptive_start_index(index, input_size, output_size):
     return int(np.floor(index * input_size / output_size))
 
@@ -375,6 +376,7 @@ class TestPool2DError_API(unittest.TestCase):
     def test_dygraph_final_state_api(self):
         with _test_eager_guard():
             self.test_error_api()
+
 
 if __name__ == '__main__':
     unittest.main()

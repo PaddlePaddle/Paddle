@@ -931,7 +931,8 @@ def searchsorted(sorted_sequence,
             
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_searchsorted(sorted_sequence, values, out_int32, right)
+        return _C_ops.final_state_searchsorted(sorted_sequence, values,
+                                               out_int32, right)
 
     if _in_legacy_dygraph():
         return _C_ops.searchsorted(sorted_sequence, values, "out_int32",
