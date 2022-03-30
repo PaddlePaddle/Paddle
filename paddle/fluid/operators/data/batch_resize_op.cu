@@ -29,7 +29,7 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
     const size_t out_img_w, const size_t output_h, const size_t output_w,
     const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+    const bool align_corners, const DataLayout data_format) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -44,7 +44,7 @@ __global__ void KeNearestNeighborInterpFw(
 
     // get output c, h, w index
     int channel_id, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_format == DataLayout::kNCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idy = (out_id_w % out_img_size) / out_img_w;
       out_img_idx = tid % out_img_w;
@@ -63,7 +63,7 @@ __global__ void KeNearestNeighborInterpFw(
                          ? static_cast<int>(ratio_w * out_img_idx + 0.5)
                          : static_cast<int>(ratio_w * out_img_idx);
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_format == DataLayout::kNCHW) {
       out[tid] = in[out_id_h * input_w + channel_id * in_img_size +
                     in_img_idy * in_img_w + in_img_idx];
     } else {
@@ -80,7 +80,7 @@ __global__ void KeBilinearInterpFw(
     const size_t out_img_h, const size_t out_img_w, const size_t output_h,
     const size_t output_w, const size_t num_channels, const float ratio_h,
     const float ratio_w, const bool align_corners, const int align_mode,
-    const DataLayout data_layout) {
+    const DataLayout data_format) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -96,7 +96,7 @@ __global__ void KeBilinearInterpFw(
 
     // get output c, h, w index
     int channel_id, out_img_idy, out_img_idx;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_format == DataLayout::kNCHW) {
       channel_id = out_id_w / out_img_size;
       out_img_idy = (out_id_w % out_img_size) / out_img_w;
       out_img_idx = tid % out_img_w;
@@ -112,11 +112,11 @@ __global__ void KeBilinearInterpFw(
                          : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = in_img_idy > 0 ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
+    float src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
     src_h = src_h > 0 ? src_h : 0;
-    T h1lambda = align_flag ? src_h - in_img_idy
+    float h1lambda = align_flag ? src_h - in_img_idy
                             : ratio_h * out_img_idy - in_img_idy;
-    T h2lambda = 1.f - h1lambda;
+    float h2lambda = 1.f - h1lambda;
 
     // get input w index with offset
     int in_img_idx = align_flag
@@ -124,33 +124,33 @@ __global__ void KeBilinearInterpFw(
                          : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = in_img_idx > 0 ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    float src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
     src_w = src_w > 0 ? src_w : 0;
-    T w1lambda = align_flag ? src_w - in_img_idx
+    float w1lambda = align_flag ? src_w - in_img_idx
                             : ratio_w * out_img_idx - in_img_idx;
-    T w2lambda = 1.f - w1lambda;
+    float w2lambda = 1.f - w1lambda;
 
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_format == DataLayout::kNCHW) {
       const T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
                             in_img_idy * in_img_w + in_img_idx];
 
       // bilinear interpolation
-      out[out_id_h * output_w + out_id_w] =
+      out[out_id_h * output_w + out_id_w] = (T)(
           h2lambda * (w2lambda * in_pos[0] + w1lambda * in_pos[w_id]) +
           h1lambda * (w2lambda * in_pos[h_id * in_img_w] +
-                      w1lambda * in_pos[h_id * in_img_w + w_id]);
+                      w1lambda * in_pos[h_id * in_img_w + w_id]));
     } else {
       const T* in_pos =
           &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
               in_img_idx * num_channels + channel_id];
 
       // bilinear interpolation
-      out[out_id_h * output_w + out_id_w] =
+      out[out_id_h * output_w + out_id_w] = (T)(
           h2lambda *
               (w2lambda * in_pos[0] + w1lambda * in_pos[w_id * num_channels]) +
           h1lambda * (w2lambda * in_pos[h_id * in_img_w * num_channels] +
                       w1lambda * in_pos[h_id * in_img_w * num_channels +
-                                        w_id * num_channels]);
+                                        w_id * num_channels]));
     }
   }
 }
@@ -161,13 +161,13 @@ static void ResizeFwd(
     framework::Tensor* output, const std::vector<int64_t> out_size,
     const std::string interp_method, const bool align_corners,
     const int align_mode, const int img_h, const int img_w, const int c,
-    const DataLayout data_layout) {
+    const DataLayout data_format) {
   auto input_data = input.template data<T>();
   int out_h = static_cast<int>(out_size[0]);
   int out_w = static_cast<int>(out_size[1]);
 
   framework::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_format == DataLayout::kNCHW) {
     dim_out = {c, out_h, out_w};
   } else {
     dim_out = {out_h, out_w, c};
@@ -196,13 +196,13 @@ static void ResizeFwd(
         T><<<config.block_per_grid, config.thread_per_block, 0,
              ctx.cuda_device_context().stream()>>>(
         input_data, img_h, img_w, 1, in_chw, output_data, out_h, out_w, 1,
-        out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+        out_chw, c, ratio_h, ratio_w, align_corners, data_format);
   } else if ("bilinear" == interp_method) {
     KeBilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
                             ctx.cuda_device_context().stream()>>>(
         input_data, img_h, img_w, 1, in_chw, output_data, out_h, out_w, 1,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
-        data_layout);
+        data_format);
   }
 }
 
@@ -223,21 +223,21 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
     // get size, scale, ratio
     auto size = ctx.Attr<std::vector<int64_t>>("size");
 
-    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const std::string data_format_str = ctx.Attr<std::string>("data_format");
+    const DataLayout data_format =
+        framework::StringToDataLayout(data_format_str);
     // get interpolation method
     const std::string interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
     int align_mode = ctx.Attr<int>("align_mode");
 
     auto* img = &x->at(0);
-    int64_t img_c = data_layout == DataLayout::kNCHW ? \
+    int64_t img_c = data_format == DataLayout::kNCHW ? \
                   img->dims()[0] : img->dims()[2];
 
     std::vector<int64_t> out_dim = {static_cast<int64_t>(x->size()),
                                     size[0], size[1], img_c};
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_format == DataLayout::kNCHW) {
       out_dim = {static_cast<int64_t>(x->size()),
                                     img_c, size[0], size[1]};
     }
@@ -248,13 +248,13 @@ class BatchResizeCUDAKernel : public framework::OpKernel<T> {
     for (int i = 0; i < x->size(); i++) {
       img = &x->at(i);
       img_h =
-          data_layout == DataLayout::kNCHW ? img->dims()[1] : img->dims()[0];
+          data_format == DataLayout::kNCHW ? img->dims()[1] : img->dims()[0];
       img_w =
-          data_layout == DataLayout::kNCHW ? img->dims()[2] : img->dims()[1];
+          data_format == DataLayout::kNCHW ? img->dims()[2] : img->dims()[1];
       auto out_tensor = out->Slice(i, i + 1);
       ResizeFwd<T>(ctx, *img, &out_tensor, size, interp_method,
                    align_corners, align_mode, img_h, img_w, img_c,
-                   data_layout);
+                   data_format);
     }
   }
 };

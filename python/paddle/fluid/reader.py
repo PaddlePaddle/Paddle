@@ -184,7 +184,7 @@ class DataLoader(object):
 
 
     Args:  
-        dataset(Dataset): the dataset to load data from, should be an
+        dataset(Dataset|callable): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
             :code:`paddle.io.IterableDataset`.
         feed_list (list(Tensor)|tuple(Tensor)): feed Tensor list.
@@ -329,11 +329,12 @@ class DataLoader(object):
                  persistent_workers=False):
 
         if callable(dataset):
-            with DataPipeline() as pipeline:
-                outputs = func(*args, **kwargs)
-                pipeline.set_outputs(outputs)
-            pipeline.build()
-            return pipeline
+            self._use_data_pipeline = True
+            with DataPipeline() as self._data_pipeline:
+                outputs = dataset()
+                self._data_pipeline.set_outputs(outputs)
+            self._data_pipeline.build()
+            return
 
         self.return_list = return_list
         self.collate_fn = collate_fn
@@ -428,6 +429,11 @@ class DataLoader(object):
                 return len(self.dataset)
 
     def __iter__(self):
+        # use DataPipeline
+        if self._use_data_pipeline:
+            return self._data_pipeline
+
+        # use multi-process DataLoader
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
         elif self._persistent_workers:
@@ -441,6 +447,13 @@ class DataLoader(object):
 
     def __call__(self):
         return self.__iter__()
+
+    def reset(self):
+        assert self._use_data_pipeline, \
+                "reset() can only be used in DataPipeline mode, "\
+                "which takes callabe function as dataset input "\
+                "instead of paddle.io.Dataset"
+        self._data_pipeline.reset()
 
     @staticmethod
     def from_generator(feed_list=None,

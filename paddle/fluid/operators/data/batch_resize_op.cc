@@ -85,7 +85,7 @@ class BatchResizeOpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
     AddAttr<std::string>(
-        "data_layout",
+        "data_format",
         "(string, default NCHW) Only used in "
         "an optional string from: \"NHWC\", \"NCHW\". "
         "Specify that the data format of the input and output data is "

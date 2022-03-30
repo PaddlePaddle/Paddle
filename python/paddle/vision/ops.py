@@ -1603,7 +1603,7 @@ def image_resize(x,
                  interp_method='bilinear',
                  align_corners=True,
                  align_mode=1,
-                 data_layout='NCHW',
+                 data_format='NCHW',
                  seed=0,
                  name=None):
     """
@@ -1627,7 +1627,7 @@ def image_resize(x,
         align_mode (int32, optional): Optional for bilinear interpolation,
             can be 0 for src_idx = scale*(dst_indx+0.5)-0.5, can be 1 for
             src_idx = scale*dst_index. Default: 1
-        data_layout (str, optional): Only used in an optional string
+        data_format (str, optional): Only used in an optional string
             from: NHWC, NCHW. Specify that the data format of the input
             and output data is channel_first or channel_last. Default: NCHW
         seed (int, optional): The random seed. Default: 0
@@ -1643,14 +1643,14 @@ def image_resize(x,
         .. code-block:: python
 
             import paddle
-            from paddle.vision.ops import random_crop_and_resize
+            from paddle.vision.ops import image_resize
 
             data = paddle.rand([3, 256, 256])
-            out = random_crop_and_resize([data])
+            out = image_resize([data])
     """
-    check_type(size, 'size', (int, tuple), 'random_crop_and_resize')
+    check_type(size, 'size', (int, tuple), 'image_resize')
     assert interp_method in ['bilinear', 'nearest']
-    assert data_layout in ['NCHW', 'NHWC']
+    assert data_format in ['NCHW', 'NHWC']
     if isinstance(size, int):
         size = (size, size)
 
@@ -1658,7 +1658,7 @@ def image_resize(x,
         out = _C_ops.batch_resize(
             x, "size", size, "interp_method", interp_method,
             "align_corners", align_corners, "align_mode",
-            align_mode, "data_layout", data_layout, "seed", seed)
+            align_mode, "data_format", data_format, "seed", seed)
         return out
 
     helper = LayerHelper('batch_resize', **locals())
@@ -1670,7 +1670,7 @@ def image_resize(x,
         "interp_method": interp_method,
         "align_corners": align_corners,
         "align_mode": align_mode,
-        "data_layout": data_layout,
+        "data_format": data_format,
         "seed": seed,
     }
     helper.append_op(

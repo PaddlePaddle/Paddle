@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import cv2
-import shutil
 import unittest
 import numpy as np
 
@@ -34,14 +32,14 @@ class TestRandomFlip(unittest.TestCase):
         except ValueError:
             pass
 
-    def test_dynamic(self):
+    def test_output_dynamic(self):
         data = paddle.ones([16, 3, 32, 32], dtype="float32")
         out = random_flip(data, 0.5)
 
         assert out.dtype == paddle.bool
         assert out.shape == [16, 1]
 
-    def test_static(self):
+    def test_output_static(self):
         paddle.enable_static()
         input_data = paddle.static.data(shape=[16, 3, 32, 32], dtype="float32", name="input")
         out_data = random_flip(input_data, 0.5)
