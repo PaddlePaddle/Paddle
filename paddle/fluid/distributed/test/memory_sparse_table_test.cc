@@ -132,7 +132,7 @@ TEST(MemorySparseTable, SGD) {
   }
 
   MemorySparseTable *ctr_table = dynamic_cast<MemorySparseTable *>(table);
-  ctr_table->save_local_fs("./work/table.save", "0", "test");
+  ctr_table->SaveLocalFS("./work/table.save", "0", "test");
 }
 
 }  // namespace distributed

@@ -156,7 +156,7 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, 1);
+  _ps_env.SetPsServers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
@@ -172,7 +172,7 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  _ps_env.SetPsServers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
       paddle::distributed::PSClientFactory::create(worker_proto));
   worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
@@ -182,7 +182,7 @@ void RunBrpcPushSparse() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_string());
+  host_sign_list_.push_back(ph_host.SerializeToString());
 
   // Srart Server
   std::thread server_thread(RunServer);

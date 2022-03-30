@@ -155,7 +155,7 @@ void RunServer() {
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
   LOG(INFO) << "RUN set_ps_servers";
-  _ps_env.set_ps_servers(&host_sign_list_, 1);
+  _ps_env.SetPsServers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
   LOG(INFO) << "RUN configure";
@@ -175,7 +175,7 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   LOG(INFO) << "Run set_ps_servers";
-  _ps_env.set_ps_servers(&host_sign_list_, servers_);
+  _ps_env.SetPsServers(&host_sign_list_, servers_);
   LOG(INFO) << "Run Create PSClient";
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
       paddle::distributed::PSClientFactory::create(worker_proto));
@@ -187,7 +187,7 @@ void RunBrpcPushDense() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
-  host_sign_list_.push_back(ph_host.serialize_to_string());
+  host_sign_list_.push_back(ph_host.SerializeToString());
 
   // Srart Server
   std::thread server_thread(RunServer);
@@ -229,10 +229,10 @@ void RunBrpcPushDense() {
 
   LOG(INFO) << "Run push_dense_param";
   auto push_status =
-      worker_ptr_->push_dense_param(regions.data(), regions.size(), 0);
+      worker_ptr_->PushDenseParam(regions.data(), regions.size(), 0);
   push_status.wait();
 
-  pull_status = worker_ptr_->pull_dense(regions.data(), regions.size(), 0);
+  pull_status = worker_ptr_->PullDense(regions.data(), regions.size(), 0);
   pull_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
@@ -257,11 +257,11 @@ void RunBrpcPushDense() {
 
   LOG(INFO) << "Run pull_dense_grad";
   auto push_grad_status =
-      worker_ptr_->push_dense_raw_gradient(0, temp, tensor->numel(), closure);
+      worker_ptr_->PushDenseRawGradient(0, temp, tensor->numel(), closure);
   push_grad_status.wait();
 
   auto pull_update_status =
-      worker_ptr_->pull_dense(regions.data(), regions.size(), 0);
+      worker_ptr_->PullDense(regions.data(), regions.size(), 0);
   pull_update_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
@@ -269,9 +269,9 @@ void RunBrpcPushDense() {
   }
 
   LOG(INFO) << "Run stop_server";
-  worker_ptr_->stop_server();
+  worker_ptr_->StopServer();
   LOG(INFO) << "Run finalize_worker";
-  worker_ptr_->finalize_worker();
+  worker_ptr_->FinalizeWorker();
   server_thread.join();
 }
 
