@@ -164,6 +164,66 @@ void CompareRecord(std::map<std::string, Record> *truth_output_data,
   }
 }
 
+bool CompareVector(const std::vector<float> &v1, const std::vector<float> &v2) {
+  ASSERT_LT(v1.size(), v2.size());
+  for (size_t i = 0; i < v1.size(); ++i) {
+    if (v1[i] != v2[i]) {
+      return v1[i] < v2[i];
+    }
+  }
+  return true;
+}
+
+void CopyAndSort(const std::vector<float> &src,
+                 std::vector<std::vector<float>> *dst, const size_t m,
+                 const size_t n) {
+  // reshape vector
+  for (size_t i = 0; i < m; ++i) {
+    for (size_t j = 0; j < n; ++j) {
+      dst[i][j] = src[i * n + j];
+    }
+  }
+  // sort vector
+  std::sort(dst.bigin(), dst.end(), CompareVector);
+}
+
+void CompareUnorderedRecord(std::map<std::string, Record> *truth_output_data,
+                            std::map<std::string, Record> *infer_output_data,
+                            float epislon = 1e-5) {
+  for (const auto & [ key, value ] : *infer_output_data) {
+    auto truth_record = (*truth_output_data)[key];
+    VLOG(1) << "output name: " << key;
+    EXPECT_EQ(value.data.size(), truth_record.data.size());
+    ASSERT_LT(truth_record.shape.size(), 3);
+    // sort truth data
+    if (truth_record.shape.size() == 1) {
+      for (size_t i = 0; i < value.data.size(); ++i) {
+        VLOG(1) << "compare: " << value.data.data()[i] << ",\t"
+                << truth_record.data.data()[i];
+        ASSERT_LT(fabs(value.data.data()[i] - truth_record.data.data()[i]),
+                  epislon);
+      }
+    } else {
+      size_t m = truth_record.shape[0];
+      size_t n = truth_record.shape[1];
+      std::vector<std::vector<float>> sorted_truth_data(m,
+                                                        std::vector<float>(n));
+      CopyAndSort(truth_record.data, &sorted_truth_data, m, n);
+      std::vector<std::vector<float>> sorted_infer_data(m,
+                                                        std::vector<float>(n));
+      CopyAndSort(value.data, &sorted_infer_data, m, n);
+      for (size_t i = 0; i < m; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+          VLOG(1) << "compare: " << sorted_infer_data[i][j] << ",\t"
+                  << sorted_truth_data[i][j];
+          ASSERT_LT(fabs(sorted_infer_data[i][j] - sorted_truth_data[i][j]),
+                    epislon);
+        }
+      }
+    }
+  }
+}
+
 // Timer, count in ms
 class Timer {
  public:

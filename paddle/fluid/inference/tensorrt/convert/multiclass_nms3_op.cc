@@ -38,6 +38,7 @@ class MultiClassNMS3OpConverter : public OpConverter {
     std::string scores = op_desc.Input("Scores").front();
     std::string output_name = op_desc.Output("Out").front();
     std::string rois_num_name = op_desc.Output("NmsRoisNum").front();
+    std::string index_name = op_desc.Output("Index").front();
 
     auto* bboxes_tensor = engine_->GetITensor(bboxes);
     auto* scores_tensor = engine_->GetITensor(scores);
@@ -121,10 +122,17 @@ class MultiClassNMS3OpConverter : public OpConverter {
     auto nms_concat_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Concatenation, concat_inputs.data(), concat_inputs.size());
     nms_concat_layer->setAxis(1);
+    std::vector<int32_t> index(keep_top_k, 0);
+    auto constant_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, nvinfer1::Dims2(keep_top_k, 1),
+        nvinfer1::Weights{nvinfer1::DataType::kINT32,
+                          static_cast<void*>(index.data()), keep_top_k})
 
-    RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
-                             {rois_num_name}, test_mode);
+        RreplenishLayerAndOutput(batch_nms_layer, "multiclass_nms3",
+                                 {rois_num_name}, test_mode);
     RreplenishLayerAndOutput(nms_concat_layer, "multiclass_nms3", {output_name},
+                             test_mode);
+    RreplenishLayerAndOutput(constant_layer, "multiclass_nms3", {index_name},
                              test_mode);
   }
 };
