@@ -82,8 +82,6 @@ static_cast<int>(experimental::{{default_value}})
 static_cast<int>(phi::Place({{default_value}}.GetType()))
   {%- elif typename == "str" %}{# warp string #}
 "{{default_value}}"
-  {%- elif typename.endswith("[]") %}{# a vector: explicit construct it#}
-{{typename | to_op_attr_type}}({{default_value}})
   {%- else %}
 {{default_value}}
   {%- endif %}
