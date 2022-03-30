@@ -201,6 +201,24 @@ class HeterComm {
     }
   }
 
+  template <typename StreamType>
+  void create_stream(StreamType* stream) {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(stream));
+#elif defined(PADDLE_WITH_XPU)
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(stream));
+#endif
+  }
+
+  template <typename StreamType>
+  void destroy_stream(StreamType stream) {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
+#elif defined(PADDLE_WITH_XPU)
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(stream));
+#endif
+  }
+
   template <typename KeyT, typename ValueT, typename StreamType>
   void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
                   const KeyT* d_keys_in, KeyT* d_keys_out,

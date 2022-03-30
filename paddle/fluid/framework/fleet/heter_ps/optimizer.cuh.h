@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <curand_kernel.h>
 #include <vector>
-#include "optimizer_conf.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
 #ifdef PADDLE_WITH_HETERPS
 
@@ -32,9 +32,9 @@ class Optimizer {
 
   void initialize() {}
 
-
 #if defined(PADDLE_WITH_CUDA)
-  __device__ void update_lr(float& w, float& g2sum, float g, float scale) {
+  __device__ void update_lr(float& w, float& g2sum, float g,  // NOLINT
+                            float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::learning_rate *
                    sqrt(optimizer_config::initial_g2sum /
@@ -51,8 +51,8 @@ class Optimizer {
     g2sum += add_g2sum;
   }
 
-  __device__ void update_mf(int n, float* w, float& g2sum, const float* g,
-                            float scale) {
+  __device__ void update_mf(int n, float* w, float& g2sum,  // NOLINT
+                            const float* g, float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::mf_learning_rate *
                    sqrt(optimizer_config::mf_initial_g2sum /
@@ -71,7 +71,7 @@ class Optimizer {
 
     g2sum += add_g2sum / n;
   }
-  __device__ void update_value(ValType& val, const GradType& grad) {
+  __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
     val.slot = grad.slot;
     val.show += grad.show;
     val.clk += grad.clk;
@@ -134,7 +134,8 @@ class Optimizer {
   }
 #elif defined(PADDLE_WITH_XPU)
 
-  __device__ void update_lr(float& w, float& g2sum, float g, float scale) {
+  __device__ void update_lr(float& w, float& g2sum, float g,  // NOLINT
+                            float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::learning_rate *
                    sqrt(optimizer_config::initial_g2sum /
@@ -151,8 +152,8 @@ class Optimizer {
     g2sum += add_g2sum;
   }
 
-  __device__ void update_mf(int n, float* w, float& g2sum, const float* g,
-                            float scale) {
+  __device__ void update_mf(int n, float* w, float& g2sum,  // NOLINT
+                            const float* g, float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config::mf_learning_rate *
                    sqrt(optimizer_config::mf_initial_g2sum /
@@ -172,9 +173,7 @@ class Optimizer {
     g2sum += add_g2sum / n;
   }
 
-  __device__ void update_value(ValType& val, const GradType& grad) {
-    
-    
+  __device__ void update_value(ValType& val, const GradType& grad) {  // NOLINT
     val.slot = grad.slot;
     val.show += grad.show;
     val.clk += grad.clk;
@@ -188,14 +187,12 @@ class Optimizer {
       if (optimizer_config::mf_create_thresholds <=
           optimizer_config::nonclk_coeff * (val.show - val.clk) +
               optimizer_config::clk_coeff * val.clk) {
-
         val.mf_size = MF_DIM + 1;
         val.mf[0] = 0;
 
-        
         for (int i = 0; i < MF_DIM; ++i) {
-           val.mf[i + 1] =
-               (xpurand_uniform(&state)) * optimizer_config::mf_initial_range;
+          val.mf[i + 1] =
+              (xpurand_uniform(&state)) * optimizer_config::mf_initial_range;
         }
 
         // int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -205,8 +202,6 @@ class Optimizer {
         //   val.mf[i + 1] =
         //       (curand_uniform(&state)) * optimizer_config::mf_initial_range;
         // }
-
-
       }
     } else {
       update_mf(MF_DIM, &val.mf[1], val.mf[0], grad.mf_g, grad.show);
@@ -214,7 +209,6 @@ class Optimizer {
   }
 
 #endif
-
 };
 
 }  // end namespace framework

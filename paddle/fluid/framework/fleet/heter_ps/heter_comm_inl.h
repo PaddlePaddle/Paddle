@@ -383,27 +383,23 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
   return resource_->get_index_by_devid(devid);
 }
 
-#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
-                                                     ValType* h_vals,
-                                                     size_t len,
-                                                     size_t chunk_size,
-                                                     int stream_num) {
+void HeterComm<KeyType, ValType, GradType>::build_ps(
+    int dev_num, KeyType* h_keys, ValType* h_vals, size_t len,
+    size_t chunk_size, int stream_num) {
   if (len <= 0) {
     return;
   }
-  int dev_id = resource_->dev_id(num);
+  int dev_id = resource_->dev_id(dev_num);
 
   std::vector<memory::allocation::AllocationPtr> d_key_bufs;
   std::vector<memory::allocation::AllocationPtr> d_val_bufs;
 
-  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
-  platform::CUDADeviceGuard guard(dev_id);
-
-  gpuStream_t streams[stream_num];  // NOLINT
+  DevPlace place = DevPlace(dev_id);
+  AnyDeviceGuard guard(dev_id);
+  ppStream streams[stream_num];  // NOLINT
   for (int i = 0; i < stream_num; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&(streams[i])));
+    create_stream(&(streams[i]));
     auto d_k_buf = memory::Alloc(place, chunk_size * sizeof(KeyType));
     auto d_v_buf = memory::Alloc(place, chunk_size * sizeof(ValType));
     d_key_bufs.push_back(std::move(d_k_buf));
@@ -416,71 +412,36 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
   while (cur_len < len) {
     cur_stream = cur_stream % stream_num;
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemcpyAsync(d_key_bufs[cur_stream]->ptr(), h_keys + cur_len,
-                        sizeof(KeyType) * tmp_len, cudaMemcpyHostToDevice,
-                        streams[cur_stream]));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemcpyAsync(d_val_bufs[cur_stream]->ptr(), h_vals + cur_len,
-                        sizeof(ValType) * tmp_len, cudaMemcpyHostToDevice,
-                        streams[cur_stream]));
-    tables_[num]->insert(
-        reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
-        reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
-        streams[cur_stream]);
+
+    auto dst_place = place;
+    auto src_place = platform::CPUPlace();
+
+    memory_copy(dst_place,
+                reinterpret_cast<char*>(d_key_bufs[cur_stream]->ptr()),
+                src_place, h_keys + cur_len, sizeof(KeyType) * tmp_len);
+    memory_copy(dst_place,
+                reinterpret_cast<char*>(d_val_bufs[cur_stream]->ptr()),
+                src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
+
+    cur_use_stream = streams[cur_stream];
+#if defined(PADDLE_WITH_XPU)
+    cur_use_stream =
+        0
+#endif
+
+        tables_[num]
+            ->insert(reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
+                     reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()),
+                     tmp_len, cur_use_stream);
+
     cur_stream += 1;
     cur_len += tmp_len;
   }
   for (int i = 0; i < stream_num; ++i) {
-    cudaStreamSynchronize(streams[i]);
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(streams[i]));
+    sync_stream(streams[i]);
+    destroy_stream(streams[i])
   }
 }
-
-#elif defined(PADDLE_WITH_XPU)
-
-template <typename KeyType, typename ValType, typename GradType>
-void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
-                                                     ValType* h_vals,
-                                                     size_t len,
-                                                     size_t chunk_size,
-                                                     int stream_num) {
-  if (len <= 0) {
-    return;
-  }
-  int dev_id = resource_->dev_id(num);
-  std::vector<memory::allocation::AllocationPtr> d_key_bufs;
-  std::vector<memory::allocation::AllocationPtr> d_val_bufs;
-
-  platform::XPUPlace place = platform::XPUPlace(dev_id);
-  platform::XPUDeviceGuard guard(dev_id);
-
-  auto d_k_buf = memory::Alloc(place, chunk_size * sizeof(KeyType));
-  auto d_v_buf = memory::Alloc(place, chunk_size * sizeof(ValType));
-  d_key_bufs.push_back(std::move(d_k_buf));
-  d_val_bufs.push_back(std::move(d_v_buf));
-
-  int cur_len = 0;
-  int cur_stream = 0;
-  while (cur_len < len) {
-    int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
-    auto dst_place = platform::XPUPlace(dev_id);
-    auto src_place = platform::CPUPlace();
-
-    memory::Copy(dst_place, reinterpret_cast<char*>(d_key_bufs[0]->ptr()),
-                 src_place, h_keys + cur_len, sizeof(KeyType) * tmp_len);
-    memory::Copy(dst_place, reinterpret_cast<char*>(d_val_bufs[0]->ptr()),
-                 src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
-
-    // use default stream
-    tables_[num]->insert(
-        reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
-        reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len, 0);
-
-    cur_len += tmp_len;
-  }
-}
-#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::merge_grad(
