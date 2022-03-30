@@ -21,6 +21,15 @@
 
 namespace phi {
 
+namespace {
+template <typename Context>
+void LimitGridDim(const Context& ctx, unsigned int* grid_dim) {
+  auto max_grid_dim =
+      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
+  *grid_dim = *grid_dim < max_grid_dim[0] ? *grid_dim : max_grid_dim[0];
+}
+}  // namespace
+
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
@@ -32,16 +41,15 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
+  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+       idx < N; idx += blockDim.x * gridDim.x) {
+    int64_t pre_idx = idx / (stride * size);
+    int64_t dim_idx = idx % (stride * size) / stride;
+    IndexT src_dim_idx = index[dim_idx];
+    int64_t input_idx =
+      idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
+    paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
   }
-
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  IndexT src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
 template <typename T>
@@ -89,17 +97,22 @@ void IndexSelectGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
 
+  unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
+  unsigned int grid_dim =
+    (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
+  LimitGridDim(ctx, &grid_dim);
+
   index_select_grad_init<
-      T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-           PADDLE_CUDA_NUM_THREADS,
+      T><<<grid_dim,
+           block_dim,
            0,
            stream>>>(in_grad_data, numel);
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_select_grad_cuda_kernel<T, int64_t><<<
-        (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-        PADDLE_CUDA_NUM_THREADS,
+        grid_dim,
+        block_dim,
         0,
         stream>>>(output_grad_data,
                   in_grad_data,
