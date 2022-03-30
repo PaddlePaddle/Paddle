@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 #include "glog/logging.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -100,7 +100,7 @@ TEST(AutoTune, sum) {
   const auto alloc_cuda =
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto place = paddle::platform::CUDAPlace();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
   auto stream = dev_ctx->stream();
