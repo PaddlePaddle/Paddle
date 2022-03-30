@@ -177,6 +177,10 @@ def pow(x, y, name=None):
             raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
 
+OP_NAMEMAPPING = {
+    'elementwise_max': 'final_state_maximum',
+    'elementwise_min': 'final_state_minimum',
+}
 
 @dygraph_only
 def _elementwise_op_in_dygraph(x,
@@ -185,12 +189,16 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    if in_dygraph_mode():
+        op = getattr(_C_ops, OP_NAMEMAPPING[op_name])
+        out = op(x, y)
+
+    if _in_legacy_dygraph():
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
-
 
 def _elementwise_op(helper):
     op_type = helper.layer_type

@@ -40,6 +40,7 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'fc',
@@ -202,8 +203,13 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    if in_dygraph_mode():
+        op = getattr(_C_ops, OP_NAMEMAPPING[op_name])
+        out = op(x, y)
+
+    if _in_legacy_dygraph():
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
