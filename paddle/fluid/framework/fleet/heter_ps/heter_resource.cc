@@ -94,7 +94,6 @@ XPUResource::~XPUResource() {
 #endif
 
 void HeterPsResource::enable_p2p() {
-
 #if defined(PADDLE_WITH_CUDA)
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     platform::CUDADeviceGuard guard(dev_ids_[i]);
@@ -116,7 +115,6 @@ void HeterPsResource::enable_p2p() {
     }
   }
 #endif
-
 }
 
 HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
@@ -130,15 +128,14 @@ HeterPsResource::HeterPsResource(const std::vector<int>& dev_ids) {
 }
 
 
-cudaStream_t HeterPsResource::comm_stream(int dev_num, int stream_num) {
+ppStream HeterPsResource::comm_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->comm_stream(stream_num);
 }
-
-cudaStream_t HeterPsResource::local_stream(int dev_num, int stream_num) {
+ppStream HeterPsResource::local_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->local_stream(stream_num);
 }
 
-cudaStream_t HeterPsResource::remote_stream(int dev_num, int stream_num) {
+ppStream HeterPsResource::remote_stream(int dev_num, int stream_num) {
   return resources_[dev_num]->remote_stream(stream_num);
 }
 

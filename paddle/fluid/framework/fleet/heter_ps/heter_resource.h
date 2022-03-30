@@ -64,7 +64,7 @@ class GPUResource {
 #elif defined(PADDLE_WITH_XPU_KP)
 class XPUResource {
  public:
-  XPUResource(std::vector<int>& device_id, int index);
+  XPUResource(std::vector<int>& device_id, int index);  // NOLINT
   virtual ~XPUResource();
   XPUResource(const XPUResource&) = delete;
   XPUResource& operator=(const XPUResource&) = delete;
