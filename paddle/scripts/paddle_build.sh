@@ -951,11 +951,18 @@ function check_whl_size() {
 }
 
 function generate_upstream_develop_api_spec() {
-    fetch_upstream_develop_if_not_exist
-    cur_branch=`git branch | grep \* | cut -d ' ' -f2`
+    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [[ ${cmake_change} ]];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
-    startTime_firstBuild=`date +%s`
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
@@ -967,20 +974,9 @@ function generate_upstream_develop_api_spec() {
         build $2
     fi
 
-    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
-    echo "pr_whl_size: ${pr_whl_size}"
-    
-
-    git checkout $cur_branch
-    generate_api_spec "$1" "DEV"
-    git branch -D develop_base_pr
-    ENABLE_MAKE_CLEAN="ON"
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
+    endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
 function generate_api_spec() {
@@ -3002,8 +2998,8 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         check_whl_size
