@@ -43,7 +43,7 @@ GPUResource::GPUResource(std::vector<int>& dev_ids, int index) {
         cudaStreamCreateWithFlags(&remote_streams_[i], cudaStreamNonBlocking));
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   platform::XPUDeviceGuard guard(dev_id_);
   local_streams_.resize(dev_ids_.size());
   comm_streams_.resize(dev_ids_.size());
@@ -70,7 +70,7 @@ GPUResource::~GPUResource() {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   platform::XPUDeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(local_streams_[i]));
@@ -129,7 +129,7 @@ cudaStream_t HeterPsResource::remote_stream(int gpu_num, int stream_num) {
   return resources_[gpu_num]->remote_stream(stream_num);
 }
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
 XPUStream HeterPsResource::comm_stream(int gpu_num, int stream_num) {
   return resources_[gpu_num]->comm_stream(stream_num);
 }

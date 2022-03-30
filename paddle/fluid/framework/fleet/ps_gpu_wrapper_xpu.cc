@@ -18,11 +18,12 @@ limitations under the License. */
 #include <ctime>
 #include <memory>
 #include <numeric>
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#include <xpu/runtime.h>  // NOLINT
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/backends/xpu/xpu_header.h"
-#include "paddle/phi/backends/xpu/xpu_info.h"
+#include "xpu/kernel/cluster_header.h"  // NOLINT
+#include "xpu/kernel/debug.h"           // NOLINT
+#include "xpu/kernel/math.h"            // NOLINT
 
 namespace paddle {
 namespace framework {
@@ -37,38 +38,48 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  int len_per_loop = 1;
+  __local__ int64_t local_len[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(int64_t));
 
-  for (int i = thread_id * len_per_loop; i < total_len;
-       i += nthreads * len_per_loop) {
-    int low = 0;
-    int high = slot_num - 1;
-    while (low < high) {
-      int mid = (low + high) / 2;
-      if (i < len[mid])
-        high = mid;
-      else
-        low = mid + 1;
-    }
-    int x = low;
-    int y = i - (x ? len[x - 1] : 0);
-    if (*(keys[x] + y) == 0) {
-      *(dest[x] + y * hidden) = 0;
-      *(dest[x] + y * hidden + 1) = 0;
-      *(dest[x] + y * hidden + 2) = 0;
-    } else {
-      *(dest[x] + y * hidden) = (src + i)->show;
-      *(dest[x] + y * hidden + 1) = (src + i)->clk;
-      *(dest[x] + y * hidden + 2) = (src + i)->lr;
-    }
-    if ((src + i)->mf_size == 0 || *(keys[x] + y) == 0) {
-      for (int j = 0; j < hidden - 3; j++) {
-        *(dest[x] + y * hidden + 3 + j) = 0;
+  for (int i = thread_id; i < slot_num; i += nthreads) {
+    // max core local memory = 8KB
+    // slot's max memory size = slot_len * sizeof(FeatureValue)
+    int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
+    int read_len = min(roundup_div(1024 * 8, sizeof(FeatureValue)), slot_len);
+    int dest_len = i ? local_len[i - 1] : 0;
+    __local__ FeatureValue local_slot_vals[read_len];
+    __local__ float local_dest_vals[read_len * hidden];
+    __local__ uint64_t local_slot_keys[read_len];
+
+    // copy read_len(length) of slots' val to LM
+    for (int k = 0; k < slot_len; k += read_len) {
+      int real_read_len = min(read_len, slot_len - k);
+      GM2LM(src + dest_len + k, local_slot_vals,
+            real_read_len * sizeof(FeatureValue));
+      GM2LM(keys[i] + k, local_slot_keys, real_read_len * sizeof(uint64_t));
+      for (int j = 0; j < real_read_len; j++) {
+        if (local_slot_keys[j] == 0) {
+          local_dest_vals[j * hidden] = 0;
+          local_dest_vals[j * hidden + 1] = 0;
+          local_dest_vals[j * hidden + 2] = 0;
+        } else {
+          local_dest_vals[j * hidden] = local_slot_vals[j]->show;
+          local_dest_vals[j * hidden + 1] = local_slot_vals[j]->clk;
+          local_dest_vals[j * hidden + 2] = local_slot_vals[j]->lr;
+        }
+
+        if (local_slot_vals[j]->mf_size == 0 || local_slot_keys[j] == 0) {
+          for (int m = 0; m < hidden - 3; m++) {
+            local_dest_vals[j * hidden + 3 + m] = 0;
+          }
+        } else {
+          for (int m = 0; m < hidden - 3; m++) {
+            local_dest_vals[j * hidden + 3 + m] = local_slot_vals[j]->mf[1 + m];
+          }
+        }
       }
-    } else {
-      for (int j = 0; j < hidden - 3; j++) {
-        *(dest[x] + y * hidden + 3 + j) = (src + i)->mf[1 + j];
-      }
+      LM2GM(local_dest_vals, dest[i] + k * hidden,
+            real_read_len * hidden * sizeof(float));
     }
   }
 }
@@ -83,22 +94,22 @@ __global__ void CopyKeysKernel(uint64_t** src_keys, uint64_t* dest_total_keys,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  int len_per_loop = 1;
+  __local__ int64_t local_len[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(int64_t));
 
-  for (int i = thread_id * len_per_loop; i < total_len;
-       i += nthreads * len_per_loop) {
-    int low = 0;
-    int high = slot_num - 1;
-    while (low < high) {
-      int mid = (low + high) / 2;
-      if (i < len[mid])
-        high = mid;
-      else
-        low = mid + 1;
+  for (int i = thread_id; i < slot_num; i += nthreads) {
+    // max core local memory = 8KB
+    int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
+    int read_len = min(slot_len, 1024);
+    int dest_len = i ? local_len[i - 1] : 0;
+    __local__ uint64_t local_slot_keys[read_len];
+
+    for (int k = 0; k < slot_len; k += read_len) {
+      int real_read_len = min(read_len, slot_len - k);
+      GM2LM(src_keys[i] + k, local_slot_keys, real_read_len * sizeof(uint64_t));
+      LM2GM(local_slot_keys, dest_total_keys + dest_len + k,
+            real_read_len * sizeof(uint64_t));
     }
-    int x = low;
-    int y = i - (x ? len[x - 1] : 0);
-    dest_total_keys[i] = src_keys[x][y];
   }
 }
 
@@ -112,27 +123,39 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  int len_per_loop = 1;
+  __local__ int64_t local_len[slot_num];
+  __local__ int local_slot[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(int64_t));
+  GM2LM(slot_vector, local_slot, slot_num * sizeof(int));
 
-  for (int i = thread_id * len_per_loop; i < total_len;
-       i += nthreads * len_per_loop) {
-    int low = 0;
-    int high = slot_num - 1;
-    while (low < high) {
-      int mid = (low + high) / 2;
-      if (i < len[mid])
-        high = mid;
-      else
-        low = mid + 1;
-    }
-    int x = low;
-    int y = i - (x ? len[low - 1] : 0);
-    (dest + i)->slot = slot_vector[x];
-    (dest + i)->show = *(src[x] + y * hidden);
-    (dest + i)->clk = *(src[x] + y * hidden + 1);
-    (dest + i)->lr_g = *(src[x] + y * hidden + 2) * -1. * bs;
-    for (int j = 0; j < hidden - 3; j++) {
-      (dest + i)->mf_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
+  for (int i = thread_id; i < slot_num; i += nthreads) {
+    int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
+
+    // max core local memory = 8KB
+    // slot's max memory size = slot_len * hidden * 8
+    int read_len = min(roundup_div(1024, hidden), slot_len);
+    int dest_len = i ? local_len[i - 1] : 0;
+    __local__ float local_slot_grads[read_len * hidden];
+    __local__ FeaturePushValue local_dest_grads[read_len];
+
+    // copy read_len(length) of slots' grad to LM
+    for (int k = 0; k < slot_len; k += read_len) {
+      int real_read_len = min(read_len, slot_len - k);
+      GM2LM(src[i] + k * hidden, local_slot_grads,
+            real_read_len * hidden * sizeof(float));
+      // copy from slots' grad to total grad
+      for (int j = 0; j < real_read_len; j++) {
+        local_dest_grads[j]->slot = local_slot[i];
+        local_dest_grads[j]->show = local_slot_grads[j * hidden];
+        local_dest_grads[j]->clk = local_slot_grads[j * hidden + 1];
+        local_dest_grads[j]->lr_g = local_slot_grads[j * hidden + 2] * -1. * bs;
+        for (int m = 0; m < hidden - 3; j++) {
+          local_dest_grads[j]->mf_g[m] =
+              local_slot_grads[j * hidden + 3 + m] * -1. * bs;
+        }
+      }
+      LM2GM(local_dest_grads, dest + dest_len + k,
+            real_read_len * sizeof(FeaturePushValue));
     }
   }
 }

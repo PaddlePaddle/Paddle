@@ -47,7 +47,7 @@ class GPUResource {
   std::vector<gpuStream_t> local_streams_;
   std::vector<gpuStream_t> comm_streams_;
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   XPUStream local_stream(int num) { return local_streams_[num]; }
   XPUStream remote_stream(int num) { return remote_streams_[num]; }
   XPUStream comm_stream(int num) { return comm_streams_[num]; }
@@ -77,7 +77,7 @@ class HeterPsResource {
   gpuStream_t remote_stream(int gpu_num, int stream_num);
   gpuStream_t comm_stream(int gpu_num, int stream_num);
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   XPUStream local_stream(int gpu_num, int stream_num);
   XPUStream remote_stream(int gpu_num, int stream_num);
   XPUStream comm_stream(int gpu_num, int stream_num);

@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
-// #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include <queue>
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 
 namespace paddle {
 namespace framework {
-
 
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
@@ -31,11 +30,9 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
         8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
     platform::XPUDeviceGuard guard(resource_->dev_id(i));
     allocators_.push_back();
-// allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-//    8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
 #endif
     // table interface not change
     auto table = new Table(capacity / load_factor_);
@@ -109,6 +106,7 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
+#if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].gpu_num));
     allocator->DeviceAllocate(
         resource_->dev_id(nodes[i].gpu_num),
@@ -118,6 +116,9 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
         resource_->dev_id(nodes[i].gpu_num),
         (void**)&(nodes[i].val_storage),  // NOLINT
         vallen, resource_->remote_stream(nodes[i].gpu_num, start_index));
+#elif defined(PADDLE_WITH_XPU_KP)
+    platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].gpu_num));
+#endif
 
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
@@ -196,7 +197,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
 }
 #endif
 
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_dest(
     int start_index, int gpu_num, int* h_left, int* h_right, KeyType* src_key,
@@ -277,7 +278,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(
 }
 #endif
 
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::walk_to_src(
     int start_index, int gpu_num, int* h_left, int* h_right, ValType* src_val) {
@@ -375,7 +376,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(streams[i]));
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   platform::XPUPlace place = platform::XPUPlace(dev_id);
   platform::XPUDeviceGuard guard(dev_id);
   KeyType* d_k_buf = nullptr;
@@ -461,7 +462,7 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
                   cudaMemcpyDeviceToHost, stream);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   platform::XPUPlace place = platform::XPUPlace(dev_id);
   platform::XPUDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
@@ -535,9 +536,9 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   int* d_shard_index_tmp_ptr = reinterpret_cast<int*>(d_shard_index_tmp->ptr());
 
   int grid_size = (len - 1) / block_size_ + 1;
-  fill_idx<<<grid_size, block_size_, 0, stream>>>(d_idx_tmp_ptr, len);
-  calc_shard_index<<<grid_size, block_size_, 0, stream>>>(
-      d_keys, len, d_shard_index_tmp_ptr, total_gpu);
+
+  fill_idx(d_idx_tmp_ptr, len, stream);
+  calc_shard_index(d_keys, len, d_shard_index_tmp_ptr, total_gpu, stream);
 
   size_t temp_storage_bytes;
   const int num_bits = 1 + log2i(total_gpu);
@@ -549,11 +550,10 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
       d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream));
-  calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(d_shard_index_ptr,
-                                                           left, right, len);
+  calc_shard_offset(d_shard_index_ptr, left, right, len, total_gpu, stream);
   cudaStreamSynchronize(stream);
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   platform::XPUPlace place = platform::XPUPlace(dev_id);
   platform::XPUDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(gpu_num, 0);
@@ -680,14 +680,13 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     cudaStreamSynchronize(node.out_stream);
   }
 
-  fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr, d_vals,
-                                                    d_idx_ptr, len);
+  fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len, stream);
   cudaStreamSynchronize(stream);
   for (int i = 0; i < total_gpu; ++i) {
     destroy_storage(num, i);
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   int total_gpu = resource_->total_gpu();
   int dev_id = resource_->dev_id(num);
   platform::XPUPlace place = platform::XPUPlace(dev_id);
@@ -872,7 +871,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
     destroy_storage(gpu_num, i);
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   int total_gpu = resource_->total_gpu();
   int dev_id = resource_->dev_id(gpu_num);
   platform::XPUPlace place = platform::XPUPlace(dev_id);
@@ -1171,7 +1170,7 @@ void HeterComm<KeyType, ValType, GradType>::end_pass() {
     tables_[index]->dump_to_cpu(dev_id, stream);
   };
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   auto dump_to_cpu_func = [this](int index) {
     auto stream = resource_->local_stream(index, 0);
     int dev_id = resource_->dev_id(index);

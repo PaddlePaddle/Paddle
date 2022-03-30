@@ -791,7 +791,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   auto buf = memory::Alloc(place, total_length * sizeof(FeatureValue));
   FeatureValue* total_values_gpu = reinterpret_cast<FeatureValue*>(buf->ptr());
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   VLOG(3) << "Begine Xpu Ps PullSparse";
   FeatureValue* total_values_gpu = nullptr;
   xpu_malloc(reinterpret_cast<void**>(&total_values_gpu),
@@ -843,7 +843,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                       total_length);
 #endif
   } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
@@ -923,7 +923,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   FeaturePushValue* total_grad_values_gpu =
       reinterpret_cast<FeaturePushValue*>(buf->ptr());
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
   VLOG(3) << "Begine Xpu Ps PushSparseGrad";
   FeaturePushValue* total_grad_values_gpu = nullptr;
   xpu_malloc(reinterpret_cast<void**>(&total_grad_values_gpu),

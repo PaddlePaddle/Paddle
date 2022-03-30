@@ -61,7 +61,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
 #ifdef PADDLE_WITH_CUDA
     platform::CUDAPlace place = platform::CUDAPlace(num);
 #endif
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
     platform::XPUPlace place = platform::XPUPlace(num);
 #endif
     places_.push_back(place);
