@@ -398,7 +398,10 @@ def _is_enable_standalone_executor():
     env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
+<<<<<<< HEAD
         warnings.warn("STANDALONE_EXECUTOR is enabled.")
+=======
+>>>>>>> test=document_fix;test=coverage
 
     return flag
 
