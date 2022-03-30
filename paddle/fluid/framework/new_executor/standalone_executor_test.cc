@@ -57,7 +57,7 @@ USE_OP(sqrt);
 USE_OP(elementwise_max);
 USE_OP_ITSELF(elementwise_div);
 USE_OP_ITSELF(sgd);
-USE_OP(squared_l2_norm);
+USE_OP_ITSELF(squared_l2_norm);
 USE_OP_ITSELF(memcpy_h2d);
 USE_OP_ITSELF(memcpy_d2h);
 
