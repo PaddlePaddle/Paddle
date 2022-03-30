@@ -1818,12 +1818,16 @@ def cross_entropy(input,
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=input.dtype)
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    outputs = {'Softmax': softmax, 'Loss': out}
+    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        backprop = helper.create_variable_for_type_inference(dtype=input.dtype)
+        outputs['Backprop'] = backprop
     helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': input,
                 'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': out},
+        outputs=outputs,
         attrs=attrs)
 
     if weight is not None:

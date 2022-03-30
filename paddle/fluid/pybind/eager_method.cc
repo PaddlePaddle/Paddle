@@ -1310,6 +1310,27 @@ static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool set_to_zero = true;
+  if (args_num == (Py_ssize_t)1) {
+    set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
+
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  if (grad && grad->defined() && grad->is_dense_tensor() &&
+      grad->initialized()) {
+    grad->reset_inplace_version(set_to_zero);
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
@@ -1428,6 +1449,9 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_is_selected_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_reset_grad_inplace_version",
+     (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #if defined(PADDLE_WITH_CUDA)
     {"_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
