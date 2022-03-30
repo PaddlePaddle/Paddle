@@ -24,7 +24,6 @@ import six
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.fluid.framework as framework
-import paddle.distributed.fleet as fleet
 
 #logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)

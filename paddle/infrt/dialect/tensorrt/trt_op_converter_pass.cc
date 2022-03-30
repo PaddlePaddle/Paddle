@@ -109,6 +109,63 @@ struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
   }
 };
 
+struct PD2TRT_Batch_Norm_Lower : public ::mlir::RewritePattern {
+  explicit PD2TRT_Batch_Norm_Lower(::mlir::MLIRContext *context)
+      : ::mlir::RewritePattern("pd.batch_norm", 1, context, {"trt.scaleNd"}) {}
+  ::mlir::LogicalResult matchAndRewrite(
+      ::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
+    auto casted_op = ::llvm::dyn_cast<infrt::pd::Batch_normOp>(op);
+    ::mlir::SmallVector<::mlir::Value, 4> operands;
+    ::mlir::Operation::operand_range Input = casted_op.getODSOperands(0);
+    ::mlir::Operation::operand_range Scale = casted_op.getODSOperands(1);
+    ::mlir::Operation::operand_range Bias = casted_op.getODSOperands(2);
+
+    // TODO(weishengying) : recompute this via params
+    operands.push_back((*Input.begin()));
+    operands.push_back((*Scale.begin()));
+    operands.push_back((*Bias.begin()));
+    operands.push_back((*Bias.begin()));
+
+    trt::ScaleNdOp scaleNd_op;
+    // inputs
+    ::mlir::SmallVector<::mlir::Value, 4> trt_inputs;
+    for (auto v : operands) {
+      trt_inputs.push_back(v);
+    }
+
+    // resultTypes
+    ::mlir::SmallVector<::mlir::Type, 4> resultTypes;
+    for (auto v : casted_op.getODSResults(0)) {
+      resultTypes.push_back(v.getType());
+    }
+
+    // attributes
+    ::mlir::SmallVector<::mlir::NamedAttribute, 8> attributes;
+    {
+      auto mode_attr = rewriter.getI32IntegerAttr(1);
+      attributes.emplace_back(rewriter.getStringAttr("mode"), mode_attr);
+    }
+
+    {
+      auto axis_attr = rewriter.getI32IntegerAttr(-1);
+      attributes.emplace_back(rewriter.getStringAttr("axis"), axis_attr);
+    }
+    auto result = rewriter
+                      .create<trt::ScaleNdOp>(
+                          op->getLoc(), resultTypes, operands, attributes)
+                      .getODSResults(0);
+    ::llvm::SmallVector<::mlir::Value, 4> tblgen_repl_values;
+    // TODO(weishengying) : update it
+    for (uint32_t i = 0; i < casted_op.getNumResults(); i++) {
+      for (auto v : ::llvm::SmallVector<::mlir::Value, 4>{result}) {
+        tblgen_repl_values.push_back(v);
+      }
+    }
+    rewriter.replaceOp(op, tblgen_repl_values);
+    return ::mlir::success();
+  }
+};
+
 void TRTOpConverterPass::runOnOperation() {
   // The first thing to define is the conversion target. This will define the
   // final target for this lowering.
@@ -126,6 +183,7 @@ void TRTOpConverterPass::runOnOperation() {
   // the set of patterns that will lower the TensorRT operations.
   ::mlir::RewritePatternSet patterns(&getContext());
   populateWithGenerated(patterns);
+  patterns.add<PD2TRT_Batch_Norm_Lower>(&getContext());
   patterns.add<PD2TRT_GraphLower>(&getContext());
 
   // With the target and rewrite patterns defined, we can now attempt the
