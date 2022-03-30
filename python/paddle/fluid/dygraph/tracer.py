@@ -147,6 +147,13 @@ class Tracer(core.Tracer):
             attrs_list.append(v)
         returns = function_ptr(*arg_list, *attrs_list)
 
+        if type == 'load_combine':
+            assert len(outputs.keys()) == 1
+            key = list(outputs.keys())[0]
+            for j in range(len(returns)):
+                returns[j]._share_underline_tensor_to(outputs[key][j])
+            return
+
         if isinstance(returns, tuple):
             for i in range(len(op_returns)):
                 retname = op_returns[i]
@@ -266,10 +273,9 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        if framework._in_eager_mode():
+        if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
-
             if type in final_state_name_mapping.keys():
                 final_state_type = final_state_name_mapping[type][
                     "final_op_name"]

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>
+
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -58,21 +60,22 @@ class DeviceContextPool {
  public:
   static DeviceContextPool& Instance();
 
-  const phi::DeviceContext* Get(const Place& place) const;
+  const phi::DeviceContext* Get(const Place& place);
 
   phi::DeviceContext* GetMutable(const Place& place);
 
   template <AllocationType T>
-  const typename DefaultDeviceContextType<T>::TYPE* Get(
-      const Place& place) const {
+  const typename DefaultDeviceContextType<T>::TYPE* Get(const Place& place) {
     return reinterpret_cast<const typename DefaultDeviceContextType<T>::TYPE*>(
         Get(place));
   }
 
  private:
-  DeviceContextPool();
+  DeviceContextPool() = default;
+
   paddle::flat_hash_map<Place, const phi::DeviceContext*, Place::Hash>
       context_map_;
+  std::mutex mutex_;
 
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };

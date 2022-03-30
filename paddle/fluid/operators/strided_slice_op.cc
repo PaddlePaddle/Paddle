@@ -12,12 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/strided_slice_op.h"
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/slice_op.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
 namespace operators {
@@ -27,149 +32,6 @@ using Tensor = framework::Tensor;
 class StridedSliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "StridedSlice");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "StridedSlice");
-    auto input_var_type = ctx->GetInputsVarType("Input")[0];
-    if (input_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      if (ctx->IsRuntime()) {
-        // shape is determined by Runtime.
-        return;
-      }
-    }
-    auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_LT(
-        in_dims.size(), 7,
-        platform::errors::InvalidArgument(
-            "The dimension of StridedSlice operator's input should be less "
-            "than 7, but received dimension is %d.",
-            in_dims.size()));
-
-    auto starts_int = ctx->Attrs().Get<std::vector<int>>("starts");
-    auto ends_int = ctx->Attrs().Get<std::vector<int>>("ends");
-    auto strides_int = ctx->Attrs().Get<std::vector<int>>("strides");
-
-    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
-    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
-    std::vector<int64_t> strides(strides_int.begin(), strides_int.end());
-
-    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
-    auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
-    auto decrease_axis = ctx->Attrs().Get<std::vector<int>>("decrease_axis");
-
-    auto starts_size = starts.size();
-    auto ends_size = ends.size();
-    auto strides_size = strides.size();
-
-    for (size_t i = 0; i < axes.size(); ++i) {
-      PADDLE_ENFORCE_GE(axes[i], 0,
-                        platform::errors::InvalidArgument(
-                            "The axis should be greater than or equal to 0."
-                            "But received %d of axes[%d]",
-                            axes[i], i));
-      PADDLE_ENFORCE_LT(
-          axes[i], in_dims.size(),
-          platform::errors::InvalidArgument(
-              "The axes should be less than or equal to input tensor's rank."
-              "But received %d of axes[%d], input tensor shape [%d]",
-              axes[i], i, in_dims.size()));
-    }
-
-    if (ctx->HasInputs("StartsTensorList")) {
-      auto StartsTensorList = ctx->Inputs("StartsTensorList");
-      PADDLE_ENFORCE_GT(
-          StartsTensorList.size(), 0,
-          platform::errors::InvalidArgument(
-              "StridedSlice operator's StartsTensorList is empty."));
-      starts_size = StartsTensorList.size();
-    }
-    if (ctx->HasInputs("EndsTensorList")) {
-      auto EndsTensorList = ctx->Inputs("EndsTensorList");
-      PADDLE_ENFORCE_GT(
-          EndsTensorList.size(), 0,
-          platform::errors::InvalidArgument(
-              "StridedSlice operator's EndsTensorList is empty."));
-      ends_size = EndsTensorList.size();
-    }
-    if (ctx->HasInputs("StridesTensorList")) {
-      auto StridesTensorList = ctx->Inputs("StridesTensorList");
-      PADDLE_ENFORCE_GT(
-          StridesTensorList.size(), 0,
-          platform::errors::InvalidArgument(
-              "StridedSlice operator's StridesTensorList is empty."));
-      strides_size = StridesTensorList.size();
-    }
-
-    auto tensor_input = false;
-    if (ctx->HasInput("EndsTensor") || ctx->HasInput("StartsTensor") ||
-        ctx->HasInput("StridesTensor")) {
-      tensor_input = true;
-    }
-    if (!ctx->HasInput("EndsTensor")) {
-      PADDLE_ENFORCE_EQ(
-          ends_size, axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of ends attribute in StridedSlice operator is not "
-              "equal to the size of axes attribute. The ends attribute's size "
-              "is %d, axes attribute's size is %d.",
-              ends_size, axes.size()));
-    }
-    if (!ctx->HasInput("StartsTensor")) {
-      PADDLE_ENFORCE_EQ(
-          starts_size, axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of starts attribute in StridedSlice operator is not "
-              "equal to the size of axes attribute. The starts attribute's "
-              "size is %d, axes attribute's size is %d.",
-              starts_size, axes.size()));
-    }
-    if (!ctx->HasInput("StridesTensor")) {
-      PADDLE_ENFORCE_EQ(
-          strides_size, axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of strides attribute in StridedSlice operator is not "
-              "equal to the size of axes attribute. The strides attribute's "
-              "size is %d, axes attribute's size is %d.",
-              strides_size, axes.size()));
-    }
-    // we need to analysis strided slice op is valid for
-    // the parameter that we get from python front
-    std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
-    if (!tensor_input) {
-      StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
-                          decrease_axis, out_dims_vector.data(), axes.size(),
-                          true);
-    }
-    framework::DDim out_dims(phi::make_ddim(out_dims_vector));
-    // generate new shape
-    if (decrease_axis.size() > 0) {
-      std::vector<int64_t> new_out_shape;
-      for (size_t i = 0; i < decrease_axis.size(); ++i) {
-        if (ctx->IsRuntime() && infer_flags[i] != -1) {
-          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            platform::errors::InvalidArgument(
-                                "the size of decrease dimension should be 1, "
-                                "but received %d.",
-                                out_dims[decrease_axis[i]]));
-        }
-        out_dims[decrease_axis[i]] = 0;
-      }
-
-      for (int i = 0; i < out_dims.size(); ++i) {
-        if (out_dims[i] != 0) {
-          new_out_shape.push_back(out_dims[i]);
-        }
-      }
-      if (new_out_shape.size() == 0) {
-        new_out_shape.push_back(1);
-      }
-
-      out_dims = phi::make_ddim(new_out_shape);
-    }
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("Input", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -304,26 +166,6 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
-                   "StridedSliceGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "StridedSliceGrad");
-
-    auto input_var_type = ctx->GetInputsVarType("Input")[0];
-    if (input_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      if (ctx->IsRuntime()) {
-        // shape is determined by Runtime
-        return;
-      }
-    }
-    auto x_dims = ctx->GetInputDim("Input");
-    auto x_grad_name = framework::GradVarName("Input");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
@@ -384,35 +226,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(strided_slice, StridedSliceInferShape,
+                            PD_INFER_META(phi::StridedSliceInferMeta));
+
 REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>,
-                  ops::StridedSliceOpVarTypeInference);
+                  ops::StridedSliceOpVarTypeInference, StridedSliceInferShape);
+
+DECLARE_INFER_SHAPE_FUNCTOR(strided_slice_grad, StridedSliceGradInferShape,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
                   ops::StridedSliceOpGradNoNeedBufferVarsInferer,
-                  ops::StridedSliceGradOpVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(
-    strided_slice,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<float>>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    strided_slice_grad,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
-                                paddle::platform::complex<float>>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
-                                paddle::platform::complex<double>>);
+                  ops::StridedSliceGradOpVarTypeInference,
+                  StridedSliceGradInferShape);

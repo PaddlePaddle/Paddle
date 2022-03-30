@@ -829,6 +829,8 @@ PYBIND11_MODULE(core_noavx, m) {
            [](const framework::Tensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
            })
+      .def("_slice", &framework::Tensor::Slice)
+      .def("_numel", &framework::Tensor::numel)
       .def("_is_initialized",
            [](const framework::Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
@@ -1761,6 +1763,7 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("size", &Scope::Size)
       .def("erase", &Scope::EraseVars, py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
@@ -2857,6 +2860,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
+             platform::RecordEvent record_event(
+                 "StandaloneExecutor:run",
+                 platform::TracerEventType::UserDefined, 1);
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
@@ -2933,6 +2939,8 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return stats_map;
   });
+  m.def("memory_stat_get_current", memory::StatGetCurrentValue);
+  m.def("memory_stat_get_peak", memory::StatGetPeakValue);
   m.def("run_cmd",
         [](const std::string &cmd, int time_out = -1,
            int sleep_inter = -1) -> const std::string {
@@ -3137,6 +3145,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetGPUDeviceCount);
+  m.def("get_cuda_current_device_id", &platform::GetCurrentDeviceId);
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
@@ -3318,6 +3327,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
+      .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();

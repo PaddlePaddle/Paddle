@@ -163,8 +163,12 @@ bool Tensor::is_cpu() const {
   return paddle::platform::is_cpu_place(inner_place());
 }
 
-bool Tensor::is_cuda() const {
+bool Tensor::is_gpu() const {
   return paddle::platform::is_gpu_place(inner_place());
+}
+
+bool Tensor::is_gpu_pinned() const {
+  return paddle::platform::is_cuda_pinned_place(inner_place());
 }
 
 /* Part 4: Data Access methods */
@@ -360,11 +364,7 @@ void Tensor::bump_inplace_version() {
     auto &inplace_version_counter =
         std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
             ->InplaceVersionCounter();
-    VLOG(3) << "yoki: before bump inplace version: "
-            << inplace_version_counter.CurrentVersion();
     inplace_version_counter.Bump();
-    VLOG(3) << "yoki: after bump inplace version: "
-            << inplace_version_counter.CurrentVersion();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "bump_inplace_version is only supported on DenseTensor now."));
@@ -376,14 +376,23 @@ uint32_t Tensor::current_inplace_version() {
     auto &inplace_version_counter =
         std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
             ->InplaceVersionCounter();
-    VLOG(3) << "yoki: print version: "
-            << inplace_version_counter.CurrentVersion();
     return inplace_version_counter.CurrentVersion();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "current_inplace_version is only supported on DenseTensor now."));
   }
   return 0;
+}
+
+void Tensor::reset_inplace_version(bool set_to_zero) {
+  if (set_to_zero) {
+    if (is_dense_tensor()) {
+      auto &inplace_version_counter =
+          std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+              ->InplaceVersionCounter();
+      inplace_version_counter.SetInplaceVersionToZero();
+    }
+  }
 }
 
 }  // namespace experimental

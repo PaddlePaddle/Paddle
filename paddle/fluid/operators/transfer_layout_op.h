@@ -39,8 +39,12 @@ class TransferLayoutFunctor {
  public:
   TransferLayoutFunctor(const framework::Variable *in, framework::Variable *out,
                         const platform::DeviceContext &dev_ctx,
-                        const int dst_layout)
-      : in_(in), out_(out), dev_ctx_(dev_ctx), dst_layout_(dst_layout) {}
+                        const int src_layout, const int dst_layout)
+      : in_(in),
+        out_(out),
+        dev_ctx_(dev_ctx),
+        src_layout_(src_layout),
+        dst_layout_(dst_layout) {}
 
   void operator()() const {
     auto &in_tensor = *framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_);
@@ -50,7 +54,8 @@ class TransferLayoutFunctor {
     out_tensor.set_layout(out_layout);
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto in_layout = in_tensor.layout();
+    auto in_layout = static_cast<DataLayout>(src_layout_);
+    VLOG(4) << in_layout << "->" << out_layout << " " << in_tensor.layout();
     if (in_layout == DataLayout::kMKLDNN || out_layout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_NE(
           in_layout, out_layout,
@@ -68,6 +73,7 @@ class TransferLayoutFunctor {
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
         if (in_layout == DataLayout::kNHWC) {
+          VLOG(4) << "kNHWC";
           platform::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
           paddle::platform::MKLDNNDeviceContext::tls()
               .set_cur_paddle_data_layout(in_layout);
@@ -75,6 +81,7 @@ class TransferLayoutFunctor {
         out_tensor.set_layout(DataLayout::kMKLDNN);
         out_tensor.set_format(out_format);
       } else {
+        VLOG(4) << "kNCHW";
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
         paddle::framework::innerTransDataLayoutFromMKLDNN(
@@ -123,6 +130,7 @@ class TransferLayoutFunctor {
   const framework::Variable *in_;
   framework::Variable *out_;
   const platform::DeviceContext &dev_ctx_;
+  const int src_layout_;
   const int dst_layout_;
 };
 
