@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
@@ -351,6 +352,8 @@ void EnableProfiler(ProfilerState state) {
     return;
   }
   g_state = state;
+  ProfilerOptions option;
+  HostTraceLevel::GetInstance().SetLevel(option.trace_level);
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
