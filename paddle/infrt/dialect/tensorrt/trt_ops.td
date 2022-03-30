@@ -201,4 +201,19 @@ def TRT_ScaleNdOp : TRT_Op<"ScaleNd", [NoSideEffect]> {
 
   let results = (outs DenseTensor:$Out);
 }
+
+def TRT_ShuffleOp : TRT_Op<"Shuffle", [NoSideEffect]> {
+  let summary = "TensorRT IShuffleLayer";
+  let description = [{
+
+    TensorRT IShuffleLayer
+
+  }];
+  let arguments = (ins  
+    DenseTensor:$input_tensor,
+    I32ArrayAttr:$reshape
+  );
+
+  let results = (outs DenseTensor:$Out);
+}
 #endif  // TRT_OPS
