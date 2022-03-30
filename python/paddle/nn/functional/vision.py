@@ -380,8 +380,16 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
             #   [[0.30000001]],
             #   [[0.50000000]]]]
     """
+    if len(x.shape) != 4:
+        raise ValueError(
+            "Input x should be 4D tensor, but received x with the shape of {}".
+            format(x.shape))
+
     if not isinstance(groups, int):
         raise TypeError("groups must be int type")
+
+    if groups <= 0:
+        raise ValueError("groups must be positive")
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."

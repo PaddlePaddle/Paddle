@@ -138,6 +138,9 @@ class ChannelShuffle(Layer):
         if not isinstance(groups, int):
             raise TypeError("groups must be int type")
 
+        if groups <= 0:
+            raise ValueError("groups must be positive")
+
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError("Data format should be 'NCHW' or 'NHWC'."
                              "But recevie data format: {}".format(data_format))
