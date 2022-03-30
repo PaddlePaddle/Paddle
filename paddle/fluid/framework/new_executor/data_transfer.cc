@@ -138,6 +138,19 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_nodes->emplace_back(std::move(new_op_func_node));
 }
 
+// Var is initialized && var contains tensor && tensor is initialized
+bool IsTensorOfVarInitialized(Variable* var) {
+  if (var->IsInitialized()) {
+    if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
+      return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
+    } else if (var->IsType<LoDTensorArray>()) {
+      return static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]))
+          ->IsInitialized();
+    }
+  }
+  return false;
+}
+
 std::shared_ptr<OperatorBase> TransferLayout(
     const std::string& var_name, std::string* new_var_name,
     DataLayout in_layout, DataLayout out_layout, VariableScope* var_scope,
@@ -155,7 +168,8 @@ std::shared_ptr<OperatorBase> TransferLayout(
                   std::to_string(static_cast<int>(in_layout)) + "_" +
                   std::to_string(static_cast<int>(out_layout));
 
-  if (var_scope->HasVar(*new_var_name)) {
+  if (var_scope->HasVar(*new_var_name) &&
+      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
     return nullptr;
@@ -197,7 +211,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   *new_var_name = var_name + "_dtype_" +
                   std::to_string(static_cast<int>(in_dtype)) + "_" +
                   std::to_string(static_cast<int>(out_dtype));
-  if (var_scope->HasVar(*new_var_name)) {
+  if (var_scope->HasVar(*new_var_name) &&
+      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
     return nullptr;
@@ -243,7 +258,8 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   *new_var_name = var_name + "_device_" + src_place.DebugString() + "_" +
                   dst_place.DebugString();
 
-  if (var_scope->HasVar(*new_var_name)) {
+  if (var_scope->HasVar(*new_var_name) &&
+      IsTensorOfVarInitialized(var_scope->Var(*new_var_name))) {
     // already has same var
     VLOG(4) << "Use cached variable: " << *new_var_name;
     return nullptr;
