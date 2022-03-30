@@ -23,10 +23,10 @@
 namespace paddle {
 namespace pybind {
 
+#if defined(PADDLE_WITH_CUDA)
 static void tensor_uva(paddle::framework::LoDTensor *self_tensor,
                        int device_id) {
   VLOG(4) << "Running in _uva interface.";
-#if defined(PADDLE_WITH_CUDA)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx = pool.Get(platform::CUDAPlace(device_id));
   VLOG(4) << "Init the DeviceContext, and the place is " << dev_ctx->GetPlace();
@@ -53,8 +53,8 @@ static void tensor_uva(paddle::framework::LoDTensor *self_tensor,
           cuda_device_pointer, need_allocate_size,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
-#endif
 }
+#endif
 
 }  // namespace pybind
 }  // namespace paddle

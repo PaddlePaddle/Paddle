@@ -1200,9 +1200,9 @@ static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+#if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
                                     PyObject* kwargs) {
-#if defined(PADDLE_WITH_CUDA)
   EAGER_TRY
   VLOG(4) << "Running in tensor_method__uva.";
   int device_id = 0;
@@ -1217,8 +1217,8 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
-#endif
 }
+#endif
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -1313,8 +1313,10 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
+#if defined(PADDLE_WITH_CUDA)
     {"_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS, NULL},
+#endif
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind

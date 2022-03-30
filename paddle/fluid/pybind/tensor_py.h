@@ -560,22 +560,22 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
 }
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::imperative::VarBase> &self,
     const py::array_t<T> &array, int device_id) {
-#if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
   auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
-#endif
 }
+#endif
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::experimental::Tensor> &self,
     const py::array_t<T> &array, int device_id) {
-#if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
@@ -589,8 +589,8 @@ void SetUVATensorFromPyArray(
       static_cast<paddle::framework::LoDTensor *>(self.get()->impl().get());
 
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
-#endif
 }
+#endif
 
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
