@@ -18,7 +18,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestGrapphSampleNeighbors(unittest.TestCase):
+class TestGraphSampleNeighbors(unittest.TestCase):
     def setUp(self):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
@@ -52,16 +52,23 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
 
         out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
             row, colptr, nodes, sample_size=self.sample_size)
-        out_neighbors = paddle.split(out_neighbors, list(out_count))
-        for neighbors, node, count in zip(out_neighbors, self.nodes, out_count):
+        out_count_cumsum = paddle.cumsum(out_count)
+        for i in range(len(out_count)):
+            if i == 0:
+                neighbors = out_neighbors[0:out_count_cumsum[i]]
+            else:
+                neighbors = out_neighbors[out_count_cumsum[i - 1]:
+                                          out_count_cumsum[i]]
             # Ensure the correct sample size.
-            self.assertTrue(count == self.sample_size or
-                            count == len(self.dst_src_dict[node]))
+            self.assertTrue(
+                out_count[i] == self.sample_size or
+                out_count[i] == len(self.dst_src_dict[self.nodes[i]]))
             # Ensure no repetitive sample neighbors.
             self.assertTrue(
                 neighbors.shape[0] == paddle.unique(neighbors).shape[0])
             # Ensure the correct sample neighbors.
-            in_neighbors = np.isin(neighbors.numpy(), self.dst_src_dict[node])
+            in_neighbors = np.isin(neighbors.numpy(),
+                                   self.dst_src_dict[self.nodes[i]])
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_fisher_yates_sampling(self):
@@ -80,15 +87,23 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
                 sample_size=self.sample_size,
                 flag_perm_buffer=True)
             out_neighbors = paddle.split(out_neighbors, list(out_count))
-
-            for neighbors, node, count in zip(out_neighbors, self.nodes,
-                                              out_count):
-                self.assertTrue(count == self.sample_size or
-                                count == len(self.dst_src_dict[node]))
+            out_count_cumsum = paddle.cumsum(out_count)
+            for i in range(len(out_count)):
+                if i == 0:
+                    neighbors = out_neighbors[0:out_count_cumsum[i]]
+                else:
+                    neighbors = out_neighbors[out_count_cumsum[i - 1]:
+                                              out_count_cumsum[i]]
+                # Ensure the correct sample size.
+                self.assertTrue(
+                    out_count[i] == self.sample_size or
+                    out_count[i] == len(self.dst_src_dict[self.nodes[i]]))
+                # Ensure no repetitive sample neighbors.
                 self.assertTrue(
                     neighbors.shape[0] == paddle.unique(neighbors).shape[0])
+                # Ensure the correct sample neighbors.
                 in_neighbors = np.isin(neighbors.numpy(),
-                                       self.dst_src_dict[node])
+                                       self.dst_src_dict[self.nodes[i]])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_static(self):
