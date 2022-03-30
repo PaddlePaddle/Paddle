@@ -46,7 +46,6 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 2.0,
-            "loss_scaling": 3.0,
         }
 
     def _test_optimizer(self, run_ipu=True):
@@ -89,10 +88,7 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
-                ipu_strategy.set_options({
-                    "loss_scaling": self.attrs["loss_scaling"],
-                    "runtime_options.enable_eval": True
-                })
+                ipu_strategy.set_options({"runtime_options.enable_eval": True})
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -124,25 +120,6 @@ class TestBase(IPUOpTest):
         cpu_loss = self._test_optimizer(False).flatten()
         self.assertTrue(ipu_loss[0] == ipu_loss[99])
         self.assertTrue(np.allclose(ipu_loss[100:], cpu_loss, atol=self.atol))
-
-
-class TestSGD(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 2.0,
-            "loss_scaling": 3.0,
-        }
-
-
-@unittest.skip('seems cpu output wrong')
-class TestLamb(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 2.0,
-            "loss_scaling": 3.0,
-        }
 
 
 if __name__ == "__main__":
