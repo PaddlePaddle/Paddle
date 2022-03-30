@@ -287,7 +287,7 @@ def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
             attr_names = ', '.join(
                 ["\"" + a + "\"" for a in attr_data[ir_name]])
             res += f"""
-registry->AddKernelWithAttrs("{ir_name}","""
+registry->AddKernel("{ir_name}","""
 
             res += f"""
     &KernelLauncherFunc<decltype({kernel_func}),

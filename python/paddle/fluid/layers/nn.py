@@ -6269,8 +6269,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out, _ = _C_ops.reshape2(x, None, 'shape', shape)
+            out = _C_ops.final_state_reshape(x, shape)
         elif isinstance(shape, tmp_tensor_type):
+            # TODO: Tensor shape in final_state_reshape has not been tested
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
         else:
