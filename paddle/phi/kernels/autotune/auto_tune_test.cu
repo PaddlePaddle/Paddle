@@ -14,15 +14,19 @@
 
 #include <gtest/gtest.h>
 #include "glog/logging.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace tune = phi::autotune;
 
 template <typename T, int VecSize>
-__global__ void VecSumTest(T *x, T *y, int N) {
+__global__ void VecSumTest(const T* x, T* y, int N) {
 #ifdef __HIPCC__
   int idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 #else
@@ -43,114 +47,107 @@ __global__ void VecSumTest(T *x, T *y, int N) {
 }
 
 template <int Vecsize>
-void Algo(const phi::GPUContext &ctx,
-          float *d_in,
-          float *d_out,
-          size_t N,
-          size_t threads,
-          size_t blocks) {
+float Algo(const phi::GPUContext& ctx,
+           const phi::DenseTensor& d_in,
+           phi::DenseTensor* d_out,
+           size_t N,
+           size_t threads,
+           size_t blocks) {
+  const float* d_in_data = d_in.data<float>();
+  float* d_out_data = d_out->data<float>();
 #ifdef __HIPCC__
   hipLaunchKernelGGL(HIP_KERNEL_NAME(VecSumTest<float, Vecsize>),
                      dim3(blocks),
                      dim3(threads),
                      0,
                      0,
-                     d_in,
-                     d_out,
+                     d_in_data,
+                     d_out_data,
                      N);
 #else
   VLOG(3) << "Vecsize is " << Vecsize;
   VecSumTest<float, Vecsize><<<blocks, threads, 0, ctx.stream()>>>(
-      d_in, d_out, N);
+      d_in_data, d_out_data, N);
 #endif
+  return Vecsize;
 }
 
 TEST(AutoTune, sum) {
-  float *in1, *in2, *out;
-  float *d_in1, *d_in2;
-  size_t N = 1 << 20;
-  size_t size = sizeof(float) * N;
-  size_t threads = 256;
+  int64_t N = 1 << 22;
   size_t blocks = 512;
+  size_t threads = 256;
+  size_t size = sizeof(float) * N;
 
-#ifdef __HIPCC__
-  hipMalloc(reinterpret_cast<void **>(&d_in1), size);
-  hipMalloc(reinterpret_cast<void **>(&d_in2), size);
-#else
-  cudaMalloc(reinterpret_cast<void **>(&d_in1), size);
-  cudaMalloc(reinterpret_cast<void **>(&d_in2), size);
-#endif
-  in1 = reinterpret_cast<float *>(malloc(size));
-  in2 = reinterpret_cast<float *>(malloc(size));
-  out = reinterpret_cast<float *>(malloc(size));
+  const auto alloc_cpu =
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace());
+  auto in1 = std::make_shared<phi::DenseTensor>(
+      alloc_cpu.get(),
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+  auto in2 = std::make_shared<phi::DenseTensor>(
+      alloc_cpu.get(),
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+
+  auto* in1_data = in1->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* in2_data = in2->mutable_data<float>(paddle::platform::CPUPlace());
   for (size_t i = 0; i < N; i++) {
-    in1[i] = 1.0f;
-    in2[i] = 2.0f;
+    in1_data[i] = 1.0f;
+    in2_data[i] = 2.0f;
   }
-
-#ifdef __HIPCC__
-  hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);
-  hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);
-#else
-  cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  phi::GPUPlace place;
-  phi::GPUContext ctx(place);
-  ctx.PartialInitWithoutAllocator();
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(place, ctx.stream())
-                       .get());
-  ctx.PartialInitWithAllocator();
+  const auto alloc_cuda =
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CUDAPlace());
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto place = paddle::platform::CUDAPlace();
+  auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
+  auto stream = dev_ctx->stream();
+
+  auto d_in1 = std::make_shared<phi::DenseTensor>(
+      alloc_cuda.get(),
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+  auto d_in2 = std::make_shared<phi::DenseTensor>(
+      alloc_cuda.get(),
+      phi::DenseTensorMeta(
+          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+  phi::Copy(*dev_ctx, *in1.get(), phi::GPUPlace(), false, d_in1.get());
+  phi::Copy(*dev_ctx, *in2.get(), phi::GPUPlace(), false, d_in2.get());
 
   // 1. Test call_back.
-  VLOG(3) << "[CallBack]: Test case.";
+  VLOG(3) << ">>> [CallBack]: Test case.";
   auto callback1 = tune::MakeCallback(Algo<4>);
   auto callback2 = tune::MakeCallback(Algo<2>);
   auto callback3 = tune::MakeCallback(Algo<1>);
   std::vector<decltype(callback1)> callbacks{callback1, callback2, callback3};
   for (int i = 0; i < callbacks.size(); ++i) {
-    ctx.Wait();
+    dev_ctx->Wait();
     phi::GpuTimer timer;
     timer.Start(0);
-    callbacks[i].Call(ctx, d_in1, d_in2, N, threads, blocks);
+    callbacks[i].Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
     timer.Stop(0);
     VLOG(3) << "kernel[" << i << "]: time cost is " << timer.ElapsedTime();
   }
 
   // 2. Test call_back tune.
-  VLOG(3) << "[AutoTune]: Test case.";
-  auto tuner = tune::MakeAutoTune(Algo<4>);
+  VLOG(3) << ">>> [AutoTune]: Test case.";
+  auto tuner = tune::MakeAutoTuner(Algo<4>);
   tuner.AddCallBack(tune::MakeCallback(Algo<2>));
   tuner.AddCallBack(tune::MakeCallback(Algo<1>));
 
   /* The 1st ctx works for ctx.Wait(),
-     the 2nd is just the param of call_back function. */
-  auto best_call_back =
-      tuner.PickBestKernel(ctx, ctx, d_in1, d_in2, N, threads, blocks);
-  best_call_back.Call(ctx, d_in1, d_in2, N, threads, blocks);
+     the 2nd is just the param of call_back. */
+  auto best_call_back = tuner.PickBestKernel(
+      *dev_ctx, *dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
+  best_call_back.Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
 
-  ctx.Wait();
+  dev_ctx->Wait();
   phi::GpuTimer timer;
   timer.Start(0);
-  best_call_back.Call(ctx, d_in1, d_in2, N, threads, blocks);
+  best_call_back.Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
   timer.Stop(0);
   VLOG(3) << "Best CallBackKernel time cost is " << timer.ElapsedTime();
 #endif
-
-#ifdef __HIPCC__
-  hipMemcpy(out, d_in2, size, hipMemcpyDeviceToHost);
-  hipFree(d_in1);
-  hipFree(d_in2);
-#else
-  cudaMemcpy(out, d_in2, size, cudaMemcpyDeviceToHost);
-  cudaFree(d_in1);
-  cudaFree(d_in2);
-#endif
-
-  free(in1);
-  free(in2);
-  free(out);
 }

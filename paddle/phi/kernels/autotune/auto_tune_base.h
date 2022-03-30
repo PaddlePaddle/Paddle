@@ -14,18 +14,18 @@
 
 #pragma once
 
-#include <iostream>
 #include <type_traits>
-#include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
+
 namespace phi {
 namespace autotune {
 
 template <typename RetureType, typename... Args>
 class KernelCallback {
  public:
+  using ReturnT = RetureType;
   using FuncType = RetureType (*)(Args...);
 
   KernelCallback() {}
@@ -49,7 +49,7 @@ class AutoTuneBase {
  public:
   AutoTuneBase() {}
   virtual ~AutoTuneBase() {}
-  explicit AutoTuneBase(KernelType kernel) : default_kernel(kernel) {
+  explicit AutoTuneBase(KernelType kernel) : default_kernel_(kernel) {
     kernels_.push_back(kernel);
   }
 
@@ -88,12 +88,12 @@ class AutoTuneBase {
   }
 
  private:
-  KernelType default_kernel;
+  KernelType default_kernel_;
   std::vector<KernelType> kernels_;
 };
 
 template <typename RetureType, typename... Args>
-static AutoTuneBase<KernelCallback<RetureType, Args...>> MakeAutoTune(
+static AutoTuneBase<KernelCallback<RetureType, Args...>> MakeAutoTuner(
     RetureType (*func)(Args...)) {
   auto obj = MakeCallback(func);
   return AutoTuneBase<decltype(obj)>(obj);
