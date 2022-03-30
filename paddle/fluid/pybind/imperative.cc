@@ -788,7 +788,7 @@ void BindImperative(py::module *m_ptr) {
                         "inplace strategy.",
                         self->Name()));
               }
-
+ 
               if (PyCheckTensor(value_obj.ptr())) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
