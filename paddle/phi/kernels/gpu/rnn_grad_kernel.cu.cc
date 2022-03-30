@@ -55,7 +55,7 @@ void TensorToPermutedWeight(const Place &place,
           {split_tensor[0], split_tensor[1], split_tensor[3], split_tensor[2]},
           (*weight_grad_list)[i]);
     } else if (rnn_mode == miopenGRU) {
-      std::vector<Tensor> split_tensor = temp.Chunk(3, 0);
+      std::vector<DenseTensor> split_tensor = temp.Chunk(3, 0);
       WeightListToTensor<T>(place,
                             stream,
                             {split_tensor[1], split_tensor[0], split_tensor[2]},
