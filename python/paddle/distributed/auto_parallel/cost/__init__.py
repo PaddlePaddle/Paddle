@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import OP_COST_FACTORY
 from .base_cost import Cost
-from .base_cost import parse_comp_desc_for_predict
+from .base_cost import _g_op_cost_factory
+from .base_cost import build_comp_desc_str_for_predict
 from .comm_op_cost import AllreduceSumCost
+from .comm_op_cost import AllgatherOpCost
+from .comm_op_cost import SendOpCost
+from .comm_op_cost import RecvOpDesc
 from .comp_op_cost import MatmulV2OpCost
+from .comp_op_cost import SliceOpCost
+from .comp_op_cost import ConcatOpCost
+from .comp_op_cost import SplitOpCost
 from .tensor_cost import TensorCost
 from .estimate_cost import CostEstimator

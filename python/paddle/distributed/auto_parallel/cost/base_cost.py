@@ -26,7 +26,7 @@ NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
 _g_op_cost_factory = {}
 
 
-def parse_op_to_comp_desc(op, dist_context=None, rank_id=0):
+def build_comp_desc_from_op(op, dist_context=None, rank_id=0):
     """Parse op to comp desc for comp cost"""
     desc = {}
     desc["op"] = op.type
@@ -70,14 +70,14 @@ def parse_op_to_comp_desc(op, dist_context=None, rank_id=0):
     return desc
 
 
-def parse_dist_op_to_comp_desc(dist_op, dist_context, rank_id):
+def build_comp_desc_from_dist_op(dist_op, dist_context, rank_id):
     """Parse the serial op of dist op to specific desc for comp cost"""
-    desc = parse_op_to_comp_desc(
+    desc = build_comp_desc_from_op(
         op=dist_op.serial_op, dist_context=dist_context)
     return desc
 
 
-def parse_comp_desc_for_predict(desc):
+def build_comp_desc_str_for_predict(desc):
     def _parse_dtype(dtype):
         dtype_str = ""
         if dtype == paddle.float32:
@@ -123,14 +123,14 @@ def parse_comp_desc_for_predict(desc):
     return parse_result
 
 
-def parse_dist_op_to_comm_desc(op_type,
-                               dist_op,
-                               ctx,
-                               input_name,
-                               attrs=None,
-                               rank_id=0,
-                               parallel_axis=None,
-                               group_ranks=None):
+def build_comm_desc_from_dist_op(op_type,
+                                 dist_op,
+                                 ctx,
+                                 input_name,
+                                 attrs=None,
+                                 rank_id=0,
+                                 parallel_axis=None,
+                                 group_ranks=None):
     specific_op_type = []
     desc = {}
     desc["op"] = op_type
@@ -169,6 +169,14 @@ def parse_dist_op_to_comm_desc(op_type,
         desc["attrs"] = op_attrs
         desc["group_ranks"] = comm_group_ranks
 
+    return desc
+
+
+def build_comm_desc(op_type, group_ranks, dtype, shape):
+    desc = {}
+    desc["op"] = op_type
+    desc["group_ranks"] = group_ranks
+    desc["inputs"] = {"X": [(dtype, shape)]}
     return desc
 
 
@@ -397,7 +405,7 @@ def register_op_cost(cls):
     return cls
 
 
-def calc_time_from_model(op=None, desc=None, cluster=None, comm_context=None):
+def calc_time_by_model(op=None, desc=None, cluster=None, comm_context=None):
     op_type = op.type if op is not None else desc["op"]
     if op_type in COMM_OP_TYPE:
         op_cost = _g_op_cost_factory[op_type](op=op,

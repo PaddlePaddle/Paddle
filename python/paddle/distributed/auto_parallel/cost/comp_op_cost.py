@@ -30,5 +30,76 @@ class MatmulV2OpCost(CompOpCost):
 
     def calc_time(self):
         # NOTE: The actual formula will be filled in the future
+        return 0
 
+
+@register_op_cost
+class MatmulOpCost(CompOpCost):
+    OP_TYPE = "matmul"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(MatmulOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class ConcatOpCost(CompOpCost):
+    OP_TYPE = "concat"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(ConcatOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class SplitOpCost(CompOpCost):
+    OP_TYPE = "split"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(SplitOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class SliceOpCost(CompOpCost):
+    OP_TYPE = "slice"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(SplitOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function needs to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
         return 0

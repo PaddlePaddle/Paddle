@@ -16,9 +16,9 @@ import unittest
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
-from paddle.distributed.auto_parallel.cost.base_cost import parse_op_to_comp_desc
-from paddle.distributed.auto_parallel.cost.base_cost import parse_comp_desc_for_predict
-from paddle.distributed.auto_parallel.cost.base_cost import calc_time_from_model
+from paddle.distributed.auto_parallel.cost.base_cost import build_comp_desc_from_op
+from paddle.distributed.auto_parallel.cost.base_cost import build_comp_desc_str_for_predict
+from paddle.distributed.auto_parallel.cost.base_cost import calc_time_by_model
 from paddle.distributed.auto_parallel.cost import MatmulV2OpCost, AllreduceSumCost
 
 paddle.enable_static()
@@ -47,11 +47,11 @@ class TestCost(unittest.TestCase):
                 matmul_v2_op = op
                 break
         matmul_v2_cost = MatmulV2OpCost(op=matmul_v2_op)
-        desc = parse_op_to_comp_desc(op=matmul_v2_op)
-        desc_str, = parse_comp_desc_for_predict(desc)
+        desc = build_comp_desc_from_op(op=matmul_v2_op)
+        desc_str, = build_comp_desc_str_for_predict(desc)
         self.assertIsNotNone(desc_str)
         self.assertTrue(check_cost(matmul_v2_cost.cost))
-        time = calc_time_from_model(op=matmul_v2_op)
+        time = calc_time_by_model(op=matmul_v2_op)
         self.assertEqual(time, matmul_v2_cost.cost.time)
         tensor_cost = cost_model.TensorCost(tensor=x)
         # check memory
