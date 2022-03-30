@@ -63,6 +63,15 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
   }
 }
 
+static DDim CheckAndGetOutputDim(const DDim& dim_x) {
+  auto x_vec = phi::vectorize(dim_x);
+  if (x_vec.size() == 2) {
+    return phi::make_ddim({1});
+  }
+  x_vec.erase(x_vec.end() - 2, x_vec.end());
+  return phi::make_ddim(x_vec);
+}
+
 }  // namespace detail
 
 void AllValueCompareInferMeta(const MetaTensor& x,
@@ -1788,17 +1797,6 @@ void ValueCompareInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->set_dtype(DataType::BOOL);
 }
-
-namespace detail {
-static DDim CheckAndGetOutputDim(const DDim& dim_x) {
-  auto x_vec = phi::vectorize(dim_x);
-  if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
-  }
-  x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return phi::make_ddim(x_vec);
-}
-}  // namespace detail
 
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,

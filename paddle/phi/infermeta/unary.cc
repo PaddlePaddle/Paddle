@@ -2551,6 +2551,7 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 }
 
 namespace detail {
+
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
@@ -2559,6 +2560,7 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
 }
+
 }  // namespace detail
 
 void MatrixRankInferMeta(const MetaTensor& x,
