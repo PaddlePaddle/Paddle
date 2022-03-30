@@ -9,6 +9,7 @@
 <!-- Describe what this PR does -->
 
 ### Contributor Info（required）
+<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/40777 -->
 |提交团队（或提交人） | 如：为往圣继绝学 | 
 |---|---|
 |RFC 链接 | 如：merge 后的RFC 链接 | 
