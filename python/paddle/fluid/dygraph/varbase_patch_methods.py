@@ -798,7 +798,9 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        return _C_ops.assign(self)
+        out = framework._varbase_creator()
+        _C_ops.assign(self, out)
+        return out
 
     @framework.dygraph_only
     def value(self):

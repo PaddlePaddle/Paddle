@@ -1570,7 +1570,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         outs_contents_str += paddle::string::Sprintf(
             FWD_OUTS_CONTENT_TEMPLATE, output_name, output_var_name);
       }
-      core_ops_args_info[op_type].push_back(output_var_name);
+      core_ops_args_info[op_type].push_back(output_name);
 
     } else if (!inplace_map.empty() && inplace_map.count(output_name)) {
       // In inplace op, replace the output with the input directly.
@@ -2588,7 +2588,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
-      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
+      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
