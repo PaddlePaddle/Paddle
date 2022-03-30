@@ -99,7 +99,6 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
 template <typename KeyType, typename ValType, typename GradType>
 template <typename DstPlace, typename SrcPlace, typename StreamType>
 void HeterComm<KeyType, ValType, GradType>::memory_copy(
@@ -138,7 +137,7 @@ void HeterComm<KeyType, ValType, GradType>::sort_pairs(
       d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, d_values_in,
       d_values_out, num_items, begin_bit, end_bit, stream, debug_synchronous));
 
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 #endif
 }
@@ -159,7 +158,7 @@ void HeterComm<KeyType, ValType, GradType>::reduce_by_key(
       d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, d_values_in,
       d_aggregates_out, d_num_runs_out, reduction_op, num_items, stream,
       debug_synchronous));
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 #endif
 }
@@ -200,7 +199,6 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
                                                             int end_index) {
@@ -219,7 +217,6 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
 template <typename KeyType, typename ValType, typename GradType>
 
 void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
@@ -287,9 +284,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     }
   }
 }
-#endif
 
-#ifdef PADDLE_WITH_CUDA
 template <typename KeyType, typename ValType, typename GradType>
 
 void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
@@ -370,7 +365,6 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
   }
 
 }
-#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::~HeterComm() {
@@ -690,7 +684,6 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType, typename GradType>
 template <typename Sgd>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
