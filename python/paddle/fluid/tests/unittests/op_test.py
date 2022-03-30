@@ -821,15 +821,14 @@ class OpTest(unittest.TestCase):
 
             only support "X" is list of Tensor, currently don't support other structure like dict.
             """
-            args = [[inp] if inp is None else inp
-                    for inp in args[:inp_num]]  # convert None -> [None]
-            for inp in args[:inp_num]:
+            inp_args = [[inp] if inp is None else inp
+                        for inp in args[:inp_num]]  # convert None -> [None]
+            for inp in inp_args:
                 assert isinstance(
                     inp, list
                 ), "currently only support `X` is [Tensor], don't support other structure."
-            args = [
-                inp[0] if len(inp) == 1 else inp for inp in args[:inp_num]
-            ] + args[inp_num:]
+            args = [inp[0] if len(inp) == 1 else inp
+                    for inp in inp_args] + args[inp_num:]
             return args
 
         def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
