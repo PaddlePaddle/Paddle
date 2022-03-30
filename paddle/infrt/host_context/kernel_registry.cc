@@ -24,19 +24,11 @@ namespace host_context {
 
 struct KernelRegistry::Impl {
   std::unordered_map<std::string,
-                     std::pair<KernelImplementation, std::vector<const char *>>>
+                     std::pair<KernelLauncher, std::vector<const char *>>>
       data;
 };
 
 KernelRegistry::KernelRegistry() : impl_(std::make_unique<Impl>()) {}
-
-void KernelRegistry::AddKernel(const std::string &key,
-                               KernelImplementation fn) {
-  CHECK(!impl_->data.count(key)) << "kernel [" << key
-                                 << "] is registered twice";
-  impl_->data.emplace(
-      key, std::make_pair(std::move(fn), std::vector<const char *>{}));
-}
 
 const std::vector<const char *> &KernelRegistry::GetAttrNameList(
     const std::string &key) const {
@@ -44,10 +36,18 @@ const std::vector<const char *> &KernelRegistry::GetAttrNameList(
   return impl_->data[key].second;
 }
 
-void KernelRegistry::AddKernelWithAttrs(
-    const std::string &key,
-    KernelImplementation fn,
-    std::vector<const char *> &&attr_order) {
+void KernelRegistry::AddKernel(const std::string &key,
+                               KernelImplementation fn,
+                               const std::vector<const char *> &attr_order) {
+  CHECK(!impl_->data.count(key)) << "kernel [" << key
+                                 << "] is registered twice";
+  impl_->data.emplace(
+      key, std::make_pair([fn]() { return fn; }, std::move(attr_order)));
+}
+
+void KernelRegistry::AddKernel(const std::string &key,
+                               KernelLauncher fn,
+                               const std::vector<const char *> &attr_order) {
   CHECK(!impl_->data.count(key)) << "kernel [" << key
                                  << "] is registered twice";
   impl_->data.emplace(key,
@@ -56,7 +56,7 @@ void KernelRegistry::AddKernelWithAttrs(
 
 KernelImplementation KernelRegistry::GetKernel(const std::string &key) const {
   auto it = impl_->data.find(key);
-  return it != impl_->data.end() ? it->second.first : KernelImplementation{};
+  return it != impl_->data.end() ? it->second.first() : KernelImplementation{};
 }
 
 std::vector<std::string> KernelRegistry::GetKernelList() const {
