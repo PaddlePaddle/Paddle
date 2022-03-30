@@ -70,27 +70,25 @@ void MaxPoolKernel(const Context& dev_ctx,
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
   // 1. product rulebook
-  int rulebook_len = ProductRuleBook<T, Context>(dev_ctx,
-                                                 x,
-                                                 real_kernel_sizes,
-                                                 paddings,
-                                                 dilations,
-                                                 strides,
-                                                 out_dims,
-                                                 false,
-                                                 rulebook,
-                                                 &counter_per_kernel,
-                                                 &offsets_per_kernel,
-                                                 &out_index,
-                                                 &unique_key,
-                                                 &unique_value,
-                                                 out,
-                                                 &counter,
-                                                 &offsets);
+  int rulebook_len = ProductRuleBook<T, Context, int>(dev_ctx,
+                                                      x,
+                                                      real_kernel_sizes,
+                                                      paddings,
+                                                      dilations,
+                                                      strides,
+                                                      out_dims,
+                                                      false,
+                                                      rulebook,
+                                                      &counter_per_kernel,
+                                                      &offsets_per_kernel,
+                                                      &out_index,
+                                                      &unique_value,
+                                                      out,
+                                                      &counter,
+                                                      &offsets);
 
   const int* rulebook_ptr = rulebook->data<int>();
 
