@@ -37,7 +37,7 @@ enum ValueType { Sparse = 0, Dense = 1 };
 
 struct PullContext {
   const uint64_t *keys;
-  const PullSparseValue pull_value;
+  PullSparseValue pull_value;
   float *values;
   char **ptr_values;
 };
@@ -53,7 +53,7 @@ struct TableContext {
   PullContext pull_context;
   TablePushContext push_context;
   size_t num;
-  bool use_ptr;
+  bool use_ptr = false;
 };
 
 class Table {
@@ -164,6 +164,7 @@ class Table {
   TableParameter _config;
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
+  AccessorInfo _table_info;
   AfsClient _afs_client;
 };
 REGISTER_PSCORE_REGISTERER(Table);

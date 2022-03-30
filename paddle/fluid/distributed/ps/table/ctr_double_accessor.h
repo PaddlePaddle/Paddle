@@ -168,7 +168,8 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   DownpourCtrDoubleAccessor() {}
   virtual ~DownpourCtrDoubleAccessor() {}
   virtual int initialize();
-  virtual void GetTableInfo(AccessorInfo& info);
+  virtual void SetTableInfo(AccessorInfo& info);
+  virtual size_t GetTableInfo(InfoKey key);
   // value维度
   virtual size_t dim();
   // value各个维度的size
