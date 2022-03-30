@@ -1030,16 +1030,6 @@
   kernel :
     func : soft_shrink_grad
 
-- backward_api : soft_shrink_grad
-  forward : soft_shrink (Tensor x, float a) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float a)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : soft_shrink_grad
-
 - backward_api : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)
