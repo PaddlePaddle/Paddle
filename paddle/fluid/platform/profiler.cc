@@ -76,6 +76,10 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
   }
 #endif
 #endif
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
+    return;
+  }
+
   if (FLAGS_enable_host_event_recorder_hook == false) {
     if (g_state != ProfilerState::kDisabled) {  // avoid temp string
       if (type == TracerEventType::Operator ||
@@ -86,9 +90,7 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
     }
     return;
   }
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
-    return;
-  }
+
   is_enabled_ = true;
   shallow_copy_name_ = name;
   role_ = role;
@@ -106,6 +108,10 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
   }
 #endif
 #endif
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
+    return;
+  }
+
   if (FLAGS_enable_host_event_recorder_hook == false) {
     if (type == TracerEventType::Operator ||
         type == TracerEventType::OperatorInner ||
@@ -114,9 +120,7 @@ RecordEvent::RecordEvent(const std::string &name, const TracerEventType type,
     }
     return;
   }
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
-    return;
-  }
+
   is_enabled_ = true;
   name_ = new std::string(name);
   role_ = role;
@@ -135,6 +139,11 @@ RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
   }
 #endif
 #endif
+
+  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
+    return;
+  }
+
   if (FLAGS_enable_host_event_recorder_hook == false) {
     if (type == TracerEventType::Operator ||
         type == TracerEventType::OperatorInner ||
@@ -143,9 +152,7 @@ RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
     }
     return;
   }
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
-    return;
-  }
+
   is_enabled_ = true;
   type_ = type;
   name_ = new std::string(name);
