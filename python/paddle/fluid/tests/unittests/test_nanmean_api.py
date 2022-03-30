@@ -31,6 +31,8 @@ class TestNanmeanAPI(unittest.TestCase):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.x[0, :, :, :] = np.nan
+        self.x_grad = np.array([[np.nan, np.nan, 3.],
+                                [0., np.nan, 2.]]).astype(np.float32)
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
@@ -104,7 +106,9 @@ class TestNanmeanAPI(unittest.TestCase):
             sum_dx_ref = np.prod(y.shape)
             if np.isnan(y.numpy()).sum():
                 sum_dx_ref -= np.isnan(y.numpy()).sum()
-            dx[np.isnan(dx)] = 0
+            cnt = paddle.sum(~paddle.isnan(x_tensor), axis=axis, keepdim=keepdim)
+            if (cnt == 0).sum():
+                dx[np.isnan(dx)] = 0
             sum_dx = dx.sum()
             self.assertEqual(np.allclose(sum_dx, sum_dx_ref, rtol=1e-04), True)
 
@@ -116,7 +120,14 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x, [0, 2])
         test_case(self.x, (0, 2))
         test_case(self.x, [0, 1, 2, 3])
-        print("test grad ok")
+        
+        test_case(self.x_grad)
+        test_case(self.x_grad, [])
+        test_case(self.x_grad, -1)
+        test_case(self.x_grad, keepdim=True)
+        test_case(self.x_grad, 0, keepdim=True)
+        test_case(self.x_grad, 1,)
+        test_case(self.x_grad, (0, 1))
         paddle.enable_static()
 
 
