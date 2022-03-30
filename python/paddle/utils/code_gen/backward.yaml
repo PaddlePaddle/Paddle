@@ -634,7 +634,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out]
+    param : [x]
   kernel :
     func : psroi_pool_grad
   optional : rois_num
