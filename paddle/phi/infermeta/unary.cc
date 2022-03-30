@@ -1116,6 +1116,7 @@ void Pad3dInferMeta(const MetaTensor& x,
     out_dims[1] = x_dim[1];
     out_dims[2] = x_dim[2];
     out_dims[3] = x_dim[3];
+    out_dims[4] = x_dim[4];
   } else {
     auto paddings = paddings_int_array.GetData();
 
@@ -1527,8 +1528,8 @@ void ReshapeInferMeta(const MetaTensor& x,
 
 void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 const IntArray& shape,
-                                MetaTensor* xshape,
                                 MetaTensor* out,
+                                MetaTensor* xshape,
                                 MetaConfig config) {
   PADDLE_ENFORCE_NOT_NULL(
       xshape,
