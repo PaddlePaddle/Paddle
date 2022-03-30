@@ -50,43 +50,43 @@ class TensorTable : public Table {
 
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
-  int32_t pull_dense(float *values, size_t num) override { return 0; }
+  int32_t PullDense(float *values, size_t num) override { return 0; }
 
-  int32_t push_dense(const float *values, size_t num) override { return 0; }
+  int32_t PushDense(const float *values, size_t num) override { return 0; }
 
-  int32_t pull_sparse(float *values,
-                      const PullSparseValue &pull_value) override {
+  int32_t PullSparse(float *values,
+                     const PullSparseValue &pull_value) override {
     return 0;
   }
-  int32_t push_sparse(const uint64_t *keys, const float *values,
-                      size_t num) override {
+  int32_t PushSparse(const uint64_t *keys, const float *values,
+                     size_t num) override {
     return 0;
   }
-  int32_t shrink(const std::string &param) override { return 0; }
+  int32_t Shrink(const std::string &param) override { return 0; }
 
-  virtual void *get_shard(size_t shard_idx) { return 0; }
+  virtual void *GetShard(size_t shard_idx) { return 0; }
 
-  virtual int32_t initialize_shard() { return 0; };
+  virtual int32_t InitializeShard() { return 0; };
 
-  virtual int32_t flush() { return 0; };
+  virtual int32_t Flush() { return 0; };
 
-  virtual int32_t load(const std::string &path, const std::string &param) {
+  virtual int32_t Load(const std::string &path, const std::string &param) {
     return 0;
   }
-  virtual int32_t save(const std::string &path, const std::string &param) {
+  virtual int32_t Save(const std::string &path, const std::string &param) {
     return 0;
   }
 
-  virtual void clear(){};
+  virtual void Clear(){};
 
-  virtual int32_t initialize() override { return 0; };
+  virtual int32_t Initialize() override { return 0; };
 
-  virtual int32_t push_dense(const int64_t *values,
-                             const int32_t trainer_id) override {
+  virtual int32_t PushDense(const int64_t *values,
+                            const int32_t trainer_id) override {
     return 0;
   };
 
-  virtual int32_t set_program_env(
+  virtual int32_t SetProgramEnv(
       framework::Scope *scope, platform::Place place,
       const std::vector<framework::ProgramDesc> *sub_program) override;
 
@@ -104,42 +104,42 @@ class DenseTensorTable : public TensorTable {
   DenseTensorTable() {}
   virtual ~DenseTensorTable() {}
 
-  int32_t pull_sparse(float *values,
-                      const PullSparseValue &pull_value) override {
+  int32_t PullSparse(float *values,
+                     const PullSparseValue &pull_value) override {
     return 0;
   }
-  int32_t push_sparse(const uint64_t *keys, const float *values,
-                      size_t num) override {
+  int32_t PushSparse(const uint64_t *keys, const float *values,
+                     size_t num) override {
     return 0;
   }
-  int32_t shrink(const std::string &param) override { return 0; }
+  int32_t Shrink(const std::string &param) override { return 0; }
 
-  virtual void *get_shard(size_t shard_idx) { return 0; }
+  virtual void *GetShard(size_t shard_idx) { return 0; }
 
-  virtual int32_t initialize_shard() { return 0; }
+  virtual int32_t InitializeShard() { return 0; }
 
-  virtual int32_t flush() { return 0; }
+  virtual int32_t Flush() { return 0; }
 
-  virtual void clear() {}
+  virtual void Clear() {}
 
   // Todo: Support program Load & Save
-  virtual int32_t load(const std::string &path, const std::string &param) {
+  virtual int32_t Load(const std::string &path, const std::string &param) {
     return 0;
   }
-  virtual int32_t save(const std::string &path, const std::string &param) {
+  virtual int32_t Save(const std::string &path, const std::string &param) {
     return 0;
   }
 
   // Todo: Support pull dense
-  int32_t pull_dense(float *values, size_t num) override { return 0; }
+  int32_t PullDense(float *values, size_t num) override { return 0; }
 
   /*----------------------------------------------------------------------*/
 
-  virtual int32_t initialize() override { return 0; }
+  virtual int32_t Initialize() override { return 0; }
 
-  int32_t push_dense(const float *values, size_t num) override { return 0; }
+  int32_t PushDense(const float *values, size_t num) override { return 0; }
 
-  int32_t push_dense(const int64_t *values, const int32_t trainer_id) {
+  int32_t PushDense(const int64_t *values, const int32_t trainer_id) {
     return 0;
   }
 
@@ -160,42 +160,42 @@ class GlobalStepTable : public DenseTensorTable {
   GlobalStepTable() {}
   virtual ~GlobalStepTable() {}
 
-  int32_t pull_sparse(float *values,
-                      const PullSparseValue &pull_value) override {
+  int32_t PullSparse(float *values,
+                     const PullSparseValue &pull_value) override {
     return 0;
   }
-  int32_t push_sparse(const uint64_t *keys, const float *values,
-                      size_t num) override {
+  int32_t PushSparse(const uint64_t *keys, const float *values,
+                     size_t num) override {
     return 0;
   }
-  int32_t shrink(const std::string &param) override { return 0; }
+  int32_t Shrink(const std::string &param) override { return 0; }
 
-  virtual void *get_shard(size_t shard_idx) { return 0; }
+  virtual void *GetShard(size_t shard_idx) { return 0; }
 
-  virtual int32_t initialize_shard() { return 0; }
+  virtual int32_t InitializeShard() { return 0; }
 
-  virtual int32_t flush() { return 0; }
+  virtual int32_t Flush() { return 0; }
 
-  virtual void clear() {}
+  virtual void Clear() {}
 
-  virtual int32_t load(const std::string &path, const std::string &param) {
+  virtual int32_t Load(const std::string &path, const std::string &param) {
     return 0;
   }
-  virtual int32_t save(const std::string &path, const std::string &param) {
+  virtual int32_t Save(const std::string &path, const std::string &param) {
     return 0;
   }
 
-  int32_t pull_dense(float *values, size_t num) override { return 0; }
+  int32_t PullDense(float *values, size_t num) override { return 0; }
 
   /*----------------------------------------------------------------------*/
 
-  int32_t initialize() override;
+  int32_t Initialize() override;
 
-  int32_t push_dense(const float *values, size_t num) override { return 0; }
+  int32_t PushDense(const float *values, size_t num) override { return 0; }
 
-  int32_t push_dense(const int64_t *values, const int32_t trainer_id);
+  int32_t PushDense(const int64_t *values, const int32_t trainer_id);
 
-  int32_t set_table_map(
+  int32_t SetTableMap(
       std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) override;
 
  private:

@@ -71,8 +71,8 @@ class HeterService : public ::paddle::distributed::PsService {
  public:
   HeterService() {
     _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
-    _service_handler_map[PS_START_PROFILER] = &HeterService::start_profiler;
-    _service_handler_map[PS_STOP_PROFILER] = &HeterService::stop_profiler;
+    _service_handler_map[PS_START_PROFILER] = &HeterService::StartProfiler;
+    _service_handler_map[PS_STOP_PROFILER] = &HeterService::StopProfiler;
   }
 
   virtual ~HeterService() {}
@@ -134,13 +134,13 @@ class HeterService : public ::paddle::distributed::PsService {
   bool IsExit() { return is_exit_; }
 
  private:
-  int32_t stop_profiler(const PsRequestMessage& request,
+  int32_t StopProfiler(const PsRequestMessage& request,
+                       PsResponseMessage& response,  // NOLINT
+                       brpc::Controller* cntl);
+
+  int32_t StartProfiler(const PsRequestMessage& request,
                         PsResponseMessage& response,  // NOLINT
                         brpc::Controller* cntl);
-
-  int32_t start_profiler(const PsRequestMessage& request,
-                         PsResponseMessage& response,  // NOLINT
-                         brpc::Controller* cntl);
 
   int32_t stop_heter_worker(const PsRequestMessage& request,
                             PsResponseMessage& response,  // NOLINT

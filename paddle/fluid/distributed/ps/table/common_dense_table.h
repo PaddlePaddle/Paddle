@@ -34,26 +34,26 @@ class CommonDenseTable : public DenseTable {
  public:
   CommonDenseTable() {}
   virtual ~CommonDenseTable() {}
-  int32_t initialize() override;
-  int32_t initialize_shard() override { return 0; }
-  virtual void create_initializer(const std::string& attr,
-                                  const std::string& name);
-  virtual int32_t initialize_value();
-  virtual int32_t initialize_optimizer();
+  int32_t Initialize() override;
+  int32_t InitializeShard() override { return 0; }
+  virtual void CreateInitializer(const std::string& attr,
+                                 const std::string& name);
+  virtual int32_t InitializeValue();
+  virtual int32_t InitializeOptimizer();
   virtual int32_t Pull(TableContext& context);
   virtual int32_t Push(TableContext& context);
-  int32_t pull_dense(float* pull_values, size_t num) override;
-  int32_t push_dense_param(const float* values, size_t num) override;
-  int32_t push_dense(const float* values, size_t num) override;
-  int32_t pour() override;
-  int32_t set_global_lr(float* lr) override;
+  int32_t PullDense(float* pull_values, size_t num) override;
+  int32_t PushDenseParam(const float* values, size_t num) override;
+  int32_t PushDense(const float* values, size_t num) override;
+  int32_t Pour() override;
+  int32_t SetGlobalLR(float* lr) override;
 
-  int32_t load(const std::string& path, const std::string& param) override;
-  int32_t save(const std::string& path, const std::string& param) override;
+  int32_t Load(const std::string& path, const std::string& param) override;
+  int32_t Save(const std::string& path, const std::string& param) override;
 
-  int32_t flush() override { return 0; }
-  int32_t shrink(const std::string& param) override { return 0; }
-  void clear() override { return; }
+  int32_t Flush() override { return 0; }
+  int32_t Shrink(const std::string& param) override { return 0; }
+  void Clear() override { return; }
 
  protected:
   int32_t _push_dense(const float* values, size_t num);

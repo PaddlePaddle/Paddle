@@ -18,7 +18,7 @@ DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-int32_t TensorTable::set_program_env(
+int32_t TensorTable::SetProgramEnv(
     framework::Scope *scope, platform::Place place,
     const std::vector<framework::ProgramDesc> *sub_program) {
   scope_ = scope;
@@ -28,7 +28,7 @@ int32_t TensorTable::set_program_env(
   return 0;
 }
 
-int32_t GlobalStepTable::initialize() {
+int32_t GlobalStepTable::Initialize() {
   auto _program_config = _config.tensor();
   auto trainers_ = _config.common().trainer_num();
   FLAGS_eager_delete_tensor_gb = -1;
@@ -71,7 +71,7 @@ int32_t GlobalStepTable::initialize() {
   return 0;
 }
 
-int32_t GlobalStepTable::set_table_map(
+int32_t GlobalStepTable::SetTableMap(
     std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) {
   auto *lr_var = scope_->FindVar(fetch_var_name_);
   auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
@@ -83,13 +83,13 @@ int32_t GlobalStepTable::set_table_map(
     if (table_id == _config.table_id()) {
       continue;
     }
-    iter->second->set_global_lr(lr_value);
+    iter->second->SetGlobalLR(lr_value);
   }
   return 0;
 }
 
-int32_t GlobalStepTable::push_dense(const int64_t *values,
-                                    const int32_t trainer_id) {
+int32_t GlobalStepTable::PushDense(const int64_t *values,
+                                   const int32_t trainer_id) {
   return _run_program(values, trainer_id);
 }
 

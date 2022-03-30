@@ -162,9 +162,9 @@ void RunServer() {
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
-  pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
+  pserver_ptr_->Configure(server_proto, _ps_env, 0, empty_vec);
   LOG(INFO) << "RUN start";
-  pserver_ptr_->start(ip_, port_);
+  pserver_ptr_->Start(ip_, port_);
   LOG(INFO) << "End start";
 }
 
@@ -180,7 +180,7 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
       paddle::distributed::PSClientFactory::create(worker_proto));
   LOG(INFO) << "Run configure";
-  worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+  worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
 }
 
 void RunBrpcPushDense() {
