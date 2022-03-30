@@ -51,7 +51,7 @@ struct CustomGradMerger {
 #elif defined(PADDLE_WITH_XPU)
 struct CustomGradMerger {
   template <typename T>
-  __forceinline__ __device__ T operator()(const T& a, const T& b) const {
+  __device__ T operator()(const T& a, const T& b) const {
     T out;
     out.slot = a.slot;
     out.show = a.show + b.show;
