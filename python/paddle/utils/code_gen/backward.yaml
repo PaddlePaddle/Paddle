@@ -878,6 +878,16 @@
   kernel :
     func : tile_grad
 
+- backward_api : top_k_grad
+  forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : top_k_grad
+
 - backward_api : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)
