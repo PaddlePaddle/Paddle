@@ -46,7 +46,7 @@ class Type(enum.Enum):
     """
     BIJECTION = 'bijection'  # bijective(injective and surjective)
     INJECTION = 'injection'  # injective-only
-    SURJECTION = 'surjection'  # surjective-inly
+    SURJECTION = 'surjection'  # surjective-only
     OTHER = 'other'  # general, neither injective nor surjective
 
     @classmethod
@@ -440,7 +440,7 @@ class AffineTransform(Transform):
             print(affine.forward(x))
             # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 2.])
-            print(affine.inverse(power.forward(x)))
+            print(affine.inverse(affine.forward(x)))
             # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 2.])
             print(affine.forward_log_det_jacobian(x))
