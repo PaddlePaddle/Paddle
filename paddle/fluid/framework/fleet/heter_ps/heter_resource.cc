@@ -71,8 +71,28 @@ GPUResource::~GPUResource() {
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
-#endif
-#ifdef PADDLE_WITH_XPU_KP
+
+}
+
+#elif defined(PADDLE_WITH_XPU_KP)
+XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
+  index_ = index;
+  dev_ids_ = dev_ids;
+  dev_id_ = dev_ids_[index];
+
+  platform::XPUDeviceGuard guard(dev_id_);
+  local_streams_.resize(dev_ids_.size());
+  comm_streams_.resize(dev_ids_.size(), 0);
+  remote_streams_.resize(dev_ids_.size());
+
+  for (size_t i = 0; i < dev_ids_.size(); ++i) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&local_streams_[i]));
+    // PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&comm_streams_[i]));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&remote_streams_[i]));
+  }
+}
+
+XPUResource::~XPUResource() {
   platform::XPUDeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
     xpu_stream_destroy(local_streams_[i]);
