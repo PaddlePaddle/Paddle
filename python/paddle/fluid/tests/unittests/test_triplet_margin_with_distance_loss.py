@@ -220,7 +220,26 @@ class TestTripletMarginLoss(unittest.TestCase):
                         functional=True)
                     self.assertTrue(np.allclose(static_functional, dy_functional))
 
+    def test_TripletMarginLoss_dimension(self):
+        paddle.disable_static()
 
+        input = paddle.to_tensor([[0.1, 0.3], [1, 2]], dtype='float32')
+        positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
+        negative = paddle.to_tensor([[0.2, 0.1]], dtype='float32')
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.triplet_margin_with_distance_loss,
+            input=input,
+            positive=positive,
+            negative=negative, )
+        TMDLoss = paddle.nn.TripletMarginDistanceLoss
+        self.assertRaises(
+            ValueError,
+            TMDLoss,
+            input=input,
+            positive=positive,
+            negative=negative, )
+        paddle.enable_static()
 
 if __name__ == "__main__":
     unittest.main()
