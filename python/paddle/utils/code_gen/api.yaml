@@ -254,6 +254,15 @@
 #   kernel :
 #     func : equal_all
 
+- api : abs
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : abs
+  backward : abs_grad
+
 # accuracy
 - api : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
