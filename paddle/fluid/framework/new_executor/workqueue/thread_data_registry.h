@@ -61,6 +61,8 @@ class ThreadDataRegistry {
 
  private:
 // types
+// Lock types
+#if defined(__clang__) || defined(__GNUC__)  // CLANG or GCC
 #if __cplusplus >= 201703L
   using LockType = std::shared_mutex;
   using SharedGuardType = std::shared_lock<std::shared_mutex>;
@@ -69,8 +71,24 @@ class ThreadDataRegistry {
   using SharedGuardType = std::shared_lock<std::shared_timed_mutex>;
 #else
   using LockType = std::mutex;
-  using SharedGuardType = std::lock_guard<std::std::mutex>;
+  using SharedGuardType = std::lock_guard<std::mutex>;
 #endif
+#elif defined(_MSC_VER)  // MSVC
+#if _MSVC_LANG >= 201703L
+  using LockType = std::shared_mutex;
+  using SharedGuardType = std::shared_lock<std::shared_mutex>;
+#elif _MSVC_LANG >= 201402L
+  using LockType = std::shared_timed_mutex;
+  using SharedGuardType = std::shared_lock<std::shared_timed_mutex>;
+#else
+  using LockType = std::mutex;
+  using SharedGuardType = std::lock_guard<std::mutex>;
+#endif
+#else  // other compilers
+  using LockType = std::mutex;
+  using SharedGuardType = std::lock_guard<std::mutex>;
+#endif
+
   class ThreadDataHolder;
   class ThreadDataRegistryImpl {
    public:
