@@ -48,6 +48,22 @@ void ActivationImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void LogitKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float eps,
+                 DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+
+  auto eigen_out = EigenVector<T>::Flatten(*out);
+  auto eigen_in = EigenVector<T>::Flatten(x);
+  auto& place = *dev_ctx.eigen_device();
+  auto eigen_p = EigenVector<T>::Flatten(*out);
+
+  funcs::LogitFunctor<T> functor;
+  functor(place, eigen_in, eigen_out, eigen_p, eps);
+}
+
+template <typename T, typename Context>
 void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
