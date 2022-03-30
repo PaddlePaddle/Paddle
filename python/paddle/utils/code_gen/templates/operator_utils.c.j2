@@ -74,14 +74,16 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "attribute {{i}} for {{op_na
 {% macro process_default_value(attr) %}{# inline #}
   {% set default_value = attr["default_value"] %}
   {% set typename = attr["typename"] %}
-  {% if typename == "DataType" %}
-static_cast<int>(experimental::{{default_value}})
+  {% if typename == "DataType" %}{# convert back to VarType #}
+static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
   {%- elif typename == "DataLayout" %}
 static_cast<int>(experimental::{{default_value}})
-  {%- elif typename == "Place" %}
+  {%- elif typename == "Place" %}{# construct a Place to get the type #}
 static_cast<int>(phi::Place({{default_value}}.GetType()))
   {%- elif typename == "str" %}{# warp string #}
 "{{default_value}}"
+  {%- elif typename.endswith("[]") %}{# a vector: explicit construct it#}
+{{typename | to_op_attr_type}}({{default_value}})
   {%- else %}
 {{default_value}}
   {%- endif %}
