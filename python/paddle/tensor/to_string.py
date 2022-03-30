@@ -286,30 +286,45 @@ def _format_dense_tensor(tensor, indent):
 
 def sparse_tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{data})"
     if tensor.is_sparse_coo():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{indices}, \n{indent}{values})"
         indices_tensor = tensor.non_zero_indices()
         elements_tensor = tensor.non_zero_elements()
-        indices_data = _format_dense_tensor(indices_tensor, indent)
-        elements_data = _format_dense_tensor(elements_tensor, indent)
-        data = 'indices=' + indices_data + ',\nvalues=' + elements_data
+        indices_data = 'indices=' + _format_dense_tensor(indices_tensor, indent
+                                                         + len('indices='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor, indent +
+                                                       len('values='))
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=tensor.dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            indices=indices_data,
+            values=values_data)
     else:
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{crows}, \n{indent}{cols}, \n{indent}{values})"
         crows_tensor = tensor.non_zero_crows()
         cols_tensor = tensor.non_zero_cols()
         elements_tensor = tensor.non_zero_elements()
-        crows_data = _format_dense_tensor(crows_tensor, indent)
-        cols_data = _format_dense_tensor(cols_tensor, indent)
-        elements_data = _format_dense_tensor(elements_tensor, indent)
-        data = 'crows=' + crows_data + ',\ncrows=' + cols_data + ',\nvalues=' + elements_data
+        crows_data = 'crows=' + _format_dense_tensor(crows_tensor, indent +
+                                                     len('crows='))
+        cols_data = 'cols=' + _format_dense_tensor(cols_tensor, indent +
+                                                   len('cols='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor, indent +
+                                                       len('values='))
 
-    return _template.format(
-        prefix=prefix,
-        shape=tensor.shape,
-        dtype=tensor.dtype,
-        place=tensor._place_str,
-        stop_gradient=tensor.stop_gradient,
-        indent=' ' * indent,
-        data=data)
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=tensor.dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            crows=crows_data,
+            cols=cols_data,
+            values=elements_data)
 
 
 def tensor_to_string(tensor, prefix='Tensor'):
@@ -322,7 +337,6 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if not tensor._is_dense_tensor_hold_allocation():
         return "Tensor(Not initialized)"
-
     else:
         data = _format_dense_tensor(tensor, indent)
         return _template.format(
