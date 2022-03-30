@@ -128,7 +128,11 @@ RecordEvent::RecordEvent(const std::string &name, const std::string &attr,
 #endif
 #endif
   if (FLAGS_enable_host_event_recorder_hook == false) {
-    OriginalConstruct(name, role, attr);
+    if (type == TracerEventType::Operator ||
+        type == TracerEventType::OperatorInner ||
+        type == TracerEventType::UserDefined) {
+      OriginalConstruct(name, role, attr);
+    }
     return;
   }
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
