@@ -649,6 +649,16 @@
   kernel :
     func : put_along_axis_grad
 
+- backward_api : relu_double_grad
+  forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : relu_double_grad
+
 - backward_api : relu_grad
   forward : relu (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -658,6 +668,7 @@
     param : [out]
   kernel :
     func : relu_grad
+  backward: relu_double_grad
 
 - backward_api : reshape_grad
   forward : reshape_with_xshape (Tensor x, ScalarArray shape) -> Tensor(out), Tensor(xshape)
