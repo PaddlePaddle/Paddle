@@ -130,5 +130,11 @@ class TestHeavisideError(unittest.TestCase):
                 paddle.heaviside(paddle.randn([100]), 1)
         self.assertRaises(ValueError, test_input_y)
 
+        def test_input_xy():
+            with paddle.fluid.dygraph.guard():
+                paddle.heaviside(paddle.randn([100], 'float32'),
+                                 paddle.randn([100], 'float64'))
+        self.assertRaises(ValueError, test_input_xy)
+
 if __name__ == '__main__':
     unittest.main()
