@@ -102,12 +102,6 @@ endif()
 
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel)
 
-# code gen
-set(parse_api_script ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parse_api.py)
-set(gen_op_script ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/generate_op.py)
-
-# operator generation here
-
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
