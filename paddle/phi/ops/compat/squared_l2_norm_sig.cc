@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void SquaredL2NormKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         DenseTensor* out);
+KernelSignature SquaredL2NormGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("squared_l2_norm_grad",
+                         {"X", GradVarName("Out")},
+                         {},
+                         {GradVarName("X")});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(abs_grad, phi::SquaredL2NormGradOpArgumentMapping);

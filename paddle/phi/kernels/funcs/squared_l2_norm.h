@@ -14,11 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/memory/buffer.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #ifdef __NVCC__
@@ -29,6 +24,7 @@ namespace cub = hipcub;
 #endif
 #endif
 
+#include "paddle/fluid/memory/buffer.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
