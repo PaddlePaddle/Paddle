@@ -126,11 +126,13 @@ std::future<int32_t> PsLocalClient::Load(const LoadSaveContext& load_context) {
     Region* dense_region = reinterpret_cast<Region*>(pull_context.dense_values);
     pull_dense(dense_region, pull_context.num, pull_context.table);
   } else {  // pull sparse
-    uint64_t* keys = reinterpret_cast<uint64_t*>(pull_context.keys);
-    char** select_values = reinterpret_cast<char**>(pull_context.sparse_values);
+    // uint64_t* keys = reinterpret_cast<uint64_t*>(pull_context.keys);
+    // char** select_values =
+    // reinterpret_cast<char**>(pull_context.sparse_values);
     size_t table_id = pull_context.table;
     size_t num = pull_context.num;
-    pull_sparse_ptr(select_values, table_id, keys, num);
+    pull_sparse_ptr(reinterpret_cast<char**>(pull_context.sparse_values),
+                    table_id, pull_context.keys, num);
   }
 }
 

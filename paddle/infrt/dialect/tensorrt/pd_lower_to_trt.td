@@ -42,4 +42,10 @@ def PD2TRT_MatrixMultipl_Lower : Pat<
 def PD2TRT_SoftMax_Lower : Pat<
         (PD_SoftmaxOp $Input, $axis, $_),
         (TRT_SoftMaxOp $Input, $axis)>;
+
+def createTRTShuffledOp : NativeCodeCall<"createTRTShuffledOp($_builder, $0.getDefiningOp(), $1, $2, $3)">;
+
+def PD2TRT_Flatten_contiguous_range_Lower : Pat<
+        (PD_Flatten_contiguous_rangeOp:$out $input, $start_axis, $end_axis),
+        (createTRTShuffledOp $out, $input, $start_axis, $end_axis)>;
 #endif // PD_LOWER_TO_TRT
