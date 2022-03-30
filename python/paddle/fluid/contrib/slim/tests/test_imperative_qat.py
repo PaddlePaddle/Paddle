@@ -202,6 +202,8 @@ class TestImperativeQat(unittest.TestCase):
 
 class TestImperativeQatONNXFormat(unittest.TestCase):
     def set_vars(self):
+        self.weight_quantize_type = 'abs_max'
+        self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = True
 
 
