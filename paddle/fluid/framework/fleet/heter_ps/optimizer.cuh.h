@@ -222,7 +222,8 @@ class Optimizer {
         val.mf[0] = 0;
 
         float ret_val;
-        xpu_rand_uniform(&ret_val) for (int i = 0; i < MF_DIM; ++i) {
+        xpu_rand_uniform(&ret_val);
+        for (int i = 0; i < MF_DIM; ++i) {
           (*val).mf[i + 1] = (ret_val)*local_mf_initial_range;
         }
 
