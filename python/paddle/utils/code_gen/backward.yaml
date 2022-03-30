@@ -307,7 +307,17 @@
   kernel :
     func : mv_grad
 
-    
+- backward_api : nll_loss_grad
+  forward : nll_loss_grad (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)
+  args : (Tensor input, Tensor label, Tensor weight, Tensor total_weight, Tensor out_grad, int64_t ignore_index, str reduction)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : NllLossGradInferMeta
+  kernel :
+    func : nll_loss_grad
+    data_type : input
+  optional : weight
+
 - backward_api : cast_grad
   forward : cast (Tensor x, DataType out_dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

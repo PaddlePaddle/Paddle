@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
@@ -192,9 +193,12 @@ class NLLLossGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_INFER_SHAPE_FUNCTOR(nll_loss, NllLossRawInferShapeFunctor,
                             PD_INFER_META(phi::NllLossRawInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(nll_loss_grad, NllLossGradInferShapeFunctor,
+                            PD_INFER_META(phi::NllLossGradInferMeta));
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(nll_loss, ops::NLLLossOp, ops::NLLLossOpMaker,
                   ops::NLLLossGradMaker<paddle::framework::OpDesc>,
                   ops::NLLLossGradMaker<paddle::imperative::OpBase>,
                   NllLossRawInferShapeFunctor);
-REGISTER_OPERATOR(nll_loss_grad, ops::NLLLossGradOp);
+REGISTER_OPERATOR(nll_loss_grad, ops::NLLLossGradOp,
+                  NllLossGradInferShapeFunctor);

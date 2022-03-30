@@ -171,15 +171,19 @@ FORWARD_FUNCTION_TEMPLATE = \
 {}
     // Forward API Call
 {}
+VLOG(1) << "####### API Call";
     // Get Output AutoGradMeta
 {}
+VLOG(1) << "####### AutoGradMeta";
     bool trace_backward = egr::Controller::Instance().HasGrad();
     bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
     // Check Inplace & Bump Inplace Version
 {}
 {}
+VLOG(1) << "####### Bump Inplace Version";
     // Node Creation
 {}
+VLOG(1) << "####### Node Creation";
 
         // Returns
         return {};
