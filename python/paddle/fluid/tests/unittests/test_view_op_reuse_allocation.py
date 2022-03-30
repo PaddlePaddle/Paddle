@@ -29,12 +29,7 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 # View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
     def setUp(self):
-        self.set_flag_to_test_eager_mode()
         self.init_shape()
-
-    # some op don't suport eager_final_state in temporary
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = False
 
     def init_shape(self):
         self.input_shape = [2, 3, 1]
@@ -46,10 +41,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
     def func_test_view_api(self):
         var = paddle.rand(self.input_shape)
         view_var = self.view_api_processing(var)
-        # setitem don't support inplace in temporary.
-        # replace setitem with inplace exp_ in temporary.
-        # view_var[0] = 2.
-        view_var.exp_()
+        view_var[0] = 2.
         self.assertEqual(var.shape, self.input_shape)
         self.assertEqual(view_var.shape, self.output_shape)
 
@@ -69,16 +61,14 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         view_var = self.view_api_processing(var)
         self.assertEqual(view_var.inplace_version, 0)
 
-        # var[0] = 2.
-        var.exp_()
+        var[0] = 2.
         self.assertEqual(var.inplace_version, 1)
         self.assertEqual(view_var.inplace_version, 1)
 
         view_var_2 = self.view_api_processing(var)
         self.assertEqual(view_var_2.inplace_version, 1)
 
-        # var[0] = 3.
-        var.exp_()
+        var[0] = 3.
         self.assertEqual(view_var.inplace_version, 2)
         self.assertEqual(view_var_2.inplace_version, 2)
 
@@ -100,8 +90,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
             # Here, the gradient computation will use the value of var_b
             var_c = var_b**2
             view_var_b = self.view_api_processing(var_b)
-            # view_var_b[0] = 2.  # var_b is modified inplace
-            view_var_b.exp_()
+            view_var_b[0] = 2.  # var_b is modified inplace
 
             loss = paddle.nn.functional.relu(var_c)
             if in_dygraph_mode():
@@ -125,9 +114,6 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
 
 
 class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = False
-
     def init_shape(self):
         self.input_shape = [2, 3]
         self.output_shape = [2, 3, 1]
@@ -137,9 +123,6 @@ class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = True
-
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [2, 2, 3]
@@ -149,9 +132,6 @@ class TestReshapeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
 
 
 class TestFlattenDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
-    def set_flag_to_test_eager_mode(self):
-        self.flag_test_eager_mode = False
-
     def init_shape(self):
         self.input_shape = [3, 4]
         self.output_shape = [12]
