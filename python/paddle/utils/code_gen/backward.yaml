@@ -651,21 +651,21 @@
     func : put_along_axis_grad
 
 - backward_api : relu_double_grad
-  forward : relu_grad (tensor out, tensor grad_out) -> tensor(grad_x)
-  args : (tensor out, tensor grad_x_grad)
-  output : tensor(out_grad), tensor(grad_out_grad)
+  forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
-    func : generalbinarygradinfermeta
+    func : GeneralBinaryGradInferMeta
     param : [out, out]
   kernel :
     func : relu_double_grad
 
 - backward_api : relu_grad
-  forward : relu (tensor x) -> tensor(out)
-  args : (tensor out, tensor out_grad)
-  output : tensor(x_grad)
+  forward : relu (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
   infer_meta :
-    func : unchangedinfermeta
+    func : UnchangedInferMeta
     param : [out]
   kernel :
     func : relu_grad
