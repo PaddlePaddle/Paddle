@@ -223,6 +223,24 @@ void EluDoubleGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void LogitGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& out_grad,
+                     float eps,
+                     DenseTensor* x_grad) {
+  dev_ctx.template Alloc<T>(x_grad);
+
+  auto eigen_x = EigenVector<T>::Flatten(x);
+  auto eigen_dout = EigenVector<T>::Flatten(out_grad);
+  auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
+  auto& place = *dev_ctx.eigen_device();
+  auto eigen_p = EigenVector<T>::Flatten(x);
+
+  funcs::LogitGradFunctor<T> functor;
+  functor(place, eigen_x, eigen_dout, eigen_dx, eigen_p, eps);
+}
+
+template <typename T, typename Context>
 void SigmoidDoubleGradKernel(const Context& dev_ctx,
                              const DenseTensor& out,
                              const DenseTensor& ddx,
