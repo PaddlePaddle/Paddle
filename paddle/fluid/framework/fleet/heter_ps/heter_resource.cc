@@ -61,12 +61,12 @@ XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
 
   platform::XPUDeviceGuard guard(dev_id_);
   local_streams_.resize(dev_ids_.size());
-  comm_streams_.resize(dev_ids_.size());
+  comm_streams_.resize(dev_ids_.size(), 0);
   remote_streams_.resize(dev_ids_.size());
 
   for (size_t i = 0; i < dev_ids_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&local_streams_[i]));
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&comm_streams_[i]));
+    // PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&comm_streams_[i]));
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&remote_streams_[i]));
   }
 }
