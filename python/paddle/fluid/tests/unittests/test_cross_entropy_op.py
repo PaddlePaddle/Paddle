@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle
 
 
 class TestCrossEntropyOp(OpTest):
@@ -386,4 +387,5 @@ class TestCrossEntropyOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
