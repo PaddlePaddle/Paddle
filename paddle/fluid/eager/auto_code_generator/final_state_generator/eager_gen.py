@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,7 +56,7 @@ def ParseArguments():
 ########################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = \
 """
-   void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{     
+   void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{
      {} = egr::TensorWrapper({}, full_reserved, {});
    }}
 """
@@ -121,19 +121,19 @@ NODE_DECLARATION_TEMPLATE = \
       virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
           std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
       std::string name() override {{ return \" {} \"; }}
-      
+
       void ClearTensorWrappers() override {{
           {}
         is_tensor_wrappers_cleared = true;
       }}
-      
+
       // SetTensorWrapperX, SetTensorWrapperY, ...
       {}
       // SetAttributes
       {}
 
       bool IsTensorWrappersCleared() override {{
-          return is_tensor_wrappers_cleared;  
+          return is_tensor_wrappers_cleared;
       }}
      private:
       // TensorWrappers
@@ -196,7 +196,7 @@ FORWARD_BODY_TEMPLATE = \
         if(require_any_grad) {{
 {}
             egr::EagerUtils::PassStopGradient({});
-            
+
             // Node Construction
 {}
             // SetAttributes
@@ -383,7 +383,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         #self.forward_outputs_position_map
         #self.optional_inputs
         #self.no_need_buffers
-        #self.intermediate_outputs   
+        #self.intermediate_outputs
         #self.inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
@@ -891,7 +891,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Forward Full Logic
         function_name = forward_api_name
         if len(intermediate_outputs) > 0:
-            function_name = GetIntermediateAPIFunctionName(function_name)
+            if is_inplaced:
+                function_name = GetIntermediateAPIFunctionName(
+                    forward_api_name[:-1]) + '_'
+            else:
+                function_name = GetIntermediateAPIFunctionName(function_name)
 
         forward_call_str = f"auto api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
 
