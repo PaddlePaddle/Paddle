@@ -20,6 +20,7 @@
 
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 #include "paddle/fluid/framework/data_layout.h"
@@ -71,12 +72,30 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    paddle::optional<const paddle::experimental::Tensor&> target) {
+  if (target.get_ptr() != nullptr) {
+    return EagerUtils::nullable_autograd_meta(*(target.get_ptr()));
+  }
+  return nullptr;
+}
+
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
     const std::vector<paddle::experimental::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
   for (const paddle::experimental::Tensor& t : targets) {
     metas.emplace_back(nullable_autograd_meta(t));
+  }
+  return metas;
+}
+
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const std::vector<paddle::experimental::Tensor*>& targets) {
+  std::vector<AutogradMeta*> metas;
+  metas.reserve(targets.size());
+  for (const paddle::experimental::Tensor* t : targets) {
+    metas.emplace_back(nullable_autograd_meta(*t));
   }
   return metas;
 }
@@ -89,6 +108,19 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   // for autograd_meta we can tolerent it has nullptr.
   for (size_t i = 0; i < targets->size(); i++) {
     auto* p_autograd_meta = autograd_meta(&((*targets)[i]));
+    ret.emplace_back(p_autograd_meta);
+  }
+  return ret;
+}
+
+std::vector<AutogradMeta*> EagerUtils::autograd_meta(
+    std::vector<paddle::experimental::Tensor*>* targets) {
+  std::vector<AutogradMeta*> ret;
+  ret.reserve(targets->size());
+
+  // for autograd_meta we can tolerent it has nullptr.
+  for (size_t i = 0; i < targets->size(); i++) {
+    auto* p_autograd_meta = autograd_meta((*targets)[i]);
     ret.emplace_back(p_autograd_meta);
   }
   return ret;
@@ -297,6 +329,7 @@ void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
                    "shared_ptr, this error may indicate some outputs "
                    "are nullptr"));
   out_var->set_impl(out->GetTensorBase());
+  out_var->set_name(out->name());
 }
 
 void EagerUtils::GetOutputs(
@@ -352,6 +385,22 @@ paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
   return tw->recover(grad_node);
 }
 
+paddle::optional<const paddle::experimental::Tensor&>
+EagerUtils::RecoverOptionalTensorWrapper(
+    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tw, phi::errors::InvalidArgument("TensorWrapper in "
+                                       "RecoverOptionalTensorWrapper function "
+                                       "should not be null"));
+  auto tmp = tw->recover(grad_node);
+
+  paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
+  if (tmp.initialized()) {
+    res = tmp;
+  }
+  return res;
+}
+
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
     std::vector<TensorWrapper>* tw,
     const std::shared_ptr<GradNodeBase>& grad_node) {
@@ -377,6 +426,16 @@ void EagerUtils::CheckAndRetainGrad(
     for (auto& tensor : tensors) {
       VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
+}
+
+void EagerUtils::CheckAndRetainGrad(
+    const std::vector<paddle::experimental::Tensor*>& tensors) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    for (auto& tensor : tensors) {
+      VLOG(6) << "RetainGradForTensor: " << tensor->name();
+      egr::egr_utils_api::RetainGradForTensor(*tensor);
     }
   }
 }
@@ -415,6 +474,30 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;
+    }
+  }
+}
+
+void EagerUtils::FillZeroForEmptyGradInputs(
+    std::vector<std::vector<paddle::experimental::Tensor>>* in_grads,
+    const std::vector<std::vector<GradSlotMeta>>& grad_in_metas) {
+  for (size_t i = 0; i < in_grads->size(); i++) {
+    for (size_t j = 0; j < (*in_grads)[i].size(); j++) {
+      paddle::experimental::Tensor& grad = (*in_grads)[i][j];
+      if (!grad.is_initialized()) {
+        const GradSlotMeta& grad_in_meta = grad_in_metas[i][j];
+        PADDLE_ENFORCE(
+            grad_in_meta.HasTensorMeta(),
+            paddle::platform::errors::Fatal(
+                "Unable to fill empty grad inputs due to empty GradSlotMeta"));
+
+        const auto& tensor_meta = grad_in_meta.GetTensorMeta();
+        phi::Place place = grad_in_meta.GetPlace();
+
+        auto tensor_with_zero = paddle::experimental::full(
+            phi::vectorize(tensor_meta.dims), 0.0, tensor_meta.dtype, place);
+        grad.set_impl(tensor_with_zero.impl());
+      }
     }
   }
 }

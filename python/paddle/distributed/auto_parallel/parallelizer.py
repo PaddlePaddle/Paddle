@@ -42,7 +42,7 @@ from .utils import make_data_unshard
 from .utils import set_grad_var_shape
 from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
-from .reshard import reshard, HAS_SENT, HAS_RECV, HAS_ALLGATHER
+from .reshard import Resharder
 from .cluster import Cluster
 from .mapper import mapping
 from .dist_op import DistributedOperator
@@ -105,9 +105,15 @@ class AutoParallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["loss"] = loss
-            auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
-            auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                         self._pass_context)
+            if config["use_pure_fp16"]:
+                config["base_opt"] = self._optimizer
+                auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
+                auto_parallel_fp16_pass.apply(
+                    [main_program], [startup_program], self._pass_context)
+            else:
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                             self._pass_context)
 
         # apply recompute pass
         if self._dist_strategy.recompute:
@@ -213,17 +219,15 @@ class AutoParallelizer:
 
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 
-        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context,
-                dist_params_grads)
+        resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
+                              self._dist_context, dist_params_grads)
+        resharder.reshard()
 
         self._apply_post_optimization_passes(dist_main_prog, dist_startup_prog,
                                              rank, dist_params_grads)
         g_process_group_map = None
         if not relaunch_phase:
             g_process_group_map = copy.deepcopy(_g_process_group_map)
-            HAS_SENT.clear()
-            HAS_RECV.clear()
-            HAS_ALLGATHER.clear()
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
             for process_mesh in dist_context._process_meshes:

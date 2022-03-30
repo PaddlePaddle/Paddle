@@ -38,14 +38,37 @@ int CtrCommonAccessor::initialize() {
   return 0;
 }
 
-void CtrCommonAccessor::GetTableInfo(AccessorInfo& info) {
+void CtrCommonAccessor::SetTableInfo(AccessorInfo& info) {
   info.dim = dim();
   info.size = size();
   info.select_dim = select_dim();
   info.select_size = select_size();
   info.update_dim = update_dim();
   info.update_size = update_size();
+  info.mf_size = mf_size();
   info.fea_dim = fea_dim();
+}
+
+size_t CtrCommonAccessor::GetTableInfo(InfoKey key) {
+  switch (key) {
+    case DIM:
+      return dim();
+    case SIZE:
+      return size();
+    case SELECT_DIM:
+      return select_dim();
+    case SELECT_SIZE:
+      return select_size();
+    case UPDATE_DIM:
+      return update_dim();
+    case UPDATE_SIZE:
+      return update_size();
+    case MF_SIZE:
+      return mf_size();
+    case FEA_DIM:
+      return fea_dim();
+  }
+  return 0;
 }
 
 size_t CtrCommonAccessor::dim() { return common_feature_value.dim(); }
@@ -65,7 +88,7 @@ size_t CtrCommonAccessor::mf_size() {
 // pull value
 size_t CtrCommonAccessor::select_dim() {
   auto embedx_dim = _config.embedx_dim();
-  return 1 + embedx_dim;
+  return 3 + embedx_dim;
 }
 
 size_t CtrCommonAccessor::select_dim_size(size_t dim) { return sizeof(float); }
@@ -213,6 +236,10 @@ int32_t CtrCommonAccessor::select(float** select_values, const float** values,
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
     const float* value = values[value_item];
+    select_value[CtrCommonPullValue::show_index()] =
+        value[common_feature_value.show_index()];
+    select_value[CtrCommonPullValue::click_index()] =
+        value[common_feature_value.click_index()];
     select_value[CtrCommonPullValue::embed_w_index()] =
         value[common_feature_value.embed_w_index()];
     memcpy(select_value + CtrCommonPullValue::embedx_w_index(),

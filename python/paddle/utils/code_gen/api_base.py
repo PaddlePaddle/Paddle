@@ -50,7 +50,8 @@ class BaseAPI(object):
             self.support_selected_rows_kernel = False if len(self.kernel[
                 'func']) == 1 else True
             self.data_transform = self.parse_data_transform(api_item_yaml)
-            self.inplace_map = self.parse_inplace(api_item_yaml)
+            self.inplace_map, self.view_map = self.parse_inplace_and_view(
+                api_item_yaml)
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['api']
@@ -89,10 +90,13 @@ class BaseAPI(object):
         attr_types_map = {
             'ScalarArray': 'const ScalarArray&',
             'Scalar': 'const Scalar&',
-            'uint8': 'uint8_t',
+            'Scalar(int)': 'const Scalar&',
+            'Scalar(int64_t)': 'const Scalar&',
+            'Scalar(float)': 'const Scalar&',
+            'Scalar(dobule)': 'const Scalar&',
             'int': 'int',
-            'int32': 'int32_t',
-            'int64': 'int64_t',
+            'int32_t': 'int32_t',
+            'int64_t': 'int64_t',
             'long': 'long',
             'size_t': 'size_t',
             'float': 'float',
@@ -102,27 +106,21 @@ class BaseAPI(object):
             'Place': 'Place',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
-            'int64[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&',
-            'long[]': 'const std::vector<int64_t>&'
+            'int64_t[]': 'const std::vector<int64_t>&',
+            'int[]': 'const std::vector<int>&'
         }
         optional_types_trans = {
-            'Tensor': 'const paddle::optional<Tensor>&',
+            'Tensor': 'paddle::optional<const Tensor&>',
             'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
-            'ScalarArray': 'const paddle::optional<ScalarArray>&',
-            'Scalar': 'const paddle::optional<Scalar>&',
             'int': 'paddle::optional<int>',
-            'int32': 'paddle::optional<int32_t>',
-            'int64': 'paddle::optional<int64_t>',
-            'size_t': 'paddle::optional<size_t>',
+            'int32_t': 'paddle::optional<int32_t>',
+            'int64_t': 'paddle::optional<int64_t>',
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
             'bool': 'paddle::optional<bool>',
             'Place': 'paddle::optional<Place>',
             'DataLayout': 'paddle::optional<DataLayout>',
-            'DataType': 'paddle::optional<DataType>',
-            'int64[]': 'paddle::optional<std::vector<int64_t>>',
-            'int[]': 'paddle::optional<std::vector<int>>'
+            'DataType': 'paddle::optional<DataType>'
         }
 
         args_declare_str = ""
@@ -276,24 +274,30 @@ class BaseAPI(object):
 
         return data_transform
 
-    def parse_inplace(self, api_item_yaml):
-        if 'inplace' in api_item_yaml:
-            inplace_map = {}
-            inplace_list = api_item_yaml['inplace'].split(',')
-            for item in inplace_list:
-                result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
-                in_val = result.group('in')
-                out_val = result.group('out')
-                assert in_val in self.inputs['names'], \
-                    f"{self.api} : Inplace input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                assert out_val in self.outputs['names'], \
-                    f"{self.api} : Inplace output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+    def parse_inplace_and_view(self, api_item_yaml):
+        inplace_map, view_map = None, None
+        for mode in ['inplace', 'view']:
+            if mode in api_item_yaml:
+                if mode == 'inplace':
+                    inplace_map = {}
+                else:
+                    view_map = {}
+                in_out_mapping_list = api_item_yaml[mode].split(',')
+                for item in in_out_mapping_list:
+                    result = re.search(r"(?P<in>\w+)\s*->\s(?P<out>\w+)", item)
+                    in_val = result.group('in')
+                    out_val = result.group('out')
+                    assert in_val in self.inputs['names'], \
+                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    assert out_val in self.outputs['names'], \
+                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
 
-                inplace_map[out_val] = in_val
+                    if mode == 'inplace':
+                        inplace_map[out_val] = in_val
+                    else:
+                        view_map[out_val] = in_val
 
-            return inplace_map
-        else:
-            return None
+        return inplace_map, view_map
 
     # Override by child class
     def get_return_type(self, out_type_list):
@@ -505,7 +509,9 @@ PADDLE_API {self.gene_return_type_code()} {self.get_api_func_name() + '_'}({self
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
             'const std::vector<const phi::DenseTensor*>&',
-            'const paddle::optional<Tensor>&':
+            'const paddle::optional<Tensor&>':
+            'paddle::optional<const phi::DenseTensor&>',
+            'paddle::optional<const Tensor&>':
             'paddle::optional<const phi::DenseTensor&>',
             'const paddle::optional<std::vector<Tensor>>&':
             'paddle::optional<const std::vector<phi::DenseTensor>&>'

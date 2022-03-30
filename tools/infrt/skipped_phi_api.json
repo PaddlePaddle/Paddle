@@ -1,0 +1,4 @@
+{
+"phi_apis":["conj"],
+"phi_kernels":["equal_all"]
+}
