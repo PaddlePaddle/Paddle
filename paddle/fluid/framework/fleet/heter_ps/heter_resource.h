@@ -22,22 +22,19 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 
-
 namespace paddle {
 namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
 using ppStream = cudaStream_t;
-using ppStreamCreate = cudaStreamCreate;
 #elif defined(PADDLE_WITH_XPU)
 using ppStream = XPUStream;
-using ppStreamCreate = xpu_stream_create;;
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
 class GPUResource {
  public:
-  GPUResource(std::vector<int>& device_id, int index);
+  GPUResource(std::vector<int>& device_id, int index);  // NOLINT
   virtual ~GPUResource();
   GPUResource(const GPUResource&) = delete;
   GPUResource& operator=(const GPUResource&) = delete;
@@ -58,7 +55,7 @@ class GPUResource {
 #elif defined(PADDLE_WITH_XPU)
 class XPUResource {
  public:
-  XPUResource(std::vector<int>& device_id, int index);
+  XPUResource(std::vector<int>& device_id, int index);  // NOLINT
   virtual ~XPUResource();
   XPUResource(const XPUResource&) = delete;
   XPUResource& operator=(const XPUResource&) = delete;
@@ -78,20 +75,19 @@ class XPUResource {
 };
 #endif
 
-
 #if defined(PADDLE_WITH_CUDA)
 using DevResource = GPUResource;
 using DevPlace = platform::CUDAPlace;
-using AnyDeviceGuard= platform::CUDADeviceGuard
+using AnyDeviceGuard = platform::CUDADeviceGuard;
 #elif defined(PADDLE_WITH_XPU)
 using DevResource = XPUResource;
 using DevPlace = platform::XPUPlace;
-using AnyDeviceGuard= platform::XPUDeviceGuard
+using AnyDeviceGuard = platform::XPUDeviceGuard;
 #endif
 
 class HeterPsResource {
  public:
-  HeterPsResource(const std::vector<int>& dev_ids);
+  explicit HeterPsResource(const std::vector<int>& dev_ids);
   HeterPsResource(const HeterPsResource&) = delete;
   HeterPsResource& operator=(const HeterPsResource&) = delete;
   virtual ~HeterPsResource() {}
