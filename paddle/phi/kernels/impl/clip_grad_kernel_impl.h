@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/clip_kernel.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/clip_kernel.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/transform.h"

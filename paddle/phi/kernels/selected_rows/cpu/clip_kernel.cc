@@ -14,17 +14,15 @@
 
 #include "paddle/phi/kernels/selected_rows/clip_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/clip_kernel.h"
+#include "paddle/phi/kernels/selected_rows/impl/clip_kernel_impl.h"
 
 PD_REGISTER_KERNEL(clip_sr,
-                   GPU,
+                   CPU,
                    ALL_LAYOUT,
                    phi::sr::ClipSparseKernel,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::float16) {}
+                   int64_t) {}

@@ -12,10 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/phi/kernels/selected_rows/clip_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/clip_kernel.h"
+
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 namespace sr {
@@ -55,12 +60,3 @@ void ClipSparseKernel(const Context& dev_ctx,
 }
 }  // namespace sr
 }  // namespace phi
-
-PD_REGISTER_KERNEL(clip_sr,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sr::ClipSparseKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
