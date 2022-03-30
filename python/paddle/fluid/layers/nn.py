@@ -203,14 +203,8 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    if in_dygraph_mode():
-        op = getattr(_C_ops, OP_NAMEMAPPING[op_name])
-        out = op(x, y)
-
-    if _in_legacy_dygraph():
-        op = getattr(_C_ops, op_name)
-        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-
+    op = getattr(_C_ops, op_name)
+    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
