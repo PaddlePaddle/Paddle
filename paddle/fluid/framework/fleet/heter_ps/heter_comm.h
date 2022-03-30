@@ -199,11 +199,13 @@ class HeterComm {
 
   template <typename StreamType>
   void sync_stream(StreamType& stream) {
+    if (stream >= 0) {
 #if defined(PADDLE_WITH_CUDA)
-  cudaStreamSynchronize(stream);
+      cudaStreamSynchronize(stream);
 #elif defined(PADDLE_WITH_XPU)
-  xpu_wait(stream);
+      xpu_wait(stream);
 #endif
+    }
   }
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);

@@ -86,7 +86,7 @@ using AnyDeviceGuard= platform::CUDADeviceGuard
 #elif defined(PADDLE_WITH_XPU)
 using DevResource = XPUResource;
 using DevPlace = platform::XPUPlace;
-using AnyDeviceGuard= platform::CUDADeviceGuard
+using AnyDeviceGuard= platform::XPUDeviceGuard
 #endif
 
 class HeterPsResource {
