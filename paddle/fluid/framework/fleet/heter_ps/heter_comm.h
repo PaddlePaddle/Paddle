@@ -254,7 +254,5 @@ class HeterComm {
 
 }  // end namespace framework
 }  // end namespace paddle
-
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
-
 #endif
