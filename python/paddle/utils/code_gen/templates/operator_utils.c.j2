@@ -77,7 +77,7 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "attribute {{i}} for {{op_na
   {% if typename == "DataType" %}
 static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "DataLayout" %}
-process_layout({{default_value}})
+static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "Place" %}
 static_cast<int>(phi::Place({{default_value}}.GetType()))
   {%- elif typename == "str" %}{# warp string #}
