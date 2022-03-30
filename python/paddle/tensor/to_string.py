@@ -329,7 +329,6 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
             cols=cols_data,
             values=values_data)
 
-
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 

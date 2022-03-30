@@ -191,5 +191,16 @@ struct PyGetSetDef variable_properties[] = {
     {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
+// variable_properties for core.eager.StringTensor
+struct PyGetSetDef string_tensor_variable_properties[] = {
+    {"name", (getter)tensor_properties_get_name,
+     (setter)tensor_properties_set_name, nullptr, nullptr},
+    {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
+    {"_place_str", (getter)tensor_properties_get_place_str, nullptr, nullptr,
+     nullptr},
+    {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr}};
+
 }  // namespace pybind
 }  // namespace paddle

@@ -542,6 +542,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindImperative(&m);
   BindEager(&m);
+  BindEagerStringTensor(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.

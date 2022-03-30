@@ -240,6 +240,14 @@ class PADDLE_API Tensor final {
    */
   bool is_sparse_csr_tensor() const;
 
+  /**
+   * @brief Determine whether tensor is StringTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_string_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**

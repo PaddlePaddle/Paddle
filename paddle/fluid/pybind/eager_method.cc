@@ -1380,6 +1380,18 @@ static PyObject* tensor_method__uva(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 #endif
+static PyObject* tensor_method__is_string_tensor_hold_allocation(
+    TensorObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+  auto string_tensor =
+      std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
+  if (string_tensor) {
+    return ToPyObject(string_tensor->initialized());
+  } else {
+    return ToPyObject(false);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -1491,6 +1503,24 @@ PyMethodDef variable_methods[] = {
     {"_tensor_uva", (PyCFunction)(void (*)(void))tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS, NULL},
 #endif
+    {NULL, NULL, 0, NULL}};
+
+// variable_methods for core.eager.StringTensor
+PyMethodDef string_tensor_variable_methods[] = {
+    // TODO(zhoushunjie): update string tensor numpy
+    {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_initialized",
+     (PyCFunction)(void (*)(void))tensor_method__is_initialized,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_is_string_tensor_hold_allocation",
+     (PyCFunction)(
+         void (*)(void))tensor_method__is_string_tensor_hold_allocation,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_copy_to", (PyCFunction)(void (*)(void))tensor_method__copy_to,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"copy_", (PyCFunction)(void (*)(void))tensor_method_copy_,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind
