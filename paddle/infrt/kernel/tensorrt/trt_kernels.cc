@@ -110,6 +110,7 @@ namespace tensorrt {
       std::unordered_set<std::string> weight_flags{
           "phi_dt.tensor_map_get_tensor",
           "phi_dt.create_dense_tensor.cpu",
+          "phi_dt.create_inited_dense_tensor.cpu.f32",
           "phi_dt.create_host_inited_dense_tensor.f32"};
       if (!weight_flags.count(
               operand.getDefiningOp()->getName().getStringRef().str())) {

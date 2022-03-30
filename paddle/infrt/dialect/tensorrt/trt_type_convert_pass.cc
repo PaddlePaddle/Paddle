@@ -60,6 +60,7 @@ void TrtTypeConvertPass::runOnFunction() {
   ::infrt::TargetType target = ::infrt::TargetType::GPU;
   const std::set<std::string> inited_op_repr{
       "phi_dt.tensor_map_get_tensor",
+      "phi_dt.create_inited_dense_tensor.cpu.f32",
       "phi_dt.create_host_inited_dense_tensor.f32"};
   for (auto& op : worklist) {
     if (auto tensor_map_get_op =
