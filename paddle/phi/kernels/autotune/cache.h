@@ -155,49 +155,10 @@ class AutoTuneCache {
     }
   }
 
-  float AutoTuneCacheHitRate() const {
-    std::lock_guard<std::mutex> lock(autotune_cache_mutex_);
-    int64_t total_cache_hits = 0;
-    int64_t total_cache_misses = 0;
-    // update CacheHitRate for each AlgoType
-    for (auto& v : auto_tune_map_) {
-      cache_hit_rate = v.second.CacheHitRate();
-      cache_hit_rate_map_[v.first] = cache_hit_rate;
-      VLOG(3) << "Cache Hit Rate: " << cache_hit_rate_map_[v.first] << " "
-              << cache_hit_rate;
-      total_cache_hits += v.second.GetCacheHits();
-      total_cache_hits += v.second.GetCacheMisses();
-    }
-    float total_cache_hit_rate =
-        static_cast<float>(total_cache_hits) /
-        static_cast<float>(total_cache_misses + total_cache_hits);
-    return total_cache_hit_rate;
-  }
-
-  float AutoTuneStepCacheRate() const {
-    std::lock_guard<std::mutex> lock(autotune_cache_mutex_);
-    // update CacheHitRate for each AlgoType
-    for (auto& v : auto_tune_map_) {
-      cache_hit_rate = v.second.CacheHitRate();
-      cache_hit_rate_map_[v.first] = cache_hit_rate;
-      VLOG(3) << "Cache Hit Rate: " << cache_hit_rate_map_[v.first] << " "
-              << cache_hit_rate;
-      total_cache_hits += v.second.GetCacheHits();
-      total_cache_hits += v.second.GetCacheMisses();
-    }
-    float total_cache_hit_rate =
-        static_cast<float>(total_cache_hits) /
-        static_cast<float>(total_cache_misses + total_cache_hits);
-    return total_cache_hit_rate;
-  }
-
  private:
   AutoTuneCache() = default;
   std::unordered_map<std::string, AlgorithmsCache> auto_tune_map_;
-  std::unordered_map<std::string, float> cache_hit_rate_map_;
   std::mutex autotune_cache_mutex_;
-  int64_t total_cache_hits = 0;
-  int64_t total_cache_misses = 0;
 };
 
 }  // namespace autotune
