@@ -29,7 +29,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
+from paddle import _C_ops
 
 __all__ = ['TranslatedLayer']
 
@@ -535,7 +536,7 @@ def _load_persistable_vars_by_program(model_path,
         orig_each_name = program_holder._suffix_varname_dict[each_var.name()]
         if _is_parameter(each_var, program_holder.infer_program):
             # create output varbase
-            if framework._in_eager_mode():
+            if framework._in_eager_without_dygraph_check():
                 new_var = framework.EagerParamBase(
                     shape=each_var.shape(),
                     dtype=each_var.dtype(),
@@ -628,7 +629,7 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
         # create output varbase
         if extra_var_info[name].get('trainable', None) is not None:
             # use default shape and dtype
-            if framework._in_eager_mode():
+            if framework._in_eager_without_dygraph_check():
                 new_var = framework.EagerParamBase(
                     shape=[
                         1
@@ -761,6 +762,21 @@ def _construct_params_and_buffers(model_path,
     return var_dict
 
 
+def _valid_vars(vars):
+    if vars:
+        return vars
+    if framework._in_eager_without_dygraph_check():
+        return [
+            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+                              core.VarDesc.VarType.RAW, False)
+        ]
+    else:
+        return [
+            core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
+                         core.VarDesc.VarType.RAW, False)
+        ]
+
+
 def _run_dygraph(instance, input, program_holder):
 
     # 1. prepare inputs, outputs, attrs
@@ -772,7 +788,7 @@ def _run_dygraph(instance, input, program_holder):
                 % type(value))
         # NOTE: In order to unify the API, firstly convert the input to VarBase
         if isinstance(value, np.ndarray):
-            if framework._in_eager_mode():
+            if framework._in_eager_without_dygraph_check():
                 var = core.eager.Tensor(
                     value=value,
                     name=program_holder.input_descs[i].name(),
@@ -811,7 +827,7 @@ def _run_dygraph(instance, input, program_holder):
 
     output_vars = []
     for var_desc in program_holder.output_descs:
-        if framework._in_eager_mode():
+        if framework._in_eager_without_dygraph_check():
             var = core.eager.Tensor(
                 dtype=var_desc.dtype(),
                 dims=var_desc.shape(),
@@ -825,22 +841,17 @@ def _run_dygraph(instance, input, program_holder):
         output_vars.append(var)
 
     # hold forward variables
-    if framework._in_eager_mode():
-        tmp_scope_vec = core.eager.Tensor(
-            dtype=core.VarDesc.VarType.FP32,
-            dims=[],
-            name="program_out_scope",
-            type=core.VarDesc.VarType.STEP_SCOPES,
-            persistable=True)
+    if framework._in_eager_without_dygraph_check():
+        tmp_scope_vec = [program_holder.scope]
     else:
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
-    tmp_scope_vec.value().set_scope(program_holder.scope)
+        tmp_scope_vec.value().set_scope(program_holder.scope)
 
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
-        if framework._in_eager_mode():
+        if framework._in_eager_without_dygraph_check():
             var = core.eager.Tensor(
                 dtype=var_desc.dtype(),
                 dims=var_desc.shape(),
@@ -852,41 +863,18 @@ def _run_dygraph(instance, input, program_holder):
                                var_desc.shape(),
                                var_desc.name(), var_desc.type(), False)
         double_grad_vars.append(var)
-    if len(double_grad_vars) == 0:
-        if framework._in_eager_mode():
-            double_grad_vars = [
-                core.eager.Tensor(
-                    value=[1],
-                    name='Fake_var',
-                    place=framework._current_expected_place())
-            ]
-        else:
-            double_grad_vars = [
-                core.VarBase(
-                    value=[1],
-                    name='Fake_var',
-                    place=framework._current_expected_place())
-            ]
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
     end_op_index = program_holder.infer_program.block(0).op_size()
-    framework._dygraph_tracer().trace_op(
-        type='run_program',
-        inputs={'X': input_vars,
-                'Params': persistable_vars},
-        outputs={
-            'Out': output_vars,
-            'OutScope': tmp_scope_vec,
-            'DOut': double_grad_vars
-        },
-        attrs={
-            'global_block': trace_program.block(0),
-            'start_op_index': 0,
-            'end_op_index': end_op_index,
-            'is_test': instance._is_test,
-            'program_id': _hash_with_id(trace_program, instance)
-        })
+    attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
+             'end_op_index', end_op_index, 'is_test', instance._is_test,
+             'program_id', _hash_with_id(trace_program, instance))
+    _C_ops.run_program(
+        _valid_vars(input_vars),
+        _valid_vars(persistable_vars),
+        _valid_vars(output_vars), tmp_scope_vec,
+        _valid_vars(double_grad_vars), *attrs)
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
@@ -914,8 +902,10 @@ def _run_dygraph(instance, input, program_holder):
 
 def drop_scope_if_no_grad(instance, scope_vec):
     tracer = framework._dygraph_tracer()
+    scope = scope_vec.value().get_scope() if isinstance(scope_vec, (
+        core.VarBase)) else scope_vec[0]
     if (not instance._is_test) and (not tracer._has_grad):
-        scope_vec.value().get_scope().drop_kids()
+        scope.drop_kids()
 
 
 def _run_static_graph(input, program_holder, trace_program):
@@ -1335,7 +1325,7 @@ class TranslatedLayer(layers.Layer):
             program_holder = self._program_holder_dict[__i_m_p_l__.__name__]
             # When using jit.save, it runs in static graph mode.
             # Run in dynamic graph mode when the model is inferring.
-            if in_dygraph_mode():
+            if _non_static_mode():
                 return _run_dygraph(self, input, program_holder)
             else:
                 # NOTE(weixin): [ why not use 'program_holder.infer_program' directly? ]

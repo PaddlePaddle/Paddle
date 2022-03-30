@@ -35,13 +35,3 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     ReduceMinInferShapeFunctor);
 REGISTER_OPERATOR(reduce_min_grad, ops::ReduceGradOp)
-
-REGISTER_OP_CPU_KERNEL(
-    reduce_min_grad, ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                           float, ops::MaxOrMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,
-                          ops::MaxOrMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int,
-                          ops::MaxOrMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,
-                          ops::MaxOrMinGradFunctor>);

@@ -18,6 +18,11 @@
 
 #include "paddle_infer_declare.h"  // NOLINT
 
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "onnxruntime_c_api.h"    // NOLINT
+#include "onnxruntime_cxx_api.h"  // NOLINT
+#endif
+
 namespace paddle_infer {
 
 /// \brief  Experimental.
@@ -174,6 +179,23 @@ class PD_INFER_DECL Tensor {
   void* scope_{nullptr};
   PlaceType place_;
   int device_;
+
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  bool is_ort_tensor_{false};
+  std::vector<int64_t> shape_;
+  std::weak_ptr<Ort::IoBinding> binding_;
+  int idx_{-1};
+
+  void SetOrtMark(bool is_ort_tensor);
+
+  void SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding);
+
+  template <typename T>
+  void ORTCopyFromCpu(const T* data);
+
+  template <typename T>
+  void ORTCopyToCpu(T* data) const;
+#endif
 
   friend class paddle_infer::contrib::TensorUtils;
 #if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)

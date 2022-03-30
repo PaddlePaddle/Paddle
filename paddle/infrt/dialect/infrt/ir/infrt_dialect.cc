@@ -91,7 +91,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
         parser.getContext(), shape, elementType, lod_level);
   }
   if (keyword == "dense_tensor_map") {
-    return DenseTensorMapType::get(parser.getContext());
+    return DenseHostTensorMapType::get(parser.getContext());
   }
   if (keyword == "dense_tensor") {
     // parse DenseTensor, for example: !i=Infrt.tensor<X86, CUDA, F32>
@@ -142,9 +142,6 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
     return infrt::DenseTensorListType::get(parser.getContext());
   }
 
-  if (keyword == "dense_tensor_map") {
-    return DenseTensorMapType::get(parser.getContext());
-  }
   // Todo: parse other type
   return mlir::Type();
 }
@@ -165,7 +162,7 @@ void InfrtDialect::printType(::mlir::Type type,
        << lod_tensor_type.getLod_level() << ">";
     return;
   }
-  if (type.isa<infrt::DenseTensorMapType>()) {
+  if (type.isa<infrt::DenseHostTensorMapType>()) {
     os << "dense_tensor_map";
     return;
   }
@@ -181,26 +178,46 @@ void InfrtDialect::printType(::mlir::Type type,
 
   if (type.isa<infrt::DenseTensorListType>()) {
     os << "tensor_list";
-  }
-  // print DenseTensorType, for example: !infrt.dense_tensor<CPU, FP32, NCHW>
-  if (type.isa<DenseTensorMapType>()) {
-    os << "dense_tensor_map";
     return;
   }
-
   llvm_unreachable("unknown infrt type.");
 }
 
-// /// Parse an attribute registered to this dialect.
-// ::mlir::Attribute InfrtDialect::parseAttribute(::mlir::DialectAsmParser
-// &parser,
-//                                    ::mlir::Type type) const {
-//   return mlir::Attribute();
-//                                    }
-// /// Print an attribute registered to this dialect.
-// void InfrtDialect::printAttribute(::mlir::Attribute attr,
-//                       ::mlir::DialectAsmPrinter &os) const {
+mlir::Operation *InfrtDialect::materializeConstant(mlir::OpBuilder &builder,
+                                                   mlir::Attribute value,
+                                                   mlir::Type type,
+                                                   mlir::Location loc) {
+  return builder.create<ConstantOp>(loc, value);
+}
 
-//                       }
+void ConstantOp::build(mlir::OpBuilder &builder,
+                       mlir::OperationState &state,
+                       mlir::Attribute value) {
+  if (auto elem_attr = value.dyn_cast<mlir::ElementsAttr>()) {
+    return ConstantOp::build(builder, state, elem_attr);
+  } else if (value.isa<mlir::BoolAttr, mlir::FloatAttr, mlir::IntegerAttr>()) {
+    mlir::ShapedType type =
+        mlir::RankedTensorType::get(/*shape=*/{}, value.getType());
+    state.addAttribute("value", mlir::DenseElementsAttr::get(type, value));
+    state.addTypes(type);
+    return;
+  }
+  llvm_unreachable("unsupported attribute type for building pd.constant");
+}
+
+mlir::LogicalResult ConstantOp::inferReturnTypes(
+    mlir::MLIRContext *context,
+    mlir::Optional<mlir::Location> location,
+    mlir::ValueRange operands,
+    mlir::DictionaryAttr attributes,
+    mlir::RegionRange regions,
+    llvm::SmallVectorImpl<mlir::Type> &inferredReturnTypes) {
+  inferredReturnTypes.push_back(attributes.get("value").getType());
+  return mlir::success();
+}
+mlir::OpFoldResult ConstantOp::fold(
+    ::llvm::ArrayRef<mlir::Attribute> operands) {
+  return value();
+}
 
 }  // namespace infrt

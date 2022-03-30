@@ -23,7 +23,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(scale);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_mul);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(elementwise_add_grad);
 

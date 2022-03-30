@@ -300,6 +300,6 @@ TEST(CinnCompilerTest, Compile) {
 
 USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
-USE_OP(mul);
+USE_OP_ITSELF(mul);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(elementwise_add);

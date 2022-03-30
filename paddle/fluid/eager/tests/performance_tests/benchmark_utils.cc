@@ -37,7 +37,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 
-static size_t max_num_benchmark_runs = 5000;
+static size_t max_num_benchmark_runs = 4000;
 
 namespace egr {
 
@@ -58,7 +58,7 @@ void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 10)
@@ -80,7 +80,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 2)
@@ -106,7 +106,7 @@ void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 2)
@@ -137,7 +137,7 @@ void benchmark_eager_intermediate_mlp(
       reduce_sum_dygraph_function(input0, {{"reduce_all", true}});
 
   std::vector<paddle::experimental::Tensor> target_tensors = {Out};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     std::unordered_map<std::string, float> result =

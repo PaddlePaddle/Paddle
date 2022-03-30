@@ -350,8 +350,8 @@ if(WITH_PYTHON)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(paddle_eager
-    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python custom_operator custom_operator_node)
+    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc eager_py_layer.cc
+    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node py_layer_node global_utils utils python custom_operator custom_operator_node)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)

@@ -17,11 +17,13 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 class TestLabelSmoothOp(OpTest):
     def config(self):
         self.op_type = "label_smooth"
+        self.python_api = paddle.nn.functional.label_smooth
         self.epsilon = 0.1
         batch_size, self.label_dim = 10, 12
         self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
@@ -37,10 +39,10 @@ class TestLabelSmoothOp(OpTest):
         self.outputs = {'Out': smoothed_label}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=False)
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
@@ -72,4 +74,5 @@ class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
