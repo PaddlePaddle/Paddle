@@ -12,11 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/logsumexp_grad_kernel.h"
+#pragma once
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/logsumexp_grad_kernel_impl.h"
+#if defined(PADDLE_WITH_GLOO)
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
-PD_REGISTER_KERNEL(
-    logsumexp_grad, GPU, ALL_LAYOUT, phi::LogsumexpGradKernel, float, double) {}
+namespace paddle {
+namespace operators {
+
+template <typename T>
+class RandomRoutingOpCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Do not support expert count op for cpu kernel now."));
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,20 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
-namespace phi {
+namespace paddle {
+namespace operators {
 
-template <typename T, typename Context>
-void LogsumexpGradKernel(const Context& ctx,
-                         const DenseTensor& in,
-                         const DenseTensor& out,
-                         const DenseTensor& out_grad,
-                         const std::vector<int>& axis,
-                         bool keepdim,
-                         bool reduce_all,
-                         DenseTensor* in_grad);
+template <typename DeviceContext, typename T>
+class PruneGateByCapacityCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "prune_gate_by_capacity is not supported on CPU."));
+  }
+};
 
-}  // namespace phi
+}  // namespace operators
+}  // namespace paddle
