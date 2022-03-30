@@ -360,11 +360,39 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void UniqueInferMeta(const MetaTensor& x,
+                     bool return_index,
+                     bool return_inverse,
+                     bool return_counts,
+                     const std::vector<int>& axis,
+                     DataType dtype,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaTensor* index,
+                     MetaTensor* counts);
+
+void UniqueRawInferMeta(const MetaTensor& x,
+                        bool return_index,
+                        bool return_inverse,
+                        bool return_counts,
+                        const std::vector<int>& axis,
+                        DataType dtype,
+                        bool is_sorted,
+                        MetaTensor* out,
+                        MetaTensor* indices,
+                        MetaTensor* index,
+                        MetaTensor* counts);
+
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const ScalarArray& axes,
                         MetaTensor* xshape,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
+
+void UnStackInferMeta(const MetaTensor& x,
+                      int axis,
+                      int num,
+                      std::vector<MetaTensor*> outs);
 
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
