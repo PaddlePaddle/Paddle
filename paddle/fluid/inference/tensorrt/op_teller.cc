@@ -284,6 +284,18 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(desc.Input("Input")[0]);
+      if (x_var_desc->Persistable()) {
+        return false;
+      }
+
       if (desc.HasAttr("enable_int8")) {
         if (op_type == "conv2d" || op_type == "conv2d_fusion") {
           if (!desc.HasAttr("Input_scale")) {
@@ -307,6 +319,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                        "tensorRT, but given ("
                     << dilations[0] << ", " << dilations[1] << ")";
             return false;
+          }
+        }
+        if (desc.HasAttr("output_padding")) {
+          const std::vector<int> output_padding =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
+          for (auto padding : output_padding) {
+            if (padding != 0) {
+              VLOG(3) << "In conv2d_transpose, output_padding must be 0 for "
+                         "tensorRT";
+              return false;
+            }
           }
         }
       }
@@ -993,8 +1016,29 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() == 1 && y_shape.size() == 1) {
-        VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
+      if (x_var_desc->Persistable()) {
+        return false;
+      }
+      if (x_shape.size() == 1 && !with_dynamic_shape) {
+        return false;
+      }
+      if (y_var_desc->Persistable()) {
+        if (y_shape.size() != 1 || y_shape.size() != x_shape.size() ||
+            y_shape.size() != x_shape.size() - 1) {
+          return false;
+        } else if (y_shape.size() == x_shape.size()) {
+          if (y_shape[0] != 1) {
+            return false;
+          }
+          if (y_shape[1] != x_shape[1]) {
+            return false;
+          }
+        } else if (y_shape.size() == x_shape.size() - 1) {
+          if (y_shape[0] != x_shape[1]) {
+            return false;
+          }
+        }
+      } else if (y_shape.size() == 1 && !with_dynamic_shape) {
         return false;
       }
     }
@@ -1479,8 +1523,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
-        return false;
+      if (!with_dynamic_shape) {
+        if (shape[0] == -1 || shape.size() == 1) return false;
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() == 1) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "clip") {
@@ -1629,6 +1680,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                     << dilations[0] << ", " << dilations[1] << ", "
                     << dilations[2] << ")";
             return false;
+          }
+        }
+        if (desc.HasAttr("output_padding")) {
+          const std::vector<int> output_padding =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
+          for (auto padding : output_padding) {
+            if (padding != 0) {
+              VLOG(3) << "In conv3d_transpose, output_padding must be 0 for "
+                         "tensorRT";
+              return false;
+            }
           }
         }
       }
