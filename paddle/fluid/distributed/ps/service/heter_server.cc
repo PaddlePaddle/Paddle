@@ -66,18 +66,18 @@ void HeterServer::WaitServerReady() {
   condition_ready_.wait(lock, [=] { return this->ready_ == 1; });
 }
 
-int32_t HeterService::stop_profiler(const PsRequestMessage& request,
-                                    PsResponseMessage& response,
-                                    brpc::Controller* cntl) {
+int32_t HeterService::StopProfiler(const PsRequestMessage& request,
+                                   PsResponseMessage& response,
+                                   brpc::Controller* cntl) {
   platform::DisableProfiler(
       platform::EventSortingKey::kDefault,
       string::Sprintf("heter_worker_%s_profile", endpoint_));
   return 0;
 }
 
-int32_t HeterService::start_profiler(const PsRequestMessage& request,
-                                     PsResponseMessage& response,
-                                     brpc::Controller* cntl) {
+int32_t HeterService::StartProfiler(const PsRequestMessage& request,
+                                    PsResponseMessage& response,
+                                    brpc::Controller* cntl) {
   platform::EnableProfiler(platform::ProfilerState::kAll);
   return 0;
 }

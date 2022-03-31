@@ -278,7 +278,7 @@ class FleetWrapper : public PSWrapper {
 
  protected:
   static bool is_initialized_;
-  std::map<uint64_t, std::vector<paddle::distributed::Region>> _regions;
+  std::map<uint64_t, std::vector<paddle::distributed::Region>> regions_;
   bool scale_sparse_gradient_with_batch_size_;
   int32_t sleep_seconds_before_fail_exit_;
   int client2client_request_timeout_ms_;
