@@ -163,7 +163,7 @@ void PSGPUWorker::PrepareCudaGraph() {
           auto& tensor = var->Get<phi::DenseTensor>();
           auto& lod = tensor.lod();
           if (!lod.empty()) {
-            VLOG(0) << "op " << op->Type() << " capture fail, lod error: " << tensor_name << " " << lod.size();
+            VLOG(0) << "op " << op->Type() << " capture fail, lod error: " << tensor_name << " " << lod[0].size();
             need_capture = false;
             break;
           }
