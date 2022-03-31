@@ -370,7 +370,7 @@ int32_t CommonSparseTable::Pull(TableContext& context) {
 
 int32_t CommonSparseTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
-  if (context.pull_context.values != nullptr) {
+  if (context.push_context.values != nullptr) {
     const float* values = context.push_context.values;
     const uint64_t* keys = context.push_context.keys;
     return push_sparse(keys, values, context.num);

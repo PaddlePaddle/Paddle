@@ -26,11 +26,9 @@ class Scope;
 }
 namespace pybind {
 
-typedef struct {
-  PyObject_HEAD paddle::experimental::Tensor tensor;
-} TensorObject;
-
 int TensorDtype2NumpyDtype(phi::DataType dtype);
+
+bool IsEagerTensor(PyObject* obj);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -63,7 +61,8 @@ PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
-PyObject* ToPyObject(const paddle::experimental::Tensor& value);
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      ssize_t value_idx, PyObject* args, ssize_t arg_idx);
 PyObject* ToPyObject(const std::vector<bool>& value);
@@ -162,7 +161,7 @@ paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
 
-paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
@@ -184,6 +183,14 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
+
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
+    PyObject* obj);
+
+std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
+    PyObject* obj);
+
+paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
 

@@ -15,7 +15,6 @@
 import warnings
 
 import os
-import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.fluid import core
@@ -27,6 +26,7 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
 
@@ -134,7 +134,10 @@ class Accessor:
 
         if not accessor_proto.HasField("accessor_class"):
             # DownpourSparseValueAccessor
-            accessor_proto.accessor_class = "SparseAccessor"
+            if context['use_ps_gpu']:
+                accessor_proto.accessor_class = "CtrCommonAccessor"
+            else:
+                accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
             if accessor_proto.accessor_class == "SparseAccessor":
                 accessor_proto.fea_dim = embedding_dim + 2
@@ -1010,6 +1013,7 @@ class TheOnePSRuntime(RuntimeBase):
                     self._init_params(scopes, send_ctx, dense_map)
 
             fleet.util.barrier()
+
         self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 

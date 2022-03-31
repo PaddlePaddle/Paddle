@@ -19,6 +19,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -32,16 +34,14 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
+  CUDA_KERNEL_LOOP(idx, N) {
+    int64_t pre_idx = idx / (stride * size);
+    int64_t dim_idx = idx % (stride * size) / stride;
+    IndexT src_dim_idx = index[dim_idx];
+    int64_t input_idx =
+        idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
+    paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
   }
-
-  int64_t pre_idx = idx / (stride * size);
-  int64_t dim_idx = idx % (stride * size) / stride;
-  IndexT src_dim_idx = index[dim_idx];
-  int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
 template <typename T>
@@ -95,36 +95,38 @@ void IndexSelectGradKernel(const Context& ctx,
            0,
            stream>>>(in_grad_data, numel);
 
+  int blocks =
+      (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
+  int threads = PADDLE_CUDA_NUM_THREADS;
+
+  if (FLAGS_cudnn_deterministic) {
+    VLOG(2) << "Run grad kernel of index_select with single thread.";
+    blocks = 1;
+    threads = 1;
+  }
+
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    index_select_grad_cuda_kernel<T, int64_t><<<
-        (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-        PADDLE_CUDA_NUM_THREADS,
-        0,
-        stream>>>(output_grad_data,
-                  in_grad_data,
-                  index_data,
-                  index_nums,
-                  out_nums,
-                  stride,
-                  size,
-                  delta);
-    phi::backends::gpu::GpuStreamSync(stream);
+    index_select_grad_cuda_kernel<T, int64_t><<<blocks, threads, 0, stream>>>(
+        output_grad_data,
+        in_grad_data,
+        index_data,
+        index_nums,
+        out_nums,
+        stride,
+        size,
+        delta);
   } else {
     const int* index_data = index.data<int>();
-    index_select_grad_cuda_kernel<T, int><<<
-        (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-        PADDLE_CUDA_NUM_THREADS,
-        0,
-        stream>>>(output_grad_data,
-                  in_grad_data,
-                  index_data,
-                  index_nums,
-                  out_nums,
-                  stride,
-                  size,
-                  delta);
-    phi::backends::gpu::GpuStreamSync(stream);
+    index_select_grad_cuda_kernel<T, int><<<blocks, threads, 0, stream>>>(
+        output_grad_data,
+        in_grad_data,
+        index_data,
+        index_nums,
+        out_nums,
+        stride,
+        size,
+        delta);
   }
 }
 

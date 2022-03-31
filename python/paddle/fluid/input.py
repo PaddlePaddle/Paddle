@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -214,7 +214,7 @@ def embedding(input,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`size` .
-        dtype(str|core.VarDesc.VarType): It refers to the data type of output Tensor.
+        dtype(str): It refers to the data type of output Tensor.
             It must be float32 or float64. Default: float32.
 
     Returns:

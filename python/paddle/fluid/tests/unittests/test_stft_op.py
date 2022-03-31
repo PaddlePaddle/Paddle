@@ -43,8 +43,10 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
     return as_strided(x, shape=shape, strides=strides)
 
 
-def stft_np(x, n_fft, hop_length, **kwargs):
+def stft_np(x, window, n_fft, hop_length, **kwargs):
     frames = frame_from_librosa(x, n_fft, hop_length)
+    frames = np.multiply(frames.transpose([0, 2, 1]), window).transpose(
+        [0, 2, 1])
     res = np.fft.rfft(frames, axis=1)
     return res
 
@@ -55,8 +57,12 @@ class TestStftOp(OpTest):
         self.shape, self.type, self.attrs = self.initTestCase()
         self.inputs = {
             'X': np.random.random(size=self.shape).astype(self.type),
+            'Window': np.hamming(self.attrs['n_fft']).astype(self.type),
         }
-        self.outputs = {'Out': stft_np(x=self.inputs['X'], **self.attrs)}
+        self.outputs = {
+            'Out': stft_np(
+                x=self.inputs['X'], window=self.inputs['Window'], **self.attrs)
+        }
 
     def initTestCase(self):
         input_shape = (2, 100)

@@ -72,12 +72,30 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
+AutogradMeta* EagerUtils::nullable_autograd_meta(
+    paddle::optional<const paddle::experimental::Tensor&> target) {
+  if (target.get_ptr() != nullptr) {
+    return EagerUtils::nullable_autograd_meta(*(target.get_ptr()));
+  }
+  return nullptr;
+}
+
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
     const std::vector<paddle::experimental::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
   for (const paddle::experimental::Tensor& t : targets) {
     metas.emplace_back(nullable_autograd_meta(t));
+  }
+  return metas;
+}
+
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const std::vector<paddle::experimental::Tensor*>& targets) {
+  std::vector<AutogradMeta*> metas;
+  metas.reserve(targets.size());
+  for (const paddle::experimental::Tensor* t : targets) {
+    metas.emplace_back(nullable_autograd_meta(*t));
   }
   return metas;
 }
@@ -90,6 +108,19 @@ std::vector<AutogradMeta*> EagerUtils::autograd_meta(
   // for autograd_meta we can tolerent it has nullptr.
   for (size_t i = 0; i < targets->size(); i++) {
     auto* p_autograd_meta = autograd_meta(&((*targets)[i]));
+    ret.emplace_back(p_autograd_meta);
+  }
+  return ret;
+}
+
+std::vector<AutogradMeta*> EagerUtils::autograd_meta(
+    std::vector<paddle::experimental::Tensor*>* targets) {
+  std::vector<AutogradMeta*> ret;
+  ret.reserve(targets->size());
+
+  // for autograd_meta we can tolerent it has nullptr.
+  for (size_t i = 0; i < targets->size(); i++) {
+    auto* p_autograd_meta = autograd_meta((*targets)[i]);
     ret.emplace_back(p_autograd_meta);
   }
   return ret;
@@ -213,6 +244,33 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
   return res;
 }
 
+void EagerUtils::HandleViewBetweenInputAndOutput(
+    const std::shared_ptr<EagerVariable>& input_var,
+    const std::shared_ptr<EagerVariable>& view_output_var) {
+  PADDLE_ENFORCE_EQ(
+      input_var->Var().IsInitialized(), true,
+      paddle::platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized!", input_var->name()));
+
+  if (phi::DenseTensor::classof(input_var->GetTensorBase().get())) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_var->GetTensorBase());
+    PADDLE_ENFORCE_EQ(
+        input_dense_tensor->IsInitialized(), true,
+        paddle::platform::errors::InvalidArgument(
+            "DenseTensor %s has not been initialized!", input_var->name()));
+
+    auto* view_output_tensor =
+        view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
+    view_output_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_tensor->ShareInplaceVersionCounterWith(*input_dense_tensor);
+
+    VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
+            << ") and Input Var(" << input_var->name()
+            << "), share allocation and inplace version.";
+  }
+}
+
 void EagerUtils::ModifyInplaceInput(
     const std::shared_ptr<EagerVariable>& inplace_variable,
     paddle::experimental::Tensor* inplace_tensor) {
@@ -327,6 +385,22 @@ paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
   return tw->recover(grad_node);
 }
 
+paddle::optional<const paddle::experimental::Tensor&>
+EagerUtils::RecoverOptionalTensorWrapper(
+    TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tw, phi::errors::InvalidArgument("TensorWrapper in "
+                                       "RecoverOptionalTensorWrapper function "
+                                       "should not be null"));
+  auto tmp = tw->recover(grad_node);
+
+  paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
+  if (tmp.initialized()) {
+    res = tmp;
+  }
+  return res;
+}
+
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
     std::vector<TensorWrapper>* tw,
     const std::shared_ptr<GradNodeBase>& grad_node) {
@@ -352,6 +426,16 @@ void EagerUtils::CheckAndRetainGrad(
     for (auto& tensor : tensors) {
       VLOG(6) << "RetainGradForTensor: " << tensor.name();
       egr::egr_utils_api::RetainGradForTensor(tensor);
+    }
+  }
+}
+
+void EagerUtils::CheckAndRetainGrad(
+    const std::vector<paddle::experimental::Tensor*>& tensors) {
+  if (FLAGS_retain_grad_for_all_tensor) {
+    for (auto& tensor : tensors) {
+      VLOG(6) << "RetainGradForTensor: " << tensor->name();
+      egr::egr_utils_api::RetainGradForTensor(*tensor);
     }
   }
 }
