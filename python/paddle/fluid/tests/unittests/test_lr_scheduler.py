@@ -51,8 +51,7 @@ def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,
             var_list[2] = cooldown
             var_list[3] = 0
             new_lr = var_list[1] * decay_rate
-            var_list[1] = new_lr if var_list[1] - \
-                new_lr > 1e-8 else var_list[1]
+            var_list[1] = new_lr if var_list[1] - new_lr > 1e-8 else var_list[1]
 
     return var_list[1]
 

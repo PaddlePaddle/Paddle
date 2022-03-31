@@ -1639,7 +1639,7 @@ class CyclicLR(LRScheduler):
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, paramters=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(5):
                 for batch_id in range(20):
                     x = paddle.uniform([10, 10])
