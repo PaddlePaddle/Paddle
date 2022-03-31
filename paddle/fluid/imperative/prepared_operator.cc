@@ -190,7 +190,6 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       }
       bool is_xpu_kp_support =
           (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
-      // if phi have KP kernel
       if (is_xpu_kp_support) {
         auto expected_kernel_key_library_type =
             expected_kernel_key.library_type_;
