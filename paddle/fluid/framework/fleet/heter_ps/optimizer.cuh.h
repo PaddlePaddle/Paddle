@@ -226,14 +226,6 @@ class Optimizer {
         for (int i = 0; i < MF_DIM; ++i) {
           (*val).mf[i + 1] = (ret_val)*local_mf_initial_range;
         }
-
-        // int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-        // curandState state;
-        // curand_init(clock64(), tid_x, 0, &state);
-        // for (int i = 0; i < MF_DIM; ++i) {
-        //   val.mf[i + 1] =
-        //       (curand_uniform(&state)) * optimizer_config::mf_initial_range;
-        // }
       }
     } else {
       update_mf(MF_DIM, &val.mf[1], &val.mf[0], (*grad).mf_g, (*grad).show);
