@@ -493,9 +493,11 @@ class OpTest(unittest.TestCase):
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         if self.is_bfloat16_op():
-            self.dtype = np.uint16
+            #self.dtype = np.uint16
+            self.dtype = bfloat16
             self.__class__.dtype = self.dtype
-            self.output_dtype = np.uint16
+            #self.output_dtype = np.uint16
+            self.output_dtype = bfloat16
         else:
             self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         inputs = append_input_output(block, op_proto, self.inputs, True,
@@ -1835,6 +1837,9 @@ class OpTest(unittest.TestCase):
             numeric_grad_delta = 1e-5
             max_relative_error = 1e-7
 
+        # if self.dtype == np.uint16:
+        #     self.dtype = bfloat16
+
         cache_list = None
         if hasattr(self, "cache_name_list"):
             cache_list = self.cache_name_list
@@ -1911,6 +1916,9 @@ class OpTest(unittest.TestCase):
                 max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        # print("analytic", analytic_grads)
+        # print("numeric", numeric_grads)
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
