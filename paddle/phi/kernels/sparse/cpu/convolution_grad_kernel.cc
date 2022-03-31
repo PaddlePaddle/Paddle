@@ -66,15 +66,17 @@ void Conv3dGradKernel(const Context& dev_ctx,
   T* d_x_features_ptr = d_x_features.data<T>();
   T* out_grad_features_ptr = out_grad_features.data<T>();
   kernel_grad->Resize(kernel_dims);
-  dev_ctx.Alloc(
-      kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
+  dev_ctx.Alloc(kernel_grad,
+                kernel_grad->dtype(),
+                false,
+                kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
   memset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   x_grad->Resize(x.non_zero_elements().dims());
-  dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
+  dev_ctx.Alloc(x_grad, x_grad->dtype(), false, sizeof(T) * x_grad->numel());
   T* x_grad_values_ptr = x_grad->data<T>();
   memset(x_grad_values_ptr, 0, sizeof(T) * x_grad->numel());
   memset(d_x_features_ptr, 0, sizeof(T) * d_x_features.numel());

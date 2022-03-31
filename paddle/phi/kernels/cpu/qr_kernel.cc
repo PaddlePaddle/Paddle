@@ -49,10 +49,10 @@ void QrKernel(const Context& ctx,
   T* q_data = nullptr;
   if (compute_q) {
     q_data = ctx.template Alloc<phi::dtype::Real<T>>(
-        q, batch_size * m * k * sizeof(phi::dtype::Real<T>));
+        q, false, batch_size * m * k * sizeof(phi::dtype::Real<T>));
   }
   auto* r_data = ctx.template Alloc<phi::dtype::Real<T>>(
-      r, batch_size * k * n * sizeof(phi::dtype::Real<T>));
+      r, false, batch_size * k * n * sizeof(phi::dtype::Real<T>));
 
   // Implement QR by calling Eigen
   for (int i = 0; i < batch_size; ++i) {
