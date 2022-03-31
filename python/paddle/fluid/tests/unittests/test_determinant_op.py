@@ -28,15 +28,16 @@ paddle.enable_static()
 
 class TestDeterminantOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.linalg.det
         self.init_data()
         self.op_type = "determinant"
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'])
+        self.check_grad(['Input'], ['Out'], check_eager=True)
 
     def init_data(self):
         np.random.seed(0)
