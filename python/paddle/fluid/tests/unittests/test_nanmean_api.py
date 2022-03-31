@@ -106,7 +106,8 @@ class TestNanmeanAPI(unittest.TestCase):
             sum_dx_ref = np.prod(y.shape)
             if np.isnan(y.numpy()).sum():
                 sum_dx_ref -= np.isnan(y.numpy()).sum()
-            cnt = paddle.sum(~paddle.isnan(x_tensor), axis=axis, keepdim=keepdim)
+            cnt = paddle.sum(
+                ~paddle.isnan(x_tensor), axis=axis, keepdim=keepdim)
             if (cnt == 0).sum():
                 dx[np.isnan(dx)] = 0
             sum_dx = dx.sum()
@@ -120,13 +121,13 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x, [0, 2])
         test_case(self.x, (0, 2))
         test_case(self.x, [0, 1, 2, 3])
-        
+
         test_case(self.x_grad)
         test_case(self.x_grad, [])
         test_case(self.x_grad, -1)
         test_case(self.x_grad, keepdim=True)
         test_case(self.x_grad, 0, keepdim=True)
-        test_case(self.x_grad, 1,)
+        test_case(self.x_grad, 1)
         test_case(self.x_grad, (0, 1))
         paddle.enable_static()
 
