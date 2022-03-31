@@ -182,7 +182,7 @@ TEST(CommonDenseTable, SGD) {
 
   std::vector<float> pull_values;
   pull_values.resize(fea_dim);
-  table->pull_dense(pull_values.data(), fea_dim);
+  table->PullDense(pull_values.data(), fea_dim);
   for (int j = 0; j < fea_dim; j++) {
     auto update_val = init_values[j] - 1.0 * total_gradients[j];
     ASSERT_TRUE(abs(update_val - pull_values[j]) < 1e-5);

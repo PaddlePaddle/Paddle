@@ -218,7 +218,7 @@ void RunBrpcPushDense() {
   paddle::distributed::Region temp_reg(temp, tensor->numel());
   temp_region.emplace_back(std::move(temp_reg));
   auto pull_status =
-      worker_ptr_->pull_dense(temp_region.data(), temp_region.size(), 0);
+      worker_ptr_->PullDense(temp_region.data(), temp_region.size(), 0);
   pull_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
