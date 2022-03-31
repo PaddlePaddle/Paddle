@@ -137,7 +137,10 @@ class EagerUtils {
 
   template <typename T, typename... Args>
   static bool ComputeRequireGrad(T trace_backward, Args&&... args) {
-    if (!trace_backward) return false;
+    if (!trace_backward) {
+      VLOG(6) << "Do not require grad because trace_backward = false";
+      return false;
+    }
 
     auto iter = ComputeRequireGradIter();
     iter.apply(std::forward<Args>(args)...);
@@ -164,6 +167,11 @@ class EagerUtils {
                                    target.name()));
     }
   }
+
+  // View Strategy
+  static void HandleViewBetweenInputAndOutput(
+      const std::shared_ptr<EagerVariable>& input_var,
+      const std::shared_ptr<EagerVariable>& view_output_var);
 
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
