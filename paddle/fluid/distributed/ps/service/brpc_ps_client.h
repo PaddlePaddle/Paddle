@@ -164,16 +164,11 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> Load(uint32_t table_id, const std::string &epoch,
                             const std::string &mode) override;
 
-  std::future<int32_t> Load(const LoadSaveContext &load_context) override;
-
   std::future<int32_t> Save(const std::string &epoch,
                             const std::string &mode) override;
 
   std::future<int32_t> Save(uint32_t table_id, const std::string &epoch,
                             const std::string &mode) override;
-
-  virtual std::future<int32_t> Save(
-      const LoadSaveContext &save_context) override;
 
   std::future<int32_t> Clear() override;
 
@@ -203,10 +198,6 @@ class BrpcPsClient : public PSClient {
                                                size_t table_id,
                                                const uint64_t *keys, size_t num,
                                                bool is_training);
-
-  virtual std::future<int32_t> Pull(RequestContext &pull_context) override;
-
-  virtual std::future<int32_t> Push(RequestContext &push_context) override;
 
   virtual std::future<int32_t> PrintTableStat(uint32_t table_id);
 
@@ -245,8 +236,6 @@ class BrpcPsClient : public PSClient {
   int32_t Initialize() override;
 
  private:
-  // virtual int32_t Initialize() override;
-
   inline uint32_t DenseDimPerShard(uint32_t dense_dim_total,
                                    uint32_t shard_num) {
     return dense_dim_total / shard_num + 1;

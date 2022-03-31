@@ -414,16 +414,6 @@ std::future<int32_t> BrpcPsClient::Load(uint32_t table_id,
   return SendCmd(table_id, PS_LOAD_ONE_TABLE, {epoch, mode});
 }
 
-std::future<int32_t> BrpcPsClient::Load(const LoadSaveContext &load_context) {
-  if (load_context.table_id < 0) {
-    return SendCmd(-1, PS_LOAD_ALL_TABLE,
-                   {load_context.epoch, load_context.mode});
-  } else {
-    return SendCmd(load_context.table_id, PS_LOAD_ONE_TABLE,
-                   {load_context.epoch, load_context.mode});
-  }
-}
-
 std::future<int32_t> BrpcPsClient::Save(const std::string &epoch,
                                         const std::string &mode) {
   VLOG(1) << "BrpcPsClient::save path " << epoch;
@@ -435,19 +425,6 @@ std::future<int32_t> BrpcPsClient::Save(uint32_t table_id,
   VLOG(1) << "BrpcPsClient::save one table path " << epoch << " table_id "
           << table_id;
   return SendSaveCmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
-}
-
-std::future<int32_t> BrpcPsClient::Save(const LoadSaveContext &save_context) {
-  if (save_context.table_id < 0) {
-    VLOG(1) << "BrpcPsClient::save path " << save_context.epoch;
-    return SendSaveCmd(-1, PS_SAVE_ALL_TABLE,
-                       {save_context.epoch, save_context.mode});
-  } else {
-    VLOG(1) << "BrpcPsClient::save one table path " << save_context.epoch
-            << " table_id " << save_context.table_id;
-    return SendSaveCmd(save_context.table_id, PS_SAVE_ONE_TABLE,
-                       {save_context.epoch, save_context.mode});
-  }
 }
 
 std::future<int32_t> BrpcPsClient::Clear() {
@@ -526,43 +503,6 @@ std::future<int32_t> BrpcPsClient::StopProfiler() {
 std::future<int32_t> BrpcPsClient::Barrier(size_t table_id,
                                            uint32_t barrier_type) {
   return SendCmd(table_id, PS_BARRIER, {std::to_string(barrier_type)});
-}
-
-std::future<int32_t> BrpcPsClient::Pull(RequestContext &pull_context) {
-  if (pull_context.value_type == Dense) {  // pull dense
-    Region *dense_region =
-        reinterpret_cast<Region *>(pull_context.dense_values);
-    return PullDense(dense_region, pull_context.num, pull_context.table);
-  } else {  // pull sparse
-    size_t table_id = pull_context.table;
-    size_t num = pull_context.num;
-    bool is_training = pull_context.is_training;
-    if (pull_context.training_mode == Geo) {  // for geo
-      return PullSparseParam(pull_context.sparse_values, table_id,
-                             pull_context.keys, num, is_training);
-    } else if (pull_context.training_mode == Async) {  // for async
-      return PullSparse(pull_context.sparse_values, table_id, pull_context.keys,
-                        num, is_training);
-    }
-  }
-}
-
-std::future<int32_t> BrpcPsClient::Push(RequestContext &push_context) {
-  if (push_context.value_type == Dense) {  // push dense
-    const Region *dense_region = push_context.push_context.push_dense_values;
-    return PushDense(dense_region, push_context.num, push_context.table);
-  } else {  // push sparse
-    size_t table_id = push_context.table;
-    size_t num = push_context.num;
-    bool is_training = push_context.is_training;
-    if (push_context.training_mode == Geo) {  // for geo
-      // TODO(zhaocaibei)
-    } else if (push_context.training_mode == Async) {  // for async
-      const uint64_t *keys = push_context.push_context.keys;
-      const float **update_values = push_context.push_context.push_values;
-      return PushSparse(table_id, keys, update_values, num);
-    }
-  }
 }
 
 std::future<int32_t> BrpcPsClient::PullGeoParam(size_t table_id,

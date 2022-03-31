@@ -51,32 +51,6 @@ int32_t FleetWrapper::CopyTableByFeasign(
   return 0;
 }
 
-void FleetWrapper::Stop() { StopServer(); }
-
-void FleetWrapper::Load(WrapperContext& context) {
-  auto table_id = context.table_id;
-  if (table_id >= 0 && context.meta != "") {
-    LoadSparseOnServer(context.path, context.meta, context.table_id);
-    return;
-  }
-  if (table_id < 0) {  // laod all
-    LoadModel(context.path, context.mode);
-  } else {  // load one table
-    LoadModelOneTable(table_id, context.path, context.mode);
-  }
-  return;
-}
-
-void FleetWrapper::Save(WrapperContext& context) {
-  auto table_id = context.table_id;
-  if (table_id < 0) {
-    SaveModel(context.path, context.mode);
-  } else {
-    SaveModelOneTable(table_id, context.path, context.mode);
-  }
-  return;
-}
-
 void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
                                           int connect_timeout_ms,
                                           int max_retry) {
@@ -337,21 +311,10 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
-  // ps client pull sparse
-  // construct client request context
-  RequestContext req_context;
-  req_context.value_type = Sparse;
-  req_context.training_mode = Async;
-  req_context.table = table_id;
-  req_context.sparse_values = pull_result_ptr.data();
-  req_context.keys = fea_keys.data();
-  req_context.num = fea_keys.size();
-  req_context.is_training = is_training;
-  auto status = worker_ptr_->Pull(req_context);
-  // auto status =
-  //     worker_ptr_->PullSparse(pull_result_ptr.data(), table_id,
-  //                              fea_keys.data(), fea_keys.size(),
-  //                              is_training);
+
+  auto status =
+      worker_ptr_->PullSparse(pull_result_ptr.data(), table_id, fea_keys.data(),
+                              fea_keys.size(), is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -378,14 +341,8 @@ void FleetWrapper::PullDenseVarsAsync(
     paddle::distributed::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
   }
-  RequestContext req_context;
-  req_context.value_type = Dense;
-  req_context.training_mode = Async;
-  req_context.table = tid;
-  req_context.dense_values = regions.data();
-  req_context.num = regions.size();
-  auto status = worker_ptr_->Pull(req_context);
-  // auto status = worker_ptr_->PullDense(regions.data(), regions.size(), tid);
+
+  auto status = worker_ptr_->PullDense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
 }
 
@@ -470,15 +427,8 @@ void FleetWrapper::PushDenseVarsAsync(
             << g[tensor->numel() - 1];
   }
 
-  RequestContext req_context;
-  req_context.value_type = Dense;
-  req_context.training_mode = Async;
-  req_context.table = table_id;
-  req_context.push_context.push_dense_values = regions.data();
-  req_context.num = regions.size();
-  // auto push_status =
-  //     worker_ptr_->PushDense(regions.data(), regions.size(), table_id);
-  auto push_status = worker_ptr_->Push(req_context);
+  auto push_status =
+      worker_ptr_->PushDense(regions.data(), regions.size(), table_id);
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -650,19 +600,9 @@ void FleetWrapper::PushSparseFromTensorAsync(
     push_g_vec[i] = push_values.at(i).data();
   }
 
-  // ps client push sparse
-  // construct request context
-  RequestContext req_context;
-  req_context.value_type = Sparse;
-  req_context.training_mode = Async;
-  req_context.table = table_id;
-  req_context.push_context.push_values = (const float**)push_g_vec.data();
-  req_context.push_context.keys = push_keys.data();
-  req_context.num = push_keys.size();
-  auto status = worker_ptr_->Push(req_context);
-  // auto status = worker_ptr_->PushSparse(table_id, push_keys.data(),
-  //                                        (const float**)push_g_vec.data(),
-  //                                        push_keys.size());
+  auto status = worker_ptr_->PushSparse(table_id, push_keys.data(),
+                                        (const float**)push_g_vec.data(),
+                                        push_keys.size());
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
