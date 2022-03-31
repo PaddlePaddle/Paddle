@@ -17,7 +17,6 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/framework/variable.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"
