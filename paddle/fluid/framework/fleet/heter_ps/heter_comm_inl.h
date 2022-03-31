@@ -428,7 +428,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
                 reinterpret_cast<char*>(d_val_bufs[cur_stream]->ptr()),
                 src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
 
-    tables_[num]->insert(
+    tables_[dev_num]->insert(
         reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
         reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
         streams[cur_stream]);
