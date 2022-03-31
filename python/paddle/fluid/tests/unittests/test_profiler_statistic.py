@@ -238,9 +238,12 @@ class TestProfilerStatistic(unittest.TestCase):
             'Communication', profiler.TracerEventType.Communication, 105, 110,
             1000, 1001)
 
-        reduce_all_op1 = HostPythonNode('cudalaunchkernel',
+        reduce_all_op1 = HostPythonNode('reduce_all_op1',
                                         profiler.TracerEventType.Operator, 105,
                                         108, 1000, 1001)
+        reduce_all_op1_infershape = HostPythonNode(
+            'reduce_all_op1::infershape',
+            profiler.TracerEventType.OperatorInner, 105, 106, 1000, 1001)
 
         reduce_all_launchkernel1 = HostPythonNode(
             'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 106, 107,
@@ -306,6 +309,9 @@ class TestProfilerStatistic(unittest.TestCase):
                                           profiler.TracerEventType.Operator,
                                           230, 250, 1000, 1001)
 
+        reduce_all_node2_infershape = HostPythonNode(
+            'reduce_all_node2::infershape',
+            profiler.TracerEventType.OperatorInner, 231, 232, 1000, 1001)
         reduce_all_launchkernel2 = HostPythonNode(
             'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 235, 240,
             1000, 1001)
@@ -326,6 +332,7 @@ class TestProfilerStatistic(unittest.TestCase):
         userdefined_node.runtime_node.append(reduce_all_launchkernel0)
         reduce_all_launchkernel0.device_node.append(nccl_reduce_all_kernel0)
         communication_node.children_node.append(reduce_all_op1)
+        reduce_all_op1.children_node.append(reduce_all_op1_infershape)
         reduce_all_op1.runtime_node.append(reduce_all_launchkernel1)
         reduce_all_launchkernel1.device_node.append(nccl_reduce_all_kernel1)
         conv2d_node.children_node.extend(
@@ -344,6 +351,7 @@ class TestProfilerStatistic(unittest.TestCase):
         sync_batch_norm_launchkernel.device_node.append(sync_batch_norm_kernel)
         sync_batch_norm_cudaMemCpy.device_node.append(sync_batch_norm_memcpy)
         optimization_node.children_node.append(reduce_all_node2)
+        reduce_all_node2.children_node.append(reduce_all_node2_infershape)
         reduce_all_node2.runtime_node.append(reduce_all_launchkernel2)
         reduce_all_launchkernel2.device_node.append(nccl_reduce_all_kernel2)
         thread_tree = {'thread1001': root_node}
@@ -374,7 +382,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 profiler.TracerEventType.Operator), 78)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.OperatorInner), 45)
+                profiler.TracerEventType.OperatorInner), 47)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.CudaRuntime), 38)

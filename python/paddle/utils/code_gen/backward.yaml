@@ -649,6 +649,16 @@
   kernel :
     func : put_along_axis_grad
 
+- backward_api : relu_double_grad
+  forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  kernel :
+    func : relu_double_grad
+
 - backward_api : relu_grad
   forward : relu (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -658,6 +668,21 @@
     param : [out]
   kernel :
     func : relu_grad
+  backward: relu_double_grad
+
+- backward_api : reshape_grad
+  forward : reshape_with_xshape (Tensor x, ScalarArray shape) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param : [xshape]
+  kernel :
+    func : reshape_grad
+    param : [out_grad]
+    data_type: out_grad
+    backend: out_grad
+    layout: out_grad
 
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
@@ -851,6 +876,16 @@
     param : [x]
   kernel :
     func : tile_grad
+
+- backward_api : top_k_grad
+  forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : top_k_grad
 
 - backward_api : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)

@@ -1126,12 +1126,15 @@
 
 - api : reshape
   args : (Tensor x, ScalarArray shape)
-  output : Tensor(out)
+  output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : ReshapeInferMeta
+    func : ReshapeWithXShapeInferMeta
   kernel :
-    func : reshape
+    func : reshape_with_xshape
   inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward: reshape_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -1370,7 +1373,15 @@
   backward : tile_grad
   # no_need_buffer : x
 
-# trace
+- api : top_k
+  args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopKInferMeta
+  kernel :
+    func : top_k
+  backward : top_k_grad
+
 - api : trace
   args : (Tensor x, int offset, int axis1, int axis2)
   output : Tensor
