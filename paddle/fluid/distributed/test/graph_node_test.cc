@@ -649,11 +649,12 @@ void testCache() {
   ASSERT_EQ((int)r.size(), 0);
 
   st.insert(0, &skey, result, 1);
-  for (int i = 0; i < st.get_ttl(); i++) {
+  for (size_t i = 0; i < st.get_ttl(); i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
     char* p = (char*)r[0].second.buffer.get();
-    for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
+    for (size_t j = 0; j < r[0].second.actual_size; j++)
+      ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   st.query(0, &skey, 1, r);
@@ -662,22 +663,24 @@ void testCache() {
   strcpy(str, "54321678");
   result = new ::paddle::distributed::SampleResult(strlen(str), str);
   st.insert(0, &skey, result, 1);
-  for (int i = 0; i < st.get_ttl() / 2; i++) {
+  for (size_t i = 0; i < st.get_ttl() / 2; i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
     char* p = (char*)r[0].second.buffer.get();
-    for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
+    for (size_t j = 0; j < r[0].second.actual_size; j++)
+      ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   str = new char[18];
   strcpy(str, "343332d4321");
   result = new ::paddle::distributed::SampleResult(strlen(str), str);
   st.insert(0, &skey, result, 1);
-  for (int i = 0; i < st.get_ttl(); i++) {
+  for (size_t i = 0; i < st.get_ttl(); i++) {
     st.query(0, &skey, 1, r);
     ASSERT_EQ((int)r.size(), 1);
     char* p = (char*)r[0].second.buffer.get();
-    for (int j = 0; j < r[0].second.actual_size; j++) ASSERT_EQ(p[j], str[j]);
+    for (size_t j = 0; j < r[0].second.actual_size; j++)
+      ASSERT_EQ(p[j], str[j]);
     r.clear();
   }
   st.query(0, &skey, 1, r);
