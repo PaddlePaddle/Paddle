@@ -23,9 +23,9 @@ void StridedSliceGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& out_grad,
                             const std::vector<int>& axes,
-                            const ScalarArray& starts,
-                            const ScalarArray& ends,
-                            const ScalarArray& strides,
+                            const IntArray& starts,
+                            const IntArray& ends,
+                            const IntArray& strides,
                             DenseTensor* x_grad) {
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;

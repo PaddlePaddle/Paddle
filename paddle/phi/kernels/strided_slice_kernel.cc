@@ -22,9 +22,9 @@ template <typename T, typename Context>
 void StridedSliceKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const std::vector<int>& axes,
-                        const ScalarArray& starts,
-                        const ScalarArray& ends,
-                        const ScalarArray& strides,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const IntArray& strides,
                         DenseTensor* out) {
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;

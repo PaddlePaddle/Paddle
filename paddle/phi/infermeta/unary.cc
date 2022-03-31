@@ -1173,7 +1173,7 @@ void PadInferMeta(const MetaTensor& input,
 }
 
 void Pad3dInferMeta(const MetaTensor& x,
-                    const ScalarArray& paddings_scalar_array,
+                    const IntArray& paddings_int_array,
                     const std::string& mode,
                     float value,
                     const std::string& data_format,
@@ -1189,21 +1189,21 @@ void Pad3dInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> out_dims(x_dim.size());
   out_dims[0] = x_dim[0];
-  if (paddings_scalar_array.FromTensor()) {
+  if (paddings_int_array.FromTensor()) {
     if (config.is_runtime) {
       PADDLE_ENFORCE_EQ(
-          paddings_scalar_array.GetData().size(),
+          paddings_int_array.GetData().size(),
           6,
           errors::InvalidArgument("Shape of Input(Paddings) should be equal to "
                                   "[6], but received [%d].",
-                                  paddings_scalar_array.GetData().size()));
+                                  paddings_int_array.GetData().size()));
     }
     out_dims[1] = x_dim[1];
     out_dims[2] = x_dim[2];
     out_dims[3] = x_dim[3];
     out_dims[4] = x_dim[4];
   } else {
-    auto paddings = paddings_scalar_array.GetData();
+    auto paddings = paddings_int_array.GetData();
 
     PADDLE_ENFORCE_EQ(
         paddings.size(),
@@ -1592,7 +1592,7 @@ void ReduceInferMetaBase(const MetaTensor& x,
 }
 
 void ReshapeInferMeta(const MetaTensor& x,
-                      const ScalarArray& shape,
+                      const IntArray& shape,
                       MetaTensor* out,
                       MetaConfig config) {
   auto& shape_data = shape.GetData();
@@ -1612,7 +1612,7 @@ void ReshapeInferMeta(const MetaTensor& x,
 }
 
 void ReshapeWithXShapeInferMeta(const MetaTensor& x,
-                                const ScalarArray& shape,
+                                const IntArray& shape,
                                 MetaTensor* out,
                                 MetaTensor* xshape,
                                 MetaConfig config) {
@@ -1659,7 +1659,7 @@ void ReverseInferMeta(const MetaTensor& x,
 }
 
 void RollInferMeta(const MetaTensor& x,
-                   const ScalarArray& shifts,
+                   const IntArray& shifts,
                    const std::vector<int64_t>& axis,
                    MetaTensor* out) {
   auto shifts_data = shifts.GetData();
@@ -1758,7 +1758,7 @@ void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
 }
 
 void SplitInferMeta(const MetaTensor& x,
-                    const ScalarArray& num_or_sections,
+                    const IntArray& num_or_sections,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config) {
@@ -1924,9 +1924,9 @@ void SqueezeInferMeta(const MetaTensor& x,
 
 void StridedSliceRawInferMeta(const MetaTensor& x,
                               const std::vector<int>& axes,
-                              const ScalarArray& starts,
-                              const ScalarArray& ends,
-                              const ScalarArray& strides,
+                              const IntArray& starts,
+                              const IntArray& ends,
+                              const IntArray& strides,
                               const std::vector<int>& infer_flags,
                               const std::vector<int>& decrease_axis,
                               MetaTensor* out,
@@ -1968,7 +1968,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
   }
 
   auto tensor_input = false;
-  auto HasInput = [](const ScalarArray& arr) { return arr.FromTensor(); };
+  auto HasInput = [](const IntArray& arr) { return arr.FromTensor(); };
   if (HasInput(starts) || HasInput(ends) || HasInput(strides)) {
     tensor_input = true;
   }
@@ -2054,9 +2054,9 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
 
 void StridedSliceInferMeta(const MetaTensor& x,
                            const std::vector<int>& axes,
-                           const ScalarArray& starts,
-                           const ScalarArray& ends,
-                           const ScalarArray& strides,
+                           const IntArray& starts,
+                           const IntArray& ends,
+                           const IntArray& strides,
                            MetaTensor* out,
                            MetaConfig config) {
   std::vector<int> infer_flags(axes.size(), 1);
@@ -2103,7 +2103,7 @@ void SumRawInferMeta(const MetaTensor& x,
 }
 
 void TileInferMeta(const MetaTensor& x,
-                   const ScalarArray& repeat_times,
+                   const IntArray& repeat_times,
                    MetaTensor* out,
                    MetaConfig config) {
 #define MAX_RANK_SUPPORTED 6
@@ -2566,7 +2566,7 @@ void UnfoldInferMeta(const MetaTensor& x,
 }
 
 void UnsqueezeInferMeta(const MetaTensor& x,
-                        const ScalarArray& axes,
+                        const IntArray& axes,
                         MetaTensor* xshape,
                         MetaTensor* out,
                         MetaConfig config) {
