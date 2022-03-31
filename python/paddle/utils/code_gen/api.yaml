@@ -706,6 +706,16 @@
     func : erfinv
   backward : erfinv_grad
 
+# exp
+- api : exp
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  backward : exp_grad
+
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor
