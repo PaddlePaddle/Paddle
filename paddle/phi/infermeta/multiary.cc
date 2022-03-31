@@ -1167,6 +1167,13 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
+void UnchangedMultiInferMeta(const std::vector<MetaTensor*>& x,
+                             std::vector<MetaTensor*> out) {
+  for (size_t i = 0; i < x.size(); ++i) {
+    out[i]->share_meta(*x[i]);
+  }
+}
+
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const paddle::optional<const MetaTensor&> logits_length,

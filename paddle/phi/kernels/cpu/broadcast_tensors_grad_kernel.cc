@@ -59,6 +59,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
+                                const std::vector<const DenseTensor*>& x,
                                 const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx) {
   // Find reduce dimensions
