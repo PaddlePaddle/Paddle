@@ -33,8 +33,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
@@ -2198,24 +2198,24 @@ void OperatorWithKernel::BuildPhiKernelContext(
   VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::ScalarArray(
+          pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
               BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
         } else if (std::type_index(attr_iter->second.type()) ==
                    std::type_index(typeid(std::vector<int32_t>))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::ScalarArray(
+          pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
         } else if (std::type_index(attr_iter->second.type()) ==
                    std::type_index(typeid(int32_t))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::ScalarArray(
-              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
+          pt_kernel_context->EmplaceBackAttr(std::move(
+              phi::IntArray(&BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to ScalarArray when "
+              "Unsupported cast op attribute `%s` to IntArray when "
               "construct KernelContext.",
               attr_names[i]));
         }
@@ -2223,10 +2223,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
         auto& ins_vector = ctx.inputs.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVar(*ins_vector.front())));
+              experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
         } else {  // ShapeTensorList
-          pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVarList(ins_vector)));
+          pt_kernel_context->EmplaceBackAttr(
+              std::move(experimental::MakePhiIntArrayFromVarList(ins_vector)));
         }
       }
     } else if (attr_defs[i].type_index ==
