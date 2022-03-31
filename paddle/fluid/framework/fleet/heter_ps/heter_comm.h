@@ -24,6 +24,9 @@ limitations under the License. */
 #include "thrust/pair.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#endif
 #include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
@@ -54,7 +57,7 @@ struct CustomGradMerger {
 #elif defined(PADDLE_WITH_XPU_KP)
 struct CustomGradMerger {
   template <typename T>
-  __forceinline__ __device__ T operator()(const T& a, const T& b) const {
+  __device__ T operator()(const T& a, const T& b) const {
     T out;
     out.slot = a.slot;
     out.show = a.show + b.show;

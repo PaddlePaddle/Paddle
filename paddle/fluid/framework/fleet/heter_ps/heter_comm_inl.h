@@ -197,7 +197,6 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
   }
 #endif
 }
-#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
