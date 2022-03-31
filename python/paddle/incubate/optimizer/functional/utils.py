@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.autograd.functional import vjp, Jacobian
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_type, check_dtype
 
@@ -86,8 +85,8 @@ def _value_and_gradient(f, x, v=None):
         value: a tensor that holds the function value.
         gradient: a tensor that holds the function gradients.  
     """
-    if x.stop_gradient:
-        x = assign(x)
+    if not x.stop_gradient:
+        x = paddle.clone(x)
     else:
         x = x.detach()
         x.stop_gradient = False
