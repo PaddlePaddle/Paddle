@@ -207,18 +207,29 @@ class TestQuantileRuntime(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
         for device in self.devices:
-            for dtype in self.dtypes:
-                # Check different dtypes
-                x = paddle.static.data(
-                    name="x", shape=self.input_data.shape, dtype=dtype)
-                results = paddle.quantile(x, q=0.5, axis=2)
-                np_input_data = self.input_data.astype(dtype)
-                exe = paddle.static.Executor(device)
-                paddle_res = exe.run(paddle.static.default_main_program(),
-                                     feed={"x": np_input_data},
-                                     fetch_list=[results])[0]
-                np_res = np.quantile(np_input_data, q=0.5, axis=2)
-                self.assertTrue(np.allclose(paddle_res.numpy(), np_res))
+            x = paddle.static.data(
+                name="x", shape=self.input_data.shape, dtype=paddle.float32)
+            x_fp64 = paddle.static.data(
+                name="x_fp64",
+                shape=self.input_data.shape,
+                dtype=paddle.float64)
+
+            results = paddle.quantile(x, q=0.5, axis=2)
+            np_input_data = self.input_data.astype('float32')
+            results_fp64 = paddle.quantile(x_fp64, q=0.5, axis=2)
+            np_input_data_fp64 = self.input_data.astype('float64')
+
+            exe = paddle.static.Executor(device)
+            paddle_res, paddle_res_fp64 = exe.run(
+                paddle.static.default_main_program(),
+                feed={"x": np_input_data,
+                      "x_fp64": np_input_data_fp64},
+                fetch_list=[results, results_fp64])
+            np_res = np.quantile(np_input_data, q=0.5, axis=2)
+            np_res_fp64 = np.quantile(np_input_data_fp64, q=0.5, axis=2)
+            self.assertTrue(
+                np.allclose(paddle_res, np_res) and np.allclose(paddle_res_fp64,
+                                                                np_res_fp64))
 
 
 if __name__ == '__main__':
