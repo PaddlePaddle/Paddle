@@ -99,7 +99,7 @@ int32_t CommMergeAccessor::Update(float **values, const float **update_values,
 }
 
 int CommMergeAccessor::SetWeight(float **values, const float **update_values,
-                                  size_t num) {
+                                 size_t num) {
   return 0;
 }
 

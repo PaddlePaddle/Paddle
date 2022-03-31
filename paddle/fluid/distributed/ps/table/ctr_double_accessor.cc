@@ -195,8 +195,7 @@ bool DownpourCtrDoubleAccessor::Save(float* value, int param) {
   };
 }
 
-void DownpourCtrDoubleAccessor::UpdateStatAfterSave(float* value,
-                                                       int param) {
+void DownpourCtrDoubleAccessor::UpdateStatAfterSave(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -363,7 +362,7 @@ double DownpourCtrDoubleAccessor::show_click_score(double show, double click) {
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 std::string DownpourCtrDoubleAccessor::ParseToString(const float* v,
-                                                       int param_size) {
+                                                     int param_size) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
@@ -382,7 +381,7 @@ std::string DownpourCtrDoubleAccessor::ParseToString(const float* v,
   return os.str();
 }
 int DownpourCtrDoubleAccessor::ParseFromString(const std::string& str,
-                                                 float* value) {
+                                               float* value) {
   int embedx_dim = _config.embedx_dim();
   float data_buff[Dim() + 2];
   float* data_buff_ptr = data_buff;

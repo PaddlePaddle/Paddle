@@ -94,13 +94,9 @@ size_t DownpourCtrAccessor::SelectDim() {
   return 3 + embedx_dim;
 }
 
-size_t DownpourCtrAccessor::SelectDimSize(size_t dim) {
-  return sizeof(float);
-}
+size_t DownpourCtrAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
 
-size_t DownpourCtrAccessor::SelectSize() {
-  return SelectDim() * sizeof(float);
-}
+size_t DownpourCtrAccessor::SelectSize() { return SelectDim() * sizeof(float); }
 
 // push value
 size_t DownpourCtrAccessor::UpdateDim() {
@@ -108,13 +104,9 @@ size_t DownpourCtrAccessor::UpdateDim() {
   return 4 + embedx_dim;
 }
 
-size_t DownpourCtrAccessor::UpdateDimSize(size_t dim) {
-  return sizeof(float);
-}
+size_t DownpourCtrAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
 
-size_t DownpourCtrAccessor::UpdateSize() {
-  return UpdateDim() * sizeof(float);
-}
+size_t DownpourCtrAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
 
 bool DownpourCtrAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
@@ -403,8 +395,7 @@ float DownpourCtrAccessor::show_click_score(float show, float click) {
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 
-std::string DownpourCtrAccessor::ParseToString(const float* v,
-                                                 int param_size) {
+std::string DownpourCtrAccessor::ParseToString(const float* v, int param_size) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
@@ -422,8 +413,7 @@ std::string DownpourCtrAccessor::ParseToString(const float* v,
   return os.str();
 }
 
-int DownpourCtrAccessor::ParseFromString(const std::string& str,
-                                           float* value) {
+int DownpourCtrAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
   float data_buff[Dim()];
   float* data_buff_ptr = data_buff;

@@ -206,7 +206,8 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   }
 
   auto res_data = butil::get_object<std::vector<float>>();
-  res_data->resize(num * table->value_accesor()->GetTableInfo(SELECT_SIZE) / sizeof(float));
+  res_data->resize(num * table->value_accesor()->GetTableInfo(SELECT_SIZE) /
+                   sizeof(float));
   TableContext table_context;
   table_context.value_type = Dense;
   table_context.pull_context.values = res_data->data();

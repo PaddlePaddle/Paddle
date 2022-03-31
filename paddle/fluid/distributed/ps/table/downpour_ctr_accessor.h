@@ -52,9 +52,7 @@ class DownpourCtrAccessor : public ValueAccessor {
     static int ShowIndex() {
       return DownpourCtrFeatureValue::delta_score_index() + 1;
     }
-    static int ClickIndex() {
-      return DownpourCtrFeatureValue::ShowIndex() + 1;
-    }
+    static int ClickIndex() { return DownpourCtrFeatureValue::ShowIndex() + 1; }
     static int Embed_W_Index() {
       return DownpourCtrFeatureValue::ClickIndex() + 1;
     }

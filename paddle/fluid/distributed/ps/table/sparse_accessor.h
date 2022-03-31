@@ -86,12 +86,8 @@ class SparseAccessor : public ValueAccessor {
     static int ClickIndex() { return SparsePushValue::ShowIndex() + 1; }
     static int Embed_G_Index() { return SparsePushValue::ClickIndex() + 1; }
     static int Embedx_G_Index() { return SparsePushValue::Embed_G_Index() + 1; }
-    static float& Slot(float* val) {
-      return val[SparsePushValue::SlotIndex()];
-    }
-    static float& Show(float* val) {
-      return val[SparsePushValue::ShowIndex()];
-    }
+    static float& Slot(float* val) { return val[SparsePushValue::SlotIndex()]; }
+    static float& Show(float* val) { return val[SparsePushValue::ShowIndex()]; }
     static float& Click(float* val) {
       return val[SparsePushValue::ClickIndex()];
     }

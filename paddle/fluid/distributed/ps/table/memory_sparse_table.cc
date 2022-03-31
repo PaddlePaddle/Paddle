@@ -119,8 +119,7 @@ int32_t MemorySparseTable::load(const std::string& path,
           uint64_t key = std::strtoul(line_data.data(), &end, 10);
           auto& value = shard[key];
           value.resize(feature_value_size);
-          int parse_size =
-              _value_accesor->ParseFromString(++end, value.data());
+          int parse_size = _value_accesor->ParseFromString(++end, value.data());
           value.resize(parse_size);
 
           // for debug
@@ -196,8 +195,7 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
           uint64_t key = std::strtoul(line_data.data(), &end, 10);
           auto& value = shard[key];
           value.resize(feature_value_size);
-          int parse_size =
-              _value_accesor->ParseFromString(++end, value.data());
+          int parse_size = _value_accesor->ParseFromString(++end, value.data());
           value.resize(parse_size);
         }
         file.close();
@@ -335,8 +333,8 @@ int32_t MemorySparseTable::save_local_fs(const std::string& dirname,
     os.open(file_name);
     for (auto it = shard.begin(); it != shard.end(); ++it) {
       if (_value_accesor->Save(it.value().data(), save_param)) {
-        std::string format_value = _value_accesor->ParseToString(
-            it.value().data(), it.value().size());
+        std::string format_value =
+            _value_accesor->ParseToString(it.value().data(), it.value().size());
         std::string out_line = paddle::string::format_string(
             "%lu %s\n", it.key(), format_value.c_str());
         // VLOG(2) << out_line.c_str();
