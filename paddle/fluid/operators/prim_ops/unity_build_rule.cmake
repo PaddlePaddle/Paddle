@@ -1,4 +1,5 @@
 register_unity_group(cc
+    reshape_p_op.cc
     add_p_op.cc
     sub_p_op.cc
     mul_p_op.cc
