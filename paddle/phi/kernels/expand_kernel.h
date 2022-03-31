@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const ScalarArray& shape,
+                  const IntArray& shape,
                   DenseTensor* out);
 
 }  // namepsace phi

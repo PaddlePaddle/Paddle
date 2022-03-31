@@ -133,7 +133,7 @@ class Optimizer(object):
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
             # list(paddle.Tensor) will be a error value
-            if isinstance(parameters, paddle.Tensor):
+            if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
                     "an iterable of paddle Tensors, but got argument type is `{}`.".
