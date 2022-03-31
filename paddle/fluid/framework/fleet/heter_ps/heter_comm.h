@@ -25,7 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#include <xpu/runtime.h>
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h
 #endif
 #include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
