@@ -563,16 +563,15 @@ int ProductRuleBook(const Context& dev_ctx,
                                      cudaMemcpyDeviceToHost,
                                      dev_ctx.stream());
 #endif
-  rulebook->Resize({rulebook_rows, rulebook_len});
+  rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
 
   // 3. sorted or merge the out index
-  out_index->ResizeAndAllocate({rulebook_len});
-  unique_value->ResizeAndAllocate({rulebook_len});
-  // unique_key->ResizeAndAllocate({rulebook_len});
+  out_index->ResizeAndAllocate({static_cast<int>(rulebook_len)});
+  unique_value->ResizeAndAllocate({static_cast<int>(rulebook_len)});
   DenseTensor unique_key = phi::Empty(
       dev_ctx,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<IntT>::Type(),
-                      {rulebook_len},
+                      {static_cast<int>(rulebook_len)},
                       DataLayout::NCHW));
   int* out_index_ptr = out_index->data<int>();
   int* unique_value_ptr = unique_value->data<int>();
