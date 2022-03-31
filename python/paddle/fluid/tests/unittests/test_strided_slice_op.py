@@ -76,7 +76,7 @@ class TestStrideSliceOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out')
+        self.check_grad(set(['Input']), 'Out', check_eager=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -376,8 +376,7 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(
-                self.starts, dtype="int32")
+            "StartsTensor": np.array(self.starts, dtype="int32")
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
@@ -411,8 +410,7 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "EndsTensor": np.array(
-                self.ends, dtype="int32")
+            "EndsTensor": np.array(self.ends, dtype="int32")
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
@@ -451,8 +449,7 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
 
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(
-                self.starts, dtype="int32"),
+            "StartsTensor": np.array(self.starts, dtype="int32"),
             "EndsTensorList": ends_tensor
         }
         self.outputs = {'Out': self.output}
@@ -487,8 +484,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "StridesTensor": np.array(
-                self.strides, dtype="int32")
+            "StridesTensor": np.array(self.strides, dtype="int32")
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
@@ -705,7 +701,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         l2.sum().backward()
         grads_static = net.get_all_grads()
         net.clear_all_grad()
-        # compare result of dygraph and static 
+        # compare result of dygraph and static
         self.is_grads_equal(grads_static, grads_dy)
         self.assertTrue(
             np.array_equal(s1, s2),

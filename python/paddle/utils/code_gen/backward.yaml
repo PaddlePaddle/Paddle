@@ -807,6 +807,16 @@
   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
+- backward_api : strided_slice_grad
+  forward : strided_slice (Tensor x, int[] axes, ScalarArray starts, ScalarArray ends, ScalarArray strides) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] axes, ScalarArray starts, ScalarArray ends, ScalarArray strides)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : strided_slice_grad
+
 - backward_api : subtract_grad
   forward : subtract (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
@@ -936,13 +946,3 @@
     param : [x, y]
   kernel :
     func : where_grad
-
-- backward_api: strided_slice_grad
-  forward : strided_slice (Tensor x, int[] axes, ScalarArray starts, ScalarArray ends, ScalarArray strides) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] axes, ScalarArray starts, ScalarArray ends, ScalarArray strides)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : GeneralUnaryGradInferMeta
-    param : [x]
-  kernel :
-    func : strided_slice_grad
