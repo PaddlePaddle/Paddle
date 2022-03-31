@@ -19,6 +19,7 @@
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
 
 int main(int argc, char** argv) {
   static llvm::cl::opt<std::string> input_file(
@@ -35,10 +36,11 @@ int main(int argc, char** argv) {
   mlir::PassManager pm(context);
 
   mlir::OpPassManager& phi_pass_manager = pm.nest<mlir::FuncOp>();
-  std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
+  std::vector<infrt::Place> valid_places = {{infrt::TargetType::GPU,
                                              infrt::PrecisionType::FLOAT32,
                                              infrt::LayoutType::NCHW}};
   phi_pass_manager.addPass(infrt::createPhiOpCvtPass(valid_places));
+  phi_pass_manager.addPass(infrt::trt::createTrtTypeConvertPass();
   phi_pass_manager.addPass(infrt::createInfrtOpFusePass());
   if (mlir::failed(pm.run(*module))) {
     std::cout << "\npass failed!\n" << std::endl;

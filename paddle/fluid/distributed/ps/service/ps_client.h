@@ -86,9 +86,9 @@ struct RequestContext {
   TrainingMode training_mode;    // 1 for async, 2 for geo, 3 for sync
   TrainingPhase training_phase;  // 1 for init, 2 for train
   ValueType value_type;          // 1 for sparse, 2 for dense
-  void *keys;
-  void **sparse_values;  // for sparse values
-  Region *dense_values;  // for dense values
+  uint64_t *keys;
+  float **sparse_values;  // for sparse values
+  Region *dense_values;   // for dense values
   PushContext push_context;
   size_t num;
   bool is_training;

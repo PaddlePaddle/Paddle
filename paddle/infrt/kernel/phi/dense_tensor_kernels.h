@@ -39,6 +39,13 @@ namespace phi {
     host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<float> value);
 
+::phi::DenseTensor CreateHostInitedDenseTensorF32(
+    const ::phi::CPUContext& context,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<std::vector<float>> values);
+
 ::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
@@ -68,7 +75,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor);
 
 int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map);
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 ::phi::DenseTensor GpuMemCpy(const ::phi::DenseTensor& input,
                              const ::phi::GPUContext& context,
                              bool d2h);

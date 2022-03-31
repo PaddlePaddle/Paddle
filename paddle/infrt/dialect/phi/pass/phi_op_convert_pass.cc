@@ -53,6 +53,7 @@ class PhiOpConvertPass
   void getDependentDialects(mlir::DialectRegistry &registry) const override;
 
  private:
+  void convert2Gpu();
   void convertStage();
   void dispatchStage();
 
@@ -66,8 +67,50 @@ class PhiOpConvertPass
 };
 // Implementation of the PhiOpConvertPass.
 void PhiOpConvertPass::runOnFunction() {
+  convert2Gpu();
   convertStage();
   dispatchStage();
+}
+
+void PhiOpConvertPass::convert2Gpu() {
+  LOG(INFO) << "Success! into convert2Gpu";
+  mlir::Block &body = getFunction().front();
+  auto loc = getFunction().getLoc();
+  mlir::Operation &operation = body.front();
+  mlir::MLIRContext *context = operation.getContext();
+  mlir::Type type_ = infrt::DenseTensorType::get(context,
+                                                 infrt::TargetType::CPU,
+                                                 infrt::PrecisionType::FLOAT32,
+                                                 infrt::LayoutType::ANY);
+  mlir::Type type1 = infrt::DenseTensorType::get(context,
+                                                 infrt::TargetType::GPU,
+                                                 infrt::PrecisionType::FLOAT32,
+                                                 infrt::LayoutType::NCHW);
+  std::vector<mlir::Operation *> worklist;
+  for (auto &op : body.without_terminator()) {
+    worklist.push_back(&op);
+  }
+  mlir::OpBuilder builder(&body, body.begin());
+
+  for (size_t index = 0; index < body.getNumArguments(); index++) {
+    auto argument = body.getArgument(index);
+    if (argument.getType() == type_) {
+      mlir::Value disable_in = argument;
+      getFunction().insertArgument(index, type1, {}, loc);
+
+      // todo : replace this code with .replaceAllUsesWith
+      for (size_t i = 0; i < worklist.size(); i++) {
+        auto *op = worklist[i];
+        uint8_t in_index = op->getNumOperands();
+        for (uint8_t idx = 0; idx < in_index; idx++) {
+          if (op->getOperand(idx) == disable_in) {
+            op->setOperand(idx, getFunction().getArgument(index));
+          }
+        }
+      }
+      getFunction().eraseArgument(index + 1);
+    }
+  }
 }
 
 void PhiOpConvertPass::convertStage() {
@@ -156,6 +199,7 @@ void PhiOpConvertPass::dispatchStage() {
 
   mlir::OpBuilder builder(&block, block.begin());
   std::map<infrt::TargetType, mlir::Value> phi_context;
+
   for (infrt::KernelOp kernel_op : worklist) {
     std::string kernel_name = kernel_op.name().str();
     std::vector<infrt::PhiKernelDesc> candidates =
@@ -191,7 +235,18 @@ void PhiOpConvertPass::dispatchStage() {
                   .output();
           phi_context[infrt::TargetType::CPU] = context_value;
         } break;
-        case infrt::TargetType::GPU:
+        case infrt::TargetType::GPU: {
+          auto context_value =
+              builder
+                  .create<infrt::phi::CreateGPUContextOp>(
+                      kernel_op.getLoc(),
+                      infrt::phi::ContextType::get(kernel_op.getContext(),
+                                                   infrt::TargetType::GPU))
+                  .output();
+          phi_context[infrt::TargetType::GPU] = context_value;
+
+        } break;
+
         case infrt::TargetType::UNK:
         default:
           LOG(FATAL) << "Unsupported TargetType";
@@ -204,15 +259,25 @@ void PhiOpConvertPass::dispatchStage() {
     for (size_t index = 0; index < phi_kernel_desc.input_types.size();
          ++index) {
       mlir::Value input = kernel_op.getOperand(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
-          kernel_op.getLoc(),
-          infrt::DenseTensorType::get(
-              kernel_op.getContext(),
-              phi_kernel_desc.input_types[index].target,
-              phi_kernel_desc.input_types[index].precision,
-              phi_kernel_desc.input_types[index].layout),
-          input);
-      operation_state.addOperands(cvt_tensor_type_op.output());
+      if (input.getType().dyn_cast<::infrt::DenseTensorType>().getTarget() ==
+              ::infrt::TargetType::CPU &&
+          phi_kernel_desc.input_types[index].target ==
+              ::infrt::TargetType::GPU) {
+        auto cvt_tensor_type_op = builder.create<infrt::phi::GpuMemCopyOp>(
+            kernel_op.getLoc(),
+            infrt::DenseTensorType::get(
+                kernel_op.getContext(),
+                phi_kernel_desc.input_types[index].target,
+                phi_kernel_desc.input_types[index].precision,
+                phi_kernel_desc.input_types[index].layout),
+            input,
+            phi_context[infrt::TargetType::GPU],
+            mlir::BoolAttr::get(kernel_op.getContext(), /*d2h*/ false));
+
+        operation_state.addOperands(cvt_tensor_type_op.output());
+      } else {
+        operation_state.addOperands(input);
+      }
     }
 
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
@@ -227,11 +292,8 @@ void PhiOpConvertPass::dispatchStage() {
     mlir::Operation *phi_operation = builder.createOperation(operation_state);
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
-      mlir::Value input = phi_operation->getResult(index);
-      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
-          kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
       kernel_op.getResult(index).replaceAllUsesWith(
-          cvt_tensor_type_op.output());
+          phi_operation->getResult(index));
     }
     kernel_op.erase();
   }
@@ -261,11 +323,11 @@ void PhiOpConvertPass::getDependentDialects(
 
 mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass(
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass(
     std::vector<Place> valid_places) {
   return std::make_unique<PhiOpConvertPass>(valid_places);
 }
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass() {
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass() {
   return std::make_unique<PhiOpConvertPass>();
 }

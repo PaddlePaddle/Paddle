@@ -29,7 +29,7 @@ struct PhiKernelDesc {
 std::string getPhiTargetPrefix(TargetType target);
 std::string getPhiPrecisionSuffix(PrecisionType precision);
 std::string getPhiLayoutSuffix(LayoutType layout);
-
+void PrintKernelFactory();
 std::vector<PhiKernelDesc> GetCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces);
 

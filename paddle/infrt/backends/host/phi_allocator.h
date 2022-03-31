@@ -13,7 +13,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/allocator.h"
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 #include <cuda_runtime.h>
 #endif
 
@@ -33,7 +33,7 @@ class CpuPhiAllocator : public phi::Allocator {
   }
 };
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 // TODO(wilber): Just for demo test. we need a more efficient gpu allocator.
 class GpuPhiAllocator : public phi::Allocator {
  public:

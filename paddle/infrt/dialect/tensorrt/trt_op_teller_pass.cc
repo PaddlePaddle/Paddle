@@ -39,13 +39,6 @@ void TRTOpTellerPass::runOnFunction() {
     worklist.pop_back();
     if (op == nullptr) continue;
     if (op->getName().getStringRef().substr(0, 3) != "pd.") continue;
-    if (::llvm::dyn_cast_or_null<infrt::pd::FeedOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<infrt::pd::FetchOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<::infrt::GraphOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<::infrt::ReturnOp>(op)) continue;
-    if (::llvm::dyn_cast_or_null<::infrt::phi::TensorMapGetTensorOp>(op))
-      continue;
-
     builder.setInsertionPoint(op);
     auto loc = getFunction().getLoc();
     auto graph_op = builder.create<::infrt::GraphOp>(

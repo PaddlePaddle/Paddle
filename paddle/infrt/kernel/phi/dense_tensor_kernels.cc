@@ -23,7 +23,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 #include <cuda_runtime.h>
 #endif
 
@@ -77,6 +77,27 @@ namespace phi {
   return dense_tensor;
 }
 
+::phi::DenseTensor CreateHostInitedDenseTensorF32(
+    const ::phi::CPUContext& context,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<std::vector<float>> values) {
+  ::phi::DenseTensor dense_tensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(
+          ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
+          ::phi::make_ddim(dims.get()),
+          ConvertLayoutToPhi(layout.get()),
+          {}));
+  CHECK_EQ(dense_tensor.numel(), static_cast<int64_t>(values.get().size()));
+  float* data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
+  for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
+    data[i] = values.get()[i];
+  }
+  return dense_tensor;
+}
+
 ::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
@@ -100,7 +121,7 @@ void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
       a_data[i] = (value.get())[i];
     }
   } else if (place.GetType() == ::phi::AllocationType::GPU) {
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
     // TODO(wilber): how to set the stream parameter to copy with stream.
     cudaMemcpy(a_data,
                value.get().data(),
@@ -113,7 +134,7 @@ void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
 }
 
 void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
-#ifndef INFRT_WITH_GPU
+#ifndef WITH_GPU
 #define PRINT_META_DATA(PHI_DATATYPE, DTYPE)                \
   case ::phi::DataType::PHI_DATATYPE: {                     \
     auto place = dense_tensor->place();                     \
@@ -256,7 +277,7 @@ int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
   return map.size();
 }
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 inline size_t SizeOfDataType(::phi::DataType data_type) {
   switch (data_type) {
     case ::phi::DataType::BOOL:

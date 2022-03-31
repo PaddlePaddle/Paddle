@@ -73,6 +73,11 @@ std::string getPhiLayoutSuffix(LayoutType layout) {
   }
 }
 
+void PrintKernelFactory() {
+  phi::KernelFactory kernel_key_map = phi::KernelFactory::Instance();
+  LOG(INFO) << kernel_key_map;
+}
+
 std::vector<PhiKernelDesc> GetCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces) {
   std::vector<PhiKernelDesc> candidate_kernels;

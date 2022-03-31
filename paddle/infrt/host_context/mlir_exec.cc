@@ -33,9 +33,9 @@
 #include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/phi/registry.h"
-#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#if defined(WITH_GPU) && defined(INFRT_WITH_TRT)
 #include "paddle/infrt/kernel/tensorrt/registry.h"
-#endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
+#endif  // WITH_GPU && INFRT_WITH_TRT
 #endif  // INFRT_WITH_PHI
 
 static llvm::cl::list<std::string> cl_shared_libs(  // NOLINT
@@ -65,9 +65,9 @@ int main(int argc, char** argv) {
 #ifdef INFRT_WITH_PHI
   kernel::RegisterPhiKernels(&registry);
   kernel::RegisterInferShapeLaunchers(&registry);
-#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#if defined(WITH_GPU) && defined(INFRT_WITH_TRT)
   kernel::RegisterTrtKernels(&registry);
-#endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
+#endif  // WITH_GPU && INFRT_WITH_TRT
 #endif
 
   // load extra shared library
@@ -98,8 +98,8 @@ int main(int argc, char** argv) {
   std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
                                              infrt::PrecisionType::FLOAT32,
                                              infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(infrt::createPhiOpCvtPass(valid_places));
-  phi_pass_manager.addPass(infrt::createInfrtOpFusePass());
+  phi_pass_manager.addPass(infrt::CreatePhiOpCvtPass(valid_places));
+  phi_pass_manager.addPass(infrt::CreateInfrtOpFusePass());
 #endif
 
   if (mlir::failed(pm.run(*module))) {
