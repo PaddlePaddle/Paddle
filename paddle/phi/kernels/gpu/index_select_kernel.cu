@@ -32,8 +32,7 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t stride,
                                          int64_t size,
                                          int64_t delta) {
-  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-       idx < N; idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(idx, N) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx = index[dim_idx];

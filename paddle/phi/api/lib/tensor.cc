@@ -384,5 +384,16 @@ uint32_t Tensor::current_inplace_version() {
   return 0;
 }
 
+void Tensor::reset_inplace_version(bool set_to_zero) {
+  if (set_to_zero) {
+    if (is_dense_tensor()) {
+      auto &inplace_version_counter =
+          std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+              ->InplaceVersionCounter();
+      inplace_version_counter.SetInplaceVersionToZero();
+    }
+  }
+}
+
 }  // namespace experimental
 }  // namespace paddle
