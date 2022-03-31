@@ -20,7 +20,7 @@ import os
 import copy
 import numpy as np
 import paddle
-from paddle.fluid.framework import dygraph_only, in_dygraph_mode
+from paddle.fluid.framework import dygraph_only
 from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
@@ -452,7 +452,7 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.decorate`, for details please see explanation in `sparsity.decorate`.
         """
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             main_prog = paddle.static.default_main_program()
             startup_prog = paddle.static.default_startup_program()
             ASPHelper._create_mask_variables(main_prog, startup_prog,
@@ -513,7 +513,7 @@ class ASPHelper(object):
         r"""
         This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
         """
-        if in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             main_program = paddle.static.default_main_program()
             asp_info = cls._get_program_asp_info(main_program)
 
