@@ -20,17 +20,18 @@ import scipy.stats
 
 import config
 import mock_data as mock
+import parameterize
 
 paddle.enable_static()
 
 
-@config.place(config.DEVICES)
+@parameterize.place(config.DEVICES)
 class TestExponentialFamily(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor()
         with paddle.static.program_guard(self.program):
-            rate_np = config.xrand((100, 200, 99))
+            rate_np = parameterize.xrand((100, 200, 99))
             rate = paddle.static.data('rate', rate_np.shape, rate_np.dtype)
             self.mock_dist = mock.Exponential(rate)
             self.feeds = {'rate': rate_np}
