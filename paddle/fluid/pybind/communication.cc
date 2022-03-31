@@ -12,18 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/communication.h"
-
 #include <Python.h>
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
-
 #include <chrono>
 #include <string>
 
 #include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/fluid/pybind/communication.h"
 
 namespace py = pybind11;
 
