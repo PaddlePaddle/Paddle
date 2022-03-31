@@ -20,7 +20,7 @@
 namespace paddle {
 namespace distributed {
 
-int DownpourCtrAccessor::initialize() {
+int DownpourCtrAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
@@ -45,7 +45,6 @@ void DownpourCtrAccessor::SetTableInfo(AccessorInfo& info) {
   info.update_dim = update_dim();
   info.update_size = update_size();
   info.mf_size = mf_size();
-  info.fea_dim = fea_dim();
 }
 
 size_t DownpourCtrAccessor::GetTableInfo(InfoKey key) {
@@ -64,8 +63,8 @@ size_t DownpourCtrAccessor::GetTableInfo(InfoKey key) {
       return update_size();
     case MF_SIZE:
       return mf_size();
-    case FEA_DIM:
-      return fea_dim();
+    default:
+      return 0;
   }
   return 0;
 }
@@ -117,7 +116,7 @@ size_t DownpourCtrAccessor::update_size() {
   return update_dim() * sizeof(float);
 }
 
-bool DownpourCtrAccessor::shrink(float* value) {
+bool DownpourCtrAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -183,7 +182,7 @@ bool DownpourCtrAccessor::save_ssd(float* value) {
 //     return false;
 // }
 
-bool DownpourCtrAccessor::save(float* value, int param) {
+bool DownpourCtrAccessor::Save(float* value, int param) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -235,7 +234,7 @@ bool DownpourCtrAccessor::save(float* value, int param) {
   };
 }
 
-void DownpourCtrAccessor::update_stat_after_save(float* value, int param) {
+void DownpourCtrAccessor::UpdateStatAfterSave(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -268,7 +267,7 @@ void DownpourCtrAccessor::update_stat_after_save(float* value, int param) {
   };
 }
 
-int32_t DownpourCtrAccessor::create(float** values, size_t num) {
+int32_t DownpourCtrAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
@@ -302,7 +301,7 @@ bool DownpourCtrAccessor::has_mf(size_t size) {
 }
 
 // from DownpourCtrFeatureValue to DownpourCtrPullValue
-int32_t DownpourCtrAccessor::select(float** select_values, const float** values,
+int32_t DownpourCtrAccessor::Select(float** select_values, const float** values,
                                     size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -324,7 +323,7 @@ int32_t DownpourCtrAccessor::select(float** select_values, const float** values,
 // from DownpourCtrPushValue to DownpourCtrPushValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrAccessor::merge(float** update_values,
+int32_t DownpourCtrAccessor::Merge(float** update_values,
                                    const float** other_update_values,
                                    size_t num) {
   auto embedx_dim = _config.embedx_dim();
@@ -344,7 +343,7 @@ int32_t DownpourCtrAccessor::merge(float** update_values,
 // from DownpourCtrPushValue to DownpourCtrFeatureValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrAccessor::update(float** update_values,
+int32_t DownpourCtrAccessor::Update(float** update_values,
                                     const float** push_values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -374,7 +373,7 @@ int32_t DownpourCtrAccessor::update(float** update_values,
   return 0;
 }
 
-bool DownpourCtrAccessor::create_value(int stage, const float* value) {
+bool DownpourCtrAccessor::CreateValue(int stage, const float* value) {
   // stage == 0, pull
   // stage == 1, push
   if (stage == 0) {
@@ -404,7 +403,7 @@ float DownpourCtrAccessor::show_click_score(float show, float click) {
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 
-std::string DownpourCtrAccessor::parse_to_string(const float* v,
+std::string DownpourCtrAccessor::ParseToString(const float* v,
                                                  int param_size) {
   thread_local std::ostringstream os;
   os.clear();
@@ -423,7 +422,7 @@ std::string DownpourCtrAccessor::parse_to_string(const float* v,
   return os.str();
 }
 
-int DownpourCtrAccessor::parse_from_string(const std::string& str,
+int DownpourCtrAccessor::ParseFromString(const std::string& str,
                                            float* value) {
   int embedx_dim = _config.embedx_dim();
   float data_buff[dim()];

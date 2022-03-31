@@ -20,7 +20,7 @@
 namespace paddle {
 namespace distributed {
 
-int DownpourCtrDoubleAccessor::initialize() {
+int DownpourCtrDoubleAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
@@ -45,7 +45,6 @@ void DownpourCtrDoubleAccessor::SetTableInfo(AccessorInfo& info) {
   info.update_dim = update_dim();
   info.update_size = update_size();
   info.mf_size = mf_size();
-  info.fea_dim = fea_dim();
 }
 
 size_t DownpourCtrDoubleAccessor::GetTableInfo(InfoKey key) {
@@ -64,8 +63,8 @@ size_t DownpourCtrDoubleAccessor::GetTableInfo(InfoKey key) {
       return update_size();
     case MF_SIZE:
       return mf_size();
-    case FEA_DIM:
-      return fea_dim();
+    default:
+      return 0;
   }
   return 0;
 }
@@ -107,7 +106,7 @@ size_t DownpourCtrDoubleAccessor::update_dim_size(size_t dim) {
 size_t DownpourCtrDoubleAccessor::update_size() {
   return update_dim() * sizeof(float);
 }
-bool DownpourCtrDoubleAccessor::shrink(float* value) {
+bool DownpourCtrDoubleAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -148,7 +147,7 @@ bool DownpourCtrDoubleAccessor::save_ssd(float* value) {
 //     }
 //     return false;
 // }
-bool DownpourCtrDoubleAccessor::save(float* value, int param) {
+bool DownpourCtrDoubleAccessor::Save(float* value, int param) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -196,7 +195,7 @@ bool DownpourCtrDoubleAccessor::save(float* value, int param) {
   };
 }
 
-void DownpourCtrDoubleAccessor::update_stat_after_save(float* value,
+void DownpourCtrDoubleAccessor::UpdateStatAfterSave(float* value,
                                                        int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
@@ -226,7 +225,7 @@ void DownpourCtrDoubleAccessor::update_stat_after_save(float* value,
   };
 }
 
-int32_t DownpourCtrDoubleAccessor::create(float** values, size_t num) {
+int32_t DownpourCtrDoubleAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
@@ -256,7 +255,7 @@ bool DownpourCtrDoubleAccessor::need_extend_mf(float* value) {
   return score >= _config.embedx_threshold();
 }
 // from DownpourCtrFeatureValue to DownpourCtrPullValue
-int32_t DownpourCtrDoubleAccessor::select(float** select_values,
+int32_t DownpourCtrDoubleAccessor::Select(float** select_values,
                                           const float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -277,7 +276,7 @@ int32_t DownpourCtrDoubleAccessor::select(float** select_values,
 // from DownpourCtrPushValue to DownpourCtrPushValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrDoubleAccessor::merge(float** update_values,
+int32_t DownpourCtrDoubleAccessor::Merge(float** update_values,
                                          const float** other_update_values,
                                          size_t num) {
   auto embedx_dim = _config.embedx_dim();
@@ -303,7 +302,7 @@ int32_t DownpourCtrDoubleAccessor::merge(float** update_values,
 // from DownpourCtrPushValue to DownpourCtrFeatureValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrDoubleAccessor::update(float** update_values,
+int32_t DownpourCtrDoubleAccessor::Update(float** update_values,
                                           const float** push_values,
                                           size_t num) {
   auto embedx_dim = _config.embedx_dim();
@@ -335,7 +334,7 @@ int32_t DownpourCtrDoubleAccessor::update(float** update_values,
   }
   return 0;
 }
-bool DownpourCtrDoubleAccessor::create_value(int stage, const float* value) {
+bool DownpourCtrDoubleAccessor::CreateValue(int stage, const float* value) {
   // stage == 0, pull
   // stage == 1, push
   if (stage == 0) {
@@ -363,7 +362,7 @@ double DownpourCtrDoubleAccessor::show_click_score(double show, double click) {
   auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
-std::string DownpourCtrDoubleAccessor::parse_to_string(const float* v,
+std::string DownpourCtrDoubleAccessor::ParseToString(const float* v,
                                                        int param_size) {
   thread_local std::ostringstream os;
   os.clear();
@@ -382,7 +381,7 @@ std::string DownpourCtrDoubleAccessor::parse_to_string(const float* v,
   }
   return os.str();
 }
-int DownpourCtrDoubleAccessor::parse_from_string(const std::string& str,
+int DownpourCtrDoubleAccessor::ParseFromString(const std::string& str,
                                                  float* value) {
   int embedx_dim = _config.embedx_dim();
   float data_buff[dim() + 2];

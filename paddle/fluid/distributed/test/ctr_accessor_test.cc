@@ -67,8 +67,8 @@ TableAccessorParameter gen_param() {
 TEST(downpour_feature_value_accessor_test, test_shrink) {
   TableAccessorParameter parameter = gen_param();
   CtrCommonAccessor* acc = new CtrCommonAccessor();
-  ASSERT_EQ(acc->configure(parameter), 0);
-  ASSERT_EQ(acc->initialize(), 0);
+  ASSERT_EQ(acc->Configure(parameter), 0);
+  ASSERT_EQ(acc->Initialize(), 0);
 
   VLOG(3) << "size of struct: " << acc->common_feature_value.embed_sgd_dim
           << " " << acc->common_feature_value.embedx_dim << " "
@@ -79,20 +79,20 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
   for (auto i = 0u; i < acc->dim(); ++i) {
     value[i] = i * 1.0;
   }
-  ASSERT_TRUE(!acc->shrink(value));
+  ASSERT_TRUE(!acc->Shrink(value));
 
   // set unseen_days too long
   value[1] = 1000;
   // set delta score too small
   value[2] = 0.001;
-  ASSERT_TRUE(acc->shrink(value));
+  ASSERT_TRUE(acc->Shrink(value));
 }
 
 TEST(downpour_feature_value_accessor_test, test_save) {
   TableAccessorParameter parameter = gen_param();
   CtrCommonAccessor* acc = new CtrCommonAccessor();
-  ASSERT_EQ(acc->configure(parameter), 0);
-  ASSERT_EQ(acc->initialize(), 0);
+  ASSERT_EQ(acc->Configure(parameter), 0);
+  ASSERT_EQ(acc->Initialize(), 0);
 
   float* value = new float[acc->dim()];
   for (auto i = 0u; i < acc->dim(); ++i) {
@@ -100,13 +100,13 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   }
 
   // save all feature
-  ASSERT_TRUE(acc->save(value, 0));
+  ASSERT_TRUE(acc->Save(value, 0));
 
   // save delta feature
-  ASSERT_TRUE(acc->save(value, 1));
+  ASSERT_TRUE(acc->Save(value, 1));
 
   // save base feature with time decay
-  ASSERT_TRUE(acc->save(value, 2));
+  ASSERT_TRUE(acc->Save(value, 2));
 
   VLOG(3) << "test_save:";
   for (auto i = 0u; i < acc->dim(); ++i) {
@@ -117,8 +117,8 @@ TEST(downpour_feature_value_accessor_test, test_save) {
 TEST(downpour_feature_value_accessor_test, test_create) {
   TableAccessorParameter parameter = gen_param();
   CtrCommonAccessor* acc = new CtrCommonAccessor();
-  ASSERT_EQ(acc->configure(parameter), 0);
-  ASSERT_EQ(acc->initialize(), 0);
+  ASSERT_EQ(acc->Configure(parameter), 0);
+  ASSERT_EQ(acc->Initialize(), 0);
 
   const int field_size = 7 + 8;
   const int item_size = 10;
@@ -127,7 +127,7 @@ TEST(downpour_feature_value_accessor_test, test_create) {
   for (auto i = 0u; i < item_size; ++i) {
     value[i] = new float[field_size];
   }
-  ASSERT_EQ(acc->create(value, item_size), 0);
+  ASSERT_EQ(acc->Create(value, item_size), 0);
 
   for (auto i = 0u; i < item_size; ++i) {
     for (auto j = 0u; j < field_size; ++j) {
@@ -141,8 +141,8 @@ TEST(downpour_feature_value_accessor_test, test_create) {
 TEST(downpour_feature_value_accessor_test, test_update) {
   TableAccessorParameter parameter = gen_param();
   CtrCommonAccessor* acc = new CtrCommonAccessor();
-  ASSERT_EQ(acc->configure(parameter), 0);
-  ASSERT_EQ(acc->initialize(), 0);
+  ASSERT_EQ(acc->Configure(parameter), 0);
+  ASSERT_EQ(acc->Initialize(), 0);
 
   VLOG(3) << "dim: " << acc->common_feature_value.dim() << "\n";
   VLOG(3) << "update_dim: " << acc->update_dim() << "\n";
@@ -255,7 +255,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.to_array(ptr, parameter.embedx_dim());
     exp_value.push_back(ptr);
   }
-  acc->update(value, grad, item_size);
+  acc->Update(value, grad, item_size);
 
   for (auto i = 0u; i < item_size; ++i) {
     for (auto j = 0u; j < acc->dim(); ++j) {
@@ -268,8 +268,8 @@ TEST(downpour_feature_value_accessor_test, test_update) {
 TEST(downpour_feature_value_accessor_test, test_show_click_score) {
   TableAccessorParameter parameter = gen_param();
   CtrCommonAccessor* acc = new CtrCommonAccessor();
-  ASSERT_EQ(acc->configure(parameter), 0);
-  ASSERT_EQ(acc->initialize(), 0);
+  ASSERT_EQ(acc->Configure(parameter), 0);
+  ASSERT_EQ(acc->Initialize(), 0);
 
   float show = 10;
   float click = 6;
@@ -279,8 +279,8 @@ TEST(downpour_feature_value_accessor_test, test_show_click_score) {
 TEST(downpour_feature_value_accessor_test, test_string_related) {
   TableAccessorParameter parameter = gen_param();
   CtrCommonAccessor* acc = new CtrCommonAccessor();
-  ASSERT_EQ(acc->configure(parameter), 0);
-  ASSERT_EQ(acc->initialize(), 0);
+  ASSERT_EQ(acc->Configure(parameter), 0);
+  ASSERT_EQ(acc->Initialize(), 0);
 
   const int field_size = 15;
   float* value = new float[field_size];
@@ -288,12 +288,12 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
     value[i] = i;
   }
 
-  auto str = acc->parse_to_string(value, 0);
+  auto str = acc->ParseToString(value, 0);
 
   VLOG(3) << str << std::endl;
 
   str = "0 1 2 3 4 5 6";
-  ASSERT_NE(acc->parse_from_string(str, value), 0);
+  ASSERT_NE(acc->ParseFromString(str, value), 0);
   // make sure init_zero=true
 
   for (auto i = 7; i < 15; ++i) {

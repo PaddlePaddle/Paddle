@@ -167,61 +167,61 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   };
   DownpourCtrDoubleAccessor() {}
   virtual ~DownpourCtrDoubleAccessor() {}
-  virtual int initialize();
+  virtual int Initialize();
   virtual void SetTableInfo(AccessorInfo& info);
   virtual size_t GetTableInfo(InfoKey key);
   // value维度
-  virtual size_t dim();
+  size_t dim();
   // value各个维度的size
-  virtual size_t dim_size(size_t dim);
+  size_t dim_size(size_t dim);
   // value各维度相加总size
-  virtual size_t size();
+  size_t size();
   // value中mf动态长度部分总size大小, sparse下生效
-  virtual size_t mf_size();
+  size_t mf_size();
   // pull value维度
-  virtual size_t select_dim();
+  size_t select_dim();
   // pull value各个维度的size
-  virtual size_t select_dim_size(size_t dim);
+  size_t select_dim_size(size_t dim);
   // pull value各维度相加总size
-  virtual size_t select_size();
+  size_t select_size();
   // push value维度
-  virtual size_t update_dim();
+  size_t update_dim();
   // push value各个维度的size
-  virtual size_t update_dim_size(size_t dim);
+  size_t update_dim_size(size_t dim);
   // push value各维度相加总size
-  virtual size_t update_size();
+  size_t update_size();
   // 判断该value是否进行shrink
-  virtual bool shrink(float* value);
+  virtual bool Shrink(float* value);
   virtual bool need_extend_mf(float* value);
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   // param = 0, save all feature
   // param = 1, save delta feature
   // param = 3, save all feature with time decay
-  virtual bool save(float* value, int param) override;
+  virtual bool Save(float* value, int param) override;
   // update delta_score and unseen_days after save
-  virtual void update_stat_after_save(float* value, int param) override;
+  virtual void UpdateStatAfterSave(float* value, int param) override;
   // 判断该value是否保存到ssd
   virtual bool save_ssd(float* value);
   // virtual bool save_cache(float* value, int param, double
   // global_cache_threshold) override;
   // keys不存在时，为values生成随机值
   // 要求value的内存由外部调用者分配完毕
-  virtual int32_t create(float** value, size_t num);
+  virtual int32_t Create(float** value, size_t num);
   // 从values中选取到select_values中
-  virtual int32_t select(float** select_values, const float** values,
+  virtual int32_t Select(float** select_values, const float** values,
                          size_t num);
   // 将update_values聚合到一起
-  virtual int32_t merge(float** update_values,
+  virtual int32_t Merge(float** update_values,
                         const float** other_update_values, size_t num);
   // 将update_values聚合到一起，通过it.next判定是否进入下一个key
-  // virtual int32_t merge(float** update_values, iterator it);
+  // virtual int32_t Merge(float** update_values, iterator it);
   // 将update_values更新应用到values中
-  virtual int32_t update(float** values, const float** update_values,
+  virtual int32_t Update(float** values, const float** update_values,
                          size_t num);
-  virtual std::string parse_to_string(const float* value, int param) override;
-  virtual int32_t parse_from_string(const std::string& str, float* v) override;
-  virtual bool create_value(int type, const float* value);
+  virtual std::string ParseToString(const float* value, int param) override;
+  virtual int32_t ParseFromString(const std::string& str, float* v) override;
+  virtual bool CreateValue(int type, const float* value);
   //这个接口目前只用来取show
   virtual float get_field(float* value, const std::string& name) override {
     CHECK(name == "show");

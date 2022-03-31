@@ -1518,7 +1518,7 @@ void sparse_local_merge(ValueAccessor *accessor, float *merge_data,
     merge_data_shell[i] = merge_data + i;
     another_data_shell[i] = another_data + i;
   }
-  accessor->merge(merge_data_shell, another_data_shell, 1);
+  accessor->Merge(merge_data_shell, another_data_shell, 1);
 }
 
 int BrpcPsClient::push_sparse_async_shard_merge(
@@ -1757,7 +1757,7 @@ void BrpcPsClient::push_dense_task_consume() {
                async_task]() -> int {
                 auto &tmp_task_vec = *(async_task->data());
                 const float *merge_data = tmp_task_vec.data();
-                accessor->merge(&total_send_data, &merge_data,
+                accessor->Merge(&total_send_data, &merge_data,
                                 total_send_data_size);
 #pragma optimize("", off)
                 auto *debug_closure = closure;
