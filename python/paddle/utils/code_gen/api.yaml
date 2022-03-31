@@ -88,16 +88,6 @@
 #     func : gaussian_random
 #     data_type : dtype
 
-# # graph_send_recv
-# - api : graph_send_recv
-#   args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type)
-#   output : Tensor(out), Tensor(dst_count)
-#   infer_meta :
-#     func : GraphSendRecvInferMeta
-#   kernel :
-#     func : graph_send_recv
-#   backward : graph_send_recv_grad
-
 # # label_smooth
 # - api : label_smooth
 #   args : (Tensor label, Tensor prior_dist, float epsilon)
@@ -764,6 +754,17 @@
     func : GatherTreeMeta
   kernel :
     func : gather_tree
+
+- api : graph_send_recv
+  args : (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendRecvInferMeta
+  kernel :
+    func : graph_send_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_recv_grad
 
 - api : greater
   args : (Tensor x, Tensor y, int axis = -1)

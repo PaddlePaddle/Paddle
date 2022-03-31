@@ -118,16 +118,6 @@
 #   kernel :
 #     func : expand_grad
 
-# - backward_api : graph_send_recv_grad
-#   forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type) -> Tensor(out), Tensor(dst_count)
-#   args : (Tensor out_grad, Tensor x, Tensor out, Tensor src_index, Tensor dst_index, Tensor dst_count, str pool_type)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : graph_send_recv_grad
-
 # - backward_api : multi_dot_grad
 #   forward : multi_dot (Tensor[] x) -> Tensor(out)
 #   args : (Tensor out_grad, Tensor[] x)
@@ -177,6 +167,17 @@
 #     param : [x]
 #   kernel :
 #     func : where_index_grad
+
+# # forward backward type not match
+# - backward_api : top_k_grad
+#   forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+#   args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
+#   output : Tensor(x_grad)
+#   infer_meta :
+#     func : UnchangedInferMeta
+#     param : [x]
+#   kernel :
+#     func : top_k_grad
 
 - backward_api : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
@@ -460,16 +461,17 @@
     param : [x]
   kernel :
     func : gather_nd_grad
-# # forward backward type not match
-# - backward_api : top_k_grad
-#   forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
-#   args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : top_k_grad
+
+- backward_api : graph_send_recv_grad
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type = "SUM")
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : graph_send_recv_grad
+  optional: out, dst_count
 
 - backward_api : hard_shrink_grad
   forward : hard_shrink (Tensor x, float threshold) -> Tensor(out)
