@@ -101,7 +101,8 @@ __global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
 
 // cuda implemention of  heter_comm_kernel.h
 template <typename T, typename StreamType>
-void HeterCommKernel::fill_idx(T* idx, long long len, StreamType& stream) {
+void HeterCommKernel::fill_idx(T* idx, long long len,
+                               const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   fill_idx<<<grid_size, block_size_, 0, stream>>>(idx, c_len);
@@ -110,7 +111,7 @@ void HeterCommKernel::fill_idx(T* idx, long long len, StreamType& stream) {
 template <typename T, typename StreamType>
 void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right,
                                         long long len, int total_devs,
-                                        StreamType& stream) {
+                                        const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   calc_shard_offset<<<grid_size, block_size_, 0, stream>>>(idx, left, right,
@@ -120,7 +121,7 @@ void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right,
 template <typename KeyType, typename T, typename StreamType>
 void HeterCommKernel::calc_shard_index(KeyType* d_keys, long long len,
                                        T* shard_index, int total_gpu,
-                                       StreamType& stream) {
+                                       const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   calc_shard_index<<<grid_size, block_size_, 0, stream>>>(
@@ -130,7 +131,7 @@ void HeterCommKernel::calc_shard_index(KeyType* d_keys, long long len,
 template <typename KeyType, typename T, typename StreamType>
 void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys,
                                      T* idx, long long len,
-                                     StreamType& stream) {
+                                     const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys, d_keys,
@@ -141,7 +142,7 @@ template <typename KeyType, typename GradType, typename T, typename StreamType>
 void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
                                        GradType* d_shard_grads,
                                        GradType* d_grads, T* idx, long long len,
-                                       StreamType& stream) {
+                                       const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   fill_shard_grads<<<grid_size, block_size_, 0, stream>>>(
@@ -150,7 +151,7 @@ void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
 
 template <typename ValType, typename T, typename StreamType>
 void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                                 long long len, StreamType& stream) {
+                                 long long len, const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals, d_vals, idx,
