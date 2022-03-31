@@ -133,7 +133,6 @@ if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
-    -Werror
     -Wall
     -Wextra
     -Wnon-virtual-dtor
@@ -243,4 +242,3 @@ if(WITH_ROCM)
     string (REPLACE "-Werror" "-Wno-error" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     string (REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
-
