@@ -51,8 +51,6 @@ void BatchNormInferKernel(const Context& dev_ctx,
                           float momentum,
                           float epsilon,
                           const std::string& data_layout,
-                          DenseTensor* y,
-                          DenseTensor* mean_out,
-                          DenseTensor* variance_out);
+                          DenseTensor* y);
 
 }  // namespace phi
