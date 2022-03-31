@@ -93,8 +93,8 @@ class ValueAccessor {
   virtual void SetTableInfo(AccessorInfo& info) = 0;
   virtual size_t GetTableInfo(InfoKey key) = 0;
 
-  virtual bool need_extend_mf(float* value) { return false; }
-  virtual bool has_mf(size_t size) { return false; }
+  virtual bool NeedExtendMF(float* value) { return false; }
+  virtual bool HasMF(size_t size) { return false; }
   // converter for save
   virtual std::string GetConverter(int param) {
     auto itr = _data_coverter_map.find(param);
@@ -154,7 +154,7 @@ class ValueAccessor {
     return 0;
   }
 
-  virtual float get_field(float* value, const std::string& name) { return 0.0; }
+  virtual float GetField(float* value, const std::string& name) { return 0.0; }
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() override { return class ::field##_index(); }
 

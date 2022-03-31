@@ -21,29 +21,23 @@ namespace distributed {
 int CommMergeAccessor::Initialize() { return 0; }
 
 void CommMergeAccessor::SetTableInfo(AccessorInfo &info) {
-  info.dim = dim();
-  info.size = size();
-  info.select_dim = select_dim();
-  info.select_size = select_size();
-  info.update_dim = update_dim();
-  info.update_size = update_size();
+  info.select_dim = SelectDim();
+  info.select_size = SelectSize();
+  info.update_dim = UpdateDim();
+  info.update_size = UpdateSize();
   info.fea_dim = fea_dim();
 }
 
 size_t CommMergeAccessor::GetTableInfo(InfoKey key) {
   switch (key) {
-    case DIM:
-      return dim();
-    case SIZE:
-      return size();
     case SELECT_DIM:
-      return select_dim();
+      return SelectDim();
     case SELECT_SIZE:
-      return select_size();
+      return SelectSize();
     case UPDATE_DIM:
-      return update_dim();
+      return UpdateDim();
     case UPDATE_SIZE:
-      return update_size();
+      return UpdateSize();
     case FEA_DIM:
       return fea_dim();
     default:
@@ -52,32 +46,23 @@ size_t CommMergeAccessor::GetTableInfo(InfoKey key) {
   return 0;
 }
 
-// value 维度
-size_t CommMergeAccessor::dim() { return 0; }
-
-// value 各个维度的size
-size_t CommMergeAccessor::dim_size(size_t dim) { return 0; }
-
-// value 各维度相加总size
-size_t CommMergeAccessor::size() { return 0; }
-
 // pull value 维度
-size_t CommMergeAccessor::select_dim() { return _config.embedx_dim(); }
+size_t CommMergeAccessor::SelectDim() { return _config.embedx_dim(); }
 
 // pull value 各个维度的size
-size_t CommMergeAccessor::select_dim_size(size_t dim) { return sizeof(float); }
+size_t CommMergeAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
 
 // pull value 各维度相加总size
-size_t CommMergeAccessor::select_size() { return select_dim() * sizeof(float); }
+size_t CommMergeAccessor::SelectSize() { return SelectDim() * sizeof(float); }
 
 // push value 维度
-size_t CommMergeAccessor::update_dim() { return _config.embedx_dim(); }
+size_t CommMergeAccessor::UpdateDim() { return _config.embedx_dim(); }
 
 // push value 各个维度的size
-size_t CommMergeAccessor::update_dim_size(size_t dim) { return sizeof(float); }
+size_t CommMergeAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
 
 // push value 各维度相加总size
-size_t CommMergeAccessor::update_size() { return update_dim() * sizeof(float); }
+size_t CommMergeAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
 
 // 判断该value 是否进行shrink
 bool CommMergeAccessor::Shrink(float * /*value*/) { return false; }

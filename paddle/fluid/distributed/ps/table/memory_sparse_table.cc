@@ -370,7 +370,7 @@ int64_t MemorySparseTable::local_mf_size() {
               auto& local_shard = _local_shards[shard_id];
               for (auto it = local_shard.begin(); it != local_shard.end();
                    ++it) {
-                if (_value_accesor->has_mf(it.value().size())) {
+                if (_value_accesor->HasMF(it.value().size())) {
                   size_arr[shard_id] += 1;
                 }
               }
@@ -587,7 +587,7 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
               memcpy(data_buffer_ptr, value_data, value_size * sizeof(float));
               _value_accesor->Update(&data_buffer_ptr, &update_data, 1);
 
-              if (_value_accesor->need_extend_mf(data_buffer)) {
+              if (_value_accesor->NeedExtendMF(data_buffer)) {
                 feature_value.resize(value_col);
                 value_data = feature_value.data();
                 _value_accesor->Create(&value_data, 1);
@@ -661,7 +661,7 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
               // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
               memcpy(data_buffer_ptr, value_data, value_size * sizeof(float));
               _value_accesor->Update(&data_buffer_ptr, &update_data, 1);
-              if (_value_accesor->need_extend_mf(data_buffer)) {
+              if (_value_accesor->NeedExtendMF(data_buffer)) {
                 feature_value.resize(value_col);
                 value_data = feature_value.data();
                 _value_accesor->Create(&value_data, 1);

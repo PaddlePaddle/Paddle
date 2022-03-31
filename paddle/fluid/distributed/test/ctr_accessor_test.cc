@@ -73,10 +73,10 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
   VLOG(3) << "size of struct: " << acc->common_feature_value.embed_sgd_dim
           << " " << acc->common_feature_value.embedx_dim << " "
           << acc->common_feature_value.embedx_sgd_dim << " "
-          << acc->common_feature_value.dim() << "\n";
+          << acc->common_feature_value.Dim() << "\n";
 
-  float* value = new float[acc->dim()];
-  for (auto i = 0u; i < acc->dim(); ++i) {
+  float* value = new float[acc->Dim()];
+  for (auto i = 0u; i < acc->Dim(); ++i) {
     value[i] = i * 1.0;
   }
   ASSERT_TRUE(!acc->Shrink(value));
@@ -94,8 +94,8 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   ASSERT_EQ(acc->Configure(parameter), 0);
   ASSERT_EQ(acc->Initialize(), 0);
 
-  float* value = new float[acc->dim()];
-  for (auto i = 0u; i < acc->dim(); ++i) {
+  float* value = new float[acc->Dim()];
+  for (auto i = 0u; i < acc->Dim(); ++i) {
     value[i] = i * 1.0;
   }
 
@@ -109,7 +109,7 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   ASSERT_TRUE(acc->Save(value, 2));
 
   VLOG(3) << "test_save:";
-  for (auto i = 0u; i < acc->dim(); ++i) {
+  for (auto i = 0u; i < acc->Dim(); ++i) {
     VLOG(3) << value[i];
   }
 }
@@ -144,8 +144,8 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   ASSERT_EQ(acc->Configure(parameter), 0);
   ASSERT_EQ(acc->Initialize(), 0);
 
-  VLOG(3) << "dim: " << acc->common_feature_value.dim() << "\n";
-  VLOG(3) << "update_dim: " << acc->update_dim() << "\n";
+  VLOG(3) << "dim: " << acc->common_feature_value.Dim() << "\n";
+  VLOG(3) << "update_dim: " << acc->GetTableInfo(UPDATE_DIM) << "\n";
 
   const int field_size = 7 + 8;
   const int item_size = 10;
@@ -162,8 +162,8 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   typedef const float* const_float_ptr;
   const_float_ptr* grad = new const_float_ptr[item_size];
   for (auto i = 0u; i < item_size; ++i) {
-    float* p = new float[acc->update_dim()];
-    for (auto j = 0u; j < acc->update_dim(); ++j) {
+    float* p = new float[acc->GetTableInfo(UPDATE_DIM)];
+    for (auto j = 0u; j < acc->GetTableInfo(UPDATE_DIM); ++j) {
       p[j] = i;
     }
     grad[i] = p;
@@ -251,14 +251,14 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     acc->_embedx_sgd_rule->update_value(&v.embedx_w[0], &v.embedx_g2sum[0],
                                         &push_v.embedx_g[0]);
 
-    float* ptr = new float[acc->dim()];
+    float* ptr = new float[acc->Dim()];
     v.to_array(ptr, parameter.embedx_dim());
     exp_value.push_back(ptr);
   }
   acc->Update(value, grad, item_size);
 
   for (auto i = 0u; i < item_size; ++i) {
-    for (auto j = 0u; j < acc->dim(); ++j) {
+    for (auto j = 0u; j < acc->Dim(); ++j) {
       VLOG(3) << value[i][j] << ":" << exp_value[i][j] << " ";
       ASSERT_FLOAT_EQ(value[i][j], exp_value[i][j]);
     }

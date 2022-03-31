@@ -42,32 +42,32 @@ class DownpourCtrAccessor : public ValueAccessor {
     std::vector<float> embedx_w;
     */
 
-    static int dim(int embedx_dim) { return 8 + embedx_dim; }
-    static int dim_size(size_t dim, int embedx_dim) { return sizeof(float); }
-    static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
+    static int Dim(int embedx_dim) { return 8 + embedx_dim; }
+    static int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
+    static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
     static int unseen_days_index() { return 0; }
     static int delta_score_index() {
       return DownpourCtrFeatureValue::unseen_days_index() + 1;
     }
-    static int show_index() {
+    static int ShowIndex() {
       return DownpourCtrFeatureValue::delta_score_index() + 1;
     }
-    static int click_index() {
-      return DownpourCtrFeatureValue::show_index() + 1;
+    static int ClickIndex() {
+      return DownpourCtrFeatureValue::ShowIndex() + 1;
     }
-    static int embed_w_index() {
-      return DownpourCtrFeatureValue::click_index() + 1;
+    static int Embed_W_Index() {
+      return DownpourCtrFeatureValue::ClickIndex() + 1;
     }
     static int embed_g2sum_index() {
-      return DownpourCtrFeatureValue::embed_w_index() + 1;
+      return DownpourCtrFeatureValue::Embed_W_Index() + 1;
     }
-    static int slot_index() {
+    static int SlotIndex() {
       return DownpourCtrFeatureValue::embed_g2sum_index() + 1;
     }
     static int embedx_g2sum_index() {
-      return DownpourCtrFeatureValue::slot_index() + 1;
+      return DownpourCtrFeatureValue::SlotIndex() + 1;
     }
-    static int embedx_w_index() {
+    static int Embedx_W_Index() {
       return DownpourCtrFeatureValue::embedx_g2sum_index() + 1;
     }
     static float& unseen_days(float* val) {
@@ -76,17 +76,17 @@ class DownpourCtrAccessor : public ValueAccessor {
     static float& delta_score(float* val) {
       return val[DownpourCtrFeatureValue::delta_score_index()];
     }
-    static float& show(float* val) {
-      return val[DownpourCtrFeatureValue::show_index()];
+    static float& Show(float* val) {
+      return val[DownpourCtrFeatureValue::ShowIndex()];
     }
-    static float& click(float* val) {
-      return val[DownpourCtrFeatureValue::click_index()];
+    static float& Click(float* val) {
+      return val[DownpourCtrFeatureValue::ClickIndex()];
     }
-    static float& slot(float* val) {
-      return val[DownpourCtrFeatureValue::slot_index()];
+    static float& Slot(float* val) {
+      return val[DownpourCtrFeatureValue::SlotIndex()];
     }
-    static float& embed_w(float* val) {
-      return val[DownpourCtrFeatureValue::embed_w_index()];
+    static float& EmbedW(float* val) {
+      return val[DownpourCtrFeatureValue::Embed_W_Index()];
     }
     static float& embed_g2sum(float* val) {
       return val[DownpourCtrFeatureValue::embed_g2sum_index()];
@@ -94,8 +94,8 @@ class DownpourCtrAccessor : public ValueAccessor {
     static float& embedx_g2sum(float* val) {
       return val[DownpourCtrFeatureValue::embedx_g2sum_index()];
     }
-    static float* embedx_w(float* val) {
-      return (val + DownpourCtrFeatureValue::embedx_w_index());
+    static float* EmbedxW(float* val) {
+      return (val + DownpourCtrFeatureValue::Embedx_W_Index());
     }
   };
 
@@ -108,24 +108,24 @@ class DownpourCtrAccessor : public ValueAccessor {
     std::vector<float> embedx_g;
     */
 
-    static int dim(int embedx_dim) { return 4 + embedx_dim; }
+    static int Dim(int embedx_dim) { return 4 + embedx_dim; }
 
-    static int dim_size(int dim, int embedx_dim) { return sizeof(float); }
-    static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
-    static int slot_index() { return 0; }
-    static int show_index() { return DownpourCtrPushValue::slot_index() + 1; }
-    static int click_index() { return DownpourCtrPushValue::show_index() + 1; }
-    static int embed_g_index() {
-      return DownpourCtrPushValue::click_index() + 1;
+    static int DimSize(int dim, int embedx_dim) { return sizeof(float); }
+    static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
+    static int SlotIndex() { return 0; }
+    static int ShowIndex() { return DownpourCtrPushValue::SlotIndex() + 1; }
+    static int ClickIndex() { return DownpourCtrPushValue::ShowIndex() + 1; }
+    static int Embed_G_Index() {
+      return DownpourCtrPushValue::ClickIndex() + 1;
     }
-    static int embedx_g_index() {
-      return DownpourCtrPushValue::embed_g_index() + 1;
+    static int Embedx_G_Index() {
+      return DownpourCtrPushValue::Embed_G_Index() + 1;
     }
-    static float& slot(float* val) { return val[0]; }
-    static float& show(float* val) { return val[1]; }
-    static float& click(float* val) { return val[2]; }
-    static float& embed_g(float* val) { return val[3]; }
-    static float* embedx_g(float* val) { return val + 4; }
+    static float& Slot(float* val) { return val[0]; }
+    static float& Show(float* val) { return val[1]; }
+    static float& Click(float* val) { return val[2]; }
+    static float& EmbedG(float* val) { return val[3]; }
+    static float* EmbedxG(float* val) { return val + 4; }
   };
 
   struct DownpourCtrPullValue {
@@ -136,24 +136,24 @@ class DownpourCtrAccessor : public ValueAccessor {
     std::vector<float> embedx_w;
     */
 
-    static int dim(int embedx_dim) { return 3 + embedx_dim; }
-    static int dim_size(size_t dim) { return sizeof(float); }
-    static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
-    static int show_index() { return 0; }
-    static int click_index() { return 1; }
-    static int embed_w_index() { return 2; }
-    static int embedx_w_index() { return 3; }
-    static float& show(float* val) {
-      return val[DownpourCtrPullValue::show_index()];
+    static int Dim(int embedx_dim) { return 3 + embedx_dim; }
+    static int DimSize(size_t dim) { return sizeof(float); }
+    static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
+    static int ShowIndex() { return 0; }
+    static int ClickIndex() { return 1; }
+    static int Embed_W_Index() { return 2; }
+    static int Embedx_W_Index() { return 3; }
+    static float& Show(float* val) {
+      return val[DownpourCtrPullValue::ShowIndex()];
     }
-    static float& click(float* val) {
-      return val[DownpourCtrPullValue::click_index()];
+    static float& Click(float* val) {
+      return val[DownpourCtrPullValue::ClickIndex()];
     }
-    static float& embed_w(float* val) {
-      return val[DownpourCtrPullValue::embed_w_index()];
+    static float& EmbedW(float* val) {
+      return val[DownpourCtrPullValue::Embed_W_Index()];
     }
-    static float* embedx_w(float* val) {
-      return val + DownpourCtrPullValue::embedx_w_index();
+    static float* EmbedxW(float* val) {
+      return val + DownpourCtrPullValue::Embedx_W_Index();
     }
   };
   DownpourCtrAccessor() {}
@@ -163,31 +163,31 @@ class DownpourCtrAccessor : public ValueAccessor {
   virtual void SetTableInfo(AccessorInfo& info);
   virtual size_t GetTableInfo(InfoKey key);
   // value维度
-  size_t dim();
+  size_t Dim();
   // value各个维度的size
-  size_t dim_size(size_t dim);
+  size_t DimSize(size_t dim);
   // value各维度相加总size
-  size_t size();
+  size_t Size();
   // value中mf动态长度部分总size大小, sparse下生效
-  size_t mf_size();
+  size_t MFSize();
   // pull value维度
-  size_t select_dim();
+  size_t SelectDim();
   // pull value各个维度的size
-  size_t select_dim_size(size_t dim);
+  size_t SelectDimSize(size_t dim);
   // pull value各维度相加总size
-  size_t select_size();
+  size_t SelectSize();
   // push value维度
-  size_t update_dim();
+  size_t UpdateDim();
   // push value各个维度的size
-  size_t update_dim_size(size_t dim);
+  size_t UpdateDimSize(size_t dim);
   // push value各维度相加总size
-  size_t update_size();
+  size_t UpdateSize();
   // 判断该value是否进行shrink
   virtual bool Shrink(float* value);
   // 判断该value是否保存到ssd
   virtual bool save_ssd(float* value);
-  virtual bool need_extend_mf(float* value);
-  virtual bool has_mf(size_t size);
+  virtual bool NeedExtendMF(float* value);
+  virtual bool HasMF(size_t size);
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   // param = 0, save all feature
@@ -218,13 +218,13 @@ class DownpourCtrAccessor : public ValueAccessor {
   virtual bool CreateValue(int type, const float* value);
 
   //这个接口目前只用来取show
-  virtual float get_field(float* value, const std::string& name) override {
+  virtual float GetField(float* value, const std::string& name) override {
     CHECK(name == "show");
     if (name == "show") {
       auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
       int16_t day_diff = _day_id - unseen_days;
       auto show_right =
-          DownpourCtrFeatureValue::show(value) * _time_decay_rates[day_diff];
+          DownpourCtrFeatureValue::Show(value) * _time_decay_rates[day_diff];
       return (float)show_right;
     }
     return 0.0;

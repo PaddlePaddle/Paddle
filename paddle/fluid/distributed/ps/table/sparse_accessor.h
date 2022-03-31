@@ -40,27 +40,27 @@ class SparseAccessor : public ValueAccessor {
        std::<vector>float embedx_g2sum;
        */
 
-    int dim() { return 6 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; }
-    int dim_size(size_t dim, int embedx_dim) { return sizeof(float); }
-    int size() { return dim() * sizeof(float); }
-    int slot_index() { return 0; }
-    int unseen_days_index() { return slot_index() + 1; }
+    int Dim() { return 6 + embed_sgd_dim + embedx_sgd_dim + embedx_dim; }
+    int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
+    int Size() { return Dim() * sizeof(float); }
+    int SlotIndex() { return 0; }
+    int unseen_days_index() { return SlotIndex() + 1; }
     int delta_score_index() { return unseen_days_index() + 1; }
-    int show_index() { return delta_score_index() + 1; }
-    int click_index() { return show_index() + 1; }
-    int embed_w_index() { return click_index() + 1; }
-    int embed_g2sum_index() { return embed_w_index() + 1; }
-    int embedx_w_index() { return embed_g2sum_index() + embed_sgd_dim; }
-    int embedx_g2sum_index() { return embedx_w_index() + embedx_dim; }
+    int ShowIndex() { return delta_score_index() + 1; }
+    int ClickIndex() { return ShowIndex() + 1; }
+    int Embed_W_Index() { return ClickIndex() + 1; }
+    int embed_g2sum_index() { return Embed_W_Index() + 1; }
+    int Embedx_W_Index() { return embed_g2sum_index() + embed_sgd_dim; }
+    int embedx_g2sum_index() { return Embedx_W_Index() + embedx_dim; }
 
     float& unseen_days(float* val) { return val[unseen_days_index()]; }
     float& delta_score(float* val) { return val[delta_score_index()]; }
-    float& show(float* val) { return val[show_index()]; }
-    float& click(float* val) { return val[click_index()]; }
-    float& slot(float* val) { return val[slot_index()]; }
-    float& embed_w(float* val) { return val[embed_w_index()]; }
+    float& Show(float* val) { return val[ShowIndex()]; }
+    float& Click(float* val) { return val[ClickIndex()]; }
+    float& Slot(float* val) { return val[SlotIndex()]; }
+    float& EmbedW(float* val) { return val[Embed_W_Index()]; }
     float& embed_g2sum(float* val) { return val[embed_g2sum_index()]; }
-    float& embedx_w(float* val) { return val[embedx_w_index()]; }
+    float& EmbedxW(float* val) { return val[Embedx_W_Index()]; }
     float& embedx_g2sum(float* val) { return val[embedx_g2sum_index()]; }
 
     int embed_sgd_dim;
@@ -77,29 +77,29 @@ class SparseAccessor : public ValueAccessor {
        std::vector<float> embedx_g;
        */
 
-    static int dim(int embedx_dim) { return 4 + embedx_dim; }
+    static int Dim(int embedx_dim) { return 4 + embedx_dim; }
 
-    static int dim_size(int dim, int embedx_dim) { return sizeof(float); }
-    static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
-    static int slot_index() { return 0; }
-    static int show_index() { return SparsePushValue::slot_index() + 1; }
-    static int click_index() { return SparsePushValue::show_index() + 1; }
-    static int embed_g_index() { return SparsePushValue::click_index() + 1; }
-    static int embedx_g_index() { return SparsePushValue::embed_g_index() + 1; }
-    static float& slot(float* val) {
-      return val[SparsePushValue::slot_index()];
+    static int DimSize(int dim, int embedx_dim) { return sizeof(float); }
+    static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
+    static int SlotIndex() { return 0; }
+    static int ShowIndex() { return SparsePushValue::SlotIndex() + 1; }
+    static int ClickIndex() { return SparsePushValue::ShowIndex() + 1; }
+    static int Embed_G_Index() { return SparsePushValue::ClickIndex() + 1; }
+    static int Embedx_G_Index() { return SparsePushValue::Embed_G_Index() + 1; }
+    static float& Slot(float* val) {
+      return val[SparsePushValue::SlotIndex()];
     }
-    static float& show(float* val) {
-      return val[SparsePushValue::show_index()];
+    static float& Show(float* val) {
+      return val[SparsePushValue::ShowIndex()];
     }
-    static float& click(float* val) {
-      return val[SparsePushValue::click_index()];
+    static float& Click(float* val) {
+      return val[SparsePushValue::ClickIndex()];
     }
-    static float& embed_g(float* val) {
-      return val[SparsePushValue::embed_g_index()];
+    static float& EmbedG(float* val) {
+      return val[SparsePushValue::Embed_G_Index()];
     }
-    static float* embedx_g(float* val) {
-      return val + SparsePushValue::embedx_g_index();
+    static float* EmbedxG(float* val) {
+      return val + SparsePushValue::Embedx_G_Index();
     }
   };
 
@@ -109,16 +109,16 @@ class SparseAccessor : public ValueAccessor {
        std::vector<float> embedx_w;
        */
 
-    static int dim(int embedx_dim) { return 1 + embedx_dim; }
-    static int dim_size(size_t dim) { return sizeof(float); }
-    static int size(int embedx_dim) { return dim(embedx_dim) * sizeof(float); }
-    static int embed_w_index() { return 0; }
-    static int embedx_w_index() { return 1; }
-    static float& embed_w(float* val) {
-      return val[SparsePullValue::embed_w_index()];
+    static int Dim(int embedx_dim) { return 1 + embedx_dim; }
+    static int DimSize(size_t dim) { return sizeof(float); }
+    static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
+    static int Embed_W_Index() { return 0; }
+    static int Embedx_W_Index() { return 1; }
+    static float& EmbedW(float* val) {
+      return val[SparsePullValue::Embed_W_Index()];
     }
-    static float* embedx_w(float* val) {
-      return val + SparsePullValue::embedx_w_index();
+    static float* EmbedxW(float* val) {
+      return val + SparsePullValue::Embedx_W_Index();
     }
   };
   SparseAccessor() {}
@@ -128,31 +128,31 @@ class SparseAccessor : public ValueAccessor {
   virtual ~SparseAccessor() {}
 
   // value维度
-  size_t dim();
+  size_t Dim();
   // value各个维度的size
-  size_t dim_size(size_t dim);
+  size_t DimSize(size_t dim);
   // value各维度相加总size
-  size_t size();
+  size_t Size();
   // value中mf动态长度部分总size大小, sparse下生效
-  size_t mf_size();
+  size_t MFSize();
   // pull value维度
-  size_t select_dim();
+  size_t SelectDim();
   // pull value各个维度的size
-  size_t select_dim_size(size_t dim);
+  size_t SelectDimSize(size_t dim);
   // pull value各维度相加总size
-  size_t select_size();
+  size_t SelectSize();
   // push value维度
-  size_t update_dim();
+  size_t UpdateDim();
   // push value各个维度的size
-  size_t update_dim_size(size_t dim);
+  size_t UpdateDimSize(size_t dim);
   // push value各维度相加总size
-  size_t update_size();
+  size_t UpdateSize();
   // 判断该value是否进行shrink
   virtual bool Shrink(float* value);
   // 判断该value是否保存到ssd
   // virtual bool save_ssd(float* value);
-  virtual bool need_extend_mf(float* value);
-  virtual bool has_mf(size_t size);
+  virtual bool NeedExtendMF(float* value);
+  virtual bool HasMF(size_t size);
   // 判断该value是否在save阶段dump,
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   // param = 0, save all feature
@@ -181,10 +181,10 @@ class SparseAccessor : public ValueAccessor {
   virtual bool CreateValue(int type, const float* value);
 
   // 这个接口目前只用来取show
-  float get_field(float* value, const std::string& name) override {
+  float GetField(float* value, const std::string& name) override {
     // CHECK(name == "show");
     if (name == "show") {
-      return sparse_feature_value.show(value);
+      return sparse_feature_value.Show(value);
     }
     return 0.0;
   }
