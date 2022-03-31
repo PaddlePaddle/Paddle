@@ -179,7 +179,7 @@
 #     func : where_index_grad
 
 # - backward_api : split_grad
-#   forward : split (Tensor x, ScalarArray num_or_sections, Scalar axis) -> Tensor[](out)
+#   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
 #   args : (Tensor[] out_grad, Scalar axis)
 #   output : Tensor(x_grad)
 #   invoke : concat( out_grad, axis)
@@ -866,8 +866,8 @@
     func : p_norm_grad
 
 - backward_api : pad3d_grad
-  forward : pad3d(Tensor x, ScalarArray paddings, str mode,  float pad_value, str data_format) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, ScalarArray paddings, str mode,  float pad_value, str data_format)
+  forward : pad3d(Tensor x, IntArray paddings, str mode,  float pad_value, str data_format) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode,  float pad_value, str data_format)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1085,16 +1085,6 @@
   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
-- backward_api : squeeze_grad
-  forward : squeeze(Tensor x, int[] axes) -> Tensor(xshape), Tensor(out)
-  args : (Tensor xshape, Tensor out_grad, int[] axes)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : KernelWithXShapeInferMeta
-    param: [xshape]
-  kernel :
-    func : squeeze_grad
-
 - backward_api : sqrt_grad
   forward : sqrt (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -1114,6 +1104,16 @@
     param : [x]
   kernel :
     func : square_grad
+
+- backward_api : squeeze_grad
+  forward : squeeze(Tensor x, int[] axes) -> Tensor(xshape), Tensor(out)
+  args : (Tensor xshape, Tensor out_grad, int[] axes)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param: [xshape]
+  kernel :
+    func : squeeze_grad
 
 - backward_api : subtract_grad
   forward : subtract (Tensor x, Tensor y) -> Tensor(out)
@@ -1236,7 +1236,7 @@
     func : unfold_grad
 
 - backward_api : unsqueeze_grad
-  forward : unsqueeze(Tensor x, ScalarArray axes) -> Tensor(xshape), Tensor(out)
+  forward : unsqueeze(Tensor x, IntArray axes) -> Tensor(xshape), Tensor(out)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
