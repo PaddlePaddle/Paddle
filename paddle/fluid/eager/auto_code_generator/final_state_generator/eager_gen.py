@@ -688,8 +688,12 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         # Helper
         indent = GetIndent(2)
-
-        node_construction_str = f"{indent}auto grad_node = std::make_shared<{grad_node_name}>({num_backward_inputs}, {num_backward_outputs});"
+        # NOTE(Aurelius74): DO NOT use make_shared here. Because some Node contains experimental::Scalar
+        # which contains "complex128" as data. "complex128" is memory-aligned manually. But make_shared
+        # request MEMALIGN for allocation (Maybe).
+        # See https://stackoverflow.com/questions/31228656/how-can-shared-ptr-disrupt-alignment
+        # and https://github.com/MRtrix3/mrtrix3/issues/957
+        node_construction_str = f"{indent}auto grad_node = std::shared_ptr<{grad_node_name}>(new {grad_node_name}({num_backward_inputs}, {num_backward_outputs}));"
 
         # SetAttributes
         set_attributes_list = []
@@ -1303,10 +1307,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result;"
             else:
                 if IsPlainTensorType(ttype):
-                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{fwd_position}][0];"
+                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}][0];"
                 else:
                     assert IsVectorTensorType(ttype)
-                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{fwd_position}];"
+                    get_tensor_str = f"{indent}auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}];"
             get_outputs_str += get_tensor_str + "\n"
 
         # Prepare for Node Creation if Necessary

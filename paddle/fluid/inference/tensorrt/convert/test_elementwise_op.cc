@@ -104,4 +104,4 @@ TEST(elementwise_op, plugin) {
 }  // namespace paddle
 
 USE_OP_ITSELF(elementwise_add);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_mul);

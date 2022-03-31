@@ -1082,6 +1082,91 @@ void PsroiPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void RnnInferMeta(const MetaTensor& x,
+                  const std::vector<MetaTensor*>& pre_state,
+                  const std::vector<MetaTensor*>& weight_list,
+                  paddle::optional<const MetaTensor&> sequence_length,
+                  float dropout_prob,
+                  bool is_bidirec,
+                  int input_size,
+                  int hidden_size,
+                  int num_layers,
+                  const std::string& mode,
+                  int seed,
+                  bool is_test,
+                  MetaTensor* out,
+                  MetaTensor* dropout_state,
+                  std::vector<MetaTensor*> state,
+                  MetaTensor* reserve) {
+  auto in_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      3,
+      phi::errors::InvalidArgument("The rank of Input in RNN  must be 3. But "
+                                   "received Input's rank is %d.",
+                                   in_dims.size()));
+
+  if (sequence_length) {
+    auto seq_dims = sequence_length->dims();
+    PADDLE_ENFORCE_EQ(
+        in_dims[1],
+        seq_dims[0],
+        phi::errors::InvalidArgument(
+            "The size of SequenceLength has to equal the batch_size. But "
+            "received batch_size is %d and the size of SequenceLength is %d.",
+            in_dims[1],
+            seq_dims[0]));
+  }
+
+  PADDLE_ENFORCE_EQ(pre_state[0]->dims().size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The rank of PreState in RNN  must be 3. But "
+                        "the received rank is %d.",
+                        pre_state[0]->dims().size()));
+  size_t i = 0;
+  for (; i < pre_state.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        in_dims[1],
+        pre_state[i]->dims()[1],
+        phi::errors::InvalidArgument(
+            "The second dimension size (representing for batch size) of "
+            "Input and PreState should be equal. But received %d and %d.",
+            in_dims[1],
+            pre_state[i]->dims()[1]));
+    PADDLE_ENFORCE_EQ(
+        pre_state[0]->dims(),
+        pre_state[i]->dims(),
+        phi::errors::InvalidArgument(
+            "The dims of all tensors in PreState should be same. But "
+            "received PreState[0] is %s and PreState[%d] is %s.",
+            pre_state[0]->dims(),
+            i,
+            pre_state[i]->dims()));
+  }
+  size_t num_state = mode == "LSTM" ? 2 : 1;
+  PADDLE_ENFORCE_EQ(i,
+                    num_state,
+                    phi::errors::InvalidArgument(
+                        "The number of tensors in PreState of %s should be %d, "
+                        "but received %d.",
+                        mode,
+                        2,
+                        i));
+
+  auto out_dims = in_dims;
+  out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+
+  int state_num = pre_state.size();
+  for (int i = 0; i < state_num; ++i) {
+    state[i]->set_dims(pre_state[i]->dims());
+    state[i]->set_dtype(x.dtype());
+  }
+}
+
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const paddle::optional<const MetaTensor&> logits_length,
