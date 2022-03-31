@@ -36,6 +36,16 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   kernel_key_set.backend_set =
       kernel_key_set.backend_set | BackendSet(phi::TransToPhiBackend(place));
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+  // TODO(Chen Weihang) delete if after merge copy kernels
+  if (place.GetType() == phi::AllocationType::GPU ||
+      place.GetType() == phi::AllocationType::GPUPINNED ||
+      x.inner_place().GetType() == phi::AllocationType::GPU ||
+      x.inner_place().GetType() == phi::AllocationType::GPUPINNED) {
+    kernel_key = phi::KernelKey(paddle::experimental::Backend::GPU,
+                                kernel_key.layout(),
+                                kernel_key.dtype());
+  }
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
 

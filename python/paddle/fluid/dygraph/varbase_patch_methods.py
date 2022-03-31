@@ -823,7 +823,11 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id, blocking):
+    def cuda(self, device_id=0, blocking=True):
+        if device_id is None:
+            device_id = 0
+        if not isinstance(device_id, int):
+            raise ValueError("\'device_id\' must be a positive integer")
         if self.place.is_gpu_place():
             return self
         else:
