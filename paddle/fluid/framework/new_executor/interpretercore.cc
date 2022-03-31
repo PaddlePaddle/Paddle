@@ -22,6 +22,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -55,6 +58,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       block_(block),
       global_scope_(global_scope),
       stream_analyzer_(place) {
+  VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
   is_build_ = false;
   async_work_queue_.reset(new interpreter::AsyncWorkQueue(
       kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
@@ -92,6 +96,14 @@ InterpreterCore::~InterpreterCore() {
   gc_.reset(nullptr);
 
   async_work_queue_.reset(nullptr);
+  VLOG(4) << "~InterpreterCore(): " << this;
+  VLOG(4) << " on" << place_;
+
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  platform::ClearMKLDNNCache(place_, this);
+#endif
 }
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -101,6 +113,9 @@ void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool is_build = is_build_;
   global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
@@ -120,6 +135,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   if (!is_build_) {
     if (create_local_scope_ &&
         global_scope_->GetMutableLocalScope() !=
