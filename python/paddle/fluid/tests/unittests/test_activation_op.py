@@ -47,6 +47,7 @@ class TestSqrtOpError(unittest.TestCase):
 
 class TestActivation(OpTest):
     def setUp(self):
+        self.python_api = paddle.exp
         self.op_type = "exp"
         self.init_dtype()
         self.init_kernel_type()
