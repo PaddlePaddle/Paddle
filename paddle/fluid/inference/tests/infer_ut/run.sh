@@ -22,6 +22,7 @@ DATA_DIR=$4 # dataset
 TENSORRT_ROOT_DIR=$5 # TensorRT ROOT dir, default to /usr/local/TensorRT
 WITH_ONNXRUNTIME=$6
 MSVC_STATIC_CRT=$7
+CUDA_LIB=$8/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 EXIT_CODE=0 # init default exit code
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
@@ -147,6 +148,7 @@ function compile_test() {
              -DCMAKE_CXX_FLAGS='/std:c++17' \
              -DCMAKE_BUILD_TYPE=Release \
              -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
+             -DCUDA_LIB="$CUDA_LIB"
         ninja
     else
         cmake .. -DPADDLE_LIB=${inference_install_dir} \

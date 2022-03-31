@@ -23,6 +23,7 @@ USE_TENSORRT=$5
 TENSORRT_ROOT_DIR=$6 # TensorRT root dir, default to /usr
 WITH_ONNXRUNTIME=$7
 MSVC_STATIC_CRT=$8
+CUDA_LIB=$9/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
@@ -119,7 +120,8 @@ for WITH_STATIC_LIB in ON OFF; do
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
       -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
-      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCUDA_LIB="$CUDA_LIB"
     ninja
     for use_gpu in $use_gpu_list; do
       simple_on_word2vec.exe \
@@ -140,7 +142,8 @@ for WITH_STATIC_LIB in ON OFF; do
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
       -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
       -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
-      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCUDA_LIB="$CUDA_LIB"
     ninja
     for use_gpu in $use_gpu_list; do
       for vis_demo_name in $vis_demo_list; do
@@ -168,7 +171,8 @@ for WITH_STATIC_LIB in ON OFF; do
         -DUSE_TENSORRT=$USE_TENSORRT \
         -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
         -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCUDA_LIB="$CUDA_LIB"
       ninja
       trt_mobilenet_demo.exe \
         --modeldir=$DATA_DIR/mobilenet/model \
