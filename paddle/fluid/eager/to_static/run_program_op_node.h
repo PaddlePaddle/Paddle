@@ -382,7 +382,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       x_grad_ptr.emplace_back(&i);
     }
     for (auto &i : params_grad) {
-      params_grad_ptr.emplace_back(&i);
+      if (i.defined()) {
+        params_grad_ptr.emplace_back(&i);
+      }
     }
 
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(), fwd_out_names_.size(),
