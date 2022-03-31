@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
@@ -118,6 +119,62 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
+void PSGPUWorker::PrepareCudaGraph() {
+  op_or_cudagraphs_.reserve(ops_.size());
+  std::unordered_set<std::string> op_capture_white_list = {
+    "data_norm_grad", "fused_seqpool_cvm_grad", "mul_grad", "elementwise_add_grad",
+    "auc", "adam", "fused_seqpool_cvm", "concat_grad",
+    "elementwise_add", "reduce_sum", "relu_grad", "mul", "concat", "relu",
+    "cast", "elementwise_mul_grad", "reduce_sum_grad", "elementwise_mul",
+    "sigmoid", "sum", "fill_constant", "fill_constant_batch_size_like",
+    "log_loss", "squared_l2_norm", "log_loss_grad", "coalesce_tensor",
+    "clip_grad", "elementwise_div_grad", "clip", "sigmoid_grad", "elementwise_sub",
+    "elementwise_max", "elementwise_div", "assign", "elementwise_max_grad",
+    "l1_norm", "equal", "scale", "data_norm", "mean", "mean_grad"};
+  
+  for (auto& op : ops_) {
+    bool need_skip = false;
+    for (auto t = 0u; t < skip_ops_.size(); ++t) {
+      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (!need_skip) {
+      bool need_capture = false;
+      if (op_capture_white_list.find(op->Type()) == op_capture_white_list.end()) {
+        need_capture = true;
+        auto inputs = op->InputVars();
+        auto outputs = op->OutputVars(true);
+        inputs.insert(inputs.end(), outputs.begin(), outputs.end());
+        for (auto tensor_name : inputs) {
+          auto var = thread_scope_->FindVar(tensor_name);
+          if (var == nullptr) {
+            need_capture = false;
+            break;
+          }
+          if (!var->IsType<phi::DenseTensor>()) {
+            need_capture = false;
+            break;
+          }
+          auto& tensor = var->Get<phi::DenseTensor>();
+          auto& lod = dense_tensor.lod();
+          if (!lod.empty()) {
+            need_capture = false;
+            break;
+          }
+        }
+        if (op_or_cudagraphs_.empty() || op_or_cudagraphs_.back().need_capture != need_capture) {
+          op_or_cudagraphs_.emplace_back();
+          op_or_cudagraphs_.back().need_capture = need_capture;
+        }
+        auto& op_or_cudagraph = op_or_cudagraphs_.back();
+        op_or_cudagraph.ops.emplace_back(op);
+      }
+    }
+  }
+}
+
 void PSGPUWorker::TrainFiles() {
   VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
@@ -131,19 +188,60 @@ void PSGPUWorker::TrainFiles() {
   int cur_batch;
   int batch_cnt = 0;
 
+  int last_batch_size = 0;
+
   platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
-    for (auto& op : ops_) {
-      bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
-          need_skip = true;
-          break;
+    
+    if (op_or_cudagraphs_.empty()) {
+      // first batch we run original ops to check whethere the tensors has lod
+      for (auto& op : ops_) {
+        bool need_skip = false;
+        for (auto t = 0u; t < skip_ops_.size(); ++t) {
+          if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+            need_skip = true;
+            break;
+          }
+        }
+        if (!need_skip) {
+          op->Run(*thread_scope_, place_);
         }
       }
-      if (!need_skip) {
-        op->Run(*thread_scope_, place_);
+      last_batch_size = cur_batch;
+      PrepareCudaGraph();
+    } else if (last_batch_size != cur_batch) {
+      // when batch_size changed, run original ops
+      last_batch_size = -1;
+      for (auto& op : ops_) {
+        bool need_skip = false;
+        for (auto t = 0u; t < skip_ops_.size(); ++t) {
+          if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+            need_skip = true;
+            break;
+          }
+        }
+        if (!need_skip) {
+          op->Run(*thread_scope_, place_);
+        }
+      }
+    } else {
+      // secend batch we capture the cudagraph
+      for (auto& op_or_cuda_graph : op_or_cudagraphs_) {
+        if (op_or_cuda_graph.need_capture) {
+          if (op_or_cuda_graph.cudagraph == nullptr) {
+            platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeThreadLocal);
+            for (auto& op : op_or_cuda_graph.ops) {
+              op->Run(*thread_scope_, place_);
+            }
+            op_or_cuda_graph.cudagraph = platform::EndCUDAGraphCapture();
+          }
+          op_or_cuda_graph.cudagraph->Replay();
+        } else {
+          for (auto& op : op_or_cuda_graph.ops) {
+            op->Run(*thread_scope_, place_);
+          }
+        }
       }
     }
     if (need_dump_field_) {
