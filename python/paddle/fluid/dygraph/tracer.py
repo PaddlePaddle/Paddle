@@ -120,7 +120,7 @@ class Tracer(core.Tracer):
             elif arg_name in outputs.keys():
                 arg_to_append = outputs[arg_name]
             else:
-                if "Num" in arg_name:
+                if "Num" in arg_name[-3:]:
                     # Remove "Num" suffix to get out_name
                     out_name = arg_name[:-3]
                     assert out_name in outputs.keys()
