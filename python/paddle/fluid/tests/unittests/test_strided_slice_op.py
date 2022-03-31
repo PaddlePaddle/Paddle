@@ -376,7 +376,8 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(self.starts, dtype="int32")
+            "StartsTensor": np.array(
+                self.starts, dtype="int32")
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
@@ -410,7 +411,8 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "EndsTensor": np.array(self.ends, dtype="int32")
+            "EndsTensor": np.array(
+                self.ends, dtype="int32")
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
@@ -449,7 +451,8 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
 
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(self.starts, dtype="int32"),
+            "StartsTensor": np.array(
+                self.starts, dtype="int32"),
             "EndsTensorList": ends_tensor
         }
         self.outputs = {'Out': self.output}
@@ -484,7 +487,8 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "StridesTensor": np.array(self.strides, dtype="int32")
+            "StridesTensor": np.array(
+                self.strides, dtype="int32")
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
