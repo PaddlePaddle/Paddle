@@ -109,8 +109,8 @@
 #     func : expand_as_grad
 
 # - backward_api : expand_grad
-#   forward : expand (Tensor x, ScalarArray shape) -> Tensor(out)
-#   args : (Tensor x, Tensor out_grad, ScalarArray shape)
+#   forward : expand (Tensor x, IntArray shape) -> Tensor(out)
+#   args : (Tensor x, Tensor out_grad, IntArray shape)
 #   output : Tensor(x_grad)
 #   infer_meta :
 #     func : UnchangedGradInferMeta
@@ -184,9 +184,11 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+    param : [x]
   kernel :
     func : abs_grad
+  data_transform:
+    skip_transform : out_grad
 
 - backward_api : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
@@ -460,16 +462,6 @@
     param : [x]
   kernel :
     func : gather_nd_grad
-# # forward backward type not match
-# - backward_api : top_k_grad
-#   forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
-#   args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : top_k_grad
 
 - backward_api : hard_shrink_grad
   forward : hard_shrink (Tensor x, float threshold) -> Tensor(out)
@@ -615,6 +607,17 @@
   kernel :
     func : minimum_grad
 
+- backward_api : modulo_grad
+  forward : add (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : modulo_grad
+  no_need_buffer : x, y
+
 - backward_api : multiply_grad
   forward : multiply (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
@@ -669,6 +672,16 @@
   kernel :
     func : put_along_axis_grad
 
+- backward_api : reciprocal_grad
+  forward : reciprocal (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : reciprocal_grad
+
 - backward_api : relu_double_grad
   forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor grad_x_grad)
@@ -691,7 +704,7 @@
   backward: relu_double_grad
 
 - backward_api : reshape_grad
-  forward : reshape_with_xshape (Tensor x, ScalarArray shape) -> Tensor(out), Tensor(xshape)
+  forward : reshape_with_xshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -821,11 +834,31 @@
     func : softmax_grad
 
 - backward_api : split_grad
-  forward : split (Tensor x, ScalarArray num_or_sections, Scalar axis) -> Tensor[](out)
+  forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis)
   output : Tensor(x_grad)
   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
+
+- backward_api : sqrt_grad
+  forward : sqrt (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : sqrt_grad
+
+- backward_api : square_grad
+  forward : square (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : square_grad
 
 - backward_api : subtract_grad
   forward : subtract (Tensor x, Tensor y) -> Tensor(out)
@@ -888,8 +921,8 @@
     func : thresholded_relu_grad
 
 - backward_api : tile_grad
-  forward : tile (Tensor x, ScalarArray repeat_times) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, ScalarArray repeat_times)
+  forward : tile (Tensor x, IntArray repeat_times) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray repeat_times)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

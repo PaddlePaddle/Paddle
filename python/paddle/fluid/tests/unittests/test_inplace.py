@@ -325,8 +325,6 @@ class TestDygraphInplaceFlatten(TestDygraphInplace):
         return var.flatten_()
 
 
-"""
-# TODO: need to fix bug
 class TestDygraphInplaceScatter(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
@@ -345,7 +343,6 @@ class TestDygraphInplaceScatter(TestDygraphInplace):
             [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
 
         return paddle.scatter_(var, index, updates, overwrite=False)
-"""
 
 
 class TestDygraphInplaceElu(TestDygraphInplace):

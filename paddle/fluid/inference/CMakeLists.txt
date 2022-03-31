@@ -93,7 +93,7 @@ if (WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 if (WITH_PSCORE)
-    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service tensor_table)
 endif ()
 
 if (WITH_ONNXRUNTIME)
