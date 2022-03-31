@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 namespace paddle {
 namespace framework {
 
