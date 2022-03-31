@@ -123,8 +123,8 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 void PSGPUWorker::PrepareCudaGraph() {
   op_or_cudagraphs_.reserve(ops_.size());
   std::unordered_set<std::string> op_capture_white_list = {
-    "data_norm_grad", "fused_seqpool_cvm_grad", "mul_grad", "elementwise_add_grad",
-    "auc", "adam", "fused_seqpool_cvm", "concat_grad",
+    "data_norm_grad", "mul_grad", "elementwise_add_grad",
+    "auc", "adam", "concat_grad",
     "elementwise_add", "reduce_sum", "relu_grad", "mul", "concat", "relu",
     "cast", "elementwise_mul_grad", "reduce_sum_grad", "elementwise_mul",
     "sigmoid", "sum", "fill_constant", "fill_constant_batch_size_like",
