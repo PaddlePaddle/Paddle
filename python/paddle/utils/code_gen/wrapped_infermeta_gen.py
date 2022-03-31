@@ -119,10 +119,8 @@ namespace phi {
 def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
                                             source_file_path):
 
-    apis = []
-    for api_yaml in api_yaml_path:
-        with open(api_yaml, 'r') as f:
-            apis.extend(yaml.load(f, Loader=yaml.FullLoader))
+    with open(api_yaml_path, 'r') as f:
+        apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
 
@@ -161,11 +159,7 @@ def main():
     parser.add_argument(
         '--api_yaml_path',
         help='path to api yaml file',
-        nargs='+',
-        default=[
-            'python/paddle/utils/code_gen/api.yaml',
-            'python/paddle/utils/code_gen/new_api.yaml'
-        ])
+        default='python/paddle/utils/code_gen/api.yaml')
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',
