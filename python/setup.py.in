@@ -381,7 +381,8 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
-          'paddle.profiler'
+          'paddle.profiler',
+          'paddle.sparse'
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
