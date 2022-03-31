@@ -86,6 +86,9 @@ class TestOpsNMS(unittest.TestCase):
                     self.num_boxes, dtype)
                 paddle.set_device(device)
                 out = paddle.vision.ops.nms(
+                    paddle.to_tensor(boxes), self.threshold,
+                    paddle.to_tensor(scores))
+                out = paddle.vision.ops.nms(
                     paddle.to_tensor(boxes), self.threshold)
                 out_py = nms(boxes, self.threshold)
 

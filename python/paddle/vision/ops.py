@@ -1405,42 +1405,28 @@ def nms(boxes,
             boxes = np.random.rand(4, 4).astype('float32')
             boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
             boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
-
-            # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
-            # [0.74385834 0.8236293  1.4048514  1.3868837 ]
-            # [0.39436954 0.18261194 1.3834884  0.38191944]
-            # [0.9617653  0.40089446 1.2982695  1.398673  ]]
+            # [[0.06287421 0.5809351  0.3443958  0.8713329 ]
+            #  [0.0749094  0.9713205  0.99241287 1.2799143 ]
+            #  [0.46246734 0.6753201  1.346266   1.3821303 ]
+            #  [0.8984796  0.5619834  1.1254641  1.0201943 ]]
 
             out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
-            # [0, 2, 0, 0])
-
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            boxes = np.random.rand(4, 4).astype('float32')
-            boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
-            boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
-
-            # [[0.46517828 0.90615124 1.3940141  1.8840896 ]
-            # [0.74385834 0.8236293  1.4048514  1.3868837 ]
-            # [0.39436954 0.18261194 1.3834884  0.38191944]
-            # [0.9617653  0.40089446 1.2982695  1.398673  ]]
+            # [0, 1, 3, 0]
 
             scores = np.random.rand(4).astype('float32')
-            # [0.20447887, 0.6679728 , 0.00704206, 0.14359951]
+            # [0.98015213 0.3156527  0.8199343  0.874901 ]
+
             categories = [0, 1, 2, 3]
             category_idxs = np.random.choice(categories, 4)                        
-            # [1, 3, 0, 1]
+            # [2 0 0 3]
 
             out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 
+                                                    0.1, 
                                                     paddle.to_tensor(scores), 
                                                     paddle.to_tensor(category_idxs), 
                                                     categories, 
-                                                    0.1, 
                                                     4)
-            # [1, 0, 2]
+            # [0, 3, 2]
     """
 
     def _nms(boxes, iou_threshold):
@@ -1460,7 +1446,6 @@ def nms(boxes,
         return _nms(boxes, iou_threshold)
 
     import paddle
-
     if category_idxs is None:
         sorted_global_indices = paddle.argsort(scores, descending=True)
         return _nms(boxes[sorted_global_indices], iou_threshold)
