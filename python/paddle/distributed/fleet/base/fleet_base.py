@@ -1668,7 +1668,8 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                opt_info[k] = v
+                if v:
+                    opt_info[k] = v
             program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
@@ -1744,7 +1745,8 @@ class Fleet(object):
             opt_info["mpi_rank"] = self.worker_index()
             for k, v in self._user_defined_strategy.trainer_desc_configs.items(
             ):
-                opt_info[k] = v
+                if v:
+                    opt_info[k] = v
             program._fleet_opt = opt_info
             # print("fleet base opt info:", id(program), program._fleet_opt)
 

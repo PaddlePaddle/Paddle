@@ -59,6 +59,7 @@ DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DECLARE_bool(run_kp_kernel);
+DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {
@@ -264,7 +265,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           Type(), platform::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
-          op_name, platform::TracerEventType::Operator, 10,
+          op_name, platform::TracerEventType::Operator,
+          FLAGS_enable_host_event_recorder_hook ? 20 : 1,
           platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
