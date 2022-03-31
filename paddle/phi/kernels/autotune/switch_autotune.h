@@ -14,13 +14,14 @@
 
 #pragma once
 #include "glog/logging.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 
 namespace phi {
 namespace autotune {
 
 class SwitchAutoTune {
  public:
-  SwitchAutoTune& SwitchAutoTune::Instance() {
+  static SwitchAutoTune& Instance() {
     static SwitchAutoTune switch_autotune;
     return switch_autotune;
   }
@@ -29,19 +30,22 @@ class SwitchAutoTune {
 
   void UpdateAutoTuneStatus() {
     current_steps_id_ += 1;
-    if (current_step < auto_tune_start_step_id_) {
+    if (enable_autotune_ == false) {
       return;
+    }
+
+    if (current_steps_id_ < auto_tune_start_step_id_) {
+      enable_autotune_ = false;
     } else if (current_steps_id_ >= auto_tune_start_step_id_ &&
-               current_steps_id_ < current_steps_id_ + auto_tune_steps_) {
+               current_steps_id_ <
+                   auto_tune_start_step_id_ + auto_tune_steps_) {
       enable_autotune_ = true;
-      float current_step_cache_misses_rate =
-          AutoTuneCache::Instance().AutoTuneCacheHitRate();
-    } else if (current_steps_id_ == current_steps_id_ + auto_tune_steps_) {
-      float total_cache_hit_rate =
-          AutoTuneCache::Instance().AutoTuneCacheHitRate();
-      VLOG(3) << "Current step id: " << current_steps_id_;
+      VLOG(3) << "Current Step ID: " << current_steps_id_
+              << " AutoTune Status: Cache Hit Rate: "
+              << AutoTuneCache::Instance().AutoTuneCacheHitRate()
+              << " Cache Size: " << AutoTuneCache::Instance().Size();
     } else {
-      return;
+      enable_autotune_ = false;
     }
   }
 
@@ -56,8 +60,7 @@ class SwitchAutoTune {
   int64_t auto_tune_start_step_id_ = 0;
   int64_t auto_tune_steps_ = 10;
   int64_t current_steps_id_ = 0;
-  bool enable_autotune_ = false;
-  float step_cache_misses_rate = 1.;
+  bool enable_autotune_ = true;
 };
 
 }  // namespace autotune

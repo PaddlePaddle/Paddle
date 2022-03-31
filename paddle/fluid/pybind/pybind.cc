@@ -168,6 +168,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -4418,6 +4419,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("disable_pattern", &platform::ipu::IpuStrategy::DisablePattern)
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
+
+  m.def("enable_autotune", [] {
+    return phi::autotune::SwitchAutoTune::Instance().EnableAutoTune();
+  });
+  m.def("disable_autotune", [] {
+    return phi::autotune::SwitchAutoTune::Instance().DisableAutoTune();
+  });
 
   BindFleetWrapper(&m);
   BindIO(&m);

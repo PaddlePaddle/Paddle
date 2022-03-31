@@ -104,14 +104,21 @@ class AlgorithmsCache {
     hash_[key] = algo;
   }
 
+  int64_t CacheMisses() const { return cache_misses_; }
+
+  int64_t CacheHits() const { return cache_hits_; }
+
   float CacheHitRate() const {
     int64_t num_accesses = cache_hits_ + cache_misses_;
-    float cache_hit_rate =
-        static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    float cache_hit_rate = 0.;
+    if (num_accesses != 0) {
+      cache_hit_rate =
+          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
+    }
     return cache_hit_rate;
   }
 
-  int64_t Size() { return hash_.size(); }
+  int64_t Size() const { return hash_.size(); }
 
  private:
   std::unordered_map<size_t, AlgorithmT> hash_;
@@ -143,13 +150,31 @@ class AutoTuneCache {
   }
 
   // The number of total config cached
-  int64_t Size() {
+  int64_t Size() const {
     int64_t total = 0;
     for (auto& v : auto_tune_map_) {
       VLOG(3) << v.first << " " << v.second.Size();
       total += v.second.Size();
     }
     return total;
+  }
+
+  float AutoTuneCacheHitRate() const {
+    int64_t total_cache_hits = 0;
+    int64_t total_cache_misses = 0;
+    float total_cache_hit_rate = 0.;
+    for (auto& v : auto_tune_map_) {
+      total_cache_hits += v.second.CacheHits();
+      total_cache_misses += v.second.CacheMisses();
+    }
+
+    int64_t total_num_accesses = total_cache_hits + total_cache_misses;
+    if (total_num_accesses != 0) {
+      total_cache_hit_rate = static_cast<float>(total_cache_hits) /
+                             static_cast<float>(total_num_accesses);
+    }
+
+    return total_cache_hit_rate;
   }
 
  private:

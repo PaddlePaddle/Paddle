@@ -30,6 +30,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
@@ -389,6 +390,7 @@ static void PerformBackwardInplace(const std::string& op_type,
 }
 
 void BasicEngine::Execute() {
+  phi::autotune::SwitchAutoTune::Instance().UpdateAutoTuneStatus();
   platform::RecordEvent backward_record_event(
       "backward", platform::TracerEventType::Operator, 1);
 
