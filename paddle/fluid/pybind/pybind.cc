@@ -168,6 +168,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
@@ -4423,8 +4424,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_autotune", [] {
     return phi::autotune::SwitchAutoTune::Instance().EnableAutoTune();
   });
+
   m.def("disable_autotune", [] {
     return phi::autotune::SwitchAutoTune::Instance().DisableAutoTune();
+  });
+
+  m.def("auto_tune_status", [] {
+    py::dict res;
+    res["use_autotune"] =
+        phi::autotune::SwitchAutoTune::Instance().UseAutoTune();
+    res["step_id"] = phi::autotune::SwitchAutoTune::Instance().StepID();
+    res["cache_size"] = phi::autotune::AutoTuneCache::Instance().Size();
+    res["cache_hit_rate"] =
+        phi::autotune::AutoTuneCache::Instance().AutoTuneCacheHitRate();
+    return res;
   });
 
   BindFleetWrapper(&m);
