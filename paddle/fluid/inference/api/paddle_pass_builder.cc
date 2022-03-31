@@ -393,6 +393,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("conv_gelu_mkldnn_fuse_pass");
     passes_.push_back("fc_fuse_pass");
     passes_.push_back("repeated_fc_relu_fuse_pass");
+    passes_.push_back("fc_mkldnn_pass");
+    passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_fuse_pass");
     passes_.push_back("matmul_v2_transpose_reshape_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");

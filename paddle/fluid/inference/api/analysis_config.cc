@@ -459,13 +459,6 @@ void AnalysisConfig::EnableMkldnnInt8(
       quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
     }
   }
-  if (quantize_enabled_op_types_.count("fc")) {
-    auto idx = pass_builder_->GetPassIndex("repeated_fc_relu_fuse_pass");
-    if (static_cast<int>(idx) != -1) {
-      pass_builder_->InsertPass(idx + 1, "fc_mkldnn_pass");
-      pass_builder_->InsertPass(idx + 2, "fc_act_mkldnn_fuse_pass");
-    }
-  }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
   use_mkldnn_int8_ = false;
@@ -679,11 +672,9 @@ void AnalysisConfig::Update() {
     } else if (!use_mkldnn_) {
       LOG(ERROR) << "EnableMkldnnInt8() only works when MKLDNN "
                     "is enabled.";
+    } else {
+      pass_builder()->EnableMkldnnInt8();
     }
-// Turn off this judgment, otherwise the fc-related pass insertion will fail.
-// else {
-//   pass_builder()->EnableMkldnnInt8();
-// }
 #endif
   }
 
