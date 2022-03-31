@@ -63,7 +63,8 @@ class TestLogSoftmaxOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True)
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True)
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
@@ -101,7 +102,9 @@ class TestLogSoftmaxBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True)
+            place, ['X'], ['Out'],
+            user_defined_grads=[self.x_grad],
+            check_eager=True)
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):

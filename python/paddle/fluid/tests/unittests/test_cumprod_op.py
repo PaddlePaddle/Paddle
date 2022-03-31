@@ -126,7 +126,8 @@ class TestCumprod(OpTest):
                         ['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out], check_eager=True)
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
 
 
 # test float32 case.

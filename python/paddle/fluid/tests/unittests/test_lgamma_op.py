@@ -50,7 +50,8 @@ class TestLgammaOpFp32(TestLgammaOp):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.005, check_eager=True)
+        self.check_grad(
+            ['X'], 'Out', numeric_grad_delta=0.005, check_eager=True)
 
 
 if __name__ == "__main__":

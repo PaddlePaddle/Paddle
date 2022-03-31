@@ -17,10 +17,8 @@
 namespace phi {
 
 KernelSignature PReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("prelu",
-                         {"X", "Alpha"},
-                         {"data_format", "mode"},
-                         {"Out"});
+  return KernelSignature(
+      "prelu", {"X", "Alpha"}, {"data_format", "mode"}, {"Out"});
 }
 
 KernelSignature PReluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
