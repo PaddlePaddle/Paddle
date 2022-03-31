@@ -24,6 +24,7 @@ namespace pybind {
 
 #ifdef PADDLE_WITH_HETERPS
 void BindPSGPUWrapper(py::module* m);
+void BindAfsWrapper(py::module* m);
 #endif
 }  // namespace pybind
 }  // namespace paddle
