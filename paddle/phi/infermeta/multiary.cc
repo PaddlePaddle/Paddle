@@ -1324,6 +1324,7 @@ void GraphSampleNeighborsInferMeta(
   out->set_dtype(row.dtype());
   out_count->set_dims({-1});
   out_count->set_dtype(DataType::INT32);
+}
 
 void Yolov3LossInferMeta(const MetaTensor& x,
                          const MetaTensor& gt_box,
