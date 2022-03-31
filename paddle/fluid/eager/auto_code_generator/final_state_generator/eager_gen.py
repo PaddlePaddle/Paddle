@@ -1255,7 +1255,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             if num_outputs == 1:
                 get_tensor_str = f"auto& {transformed_tensor_name} = grad_api_result;"
             else:
-                get_tensor_str = f"auto& {transformed_tensor_name} = grad_api_result[{fwd_position}];"
+                get_tensor_str = f"auto& {transformed_tensor_name} = grad_api_result[{grad_api_position}];"
             get_outputs_str += get_tensor_str + "\n"
 
         # Prepare for Node Creation if Necessary
