@@ -238,8 +238,8 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
   std::vector<::infrt::Place> valid_places = {{::infrt::TargetType::CPU,
                                                ::infrt::PrecisionType::FLOAT32,
                                                ::infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(::infrt::createPhiOpCvtPass(valid_places));
-  phi_pass_manager.addPass(::infrt::createInfrtOpFusePass());
+  phi_pass_manager.addPass(CreatePhiOpCvtPass(valid_places));
+  phi_pass_manager.addPass(CreateInfrtOpFusePass());
   if (mlir::failed(pm.run(module_op))) {
     std::cout << "\npass failed!\n" << std::endl;
     return 4;
