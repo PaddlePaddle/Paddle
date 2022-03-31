@@ -1540,9 +1540,11 @@ class OpTest(unittest.TestCase):
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
                 with _test_eager_guard():
+                    self.is_python_api_test = True
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
                         place)
                     if eager_dygraph_outs is None:
+                        self.is_python_api_test = False
                         # missing KernelSignature, fall back to eager middle output.
                         eager_dygraph_outs = self.op_test._calc_dygraph_output(
                             place, no_check_set=no_check_set)
