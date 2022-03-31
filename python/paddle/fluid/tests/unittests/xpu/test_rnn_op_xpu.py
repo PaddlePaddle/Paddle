@@ -43,8 +43,9 @@ class XPUTestRNNOp(XPUOpTestWrapper):
     class TestRNNOp(XPUOpTest):
         def setUp(self):
             self.init_size()
+            self.init_dtype()
             self.op_type = "rnn"
-            self.dtype = np.float32
+            self.place = paddle.XPUPlace(0)
             self.sequence_length = np.ones(
                 (self.batch_size, ), dtype=np.int32) * self.seq_length
             self.set_attrs()
@@ -68,7 +69,7 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                 time_major=True,
                 direction=direction,
                 dropout=self.dropout,
-                dtype="float32")
+                dtype=self.dtype)
 
             flat_w = get_params_for_net(rnn1)
             output, (last_hidden, last_cell) = rnn1(
@@ -120,10 +121,9 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             self.__class__.op_type = self.in_type
 
         def test_check_output(self):
-            if paddle.is_compiled_with_xpu():
-                place = paddle.XPUPlace(0)
-                self.check_output_with_place(
-                    place, atol=0.01, no_check_set=['Reserve', 'DropoutState'])
+            self.check_output_with_place(
+                self.place, atol=0.01,
+                no_check_set=['Reserve', 'DropoutState'])
 
         def init_size(self):
             self.seq_length = 1
