@@ -191,7 +191,11 @@ class XPUTestRNNOp(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('rnn')
 for stype in support_types:
-    create_test_class(globals(), XPUTestRNNOp, stype)
+    create_test_class(
+        globals(),
+        XPUTestRNNOp,
+        stype,
+        ignore_deivce_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()
