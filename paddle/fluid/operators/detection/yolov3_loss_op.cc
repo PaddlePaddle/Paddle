@@ -9,10 +9,12 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/detection/yolov3_loss_op.h"
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,127 +24,6 @@ using framework::Tensor;
 class Yolov3LossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasInput("GTBox"), "Input", "GTBox", "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasInput("GTLabel"), "Input", "GTLabel",
-                   "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasOutput("ObjectnessMask"), "Output", "ObjectnessMask",
-                   "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasOutput("GTMatchMask"), "Output", "GTMatchMask",
-                   "Yolov3LossOp");
-
-    auto dim_x = ctx->GetInputDim("X");
-    auto dim_gtbox = ctx->GetInputDim("GTBox");
-    auto dim_gtlabel = ctx->GetInputDim("GTLabel");
-    auto anchors = ctx->Attrs().Get<std::vector<int>>("anchors");
-    int anchor_num = anchors.size() / 2;
-    auto anchor_mask = ctx->Attrs().Get<std::vector<int>>("anchor_mask");
-    int mask_num = anchor_mask.size();
-    auto class_num = ctx->Attrs().Get<int>("class_num");
-
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "Input(X) should be a 4-D tensor. But received "
-                          "X dimension size(%s)",
-                          dim_x.size()));
-    PADDLE_ENFORCE_EQ(dim_x[2], dim_x[3],
-                      platform::errors::InvalidArgument(
-                          "Input(X) dim[3] and dim[4] should be euqal."
-                          "But received dim[3](%s) != dim[4](%s)",
-                          dim_x[2], dim_x[3]));
-    PADDLE_ENFORCE_EQ(
-        dim_x[1], mask_num * (5 + class_num),
-        platform::errors::InvalidArgument(
-            "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
-            "+ class_num))."
-            "But received dim[1](%s) != (anchor_mask_number * "
-            "(5+class_num)(%s).",
-            dim_x[1], mask_num * (5 + class_num)));
-    PADDLE_ENFORCE_EQ(dim_gtbox.size(), 3,
-                      platform::errors::InvalidArgument(
-                          "Input(GTBox) should be a 3-D tensor, but "
-                          "received gtbox dimension size(%s)",
-                          dim_gtbox.size()));
-    PADDLE_ENFORCE_EQ(dim_gtbox[2], 4,
-                      platform::errors::InvalidArgument(
-                          "Input(GTBox) dim[2] should be 4",
-                          "But receive dim[2](%s) != 5. ", dim_gtbox[2]));
-    PADDLE_ENFORCE_EQ(
-        dim_gtlabel.size(), 2,
-        platform::errors::InvalidArgument(
-            "Input(GTLabel) should be a 2-D tensor,"
-            "But received Input(GTLabel) dimension size(%s) != 2.",
-            dim_gtlabel.size()));
-    PADDLE_ENFORCE_EQ(
-        dim_gtlabel[0], dim_gtbox[0],
-        platform::errors::InvalidArgument(
-            "Input(GTBox) dim[0] and Input(GTLabel) dim[0] should be same,"
-            "But received Input(GTLabel) dim[0](%s) != "
-            "Input(GTBox) dim[0](%s)",
-            dim_gtlabel[0], dim_gtbox[0]));
-    PADDLE_ENFORCE_EQ(
-        dim_gtlabel[1], dim_gtbox[1],
-        platform::errors::InvalidArgument(
-            "Input(GTBox) and Input(GTLabel) dim[1] should be same,"
-            "But received Input(GTBox) dim[1](%s) != Input(GTLabel) "
-            "dim[1](%s)",
-            dim_gtbox[1], dim_gtlabel[1]));
-    PADDLE_ENFORCE_GT(anchors.size(), 0,
-                      platform::errors::InvalidArgument(
-                          "Attr(anchors) length should be greater then 0."
-                          "But received anchors length(%s)",
-                          anchors.size()));
-    PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
-                      platform::errors::InvalidArgument(
-                          "Attr(anchors) length should be even integer."
-                          "But received anchors length(%s)",
-                          anchors.size()));
-    for (size_t i = 0; i < anchor_mask.size(); i++) {
-      PADDLE_ENFORCE_LT(
-          anchor_mask[i], anchor_num,
-          platform::errors::InvalidArgument(
-              "Attr(anchor_mask) should not crossover Attr(anchors)."
-              "But received anchor_mask[i](%s) > anchor_num(%s)",
-              anchor_mask[i], anchor_num));
-    }
-    PADDLE_ENFORCE_GT(class_num, 0,
-                      platform::errors::InvalidArgument(
-                          "Attr(class_num) should be an integer greater then 0."
-                          "But received class_num(%s) < 0",
-                          class_num));
-
-    if (ctx->HasInput("GTScore")) {
-      auto dim_gtscore = ctx->GetInputDim("GTScore");
-      PADDLE_ENFORCE_EQ(dim_gtscore.size(), 2,
-                        platform::errors::InvalidArgument(
-                            "Input(GTScore) should be a 2-D tensor"
-                            "But received GTScore dimension(%s)",
-                            dim_gtbox.size()));
-      PADDLE_ENFORCE_EQ(
-          dim_gtscore[0], dim_gtbox[0],
-          platform::errors::InvalidArgument(
-              "Input(GTBox) and Input(GTScore) dim[0] should be same"
-              "But received GTBox dim[0](%s) != GTScore dim[0](%s)",
-              dim_gtbox[0], dim_gtscore[0]));
-      PADDLE_ENFORCE_EQ(
-          dim_gtscore[1], dim_gtbox[1],
-          platform::errors::InvalidArgument(
-              "Input(GTBox) and Input(GTScore) dim[1] should be same"
-              "But received GTBox dim[1](%s) != GTScore dim[1](%s)",
-              dim_gtscore[1], dim_gtbox[1]));
-    }
-
-    std::vector<int64_t> dim_out({dim_x[0]});
-    ctx->SetOutputDim("Loss", phi::make_ddim(dim_out));
-
-    std::vector<int64_t> dim_obj_mask({dim_x[0], mask_num, dim_x[2], dim_x[3]});
-    ctx->SetOutputDim("ObjectnessMask", phi::make_ddim(dim_obj_mask));
-
-    std::vector<int64_t> dim_gt_match_mask({dim_gtbox[0], dim_gtbox[1]});
-    ctx->SetOutputDim("GTMatchMask", phi::make_ddim(dim_gt_match_mask));
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -347,11 +228,10 @@ class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss, Yolov3LossInferShapeFunctor,
+                            PD_INFER_META(phi::Yolov3LossInferMeta));
 REGISTER_OPERATOR(yolov3_loss, ops::Yolov3LossOp, ops::Yolov3LossOpMaker,
                   ops::Yolov3LossGradMaker<paddle::framework::OpDesc>,
-                  ops::Yolov3LossGradMaker<paddle::imperative::OpBase>);
+                  ops::Yolov3LossGradMaker<paddle::imperative::OpBase>,
+                  Yolov3LossInferShapeFunctor);
 REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
-REGISTER_OP_CPU_KERNEL(yolov3_loss, ops::Yolov3LossKernel<float>,
-                       ops::Yolov3LossKernel<double>);
-REGISTER_OP_CPU_KERNEL(yolov3_loss_grad, ops::Yolov3LossGradKernel<float>,
-                       ops::Yolov3LossGradKernel<double>);

@@ -137,8 +137,7 @@ void topoSortBlock(mlir::Block &body) {  // NOLINT
   for (auto it = body.rbegin(); it != body.rend(); ++it) {
     toSort.insert(&*it);
   }
-  llvm::SetVector<mlir::Operation *> result =
-      mlir::topologicalSort(std::move(toSort));
+  llvm::SetVector<mlir::Operation *> result = mlir::topologicalSort(toSort);
   for (auto *op : result) {
     op->moveBefore(body.getTerminator());
   }
@@ -181,7 +180,9 @@ void TRTGraphFusePass::runOnFunction() {
       if (changed) break;
     }
   } while (changed);
-  topoSortBlock(body);
+
+  // TODO(wilber): Implement a toposort for efficiency.
+  // topoSortBlock(body);
 }
 */
 
