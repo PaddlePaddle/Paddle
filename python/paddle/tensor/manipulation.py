@@ -77,8 +77,7 @@ def fill_(x, value):
 
 
 setattr(core.VarBase, 'fill_', fill_)
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'fill_', fill_)
+
 
 @dygraph_only
 def zero_(x):
@@ -109,8 +108,6 @@ def zero_(x):
 
 
 setattr(core.VarBase, 'zero_', zero_)
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'zero_', zero_)
 
 
 @dygraph_only
@@ -160,8 +157,6 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
 
 
 setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'fill_diagonal_', fill_diagonal_)
 
 
 def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
@@ -230,8 +225,6 @@ def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
     return _fill_diagonal_tensor_impl(
         x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
 
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
 
 setattr(core.VarBase, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
 
@@ -307,9 +300,8 @@ def tolist(x):
     """
     return x.numpy().tolist()
 
+
 setattr(core.VarBase, 'tolist', tolist)
-if _in_eager_without_dygraph_check():
-    setattr(core.eager.Tensor, 'tolist', tolist)
 
 
 def concat(x, axis=0, name=None):
