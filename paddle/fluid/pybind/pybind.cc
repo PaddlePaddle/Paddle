@@ -2939,6 +2939,8 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return stats_map;
   });
+  m.def("memory_stat_get_current", memory::StatGetCurrentValue);
+  m.def("memory_stat_get_peak", memory::StatGetPeakValue);
   m.def("run_cmd",
         [](const std::string &cmd, int time_out = -1,
            int sleep_inter = -1) -> const std::string {
@@ -3143,6 +3145,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetGPUDeviceCount);
+  m.def("get_cuda_current_device_id", &platform::GetCurrentDeviceId);
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
