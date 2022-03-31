@@ -224,18 +224,19 @@ __global__ void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
 // xpu implementation of heter_comm_kernel.h
 
 template <typename T, typename StreamType>
-void HeterCommKernel::fill_idx(T* idx, int64 len, StreamType& stream) {
+void HeterCommKernel::fill_idx(T* idx, long long len, StreamType& stream) {
   fill_idx<<<4, 64, stream>>>(idx, len);
 }
 
 template <typename T, typename StreamType>
-void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right, int64 len,
-                                        int total_devs, StreamType& stream) {
+void HeterCommKernel::calc_shard_offset(T* idx, T* left, T* right,
+                                        long long len, int total_devs,
+                                        StreamType& stream) {
   calc_shard_offset<<<4, 64, stream>>>(idx, left, right, len, total_devs);
 }
 
 template <typename KeyType, typename T, typename StreamType>
-void HeterCommKernel::calc_shard_index(KeyType* d_keys, int64 len,
+void HeterCommKernel::calc_shard_index(KeyType* d_keys, long long len,
                                        T* shard_index, int total_xpu,
                                        StreamType& stream) {
   calc_shard_index<<<4, 64, stream>>>(d_keys, len, shard_index, total_xpu);
@@ -243,14 +244,15 @@ void HeterCommKernel::calc_shard_index(KeyType* d_keys, int64 len,
 
 template <typename KeyType, typename T, typename StreamType>
 void HeterCommKernel::fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys,
-                                     T* idx, int64 len, StreamType& stream) {
+                                     T* idx, long long len,
+                                     StreamType& stream) {
   fill_shard_key<<<4, 64, stream>>>(d_shard_keys, d_keys, idx, len);
 }
 
 template <typename KeyType, typename GradType, typename T, typename StreamType>
 void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
                                        GradType* d_shard_grads,
-                                       GradType* d_grads, T* idx, int64 len,
+                                       GradType* d_grads, T* idx, long long len,
                                        StreamType& stream) {
   fill_shard_grads<<<4, 64, stream>>>(d_shard_keys, d_keys, d_shard_grads,
                                       d_grads, idx, len);
@@ -258,7 +260,7 @@ void HeterCommKernel::fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
 
 template <typename ValType, typename T, typename StreamType>
 void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
-                                 int64 len, StreamType& stream) {
+                                 long long len, StreamType& stream) {
   fill_dvals<<<4, 64, stream>>>(d_shard_vals, d_vals, idx, len);
 }
 
