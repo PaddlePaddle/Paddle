@@ -180,6 +180,8 @@ def pow(x, y, name=None):
 OP_NAMEMAPPING = {
     'elementwise_max': 'final_state_maximum',
     'elementwise_min': 'final_state_minimum',
+    'elementwise_pow': 'final_state_elementwise_pow',
+    'elementwise_floordiv': 'final_state_floor_divide',
 }
 
 @dygraph_only
@@ -189,8 +191,11 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
+    def is_inplace(op_name):
+        return  op_name[-1] == "_"
+
     if in_dygraph_mode():
-        op = getattr(_C_ops, OP_NAMEMAPPING[op_name])
+        op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
         out = op(x, y)
 
     if _in_legacy_dygraph():
