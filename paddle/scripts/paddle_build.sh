@@ -2778,7 +2778,8 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 gpu; example_error=$?
+        samplecode_gpu=${samplecode_gpu:-2}
+        python sampcd_processor.py --threads=${samplecode_gpu} gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
