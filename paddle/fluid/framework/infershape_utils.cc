@@ -397,6 +397,14 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
             }
+
+            if (num_ele <= 0) {
+              PADDLE_THROW(platform::errors::Unimplemented(
+                  "Invalid number for construct phi::ScalarArray, expected "
+                  "number > 0, but actually is %d. ",
+                  num_ele));
+            }
+
           } else {
             num_ele = vars.size();
           }
