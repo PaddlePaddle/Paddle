@@ -44,7 +44,7 @@ class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
         fc_node->Op()->GetAttrIfExists<std::string>("activation_type").empty());
   }
 
-  const std::string name_scope_{"fc_residual_connection_fuse_pass"};
+  const std::string name_scope_{"fc_elementwise_add_mkldnn_fuse"};
 };
 }  // namespace ir
 }  // namespace framework

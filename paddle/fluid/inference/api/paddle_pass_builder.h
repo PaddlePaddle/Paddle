@@ -71,6 +71,10 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \param[in] idx the position to delete.
   void DeletePass(size_t idx);
 
+/// \brief Get the certain position of a pass.
+  /// \param[in] pass_type the type of insert pass.
+  size_t GetPassIndex(const std::string &pass_type);
+
   /// \brief Delete all passes that has a certain type 'pass_type'.
   /// \param[in] pass_type the certain pass type to be deleted.
   void DeletePass(const std::string &pass_type);
