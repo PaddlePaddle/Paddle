@@ -864,8 +864,8 @@
     func : sinh_grad
 
 - backward_api : slice_grad
-  forward : slice (Tensor input, int64_t[] axes, ScalarArray starts, ScalarArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
-  args : (Tensor input, Tensor out_grad, int64_t[] axes, ScalarArray starts, ScalarArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  forward : slice (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor(input_grad)
   infer_meta :
     func : UnchangedInferMeta
