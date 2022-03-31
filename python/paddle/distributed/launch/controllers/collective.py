@@ -134,7 +134,7 @@ class CollectiveElasticController(CollectiveController):
             if ok:
                 self.job.replicas = replicas
             else:
-                self.ctx.logger.warnning("peer not ready {}".format(self.job))
+                self.ctx.logger.warning("peer not ready {}".format(self.job))
                 break
 
             self.ctx.logger.debug("Run {}".format(self.job))
