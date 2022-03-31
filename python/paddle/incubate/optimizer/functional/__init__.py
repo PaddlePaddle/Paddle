@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lookahead import LookAhead  # noqa: F401
-from .modelaverage import ModelAverage  # noqa: F401
-from .distributed_fused_lamb import DistributedFusedLamb  # noqa: F401
-from . import functional  # noqa: F401
+from .bfgs import minimize_bfgs  # noqa: F401
+from .lbfgs import minimize_lbfgs  # noqa: F401
 
-__all__ = []
+__all__ = ['minimize_bfgs', 'minimize_lbfgs']
