@@ -24,6 +24,7 @@ from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
 __all__ = []
 
@@ -183,11 +184,11 @@ def batch_norm(x,
     if _non_static_mode():
         # for dygraph need tuple
         if in_dygraph_mode():
-            batch_norm_out, _, _, _, _, _ = C_ops.final_state_batch_norm(
+            batch_norm_out, _, _, _, _, _ = _C_ops.final_state_batch_norm(
                 x, weight, bias, running_mean, running_var, momentum, epsilon,
                 data_format, not training, use_global_stats,
                 trainable_statistics, False)
-
+            return batch_norm_out
         else:
             attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                      not training, "data_layout", data_format, "use_mkldnn",
@@ -198,8 +199,9 @@ def batch_norm(x,
             batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                 x, weight, bias, running_mean, running_var, mean_out,
                 variance_out, *attrs)
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None)
+
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'BatchNorm')
@@ -310,10 +312,17 @@ def layer_norm(x,
                          str_normalized_shape[
                              1:] + ', but got input shape ' + str(input_shape))
 
-    if in_dynamic_mode():
-        pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
-                                          'begin_norm_axis', begin_norm_axis)
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+    if _non_static_mode():
+        if in_dygraph_mode():
+            out, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
+                                                       begin_norm_axis, False)
+            return out
+        else:
+            pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon',
+                                              epsilon, 'begin_norm_axis',
+                                              begin_norm_axis)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'LayerNorm')

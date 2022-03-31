@@ -64,7 +64,7 @@ KernelSignature BatchNormGradOpArgumentMapping(
           "Scale",
           "Bias",
           "Mean",
-          "Variance"
+          "Variance",
           "SavedMean",
           "SavedVariance",
           "ReserveSpace",

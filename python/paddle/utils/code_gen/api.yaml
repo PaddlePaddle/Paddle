@@ -553,7 +553,7 @@
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   invoke : batch_norm_impl(x, scale, bias, mean, variance, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics, fuse_with_relu)
-  backward: batch_norm_grad
+  backward : batch_norm_grad
 
 
 # dropout optional, intermediate
@@ -577,6 +577,15 @@
     func : slice
   backward : slice_grad
 
+- api : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+  backward : layer_norm_grad
+  optional : scale, bias
 
 #  =================================== sep1
 

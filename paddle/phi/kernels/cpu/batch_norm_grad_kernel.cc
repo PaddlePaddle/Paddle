@@ -46,7 +46,6 @@ void BatchNormGradRawKernel(const Context& ctx,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             paddle::optional<const DenseTensor&> reserve_space,
-
                             const DenseTensor& y_grad,
                             float momentum,
                             float epsilon,

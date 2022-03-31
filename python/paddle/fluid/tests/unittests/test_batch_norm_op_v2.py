@@ -91,24 +91,29 @@ class TestBatchNorm(unittest.TestCase):
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
                     bn = fluid.dygraph.BatchNorm(shape[1])
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    #bn = paddle.nn.BatchNorm2D(shape[1])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
                     with _test_eager_guard():
+                        print("v2")
                         bn = paddle.nn.BatchNorm2D(shape[1])
-                        x = paddle.to_tensor(x)
-                        x.stop_gradient = False
-                        y = bn(paddle.to_tensor(x))
+                        x1 = paddle.to_tensor(x)
+                        x1.stop_gradient = False
+                        y = bn(x1)
                         y.backward()
-                    return y.numpy()
+                        return y.numpy(), x1.gradient()
 
         x = np.random.randn(*shape).astype("float32")
-        y1 = compute_v1(x)
-        y2 = compute_v2(x)
-
-        print(np.allclose(y1, y2))
+        y1, g1 = compute_v1(x)
+        y2, g2 = compute_v2(x)
+        self.assertTrue(np.allclose(g1, g2))
+        self.assertTrue(np.allclose(y1, y2))
 
     def test_dygraph(self):
         places = [fluid.CPUPlace()]

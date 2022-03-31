@@ -142,6 +142,23 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void LayerNormGradInferMeta(const MetaTensor& x,
+                            paddle::optional<const MetaTensor&> y,
+                            paddle::optional<const MetaTensor&> z,
+                            MetaTensor* dx,
+                            MetaTensor* dy,
+                            MetaTensor* dz) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy && (y.get_ptr() != nullptr)) {
+    dy->share_meta(*y.get_ptr());
+  }
+  if (dz && (z.get_ptr() != nullptr)) {
+    dz->share_meta(*z.get_ptr());
+  }
+}
+
 void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
   if (dx) {
     dx->share_meta(x);

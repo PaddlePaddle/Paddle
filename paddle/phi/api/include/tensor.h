@@ -561,7 +561,7 @@ class PADDLE_API Tensor final {
    * heterogeneous Tensor implementation, so that the API level can be unified
    * to one `Tensor`.
    */
-  std::shared_ptr<phi::TensorBase> impl_;
+  std::shared_ptr<phi::TensorBase> impl_{nullptr};
 
   /**
    * [ Why need abstract AbstractAutogradMeta here? ]

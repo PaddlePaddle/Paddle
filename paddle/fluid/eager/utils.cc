@@ -344,11 +344,17 @@ EagerUtils::RecoverOptionalTensorWrapper(
                                        "should not be null"));
   auto tmp = tw->recover(grad_node);
 
-  paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
-  if (tmp.initialized()) {
-    res = tmp;
+  LOG(ERROR) << tmp.impl().get();
+  // paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
+  // phi::DenseTensor* dt = static_cast<phi::DenseTensor*>( tmp.impl().get() );
+  if (tmp.impl()) {
+    LOG(ERROR) << "init";
+    // res = tmp;
+    return paddle::make_optional<const paddle::experimental::Tensor&>(tmp);
   }
-  return res;
+
+  // LOG(ERROR) << res.get_ptr()->impl().get();
+  return paddle::none;
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(

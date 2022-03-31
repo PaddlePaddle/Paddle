@@ -94,6 +94,13 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
 
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
 
+void LayerNormGradInferMeta(const MetaTensor& x,
+                            paddle::optional<const MetaTensor&> y,
+                            paddle::optional<const MetaTensor&> z,
+                            MetaTensor* dx,
+                            MetaTensor* dy,
+                            MetaTensor* dz);
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

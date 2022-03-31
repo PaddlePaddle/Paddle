@@ -180,6 +180,9 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
+  if (tensor_in == nullptr) {
+    return nullptr;
+  }
   phi::DenseTensor& dense_tensor =
       *static_cast<phi::DenseTensor*>(tensor_in.get());
   if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
@@ -210,6 +213,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const paddle::optional<const Tensor&> input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
+  LOG(ERROR) << "prepare opt";
   if (input.get_ptr() != nullptr) {
     return PrepareData(*(input.get_ptr()), target_args_def, transform_flag);
   }
