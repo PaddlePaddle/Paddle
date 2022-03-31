@@ -93,7 +93,7 @@ class CollectiveController(Controller):
                 "PADDLE_RANK_IN_NODE": str(i),
             }
             if self.pod.replicas == 1:
-                e.update({selected_dev_key: selected_dev_list})
+                e.update({selected_dev_key: ",".join(selected_dev_list)})
             else:
                 e.update({selected_dev_key: selected_dev_list[i]})
             self.add_container(envs=e, log_tag=i)
