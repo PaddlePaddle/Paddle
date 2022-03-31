@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
+from paddle.fluid import Embedding, Linear, Layer, LayerNorm
 from paddle.fluid.dygraph import to_variable, guard
 from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
