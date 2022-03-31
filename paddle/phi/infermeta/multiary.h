@@ -214,6 +214,32 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         float spatial_scale,
                         MetaTensor* out);
 
+void RnnInferMeta(const MetaTensor& x,
+                  const std::vector<MetaTensor*>& pre_state,
+                  const std::vector<MetaTensor*>& weight_list,
+                  paddle::optional<const MetaTensor&> sequence_length,
+                  float dropout_prob,
+                  bool is_bidirec,
+                  int input_size,
+                  int hidden_size,
+                  int num_layers,
+                  const std::string& mode,
+                  int seed,
+                  bool is_test,
+                  MetaTensor* out,
+                  MetaTensor* dropout_state,
+                  std::vector<MetaTensor*> state,
+                  MetaTensor* reserve);
+
+void WarpctcInferMeta(const MetaTensor& logits,
+                      const MetaTensor& label,
+                      const paddle::optional<const MetaTensor&> logits_length,
+                      const paddle::optional<const MetaTensor&> labels_length,
+                      int blank,
+                      bool norm_by_times,
+                      MetaTensor* warpctc_grad,
+                      MetaTensor* loss);
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,

@@ -16,6 +16,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
@@ -167,6 +168,8 @@ struct DeviceContext::Impl {
       static_cast<DenseTensor*>(tensor)->clear();
     } else if (SelectedRows::classof(tensor)) {
       static_cast<SelectedRows*>(tensor)->mutable_value()->clear();
+    } else if (StringTensor::classof(tensor)) {
+      static_cast<StringTensor*>(tensor)->clear();
     } else {
       PADDLE_THROW(errors::Unimplemented(
           "Only support DenseTensor and SelectedRows now."));
@@ -262,6 +265,7 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::bfloat16)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::float16)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::pstring)
 
 #undef DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION
 
