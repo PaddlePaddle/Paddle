@@ -21,28 +21,28 @@ namespace framework {
 class HeterCommKernel {
  public:
   template <typename T, typename StreamType>
-  void fill_idx(T* idx, size_t len, const StreamType& stream);
+  void fill_idx(T* idx, uint64_t len, const StreamType& stream);
 
   template <typename T, typename StreamType>
-  void calc_shard_offset(T* idx, T* left, T* right, size_t len,
-                         size_t total_devs, const StreamType& stream);
+  void calc_shard_offset(T* idx, T* left, T* right, uint64_t len,
+                         int total_devs, const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
-  void calc_shard_index(KeyType* d_keys, size_t len, T* shard_index,
+  void calc_shard_index(KeyType* d_keys, uint64_t len, T* shard_index,
                         int total_gpu, const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
   void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                      size_t len, const StreamType& stream);
+                      uint64_t len, const StreamType& stream);
 
   template <typename KeyType, typename GradType, typename T,
             typename StreamType>
   void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
                         GradType* d_shard_grads, GradType* d_grads, T* idx,
-                        size_t len, const StreamType& stream);
+                        uint64_t len, const StreamType& stream);
 
   template <typename ValType, typename T, typename StreamType>
-  void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, size_t len,
+  void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, uint64_t len,
                   const StreamType& stream);
 
  private:
