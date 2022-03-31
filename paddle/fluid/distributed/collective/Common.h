@@ -12,35 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#pragma once
 
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/api/include/api.h"
 namespace paddle {
 namespace distributed {
 
-ProcessGroup::Task::Task(int rank, const std::vector<Tensor>& inputTensors,
-                         CommType comm_type)
-    : rank_(rank), comm_type_(comm_type) {}
+using Tensor = paddle::experimental::Tensor;
 
-ProcessGroup::Task::~Task() = default;
+using Place = paddle::platform::Place;
+// Get the list of devices from list of tensors
+std::vector<Place> GetPlaceList(const std::vector<Tensor>& tensors);
+// Get the deviceList String from the list of devices
+std::string GetKeyFromPlaces(const std::vector<Place>& places);
 
-bool ProcessGroup::Task::IsCompleted() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return is_completed_;
-}
-
-bool ProcessGroup::Task::Wait(std::chrono::milliseconds timeout) {
-  return false;
-}
-
-void ProcessGroup::Task::Synchronize() {}
-
-ProcessGroup::ProcessGroup(int rank, int size, int gid)
-    : rank_(rank), size_(size) {
-  if (gid != IGNORE_ID) {
-    auto map = ProcessGroupMapFromGid::getInstance();
-    map->insert(gid, this);
-  }
-}
+bool CheckTensorsInCudaPlace(const std::vector<Tensor>& tensors);
 
 }  //  namespace distributed
 }  //  namespace paddle
