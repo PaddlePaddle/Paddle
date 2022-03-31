@@ -1167,6 +1167,52 @@ void RnnInferMeta(const MetaTensor& x,
   }
 }
 
+void StackInferMeta(const std::vector<MetaTensor*>& x,
+                    int axis,
+                    MetaTensor* out) {
+  PADDLE_ENFORCE_GT(x.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "Number of Inputs(x) must be larger than 0, but"
+                        " received value is:%d.",
+                        x.size()));
+  const auto& input_dims = GetMetaTensorsDim(x);
+  for (size_t i = 1; i < input_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(input_dims[i],
+                      input_dims[0],
+                      phi::errors::InvalidArgument(
+                          "Dims of all Inputs(X) must be the same, but"
+                          " received input %d dim is:%d not equal to input 0"
+                          " dim:%d.",
+                          i,
+                          input_dims[i],
+                          input_dims[0]));
+  }
+  int rank = input_dims[0].size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -(rank + 1),
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank + 1,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
+          "but received axis is:%d",
+          rank,
+          axis));
+  if (axis < 0) axis += (rank + 1);
+  auto vec = phi::vectorize<int>(input_dims[0]);
+  vec.insert(vec.begin() + axis, input_dims.size());
+  out->set_dims(phi::make_ddim(vec));
+  out->set_dtype(x.at(0)->dtype());
+  out->share_lod(*x.at(0));
+}
+
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const paddle::optional<const MetaTensor&> logits_length,
@@ -1227,6 +1273,153 @@ void WhereInferMeta(const MetaTensor& condition,
                         x_dims,
                         y_dims));
   out->share_meta(x);
+}
+
+void Yolov3LossInferMeta(const MetaTensor& x,
+                         const MetaTensor& gt_box,
+                         const MetaTensor& gt_label,
+                         const paddle::optional<const MetaTensor&> gt_score,
+                         const std::vector<int>& anchors,
+                         const std::vector<int>& anchor_mask,
+                         int class_num,
+                         float ignore_thresh,
+                         int downsample_ratio,
+                         bool use_label_smooth,
+                         float scale_x_y,
+                         MetaTensor* loss,
+                         MetaTensor* objectness_mask,
+                         MetaTensor* gt_match_mask) {
+  auto dim_x = x.dims();
+  auto dim_gtbox = gt_box.dims();
+  auto dim_gtlabel = gt_label.dims();
+  int anchor_num = anchors.size() / 2;
+  int mask_num = anchor_mask.size();
+
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input(X) should be a 4-D tensor. But received "
+                        "X dimension size(%s)",
+                        dim_x.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_x[2],
+      dim_x[3],
+      phi::errors::InvalidArgument("Input(X) dim[3] and dim[4] should be euqal."
+                                   "But received dim[3](%s) != dim[4](%s)",
+                                   dim_x[2],
+                                   dim_x[3]));
+  PADDLE_ENFORCE_EQ(
+      dim_x[1],
+      mask_num * (5 + class_num),
+      phi::errors::InvalidArgument(
+          "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+          "+ class_num))."
+          "But received dim[1](%s) != (anchor_mask_number * "
+          "(5+class_num)(%s).",
+          dim_x[1],
+          mask_num * (5 + class_num)));
+  PADDLE_ENFORCE_EQ(
+      dim_gtbox.size(),
+      3,
+      phi::errors::InvalidArgument("Input(GTBox) should be a 3-D tensor, but "
+                                   "received gtbox dimension size(%s)",
+                                   dim_gtbox.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_gtbox[2],
+      4,
+      phi::errors::InvalidArgument("Input(GTBox) dim[2] should be 4",
+                                   "But receive dim[2](%s) != 5. ",
+                                   dim_gtbox[2]));
+  PADDLE_ENFORCE_EQ(dim_gtlabel.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(GTLabel) should be a 2-D tensor,"
+                        "But received Input(GTLabel) dimension size(%s) != 2.",
+                        dim_gtlabel.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_gtlabel[0],
+      dim_gtbox[0],
+      phi::errors::InvalidArgument(
+          "Input(GTBox) dim[0] and Input(GTLabel) dim[0] should be same,"
+          "But received Input(GTLabel) dim[0](%s) != "
+          "Input(GTBox) dim[0](%s)",
+          dim_gtlabel[0],
+          dim_gtbox[0]));
+  PADDLE_ENFORCE_EQ(
+      dim_gtlabel[1],
+      dim_gtbox[1],
+      phi::errors::InvalidArgument(
+          "Input(GTBox) and Input(GTLabel) dim[1] should be same,"
+          "But received Input(GTBox) dim[1](%s) != Input(GTLabel) "
+          "dim[1](%s)",
+          dim_gtbox[1],
+          dim_gtlabel[1]));
+  PADDLE_ENFORCE_GT(anchors.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(anchors) length should be greater then 0."
+                        "But received anchors length(%s)",
+                        anchors.size()));
+  PADDLE_ENFORCE_EQ(anchors.size() % 2,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(anchors) length should be even integer."
+                        "But received anchors length(%s)",
+                        anchors.size()));
+  for (size_t i = 0; i < anchor_mask.size(); i++) {
+    PADDLE_ENFORCE_LT(
+        anchor_mask[i],
+        anchor_num,
+        phi::errors::InvalidArgument(
+            "Attr(anchor_mask) should not crossover Attr(anchors)."
+            "But received anchor_mask[i](%s) > anchor_num(%s)",
+            anchor_mask[i],
+            anchor_num));
+  }
+  PADDLE_ENFORCE_GT(class_num,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attr(class_num) should be an integer greater then 0."
+                        "But received class_num(%s) < 0",
+                        class_num));
+
+  if (gt_score.get_ptr()) {
+    auto dim_gtscore = gt_score->dims();
+    PADDLE_ENFORCE_EQ(
+        dim_gtscore.size(),
+        2,
+        phi::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor"
+                                     "But received GTScore dimension(%s)",
+                                     dim_gtbox.size()));
+    PADDLE_ENFORCE_EQ(
+        dim_gtscore[0],
+        dim_gtbox[0],
+        phi::errors::InvalidArgument(
+            "Input(GTBox) and Input(GTScore) dim[0] should be same"
+            "But received GTBox dim[0](%s) != GTScore dim[0](%s)",
+            dim_gtbox[0],
+            dim_gtscore[0]));
+    PADDLE_ENFORCE_EQ(
+        dim_gtscore[1],
+        dim_gtbox[1],
+        phi::errors::InvalidArgument(
+            "Input(GTBox) and Input(GTScore) dim[1] should be same"
+            "But received GTBox dim[1](%s) != GTScore dim[1](%s)",
+            dim_gtscore[1],
+            dim_gtbox[1]));
+  }
+
+  std::vector<int64_t> dim_out({dim_x[0]});
+  loss->set_dims(phi::make_ddim(dim_out));
+  loss->set_dtype(x.dtype());
+
+  std::vector<int64_t> dim_obj_mask({dim_x[0], mask_num, dim_x[2], dim_x[3]});
+  objectness_mask->set_dims(phi::make_ddim(dim_obj_mask));
+  objectness_mask->set_dtype(x.dtype());
+
+  std::vector<int64_t> dim_gt_match_mask({dim_gtbox[0], dim_gtbox[1]});
+  gt_match_mask->set_dims(phi::make_ddim(dim_gt_match_mask));
+  gt_match_mask->set_dtype(x.dtype());
 }
 
 }  // namespace phi
