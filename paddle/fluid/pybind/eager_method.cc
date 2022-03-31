@@ -1329,6 +1329,13 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_methon_element_size(TensorObject* self, PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  return ToPyObject(paddle::experimental::SizeOf(self->tensor.dtype()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1430,6 +1437,8 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"element_size", (PyCFunction)(void (*)(void))tensor_methon_element_size,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

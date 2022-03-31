@@ -428,6 +428,8 @@ PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
 
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
+PyObject* ToPyObject(size_t value) { return PyLong_FromSize_t(value); }
+
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }
 
 PyObject* ToPyObject(double value) { return PyLong_FromDouble(value); }

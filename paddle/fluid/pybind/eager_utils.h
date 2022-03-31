@@ -57,6 +57,7 @@ PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
+PyObject* ToPyObject(size_t value);
 PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
