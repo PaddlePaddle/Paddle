@@ -38,10 +38,10 @@ def check_filename(re_exp, filename):
 
 
 def _process_path(path):
-    filename = os.path.basename(path)
-    if filename == "":
+    prefix = os.path.basename(path)
+    if prefix == "":
         raise ValueError(
-            "path should be of 'dirname/filename' format, but received filename is empty string"
+            "path should be of 'dirname/prefix' format, but received prefix is empty string"
         )
     try:
         dirname = os.path.dirname(path)
@@ -49,34 +49,50 @@ def _process_path(path):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-    return dirname, filename
+    return dirname, prefix
 
 
 class DistributedSaver:
     def __init__(self):
         self._logger = get_logger(logging.INFO)
+        self._cur_rank = paddle.distributed.get_rank()
 
     def save(self, path, serial_program, dist_main_program, dist_context):
 
-        dirname, filename = _process_path(path)
+        dirname, prefix = _process_path(path)
+        self.save_model(dirname, prefix, serial_program, dist_main_program,
+                        dist_context)
+        self.save_parameter(dirname, prefix, dist_main_program)
+        # TODO:save cluster.json
 
-        rank_id = paddle.distributed.get_rank()
+    def save_model(self, dirname, prefix, serial_program, dist_main_program,
+                   dist_context):
         # save serial program when rank id is 0
-        if rank_id == 0:
+        if self._cur_rank == 0:
             self._save_rank_mapping(dirname)
-            serial_model_filename = filename + "_serial.pdmodel"
+            serial_model_filename = prefix + "_serial.pdmodel"
             serial_model_path = os.path.join(dirname, serial_model_filename)
             with open(serial_model_path, "wb") as f:
                 f.write(serial_program.desc.serialize_to_string())
 
         # save distributed main program
-        dist_model_filename = filename + "_dist" + str(rank_id) + ".pdmodel"
+        dist_model_filename = prefix + "_dist" + str(
+            self._cur_rank) + ".pdmodel"
         dist_model_path = os.path.join(dirname, dist_model_filename)
         with open(dist_model_path, "wb") as f:
             f.write(dist_main_program.desc.serialize_to_string())
 
+        # save distributed attribute
+        dist_attr_filename = prefix + "_dist" + str(self._cur_rank) + ".pdattr"
+        dist_attr_path = os.path.join(dirname, dist_attr_filename)
+        dist_attrs = get_dist_attr(dist_main_program, dist_context)
+        with open(dist_attr_path, "wb") as f:
+            pickle.dump(dist_attrs, f)
+
+    def save_parameter(self, dirname, prefix, dist_main_program):
         # save distributed params
-        dist_param_filename = filename + "_dist" + str(rank_id) + ".pdparams"
+        dist_param_filename = prefix + "_dist" + str(
+            self._cur_rank) + ".pdparams"
         dist_param_path = os.path.join(dirname, dist_param_filename)
         dist_param = {
             k: np.array(v)
@@ -84,15 +100,6 @@ class DistributedSaver:
         }
         with open(dist_param_path, "wb") as f:
             pickle.dump(dist_param, f)
-
-        # save distributed attribute
-        dist_attr_filename = filename + "_dist" + str(rank_id) + ".pdattr"
-        dist_attr_path = os.path.join(dirname, dist_attr_filename)
-        dist_attrs = get_dist_attr(dist_main_program, dist_context)
-        with open(dist_attr_path, "wb") as f:
-            pickle.dump(dist_attrs, f)
-
-        # TODO:save cluster.json
 
     def load(self,
              path,
@@ -157,8 +164,7 @@ class DistributedSaver:
         dirname, filename = _process_path(path)
 
         # save distributed inference program
-        rank_id = paddle.distributed.get_rank()
-        if rank_id == 0:
+        if self._cur_rank == 0:
             self._save_rank_mapping(dirname)
         op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
         op_role_forward = int(core.op_proto_and_checker_maker.OpRole.Forward)
@@ -204,7 +210,7 @@ class DistributedSaver:
         ]
 
         # NOTE: `paddle.static.save_inference_model` does not support subblock.
-        dist_filename = filename + "_dist" + str(rank_id)
+        dist_filename = filename + "_dist" + str(self._cur_rank)
         dist_path = os.path.join(dirname, dist_filename)
         paddle.static.save_inference_model(
             dist_path,
