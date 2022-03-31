@@ -102,6 +102,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
     {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
+    {"crop", {"X", "Y", "Offsets"}},
+    {"batch_norm",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
+    {"inplace_abn",
+     {"X", "Scale", "Bias", "Mean", "Variance", "MomentumTensor"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -116,6 +121,9 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"batch_norm",
+     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+      "ReserveSpace"}},
+    {"inplace_abn",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"fused_attention", {"LnMean",         "LnVariance",
@@ -203,6 +211,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"merged_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"inplace_abn", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},

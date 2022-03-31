@@ -324,10 +324,12 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INPLACE_OP_INFERER(InplaceAbnOpInplaceInferer, {"X", "Y"});
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
-                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>)
+                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
+                  InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
 REGISTER_OP_CPU_KERNEL(
