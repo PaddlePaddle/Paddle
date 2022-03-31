@@ -25,7 +25,7 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
   protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::INT64,
+    return framework::OpKernelType(ctx.Attr<int>("dtype"),
                                    ctx.device_context());
   }
 };
@@ -33,25 +33,24 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
 class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddAttr<int>("Rows", "int number, the input of tril_indices op").SetDefault(0);;
-    AddAttr<int>("Cols", "int number, the input of tril_indices op").SetDefault(0);;
-    AddAttr<int>("Offset", "int number, the input of tril_indices op bounded by [1-rows,cols-1").SetDefault(0);
-    AddAttr<int>("Dtype","data type ,the input of tril_indices op").SetDefault(int);
+    AddAttr<int>("rows", "int number, the input of tril_indices op").SetDefault(0);;
+    AddAttr<int>("cols", "int number, the input of tril_indices op").SetDefault(0);;
+    AddAttr<int>("offset", "int number, the input of tril_indices op bounded by [1-rows,cols-1").SetDefault(0);
+    AddAttr<int>("dtype","data type ,the input of tril_indices op").SetDefault(int);
     AddOutput("Out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
   
     AddComment(R"DOC(
 TrilIndices Operator.
 
 The tril_indices operator returns the indices of the lower triangular part of the matrix 
-whose rows and cols is knowed in a 2-by-x tensor,where the first row contains row coordinates 
+whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
 of all indices and the second row contains column coordinates. Indices are ordered based on 
 rows and then columns. The lower triangular part of the matrix is defined as the elements on
  and below the diagonal.
 
-The argument offset controls which diagonal to consider, default value is 0.A positive value
-includes just as many diagonals above the main diagonal, and similarly a negative value
-excludes just as many diagonals below the main diagonal
-
+The argument offset controls which diagonal to consider, default value is 0.
+A positive valueincludes just as many diagonals above the main diagonal,
+and similarly a negative value excludes just as many diagonals below the main diagonal
 )DOC");
   }
 };
@@ -60,8 +59,10 @@ excludes just as many diagonals below the main diagonal
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
+DECLEAR_INFER_SHAPE_FUNCTOR(tril_indices,TrilIndicesInferShapeFunctor,
+                            PD_INFER_META(phi::TrilIndicesInferMeta))
 REGISTER_OPERATOR(tril_indices, ops::TrilIndicesOp, ops::TrilIndicesOpMaker,
                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-                 paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+                 paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>
+                 TrilIndicesInferShapeFunctor);
 

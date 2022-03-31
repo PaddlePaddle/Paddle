@@ -20,9 +20,9 @@
 
 template <typename T,typename Context>
 void TrilIndicesKernel(const Context& dev_ctx,
-                    const int rows,
-                    const int cols,
-                    const int offset,
+                     int rows,
+                     int cols,
+                     int offset,
                     DenseTensor* out){
 
     T* out_data = dec_ctx.template Alloc<T>(out);
@@ -47,3 +47,10 @@ void TrilIndicesKernel(const Context& dev_ctx,
     }
 
 }
+
+PD_REGISTER_KERNEL(tril_indices,
+                  CPU,
+                  ALL_LAYOUT,
+                  phi::TrilIndiceKernel,
+                  int,
+                  int64_t){}

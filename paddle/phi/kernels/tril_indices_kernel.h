@@ -19,10 +19,10 @@
 namespace phi {
 
 template <typename T,typename Context>
-void TrilIndicesKernel(const Context& tev_ctx,
-                    const int rows,
-                    const int cols,
-                    const int offset,
+void TrilIndicesKernel(const Context& dev_ctx,
+                     int rows,
+                     int cols,
+                     int offset,
                     DenseTensor* out);
 
 }  // namespace phi
