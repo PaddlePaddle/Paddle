@@ -143,6 +143,120 @@ class DataLoaderBase(object):
         return arr
 
 
+def AutoTune(Loader):
+    import time
+    from .dataloader import Subset
+
+    def updateWithDict(kw_tune, kw):
+        for key in kw_tune:
+            if key in kw.keys():
+                kw_tune[key] = kw[key]
+
+    def updateWithStr(kw_tune, args):
+        idx = 0
+        for key in kw_tune:
+            if idx < len(args):
+                kw_tune[key] = args[idx]
+            ++idx
+
+    def updateWithSampler(kw_tune):
+        if kw_tune['batch_sampler'] is not None:
+            if kw_tune['dataset'] is None:
+                kw_tune['dataset'] = kw_tune['batch_sampler'].dataset
+
+            if kw_tune['batch_size'] is None:
+                kw_tune['batch_size'] = kw_tune['batch_sampler'].batch_size
+
+    def updateSampler(kw_tune, kw_bak):
+        if kw_bak['batch_sampler'] is not None:
+            tmp_sampler = kw_bak['batch_sampler']
+            kw_tune['batch_sampler'] = paddle.io.DistributedBatchSampler(
+                kw_tune['dataset'],
+                kw_tune['batch_size'],
+                num_replicas=tmp_sampler.nranks,
+                rank=tmp_sampler.local_rank,
+                shuffle=tmp_sampler.shuffle,
+                drop_last=tmp_sampler.drop_last)
+            # if batch_sampler is not none then dataset and batch_size shuffle drop_last must be not set
+            kw_tune.pop('dataset')
+            kw_tune.pop('batch_size')
+            kw_tune.pop('shuffle')
+            kw_tune.pop('drop_last')
+        else:
+            kw_tune.pop('dataset')
+
+    def wrapper(*args, **kw):
+        auto_tune_start = time.time()
+        print("========= DataLoader Auto Tune =========")
+        print("User config for DataLoader: ", kw)
+        print("Args for DataLoader:", args)
+        best_num_workers = 0
+        min_cost = float("inf")
+        # init
+        args_tune = ()
+        kw_tune = {
+            'dataset': None,
+            'feed_list': None,
+            'places': None,
+            'return_list': False,
+            'batch_sampler': None,
+            'batch_size': 1,
+            'shuffle': False,
+            'drop_last': False,
+            'collate_fn': None,
+            'num_workers': 0,
+            'use_buffer_reader': True,
+            'use_shared_memory': True,
+            'timeout': 0,
+            'worker_init_fn': None
+        }
+
+        kw_bak = kw.copy()
+        # update kw_tune according to kw and args
+        updateWithDict(kw_tune, kw_bak)
+        updateWithStr(kw_tune, args)
+        updateWithSampler(kw_tune)
+        # update according to args
+        # evaluate cost with subset of origin dataset
+        new_batch_size = kw_tune['batch_size'] * 1000
+        sub_dataset = Subset(
+            kw_tune['dataset'], indices=list(range(new_batch_size)))
+        #update acccording to batch_sampler_tune
+        kw_tune['dataset'] = sub_dataset
+        args_tune = (sub_dataset, )
+        #update kw_tune with new_batch_size and dataset
+        updateSampler(kw_tune, kw_bak)
+
+        print("Tuning Range for num_workers: ", 0, "~",
+              multiprocessing.cpu_count())
+        for num_workers in range(0, multiprocessing.cpu_count(), 2):
+            kw_tune['num_workers'] = num_workers
+            reader = Loader(*args_tune, **kw_tune)
+            costs = []
+            avg_cost = 0
+            start = time.time()
+            for i, data in enumerate(reader):
+                costs.append(time.time() - start)
+                start = time.time()
+            if len(costs) > 2:
+                avg_cost = sum(costs[2:]) / len(costs[2:])
+            else:
+                avg_cost = sum(costs[0:]) / len(costs[0:])
+            if min_cost * 0.9 > avg_cost:
+                min_cost = avg_cost
+                best_num_workers = num_workers
+            print("num_workers: ", num_workers, " avg_cost: ", avg_cost)
+        print("best_num_workers: ", best_num_workers)
+        kw['num_workers'] = best_num_workers
+        reader = Loader(*args, **kw)
+        print("AutoTuning Cost for DataLoader: ",
+              time.time() - auto_tune_start, 'seconds')
+        return reader
+
+    return wrapper
+
+
+#@AutoTune
 class DataLoader(object):
     """
     DataLoader prodives an iterator which iterates given dataset
