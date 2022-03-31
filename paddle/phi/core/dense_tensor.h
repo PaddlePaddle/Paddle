@@ -171,6 +171,25 @@ class DenseTensor : public TensorBase,
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
 
+ public:
+  /* Temporarily put InplaceVersion inside DenseTensor.
+  Will move to AutogradMeta as soon as we switch to Eager Dygraph.
+  */
+  class InplaceVersion {
+   public:
+    bool IsUnique() const { return inplace_version_ == 0; }
+    void Bump() { ++inplace_version_; }
+    uint32_t CurrentVersion() const { return inplace_version_; }
+    void SetInplaceVersionToZero() { inplace_version_ = 0; }
+
+   private:
+    uint32_t inplace_version_{0};
+  };
+
+ protected:
+  std::shared_ptr<InplaceVersion> inplace_version_counter_{
+      std::make_shared<InplaceVersion>()};
+
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
 #endif
