@@ -90,7 +90,7 @@ TEST(CommonDenseTable, Adam) {
 
   std::vector<float> pull_values;
   pull_values.resize(fea_dim);
-  table->PushDense(pull_values.data(), fea_dim);
+  table->PullDense(pull_values.data(), fea_dim);
 
   float mom_rate = 0.99;
   float decay_rate = 0.9999;
@@ -118,6 +118,7 @@ TEST(CommonDenseTable, Adam) {
     }
   }
   for (int j = 0; j < fea_dim; j++) {
+    VLOG(0) << param[j] << " " << pull_values[j];
     ASSERT_TRUE(abs(param[j] - pull_values[j]) < 1e-5);
   }
 }
@@ -172,7 +173,7 @@ TEST(CommonDenseTable, SGD) {
   for (int i = 0; i < trainers; i++) {
     auto &push_values = trainer_gradient_values[i];
     auto task = [table, &push_values] {
-      table->PullDense(push_values.data(), push_values.size());
+      table->PushDense(push_values.data(), push_values.size());
     };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
