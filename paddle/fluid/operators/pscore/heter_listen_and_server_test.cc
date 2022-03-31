@@ -142,7 +142,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   CreateVarsOnScope(scope, place);
 }
 
-void StartHeterServer(std::string endpoint) {
+void RunHeterServerOp(std::string endpoint) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -167,10 +167,10 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
   FLAGS_eager_delete_tensor_gb = -1;
-  std::thread server_thread(StartHeterServer, endpoint);
+  std::thread server_thread(RunHeterServerOp, endpoint);
   sleep(1);
-  auto b_rpc_service = distributed::HeterServer::GetInstance();
-  b_rpc_service->WaitServerReady();
+  auto heter_server_ptr_ = distributed::HeterServer::GetInstance();
+  heter_server_ptr_->WaitServerReady();
   using MicroScope =
       std::unordered_map<int, std::shared_ptr<std::vector<framework::Scope*>>>;
   using MiniScope = std::unordered_map<int, framework::Scope*>;
@@ -185,8 +185,8 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   (*micro_scope).push_back(micro_scope_0);
   (*micro_scope).push_back(micro_scope_1);
   (*micro_scopes)[0] = micro_scope;
-  b_rpc_service->SetMicroBatchScopes(micro_scopes);
-  b_rpc_service->SetMiniBatchScopes(mini_scopes);
+  heter_server_ptr_->SetMicroBatchScopes(micro_scopes);
+  heter_server_ptr_->SetMiniBatchScopes(mini_scopes);
 
   using TaskQueue =
       std::unordered_map<int,
@@ -198,16 +198,12 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
-  b_rpc_service->SetTaskQueue(task_queue_);
+  heter_server_ptr_->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
-  distributed::HeterClient* rpc_client =
+  distributed::HeterClient* heter_client_ptr_ =
       distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
           .get();
-
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
@@ -224,8 +220,8 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  rpc_client->SendAndRecvAsync(ctx, *scope, in_var_name, send_var, recv_var,
-                               "forward");
+  heter_client_ptr_->SendAndRecvAsync(ctx, *scope, in_var_name, send_var,
+                                      recv_var, "forward");
   auto task = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
       task.first, "x",
@@ -234,15 +230,15 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
-  rpc_client->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name, send_var,
-                               recv_var, "backward");
+  heter_client_ptr_->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name,
+                                      send_var, recv_var, "backward");
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
       task2.first, "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->Stop();
+  heter_client_ptr_->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();
   LOG(INFO) << "end server thread join";
