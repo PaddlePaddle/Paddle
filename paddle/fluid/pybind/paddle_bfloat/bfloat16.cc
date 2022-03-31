@@ -51,11 +51,11 @@ limitations under the License.
 #include <iostream>
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+//#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/framework/eigen.h"
-#else
-#include "eigen/Eigen/Core"
-#endif
+//#else
+//#include "eigen/Eigen/Core"
+//#endif
 
 #include <fenv.h>
 #include "numpy/arrayobject.h"
