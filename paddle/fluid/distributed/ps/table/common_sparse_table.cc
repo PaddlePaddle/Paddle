@@ -349,7 +349,7 @@ int32_t CommonSparseTable::Pour() {
     std::copy(reservoir.values.begin(), reservoir.values.end(),
               std::back_inserter(values));
   }
-  _push_sparse(keys.data(), values.data(), pull_reservoir_.size());
+  _PushSparse(keys.data(), values.data(), pull_reservoir_.size());
 
   pull_reservoir_.clear();
   return 0;
@@ -458,8 +458,8 @@ int32_t CommonSparseTable::PullSparsePtr(char** pull_values,
   return 0;
 }
 
-int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
-                                        const float* values, size_t num) {
+int32_t CommonSparseTable::_PushSparse(const uint64_t* keys,
+                                       const float* values, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -506,7 +506,7 @@ int32_t CommonSparseTable::PushSparse(const uint64_t* keys, const float* values,
         });
     task.wait();
   } else {
-    _push_sparse(keys, values, num);
+    _PushSparse(keys, values, num);
   }
 
   return 0;
@@ -514,12 +514,12 @@ int32_t CommonSparseTable::PushSparse(const uint64_t* keys, const float* values,
 
 int32_t CommonSparseTable::PushSparse(const uint64_t* keys,
                                       const float** values, size_t num) {
-  _push_sparse(keys, values, num);
+  _PushSparse(keys, values, num);
   return 0;
 }
 
-int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
-                                        const float** values, size_t num) {
+int32_t CommonSparseTable::_PushSparse(const uint64_t* keys,
+                                       const float** values, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 

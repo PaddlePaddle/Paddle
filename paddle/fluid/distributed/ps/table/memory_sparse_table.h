@@ -81,8 +81,8 @@ class MemorySparseTable : public SparseTable {
   virtual void Clear();
 
  protected:
-  virtual int32_t _push_sparse(const uint64_t* keys, const float** values,
-                               size_t num);
+  virtual int32_t _PushSparse(const uint64_t* keys, const float** values,
+                              size_t num);
 
  protected:
   const int _task_pool_size = 24;

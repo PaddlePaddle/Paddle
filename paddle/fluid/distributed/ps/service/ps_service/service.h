@@ -56,7 +56,7 @@ class PSCore {
   virtual int StopServer();
   virtual int FinalizeWorker();
   virtual std::vector<uint64_t> GetClientInfo();
-  virtual int CreateClient2clientConnection(int pserver_timeout_ms,
+  virtual int CreateClient2ClientConnection(int pserver_timeout_ms,
                                             int pserver_connect_timeout_ms,
                                             int max_retry);
   std::shared_ptr<paddle::distributed::PSServer>

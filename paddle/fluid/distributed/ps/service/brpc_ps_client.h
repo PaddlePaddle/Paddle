@@ -154,7 +154,7 @@ class BrpcPsClient : public PSClient {
       _server_started = false;
     }
   }
-  virtual int32_t CreateClient2clientConnection(int pserver_timeout_ms,
+  virtual int32_t CreateClient2ClientConnection(int pserver_timeout_ms,
                                                 int pserver_connect_timeout_ms,
                                                 int max_retry);
   std::future<int32_t> Shrink(uint32_t table_id,
@@ -221,7 +221,7 @@ class BrpcPsClient : public PSClient {
                                               void *done);
   virtual std::future<int32_t> Flush();
 
-  std::future<int32_t> SendClient2clientMsg(int msg_type, int to_client_id,
+  std::future<int32_t> SendClient2ClientMsg(int msg_type, int to_client_id,
                                             const std::string &msg) override;
 
   // for local save sparse

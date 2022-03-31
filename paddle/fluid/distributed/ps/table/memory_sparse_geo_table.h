@@ -64,7 +64,7 @@ class MemorySparseGeoTable : public SparseTable {
   int32_t PushSparse(const uint64_t* keys, const float* values,
                      size_t num) override;
 
-  int32_t _push_sparse(const uint64_t* keys, const float* values, size_t num);
+  int32_t _PushSparse(const uint64_t* keys, const float* values, size_t num);
   // int32_t _pull_sparse(float* pull_values, const PullSparseValue&
   // pull_value);
 

@@ -56,7 +56,7 @@ class CommonDenseTable : public DenseTable {
   void Clear() override { return; }
 
  protected:
-  int32_t _push_dense(const float* values, size_t num);
+  int32_t _PushDense(const float* values, size_t num);
 
  private:
   const int task_pool_size_ = 10;

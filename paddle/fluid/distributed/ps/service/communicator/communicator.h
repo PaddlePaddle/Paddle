@@ -310,7 +310,7 @@ class Communicator {
   virtual void CreateC2CConnection(int pserver_timeout_ms,
                                    int pserver_connect_timeout_ms,
                                    int max_retry) {
-    _worker_ptr->CreateClient2clientConnection(
+    _worker_ptr->CreateClient2ClientConnection(
         pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 

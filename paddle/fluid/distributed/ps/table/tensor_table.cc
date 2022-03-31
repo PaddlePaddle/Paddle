@@ -90,11 +90,11 @@ int32_t GlobalStepTable::SetTableMap(
 
 int32_t GlobalStepTable::PushDense(const int64_t *values,
                                    const int32_t trainer_id) {
-  return _run_program(values, trainer_id);
+  return _RunProgram(values, trainer_id);
 }
 
-int32_t GlobalStepTable::_run_program(const int64_t *values,
-                                      const uint32_t trainer_id) {
+int32_t GlobalStepTable::_RunProgram(const int64_t *values,
+                                     const uint32_t trainer_id) {
   FLAGS_eager_delete_tensor_gb = -1;
   auto counter = decay_counters_.at(trainer_id);
   counter += int(values[0]);
@@ -111,7 +111,7 @@ int32_t GlobalStepTable::_run_program(const int64_t *values,
 
   // Todo: hard code for increment op
   value[0] = global_counter - 1;
-  VLOG(3) << "GlobalStepTable::_run_program global_counter " << value[0];
+  VLOG(3) << "GlobalStepTable::_RunProgram global_counter " << value[0];
 
   executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
   auto *lr_var = scope_->FindVar(fetch_var_name_);

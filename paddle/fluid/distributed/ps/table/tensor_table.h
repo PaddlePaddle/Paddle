@@ -144,8 +144,8 @@ class DenseTensorTable : public TensorTable {
   }
 
  protected:
-  virtual int32_t _run_program(const float *values, size_t num,
-                               const uint32_t trainer_id) {
+  virtual int32_t _RunProgram(const float *values, size_t num,
+                              const uint32_t trainer_id) {
     return 0;
   }
 
@@ -199,8 +199,7 @@ class GlobalStepTable : public DenseTensorTable {
       std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) override;
 
  private:
-  virtual int32_t _run_program(const int64_t *values,
-                               const uint32_t trainer_id);
+  virtual int32_t _RunProgram(const int64_t *values, const uint32_t trainer_id);
 
  private:
   std::unordered_map<int, int64_t> decay_counters_;

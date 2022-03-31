@@ -192,7 +192,7 @@ int FleetWrapper::SetClients(std::vector<uint64_t>& host_sign_list) {
 
 void FleetWrapper::CreateClient2ClientConnection() {
   VLOG(1) << "Going to create client2client connection";
-  worker_ptr_->CreateClient2clientConnection(client2client_request_timeout_ms_,
+  worker_ptr_->CreateClient2ClientConnection(client2client_request_timeout_ms_,
                                              client2client_connect_timeout_ms_,
                                              client2client_max_retry_);
 }
@@ -805,13 +805,13 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
     VLOG(0) << "FleetWrapper::Client is null";
     return -1;
   } else {
-    return worker_ptr_->RegisteClient2clientMsgHandler(msg_type, handler);
+    return worker_ptr_->RegisteClient2ClientMsgHandler(msg_type, handler);
   }
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
-  return worker_ptr_->SendClient2clientMsg(msg_type, to_client_id, msg);
+  return worker_ptr_->SendClient2ClientMsg(msg_type, to_client_id, msg);
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {

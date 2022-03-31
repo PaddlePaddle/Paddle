@@ -162,7 +162,7 @@ int32_t CommonDenseTable::PushDenseParam(const float* values, size_t num) {
 
 int32_t CommonDenseTable::Pour() {
   pull_reservoir_.avg();
-  _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
+  _PushDense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
   return 0;
 }
@@ -176,12 +176,12 @@ int32_t CommonDenseTable::PushDense(const float* values, size_t num) {
         });
     task.wait();
   } else {
-    _push_dense(values, num);
+    _PushDense(values, num);
   }
   return 0;
 }
 
-int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
+int32_t CommonDenseTable::_PushDense(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
       num, param_dim_,
       paddle::platform::errors::InvalidArgument(

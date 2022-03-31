@@ -104,10 +104,10 @@ std::vector<uint64_t> PSCore::GetClientInfo() {
   return _ps_env.GetClientInfo();
 }
 
-int PSCore::CreateClient2clientConnection(int pserver_timeout_ms,
+int PSCore::CreateClient2ClientConnection(int pserver_timeout_ms,
                                           int pserver_connect_timeout_ms,
                                           int max_retry) {
-  int ret = _worker_ptr->CreateClient2clientConnection(
+  int ret = _worker_ptr->CreateClient2ClientConnection(
       pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   return ret;
 }

@@ -78,7 +78,7 @@ void DownpourPsClientService::service(
     const PsRequestMessage *request, PsResponseMessage *response,
     ::google::protobuf::Closure *done) {
   brpc::ClosureGuard done_guard(done);
-  int ret = _client->HandleClient2clientMsg(
+  int ret = _client->HandleClient2ClientMsg(
       request->cmd_id(), request->client_id(), request->data());
   response->set_err_code(0);
   response->set_err_msg("");
@@ -111,7 +111,7 @@ int32_t BrpcPsClient::StartClientService() {
   return 0;
 }
 
-int32_t BrpcPsClient::CreateClient2clientConnection(
+int32_t BrpcPsClient::CreateClient2ClientConnection(
     int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry) {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
@@ -1176,7 +1176,7 @@ std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
   return fut;
 }
 
-std::future<int32_t> BrpcPsClient::SendClient2clientMsg(
+std::future<int32_t> BrpcPsClient::SendClient2ClientMsg(
     int msg_type, int to_client_id, const std::string &msg) {
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();

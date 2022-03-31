@@ -108,7 +108,7 @@ class PSClient {
           &regions,
       PSEnvironment &_env, size_t client_id) final;  // NOLINT
 
-  virtual int32_t CreateClient2clientConnection(int pserver_timeout_ms,
+  virtual int32_t CreateClient2ClientConnection(int pserver_timeout_ms,
                                                 int pserver_connect_timeout_ms,
                                                 int max_retry) = 0;
 
@@ -224,7 +224,7 @@ class PSClient {
 
   virtual void FinalizeWorker() = 0;
   // client to client, 消息发送
-  virtual std::future<int32_t> SendClient2clientMsg(int msg_type,
+  virtual std::future<int32_t> SendClient2ClientMsg(int msg_type,
                                                     int to_client_id,
                                                     const std::string &msg) {
     VLOG(0) << "Did not implement";
@@ -237,12 +237,12 @@ class PSClient {
   // client2client消息处理，std::function<int32_t (int, int, const std::string&)
   // -> ret (msg_type, from_client_id, msg)
   typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;
-  virtual int RegisteClient2clientMsgHandler(int msg_type,
+  virtual int RegisteClient2ClientMsgHandler(int msg_type,
                                              MsgHandlerFunc handler) {
     _msg_handler_map[msg_type] = handler;
     return 0;
   }
-  virtual int HandleClient2clientMsg(int msg_type, int from_client_id,
+  virtual int HandleClient2ClientMsg(int msg_type, int from_client_id,
                                      const std::string &msg) {
     auto itr = _msg_handler_map.find(msg_type);
     if (itr == _msg_handler_map.end()) {

@@ -97,7 +97,7 @@ int32_t MemorySparseGeoTable::PushSparse(const uint64_t* keys,
   ids.resize(num);
   std::copy_n(keys, num, ids.begin());
   _geo_recorder->Update(ids);
-  _push_sparse(keys, values, num);
+  _PushSparse(keys, values, num);
   return 0;
 }
 
@@ -166,8 +166,8 @@ int32_t MemorySparseGeoTable::PullSparse(float* pull_values,
   return 0;
 }
 
-int32_t MemorySparseGeoTable::_push_sparse(const uint64_t* keys,
-                                           const float* values, size_t num) {
+int32_t MemorySparseGeoTable::_PushSparse(const uint64_t* keys,
+                                          const float* values, size_t num) {
   auto shard_num = _task_pool_size;
   std::vector<std::future<int>> tasks(shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(shard_num);

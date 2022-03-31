@@ -607,12 +607,12 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys, const float* values,
 
 int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                                       const float** values, size_t num) {
-  _push_sparse(keys, values, num);
+  _PushSparse(keys, values, num);
   return 0;
 }
 
-int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
-                                        const float** values, size_t num) {
+int32_t MemorySparseTable::_PushSparse(const uint64_t* keys,
+                                       const float** values, size_t num) {
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
       _real_local_shard_num);

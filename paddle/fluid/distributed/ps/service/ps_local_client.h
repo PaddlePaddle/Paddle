@@ -26,7 +26,7 @@ class PsLocalClient : public PSClient {
  public:
   PsLocalClient() {}
   virtual ~PsLocalClient() { _running = false; }
-  virtual int32_t CreateClient2clientConnection(int pslib_timeout_ms,
+  virtual int32_t CreateClient2ClientConnection(int pslib_timeout_ms,
                                                 int pslib_connect_timeout_ms,
                                                 int max_retry) {
     return 0;
@@ -151,7 +151,7 @@ class PsLocalClient : public PSClient {
     return 0;
   }
 
-  virtual ::std::future<int32_t> SendClient2clientMsg(
+  virtual ::std::future<int32_t> SendClient2ClientMsg(
       int msg_type, int to_client_id, const std::string& msg) override {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
