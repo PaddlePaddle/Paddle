@@ -45,14 +45,14 @@ void TriangularSolveKernel(const Context& dev_ctx,
   int y_bst_ndim = y_bst_dims_vec.size();
 
   // Tensor broadcast to 'out' and temp 'x_bst'
-  ScalarArray x_bst_dims(x_bst_dims_vec);
+  IntArray x_bst_dims(x_bst_dims_vec);
   DenseTensor x_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims);
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
   out->Resize(phi::make_ddim(y_bst_dims_vec));
   T* out_data = dev_ctx.template Alloc<T>(out);
-  ScalarArray y_bst_dims(y_bst_dims_vec);
+  IntArray y_bst_dims(y_bst_dims_vec);
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, out);
 
   // calculate use cublas library

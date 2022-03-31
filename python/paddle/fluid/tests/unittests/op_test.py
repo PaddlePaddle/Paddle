@@ -52,6 +52,11 @@ from paddle.fluid.tests.unittests.white_list import (
     no_grad_set_white_list, )
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
+# For switch new eager mode globally
+g_is_in_eager = _in_eager_without_dygraph_check()
+g_enable_legacy_dygraph = _enable_legacy_dygraph if g_is_in_eager else lambda: None
+g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda: None
+
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
@@ -1583,9 +1588,14 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
         if check_dygraph:
+            # always enable legacy dygraph
+            g_enable_legacy_dygraph()
+
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
+            # yield the original state
+            g_disable_legacy_dygraph()
         if check_eager:
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()

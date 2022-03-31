@@ -91,7 +91,7 @@ def header_include():
     return """
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 """
 
 
