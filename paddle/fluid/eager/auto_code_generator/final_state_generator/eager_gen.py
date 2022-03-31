@@ -729,7 +729,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     assert name in forward_outputs_position_map.keys(
                     ), AssertMessage(name, forward_outputs_position_map.keys())
                     fwd_output_pos = forward_outputs_position_map[name][1]
-                    set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
             set_tensor_wrappers_list.append(set_tensor_wrappers)
         set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 

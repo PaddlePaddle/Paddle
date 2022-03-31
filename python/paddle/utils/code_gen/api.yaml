@@ -1074,7 +1074,7 @@
     func : size
 
 - api : slice
-  args : (Tensor input, int64_t[] axes, ScalarArray starts, ScalarArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
   output : Tensor
   infer_meta :
     func : SliceRawInferMeta
@@ -1109,7 +1109,7 @@
   backward : split_grad
 
 - api : split
-  args : (Tensor x, ScalarArray num_or_sections, Scalar(int) axis)
+  args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
   invoke : split_impl(x, num_or_sections, axis)
 

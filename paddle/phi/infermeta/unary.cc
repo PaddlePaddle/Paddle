@@ -1749,8 +1749,8 @@ void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
 
 void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& axes,
-                       const ScalarArray& starts_arr,
-                       const ScalarArray& ends_arr,
+                       const IntArray& starts_arr,
+                       const IntArray& ends_arr,
                        const std::vector<int64_t>& infer_flags_t,
                        const std::vector<int64_t>& decrease_axis,
                        MetaTensor* out,
