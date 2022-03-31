@@ -189,14 +189,14 @@ def normalize_program(program, feed_vars, fetch_vars):
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
-    with program_guard(program):
-        uniq_fetch_vars = []
-        for i, var in enumerate(fetch_vars):
-            if var.dtype != paddle.bool:
-                var = layers.scale(
-                    var, 1., name="save_infer_model/scale_{}".format(i))
-            uniq_fetch_vars.append(var)
-        fetch_vars = uniq_fetch_vars
+    # with program_guard(program):
+    #     uniq_fetch_vars = []
+    #     for i, var in enumerate(fetch_vars):
+    #         if var.dtype != paddle.bool:
+    #             var = layers.scale(
+    #                 var, 1., name="save_infer_model/scale_{}".format(i))
+    #         uniq_fetch_vars.append(var)
+    #     fetch_vars = uniq_fetch_vars
 
     # serialize program
     copy_program = program.clone()
@@ -211,8 +211,8 @@ def normalize_program(program, feed_vars, fetch_vars):
     copy_program.desc.flush()
 
     feed_var_names = [var.name for var in feed_vars]
-    copy_program = copy_program._prune_with_input(
-        feeded_var_names=feed_var_names, targets=fetch_vars)
+    # copy_program = copy_program._prune_with_input(
+    #     feeded_var_names=feed_var_names, targets=fetch_vars)
     copy_program = copy_program._inference_optimize(prune_read_op=True)
     fetch_var_names = [var.name for var in fetch_vars]
     prepend_feed_ops(copy_program, feed_var_names)

@@ -59,6 +59,7 @@ class Engine:
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
         self.strategy = strategy
+        self._mode = 'train'
 
         self._executor = None
         self._orig_main_prog = fluid.default_main_program()
@@ -80,19 +81,17 @@ class Engine:
                 optimizer=None,
                 loss=None,
                 metrics=None,
-                mode='train',
                 all_ranks=False):
         self._optimizer = optimizer
         # TODO: check loss type
         self._loss = loss
         self._metrics = to_list(metrics)
         for m in ['train', 'predict']:
-            self.mode = m
+            self._mode = m
             self._build(m)  # build forward program
             self._plan(m)  # completion & planner
             self._parallel(m, all_ranks)  # parallel
             self._initialize(m)  # init comm and startup program
-        self.mode = mode
 
     def _build(self, mode):
         serial_main_prog = self._serial_main_progs.get(mode, None)
@@ -214,9 +213,9 @@ class Engine:
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
                 loss,
-                distop_context=self._dist_contexts[self.mode].dist_op_context)
+                distop_context=self._dist_contexts[self._mode].dist_op_context)
         self._completer.complete_backward_annotation(main_program)
-        self._dist_contexts[self.mode].block_state.parse_backward_blocks(
+        self._dist_contexts[self._mode].block_state.parse_backward_blocks(
             main_program)
         return params_grads
 
@@ -232,55 +231,55 @@ class Engine:
         # apply amp pass
         if self.strategy.amp:
             config = copy.deepcopy(self.strategy.amp_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
+            config["dist_context"] = self._dist_contexts[self._mode]
             config["params_grads"] = params_grads
             config["loss"] = loss
             auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
             auto_parallel_amp_pass.apply([main_program], [startup_program],
-                                         self._pass_contexts[self.mode])
+                                         self._pass_contexts[self._mode])
 
         # apply recompute pass
         if self.strategy.recompute:
             config = copy.deepcopy(self.strategy.recompute_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
+            config["dist_context"] = self._dist_contexts[self._mode]
             config["no_grad_set"] = None
             config["loss"] = loss
             auto_parallel_recompute_pass = new_pass("auto_parallel_recompute",
                                                     config)
             auto_parallel_recompute_pass.apply([main_program],
                                                [startup_program],
-                                               self._pass_contexts[self.mode])
+                                               self._pass_contexts[self._mode])
 
     def _apply_post_optimization(self, main_program, startup_program, rank,
                                  params_grads):
         if self.strategy.sharding:
             config = copy.deepcopy(self.strategy.sharding_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
+            config["dist_context"] = self._dist_contexts[self._mode]
             config["params_grads"] = params_grads
             config["global_rank"] = rank
             auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
                                                    config)
             auto_parallel_sharding_pass.apply([main_program],
                                               [startup_program],
-                                              self._pass_contexts[self.mode])
+                                              self._pass_contexts[self._mode])
 
         if self.strategy.gradient_merge:
             config = copy.deepcopy(self.strategy.gradient_merge_configs)
-            config["dist_context"] = self._dist_contexts[self.mode]
+            config["dist_context"] = self._dist_contexts[self._mode]
             config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config)
             auto_parallel_gradient_merge_pass.apply(
                 [main_program], [startup_program],
-                self._pass_contexts[self.mode])
+                self._pass_contexts[self._mode])
 
-    def fit(self, train_data, batch_size=1, epochs=1, steps_per_epoch=None):
+    def fit(self, train_data, batch_size=1, epochs=1, steps_per_epoch=None, sample_generator=True):
         # TODO: callbacks
         # TODO: evaluate after training
-        self.mode = 'train'
+        self._mode = 'train'
         assert isinstance(train_data, Dataset)
         train_dataloader = self._create_dataloader(train_data, batch_size,
-                                                   epochs, steps_per_epoch)
+                                                   epochs, steps_per_epoch, sample_generator)
 
         outputs = []
         for epoch in range(epochs):
@@ -298,10 +297,11 @@ class Engine:
                 test_data,
                 batch_size=1,
                 use_program_cache=False,
-                return_numpy=True):
-        self.mode = 'predict'
+                return_numpy=True,
+                sample_generator=True):
+        self._mode = 'predict'
         # TODO: need check dataset
-        test_dataloader = self._create_dataloader(test_data, batch_size)
+        test_dataloader = self._create_dataloader(test_data, batch_size, sample_generator=sample_generator)
 
         outputs = []
         for step, data in enumerate(test_dataloader):
@@ -317,8 +317,8 @@ class Engine:
 
     def _train_step(self, data):
         logs = {}
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        fetch_var = self._fetch_vars[self.mode]["loss"][0]
+        dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
+        fetch_var = self._fetch_vars[self._mode]["loss"][0]
         if fetch_var.name not in dist_main_prog.global_block().vars:
             loss = self._executor.run(dist_main_prog)
             logs["loss"] = None
@@ -330,12 +330,12 @@ class Engine:
 
     def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
         fetch_var = []
-        for var in self._fetch_vars[self.mode]["outputs"]:
+        for var in self._fetch_vars[self._mode]["outputs"]:
             if var.name in dist_main_prog.global_block().vars:
                 fetch_var.append(var)
-
+        print_program_with_dist_attr(dist_main_prog, self._dist_contexts[self.mode])
         if fetch_var is []:
             outs = self._executor.run(dist_main_prog,
                                       use_program_cache=use_program_cache)
@@ -352,19 +352,19 @@ class Engine:
                            dataset,
                            batch_size,
                            epochs=1,
-                           steps_per_epoch=None):
-        feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
-            self.mode]["labels"]
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
-        dist_context = self._dist_contexts[self.mode]
+                           steps_per_epoch=None,
+                           sample_generator=True):
+        feed_list = self._feed_vars[self._mode]["inputs"] + self._feed_vars[
+            self._mode]["labels"]
+        dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
+        dist_startup_prog = self._dist_startup_progs[self._mode][self._cur_rank]
+        dist_context = self._dist_contexts[self._mode]
         dist_main_block = dist_main_prog.global_block()
-        serial_main_prog = self._serial_main_progs[self.mode]
+        serial_main_prog = self._serial_main_progs[self._mode]
         serial_main_block = serial_main_prog.global_block()
         op_size = len(dist_main_block.ops)
         places = paddle.static.cuda_places()
         with fluid.program_guard(dist_main_prog, dist_startup_prog):
-            inputs = self._feed_vars[self.mode]["inputs"]
             dataloader = NonIterableGeneratorLoader(
                 dataset,
                 feed_list,
@@ -372,7 +372,7 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                inputs=inputs)
+                sample_generator=sample_generator)
         new_op_size = len(dist_main_block.ops)
         for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
@@ -412,7 +412,7 @@ class Engine:
 
     def save(self, path, training=True, mode=None):
         if not mode:
-            mode = self.mode
+            mode = self._mode
 
         if training:
             assert 'train' in self._serial_main_progs, "training model is not ready, please call `engine.prepare(mode='train')` first."
@@ -438,10 +438,49 @@ class Engine:
 
     def load(self, path, strict=True, load_optimizer=True, mode=None):
         if not mode:
-            mode = self.mode
+            mode = self._mode
         assert mode, "Please set the 'mode' you want to load."
 
         dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
         dist_context = self._dist_contexts[mode]
         self._saver.load(path, dist_main_prog, dist_context, strict,
                          load_optimizer)
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        self._mode = mode
+
+    @property
+    def metrics(self):
+        return self._metrics
+
+    @property
+    def metrics_name(self):
+        metrics_name = []
+        for metric in self._metrics:
+            metrics_name.append(metric.name)
+        return metrics_name
+
+    @property
+    def main_program(self):
+        return self._dist_main_progs[self._mode][self._cur_rank]
+
+    @property
+    def startup_program(self):
+        return self._dist_startup_progs[self._mode][self._cur_rank]
+
+    @property
+    def dist_context(self):
+        return self._dist_contexts[self._mode]
+
+    @property
+    def serial_main_program(self):
+        return self._serial_main_progs[self._mode]
+
+    @property
+    def serial_startup_program(self):
+        return self._serial_startup_progs[self._mode]
