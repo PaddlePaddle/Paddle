@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <mutex>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -233,6 +234,8 @@ void PSGPUWorker::TrainFiles() {
             "[op_num: " << op_or_cuda_graph.ops.size() << "]"
             "cudagraph begin capture";
           if (op_or_cuda_graph.cudagraph == nullptr) {
+            static std::mutex _capture_mutex;
+            std::lock_guard<std::mutex> lock(_capture_mutex);
             platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeThreadLocal);
             for (auto& op : op_or_cuda_graph.ops) {
               op->Run(*thread_scope_, place_);
