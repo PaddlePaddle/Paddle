@@ -16,7 +16,7 @@
 import paddle
 from ...fluid.dygraph import Flatten  # noqa: F401
 from .. import functional as F
-from ...fluid.framework import _dygraph_tracer
+from ...fluid.framework import _dygraph_tracer, _non_static_mode
 from paddle.nn import Layer
 from paddle import in_dynamic_mode
 
@@ -160,6 +160,8 @@ class Linear(Layer):
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
+        if _non_static_mode():
+            paddle.nn.utils.stride_column(self.weight)
         self.bias = self.create_parameter(
             shape=[out_features],
             attr=self._bias_attr,
