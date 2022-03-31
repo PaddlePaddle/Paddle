@@ -971,6 +971,18 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
     :param inner_outputs: Output var name of ops in current block.
     :return: inner_inputs, inner_outputs
     """
+    # NOTE(dev): There are some persistable var created in some non-standard API
+    # such as "contrib.layers.shuffle_batch". It create a "Seed" used both in
+    # Input and Output. This var shall not be considered as a loop_var in
+    # control_flow.
+    IGNORE_VAR_NAMES = ["shuffle_batch_seed"]
+
+    def is_ignore_vars(var):
+        for name in IGNORE_VAR_NAMES:
+            if name in var.name:
+                return True
+
+        return False
 
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
@@ -997,7 +1009,7 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
         if current_block.has_var(in_var_name):
             current_block_var = current_block.var(in_var_name)
         if not parent_block_var and current_block_var and \
-                current_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                (current_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY or is_ignore_vars(current_block_var)):
             remove_inner_inputs.add(in_var_name)
 
     inner_inputs = inner_inputs - remove_inner_inputs
