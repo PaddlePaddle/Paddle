@@ -138,7 +138,7 @@ int32_t CommonDenseTable::Pull(TableContext& context) {
 
 int32_t CommonDenseTable::Push(TableContext& context) {
   CHECK(context.value_type == Dense);
-  if (context.pull_context.values != nullptr) {
+  if (context.push_context.values != nullptr) {
     const float* values = context.push_context.values;
     return push_dense(values, context.num);
   }
@@ -220,7 +220,7 @@ int32_t CommonDenseTable::load(const std::string& path,
   }
   size_t dim_num_per_file = _config.accessor().fea_dim() / file_list.size() + 1;
   // param_dim_ in last node != _config.accesor().fea_dim() / _shard_num + 1
-  size_t dim_num_per_shard = _value_accesor->fea_dim() / _shard_num + 1;
+  size_t dim_num_per_shard = _table_info.fea_dim / _shard_num + 1;
   size_t start_dim_idx = dim_num_per_shard * _shard_idx;
   size_t start_file_idx = start_dim_idx / dim_num_per_file;
   size_t end_file_idx = (start_dim_idx + param_dim_) / dim_num_per_file;

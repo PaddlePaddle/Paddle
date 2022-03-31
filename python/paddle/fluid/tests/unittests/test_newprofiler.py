@@ -19,6 +19,9 @@ import numpy as np
 
 import paddle
 import paddle.profiler as profiler
+import paddle.nn as nn
+import paddle.nn.functional as F
+from paddle.io import Dataset, DataLoader
 
 
 class TestProfiler(unittest.TestCase):
@@ -123,6 +126,75 @@ class TestProfiler(unittest.TestCase):
         prof.export(path='./test_profiler_pb.pb', format='pb')
         prof.summary()
         result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
+
+
+class RandomDataset(Dataset):
+    def __init__(self, num_samples):
+        self.num_samples = num_samples
+
+    def __getitem__(self, idx):
+        image = np.random.random([100]).astype('float32')
+        label = np.random.randint(0, 10 - 1, (1, )).astype('int64')
+        return image, label
+
+    def __len__(self):
+        return self.num_samples
+
+
+class SimpleNet(nn.Layer):
+    def __init__(self):
+        super(SimpleNet, self).__init__()
+        self.fc = nn.Linear(100, 10)
+
+    def forward(self, image, label=None):
+        return self.fc(image)
+
+
+class TestTimerOnly(unittest.TestCase):
+    def test_with_dataloader(self):
+        def train(step_num_samples=None):
+            dataset = RandomDataset(20 * 4)
+            simple_net = SimpleNet()
+            opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                                       parameters=simple_net.parameters())
+            loader = DataLoader(
+                dataset,
+                batch_size=4,
+                shuffle=True,
+                drop_last=True,
+                num_workers=2)
+            step_info = ''
+            p = profiler.Profiler(timer_only=True)
+            p.start()
+            for i, (image, label) in enumerate(loader()):
+                out = simple_net(image)
+                loss = F.cross_entropy(out, label)
+                avg_loss = paddle.mean(loss)
+                avg_loss.backward()
+                opt.minimize(avg_loss)
+                simple_net.clear_gradients()
+                p.step(num_samples=step_num_samples)
+                if i % 10 == 0:
+                    step_info = p.step_info()
+                    print("Iter {}: {}".format(i, step_info))
+            p.stop()
+            return step_info
+
+        step_info = train(step_num_samples=None)
+        self.assertTrue('steps/s' in step_info)
+        step_info = train(step_num_samples=4)
+        self.assertTrue('samples/s' in step_info)
+
+    def test_without_dataloader(self):
+        x = paddle.to_tensor(np.random.randn(10, 10))
+        y = paddle.to_tensor(np.random.randn(10, 10))
+        p = profiler.Profiler(timer_only=True)
+        p.start()
+        step_info = ''
+        for i in range(20):
+            out = x + y
+            p.step()
+        p.stop()
 
 
 if __name__ == '__main__':
