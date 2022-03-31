@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import unittest
 import os
+import copy
 
 import paddle
 import numpy as np
@@ -39,7 +40,11 @@ def init_process_group(strategy=None):
     nranks = ParallelEnv().nranks
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
-    store = paddle.fluid.core.TCPStore("127.0.0.1", 6174, is_master, nranks)
+    current_env = copy.copy(os.environ.copy())
+    port = 6175
+    if 'PADDLE_DIST_UT_PORT' in current_env.keys():
+        port = int(current_env['PADDLE_DIST_UT_PORT'])
+    store = paddle.fluid.core.TCPStore("127.0.0.1", port, is_master, nranks)
     group = core.ProcessGroupNCCL(store, rank, nranks)
     return group
 
@@ -107,7 +112,6 @@ class TestDistTraning(unittest.TestCase):
             w2_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
 
             for step_id in range(5):
-                print("==============", step_id)
                 random_input = paddle.rand(shape=(batch, in_dim))
                 random_input.stop_gradient = True
 

@@ -571,12 +571,17 @@ class OperatorWithKernel : public OperatorBase {
     if (has_phi_kernel) {
       return true;
     } else {
-      auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-      return std::any_of(
-          op_kernels.begin(), op_kernels.end(),
-          [](OpKernelMap::const_reference kern_pair) {
-            return platform::is_gpu_place(kern_pair.first.place_);
-          });
+      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+      if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+        return false;
+      } else {
+        auto& op_kernels = kernel_iter->second;
+        return std::any_of(
+            op_kernels.begin(), op_kernels.end(),
+            [](OpKernelMap::const_reference kern_pair) {
+              return platform::is_gpu_place(kern_pair.first.place_);
+            });
+      }
     }
   }
 
