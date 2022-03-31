@@ -263,6 +263,14 @@
 #   kernel :
 #     func : histogram
 
+# - api : randperm
+#   args : (int n, DataType dtype, Place place={})
+#   output : Tensor
+#   infer_meta :
+#     func : RandPermInferMeta
+#   kernel :
+#     func : randperm
+
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -1113,6 +1121,15 @@
     func : put_along_axis
     data_type : x
   backward : put_along_axis_grad
+
+- api : qr
+  args : (Tensor x, str mode)
+  output : Tensor(q), Tensor(r)
+  infer_meta :
+    func : QrInferMeta
+  kernel :
+    func : qr
+  # backward : qr_grad
 
 - api : real
   args : (Tensor x)
