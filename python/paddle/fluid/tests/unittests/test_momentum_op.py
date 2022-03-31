@@ -872,6 +872,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             place=place, use_amp=use_amp, use_multi_tensor=True)
         output2, params2 = self._momentum_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=False)
+
         self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
         for idx in range(len(params1)):
             self.assertEqual(
@@ -991,4 +992,5 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

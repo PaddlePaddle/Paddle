@@ -102,7 +102,7 @@ inline std::vector<T> RepeatedToVector(
 bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
                      mlir::Builder builder,
                      mlir::Type *type);
-bool ConvertDataTypeToPhi(infrt::paddle::framework_proto::VarType::Type dtype,
-                          infrt::PrecisionType *type);
+bool ConvertDataTypeToInfrt(infrt::paddle::framework_proto::VarType::Type dtype,
+                            infrt::PrecisionType *type);
 
 #endif  // PADDLE_INFRT_HOST_CONTEXT_PADDLE_MLIR_H_

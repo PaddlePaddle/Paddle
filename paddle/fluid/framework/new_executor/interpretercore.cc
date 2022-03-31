@@ -22,6 +22,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -32,7 +35,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope, true,
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
 DECLARE_bool(fast_eager_deletion_mode);
-DECLARE_bool(use_stream_safe_cuda_allocator);
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -44,7 +46,9 @@ static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
 
 bool IsInterpretercoreFastGCEnabled() {
-  return FLAGS_fast_eager_deletion_mode && FLAGS_use_stream_safe_cuda_allocator;
+  return memory::allocation::AllocatorFacade::Instance()
+             .IsStreamSafeCUDAAllocatorUsed() &&
+         FLAGS_fast_eager_deletion_mode;
 }
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
@@ -54,6 +58,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       block_(block),
       global_scope_(global_scope),
       stream_analyzer_(place) {
+  VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
   is_build_ = false;
   async_work_queue_.reset(new interpreter::AsyncWorkQueue(
       kHostNumThreads, kDeviceNumThreads, &main_thread_blocker_));
@@ -90,10 +95,15 @@ InterpreterCore::~InterpreterCore() {
   // cancle gc's thread
   gc_.reset(nullptr);
 
-  exception_notifier_->UnregisterEvent();
-  completion_notifier_->UnregisterEvent();
-
   async_work_queue_.reset(nullptr);
+  VLOG(4) << "~InterpreterCore(): " << this;
+  VLOG(4) << " on" << place_;
+
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  platform::ClearMKLDNNCache(place_, this);
+#endif
 }
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -103,6 +113,9 @@ void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool is_build = is_build_;
   global_scope_->SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
@@ -122,6 +135,9 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names) {
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   if (!is_build_) {
     if (create_local_scope_ &&
         global_scope_->GetMutableLocalScope() !=
@@ -458,6 +474,21 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(global_scope_);
+
+  if (!instr_node.InplaceBackMap().empty()) {
+    auto& m = instr_node.InplaceBackMap();
+    // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+    for (auto& p : m) {
+      auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.first));
+      auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          global_scope_->Var(p.second));
+      original_tensor->ShareDataWith(*transformed_tensor);
+      VLOG(4) << "Transfer inplace variable back form "
+              << global_scope_->GetNameById(p.first) << " to "
+              << global_scope_->GetNameById(p.second);
+    }
+  }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {

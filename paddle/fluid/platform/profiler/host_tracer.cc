@@ -20,7 +20,7 @@
 
 // Used to filter events, works like glog VLOG(level).
 // RecordEvent will works if host_trace_level >= level.
-PADDLE_DEFINE_EXPORTED_int64(host_trace_level, 2,
+PADDLE_DEFINE_EXPORTED_int64(host_trace_level, 1,
                              "RecordEvent will works "
                              "if host_trace_level >= level.");
 

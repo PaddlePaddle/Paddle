@@ -18,14 +18,15 @@
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
 namespace phi {
@@ -232,6 +233,10 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
 
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(StringTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(StringTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(StringTensor);
+
   /* Attribute Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
@@ -245,7 +250,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const IntArray&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
@@ -266,6 +271,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
 
+  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(StringTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
   /* End case */
   template <typename T>
   struct KernelCallHelper<TypeTag<T>> {
