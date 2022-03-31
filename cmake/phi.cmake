@@ -116,6 +116,9 @@ function(kernel_library TARGET)
     if ("${kernel_library_SUB_DIR}" STREQUAL "selected_rows")
         set(target_suffix "_sr")
     endif()
+    if ("${kernel_library_SUB_DIR}" STREQUAL "sparse")
+        set(target_suffix "_sp")
+    endif()
 
     list(LENGTH kernel_library_SRCS kernel_library_SRCS_len)
     # one kernel only match one impl file in each backend
