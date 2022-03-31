@@ -83,6 +83,8 @@ PD_DECLARE_KERNEL(max_raw, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sgd, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(slice, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
 
 DECLARE_double(eager_delete_tensor_gb);
