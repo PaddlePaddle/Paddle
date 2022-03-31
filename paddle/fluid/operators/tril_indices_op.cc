@@ -66,3 +66,9 @@ REGISTER_OPERATOR(tril_indices, ops::TrilIndicesOp, ops::TrilIndicesOpMaker,
                  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>
                  TrilIndicesInferShapeFunctor);
 
+PD_REGISTER_KERNEL(tril_indices,
+                  CPU,
+                  ALL_LAYOUT,
+                  phi::TrilIndiceKernel,
+                  int,
+                  int64_t){}
