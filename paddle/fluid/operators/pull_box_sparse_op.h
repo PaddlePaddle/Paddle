@@ -114,5 +114,21 @@ class PushBoxSparseCPUKernel : public framework::OpKernel<T> {
     PushBoxSparseFunctor<T>(ctx);
   }
 };
+
+template <typename T>
+class PullBoxSparseXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PullBoxSparseFunctor<T>(ctx);
+  }
+};
+
+template <typename T>
+class PushBoxSparseXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PushBoxSparseFunctor<T>(ctx);
+  }
+};
 }  // namespace operators
 }  // namespace paddle

@@ -17,7 +17,7 @@ if(WITH_HETERPS)
         DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
         add_subdirectory(heter_ps)
     elseif(WITH_XPU_KP)
-        xpu_library(ps_gpu_wrapper SRCS ps_gpu_wrapper_xpu.cc ps_gpu_wrapper.cc
+        xpu_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.kps ps_gpu_wrapper.cc
         DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
         add_subdirectory(heter_ps)
     elseif(WITH_RCCL)
