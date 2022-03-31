@@ -55,6 +55,8 @@ DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
 DEFINE_int32(pserver_sparse_table_shard_num, 1000,
              "sparse table shard for save & load");
 
+DEFINE_int32(heter_world_size, 100, "group size");  // 可配置
+
 namespace paddle {
 namespace framework {
 class Scope;

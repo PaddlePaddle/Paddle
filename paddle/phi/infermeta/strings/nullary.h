@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -22,7 +22,7 @@ namespace phi {
 namespace strings {
 
 void CreateInferMeta(const std::vector<int64_t>& shape, MetaTensor* out);
-void CreateInferMeta(const ScalarArray& shape, MetaTensor* out);
+void CreateInferMeta(const IntArray& shape, MetaTensor* out);
 
 }  // namespace strings
 }  // namespace phi
