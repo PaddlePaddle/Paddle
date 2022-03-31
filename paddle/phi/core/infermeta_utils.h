@@ -19,8 +19,8 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -192,7 +192,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
-  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const IntArray&);
 
   // TODO(chenweihang): support vector<MetaTensor> input later
 
