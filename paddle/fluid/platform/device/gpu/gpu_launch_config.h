@@ -172,9 +172,8 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
 
 template <typename Context>
 void LimitGridDim(const Context& ctx, dim3* grid_dim) {
-  auto max_grid_dim =
-    reinterpret_cast<const platform::CUDADeviceContext&>(ctx).
-    GetCUDAMaxGridDimSize();
+  auto max_grid_dim = reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                          .GetCUDAMaxGridDimSize();
   grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
   grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
   grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
