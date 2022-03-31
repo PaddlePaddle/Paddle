@@ -337,6 +337,12 @@ PyNumberMethods PyBfloat16_AsNumber = {
     nullptr,  // nb_inplace_floor_divide
     nullptr,  // nb_inplace_true_divide
     nullptr,  // nb_index
+#if PY_MAJOR_VERSION >= 3
+#if PY_MINOR_VERSION >= 5
+    0,  // nb_matrix_multiply
+    0,  // nb_inplace_matrix_multiply
+#endif
+#endif
 };
 
 // format bfloat16. Convert to a float and call format on that
@@ -354,7 +360,7 @@ PyObject *PyBfloat16_Format(PyObject *self, PyObject *format) {
 static PyMethodDef PyBfloat16_methods[] = {
     {"__format__", (PyCFunction)PyBfloat16_Format, METH_O,
      "__format__ method for bfloat16"},
-    {NULL} /* Sentinel */
+    {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 #ifdef IMPLEMENT_BUFFER
@@ -439,6 +445,9 @@ PyTypeObject bfloat16_type = {
     nullptr,                           // tp_weaklist
     nullptr,                           // tp_del
     0,                                 // tp_version_tag
+#if PY_VERSION_HEX >= 0x030400a1
+    0,  // tp_finalize
+#endif
 };
 
 // Numpy support
