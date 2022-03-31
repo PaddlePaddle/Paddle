@@ -179,7 +179,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "multiclass_nms3"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -646,7 +647,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "multiclass_nms") {
+    if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -655,7 +656,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the pass.";
         return false;
       }
-      for (auto& param_name : desc.Inputs()) {
+      auto multiclass_nms_inputs = desc.Inputs();
+      if (multiclass_nms_inputs.find("RoisNum") !=
+          multiclass_nms_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
+      }
+      for (auto& param_name : multiclass_nms_inputs) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
@@ -672,6 +680,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
            desc.HasAttr("score_threshold") && desc.HasAttr("nms_top_k") &&
            desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
       if (has_attrs == false) return false;
+
+      // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
+      // plugin are not constient with those of multiclass_nms3
+      if (desc.HasAttr("nms_eta") == false) return false;
+      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      if (nms_eta <= 1.0) return false;
 
       auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
@@ -1325,20 +1339,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
                    "the shuffle_channel op does not support dynamic shape yet";
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* input_desc = block->FindVar(desc.Input("X").front());
-      const auto input_shape = input_desc->GetShape();
-      if (input_shape.size() != 4) {
-        VLOG(3) << "input dims is invalid. The input "
-                   "dims size should be 4.";
         return false;
       }
     }
