@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -91,10 +92,72 @@ void TopkKernel(const Context& dev_ctx,
         // Successed, return.
         return;
       } else {
-        LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
-                     "default topk kernel.";
+        VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
+                   "default topk kernel.";
       }
     }
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
+    if (input_width >= 1024 && input_height == 1) {
+      // 1. Gather TopK, but without sorting
+      constexpr int max_num_threads = 1024;
+      if (largest) {
+        ops::RadixTopK<
+            T,
+            true><<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
+            input_data,
+            k,
+            input_height,
+            input_width,
+            output_data,
+            indices_data);
+      } else {
+        ops::RadixTopK<
+            T,
+            false><<<input_height, max_num_threads, 0, dev_ctx.stream()>>>(
+            input_data,
+            k,
+            input_height,
+            input_width,
+            output_data,
+            indices_data);
+      }
+      // 2. Sort if needed
+      if (sorted) {
+        DenseTensor sorted_output;
+        DenseTensor sorted_indices;
+        DenseTensor gather_indices;
+        sorted_output.Resize(out->dims());
+        sorted_indices.Resize(indices->dims());
+        gather_indices.Resize(indices->dims());
+        dev_ctx.template Alloc<T>(&sorted_output);
+        dev_ctx.template Alloc<int64_t>(&sorted_indices);
+        dev_ctx.template Alloc<int64_t>(&gather_indices);
+        auto* ctx =
+            reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
+                &dev_ctx);
+        if (ops::SortTopk<T>(*ctx,
+                             out,
+                             k,
+                             input_height,
+                             k,
+                             &sorted_output,
+                             &sorted_indices,
+                             largest)) {
+          funcs::GPUGather<int64_t, int64_t>(
+              dev_ctx, *indices, sorted_indices, &gather_indices);
+          Copy(dev_ctx, gather_indices, indices->place(), false, indices);
+          Copy(dev_ctx, sorted_output, out->place(), false, out);
+          return;
+        } else {
+          VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
+                     "default topk kernel.";
+        }
+      } else {
+        return;
+      }
+    }
+#endif
 
     // NOTE: pass lds and dim same to input width.
     // NOTE: old matrix implementation of stride is different to eigen.
@@ -199,8 +262,8 @@ void TopkKernel(const Context& dev_ctx,
             ndims, dev_ctx, trans_out, out, trans);
         return;
       } else {
-        LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
-                     "default topk kernel.";
+        VLOG(4) << "TopKOP: Some errors happened when use cub sorting, use "
+                   "default topk kernel.";
       }
     }
 

@@ -49,10 +49,6 @@ TEST(ONNXRuntimePredictor, onnxruntime_on) {
 
   ASSERT_TRUE(predictor);
   ASSERT_TRUE(!predictor->Clone());
-  ASSERT_TRUE(predictor->scope_);
-  ASSERT_TRUE(predictor->sub_scope_);
-  ASSERT_EQ(predictor->scope_->parent(), nullptr);
-  ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   // Dummy Input Data
   std::vector<int64_t> input_shape = {-1, 3, 224, 224};
   std::vector<float> input_data(1 * 3 * 224 * 224, 1.0);
