@@ -247,6 +247,7 @@ class RnnXPUKernel : public framework::OpKernel<T> {
                              {seq_len, batch_size, hidden_size}},
             2);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
+        xpu_wait(dev_ctx.x_context()->xpu_stream);
       } else {
         RunLSTMLayer<DeviceContext, T>(
             ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
