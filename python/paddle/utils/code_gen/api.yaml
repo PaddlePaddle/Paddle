@@ -257,7 +257,7 @@
   args : (Tensor x)
   output : Tensor
   infer_meta :
-    func : UnchangedInferMeta
+    func : RealAndImagInferMeta
   kernel :
     func : abs
   backward : abs_grad

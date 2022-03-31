@@ -184,9 +184,11 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+    param : [x]
   kernel :
     func : abs_grad
+  data_transform:
+    skip_transform : out_grad
 
 - backward_api : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
