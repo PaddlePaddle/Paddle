@@ -37,12 +37,10 @@ LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
-op_role = core.op_proto_and_checker_maker.OpRole
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 backward = core.op_proto_and_checker_maker.OpRole.Backward
-OP_DEVICE_KEY = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
@@ -61,8 +59,7 @@ DATA_NORM_GRAD_NAME = [x + "@GRAD" for x in DATA_NORM_NAME]
 def logger_config(log_path, logging_name):
     logger = logging.getLogger(logging_name)
     logger.setLevel(level=logging.DEBUG)
-    handler = logging.FileHandler(
-        log_path, mode='a', encoding='UTF-8', delay=True)
+    handler = logging.FileHandler(log_path, mode='a', encoding='UTF-8')
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
         '%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s')
@@ -93,7 +90,8 @@ class TrainerRuntimeConfig(object):
         num_threads = os.getenv("CPU_NUM", "1")
         send_queue_size = num_threads
         k_steps = valid_strategy.a_sync_configs["k_steps"]
-
+        logger.info("ps mode in strategy: {}, {}".format(
+            valid_strategy.a_sync, valid_strategy.a_sync_configs["k_steps"]))
         if not valid_strategy.a_sync and k_steps == 0:
             self.mode = DistributedMode.SYNC
 
@@ -239,11 +237,17 @@ def get_ps_endpoints(role_maker):
 
 
 def get_heter_worker_endpoint(role_maker):
-    return role_maker._get_heter_worker_endpoint()
+    try:
+        return role_maker._get_heter_worker_endpoint()
+    except Exception:
+        return role_maker.get_heter_worker_endpoint()
 
 
 def get_trainer_endpoint(role_maker):
-    return role_maker._get_trainer_endpoint()
+    try:
+        return role_maker._get_trainer_endpoint()
+    except Exception:
+        return role_maker.get_trainer_endpoint()
 
 
 def get_previous_stage_trainers(role_maker):
@@ -1089,13 +1093,14 @@ def block_append_op(program, origin_program, block, op):
     else:
         # for grad op
         op_desc = op.desc
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
         backward = core.op_proto_and_checker_maker.OpRole.Backward
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
         # append grad op
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(op_desc)
-        new_op_desc._set_attr(RPC_OP_ROLE_ATTR_NAME, backward)
+        new_op_desc._set_attr(op_role_attr_name, backward)
 
         # set device gard
         if op.desc.has_attr(device_attr_name):
@@ -1416,7 +1421,7 @@ def find_op_input_output(program, block, op):
     return input_var_list, output_var_list
 
 
-def add_send_op(program, block, _vars):
+def add_heter_send_op(program, heter_program, block, block_var_detail):
     def _get_send_op_dict():
         send_op_dict = {}
         send_op_list = find_send_op(program)
@@ -1430,7 +1435,7 @@ def add_send_op(program, block, _vars):
     send_grad_var_list = []
     send_op_dict = _get_send_op_dict()
     table_dict = {}
-    for persistable_var in _vars:
+    for persistable_var in block_var_detail["backward"]["persistables"]:
         if "@GRAD" not in persistable_var:
             continue
         if "GRAD" != persistable_var.split("@")[-1]:
@@ -1476,7 +1481,6 @@ def get_vars_name_in_block(block):
     return vars_name_list
 
 
-# reserve static_var
 def delete_trainer_useless_var(program, static_var):
     static_var = list(set(static_var))
     program_useful_var_list = []
@@ -1518,65 +1522,6 @@ def create_backward_block(program, origin_program, bp_ops_list,
     exit_vars = block_var_detail[0]["backward"]["exit"]
     add_vars_by_var_list(exit_vars, origin_program, program, heter_block)
     return heter_block
-
-
-def is_backward_op(op):
-    return op_role_attr_name in op.attr_names and (
-        int(op.attr(op_role_attr_name)) & int(op_role.Backward))
-
-
-def is_forward_op(op):
-    return op_role_attr_name in op.attr_names and (
-        int(op.attr(op_role_attr_name)) == int(op_role.Forward))
-
-
-def is_push_sparse_op(op):
-    return op.type == 'distributed_push_sparse'
-
-
-def get_distributed_push_sparse_op_list(block):
-    push_sparse_op_list = []
-    for op_idx in range(block.desc.op_size()):
-        op = block.ops[op_idx]
-        if is_push_sparse_op(op):
-            push_sparse_op_list.append(op)
-    return push_sparse_op_list
-
-
-def get_bp_op_list(block):
-    bp_op_list = []
-    for op_idx in range(block.desc.op_size()):
-        op = block.ops[op_idx]
-        if is_backward_op(op):
-            bp_op_list.append(op)
-    return bp_op_list
-
-
-def delete_same_ops(block, ops):
-    for op in ops:
-        try:
-            for origin_op in block.ops:
-                if str(origin_op) == str(op):
-                    idx = list(block.ops).index(origin_op)
-                    block._remove_op(idx)
-                    break
-        except Exception as e:
-            print(e)
-
-
-def check_program(program):
-    block_idx = 0
-    for block in program.blocks:
-        for op in block.ops:
-            input_var_names = op.desc.input_arg_names()
-            output_var_names = op.desc.output_arg_names()
-            for var_name in (input_var_names + output_var_names):
-                if not block._find_var_recursive(str(var_name)):
-                    raise ValueError(
-                        'var: {} needed by op is not found in block: {}'.format(
-                            str(var_name), block_idx))
-        block_idx += 1
-    print('program checked valid')
 
 
 def debug_program(file, program):
