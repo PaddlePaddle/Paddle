@@ -48,6 +48,10 @@
 #include "paddle/infrt/kernel/test_kernels.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 
+#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#include "paddle/infrt/kernel/tensorrt/registry.h"
+#endif
+
 using namespace infrt::host_context;  // NOLINT
 using namespace infrt::tensor;        // NOLINT
 using namespace infrt::tensor;        // NOLINT
