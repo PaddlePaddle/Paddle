@@ -516,6 +516,11 @@ class PADDLE_API Tensor final {
    */
   uint32_t current_inplace_version();
 
+  /**
+   * @brief Reset inplace version
+   */
+  void reset_inplace_version(bool set_to_zero = false);
+
   /* Part 10: Auto generated Tensor methods */
 
   /* Part 11: Methods of converting SparseTensor and DenseTensor to each other

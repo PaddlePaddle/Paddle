@@ -74,7 +74,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh",
       "pad",
       "elementwise_add",
+      "elementwise_sub",
       "elementwise_mul",
+      "elementwise_div",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -133,7 +135,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh",
       "pad",
       "elementwise_add",
+      "elementwise_sub",
       "elementwise_mul",
+      "elementwise_div",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -958,7 +962,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+    if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
+        op_type == "elementwise_sub" || op_type == "elementwise_div") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1320,20 +1325,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (with_dynamic_shape) {
         VLOG(3) << "You are running the TRT Dynamic Shape mode, "
                    "the shuffle_channel op does not support dynamic shape yet";
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* input_desc = block->FindVar(desc.Input("X").front());
-      const auto input_shape = input_desc->GetShape();
-      if (input_shape.size() != 4) {
-        VLOG(3) << "input dims is invalid. The input "
-                   "dims size should be 4.";
         return false;
       }
     }
