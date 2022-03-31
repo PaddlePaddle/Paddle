@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/logsumexp_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include <mlir/Pass/Pass.h>
 
-#include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
+namespace infrt {
+/*
+ * InfrtWeightsFoldPass.
+ */
+std::unique_ptr<mlir::Pass> CreateInfrtWeightsUnfoldPass();
 
-PD_REGISTER_KERNEL(
-    logsumexp, CPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {}
+}  // namespace infrt

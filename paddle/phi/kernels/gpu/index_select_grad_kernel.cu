@@ -101,7 +101,6 @@ void IndexSelectGradKernel(const Context& ctx,
            0,
            stream>>>(in_grad_data, numel);
 
-
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_select with single thread.";
     block_dim.x = 1;

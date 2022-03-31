@@ -77,6 +77,27 @@ namespace phi {
   return dense_tensor;
 }
 
+::phi::DenseTensor CreateHostInitedDenseTensorF32(
+    const ::phi::CPUContext& context,
+    host_context::Attribute<std::vector<int64_t>> dims,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<std::vector<float>> values) {
+  ::phi::DenseTensor dense_tensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(
+          ConvertPrecisionToPhi(::infrt::PrecisionType::FLOAT32),
+          ::phi::make_ddim(dims.get()),
+          ConvertLayoutToPhi(layout.get()),
+          {}));
+  CHECK_EQ(dense_tensor.numel(), static_cast<int64_t>(values.get().size()));
+  float* data = dense_tensor.mutable_data<float>(::phi::CPUPlace());
+  for (int64_t i = 0; i < dense_tensor.numel(); ++i) {
+    data[i] = values.get()[i];
+  }
+  return dense_tensor;
+}
+
 ::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
