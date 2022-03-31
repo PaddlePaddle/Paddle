@@ -31,8 +31,8 @@ template <typename Context>
 void ReshapeWithXShape(const Context& dev_ctx,
                        const DenseTensor& x,
                        const ScalarArray& shape,
-                       DenseTensor* xshape,
-                       DenseTensor* out);
+                       DenseTensor* out,
+                       DenseTensor* xshape);
 
 template <typename T, typename Context>
 DenseTensor Reshape(const Context& dev_ctx,
