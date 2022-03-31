@@ -315,7 +315,7 @@ void TrtEngine::StaticRun(const ::phi::GPUContext& ctx) {
     }
     bind.buffer->Resize(::phi::make_ddim(ddim));
     // TODO(wilber): now only support float output.
-    ctx.Alloc<float>(bind.buffer, false, sizeof(float) * bind.buffer->numel());
+    ctx.Alloc<float>(bind.buffer, sizeof(float) * bind.buffer->numel());
     buffers[bind_index] = static_cast<void*>(bind.buffer->data<float>());
   }
 
@@ -352,7 +352,7 @@ void TrtEngine::DynamicRun(const ::phi::GPUContext& ctx) {
       ddim[i] = dims.d[i];
     }
     bind.buffer->Resize(::phi::make_ddim(ddim));
-    ctx.Alloc<float>(bind.buffer, false, sizeof(float) * bind.buffer->numel());
+    ctx.Alloc<float>(bind.buffer, sizeof(float) * bind.buffer->numel());
     buffers[bind_index] = static_cast<void*>(bind.buffer->data<float>());
   }
 
