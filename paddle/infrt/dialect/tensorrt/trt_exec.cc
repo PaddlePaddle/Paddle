@@ -75,9 +75,9 @@ int main(int argc, char** argv) {
   mlir::OpPassManager& trt_pass_manager = pm.nest<mlir::FuncOp>();
   trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTOpTellerPass>());
   trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphFusePass>());
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphSplitPass>(1));
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTOpConverterPass>());
-  trt_pass_manager.addPass(infrt::trt::createTrtTypeConvertPass());
+  // trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphSplitPass>(1));
+  // trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTOpConverterPass>());
+  // trt_pass_manager.addPass(infrt::trt::createTrtTypeConvertPass());
   if (mlir::failed(pm.run(*module))) {
     std::cout << "\npass failed!\n" << std::endl;
     return 4;

@@ -14,13 +14,17 @@
 
 #include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
 
+#include <glog/logging.h>
 #include <llvm/ADT/SetVector.h>
 #include <mlir/Analysis/SliceAnalysis.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/Transforms/GreedyPatternRewriteDriver.h>
 #include <list>
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 namespace infrt {
@@ -141,7 +145,7 @@ void topoSortBlock(mlir::Block &body) {  // NOLINT
 }
 
 }  // namespace
-
+/*
 // Implementation of the trtGraphFusePass.
 void TRTGraphFusePass::runOnFunction() {
   mlir::Block &body = getFunction().front();
@@ -179,5 +183,83 @@ void TRTGraphFusePass::runOnFunction() {
   } while (changed);
   topoSortBlock(body);
 }
+*/
+
+struct TRT_Graph_Fuse : public ::mlir::RewritePattern {
+  explicit TRT_Graph_Fuse(::mlir::MLIRContext *context)
+      : ::mlir::RewritePattern("infrt.graph", 1, context, {}) {}
+  ::mlir::LogicalResult matchAndRewrite(
+      ::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
+    auto graph_op = ::llvm::dyn_cast<::infrt::GraphOp>(op);
+    for (::mlir::Value input : graph_op.getOperands()) {
+      std::string str;
+      llvm::raw_string_ostream os(str);
+      input.print(os);
+      LOG(INFO) << "cur op   ==>   " << str << "\n";
+    }
+    /*
+    ::mlir::SmallVector<::mlir::Value, 4> operands;
+    ::mlir::Operation::operand_range Input = casted_op.getODSOperands(0);
+    ::mlir::Operation::operand_range Scale = casted_op.getODSOperands(1);
+    ::mlir::Operation::operand_range Bias = casted_op.getODSOperands(2);
+
+    // TODO(weishengying) : recompute this via params
+    operands.push_back((*Input.begin()));
+    operands.push_back((*Scale.begin()));
+    operands.push_back((*Bias.begin()));
+    operands.push_back((*Bias.begin()));
+
+    trt::ScaleNdOp scaleNd_op;
+    // inputs
+    ::mlir::SmallVector<::mlir::Value, 4> trt_inputs;
+    for (auto v : operands) {
+      trt_inputs.push_back(v);
+    }
+
+    // resultTypes
+    ::mlir::SmallVector<::mlir::Type, 4> resultTypes;
+    for (auto v : casted_op.getODSResults(0)) {
+      resultTypes.push_back(v.getType());
+    }
+
+    // attributes
+    ::mlir::SmallVector<::mlir::NamedAttribute, 8> attributes;
+    {
+      auto mode_attr = rewriter.getI32IntegerAttr(1);
+      attributes.emplace_back(rewriter.getStringAttr("mode"), mode_attr);
+    }
+
+    {
+      auto axis_attr = rewriter.getI32IntegerAttr(-1);
+      attributes.emplace_back(rewriter.getStringAttr("axis"), axis_attr);
+    }
+    auto result = rewriter
+                      .create<trt::ScaleNdOp>(
+                          op->getLoc(), resultTypes, operands, attributes)
+                      .getODSResults(0);
+    ::llvm::SmallVector<::mlir::Value, 4> tblgen_repl_values;
+    // TODO(weishengying) : update it
+    for (uint32_t i = 0; i < casted_op.getNumResults(); i++) {
+      for (auto v : ::llvm::SmallVector<::mlir::Value, 4>{result}) {
+        tblgen_repl_values.push_back(v);
+      }
+    }
+    rewriter.replaceOp(op, tblgen_repl_values);
+    */
+    // return ::mlir::success();
+    return rewriter.notifyMatchFailure(
+        op, [&](::mlir::Diagnostic &diag) { diag << "infrt.graph not match"; });
+  }
+};
+
+void TRTGraphFusePass::runOnFunction() {
+  ::mlir::RewritePatternSet patterns(&getContext());
+  patterns.add<TRT_Graph_Fuse>(&getContext());
+
+  if (::mlir::failed(
+          applyPatternsAndFoldGreedily(getOperation(), std::move(patterns))))
+    signalPassFailure();
+}
+
 }  // namespace trt
 }  // namespace infrt
