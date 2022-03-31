@@ -21,7 +21,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode
+from ..framework import Variable, _non_static_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags, in_dygraph_mode, _in_legacy_dygraph
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -1345,9 +1345,11 @@ class BatchNorm(layers.Layer):
                      "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
+            empty_tensor = core.eager.Tensor() if in_dygraph_mode(
+            ) else self._helper.create_variable_for_type_inference(self._dtype)
             batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
-                mean_out, variance_out, *attrs)
+                empty_tensor, mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 

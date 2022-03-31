@@ -24,6 +24,7 @@ from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -180,15 +181,19 @@ def batch_norm(x,
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dynamic_mode():
-        # for dygraph need tuple
+    helper = LayerHelper('batch_norm', **locals())
+
+    if _non_static_mode():
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
+
+        empty_tensor = core.eager.Tensor() if in_dygraph_mode(
+        ) else helper.create_variable_for_type_inference(x.dtype)
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, mean_out, variance_out,
-            *attrs)
+            x, weight, bias, running_mean, running_var, empty_tensor, mean_out,
+            variance_out, *attrs)
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -214,8 +219,6 @@ def batch_norm(x,
         "Mean": [running_mean],
         "Variance": [running_var]
     }
-
-    helper = LayerHelper('batch_norm', **locals())
 
     param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
     saved_mean = helper.create_variable_for_type_inference(
