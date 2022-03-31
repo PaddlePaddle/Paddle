@@ -354,6 +354,11 @@ AbstractAutogradMeta *Tensor::get_autograd_meta() const {
   return autograd_meta_.get();
 }
 
+const std::shared_ptr<AbstractAutogradMeta> &Tensor::mutable_autograd_meta()
+    const {
+  return autograd_meta_;
+}
+
 void Tensor::set_autograd_meta(
     std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
   autograd_meta_ = std::move(autograd_meta);

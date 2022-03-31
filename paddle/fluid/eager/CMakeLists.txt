@@ -16,6 +16,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
 endif()
 cc_library(grad_node_info SRCS grad_node_info.cc DEPS phi_api phi_tensor)
 cc_library(grad_tensor_holder SRCS grad_tensor_holder.cc DEPS grad_node_info gradient_accumulator)
+add_dependencies(grad_tensor_holder eager_final_state_codegen)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS phi_api phi_tensor)
 cc_library(utils SRCS utils.cc DEPS phi_api phi_tensor global_utils layer proto_desc operator op_registry variable_helper memcpy scale_op autograd_meta hook_utils)

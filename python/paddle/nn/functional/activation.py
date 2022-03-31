@@ -561,7 +561,7 @@ def relu(x, name=None):
             out = F.relu(x) # [0., 0., 1.]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_relu(x)
     if _in_legacy_dygraph():
         return _C_ops.relu(x)
