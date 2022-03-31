@@ -86,12 +86,14 @@ def _value_and_gradient(f, x, v=None):
         value: a tensor that holds the function value.
         gradient: a tensor that holds the function gradients.  
     """
-    if paddle.in_dynamic_mode():
-        x.stop_gradient = False
-        value = f(x)
-        gradient = paddle.grad(outputs=[value], inputs=[x], create_graph=False)
+    if x.stop_gradient:
+        x = assign(x)
     else:
-        JJ = Jacobian(f, x)
-        gradient = JJ[:][0]
-        value = f(x)
+        x = x.detach()
+        x.stop_gradient = False
+    value = f(x)
+    if paddle.in_dynamic_mode():
+        gradient = paddle.grad([value], [x], create_graph=False)
+    else:
+        gradient = paddle.static.gradients([value], [x])
     return value, gradient
