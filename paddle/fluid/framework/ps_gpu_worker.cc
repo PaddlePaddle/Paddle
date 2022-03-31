@@ -151,16 +151,19 @@ void PSGPUWorker::PrepareCudaGraph() {
         for (auto tensor_name : inputs) {
           auto var = thread_scope_->FindVar(tensor_name);
           if (var == nullptr) {
+            VLOG(0) << "op " << op->Type() << " capture fail, val not found: " << tensor_name;
             need_capture = false;
             break;
           }
           if (!var->IsType<phi::DenseTensor>()) {
+            VLOG(0) << "op " << op->Type() << " capture fail, val is not DenseTensor: " << tensor_name;
             need_capture = false;
             break;
           }
           auto& tensor = var->Get<phi::DenseTensor>();
           auto& lod = tensor.lod();
           if (!lod.empty()) {
+            VLOG(0) << "op " << op->Type() << " capture fail, lod error: " << tensor_name << " " << lod.size();
             need_capture = false;
             break;
           }
@@ -169,8 +172,9 @@ void PSGPUWorker::PrepareCudaGraph() {
           op_or_cudagraphs_.emplace_back();
           op_or_cudagraphs_.back().need_capture = need_capture;
         }
-        auto& op_or_cudagraph = op_or_cudagraphs_.back();
-        op_or_cudagraph.ops.emplace_back(op);
+        op_or_cudagraphs_.back().ops.emplace_back(op);
+      } else {
+          VLOG(0) << "op " << op->Type() << " is not in whitelist";
       }
     }
   }
