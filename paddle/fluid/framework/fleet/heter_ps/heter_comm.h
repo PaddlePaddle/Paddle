@@ -196,15 +196,17 @@ class HeterComm {
 
   template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
             typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
-            typename NumRunsOutputIteratorT, typename ReductionOpT>
-  void ReduceByKey(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-                   KeysInputIteratorT d_keys_in,
-                   UniqueOutputIteratorT d_unique_out,
-                   ValuesInputIteratorT d_values_in,
-                   AggregatesOutputIteratorT d_aggregates_out,
-                   NumRunsOutputIteratorT d_num_runs_out,
-                   ReductionOpT reduction_op, int num_items,
-                   cudaStream_t stream = 0, bool debug_synchronous = false);
+            typename NumRunsOutputIteratorT, typename ReductionOpT,
+            typename StreamType>
+  void reduce_by_key(void* d_temp_storage,
+                     size_t& temp_storage_bytes,  // NOLINT
+                     KeysInputIteratorT d_keys_in,
+                     UniqueOutputIteratorT d_unique_out,
+                     ValuesInputIteratorT d_values_in,
+                     AggregatesOutputIteratorT d_aggregates_out,
+                     NumRunsOutputIteratorT d_num_runs_out,
+                     ReductionOpT reduction_op, int num_items,
+                     StreamType stream = 0, bool debug_synchronous = false);
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
