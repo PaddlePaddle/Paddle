@@ -227,6 +227,7 @@ from .math import fmax  # noqa: F401
 from .math import fmin  # noqa: F401
 from .math import inner  # noqa: F401
 from .math import outer  # noqa: F401
+from .math import frac  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -452,6 +453,7 @@ tensor_method_func  = [ #noqa
            'digamma',
            'diagonal',
            'trunc',
+           'frac'
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',

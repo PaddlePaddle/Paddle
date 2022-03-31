@@ -3927,3 +3927,54 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+def frac(x, name=None):
+    """
+    This API is used to return the fractional portion of each element in input.
+
+    Args:
+        x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
+        name: (str, optional): Name for operation (optional, default is None). For more
+
+    Returns:
+        Tensor: The output Tensor of frac.
+
+    Examples:
+        .. code-block:: Python
+
+            import paddle
+            import numpy as np
+
+            input = paddle.rand([3, 3], 'float32')
+            print(input.numpy())
+            # [[ 1.2203873  -1.0035421  -0.35193074]
+            #  [-0.00928353  0.58917075 -0.8407828 ]
+            #  [-1.5131804   0.5850153  -0.17597814]]
+
+            output = paddle.frac(input)
+            print(output.numpy())
+            # [[ 0.22038734 -0.00354207 -0.35193074]
+            #  [-0.00928353  0.58917075 -0.8407828 ]
+            #  [-0.5131804   0.5850153  -0.17597814]]
+    """
+    op_type = 'elementwise_sub'
+    axis = -1
+    act = None
+    if in_dygraph_mode():
+        y = _C_ops.final_state_trunc(x)
+        return _C_ops.final_state_substract(x, y)
+    else:
+        if _in_legacy_dygraph():
+            y = _C_ops.trunc(x)
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type)
+        else:
+            inputs = {"X": x}
+            attrs = {}
+
+            helper = LayerHelper("trunc", **locals())
+            check_variable_and_dtype(x, "X", ['int32', 'int64', 'float32', 'float64'], 'trunc')
+            y = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
+            return _elementwise_op(LayerHelper(op_type, **locals()))
