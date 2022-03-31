@@ -231,6 +231,10 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
+void StackInferMeta(const std::vector<MetaTensor*>& x,
+                    int axis,
+                    MetaTensor* out);
+
 void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& label,
                       const paddle::optional<const MetaTensor&> logits_length,
@@ -244,5 +248,20 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
+
+void Yolov3LossInferMeta(const MetaTensor& x,
+                         const MetaTensor& gt_box,
+                         const MetaTensor& gt_label,
+                         const paddle::optional<const MetaTensor&> gt_score,
+                         const std::vector<int>& anchors,
+                         const std::vector<int>& anchor_mask,
+                         int class_num,
+                         float ignore_thresh,
+                         int downsample_ratio,
+                         bool use_label_smooth,
+                         float scale_x_y,
+                         MetaTensor* loss,
+                         MetaTensor* objectness_mask,
+                         MetaTensor* gt_match_mask);
 
 }  // namespace phi
