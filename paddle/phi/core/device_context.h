@@ -110,13 +110,13 @@ class DeviceContext {
    */
   void* Alloc(TensorBase*,
               DataType dtype,
-              bool alloc_pinned = false,
-              size_t requested_size = 0) const;
+              size_t requested_size = 0,
+              bool pinned = false) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor,
-           bool alloc_pinned = false,
-           size_t requested_size = 0) const;
+           size_t requested_size = 0,
+           bool pinned = false) const;
 
   /**
    * @brief Allocate host memory for tensor.

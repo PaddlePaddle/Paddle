@@ -129,8 +129,7 @@ void ProductRuleBook(const Context& dev_ctx,
   DenseTensorMeta rulebook_meta(
       DataType::INT32, {3, rulebook_len}, DataLayout::NCHW);
   rulebook->set_meta(rulebook_meta);
-  dev_ctx.Alloc(
-      rulebook, rulebook->dtype(), false, rulebook->numel() * sizeof(int));
+  dev_ctx.Alloc(rulebook, rulebook->dtype(), rulebook->numel() * sizeof(int));
   int* rulebook_ptr = rulebook->data<int>();
   f_calc_rulebook(rulebook_ptr);
 }

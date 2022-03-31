@@ -91,9 +91,9 @@ struct DeviceContext::Impl {
 
   void* Alloc(TensorBase* tensor,
               const Place& place,
-              bool alloc_pinned = false,
               DataType dtype = DataType::UNDEFINED,
-              size_t requested_size = 0) const {
+              size_t requested_size = 0,
+              bool pinned = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -107,9 +107,9 @@ struct DeviceContext::Impl {
     if (tensor->initialized() && tensor->place() != place) {
       ClearHolder(tensor);
     }
-    auto* allocator = tensor->numel() == 0 ? zero_allocator_
-                                           : (alloc_pinned ? pinned_allocator_
-                                                           : device_allocator_);
+    auto* allocator = tensor->numel() == 0
+                          ? zero_allocator_
+                          : (pinned ? pinned_allocator_ : device_allocator_);
     return tensor->AllocateFrom(
         const_cast<Allocator*>(allocator), dtype, requested_size);
   }
@@ -117,11 +117,10 @@ struct DeviceContext::Impl {
   template <typename T>
   T* Alloc(TensorBase* tensor,
            const Place& place,
-           bool alloc_pinned = false,
-           size_t requested_size = 0) const {
+           size_t requested_size = 0,
+           bool pinned = false) const {
     DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
-    return static_cast<T*>(
-        Alloc(tensor, place, alloc_pinned, dtype, requested_size));
+    return static_cast<T*>(Alloc(tensor, place, dtype, requested_size, pinned));
   }
 
   void* HostAlloc(TensorBase* tensor,
@@ -256,16 +255,16 @@ const Allocator& DeviceContext::GetPinnedAllocator() const {
 
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
-                           bool alloc_pinned,
-                           size_t requested_size) const {
-  return impl_->Alloc(tensor, GetPlace(), alloc_pinned, dtype, requested_size);
+                           size_t requested_size,
+                           bool pinned) const {
+  return impl_->Alloc(tensor, GetPlace(), dtype, requested_size, pinned);
 }
 
 template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor,
-                        bool alloc_pinned,
-                        size_t requested_size) const {
-  return impl_->Alloc<T>(tensor, GetPlace(), alloc_pinned, requested_size);
+                        size_t requested_size,
+                        bool pinned) const {
+  return impl_->Alloc<T>(tensor, GetPlace(), requested_size, pinned);
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
@@ -279,10 +278,10 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
   return impl_->HostAlloc<T>(tensor, requested_size);
 }
 
-#define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)                    \
-  template dtype* DeviceContext::Alloc(                                    \
-      TensorBase* tensor, bool alloc_pinned, size_t requested_size) const; \
-  template dtype* DeviceContext::HostAlloc(TensorBase* tensor,             \
+#define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
+  template dtype* DeviceContext::Alloc(                              \
+      TensorBase* tensor, size_t requested_size, bool pinned) const; \
+  template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
                                            size_t requested_size) const;
 
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(bool)
