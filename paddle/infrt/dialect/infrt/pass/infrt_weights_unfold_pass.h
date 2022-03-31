@@ -12,23 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/tensorrt/registry.h"
+#pragma once
 
-#include "paddle/infrt/host_context/kernel_registry.h"
-#include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
+#include <mlir/Pass/Pass.h>
 
 namespace infrt {
-namespace kernel {
+/*
+ * InfrtWeightsFoldPass.
+ */
+std::unique_ptr<mlir::Pass> CreateInfrtWeightsUnfoldPass();
 
-void RegisterTrtKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("trt.create_engine",
-                      INFRT_KERNEL(tensorrt::CreateTrtEngine),
-                      {"run_once"});
-  registry->AddKernel("trt.inspect_engine",
-                      INFRT_KERNEL(tensorrt::PrintTrtLayer));
-  registry->AddKernel("trt.compute", INFRT_KERNEL(tensorrt::TrtEngineCompute));
-}
-
-}  // namespace kernel
 }  // namespace infrt
