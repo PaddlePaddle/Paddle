@@ -35,7 +35,7 @@ struct CustomGradMerger {
     return out;
   }
 };
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 struct CustomGradMerger {
   template <typename T>
   __device__ T operator()(const T& a, const T& b) const {

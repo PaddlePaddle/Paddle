@@ -132,7 +132,7 @@ class Optimizer {
                 grad.show);  // for local test
     }
   }
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
   __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
                             float scale) {

@@ -132,7 +132,7 @@ void HeterComm<KeyType, ValType, GradType>::sort_pairs(
       d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, d_values_in,
       d_values_out, num_items, begin_bit, end_bit, stream, debug_synchronous));
 
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 #endif
 }
@@ -153,7 +153,7 @@ void HeterComm<KeyType, ValType, GradType>::reduce_by_key(
       d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, d_values_in,
       d_aggregates_out, d_num_runs_out, reduction_op, num_items, stream,
       debug_synchronous));
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 #endif
 }
@@ -179,7 +179,7 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
   }
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
@@ -424,7 +424,8 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
                 src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
 
     auto cur_use_stream = streams[cur_stream];
-#if defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XPU_KP)
     cur_use_stream = 0;
 #endif
     tables_[dev_num]->insert(
@@ -566,7 +567,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   // get XPUDeviceContext according to xpu place
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
@@ -688,7 +689,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
   cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
 
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   // get XPUDeviceContext according to xpu place
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();

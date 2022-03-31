@@ -34,7 +34,7 @@ __constant__ float mf_initial_range = 1e-4;
 __constant__ float mf_min_bound = -10;
 __constant__ float mf_max_bound = 10;
 
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 __global_ptr__ float* nonclk_coeff = 0.1;
 __global_ptr__ float* clk_coeff = 1;

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
-#ifdef PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU_KP)
 
 template <typename T>
 __global__ void fill_idx(T* idx, long long len) {

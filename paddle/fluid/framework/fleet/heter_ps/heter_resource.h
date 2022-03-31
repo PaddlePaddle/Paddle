@@ -27,7 +27,7 @@ namespace framework {
 
 #if defined(PADDLE_WITH_CUDA)
 using ppStream = cudaStream_t;
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 using ppStream = XPUStream;
 #endif
 
@@ -52,7 +52,7 @@ class GPUResource {
   std::vector<gpuStream_t> local_streams_;
   std::vector<gpuStream_t> comm_streams_;
 };
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 class XPUResource {
  public:
   XPUResource(std::vector<int>& device_id, int index);  // NOLINT
@@ -79,7 +79,7 @@ class XPUResource {
 using DevResource = GPUResource;
 using DevPlace = platform::CUDAPlace;
 using AnyDeviceGuard = platform::CUDADeviceGuard;
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 using DevResource = XPUResource;
 using DevPlace = platform::XPUPlace;
 using AnyDeviceGuard = platform::XPUDeviceGuard;

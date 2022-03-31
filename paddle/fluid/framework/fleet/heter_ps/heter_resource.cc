@@ -53,7 +53,7 @@ GPUResource::~GPUResource() {
   }
 }
 
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 XPUResource::XPUResource(std::vector<int>& dev_ids, int index) {
   index_ = index;
   dev_ids_ = dev_ids;
