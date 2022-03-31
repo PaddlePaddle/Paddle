@@ -43,7 +43,7 @@ yaml_types_mapping = {
     'Scalar(int64_t)' : 'paddle::experimental::Scalar',
     'Scalar(float)' : 'paddle::experimental::Scalar',
     'Scalar(double)' : 'paddle::experimental::Scalar',
-    'ScalarArray' : 'paddle::experimental::ScalarArray'
+    'IntArray' : 'paddle::experimental::IntArray'
 }
 
 
@@ -87,6 +87,10 @@ def FindForwardName(string):
     if not string.endswith("_grad"):
         return None
     return string[:-5]
+
+
+def IsGradName(string):
+    return string.endswith("_grad")
 
 
 def IsPlainTensorType(string):
@@ -164,6 +168,12 @@ def GetInplacedFunctionName(function_name):
 
 def GetForwardFunctionName(string):
     return f"{string}_final_state_dygraph_function"
+
+
+def TransformGradVarNameForDoubleGradGeneration(string):
+    if IsGradName(string):
+        string = "grad_" + string[:-5]
+    return string
 
 
 ######################
@@ -334,10 +344,10 @@ class FunctionGeneratorBase:
             self.inplace_map[key] = val
 
     def ParseNoNeedBuffer(self):
-        forward_api_contents = self.forward_api_contents
+        grad_api_contents = self.grad_api_contents
 
-        if 'no_need_buffer' in forward_api_contents.keys():
-            no_need_buffer_str = forward_api_contents['no_need_buffer']
+        if 'no_need_buffer' in grad_api_contents.keys():
+            no_need_buffer_str = grad_api_contents['no_need_buffer']
             for name in no_need_buffer_str.split(","):
                 name = name.strip()
                 name = RemoveSpecialSymbolsInName(name)

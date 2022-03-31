@@ -112,7 +112,8 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   auto iter = interpretercores_.find(oss.str());
 
   if (iter == interpretercores_.end()) {
-    VLOG(3) << "create interpreter_core for " << oss.str();
+    VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
+            << place_;
     VLOG(3) << "add fetch op: " << add_fetch_op;
     std::shared_ptr<InterpreterCore> core = nullptr;
     if (add_fetch_op) {

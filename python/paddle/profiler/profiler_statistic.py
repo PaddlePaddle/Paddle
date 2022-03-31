@@ -481,6 +481,12 @@ class EventSummary:
                         deque.append(child)
 
     def add_operator_item(self, operator_node):
+        have_inner = False
+        for child in operator_node.children_node:
+            if child.type == TracerEventType.OperatorInner:
+                have_inner = True
+        if have_inner == False:
+            return
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name)
@@ -646,7 +652,7 @@ def _build_table(statistic_data,
     append(
         "Note:\nCPU(Process) Utilization = Current process CPU time over all cpu cores / elapsed time, so max utilization can be reached 100% * number of cpu cores.\n"
         "CPU(System) Utilization = All processes CPU time over all cpu cores(busy time) / (busy time + idle time).\n"
-        "GPU Utilization = Current process GPU time / elapsed time")
+        "GPU Utilization = Current process GPU time / elapsed time.")
     append('-' * line_length)
     append('')
     append('')
@@ -724,7 +730,7 @@ def _build_table(statistic_data,
     append(
         "Note:\nIn this table, We sum up all collected events in terms of event type.\n"
         "The time of events collected on host are presented as CPU Time, and as GPU Time if on device.\n"
-        "ratio = CPU(GPU) Time / Total Time."
+        "Ratio = CPU(GPU) Time / Total Time.\n"
         "Events with different types may overlap or inclusion, e.g. Operator includes OperatorInner, so the sum of ratios is not 100%.\n"
         "The time of events in the same type with overlap will not calculate twice, and all time is summed after merged.\n"
         "Example:\n"
@@ -741,37 +747,15 @@ def _build_table(statistic_data,
     ###### Print Model Summary Report ######
     model_perspective_items = statistic_data.event_summary.model_perspective_items
     if model_perspective_items:
-        headers = [
-            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
-            'GPU Total / Avg / Max / Min / Ratio(%)'
-        ]
-        row_format_list = [""]
-        header_sep_list = [""]
-        line_length_list = [-SPACING_SIZE]
-        name_column_width = 15
-        add_column(name_column_width)
-        add_column(6)
-        add_column(40)
-        add_column(40)
-
-        row_format = row_format_list[0]
-        header_sep = header_sep_list[0]
-        line_length = line_length_list[0]
-
-        # construct table string
-        append(add_title(line_length, "Model Summary"))
-        append('Time unit: {}'.format(time_unit))
-        append(header_sep)
-        append(row_format.format(*headers))
-        append(header_sep)
-        accmulation_time = 0
+        all_row_values = []
         row_values = [
             'Total Time', '-', '{} / - / - / - / {}'.format(
                 format_time(
                     total_time, unit=time_unit), format_ratio(1)),
             '- / - / - / -/ -'
         ]
-        append(row_format.format(*row_values))
+        all_row_values.append(row_values)
+        accmulation_time = 0
         for name in ['Dataloader', 'Forward', 'Backward', 'Optimization']:
             if name in model_perspective_items:
                 item = model_perspective_items[name]
@@ -798,7 +782,7 @@ def _build_table(statistic_data,
                             item.min_gpu_time, unit=time_unit),
                         format_ratio(float(item.gpu_time) / total_time))
                 ]
-                append(row_format.format(*row_values))
+                all_row_values.append(row_values)
                 accmulation_time += item.cpu_time
 
         other_time = total_time - accmulation_time
@@ -809,8 +793,50 @@ def _build_table(statistic_data,
                 format_ratio(float(other_time) / total_time)),
             '- / - / - / - / -'
         ]
-        append(row_format.format(*row_values))
+        all_row_values.append(row_values)
+        # Calculate the column width
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
+        headers = [
+            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
+            'GPU Total / Avg / Max / Min / Ratio(%)'
+        ]
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+        name_column_width = 15
+        add_column(name_column_width)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "Model Summary"))
+        append('Time unit: {}'.format(time_unit))
         append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        for row_values in all_row_values:
+            append(row_format.format(*row_values))
+        append(header_sep)
+        append(
+            "Note:\nIn this table, GPU time is the sum of all device(GPU) events called in the phase.\n"
+            "Unlike overview summary, if two device(GPU) events execute on different streams with overlap time, we sum them directly here.\n"
+        )
+        append('-' * line_length)
         append('')
         append('')
 
@@ -825,7 +851,7 @@ def _build_table(statistic_data,
         header_sep_list = [""]
         line_length_list = [-SPACING_SIZE]
 
-        DEFAULT_COLUMN_WIDTH = 20
+        DEFAULT_COLUMN_WIDTH = 25
         for _ in headers:
             add_column(DEFAULT_COLUMN_WIDTH)
 
@@ -884,29 +910,8 @@ def _build_table(statistic_data,
 
     ###### Print Operator Summary Report ######
     if statistic_data.event_summary.items:
-        headers = [
-            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
-            'GPU Total / Avg / Max / Min / Ratio(%)'
-        ]
-        row_format_list = [""]
-        header_sep_list = [""]
-        line_length_list = [-SPACING_SIZE]
-        name_column_width = 50
-        add_column(name_column_width)
-        add_column(6)
-        add_column(40)
-        add_column(40)
-
-        row_format = row_format_list[0]
-        header_sep = header_sep_list[0]
-        line_length = line_length_list[0]
-
-        # construct table string
-        append(add_title(line_length, "Operator Summary"))
-        append('Time unit: {}'.format(time_unit))
-        append(header_sep)
-        append(row_format.format(*headers))
-        append(header_sep)
+        all_row_values = []
+        name_column_width = 52
         if thread_sep == True:
             thread_items = statistic_data.event_summary.thread_items
         else:
@@ -914,7 +919,7 @@ def _build_table(statistic_data,
                 'All threads merged': statistic_data.event_summary.items
             }
         for thread_id, items in thread_items.items():
-            append(add_title(line_length, "Thread: {}".format(thread_id)))
+            all_row_values.append("Thread: {}".format(thread_id))
             if sorted_by == SortedKeys.CPUTotal:
                 sorted_items = sorted(
                     items.items(), key=lambda x: x[1].cpu_time, reverse=True)
@@ -971,10 +976,13 @@ def _build_table(statistic_data,
                             item.min_gpu_time, unit=time_unit),
                         format_ratio(float(item.gpu_time) / total_time))
                 ]
-                append(row_format.format(*row_values))
+                all_row_values.append(row_values)
                 if op_detail:
                     for innerop_name, innerop_node in item.operator_inners.items(
                     ):
+                        if len(innerop_name) + 2 > name_column_width:
+                            innerop_name = innerop_name[:name_column_width - 5]
+                            innerop_name += "..."
                         row_values = [
                             '  {}'.format(innerop_name), innerop_node.call,
                             '{} / {} / {} / {} / {}'.format(
@@ -1000,7 +1008,7 @@ def _build_table(statistic_data,
                                 format_ratio(
                                     float(innerop_node.gpu_time) / total_time))
                         ]
-                        append(row_format.format(*row_values))
+                        all_row_values.append(row_values)
                         for device_node_name, devicenode in innerop_node.devices.items(
                         ):
                             if len(device_node_name) + 4 > name_column_width:
@@ -1027,7 +1035,7 @@ def _build_table(statistic_data,
                                         float(devicenode.gpu_time) /
                                         total_time))
                             ]
-                            append(row_format.format(*row_values))
+                            all_row_values.append(row_values)
                     for device_node_name, device_node in item.devices.items():
                         if len(device_node_name) + 2 > name_column_width:
                             device_node_name = device_node_name[:
@@ -1049,40 +1057,55 @@ def _build_table(statistic_data,
                                 format_ratio(
                                     float(devicenode.gpu_time) / total_time))
                         ]
-                        append(row_format.format(*row_values))
-        append(header_sep)
-        append('')
-        append('')
-
-    ###### Print Memory Manipulation Summary Report ######
-    if statistic_data.event_summary.memory_manipulation_items:
+                        all_row_values.append(row_values)
+        # Calculate the column width
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                continue
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
         headers = [
             'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
             'GPU Total / Avg / Max / Min / Ratio(%)'
         ]
-        name_column_width = 0
-        for name, item in statistic_data.event_summary.memory_manipulation_items.items(
-        ):
-            name_column_width = max(len(name), name_column_width)
         row_format_list = [""]
         header_sep_list = [""]
         line_length_list = [-SPACING_SIZE]
-        name_column_width = min(name_column_width, 45)
         add_column(name_column_width)
-        add_column(6)
-        add_column(40)
-        add_column(40)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
 
         row_format = row_format_list[0]
         header_sep = header_sep_list[0]
         line_length = line_length_list[0]
 
         # construct table string
-        append(add_title(line_length, "Memory Manipulation Summary"))
+        append(add_title(line_length, "Operator Summary"))
         append('Time unit: {}'.format(time_unit))
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                append(add_title(line_length, row_values))
+            else:
+                append(row_format.format(*row_values))
+        append(header_sep)
+        append('')
+        append('')
+
+    ###### Print Memory Manipulation Summary Report ######
+    if statistic_data.event_summary.memory_manipulation_items:
+        all_row_values = []
         memory_manipulation_items = statistic_data.event_summary.memory_manipulation_items
         for name, item in memory_manipulation_items.items():
             row_values = [
@@ -1109,35 +1132,54 @@ def _build_table(statistic_data,
                         item.min_gpu_time, unit=time_unit),
                     format_ratio(float(item.gpu_time) / total_time)),
             ]
-            append(row_format.format(*row_values))
-        append(header_sep)
-        append('')
-        append('')
-    ###### Print UserDefined Summary Report ######
-    if statistic_data.event_summary.userdefined_items:
+            all_row_values.append(row_values)
+
         headers = [
             'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
             'GPU Total / Avg / Max / Min / Ratio(%)'
         ]
+        # Calculate the column width
+        name_column_width = 0
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if len(row_values[0]) > name_column_width:
+                name_column_width = len(row_values[0])
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
+
         row_format_list = [""]
         header_sep_list = [""]
         line_length_list = [-SPACING_SIZE]
-        name_column_width = 35
         add_column(name_column_width)
-        add_column(6)
-        add_column(40)
-        add_column(40)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
 
         row_format = row_format_list[0]
         header_sep = header_sep_list[0]
         line_length = line_length_list[0]
 
         # construct table string
-        append(add_title(line_length, "UserDefined Summary"))
+        append(add_title(line_length, "Memory Manipulation Summary"))
         append('Time unit: {}'.format(time_unit))
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
+        for row_values in all_row_values:
+            append(row_format.format(*row_values))
+        append(header_sep)
+        append('')
+        append('')
+    ###### Print UserDefined Summary Report ######
+    if statistic_data.event_summary.userdefined_items:
+        all_row_values = []
         if thread_sep == True:
             userdefined_thread_items = statistic_data.event_summary.userdefined_thread_items
         else:
@@ -1146,7 +1188,7 @@ def _build_table(statistic_data,
                 statistic_data.event_summary.userdefined_items
             }
         for thread_id, items in userdefined_thread_items.items():
-            append(add_title(line_length, "Thread: {}".format(thread_id)))
+            all_row_values.append("Thread: {}".format(thread_id))
             if sorted_by == SortedKeys.CPUTotal:
                 sorted_items = sorted(
                     items.items(), key=lambda x: x[1].cpu_time, reverse=True)
@@ -1205,6 +1247,55 @@ def _build_table(statistic_data,
                             item.min_gpu_time, unit=time_unit),
                         format_ratio(float(item.gpu_time) / total_time)),
                 ]
+                all_row_values.append(row_values)
+
+        # Calculate the column width
+        name_column_width = 0
+        calltime_width = 6
+        cpu_data_description_width = 40
+        gpu_data_description_width = 40
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                continue
+            if len(row_values[0]) > name_column_width:
+                name_column_width = len(row_values[0])
+            if isinstance(row_values[1],
+                          int) and len(str(row_values[1])) > calltime_width:
+                calltime_width = len(str(row_values[1]))
+            if len(row_values[2]) > cpu_data_description_width:
+                cpu_data_description_width = len(row_values[2])
+            if len(row_values[3]) > gpu_data_description_width:
+                gpu_data_description_width = len(row_values[3])
+
+        headers = [
+            'Name', 'Calls', 'CPU Total / Avg / Max / Min / Ratio(%)',
+            'GPU Total / Avg / Max / Min / Ratio(%)'
+        ]
+        row_format_list = [""]
+        header_sep_list = [""]
+        line_length_list = [-SPACING_SIZE]
+
+        add_column(name_column_width)
+        add_column(calltime_width)
+        add_column(cpu_data_description_width)
+        add_column(gpu_data_description_width)
+
+        row_format = row_format_list[0]
+        header_sep = header_sep_list[0]
+        line_length = line_length_list[0]
+
+        # construct table string
+        append(add_title(line_length, "UserDefined Summary"))
+        append('Time unit: {}'.format(time_unit))
+        append(header_sep)
+        append(row_format.format(*headers))
+        append(header_sep)
+        for row_values in all_row_values:
+            if isinstance(row_values, str):
+                append(add_title(line_length, row_values))
+            else:
                 append(row_format.format(*row_values))
-            append(header_sep)
+        append('')
+        append('')
+
     return ''.join(result)
