@@ -486,8 +486,10 @@ void SetTensorFromPyArrayT(
 template <typename P>
 void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                           const P &place, bool zero_copy) {
-  static const bool is_numpy_bf16_initialized =
+  static bool is_numpy_bf16_initialized =
       paddle_bfloat::RegisterNumpyBfloat16();
+
+  is_numpy_bf16_initialized = is_numpy_bf16_initialized;
 
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
