@@ -447,8 +447,8 @@ class Converter(object):
                 slice_shape = shape
             else:
                 slice_shape = shape // process_shape[dims_mapping[i]]
-            if shape == 1:
-                index = 0
+            if slice_shape == 1:
+                index = partition_index[i][0]
             else:
                 index = (partition_index[i][0] + 1) // slice_shape
             sliced_index = sliced_index * (shape // slice_shape) + index

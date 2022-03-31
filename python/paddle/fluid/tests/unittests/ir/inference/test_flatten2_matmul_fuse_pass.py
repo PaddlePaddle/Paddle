@@ -39,17 +39,6 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
     """
 
     def sample_predictor_configs(self, program_config):
-        # TRT
-        # config = self.create_trt_inference_config()
-        # config.enable_tensorrt_engine(
-        #     max_batch_size=10,
-        #     workspace_size=102400,
-        #     min_subgraph_size=0,
-        #     precision_mode=paddle_infer.PrecisionType.Float32,
-        #     use_static=False,
-        #     use_calib_mode=False)
-        # yield config, ['mul', 'elementwise_add'], (1e-5, 1e-5)
-
         # cpu
         config = self.create_inference_config(use_gpu=False)
         yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
@@ -57,33 +46,6 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
         yield config, ["mul", "elementwise_add"], (1e-5, 1e-5)
-
-    def add_ignore_pass_case(self):
-        # Here we put some skip rules to avoid known bugs
-        def teller1(program_config, predictor_config):
-            if predictor_config.tensorrt_engine_enabled():
-                # On 3080, the results of MatMul and Mul are different 
-                # When the input Y is weight
-                return True
-
-                # On TRT when the input Y is weight, Mul is converted to FC
-                if "matmul_y" not in program_config.weights \
-                    or "bias" not in program_config.weights:
-                    return True
-
-                y_shape = list(program_config.weights["matmul_y"].shape)
-                bias_shape = program_config.weights["bias"].shape
-                axis = program_config.ops[2].attrs["axis"]
-                # bias should be [mul_y_shape[-1]]
-                if axis == 0 or bias_shape[0] != y_shape[1] or len(
-                        bias_shape) != 1:
-                    return True
-            return False
-
-        self.add_ignore_check_case(
-            teller1,
-            IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass error on TRT while shape of bias is not [out_size].", )
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of flatten2
