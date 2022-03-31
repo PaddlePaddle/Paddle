@@ -327,7 +327,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
         return _template.format(
             prefix=prefix,
             shape=tensor.shape,
-            dtype=tensor.dtype,
+            dtype=convert_dtype(tensor.dtype),
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
             indent=' ' * indent,
