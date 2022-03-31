@@ -537,6 +537,15 @@
   kernel :
     func : conj
 
+- api : conv
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  output : Tensor
+  infer_meta :
+    func : ConvInferMeta
+  kernel :
+    func : conv2d
+  #backward : where_grad
+
 - api : copy_to
   args : (Tensor x, Place place, bool blocking)
   output : Tensor
