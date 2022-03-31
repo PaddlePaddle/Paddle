@@ -1555,6 +1555,7 @@
     func : SqueezeInferMeta
   kernel :
     func : squeeze
+  view: (x -> out)
   backward : squeeze_grad
 
 - api : subtract
@@ -1704,6 +1705,7 @@
     func : UnsqueezeInferMeta
   kernel :
     func : unsqueeze
+  view: (x -> out)
   backward : unsqueeze_grad
 
 # viterbi_decode
