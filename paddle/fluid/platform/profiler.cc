@@ -162,8 +162,9 @@ void RecordEvent::OriginalConstruct(const std::string &name,
 void RecordEvent::End() {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook && is_pushed_ && is_enabled_) {
+  if (g_enable_nvprof_hook && is_pushed_) {
     dynload::nvtxRangePop();
+    is_pushed_ = false;
   }
 #endif
 #endif
