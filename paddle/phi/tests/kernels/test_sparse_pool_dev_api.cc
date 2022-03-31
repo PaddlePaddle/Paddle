@@ -178,8 +178,11 @@ void TestMaxPoolBase(const std::vector<int>& indices,
                             correct_out_indices.size() * sizeof(int));
   ASSERT_EQ(cmp_indices2, 0);
 
-  DenseTensor h_features_tensor =
-      phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
+  DenseTensor h_features_tensor = phi::Empty(
+      dev_ctx_cpu,
+      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
+                      {d_out.nnz()},
+                      d_out.layout()));
 
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_elements(),
