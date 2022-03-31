@@ -15,7 +15,7 @@
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable
+from ..fluid.framework import Variable, _in_legacy_dygraph, in_dygraph_mode
 from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
@@ -336,7 +336,7 @@ class Adam(Optimizer):
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
 
             _beta1 = self._beta1 if not isinstance(
                 self._beta1, Variable) else self._beta1.numpy().item(0)
@@ -431,11 +431,20 @@ class Adam(Optimizer):
                     continue
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
-                    if hasattr(grad_var, "_is_sparse") and grad_var._is_sparse(
-                    ) and self.regularization is not None:
-                        raise RuntimeError(
-                            "Adam don't support weight_decay with sparse parameters, please set it to None."
-                        )
+                    if in_dygraph_mode():
+                        if hasattr(grad_var, "is_selected_rows"
+                                   ) and grad_var.is_selected_rows(
+                                   ) and self.regularization is not None:
+                            raise RuntimeError(
+                                "Adam don't support weight_decay with sparse parameters, please set it to None."
+                            )
+                    else:
+                        if hasattr(grad_var,
+                                   "_is_sparse") and grad_var._is_sparse(
+                                   ) and self.regularization is not None:
+                            raise RuntimeError(
+                                "Adam don't support weight_decay with sparse parameters, please set it to None."
+                            )
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
@@ -551,15 +560,14 @@ class Adam(Optimizer):
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
             if len(self._param_dict[key]) > 0:
-                if key == 'FP32_LODTensor':
-                    self._multi_precision = False
+                find_master = self._multi_precision and key == 'FP16_LODTensor'
 
                 _beta1 = self._beta1 if not isinstance(
                     self._beta1, Variable) else self._beta1.numpy().item(0)
                 _beta2 = self._beta2 if not isinstance(
                     self._beta2, Variable) else self._beta2.numpy().item(0)
 
-                if framework.in_dygraph_mode():
+                if framework._non_static_mode():
                     _, _, _, _, _, _ = _C_ops.merged_adam(
                         self._param_dict[key], grad_dict[key], lr_dict[key],
                         self._moment1_dict[key], self._moment2_dict[key],
@@ -571,7 +579,7 @@ class Adam(Optimizer):
                         self._beta2_pow_acc_dict[key],
                         self._master_weight_dict[key], 'epsilon', self._epsilon,
                         'beta1', _beta1, 'beta2', _beta2, 'multi_precision',
-                        self._multi_precision)
+                        find_master)
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
@@ -594,11 +602,11 @@ class Adam(Optimizer):
                         "beta1": _beta1,
                         "beta2": _beta2
                     }
-                    if self._multi_precision:
+                    if find_master:
                         inputs["MasterParam"] = self._master_weight_dict[key]
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key]
-                        attrs["multi_precision"] = self._multi_precision
+                        attrs["multi_precision"] = find_master
                     target_block.append_op(
                         type="merged_adam",
                         inputs=inputs,

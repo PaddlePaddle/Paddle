@@ -89,7 +89,7 @@ TEST_F(MkldnnQuantizerTest, histogram_inverted_min_max) {
   auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -104,7 +104,7 @@ TEST_F(MkldnnQuantizerTest, histogram_non_negative_to_3) {
   auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -127,7 +127,7 @@ TEST_F(MkldnnQuantizerTest, histogram_positive_and_negative_to_3) {
   auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -150,7 +150,7 @@ TEST_F(MkldnnQuantizerTest, histogram_zero_bins) {
   auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -174,7 +174,7 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_signed) {
   const auto& values = positive_and_negative_values;
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -193,7 +193,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_signed) {
   auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -212,7 +212,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_unsigned) {
   auto max_val = *std::max_element(values.begin(), values.end());
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -232,7 +232,7 @@ TEST_F(MkldnnQuantizerTest, max_scaling_factor_chwise_unsigned) {
   int channels = 3;
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(channels, 1, 1, values.size()));
+  var_tensor.Resize(phi::make_dim(channels, 1, 1, values.size()));
   for (int i = 0; i < channels; i++)
     std::copy(begin(values), end(values),
               var_tensor.mutable_data<float>(platform::CPUPlace()) +
@@ -254,7 +254,7 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
   const auto& values = non_negative_values;
 
   framework::LoDTensor var_tensor;
-  var_tensor.Resize(framework::make_dim(values.size()));
+  var_tensor.Resize(phi::make_dim(values.size()));
   std::copy(begin(values), end(values),
             var_tensor.mutable_data<float>(platform::CPUPlace()));
 
@@ -279,13 +279,13 @@ const std::vector<std::vector<float>> wh = {
 TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
   framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
 
-  wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
+  wx_tensor.Resize(phi::make_dim(wx.size(), wx[0].size()));
   for (size_t i = 0; i < wx.size(); i++)
     std::copy(
         begin(wx[i]), end(wx[i]),
         wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
 
-  wh_tensor.Resize(framework::make_dim(wh.size(), wh[0].size()));
+  wh_tensor.Resize(phi::make_dim(wh.size(), wh[0].size()));
   for (size_t i = 0; i < wh.size(); i++)
     std::copy(
         begin(wh[i]), end(wh[i]),
@@ -307,13 +307,13 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
 TEST_F(MkldnnQuantizerTest, max_ch_lstm_scaling_factor) {
   framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
 
-  wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
+  wx_tensor.Resize(phi::make_dim(wx.size(), wx[0].size()));
   for (size_t i = 0; i < wx.size(); i++)
     std::copy(
         begin(wx[i]), end(wx[i]),
         wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
 
-  wh_tensor.Resize(framework::make_dim(wh.size(), wh[0].size()));
+  wh_tensor.Resize(phi::make_dim(wh.size(), wh[0].size()));
   for (size_t i = 0; i < wh.size(); i++)
     std::copy(
         begin(wh[i]), end(wh[i]),

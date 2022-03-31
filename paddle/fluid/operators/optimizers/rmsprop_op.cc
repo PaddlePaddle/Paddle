@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/rmsprop_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -86,11 +86,11 @@ class RmspropOp : public framework::OperatorWithKernel {
                           param_dim, ctx->GetInputDim("MeanSquare")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dim), 1,
                       platform::errors::InvalidArgument(
                           "Learning Rate of RmspropOp should be a scalar. But "
                           "received LearningRate's dim [%s]",
-                          framework::product(lr_dim)));
+                          phi::product(lr_dim)));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
@@ -170,6 +170,3 @@ http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(rmsprop, ops::RmspropOp, ops::RmspropOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    rmsprop, ops::RmspropOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RmspropOpKernel<paddle::platform::CPUDeviceContext, double>);

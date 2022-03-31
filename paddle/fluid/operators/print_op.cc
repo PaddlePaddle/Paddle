@@ -16,9 +16,9 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

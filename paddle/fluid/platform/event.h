@@ -152,11 +152,11 @@ class CudaEvent {
 #endif
   }
 
-  void Record(const paddle::platform::stream::CUDAStream &stream) {
+  void Record(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream));
 #endif
   }
 

@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/fleet.h"
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -53,7 +53,7 @@ class SendOp : public framework::OperatorBase {
         send_varnames[0] != "@PS_STEP_COUNTER@") {
       auto fleet = paddle::distributed::FleetWrapper::GetInstance();
       std::vector<::std::future<int32_t>> status;
-      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, 0, -1);
+      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, -1, -1);
     } else {
       auto* communicator = paddle::distributed::Communicator::GetInstance();
       if (communicator->Check(send_varnames)) {

@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/roi_align_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class XPUROIAlignOpKernel : public framework::OpKernel<T> {
@@ -32,6 +35,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
@@ -117,7 +121,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), in->data<T>(),
         out->mutable_data<T>(ctx.GetPlace()), rois->data<T>(), roi_id_data,
         batch_size, channels, height, width, out->dims()[0], pooled_height,
-        pooled_width, spatial_scale, sampling_ratio, true);
+        pooled_width, spatial_scale, sampling_ratio, true, aligned);
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                       platform::errors::External(
                           "The roi_align XPU OP return wrong value[%d %s]", r,
@@ -143,6 +147,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     int rois_num = rois->dims()[0];
     int channels = in->dims()[1];
@@ -197,7 +202,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
           dev_ctx.x_context(), out_grad->data<T>(), in_grad->data<T>(),
           rois->data<T>(), roi_id_data, in->dims()[0], channels, height, width,
           out_grad->dims()[0], pooled_height, pooled_width, spatial_scale,
-          sampling_ratio, true);
+          sampling_ratio, true, aligned);
       PADDLE_ENFORCE_EQ(
           r, xpu::Error_t::SUCCESS,
           platform::errors::External(

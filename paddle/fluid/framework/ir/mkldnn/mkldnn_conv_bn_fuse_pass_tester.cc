@@ -12,27 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-
-#include <gtest/gtest.h>
-#include <boost/logic/tribool.hpp>
 #include <random>
+#include <string>
 #include <unordered_set>
+
+#include <boost/logic/tribool.hpp>
+
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(batch_norm);
+PD_DECLARE_KERNEL(conv2d_transpose, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(batch_norm, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(gelu, CPU, ALL_LAYOUT);
+
+USE_OP_ITSELF(batch_norm);
 USE_OP_DEVICE_KERNEL(batch_norm, MKLDNN);
-USE_OP(conv2d_transpose);
+USE_OP_ITSELF(conv2d_transpose);
 USE_OP_DEVICE_KERNEL(conv2d_transpose, MKLDNN);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(gelu);
+USE_OP_ITSELF(gelu);
 USE_OP_DEVICE_KERNEL(gelu, MKLDNN);
+PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {
 namespace framework {

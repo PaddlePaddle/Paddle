@@ -159,8 +159,8 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->type(),
-                      ctx.Input<framework::Tensor>("Y")->type(),
+    PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->dtype(),
+                      ctx.Input<framework::Tensor>("Y")->dtype(),
                       platform::errors::InvalidArgument(
                           "The element's type of input should be the same."));
     return framework::OpKernelType(

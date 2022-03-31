@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-
-#include "paddle/fluid/operators/sign_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 namespace paddle {
 namespace operators {

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ctime>
+
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -20,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
@@ -79,11 +81,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
         LoDTensor *root_tensor =
             root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
-#define MemsetCallback(cpp_type, proto_type)                     \
-  do {                                                           \
-    if (root_tensor->type() == proto_type) {                     \
-      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim); \
-    }                                                            \
+#define MemsetCallback(cpp_type, proto_type)                                  \
+  do {                                                                        \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
+      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim);              \
+    }                                                                         \
   } while (0)
         _ForEachDataType_(MemsetCallback);
       }

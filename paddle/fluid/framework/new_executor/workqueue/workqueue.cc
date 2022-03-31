@@ -8,9 +8,21 @@
 #include "paddle/fluid/framework/new_executor/workqueue/nonblocking_threadpool.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
+
+void WorkQueueOptions::Validate() const {
+  PADDLE_ENFORCE_GT(name.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "WorkQueueOptions.name must be nonempty"));
+  PADDLE_ENFORCE_EQ(
+      name.find('_'), std::string::npos,
+      platform::errors::InvalidArgument(
+          "WorkQueueOptions.name shouldn't contain an underline"));
+}
+
 namespace {
 
 using TaskTracker = TaskTracker<EventsWaiter::EventNotifier>;
@@ -19,25 +31,19 @@ class WorkQueueImpl : public WorkQueue {
  public:
   explicit WorkQueueImpl(const WorkQueueOptions& options) : WorkQueue(options) {
     if (options_.track_task && options.events_waiter != nullptr) {
+      empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      empty_notifier_ = options.events_waiter->RegisterEvent(
-          kQueueEmptyEvent,
-          [tracker]() { return tracker->PendingTaskNum() == 0; });
       tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
     }
     if (options_.detached == false && options.events_waiter != nullptr) {
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queue_ = new NonblockingThreadPool(options_.num_threads,
+    queue_ = new NonblockingThreadPool(options_.name, options_.num_threads,
                                        options_.allow_spinning);
   }
 
   virtual ~WorkQueueImpl() {
-    if (empty_notifier_) {
-      empty_notifier_->UnregisterEvent();
-    }
     delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
@@ -45,11 +51,12 @@ class WorkQueueImpl : public WorkQueue {
     }
     if (destruct_notifier_) {
       destruct_notifier_->NotifyEvent();
-      destruct_notifier_->UnregisterEvent();
     }
   }
 
   void AddTask(std::function<void()> fn) override {
+    platform::RecordEvent("WorkQueue::AddTask",
+                          platform::TracerEventType::UserDefined, 10 /*level*/);
     if (tracker_ != nullptr) {
       fn = [
         task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
@@ -110,26 +117,21 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
     const auto& options = queues_options_[idx];
     if (options.track_task && tracker_ == nullptr &&
         options.events_waiter != nullptr) {
+      empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      TaskTracker* tracker = reinterpret_cast<TaskTracker*>(storage);
-      empty_notifier_ = options.events_waiter->RegisterEvent(
-          kQueueEmptyEvent,
-          [tracker]() { return tracker->PendingTaskNum() == 0; });
       tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
     }
-    if (options.detached == false && options.events_waiter != nullptr) {
+    if (options.detached == false && options.events_waiter != nullptr &&
+        !destruct_notifier_) {
       destruct_notifier_ =
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
-    queues_[idx] = new (&queues_storage_[idx])
-        NonblockingThreadPool(options.num_threads, options.allow_spinning);
+    queues_[idx] = new (&queues_storage_[idx]) NonblockingThreadPool(
+        options.name, options.num_threads, options.allow_spinning);
   }
 }
 
 WorkQueueGroupImpl::~WorkQueueGroupImpl() {
-  if (empty_notifier_) {
-    empty_notifier_->UnregisterEvent();
-  }
   for (auto queue : queues_) {
     queue->~NonblockingThreadPool();
   }
@@ -140,11 +142,12 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
   free(queues_storage_);
   if (destruct_notifier_) {
     destruct_notifier_->NotifyEvent();
-    destruct_notifier_->UnregisterEvent();
   }
 }
 
 void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
+  platform::RecordEvent("WorkQueue::AddTask",
+                        platform::TracerEventType::UserDefined, 10 /*level*/);
   assert(queue_idx < queues_.size());
   if (queues_options_.at(queue_idx).track_task) {
     fn = [
@@ -182,6 +185,8 @@ void WorkQueueGroupImpl::Cancel() {
 
 std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
     const WorkQueueOptions& options) {
+  options.Validate();
+  // extra check
   PADDLE_ENFORCE_EQ(options.num_threads, 1u,
                     platform::errors::InvalidArgument(
                         "For a SingleThreadedWorkQueue, "
@@ -192,6 +197,8 @@ std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
 
 std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
     const WorkQueueOptions& options) {
+  options.Validate();
+  // extra check
   PADDLE_ENFORCE_GT(
       options.num_threads, 1u,
       platform::errors::InvalidArgument("For a MultiThreadedWorkQueue, "
@@ -207,6 +214,9 @@ std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
                     platform::errors::InvalidArgument(
                         "For a WorkQueueGroup, the number of WorkQueueOptions "
                         "must be greater than 1."));
+  for (const auto& opts : queues_options) {
+    opts.Validate();
+  }
   std::unique_ptr<WorkQueueGroup> ptr(new WorkQueueGroupImpl(queues_options));
   return ptr;
 }

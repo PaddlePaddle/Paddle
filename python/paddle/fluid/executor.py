@@ -622,7 +622,9 @@ class Executor(object):
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
             If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
-            is the index of the GPUs.
+            is the index of the GPUs. Note: users only pass one Place or None to initialize
+            Executor when using multiple-cards. Other APIs will override the cards. See
+            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/01_paddle2.0_introduction/update_en.html#stand-alone-multi-card-launch>`_ 
 
     Returns:
         Executor
@@ -2032,8 +2034,11 @@ class Executor(object):
             fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
+        # NOTE: the last argument is used to force create some vars in root scope,
+        # won't be used during train.
         self._fleet_executor.init(carrier_id, program.desc, scope, place,
-                                  num_micro_batches, tasks, task_id_to_rank)
+                                  num_micro_batches, tasks, task_id_to_rank,
+                                  [])
 
     def _run_using_fleet_executor(self,
                                   program=None,

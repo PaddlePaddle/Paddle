@@ -42,10 +42,11 @@ class TaskNode final {
            int64_t max_slot_nums);
   TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
            int64_t max_run_times, int64_t max_slot_nums);
+  TaskNode(paddle::framework::ProgramDesc* program, int64_t rank);
   ~TaskNode() = default;
 
   void SetProgram(paddle::framework::ProgramDesc* program);
-  void Init();
+  void Init(bool use_feed_fetch_ops = true);
   int64_t rank() const { return rank_; }
   int64_t task_id() const { return task_id_; }
   int32_t role() const { return role_; }

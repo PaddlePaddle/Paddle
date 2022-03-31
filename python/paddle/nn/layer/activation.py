@@ -14,8 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-from ...fluid import core
-from ...fluid.framework import in_dygraph_mode
 from ...framework import ParamAttr
 from ..initializer import Constant
 from paddle.framework import get_default_dtype

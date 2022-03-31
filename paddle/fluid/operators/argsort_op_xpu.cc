@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/argsort_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -166,10 +166,9 @@ class ArgsortXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int len_before =
-        framework::product(framework::slice_ddim(in_dims, 0, axis));
-    int len_after = framework::product(
-        framework::slice_ddim(in_dims, axis + 1, in_dims.size()));
+    int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
+    int len_after =
+        phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
     bool int64_need_cast =
         (std::is_same<T, int64_t>::value && n > (XPU_SORT_MAX_SIZE / 2))
             ? true

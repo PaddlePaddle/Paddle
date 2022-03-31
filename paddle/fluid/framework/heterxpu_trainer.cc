@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "io/fs.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -24,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
-    (defined PADDLE_WITH_PSLIB)
+    (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -136,18 +137,18 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
 
-#define HeterMemcpyFunc(cpp_type, proto_type)                           \
-  do {                                                                  \
-    if (root_tensor->type() == proto_type) {                            \
-      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place, stream); \
-    }                                                                   \
+#define HeterMemcpyFunc(cpp_type, proto_type)                                 \
+  do {                                                                        \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
+      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place, stream);       \
+    }                                                                         \
   } while (0)
 
-#define HeterMemcpyXpuFunc(cpp_type, proto_type)                \
-  do {                                                          \
-    if (root_tensor->type() == proto_type) {                    \
-      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place); \
-    }                                                           \
+#define HeterMemcpyXpuFunc(cpp_type, proto_type)                              \
+  do {                                                                        \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
+      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place);               \
+    }                                                                         \
   } while (0)
 #ifdef PADDLE_WITH_CUDA
       _ForEachDataType_(HeterMemcpyFunc);
@@ -318,12 +319,13 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 //      }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
         VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
                 << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
@@ -334,8 +336,10 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_CUDA
         auto dev_id = thread_tensor->place().device;
         platform::CUDADeviceGuard guard(dev_id);
-        cudaMemset(thread_tensor->data(), 0,
-                   thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+        cudaMemset(
+            thread_tensor->data(), 0,
+            thread_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
+                                         thread_tensor->dtype())));
 #endif
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
@@ -346,12 +350,16 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-        xpu::memset(xpu_ctx->x_context(), thread_tensor->data(), 0,
-                    thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+        xpu::memset(
+            xpu_ctx->x_context(), thread_tensor->data(), 0,
+            thread_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
+                                         thread_tensor->dtype())));
 #endif
       } else {
         memset(thread_tensor->data(), 0,
-               thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+               thread_tensor->numel() *
+                   SizeOfType(
+                       framework::TransToProtoVarType(thread_tensor->dtype())));
       }
     }
     auto* merge_var = response->add_vars();
@@ -361,8 +369,10 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_CUDA
       auto dev_id = root_tensor->place().device;
       platform::CUDADeviceGuard guard(dev_id);
-      cudaMemset(root_tensor->data(), 0,
-                 root_tensor->numel() * SizeOfType(root_tensor->type()));
+      cudaMemset(
+          root_tensor->data(), 0,
+          root_tensor->numel() *
+              SizeOfType(framework::TransToProtoVarType(root_tensor->dtype())));
 #endif
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
@@ -373,12 +383,15 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-      xpu::memset(xpu_ctx->x_context(), root_tensor->data(), 0,
-                  root_tensor->numel() * SizeOfType(root_tensor->type()));
+      xpu::memset(
+          xpu_ctx->x_context(), root_tensor->data(), 0,
+          root_tensor->numel() *
+              SizeOfType(framework::TransToProtoVarType(root_tensor->dtype())));
 #endif
     } else {
       memset(root_tensor->data(), 0,
-             root_tensor->numel() * SizeOfType(root_tensor->type()));
+             root_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
+                                        root_tensor->dtype())));
     }
   }
   return 0;

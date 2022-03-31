@@ -16,8 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -258,10 +259,10 @@ struct SystemElemType<16> {
 };
 
 template <typename T, int tile_long, int tile_short>
-void LaunchNarrowDims2TransposeKernel(const platform::CUDADeviceContext& d,
-                                      int tile_size_i, int tile_size_j,
-                                      int total_tiles_count, const T* input,
-                                      const Dim3& input_dims, T* output) {
+void LaunchNarrowDims2TransposeKernel(const phi::GPUContext& d, int tile_size_i,
+                                      int tile_size_j, int total_tiles_count,
+                                      const T* input, const Dim3& input_dims,
+                                      T* output) {
   constexpr int NumThreads = tile_long;
   if (tile_size_i <= tile_long && tile_size_j <= tile_short) {
     TilingSwapDim1And2<
@@ -278,7 +279,7 @@ void LaunchNarrowDims2TransposeKernel(const platform::CUDADeviceContext& d,
 
 template <typename T, int tile_long, int tile_short, typename dummy = void>
 struct NarrowDims2TransposeDispatch {
-  static void DoTranspose(const platform::CUDADeviceContext& d, int tile_size_i,
+  static void DoTranspose(const phi::GPUContext& d, int tile_size_i,
                           int tile_size_j, int total_tiles_count,
                           const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
@@ -319,7 +320,7 @@ struct NarrowDims2TransposeDispatch<
     T, tile_long, tile_short,
     typename std::enable_if<
         CheckNonLongTileSize(tile_long, tile_short, sizeof(T)), void>::type> {
-  static void DoTranspose(const platform::CUDADeviceContext& d, int tile_size_i,
+  static void DoTranspose(const phi::GPUContext& d, int tile_size_i,
                           int tile_size_j, int total_tiles_count,
                           const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
@@ -351,7 +352,7 @@ struct NarrowDims2TransposeDispatch<
     T, tile_long, tile_short,
     typename std::enable_if<CheckLongTileSize(tile_long, tile_short, sizeof(T)),
                             void>::type> {
-  static void DoTranspose(const platform::CUDADeviceContext& d, int tile_size_i,
+  static void DoTranspose(const phi::GPUContext& d, int tile_size_i,
                           int tile_size_j, int total_tiles_count,
                           const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
@@ -368,7 +369,7 @@ struct NarrowDims2TransposeDispatch<
 };
 
 template <typename T, bool conjugate = false>
-void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
+void SwapDim1And2InNarrow(const phi::GPUContext& d, const T* input,
                           const Dim3& input_dims, T* output,
                           const int kMinTileSize) {
   // First get available tile sizes for the data type requested as backups
@@ -473,9 +474,8 @@ __global__ void TransposeSimpleKernel(int nthreads, const T* __restrict__ input,
 
 // Here suppose convert all tensor to dim3, so just change dim1 and 2.
 template <typename T>
-void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
-                                 const T* input, const Dim3& input_dims,
-                                 T* output) {
+void SendSwapDim1And2InTranspose(const phi::GPUContext& d, const T* input,
+                                 const Dim3& input_dims, T* output) {
   // Suppose tile size > 16
   static const int kMinTileSize = 16;
   static const int kMinNarrowTileSize = 96;
@@ -512,7 +512,7 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
   } else {
     // If input shape is small, such as 8X8, just do simple copy
     int total_elements = input_dims[0] * input_dims[1] * input_dims[2];
-    auto config = GetGpuLaunchConfig1D(d, total_elements);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
     TransposeSimpleKernel<T, 0, 2, 1><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
         total_elements, input, input_dims, output);
@@ -521,7 +521,7 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
 
 template <typename T>
 struct SwapDim1And2InTranspose {
-  typedef platform::CUDADeviceContext Device;
+  typedef phi::GPUContext Device;
   void operator()(const Device& d, const T* in,
                   const std::vector<int>& combined_dims, T* out) {
     Dim3 input_dims = {static_cast<int>(combined_dims[0]),
@@ -533,7 +533,7 @@ struct SwapDim1And2InTranspose {
 
 template <typename T>
 struct SwapDim0And2InTranspose {
-  typedef platform::CUDADeviceContext Device;
+  typedef phi::GPUContext Device;
   void operator()(const Device& d, const T* in,
                   const std::vector<int>& combined_dims, T* out) {
     Dim3 input_dims = {static_cast<int>(combined_dims[0]),
@@ -541,7 +541,7 @@ struct SwapDim0And2InTranspose {
                        static_cast<int>(combined_dims[2])};
 
     size_t total_size = combined_dims[0] * combined_dims[1] * combined_dims[2];
-    auto config = GetGpuLaunchConfig1D(d, total_size);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_size);
 
     TransposeSimpleKernel<T, 2, 1, 0><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
@@ -567,7 +567,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
     new_perm->resize(1);
     (*new_perm)[0] = perm[0];
     dim_vec.push_back(shape[0]);
-    *new_dims = framework::make_ddim(dim_vec);
+    *new_dims = phi::make_ddim(dim_vec);
     return;
   }
   std::vector<int> new_dim_pos(shape.size(), -1);
@@ -602,12 +602,12 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
     }
   }
 
-  *new_dims = framework::make_ddim(dim_vec);
+  *new_dims = phi::make_ddim(dim_vec);
 }
 
 template <typename T>
 struct TransposeSimple {
-  static bool run(const platform::CUDADeviceContext& ctx, const Tensor& in,
+  static bool run(const phi::GPUContext& ctx, const Tensor& in,
                   const std::vector<int32_t> perm, Tensor* out) {
     // First reduce the dimensions of the input tensor if possible.
     std::vector<int> new_perm;
@@ -616,7 +616,7 @@ struct TransposeSimple {
 
     // Only use tile copy GPU kernel when dimension is 2 or 3.
     int dims = new_dims.size();
-    std::vector<int> new_dim_vec = framework::vectorize<int>(new_dims);
+    std::vector<int> new_dim_vec = phi::vectorize<int>(new_dims);
     if (dims < 2 || dims > 3) return false;
     auto in_data = in.data<T>();
     auto out_data = out->data<T>();
@@ -654,12 +654,12 @@ struct TransposeSimple {
 };
 
 template <typename T>
-void TransposeGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
-                              const int ndims, const Tensor& in,
-                              const std::vector<int32_t> perm, Tensor* out) {
+void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int ndims,
+                              const Tensor& in,
+                              const std::vector<int32_t>& perm, Tensor* out) {
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
-    TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, in, out, perm);
+    TransCompute<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);
   }
 }
 

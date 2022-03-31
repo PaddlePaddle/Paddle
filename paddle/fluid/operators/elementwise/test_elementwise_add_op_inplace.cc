@@ -21,8 +21,11 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {
@@ -55,7 +58,7 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
   y->Resize(dims);
   z->Resize(dims);
 
-  size_t numel = static_cast<size_t>(framework::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
 
   auto x_ptr = x->mutable_data<T>(place);
   auto y_ptr = y->mutable_data<T>(place);

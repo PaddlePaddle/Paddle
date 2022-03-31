@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/matrix_power_op.h"
+#include <memory>
+#include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,26 +26,6 @@ namespace operators {
 class MatrixPowerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matrix_power");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matrix_power");
-    auto dims = ctx->GetInputDim("X");
-    auto n_dim = dims.size();
-    PADDLE_ENFORCE_GE(n_dim, 2,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) should have at least 2 dimensions. But "
-                          "received a %d dimension tensor.",
-                          n_dim));
-    PADDLE_ENFORCE_EQ(dims[n_dim - 2], dims[n_dim - 1],
-                      platform::errors::InvalidArgument(
-                          "The inner-most 2 dimensions of Input(X) all should "
-                          "be square matrices "
-                          "But received X's shape[-2] = %d and shape[-1] = %d.",
-                          dims[n_dim - 2], dims[n_dim - 1]));
-    ctx->SetOutputDim("Out", dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class MatrixPowerOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -113,19 +99,14 @@ class MatrixPowerGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(matrix_power, MatrixPowerInferShapeFunctor,
+                            PD_INFER_META(phi::MatrixPowerInferMeta));
+
 REGISTER_OPERATOR(matrix_power, ops::MatrixPowerOp, ops::MatrixPowerOpMaker,
                   ops::MatrixPowerOpInferVarType,
                   ops::MatrixPowerGradOpMaker<paddle::framework::OpDesc>,
-                  ops::MatrixPowerGradOpMaker<paddle::imperative::OpBase>);
+                  ops::MatrixPowerGradOpMaker<paddle::imperative::OpBase>,
+                  MatrixPowerInferShapeFunctor);
 
 REGISTER_OPERATOR(matrix_power_grad, ops::MatrixPowerGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    matrix_power,
-    ops::MatrixPowerKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatrixPowerKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    matrix_power_grad,
-    ops::MatrixPowerGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatrixPowerGradKernel<paddle::platform::CPUDeviceContext, double>);

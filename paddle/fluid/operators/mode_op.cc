@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mode_op.h"
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,43 +26,6 @@ namespace operators {
 class ModeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "mode");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "mode");
-    OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "mode");
-
-    auto input_dims = ctx->GetInputDim("X");
-    const int& dim_size = input_dims.size();
-    int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        (axis < dim_size) && (axis >= (-1 * dim_size)), true,
-        paddle::platform::errors::InvalidArgument(
-            "the axis of ModeOp must be [-%d, %d), but you set axis is %d",
-            dim_size, dim_size, axis));
-    PADDLE_ENFORCE_GE(input_dims.size(), 1,
-                      paddle::platform::errors::InvalidArgument(
-                          "input of ModeOp must have >= 1d shape"));
-    if (axis < 0) axis += dim_size;
-    bool keepdim = ctx->Attrs().Get<bool>("keepdim");
-    std::vector<int64_t> dimvec;
-    for (int64_t i = 0; i < axis; i++) {
-      dimvec.emplace_back(input_dims[i]);
-    }
-    if (keepdim) {
-      dimvec.emplace_back(static_cast<int64_t>(1));
-    }
-    for (int64_t i = axis + 1; i < dim_size; i++) {
-      dimvec.emplace_back(input_dims[i]);
-    }
-    framework::DDim dims = framework::make_ddim(dimvec);
-    PADDLE_ENFORCE_GE(input_dims.size(), 1, platform::errors::InvalidArgument(
-                                                "input shape should >= 1d"));
-    ctx->SetOutputDim("Out", dims);
-    ctx->SetOutputDim("Indices", dims);
-    ctx->ShareLoD("X", "Out");
-    ctx->ShareLoD("X", "Indices");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -138,18 +105,11 @@ class ModeGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(mode, ModeInferShapeFunctor,
+                            PD_INFER_META(phi::ModeInferMeta));
 REGISTER_OPERATOR(mode, ops::ModeOp, ops::ModeOpMaker,
                   ops::ModeGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ModeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(mode,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, float>,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, double>,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, int32_t>,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, int64_t>);
-
+                  ops::ModeGradOpMaker<paddle::imperative::OpBase>,
+                  ModeInferShapeFunctor);
 REGISTER_OPERATOR(mode_grad, ops::ModeOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    mode_grad, ops::ModeGradCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::ModeGradCPUKernel<paddle::platform::CPUPlace, double>,
-    ops::ModeGradCPUKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::ModeGradCPUKernel<paddle::platform::CPUPlace, int64_t>);

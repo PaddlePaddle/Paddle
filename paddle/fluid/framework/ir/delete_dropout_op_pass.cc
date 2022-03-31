@@ -15,9 +15,9 @@
 
 #include "paddle/fluid/framework/ir/delete_dropout_op_pass.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

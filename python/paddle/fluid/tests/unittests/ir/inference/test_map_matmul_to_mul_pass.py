@@ -116,7 +116,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=100,
-            passes=["map_matmul_to_mul_pass"],
+            passes=["gpu_cpu_map_matmul_to_mul_pass"],
             max_duration=180)
 
 

@@ -34,7 +34,7 @@ class SplitXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto in_dims = input->dims();
 
-    auto input_shape = framework::vectorize<int>(in_dims);
+    auto input_shape = phi::vectorize<int>(in_dims);
     std::vector<int> split_lists;
     std::vector<T*> out_ptrs;
     auto outs_number = output.size();

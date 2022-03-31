@@ -63,8 +63,9 @@ static inline int RoundToPowerOfTwo(int n) {
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
-inline void ChangeThreadNum(const platform::CUDADeviceContext& context,
-                            int* num_thread, int alternative_num_thread = 512) {
+template <typename CUDADeviceContext>
+inline void ChangeThreadNum(const CUDADeviceContext& context, int* num_thread,
+                            int alternative_num_thread = 512) {
   if (context.GetComputeCapability() == 53 ||
       context.GetComputeCapability() == 62) {
     *num_thread = alternative_num_thread;
@@ -127,6 +128,10 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
   int blocks = DivUp(DivUp(numel, vec_size), threads);
+  int limit_blocks = context.GetCUDAMaxGridDimSize()[0];
+  if (blocks > limit_blocks) {
+    blocks = limit_blocks;
+  }
 
   GpuLaunchConfig config;
   config.thread_per_block.x = threads;
@@ -164,8 +169,6 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;
 }
-
-// TODO(wangchaochaohu): 3D will add later
 
 }  // namespace platform
 }  // namespace paddle

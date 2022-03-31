@@ -14,8 +14,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
 namespace operators {
@@ -69,20 +70,21 @@ class FMHARef {
   ~FMHARef() {}
 
   void ComputeForward(const Tensor& qkv_input_tensor,
+                      const Tensor* cache_kv_tensor,
                       const Tensor* src_mask_tensor,
-                      Tensor* transpose_2_out_tensor, Tensor* qk_out_tensor,
+                      Tensor* transpose_2_out_tensor,
+                      Tensor* cache_kv_out_tensor, Tensor* qk_out_tensor,
                       Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
                       Tensor* dropout_mask_out_tensor,
                       Tensor* dropout_out_tensor, Tensor* qktv_out_tensor,
                       Tensor* fmha_out_tensor) {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
-    // transpose with perm [2, 0, 1, 3, 4],
+    // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
     int ndims = 5;
     std::vector<int> perm_1 = {2, 0, 3, 1, 4};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input_tensor, perm_1,
                                 transpose_2_out_tensor);
-
     T* qkv_data = transpose_2_out_tensor->data<T>();
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
@@ -90,19 +92,38 @@ class FMHARef {
     T* dropout_out_data = dropout_out_tensor->data<T>();
     T* fmha_out_data = fmha_out_tensor->data<T>();
 
-    int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
-    int k_size = q_size;
+    auto out_seq_len = seq_len_;
+    if (cache_kv_tensor) {
+      // kv [2, bs, num_head, seq_len, head_dim]
+      auto kv_tensor = transpose_2_out_tensor->Slice(1, 3);
+      phi::funcs::ConcatFunctor<phi::GPUContext, T> concat;
+      // out [2, bs, num_head, cache_seq_len + seq_len, head_dim]
+      concat(dev_ctx_, {*cache_kv_tensor, kv_tensor}, 3, cache_kv_out_tensor);
+      out_seq_len = cache_kv_out_tensor->dims()[3];
+    }
+
+    int64_t q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     T* q_ptr = qkv_data;
-    T* k_ptr = q_ptr + q_size;
-    T* v_ptr = k_ptr + k_size;
+    T* k_ptr = nullptr;
+    T* v_ptr = nullptr;
+
+    if (cache_kv_tensor) {
+      int64_t k_size = cache_kv_out_tensor->numel() / 2;
+      k_ptr = cache_kv_out_tensor->data<T>();
+      v_ptr = k_ptr + k_size;
+    } else {
+      int64_t k_size = q_size;
+      k_ptr = q_ptr + q_size;
+      v_ptr = k_ptr + k_size;
+    }
 
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int gemm_batch_size = batch_size_ * num_head_;
     int gemm_m = seq_len_;
-    int gemm_n = seq_len_;
+    int gemm_n = out_seq_len;
     int gemm_k = head_dim_;
     T alpha = static_cast<T>(1.0 / sqrt(head_dim_));
     T beta = static_cast<T>(0.0);
@@ -123,26 +144,26 @@ class FMHARef {
                                                      T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
 
-      SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
-                                        softmax_axis, softmax_out_tensor);
+      phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
+                                             softmax_axis, softmax_out_tensor);
     } else {
-      SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out_tensor, softmax_axis,
-                                        softmax_out_tensor);
+      phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out_tensor,
+                                             softmax_axis, softmax_out_tensor);
     }
 
     transB = CblasNoTrans;
     gemm_m = seq_len_;
     gemm_n = head_dim_;
-    gemm_k = seq_len_;
+    gemm_k = out_seq_len;
     alpha = static_cast<T>(1.0);
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
 
     if (dropout_param_.dropout_prob_) {
       DropoutFwGPUKernelDriver<T>(
-          dev_ctx_, dropout_param_.is_test_,
-          static_cast<const std::string>(
-              dropout_param_.dropout_implementation_),
+          static_cast<const phi::GPUContext&>(dev_ctx_),
+          dropout_param_.is_test_, static_cast<const std::string>(
+                                       dropout_param_.dropout_implementation_),
           dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
           dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
           static_cast<const Tensor&>(*softmax_out_tensor), dropout_param_.seed_,
@@ -174,7 +195,7 @@ class FMHARef {
       Tensor* softmax_out_grad_tensor, Tensor* src_mask_out_grad_tensor,
       Tensor* qk_out_grad_tensor, Tensor* transpose_2_out_grad_tensor,
       Tensor* src_mask_grad_tensor, Tensor* qkv_input_grad_tensor) {
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
     int softmax_axis = -1;
@@ -242,8 +263,9 @@ class FMHARef {
     // dropout bw
     if (dropout_param_.dropout_prob_) {
       DropoutGradGPUKernelDriver<T>(
-          dev_ctx_, static_cast<const std::string>(
-                        dropout_param_.dropout_implementation_),
+          static_cast<const phi::GPUContext&>(dev_ctx_),
+          static_cast<const std::string>(
+              dropout_param_.dropout_implementation_),
           dropout_param_.dropout_prob_,
           static_cast<const Tensor&>(*dropout_out_grad_tensor),
           dropout_mask_out_tensor, softmax_out_grad_tensor->numel(),
@@ -251,9 +273,9 @@ class FMHARef {
     }
 
     if (src_mask_tensor != nullptr) {
-      SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
-                                         *softmax_out_grad_tensor, softmax_axis,
-                                         src_mask_out_grad_tensor);
+      phi::SoftmaxBackwardCUDAKernelDriver<T>(
+          dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
+          src_mask_out_grad_tensor);
 
       // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
       // src_mask
@@ -272,9 +294,9 @@ class FMHARef {
       }
 
     } else {
-      SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
-                                         *softmax_out_grad_tensor, softmax_axis,
-                                         qk_out_grad_tensor);
+      phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
+                                              *softmax_out_grad_tensor,
+                                              softmax_axis, qk_out_grad_tensor);
     }
 
     T* qk_out_grad_data = qk_out_grad_tensor->data<T>();

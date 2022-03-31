@@ -25,15 +25,16 @@ import math
 import warnings
 
 import numpy as np
+import paddle
 from paddle import _C_ops
-
-from ..fluid import core
-from ..fluid.data_feeder import (check_dtype, check_type,
-                                 check_variable_and_dtype, convert_dtype)
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                            elementwise_mul, elementwise_sub, nn, ops, tensor)
-from ..tensor import arange, concat, gather_nd, multinomial
+from paddle.fluid import core
+from paddle.fluid.data_feeder import (check_dtype, check_type,
+                                      check_variable_and_dtype, convert_dtype)
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
+                                 elementwise_mul, elementwise_sub, nn, ops,
+                                 tensor)
+from paddle.tensor import arange, concat, gather_nd, multinomial
 
 
 class Distribution(object):
@@ -77,8 +78,22 @@ class Distribution(object):
         """
         return self._event_shape
 
+    @property
+    def mean(self):
+        """Mean of distribution"""
+        raise NotImplementedError
+
+    @property
+    def variance(self):
+        """Variance of distribution"""
+        raise NotImplementedError
+
     def sample(self, shape=()):
         """Sampling from the distribution."""
+        raise NotImplementedError
+
+    def rsample(self, shape=()):
+        """reparameterized sample"""
         raise NotImplementedError
 
     def entropy(self):
@@ -95,14 +110,20 @@ class Distribution(object):
         Args:
             value (Tensor): value which will be evaluated
         """
-        raise NotImplementedError
+        return self.log_prob(value).exp()
 
     def log_prob(self, value):
         """Log probability density/mass function."""
         raise NotImplementedError
 
     def probs(self, value):
-        """Probability density/mass function."""
+        """Probability density/mass function.
+        
+        .. note:: 
+        
+            This method will be deprecated in the future, please use `prob` 
+            instead.
+        """
         raise NotImplementedError
 
     def _extend_shape(self, sample_shape):
@@ -194,7 +215,7 @@ class Distribution(object):
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
-        if in_dygraph_mode():
+        if _non_static_mode():
             if value.dtype != param.dtype and convert_dtype(
                     value.dtype) in ['float32', 'float64']:
                 warnings.warn(
@@ -212,3 +233,22 @@ class Distribution(object):
             )
             return tensor.cast(value, dtype=param.dtype)
         return value
+
+    def _probs_to_logits(self, probs, is_binary=False):
+        r"""
+        Converts probabilities into logits. For the binary, probs denotes the 
+        probability of occurrence of the event indexed by `1`. For the 
+        multi-dimensional, values of last axis denote the probabilities of 
+        occurrence of each of the events.
+        """
+        return (paddle.log(probs) - paddle.log1p(-probs)) \
+            if is_binary else paddle.log(probs)
+
+    def _logits_to_probs(self, logits, is_binary=False):
+        r"""
+        Converts logits into probabilities. For the binary, each value denotes 
+        log odds, whereas for the multi-dimensional case, the values along the 
+        last dimension denote the log probabilities of the events.
+        """
+        return paddle.nn.functional.sigmoid(logits) \
+            if is_binary else paddle.nn.functional.softmax(logits, axis=-1)

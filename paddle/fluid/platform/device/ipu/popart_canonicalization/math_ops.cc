@@ -32,7 +32,7 @@ Node *mean_handler(Graph *graph, Node *node) {
 
 Node *pow_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  if (op->HasInput("FactorTensor") && !op->Input("FactorTensor").empty()) {
+  if (!op->Input("FactorTensor").empty()) {
     return CreateBaseOp(
         graph, node, "popart_pow",
         {GetInputVarNode("X", node), GetInputVarNode("FactorTensor", node)},
@@ -98,6 +98,12 @@ Node *matmul_handler(Graph *graph, Node *node) {
   if (x_rank == 1) {
     perm = std::vector<int64_t>{0};
   } else if (x_rank == 2) {
+    if (!transpose_x && !transpose_y && is_float_equal(alpha, 1.0f)) {
+      return CreateBaseOp(
+          graph, node, "popart_matmul",
+          {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+          node->outputs);
+    }
     return CreateGemm(graph, node,
                       {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
                       node->outputs, transpose_x, transpose_y, alpha);
@@ -161,7 +167,7 @@ Node *scale_handler(Graph *graph, Node *node) {
                          static_cast<int>(framework::proto::VarType::FP32));
 
   Node *result = nullptr;
-  if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
+  if (!op->Input("ScaleTensor").empty()) {
     auto scale = GetInputVarNode("ScaleTensor", node);
     if (is_float_equal(bias_, 0.0)) {
       result = CreateBaseOp(graph, node, "popart_mul",

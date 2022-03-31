@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..fluid.framework import core, in_dygraph_mode, Variable
+from ..framework import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
 
@@ -23,6 +23,7 @@ from ..fluid.layers import rank  # noqa: F401
 from ..fluid.layers import shape  # noqa: F401
 import paddle
 from paddle import _C_ops
+from paddle.static import Variable
 
 __all__ = []
 
@@ -184,7 +185,7 @@ def real(x, name=None):
             #        [[1., 2., 3.],
             #         [4., 5., 6.]])
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
@@ -228,7 +229,7 @@ def imag(x, name=None):
             #        [[6., 5., 4.],
             #         [3., 2., 1.]])
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.imag(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')

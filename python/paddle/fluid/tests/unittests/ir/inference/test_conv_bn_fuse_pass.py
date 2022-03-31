@@ -183,7 +183,9 @@ class TestConvBnFusePass(PassAutoScanTest):
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['data_format'] == "NHWC":
+            if program_config.ops[0].attrs[
+                    'data_format'] == "NHWC" and not predictor_config.mkldnn_enabled(
+                    ):
                 return True
             return False
 

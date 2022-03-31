@@ -15,7 +15,6 @@
 import paddle
 import unittest
 import numpy as np
-from paddle.fluid.core import LoDTensor as Tensor
 
 
 class TestTensorCopyFrom(unittest.TestCase):
@@ -26,6 +25,20 @@ class TestTensorCopyFrom(unittest.TestCase):
             tensor = paddle.to_tensor(np_value, place=place)
             tensor._uva()
             self.assertTrue(tensor.place.is_gpu_place())
+
+
+class TestUVATensorFromNumpy(unittest.TestCase):
+    def test_uva_tensor_creation(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            dtype_list = [
+                "int32", "int64", "float32", "float64", "float16", "int8",
+                "int16", "bool"
+            ]
+            for dtype in dtype_list:
+                data = np.random.randint(10, size=[4, 5]).astype(dtype)
+                tensor = paddle.fluid.core.to_uva_tensor(data, 0)
+                self.assertTrue(tensor.place.is_gpu_place())
+                self.assertTrue(np.allclose(tensor.numpy(), data))
 
 
 if __name__ == "__main__":

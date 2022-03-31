@@ -47,10 +47,20 @@ size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
                         "Too many OpKernel attribute values, expected maximum "
                         "value is 64, received value is %d.",
                         cur_loc));
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  std::hash<int> hasher;
+  size_t seed =
+      hasher(place + data_type + data_layout + library_type + customized_value);
+  if (platform::is_custom_place(key.place_)) {
+    seed ^= std::hash<std::string>{}(key.place_.GetDeviceType()) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2) + 4;
+  }
+  return seed;
+#else
   std::hash<int> hasher;
   return hasher(place + data_type + data_layout + library_type +
                 customized_value);
+#endif
 }
 
 bool OpKernelType::operator==(const OpKernelType& o) const {

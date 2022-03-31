@@ -15,15 +15,14 @@ import functools
 import warnings
 
 import paddle
-
-from ..fluid.framework import in_dygraph_mode
-from .beta import Beta
-from .categorical import Categorical
-from .dirichlet import Dirichlet
-from .distribution import Distribution
-from .exponential_family import ExponentialFamily
-from .normal import Normal
-from .uniform import Uniform
+from paddle.distribution.beta import Beta
+from paddle.distribution.categorical import Categorical
+from paddle.distribution.dirichlet import Dirichlet
+from paddle.distribution.distribution import Distribution
+from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.normal import Normal
+from paddle.distribution.uniform import Uniform
+from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -43,10 +42,7 @@ def kl_divergence(p, q):
         q (Distribution): ``Distribution`` object.
 
     Returns:
-        Tensor: batchwise KL-divergence between distribution p and q.
-
-    Raises:
-        NotImplementedError: can't find register function for KL(p||Q).
+        Tensor: Batchwise KL-divergence between distribution p and q.
 
     Examples:
 
@@ -68,9 +64,15 @@ def kl_divergence(p, q):
 def register_kl(cls_p, cls_q):
     """Decorator for register a KL divergence implemention function.
 
+    The ``kl_divergence(p, q)`` function will search concrete implemention 
+    functions registered by ``register_kl``, according to multi-dispatch pattern. 
+    If an implemention function is found, it will return the result, otherwise, 
+    it will raise ``NotImplementError`` exception. Users can register 
+    implemention funciton by the decorator. 
+
     Args:
-        cls_p(Distribution): subclass derived from ``Distribution``.
-        cls_q(Distribution): subclass derived from ``Distribution``.
+        cls_p(Distribution): Subclass derived from ``Distribution``.
+        cls_q(Distribution): Subclass derived from ``Distribution``.
 
     Examples:
         .. code-block:: python
@@ -93,7 +95,7 @@ def register_kl(cls_p, cls_q):
 
 
 def _dispatch(cls_p, cls_q):
-    """multiple dispatch into concrete implement function"""
+    """Multiple dispatch into concrete implement function"""
 
     # find all matched super class pair of p and q
     matchs = [(super_p, super_q) for super_p, super_q in _REGISTER_TABLE
@@ -167,8 +169,7 @@ def _kl_uniform_uniform(p, q):
 
 @register_kl(ExponentialFamily, ExponentialFamily)
 def _kl_expfamily_expfamily(p, q):
-    """compute kl-divergence using `Bregman divergences` 
-    https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf
+    """Compute kl-divergence using `Bregman divergences <https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf>`_
     """
     if not type(p) == type(q):
         raise NotImplementedError
@@ -184,7 +185,7 @@ def _kl_expfamily_expfamily(p, q):
     p_log_norm = p._log_normalizer(*p_natural_params)
 
     try:
-        if in_dygraph_mode():
+        if _non_static_mode():
             p_grads = paddle.grad(
                 p_log_norm, p_natural_params, create_graph=True)
         else:
@@ -205,5 +206,4 @@ def _kl_expfamily_expfamily(p, q):
 
 
 def _sum_rightmost(value, n):
-    """sum value along rightmost n dim"""
     return value.sum(list(range(-n, 0))) if n > 0 else value

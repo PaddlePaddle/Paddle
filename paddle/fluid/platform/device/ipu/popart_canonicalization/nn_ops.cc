@@ -34,7 +34,7 @@ Node *conv2d_handler(Graph *graph, Node *node) {
   auto pads = std::vector<int64_t>{pads_.begin(), pads_.end()};
   auto stride_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
-  if (op->HasInput("Bias") && !op->Input("Bias").empty()) {
+  if (!op->Input("Bias").empty()) {
     return CreateConv(
         graph, node,
         {

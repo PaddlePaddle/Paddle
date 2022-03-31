@@ -57,8 +57,8 @@ class GroupNormOpConverter : public OpConverter {
     float* scale_data = get_persistable_data(scale_name, &scale_dims);
     float* bias_data = get_persistable_data(bias_name, &bias_dims);
 
-    int64_t scale_numel = framework::product(scale_dims);
-    int64_t bias_numel = framework::product(bias_dims);
+    int64_t scale_numel = phi::product(scale_dims);
+    int64_t bias_numel = phi::product(bias_dims);
 
     TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
                                          static_cast<void*>(scale_data),

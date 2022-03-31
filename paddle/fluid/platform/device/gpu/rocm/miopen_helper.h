@@ -27,12 +27,6 @@ limitations under the License. */
 // MIOPEN do not have epslion definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
-namespace paddle {
-namespace platform {
-struct float16;
-}  // namespace platform
-}  // namespace paddle
-
 DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
@@ -133,6 +127,23 @@ template <>
 class CudnnDataType<float16> {
  public:
   static const miopenDataType_t type = miopenHalf;
+  // The scaling param type is float for HALF and FLOAT tensors
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+
+template <>
+class CudnnDataType<bfloat16> {
+ public:
+  static const miopenDataType_t type = miopenBFloat16;
   // The scaling param type is float for HALF and FLOAT tensors
   using ScalingParamType = const float;
   using BatchNormParamType = float;

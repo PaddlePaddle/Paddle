@@ -64,31 +64,31 @@ class LambOp : public framework::OperatorWithKernel {
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(
-        framework::product(lr_dims), 0,
+        phi::product(lr_dims), 0,
         platform::errors::InvalidArgument(
             "The number of LearningRate shall not be 0, but received %d. Maybe "
             "the Input variable LearningRate has not "
             "been initialized. You may need to confirm "
             "if you put exe.run(startup_program) "
             "after optimizer.minimize function.",
-            framework::product(lr_dims)));
+            phi::product(lr_dims)));
     PADDLE_ENFORCE_EQ(
-        framework::product(lr_dims), 1,
+        phi::product(lr_dims), 1,
         platform::errors::InvalidArgument(
             "Learning rate should have 1 dimension, but received %d.",
-            framework::product(lr_dims)));
+            phi::product(lr_dims)));
     auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-    PADDLE_ENFORCE_GE(framework::product(beta1_pow_dims), 1,
+    PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims), 1,
                       platform::errors::InvalidArgument(
                           "The size of Beta1 power accumulator should be "
                           "greater than 0, but received %d.",
-                          framework::product(beta1_pow_dims)));
+                          phi::product(beta1_pow_dims)));
     auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-    PADDLE_ENFORCE_GE(framework::product(beta2_pow_dims), 1,
+    PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims), 1,
                       platform::errors::InvalidArgument(
                           "The size of Beta2 power accumulator should be "
                           "greater than 0, but received %d.",
-                          framework::product(beta2_pow_dims)));
+                          phi::product(beta2_pow_dims)));
 
     auto param_dims = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==

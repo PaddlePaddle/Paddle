@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +85,7 @@ class FCFunctor<platform::CUDADeviceContext, T> {
         padding_weights, false,
         platform::errors::PermissionDenied(
             "Weight padding in fc can not be used in GPU scope."));
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
     blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), X, K, W, N,
               static_cast<T>(0.0), Y, N);
     if (B == NULL) {

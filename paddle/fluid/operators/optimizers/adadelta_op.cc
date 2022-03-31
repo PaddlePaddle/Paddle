@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adadelta_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,77 +25,6 @@ using Tensor = framework::Tensor;
 class AdadeltaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Param) of AdadeltaOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Grad) of AdadeltaOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("AvgSquaredGrad"), true,
-        platform::errors::InvalidArgument(
-            "Input(AvgSquaredGrad) of AdadeltaOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("AvgSquaredUpdate"), true,
-        platform::errors::InvalidArgument(
-            "Input(AvgSquaredUpdate) of AdadeltaOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        true,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Param").front(),
-            ctx->GetInputsVarType("Param").front()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Grad").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        true,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Grad").front(),
-            ctx->GetInputsVarType("Grad").front()));
-
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("ParamOut"), true,
-        platform::errors::InvalidArgument(
-            "Output(ParamOut) of AdadeltaOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("AvgSquaredGradOut"), true,
-        platform::errors::InvalidArgument(
-            "Output(AvgSquaredGradOut) of AdadeltaOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("AvgSquaredUpdateOut"), true,
-        platform::errors::InvalidArgument(
-            "Output(AvgSquaredUpdateOut) of AdadeltaOp should not be null."));
-
-    auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Grad"),
-        platform::errors::InvalidArgument(
-            "Param and grad input of AdadeltaOp should have same dimension."));
-    PADDLE_ENFORCE_NE(
-        framework::product(ctx->GetInputDim("AvgSquaredGrad")), 0,
-        platform::errors::InvalidArgument(
-            "Maybe the Input variable AvgSquaredGrad has not "
-            "been initialized. You may need to confirm if you put "
-            "exe.run(startup_program) after optimizer.minimize "
-            "function."));
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredGrad"),
-                      platform::errors::InvalidArgument(
-                          "Param and AvgSquaredGrad input of AdadeltaOp "
-                          "should have same dimension"));
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredUpdate"),
-                      platform::errors::InvalidArgument(
-                          "Param and AvgSquaredUpdate input of AdadeltaOp "
-                          "should have same dimension"));
-
-    ctx->SetOutputDim("ParamOut", param_dim);
-    ctx->SetOutputDim("AvgSquaredGradOut", param_dim);
-    ctx->SetOutputDim("AvgSquaredUpdateOut", param_dim);
-  }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -149,7 +81,11 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    adadelta, ops::AdadeltaOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AdadeltaOpKernel<paddle::platform::CPUDeviceContext, double>);
+namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(adadelta, AdadeltaInferMetaFunctor,
+                            PD_INFER_META(phi::AdadeltaInferMeta));
+REGISTER_OPERATOR(
+    adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AdadeltaInferMetaFunctor);

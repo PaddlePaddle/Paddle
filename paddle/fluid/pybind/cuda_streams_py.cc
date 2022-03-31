@@ -34,7 +34,7 @@ void BindCudaStream(py::module *m_ptr) {
           return paddle::platform::stream::get_current_stream(deviceId);
 #else
           PADDLE_THROW(platform::errors::Unavailable(
-              "Paddle is not compiled with CUDA. Cannot visit cuda current "
+              "Paddle is not compiled with CUDA. Cannot visit cuda current"
               "stream."));
 #endif
         },
@@ -119,7 +119,7 @@ void BindCudaStream(py::module *m_ptr) {
            [](paddle::platform::stream::CUDAStream &self,
               paddle::platform::stream::CUDAStream &stream) {
              paddle::platform::CudaEvent event;
-             event.Record(stream);
+             event.Record(stream.raw_stream());
 
              self.WaitEvent(event.GetRawCudaEvent());
            },
@@ -179,7 +179,7 @@ void BindCudaStream(py::module *m_ptr) {
              if (event == nullptr) {
                event = new paddle::platform::CudaEvent();
              }
-             event->Record(self);
+             event->Record(self.raw_stream());
              return event;
            },
            R"DOC(
@@ -321,7 +321,7 @@ void BindCudaStream(py::module *m_ptr) {
              if (stream == nullptr) {
                stream = paddle::platform::stream::get_current_stream(-1);
              }
-             self.Record(*stream);
+             self.Record(stream->raw_stream());
            },
            R"DOC(
           Records the event in the given stream.

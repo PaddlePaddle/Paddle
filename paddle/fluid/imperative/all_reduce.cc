@@ -15,6 +15,7 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 #include "paddle/fluid/imperative/all_reduce.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
@@ -25,7 +26,7 @@
 #endif
 
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -39,8 +40,8 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<framework::LoDTensor>()) {
     return src.Get<framework::LoDTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<framework::SelectedRows>()) {
-    return src.Get<framework::SelectedRows>().value().place();
+  } else if (src.IsType<phi::SelectedRows>()) {
+    return src.Get<phi::SelectedRows>().value().place();
 #endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -62,16 +63,16 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
-  auto *dst_ptr = dst->mutable_data(src.place(), src.type());
-  auto nccl_dtype = platform::ToNCCLDataType(src.type());
+  auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
+  auto nccl_dtype =
+      platform::ToNCCLDataType(framework::TransToProtoVarType(src.dtype()));
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
       src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm->comm(),
       stream));
 }
 
 #if NCCL_VERSION_CODE >= 2212
-static void AllReduce(const framework::SelectedRows &src,
-                      framework::SelectedRows *dst,
+static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
                       const ParallelStrategy &strategy,
                       const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
@@ -83,12 +84,13 @@ static void AllReduce(const framework::SelectedRows &src,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
-  auto dtype = src_tensor.type();
+  auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place));
 
   bool use_calc_stream = (dev_ctx->stream() == stream);
+  VLOG(4) << "Is use calculate stream: " << use_calc_stream;
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
@@ -96,7 +98,9 @@ static void AllReduce(const framework::SelectedRows &src,
   framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
   // CUDAMutableData use CalStream
-  auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_rows_num_vector(&rows_num_vector);
+  auto *gpu_rows_num_ptr = mixv_rows_num_vector.CUDAMutableData(place);
+  VLOG(4) << "start dev_ctx->wait";
   if (!use_calc_stream) {
     dev_ctx->Wait();
   }
@@ -108,6 +112,7 @@ static void AllReduce(const framework::SelectedRows &src,
     platform::GpuStreamSync(stream);
   }
 
+  mixv_rows_num_vector.CopyToCPU();
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
   auto rows_num =
       std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + strategy.nranks_,
@@ -120,15 +125,17 @@ static void AllReduce(const framework::SelectedRows &src,
 
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  auto *dst_rows_ptr = dst_rows->CUDAMutableData(place);
-  const auto *src_rows_ptr = src_rows.CUDAData(place);
+  paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+  auto *dst_rows_ptr = mixv_dst_rows.CUDAMutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
+  const auto *src_rows_ptr = mixv_src_rows.CUDAData(place);
 
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
-  auto feature_size = framework::product(dims) / dims[0];
+  auto feature_size = phi::product(dims) / dims[0];
   dst_tensor->Resize(dims);
-  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, dtype);
+  auto *dst_tensor_ptr = dst_tensor->mutable_data(place, src_tensor.dtype());
   const auto *src_tensor_ptr = src_tensor.data();
 
   auto sizeof_dtype = framework::SizeOfType(dtype);
@@ -149,24 +156,28 @@ static void AllReduce(const framework::SelectedRows &src,
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype,
         comm->comm(), stream));
-    return;
-  }
-  for (int i = 0; i < strategy.nranks_; ++i) {
-    if (cpu_rows_num_ptr[i] > 0) {
-      // 2. Broadcast the rows of SelectedRows
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
-          src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
-          ncclInt64, i, comm->comm(), stream));
-      // 3. Broadcast the tensor data of SelectedRows
-      auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
-                               row_offset * feature_size * sizeof_dtype;
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
-          src_tensor_ptr, dst_tensor_ptr_i, cpu_rows_num_ptr[i] * feature_size,
-          nccl_dtype, i, comm->comm(), stream));
-      row_offset += cpu_rows_num_ptr[i];
+  } else {
+    for (int i = 0; i < strategy.nranks_; ++i) {
+      if (cpu_rows_num_ptr[i] > 0) {
+        // 2. Broadcast the rows of SelectedRows
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+            src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
+            ncclInt64, i, comm->comm(), stream));
+        // 3. Broadcast the tensor data of SelectedRows
+        auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
+                                 row_offset * feature_size * sizeof_dtype;
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+            src_tensor_ptr, dst_tensor_ptr_i,
+            cpu_rows_num_ptr[i] * feature_size, nccl_dtype, i, comm->comm(),
+            stream));
+        row_offset += cpu_rows_num_ptr[i];
+      }
     }
   }
-
+  if (!use_calc_stream) {
+    platform::GpuStreamSync(stream);
+  }
+  mixv_dst_rows.CopyToCPU();
   VLOG(3) << "Original SelectedRows rows: "
           << string::join_strings(src_rows, ',');
   VLOG(3) << "Result SelectedRows rows: "
@@ -191,19 +202,18 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>(), stream, comm);
 #if NCCL_VERSION_CODE >= 2212
-  } else if (src.IsType<framework::SelectedRows>()) {
+  } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<framework::SelectedRows>()) {
+      if (!dst->IsType<phi::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>(), strategy, stream,
-                comm);
+      AllReduce(src.Get<phi::SelectedRows>(),
+                dst->GetMutable<phi::SelectedRows>(), strategy, stream, comm);
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<framework::SelectedRows>(),
-                tmp_dst.GetMutable<framework::SelectedRows>(), strategy, stream,
+      AllReduce(src.Get<phi::SelectedRows>(),
+                tmp_dst.GetMutable<phi::SelectedRows>(), strategy, stream,
                 comm);
       // stream must synchronize to ensure accuracy of the move operation
       platform::GpuStreamSync(stream);

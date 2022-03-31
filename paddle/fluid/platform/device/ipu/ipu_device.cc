@@ -13,11 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_device.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+// TODO(alleng) merge with ipu_utils
+static bool GetBoolEnv(std::string str) {
+  char* str_val = getenv(str.c_str());
+  if (str_val == NULL) {
+    return false;
+  } else {
+    bool val = false;
+    if (strcmp(str_val, "1") == 0 || strcmp(str_val, "true") == 0 ||
+        strcmp(str_val, "True") == 0 || strcmp(str_val, "TRUE") == 0)
+      val = true;
+    return val;
+  }
+}
 
 int GetNumDevices() {
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");

@@ -1,0 +1,5 @@
+include_directories($ENV{jni_path} $ENV{jni_sub_path} $ENV{paddle_path})
+find_library(PADDLE_INFERENCE_C libpaddle_inference_c.so HINTS $ENV{paddle_inference_lib})
+aux_source_directory(native JNI_SRCS)
+add_library(paddle_inference SHARED ${JNI_SRCS})
+target_link_libraries(paddle_inference ${PADDLE_INFERENCE_C})

@@ -17,7 +17,7 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place, _in_eager_mode
+from .framework import Variable, default_main_program, default_startup_program, _non_static_mode, _current_expected_place, _in_eager_without_dygraph_check
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
@@ -82,13 +82,10 @@ class LayerHelperBase(object):
 
         """
         if isinstance(value, np.ndarray):
-            assert in_dygraph_mode(
-            ), "to_variable could only be called in dygraph mode"
-            if _in_eager_mode():
-                return core.eager.EagerTensor(value,
-                                              _current_expected_place(), False,
-                                              False, name
-                                              if name else None, True)
+            if _in_eager_without_dygraph_check():
+                return core.eager.Tensor(value,
+                                         _current_expected_place(), False,
+                                         False, name if name else None, True)
             else:
                 py_var = core.VarBase(
                     value=value,
@@ -97,7 +94,7 @@ class LayerHelperBase(object):
                     place=_current_expected_place(),
                     zero_copy=False)
                 return py_var
-        elif isinstance(value, (core.VarBase, Variable)):
+        elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
             return value
         else:
             raise TypeError(
@@ -365,7 +362,7 @@ class LayerHelperBase(object):
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if in_dygraph_mode():
+        if _non_static_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             # check parameter name
@@ -452,7 +449,7 @@ class LayerHelperBase(object):
                initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if in_dygraph_mode():
+        if _non_static_mode():
             initializer(var, self.main_program.global_block())
         else:
             self.startup_program.global_block().create_var(

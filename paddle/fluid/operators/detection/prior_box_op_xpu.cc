@@ -14,6 +14,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -81,21 +82,17 @@ class PriorBoxOpXPUKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), boxes_data, aspect_ratios_param, min_sizes_param,
         max_sizes_param, feature_height, feature_width, img_height, img_width,
         offset, step_height, step_width, clip, min_max_aspect_ratios_order);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU gen_prior_box kernel return wrong value[%d %s]",
-                          ret, XPUAPIErrorMsg[ret]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gen_prior_box");
 
     int box_num = feature_height * feature_width * num_priors;
     int vlen = variances.size();
+    std::vector<K> var_cpu(vlen * box_num);
     for (int i = 0; i < box_num; ++i) {
-      ret = xpu_memcpy(vars_data + i * vlen, variances.data(), vlen * sizeof(K),
-                       XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS, platform::errors::External(
-                                              "XPU xpu_memcpy return wrong "
-                                              "value[%d %s] in prior_box.",
-                                              ret, XPUAPIErrorMsg[ret]));
+      std::copy(variances.begin(), variances.end(), var_cpu.begin() + i * vlen);
     }
+    ret = xpu_memcpy(vars_data, var_cpu.data(), var_cpu.size() * sizeof(K),
+                     XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+    PADDLE_ENFORCE_XPU_SUCCESS(ret);
   }
 };
 

@@ -71,7 +71,7 @@ from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace, CustomPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
@@ -226,3 +226,7 @@ if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+# NOTE(Aganlengzi): clean up KernelFactory in advance manually.
+atexit.register(core.clear_kernel_factory)
+# NOTE(wangran16): clean up DeviceManger in advance manually.
+atexit.register(core.clear_device_manager)

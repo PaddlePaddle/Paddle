@@ -80,7 +80,7 @@ class ComplexOp : public framework::OperatorWithKernel {
       GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
-      ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+      ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
     }
   }
 

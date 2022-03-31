@@ -34,6 +34,7 @@ paddle.enable_static()
 
 def init_global():
     global _global_parallel_strategy
+    _global_parallel_strategy = None
     global _global_process_mesh
     global PP_MESH_LIST
     global DPPP_MESH_LIST

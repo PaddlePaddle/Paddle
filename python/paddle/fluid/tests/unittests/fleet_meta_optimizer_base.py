@@ -135,6 +135,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                         learning_rate=0.01,
                         regularization=regularization,
                         grad_clip=grad_clip)
+                elif name == 'adamw':
+                    optimizer = paddle.optimizer.AdamW(
+                        learning_rate=0.01,
+                        weight_decay=0.01,
+                        grad_clip=grad_clip)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy)
                 optimizer.minimize(loss)

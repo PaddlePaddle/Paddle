@@ -732,6 +732,18 @@ class TestModelFunction(unittest.TestCase):
             custom_ops={paddle.nn.Dropout: customize_dropout},
             print_detail=True)
 
+    def test_dynamic_flops_with_multiple_outputs(self):
+        net = paddle.nn.MaxPool2D(
+            kernel_size=2, stride=2, padding=0, return_mask=True)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 2, 32, 32],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
+
     def test_export_deploy_model(self):
         self.set_seed()
         np.random.seed(201)

@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/layer_norm_op.h"
-
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -49,7 +48,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
             "received the dimensions of X is [%d].",
             begin_norm_axis, x_dim.size()));
 
-    auto matrix_dim = framework::flatten_to_2d(x_dim, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
@@ -278,10 +277,3 @@ REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp,
                   ops::LayerNormGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    layer_norm_grad,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, double>);

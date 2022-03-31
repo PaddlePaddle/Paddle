@@ -26,7 +26,7 @@
 #define _LINUX
 #endif
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);
 namespace paddle {
 namespace framework {

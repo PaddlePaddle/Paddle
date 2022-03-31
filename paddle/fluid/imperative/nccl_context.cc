@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -143,7 +144,8 @@ void NCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   gpuStream_t stream = comm->stream();
 
   void *src_ptr = src_tensor->data();
-  auto nccl_dtype = platform::ToNCCLDataType(src_tensor->type());
+  auto nccl_dtype = platform::ToNCCLDataType(
+      framework::TransToProtoVarType(src_tensor->dtype()));
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
       src_ptr, src_tensor->numel(), nccl_dtype, 0, comm->comm(), stream));
 }

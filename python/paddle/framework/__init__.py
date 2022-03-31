@@ -29,13 +29,27 @@ from ..fluid.core import CUDAPlace  # noqa: F401
 from ..fluid.core import CUDAPinnedPlace  # noqa: F401
 from ..fluid.core import NPUPlace  # noqa: F401
 from ..fluid.core import MLUPlace  # noqa: F401
+from ..fluid.core import CustomPlace  # noqa: F401
 from ..fluid.core import VarBase  # noqa: F401
 
-from paddle.fluid import core  # noqa: F401
+from ..fluid import core  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
 from .io import load  # noqa: F401
 from ..fluid.dygraph.parallel import DataParallel  # noqa: F401
+
+from ..fluid import monkey_patch_variable
+from ..fluid.dygraph import monkey_patch_math_varbase
+from ..fluid.framework import disable_signal_handler  # noqa: F401
+from ..fluid.framework import get_flags  # noqa: F401
+from ..fluid.framework import set_flags  # noqa: F401
+from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
+from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
+from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
+from ..fluid.framework import _current_expected_place, _get_paddle_place  # noqa: F401
+from ..fluid.framework import dygraph_only  # noqa: F401
+from ..fluid.framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder  # noqa: F401
+from ..fluid.framework import _dygraph_tracer  # noqa: F401
 
 __all__ = []

@@ -67,9 +67,6 @@ def create_test_fp16_class(parent):
             self.use_cudnn = False
             self.dtype = np.float16
 
-        def test_check_grad(self):
-            return
-
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name
     globals()[cls_name] = TestFp16Case

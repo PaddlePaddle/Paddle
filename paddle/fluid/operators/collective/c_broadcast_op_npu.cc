@@ -30,7 +30,8 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
@@ -59,7 +60,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-            << framework::product(out->dims());
+            << phi::product(out->dims());
 
     dev_ctx->Wait();
 

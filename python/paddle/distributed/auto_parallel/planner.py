@@ -15,7 +15,6 @@
 import copy
 import time
 import random
-import logging
 from functools import reduce
 from itertools import chain, product
 from collections import OrderedDict
@@ -28,7 +27,7 @@ from .cost_model import estimate_cost
 from .dist_op import DistributedOperator
 from .process_group import _g_process_group_map
 from .process_group import ProcessGroup, get_process_group
-from .completion import is_elementwise_like_op
+from .operators.common import is_elementwise_op
 from .operators.common import get_distributed_operator_impl_container
 from .utils import update_op_dims_mapping_by_default_dist_impl
 from .utils import update_op_dims_mapping_by_elementwise_like_dist_impl
@@ -84,34 +83,22 @@ class PlanFilter:
 
     @staticmethod
     def check_dims_mapping_for_special_op(op, op_dist_attr, vars):
-        if op.type == "layer_norm":
-            bias_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("Bias")[0])
-            scale_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("Scale")[0])
-            x_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("X")[0])
-            mean_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Mean")[0])
-            variance_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Variance")[0])
-            y_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Y")[0])
-            if x_dims_mapping != y_dims_mapping:
-                return False
-
-            if scale_dims_mapping[0] != x_dims_mapping[-1]:
-                return False
-
-            if bias_dims_mapping[0] != y_dims_mapping[-1]:
-                return False
-
-            if mean_dims_mapping[0] != x_dims_mapping[0]:
-                return False
-
-            if variance_dims_mapping[0] != x_dims_mapping[0]:
-                return False
-
+        # NOTE: Those ops has some partition limits, and will be solved when corresponding dist op implemented in the future. 
+        if op.type == "elementwise_add" or op.type == 'layer_norm' or op.type == "softmax_with_cross_entropy":
+            for name in op.input_arg_names:
+                for item in op_dist_attr.get_input_dims_mapping(name):
+                    if item != -1:
+                        return False
+            for name in op.output_arg_names:
+                for item in op_dist_attr.get_output_dims_mapping(name):
+                    if item != -1:
+                        return False
+        if op.type == "lookup_table_v2":
+            for name in op.input_arg_names:
+                if name == 'pos_embeddings':
+                    for item in op_dist_attr.get_input_dims_mapping(name):
+                        if item != -1:
+                            return False
         return True
 
 
@@ -237,7 +224,7 @@ class PlanSpace:
 
             dist_op = DistributedOperator(op, op_dist_attr)
             if dist_op_impl_container is None:
-                if is_elementwise_like_op(op.type):
+                if is_elementwise_op(op.type):
                     changed = True
                     valid = True
                     try:
@@ -250,7 +237,8 @@ class PlanSpace:
                                 op, dist_op.dist_attr, vars
                         ) and PlanFilter.check_dims_mapping_for_special_op(
                                 op, dist_op.dist_attr, vars):
-                            dist_op.dist_attr.impl_idx = -1
+                            dist_op.dist_attr.impl_type = "elementwise"
+                            dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
                 else:
@@ -266,16 +254,18 @@ class PlanSpace:
                                 op, dist_op.dist_attr, vars
                         ) and PlanFilter.check_dims_mapping_for_special_op(
                                 op, dist_op.dist_attr, vars):
-                            dist_op.dist_attr.impl_idx = -2
+                            dist_op.dist_attr.impl_type = "default"
+                            dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
 
             # if op has distributed implements, find all valid dist attr of this op
-            impls = dist_op_impl_container.get_impls()
+            impls = dist_op_impl_container.impls
             for idx, impl in enumerate(impls):
                 if impl.is_auto_compatible(dist_op):
                     if PlanFilter.check_dims_mapping_for_op(
                             op, dist_op.dist_attr, vars):
+                        dist_op.dist_attr.impl_type = dist_op.serial_op.type
                         dist_op.dist_attr.impl_idx = idx
                         op_valid_dist_attrs.append(dist_op.dist_attr)
 
@@ -290,7 +280,8 @@ class PlanSpace:
             for var_name in op.output_arg_names:
                 op_dist_attr.set_output_dims_mapping(
                     vars[var_name], [-1 for i in vars[var_name].shape])
-            dist_op.dist_attr.impl_idx = -1
+            dist_op.dist_attr.impl_type = "default"
+            dist_op.dist_attr.impl_idx = 0
             op_valid_dist_attrs.append(dist_op.dist_attr)
 
         return op_valid_dist_attrs
@@ -422,13 +413,14 @@ class MCMC(SearchAlgorithm):
                                         var_name) == dims_mapping:
                                     dist_context.set_op_dist_attr_for_program(
                                         search_op, op_dist_attr)
-                                    tensor_dist_attr = TensorDistributedAttribute(
-                                    )
-                                    tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
-                                    tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
-                                        var_name)
-                                    dist_context.set_tensor_dist_attr_for_program(
-                                        vars[var_name], tensor_dist_attr)
+                                    for name in search_op.output_arg_names:
+                                        tensor_dist_attr = TensorDistributedAttribute(
+                                        )
+                                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                                        tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
+                                            name)
+                                        dist_context.set_tensor_dist_attr_for_program(
+                                            vars[name], tensor_dist_attr)
                                     has_changed = True
                                     break
                         if has_changed:
@@ -748,7 +740,7 @@ class MCMC(SearchAlgorithm):
         return best_dist_context, min_cost
 
     def search(self):
-        logging.info("Start MCMC searching.")
+        print("Start MCMC searching.")
         start_time = time.time()
         train_program = self.serial_program_info.train_program
         cluster = self.serial_program_info.cluster
@@ -764,9 +756,8 @@ class MCMC(SearchAlgorithm):
         searched_pipeline_dist_context = None
         pipeline_min_cost = None
         for process_mesh_topology in process_mesh_topology_list:
-            logging.info(
-                "MCMC search: search process mesh {} with pipeline mode.".
-                format(process_mesh_topology))
+            print("MCMC search: search process mesh {} with pipeline mode.".
+                  format(process_mesh_topology))
             valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, True)
             init_dist_context = self.init_program(
@@ -775,7 +766,7 @@ class MCMC(SearchAlgorithm):
             best_dist_context, cost = self._search_core(valid_dist_attr_dict,
                                                         init_dist_context,
                                                         pipeline_process_meshes)
-            logging.info(
+            print(
                 "MCMC search: the min cost is {} in the process mesh {} with pipeline mode.".
                 format(cost, process_mesh_topology))
             best_dist_context._dist_op_context = DistributedOperatorContext()
@@ -791,9 +782,8 @@ class MCMC(SearchAlgorithm):
             # if process_mesh_topology shape is 3, include pipeline mode by default
             if len(process_mesh_topology) == 3:
                 continue
-            logging.info(
-                "MCMC search: search process mesh {} without pipeline mode.".
-                format(process_mesh_topology))
+            print("MCMC search: search process mesh {} without pipeline mode.".
+                  format(process_mesh_topology))
             valid_dist_attr_dict, pipeline_process_meshes, global_process_mesh = PlanSpace.enum_valid_dist_attr_for_program(
                 train_program, process_mesh_topology, False)
             init_dist_context = self.init_program(
@@ -802,7 +792,7 @@ class MCMC(SearchAlgorithm):
             best_dist_context, cost = self._search_core(valid_dist_attr_dict,
                                                         init_dist_context,
                                                         pipeline_process_meshes)
-            logging.info(
+            print(
                 "MCMC search: the min cost is {} in the process mesh {} without pipeline mode.".
                 format(cost, process_mesh_topology))
             best_dist_context._dist_op_context = DistributedOperatorContext()
@@ -815,7 +805,7 @@ class MCMC(SearchAlgorithm):
         if non_pipeline_min_cost > pipeline_min_cost:
             searched_dist_context = searched_pipeline_dist_context
             min_cost = pipeline_min_cost
-            logging.info(
+            print(
                 "Better set FLAGS_benchmark=1 to avoid hang problem in the pipeline mode."
             )
         else:
@@ -827,7 +817,7 @@ class MCMC(SearchAlgorithm):
         for process_mesh in searched_dist_context._process_meshes:
             pg0.add_ranks(process_mesh.processes)
         end_time = time.time()
-        logging.info(
+        print(
             "End MCMC searching: the min cost is {} and the search time is {}s.".
             format(min_cost, end_time - start_time))
         return searched_dist_context, min_cost

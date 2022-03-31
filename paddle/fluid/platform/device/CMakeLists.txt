@@ -1,9 +1,14 @@
+
+set(DEV_LIBS custom_device)
+
+# GPU
+IF(WITH_GPU OR WITH_ROCM)
+  add_subdirectory(gpu)
+ENDIF()
+
 # XPU
 IF(WITH_XPU)
   add_subdirectory(xpu)
-ENDIF()
-IF(WITH_GPU OR WITH_ROCM)
-  add_subdirectory(gpu)
 ENDIF()
 
 # NPU

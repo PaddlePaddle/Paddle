@@ -342,7 +342,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
 
     // Reserve a big enough memory.
     auto selected_dims =
-        framework::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
+        phi::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
     int64_t* selected_ids_data =
         selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
     float* selected_scores_data =
@@ -357,8 +357,9 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
-    size_t* selected_offsets =
-        selected_lod[1].CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&selected_lod[1]);
+    paddle::framework::MixVector<size_t> mixv_abs(&abs_lod[level]);
+    size_t* selected_offsets = mix_vector.CUDAMutableData(context.GetPlace());
 
     if (num_seqs == 1) {
       const int seq_length = static_cast<int>(abs_lod[level][1]);
@@ -377,7 +378,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                 is_accumulated, num_used_threads));
       }
     } else if (num_seqs <= 4) {
-      const size_t* seq_offsets = abs_lod[level].CUDAData(context.GetPlace());
+      const size_t* seq_offsets = mixv_abs.CUDAData(context.GetPlace());
       // Use only 1 block
       const int kMaxThreadsPerSeq = 32;
       const int kMaxSeqs = 4;
@@ -400,6 +401,7 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     }
 
     context.Wait();
+    mix_vector.CopyToCPU();
     if (!framework::CheckLoD(selected_lod)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "lod %s is not right in"
@@ -410,8 +412,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
     selected_ids->set_lod(selected_lod);
     selected_scores->set_lod(selected_lod);
     if (selected_lod[1].back() < num_seqs * beam_size) {
-      auto final_selected_dims = framework::make_ddim(
-          {static_cast<int64_t>(selected_lod[1].back()), 1});
+      auto final_selected_dims =
+          phi::make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
       if (parent_idx) {

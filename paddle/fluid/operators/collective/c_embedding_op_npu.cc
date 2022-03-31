@@ -34,8 +34,8 @@ inline void FillNPU(Tensor *dst, T val,
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
 
-  const auto &runner = NpuOpRunner(
-      "FillD", {value}, {*dst}, {{"dims", framework::vectorize(dst->dims())}});
+  const auto &runner = NpuOpRunner("FillD", {value}, {*dst},
+                                   {{"dims", phi::vectorize(dst->dims())}});
   runner.Run(stream);
 }
 
@@ -120,13 +120,13 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
-  auto pad_shape =
-      framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+  auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
-  size_t mem_size = table_t->numel() * framework::SizeOfType(table_t->type());
+  size_t mem_size =
+      table_t->numel() * framework::DataTypeSize(table_t->dtype());
   size_t line_mem_size =
-      table_t->dims()[1] * framework::SizeOfType(table_t->type());
+      table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));
@@ -160,7 +160,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *ids_t = context.Input<LoDTensor>("Ids");
 
-    const auto &index_type = ids_t->type();
+    const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       NPUGetIdsEmbedding<int32_t, T>(context);
     } else {
@@ -192,15 +192,16 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
   // padding table_t -> table_t_pad
-  auto pad_shape =
-      framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+  auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
   // set table_t_pad to zero
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
   size_t table_t_pad_mem_size =
-      table_t_pad.numel() * framework::SizeOfType(table_t_pad.type());
+      table_t_pad.numel() *
+      framework::SizeOfType(
+          framework::TransToProtoVarType(table_t_pad.dtype()));
   platform::NPUMemsetAsync(pad_data, 0, table_t_pad_mem_size, stream,
                            table_t_pad_mem_size);
 
@@ -215,11 +216,11 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   const size_t mem_size =
-      table_grad_t->numel() * framework::SizeOfType(table_grad_t->type());
+      table_grad_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
 
   // check align
   size_t line_mem_size =
-      table_grad_t->dims()[1] * framework::SizeOfType(table_grad_t->type());
+      table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
   PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));
@@ -234,7 +235,7 @@ class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *ids_t = context.Input<LoDTensor>("Ids");
 
-    const auto &index_type = ids_t->type();
+    const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       NPUUpdateEmbedding<int32_t, T>(context);
     } else {

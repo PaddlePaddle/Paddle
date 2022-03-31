@@ -18,7 +18,7 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
-from ..framework import _in_eager_mode
+from .. import framework
 
 import numpy as np
 import warnings
@@ -221,8 +221,8 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if _in_eager_mode():
-                other_var_should_be = core.eager.EagerTensor
+            if framework._in_eager_mode_:
+                other_var_should_be = core.eager.Tensor
             else:
                 other_var_should_be = core.VarBase
             if not isinstance(other_var, other_var_should_be):
@@ -263,6 +263,10 @@ def monkey_patch_math_varbase():
                 tmp = self
                 self = other_var
                 other_var = tmp
+
+            if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
 
             # 4. calculation
             axis = -1
@@ -340,10 +344,10 @@ def monkey_patch_math_varbase():
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if core._in_eager_mode():
+    if framework._in_eager_mode_:
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
-        local_tensor = core.eager.EagerTensor
+        local_tensor = core.eager.Tensor
     else:
         local_already_patch = _already_patch_varbase
         _already_patch_varbase = True

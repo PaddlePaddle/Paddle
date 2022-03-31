@@ -66,7 +66,7 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
     broadcasted_out_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &broadcast_runner =
         NpuOpRunner("BroadcastToD", {*out_grad}, {broadcasted_out_grad},
-                    {{"shape", framework::vectorize(x_grad->dims())}});
+                    {{"shape", phi::vectorize(x_grad->dims())}});
     broadcast_runner.Run(stream);
     // mul x
     Tensor tmp_x_grad;

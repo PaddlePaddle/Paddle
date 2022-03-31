@@ -19,6 +19,7 @@ import multiprocessing
 import time
 
 import paddle.compat as cpt
+from paddle.fluid.framework import _test_eager_guard
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -35,7 +36,7 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
     def setUp(self):
         self.capacity = 10
 
-    def test_clear_queue_set(self):
+    def func_test_clear_queue_set(self):
         test_queue = queue.Queue(self.capacity)
         global multiprocess_queue_set
         multiprocess_queue_set.add(test_queue)
@@ -43,13 +44,18 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
             test_queue.put(i)
         _cleanup()
 
+    def test_clear_queue_set(self):
+        with _test_eager_guard():
+            self.func_test_clear_queue_set()
+        self.func_test_clear_queue_set()
+
 
 class TestRegisterExitFunc(unittest.TestCase):
     # This function does not need to be implemented in this case
     def none_func(self):
         pass
 
-    def test_not_callable_func(self):
+    def func_test_not_callable_func(self):
         exception = None
         try:
             CleanupFuncRegistrar.register(5)
@@ -58,11 +64,21 @@ class TestRegisterExitFunc(unittest.TestCase):
             exception = ex
         self.assertIsNotNone(exception)
 
-    def test_old_handler_for_sigint(self):
+    def test_not_callable_func(self):
+        with _test_eager_guard():
+            self.func_test_not_callable_func()
+        self.func_test_not_callable_func()
+
+    def func_test_old_handler_for_sigint(self):
         CleanupFuncRegistrar.register(
             function=self.none_func, signals=[signal.SIGINT])
 
-    def test_signal_wrapper_by_sigchld(self):
+    def test_old_handler_for_sigint(self):
+        with _test_eager_guard():
+            self.func_test_old_handler_for_sigint()
+        self.func_test_old_handler_for_sigint()
+
+    def func_test_signal_wrapper_by_sigchld(self):
         # This function does not need to be implemented in this case
         def __test_process__():
             pass
@@ -78,6 +94,11 @@ class TestRegisterExitFunc(unittest.TestCase):
         except SystemExit as ex:
             exception = ex
         self.assertIsNotNone(exception)
+
+    def test_signal_wrapper_by_sigchld(self):
+        with _test_eager_guard():
+            self.func_test_signal_wrapper_by_sigchld()
+        self.func_test_signal_wrapper_by_sigchld()
 
 
 if __name__ == '__main__':

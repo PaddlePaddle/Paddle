@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/index_sample_op.h"
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -60,7 +59,7 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       IndexSampleGather<int32_t>(dev_ctx, index, input, out);
     } else {
@@ -95,7 +94,7 @@ void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
   runner.SetType("ScatterNd")
       .AddInput(scatter_index)
       .AddInput(*out_grad)
-      .AddInput(framework::vectorize<IndexT>(x_grad->dims()))
+      .AddInput(phi::vectorize<IndexT>(x_grad->dims()))
       .AddOutput(*x_grad);
   runner.Run(dev_ctx.stream());
 }
@@ -113,7 +112,7 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
 
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       IndexSampleGradScatter<int32_t>(dev_ctx, index, out_grad, x_grad);
     } else {

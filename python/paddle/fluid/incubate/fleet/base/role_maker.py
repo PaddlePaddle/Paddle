@@ -598,6 +598,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._hdfs_path = kwargs.get("path", "").rstrip("/")
         self._init_timeout_seconds = kwargs.get("init_timeout_seconds", 3600)
         self._run_timeout_seconds = kwargs.get("run_timeout_seconds", 9999999)
+        self._use_metric = kwargs.get("use_metric", False)
         ip_port = kwargs.get("http_ip_port", "")
         self._use_ps_gpu = kwargs.get("use_ps_gpu", False)
         self._http_ip_port = []
@@ -668,7 +669,7 @@ class GeneralRoleMaker(RoleMakerBase):
                                             self._hdfs_name, self._hdfs_ugi)
                     gloo.init()
                     self._node_type_comm = gloo
-                    if self._use_ps_gpu:
+                    if self._use_ps_gpu or self._use_metric:
                         Gloo_strategy = fluid.core.GlooParallelStrategy()
                         Gloo_strategy.rank = current_id
                         Gloo_strategy.rank_num = len(worker_endpoints)

@@ -21,6 +21,31 @@ from op_test import OpTest
 from gradient_checker import grad_check
 
 
+def compare_result(actual, expected):
+    assert actual.ndim == 1 or actual.ndim == 2
+
+    if actual.ndim == 1:
+        valid_eigenvalues(actual, expected)
+        return
+
+    for batch_actual, batch_expected in zip(actual, expected):
+        valid_eigenvalues(batch_actual, batch_expected)
+
+
+def valid_eigenvalues(actual, expected):
+
+    FP32_MAX_RELATIVE_ERR = 5e-5
+    FP64_MAX_RELATIVE_ERR = 1e-14
+
+    rtol = FP32_MAX_RELATIVE_ERR if actual.dtype == np.single else FP64_MAX_RELATIVE_ERR
+
+    diff = np.abs(expected - actual)
+    max_diff = np.max(diff)
+    max_ref = np.max(np.abs(expected))
+    relative_error = max_diff / max_ref
+    np.testing.assert_array_less(relative_error, rtol)
+
+
 class TestEigvalshOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -60,8 +85,6 @@ class TestEigvalshGPUCase(unittest.TestCase):
         self.dtype = "float32"
         np.random.seed(123)
         self.x_np = np.random.random(self.x_shape).astype(self.dtype)
-        self.rtol = 1e-5
-        self.atol = 1e-5
 
     def test_check_output_gpu(self):
         if paddle.is_compiled_with_cuda():
@@ -69,33 +92,33 @@ class TestEigvalshGPUCase(unittest.TestCase):
             input_real_data = paddle.to_tensor(self.x_np)
             expected_w = np.linalg.eigvalsh(self.x_np)
             actual_w = paddle.linalg.eigvalsh(input_real_data)
-            np.testing.assert_allclose(
-                actual_w, expected_w, rtol=self.rtol, atol=self.atol)
+            compare_result(actual_w.numpy(), expected_w)
 
 
 class TestEigvalshAPI(unittest.TestCase):
     def setUp(self):
-        self.init_input_shape()
         self.dtype = "float32"
         self.UPLO = 'L'
-        self.rtol = 1e-6
-        self.atol = 1e-6
+        self.rtol = 1e-5  # test_eigvalsh_grad
+        self.atol = 1e-5  # test_eigvalsh_grad
         self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         np.random.seed(123)
-        self.real_data = np.random.random(self.x_shape).astype(self.dtype)
-        self.complex_data = np.random.random(self.x_shape).astype(
-            self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
-        self.trans_dims = list(range(len(self.x_shape) - 2)) + [
-            len(self.x_shape) - 1, len(self.x_shape) - 2
-        ]
+        self.init_input_shape()
+        self.init_input_data()
 
     def init_input_shape(self):
         self.x_shape = [5, 5]
 
-    def compare_result(self, actual_w, expected_w):
-        np.testing.assert_allclose(
-            actual_w, expected_w, rtol=self.rtol, atol=self.atol)
+    def init_input_data(self):
+        self.real_data = np.random.random(self.x_shape).astype(self.dtype)
+        complex_data = np.random.random(self.x_shape).astype(
+            self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
+        self.trans_dims = list(range(len(self.x_shape) - 2)) + [
+            len(self.x_shape) - 1, len(self.x_shape) - 2
+        ]
+        self.complex_symm = np.divide(
+            complex_data + np.conj(complex_data.transpose(self.trans_dims)), 2)
 
     def check_static_float_result(self):
         main_prog = paddle.static.Program()
@@ -105,12 +128,12 @@ class TestEigvalshAPI(unittest.TestCase):
                 'input_x', shape=self.x_shape, dtype=self.dtype)
             output_w = paddle.linalg.eigvalsh(input_x)
             exe = paddle.static.Executor(self.place)
-            expected_w = exe.run(main_prog,
-                                 feed={"input_x": self.real_data},
-                                 fetch_list=[output_w])
+            actual_w = exe.run(main_prog,
+                               feed={"input_x": self.real_data},
+                               fetch_list=[output_w])
 
-            actual_w = np.linalg.eigvalsh(self.real_data)
-            self.compare_result(actual_w, expected_w[0])
+            expected_w = np.linalg.eigvalsh(self.real_data)
+            compare_result(actual_w[0], expected_w)
 
     def check_static_complex_result(self):
         main_prog = paddle.static.Program()
@@ -121,11 +144,11 @@ class TestEigvalshAPI(unittest.TestCase):
                 'input_x', shape=self.x_shape, dtype=x_dtype)
             output_w = paddle.linalg.eigvalsh(input_x)
             exe = paddle.static.Executor(self.place)
-            expected_w = exe.run(main_prog,
-                                 feed={"input_x": self.complex_data},
-                                 fetch_list=[output_w])
-            actual_w = np.linalg.eigvalsh(self.complex_data)
-            self.compare_result(actual_w, expected_w[0])
+            actual_w = exe.run(main_prog,
+                               feed={"input_x": self.complex_symm},
+                               fetch_list=[output_w])
+            expected_w = np.linalg.eigvalsh(self.complex_symm)
+            compare_result(actual_w[0], expected_w)
 
     def test_in_static_mode(self):
         paddle.enable_static()
@@ -137,16 +160,16 @@ class TestEigvalshAPI(unittest.TestCase):
         input_real_data = paddle.to_tensor(self.real_data)
         expected_w = np.linalg.eigvalsh(self.real_data)
         actual_w = paddle.linalg.eigvalsh(input_real_data)
-        self.compare_result(actual_w, expected_w)
+        compare_result(actual_w.numpy(), expected_w)
 
-        input_complex_data = paddle.to_tensor(self.complex_data)
-        expected_w = np.linalg.eigvalsh(self.complex_data)
-        actual_w = paddle.linalg.eigvalsh(input_complex_data)
-        self.compare_result(actual_w, expected_w)
+        input_complex_symm = paddle.to_tensor(self.complex_symm)
+        expected_w = np.linalg.eigvalsh(self.complex_symm)
+        actual_w = paddle.linalg.eigvalsh(input_complex_symm)
+        compare_result(actual_w.numpy(), expected_w)
 
     def test_eigvalsh_grad(self):
         paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.complex_data, stop_gradient=False)
+        x = paddle.to_tensor(self.complex_symm, stop_gradient=False)
         w = paddle.linalg.eigvalsh(x)
         (w.sum()).backward()
         np.testing.assert_allclose(

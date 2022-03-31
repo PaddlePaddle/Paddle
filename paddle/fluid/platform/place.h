@@ -23,21 +23,31 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #endif
 
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
 namespace paddle {
 namespace platform {
 
-using Place = pten::Place;
-using CPUPlace = pten::CPUPlace;
-using CUDAPlace = pten::GPUPlace;
-using CUDAPinnedPlace = pten::GPUPinnedPlace;
-using NPUPlace = pten::NPUPlace;
-using NPUPinnedPlace = pten::NPUPinnedPlace;
-using XPUPlace = pten::XPUPlace;
-using IPUPlace = pten::IPUPlace;
-using MLUPlace = pten::MLUPlace;
+using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using CUDAPlace = phi::GPUPlace;
+using CUDAPinnedPlace = phi::GPUPinnedPlace;
+using NPUPlace = phi::NPUPlace;
+using NPUPinnedPlace = phi::NPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using IPUPlace = phi::IPUPlace;
+using MLUPlace = phi::MLUPlace;
+using CustomPlace = phi::CustomPlace;
 
 using PlaceList = std::vector<Place>;
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class PlaceHelper {
+ public:
+  static std::string GetDeviceType(const Place &place);
+  static size_t GetDeviceId(const Place &place);
+  static Place CreatePlace(const std::string &dev_type, size_t dev_id = 0);
+};
+#endif
 
 bool is_gpu_place(const Place &);
 bool is_xpu_place(const Place &);
@@ -47,6 +57,7 @@ bool is_ipu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool is_npu_pinned_place(const Place &);
+bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
@@ -54,7 +65,7 @@ template <typename Visitor>
 typename Visitor::result_type VisitPlace(const Place &place,
                                          const Visitor &visitor) {
   switch (place.GetType()) {
-    case pten::AllocationType::GPU: {
+    case phi::AllocationType::GPU: {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::CUDAPlace p(place.GetDeviceId());
       return visitor(p);
@@ -64,7 +75,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case pten::AllocationType::GPUPINNED: {
+    case phi::AllocationType::GPUPINNED: {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::CUDAPinnedPlace p;
       return visitor(p);
@@ -74,7 +85,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case pten::AllocationType::XPU: {
+    case phi::AllocationType::XPU: {
 #ifdef PADDLE_WITH_XPU
       platform::XPUPlace p(place.GetDeviceId());
       return visitor(p);
@@ -84,7 +95,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case pten::AllocationType::NPU: {
+    case phi::AllocationType::NPU: {
 #ifdef PADDLE_WITH_ASCEND_CL
       platform::NPUPlace p(place.GetDeviceId());
       return visitor(p);
@@ -94,7 +105,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case pten::AllocationType::NPUPINNED: {
+    case phi::AllocationType::NPUPINNED: {
 #ifdef PADDLE_WITH_ASCEND_CL
       platform::NPUPinnedPlace p;
       return visitor(p);
@@ -104,7 +115,7 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case pten::AllocationType::IPU: {
+    case phi::AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU
       platform::IPUPlace p(place.GetDeviceId());
       return visitor(p);
@@ -114,13 +125,22 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case pten::AllocationType::MLU: {
+    case phi::AllocationType::MLU: {
 #ifdef PADDLE_WITH_MLU
       platform::MLUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Paddle is not compiled with MLU. Cannot visit mlu device"));
+#endif
+    }
+    case phi::AllocationType::CUSTOM: {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      platform::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUSTOM. Cannot visit custom device"));
 #endif
     }
     default: {

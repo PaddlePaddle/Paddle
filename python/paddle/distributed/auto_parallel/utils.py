@@ -22,7 +22,6 @@ import logging
 from functools import reduce
 
 import paddle.fluid.core as core
-from paddle.framework.io import _to_LodTensor
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
@@ -593,8 +592,10 @@ def load_parameter_into_program(param_dict, program):
         param_dict(dict): parameters' name and value.
         program(Program): the program to be updated
     """
-    _check_param_dict(param_dict)
+    assert isinstance(param_dict, dict)
     assert program and isinstance(program, paddle.fluid.framework.Program)
+    if not param_dict:
+        return
     program.set_state_dict(param_dict)
 
 
@@ -705,7 +706,6 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
         dist_param_dict(dict): parameters' value of current rank.
     """
     assert _check_dist_attr(pre_dist_attr), "'pre_dist_attr' cannot be None."
-    assert _check_dist_attr(cur_dist_attr), "'pre_dist_attr' cannot be None."
     assert isinstance(dist_param_dict, dict), \
         "The type of 'dist_param_dict' should be 'dict', but got {}.".format(
             str(type(dist_param_dict)))
@@ -719,6 +719,9 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             raise TypeError(
                 "The value of 'dist_param_dict' is parameter's value of all ranks, "
                 "and its type should be 'list(numpy.ndarray)'.")
+
+    if cur_dist_attr is None:
+        return {}
 
     param_not_in_pre = []
     param_not_in_cur = []
@@ -735,7 +738,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             rank_id = paddle.distributed.get_rank()
             index = cur_attr["process_group"].index(rank_id)
             param = dist_param_dict[var_name][index]
-            dist_param_dict[var_name] = _to_LodTensor(param)
+            dist_param_dict[var_name] = param
             continue
 
         pre_param = dist_param_dict[var_name]
@@ -747,7 +750,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             dist_param_dict[var_name] = complete_param
         else:
             complete_param = pre_param[0]
-            dist_param_dict[var_name] = _to_LodTensor(complete_param)
+            dist_param_dict[var_name] = complete_param
 
         if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
             sliced_param = _slice_parameter_with_dist_attr(complete_param,
@@ -772,19 +775,19 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
 def _merge_parameter_with_dist_attr(param_list, dist_attr):
     """ Merge parameter with distributed attribute """
-    from .reshard import _compute_complete_shape, _compute_partition_index
+    from .reshard import Resharder
 
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
-    complete_shape = _compute_complete_shape(param_list[0].shape, process_shape,
-                                             dims_mapping)
+    complete_shape = Resharder.compute_complete_shape(
+        param_list[0].shape, process_shape, dims_mapping)
     # merge the parameter with dist_attr
     partition_param_list = []
     merged_partiton = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         index = process_group.index(process)
         if partition_index not in merged_partiton:
@@ -794,7 +797,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
 
     assert len(partition_param_list) == 1 or not partition_param_list, \
         "Fail to merge parameter"
-    complete_param = _to_LodTensor(partition_param_list[0][0])
+    complete_param = partition_param_list[0][0]
     return complete_param
 
 
@@ -814,7 +817,7 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
     rank_id = paddle.distributed.get_rank()
     sliced_param_index = _get_sliced_param_index(
         rank_id, param.shape, dims_mapping, process_shape, process_group)
-    sliced_param = _to_LodTensor(sliced_param_list[sliced_param_index])
+    sliced_param = sliced_param_list[sliced_param_index]
     return sliced_param
 
 
@@ -837,7 +840,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
             _merge_parameter(partition_param_list, param, partition_index)
             # partition_param_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
     """
-    from .reshard import _compute_concat_info
+    from .reshard import Resharder
 
     if len(partition_param_list) == 1:
         is_complete_data = True
@@ -853,7 +856,7 @@ def _merge_parameter(partition_param_list, param, partition_index,
     else:
         i = 0
         while i < len(partition_param_list):
-            concat_axis, first_order, new_partition = _compute_concat_info(
+            concat_axis, first_order, new_partition = Resharder.compute_concat_info(
                 partition_param_list[i][1], partition_index)
             if concat_axis != -1:
                 if first_order == 0:
@@ -930,9 +933,9 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
                                             process_shape, process_group)
             # index: 2
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
-    partition_index = _compute_partition_index(
+    partition_index = Resharder.compute_partition_index(
         rank, complete_shape, dims_mapping, process_shape, process_group)
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
@@ -940,8 +943,8 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
             slice_shape = shape
         else:
             slice_shape = shape // process_shape[dims_mapping[i]]
-        if shape == 1:
-            index = 0
+        if slice_shape == 1:
+            index = partition_index[i][0]
         else:
             index = (partition_index[i][0] + 1) // slice_shape
         sliced_param_index = sliced_param_index * (shape // slice_shape) + index
@@ -969,11 +972,11 @@ def _get_split_indices(complete_shape, dims_mapping, process_shape,
             index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
             # index: [[], [], [2, 4]]
     """
-    from .reshard import _compute_partition_index
+    from .reshard import Resharder
 
     split_indices_list = []
     for process in process_group:
-        partition_index = _compute_partition_index(
+        partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group)
         if split_indices_list:
             for dim in range(len(partition_index)):
@@ -998,7 +1001,7 @@ def set_grad_var_shape(program, dist_context):
         if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
             break
 
-        if op.type in ["sum"]:
+        if op.type in ["sum", "concat"]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -1044,8 +1047,7 @@ def set_grad_var_shape(program, dist_context):
 
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
-
-                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                assert forward_input_dist_attr is not None, f"{forward_var_name, str(op)}"
                 forward_var = vars[forward_var_name]
                 forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     forward_var)
@@ -1413,3 +1415,11 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     # Third, print error infomation if we cannot find the original id
     else:
         assert False, "Cannot find the original id in the distributed context"
+
+
+def to_list(value):
+    if value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]

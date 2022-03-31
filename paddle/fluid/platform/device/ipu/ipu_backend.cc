@@ -32,6 +32,7 @@ IpuBackend* IpuBackend::GetInstance() {
 IpuBackend::IpuBackend() {
   compiler_ = std::make_unique<Compiler>();
   executor_ = std::make_unique<Executor>();
+  timer_ = std::make_unique<platform::Timer>();
 }
 
 IpuBackend::~IpuBackend() {
@@ -43,40 +44,35 @@ void IpuBackend::Compile(Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
-  compiler_->Prepare();
-  executor_->SetCompilerResources(compiler_->GetResources());
-
-  compiler_->InitInputs(graph, feed_list);
-  compiler_->LowerConstants(graph, scope_);
-  compiler_->LowerWeights(graph, scope_);
-  compiler_->LowerBody(graph);
+  is_compiled_ = false;
+  compiler_->Prepare(graph);
+  compiler_->InitInputs(feed_list);
+  compiler_->LowerConstants(scope_);
+  compiler_->LowerWeights(scope_);
+  compiler_->LowerBody();
   compiler_->InitOutputs(fetch_list);
   if (ipu_strategy_->is_training) {
-    compiler_->LowerOptimier(graph, scope_);
+    compiler_->LowerOptimizer(scope_);
   }
+  if (!ipu_strategy_->onnx_dump_path.empty()) {
+    SaveModelProto(ipu_strategy_->onnx_dump_path);
+  }
+  executor_->SetCompilerResources(compiler_->GetResources());
+  executor_->Prepare(compiler_->GetModelProto());
   is_compiled_ = true;
-  // when call compile, means a new graph
-  is_prepared_ = false;
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
 void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
                      const std::vector<Tensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
-  Prepare();
   timer_->Start();
   executor_->Run(inputs, outputs, ctx);
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }
 
-void IpuBackend::Prepare() {
-  if (!is_prepared_) {
-    executor_->Prepare(compiler_->GetModelProto());
-    timer_.reset(new platform::Timer());
-    is_prepared_ = true;
-  }
-}
+void IpuBackend::WeightsToHost() { executor_->WeightsToHost(); }
 
 void IpuBackend::Detach() { executor_->Detach(); }
 
@@ -95,20 +91,16 @@ void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
   ipu_strategy_ = &strategy;
   compiler_->SetIpuStrategy(strategy);
   executor_->SetIpuStrategy(strategy);
+  if (!strategy.custom_ops.empty()) {
+    compiler_->SetCustomOps(strategy.custom_ops);
+  }
 }
 
-void IpuBackend::SetCustomOps(
-    const std::vector<IpuCustomOpIdentifier>& custom_ops) {
-  compiler_->SetCustomOps(custom_ops);
-}
-
-void IpuBackend::SaveMoldeProto(const std::string& path) {
-  if (ipu_strategy_->is_training && is_prepared_) {
+void IpuBackend::SaveModelProto(const std::string& path) {
+  if (ipu_strategy_->is_training && is_compiled_) {
     executor_->SaveModelToHost(path);
-  } else if (is_compiled_) {
-    compiler_->SaveModelProtoNoCheck(path);
   } else {
-    LOG(WARNING) << "Model is empty";
+    compiler_->SaveModelProtoNoCheck(path);
   }
 }
 

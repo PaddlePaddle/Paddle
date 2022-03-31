@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -208,7 +209,7 @@ void tensor_check<platform::CUDADeviceContext>(const std::string& op_type,
 
   TensorCheckerVisitor<platform::CUDADeviceContext> vistor(op_type, var_name,
                                                            tensor, place);
-  VisitDataType(tensor.type(), vistor);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
 }  // namespace details

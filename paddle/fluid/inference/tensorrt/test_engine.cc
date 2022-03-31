@@ -27,6 +27,18 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
+    ctx_->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    ctx_->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
+    ctx_->PartialInitWithAllocator();
 
     engine_ = new TensorRTEngine(10, 1 << 10);
     engine_->InitNetwork();
@@ -42,7 +54,7 @@ class TensorRTEngineTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &input_);
-    output_.Resize(framework::make_ddim(output_shape));
+    output_.Resize(phi::make_ddim(output_shape));
   }
 
   void GetOutput(std::vector<float> *output) {
