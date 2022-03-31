@@ -30,6 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+import paddle.distributed.collective as collective
 from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _group_map
 from paddle.distributed.collective import _default_group_name
@@ -205,8 +206,8 @@ def init_parallel_env():
 
     group = None
     if backend in _valid_backend_list and framework._in_eager_mode_:
-        if _default_group_name in _group_map_by_name:
-            return _group_map_by_name[_default_group_name]
+        if _default_group_name in collective._group_map_by_name:
+            return collective._group_map_by_name[_default_group_name]
         _default_backend = backend
         rank = int(os.getenv("PADDLE_TRAINER_ID"))
         world_size = int(os.getenv("PADDLE_TRAINERS_NUM"))
@@ -245,8 +246,9 @@ def init_parallel_env():
             ranks=ranks,
             pg=pg,
             name=_default_group_name)
-        _group_map_by_name[_default_group_name] = group
+        collective._group_map_by_name[_default_group_name] = group
         _group_map[0] = group
+        parallel_helper._set_parallel_ctx(True)
 
     else:
         node_num = set(
