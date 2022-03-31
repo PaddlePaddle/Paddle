@@ -405,6 +405,11 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
     d_key_bufs.push_back(std::move(d_k_buf));
     d_val_bufs.push_back(std::move(d_v_buf));
   }
+#if defined(PADDLE_WITH_XPU)
+  for (int i = 0; i < stream_num; i++) {
+    streams[i] = 0;
+  }
+#endif
 
   int cur_len = 0;
   int cur_stream = 0;
@@ -423,16 +428,10 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
                 reinterpret_cast<char*>(d_val_bufs[cur_stream]->ptr()),
                 src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
 
-    cur_use_stream = streams[cur_stream];
-#if defined(PADDLE_WITH_XPU)
-    cur_use_stream =
-        0
-#endif
-
-        tables_[num]
-            ->insert(reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
-                     reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()),
-                     tmp_len, cur_use_stream);
+    tables_[num]->insert(
+        reinterpret_cast<KeyType*>(d_key_bufs[cur_stream]->ptr()),
+        reinterpret_cast<ValType*>(d_val_bufs[cur_stream]->ptr()), tmp_len,
+        streams[cur_stream]);
 
     cur_stream += 1;
     cur_len += tmp_len;
