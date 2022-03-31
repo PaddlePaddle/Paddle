@@ -97,7 +97,7 @@ void EmbeddingInferMeta(const MetaTensor& input,
   output_dims.push_back(table_dims[1]);
 
   out->set_dims(phi::make_ddim(output_dims));
-
+  out->set_dtype(weight.dtype());
   out->share_lod(input);
 }
 

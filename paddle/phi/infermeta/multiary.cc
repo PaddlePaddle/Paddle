@@ -87,7 +87,9 @@ void AdagradInferMeta(const MetaTensor& param,
                                    "should have the same dimension."));
 
   param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
   moment_out->set_dims(param_dims);
+  moment_out->set_dtype(moment.dtype());
 }
 
 void AdamInferMeta(const MetaTensor& param,
@@ -914,6 +916,22 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
+                       std::vector<MetaTensor*> outputs) {
+  const size_t inputs_num = inputs.size();
+
+  auto out_shape = std::vector<int>(inputs_num);
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    out_shape[i] = inputs[i]->dims()[0];
+  }
+  auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    outputs[i]->set_dims(out_dims);
+    outputs[i]->set_dtype(inputs[0]->dtype());
+  }
+}
+
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);
 
@@ -986,36 +1004,6 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   out->set_dtype(x.at(0)->dtype());
   out->share_lod(*x.at(0));
 }
-
-void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
-                       std::vector<MetaTensor*> outputs) {
-  const size_t inputs_num = inputs.size();
-
-  auto out_shape = std::vector<int>(inputs_num);
-
-  for (size_t i = 0; i < inputs.size(); i++) {
-    out_shape[i] = inputs[i]->dims()[0];
-  }
-  auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i]->set_dims(out_dims);
-  }
-}
-
-void MomentumInferMeta(const MetaTensor& param,
-                       const MetaTensor& grad,
-                       const MetaTensor& velocity,
-                       const MetaTensor& learning_rate,
-                       paddle::optional<const MetaTensor&> master_param,
-                       float mu,
-                       bool use_nesterov,
-                       const std::string& regularization_method,
-                       float regularization_coeff,
-                       bool multi_precision,
-                       float rescale_grad,
-                       MetaTensor* param_out,
-                       MetaTensor* velocity_out,
-                       MetaTensor* master_param_out) {}
 
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
                         const MetaTensor& ids,
@@ -1184,10 +1172,14 @@ void RmspropInferMeta(const MetaTensor& param,
                         phi::product(lr_dim)));
 
   param_out->set_dims(param_dim);
+  param_out->set_dtype(param.dtype());
   moment_out->set_dims(param_dim);
+  moment_out->set_dtype(moment.dtype());
   mean_square_out->set_dims(param_dim);
+  mean_square_out->set_dtype(mean_square.dtype());
   if (centered) {
     mean_grad_out->set_dims(param_dim);
+    mean_grad_out->set_dtype(mean_grad.get_ptr()->dtype());
   }
 }
 
@@ -1296,6 +1288,7 @@ void SGDInferMeta(const MetaTensor& param,
                         phi::product(lr_dims)));
 
   param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
 }
 
 void StackInferMeta(const std::vector<MetaTensor*>& x,

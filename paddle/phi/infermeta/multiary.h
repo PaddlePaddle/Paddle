@@ -210,21 +210,6 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
 void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
-void MomentumInferMeta(const MetaTensor& param,
-                       const MetaTensor& grad,
-                       const MetaTensor& velocity,
-                       const MetaTensor& learning_rate,
-                       paddle::optional<const MetaTensor&> master_param,
-                       float mu,
-                       bool use_nesterov,
-                       const std::string& regularization_method,
-                       float regularization_coeff,
-                       bool multi_precision,
-                       float rescale_grad,
-                       MetaTensor* param_out,
-                       MetaTensor* velocity_out,
-                       MetaTensor* master_param_out);
-
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,

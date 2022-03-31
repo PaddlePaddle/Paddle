@@ -2132,8 +2132,7 @@ void TemporalShiftInferMeta(const MetaTensor& x,
                           seg_num));
   }
 
-  out->set_dims(dim_x);
-  out->share_lod(x);
+  out->share_meta(x);
 }
 
 void TileInferMeta(const MetaTensor& x,
