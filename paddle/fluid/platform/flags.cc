@@ -32,6 +32,9 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 }  // namespace platform
 }  // namespace paddle
 
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
+
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.
  */

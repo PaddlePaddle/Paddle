@@ -164,6 +164,7 @@ void RecordEvent::End() {
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook && is_pushed_) {
     dynload::nvtxRangePop();
+    is_pushed_ = false;
   }
 #endif
 #endif

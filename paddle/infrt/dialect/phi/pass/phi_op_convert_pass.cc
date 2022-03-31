@@ -110,6 +110,8 @@ void PhiOpConvertPass::convertStage() {
       ::phi::KernelSignature kernel_sign =
           ::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
               infrt::ProtoArgumentMappingContext(op));
+      VLOG(3) << "IncompatiblePhiKernel: op(" << op_name << "), kernel("
+              << kernel_sign.name << ")";
       // resort input&output according to kernel_sign
       ::llvm::SmallVector<mlir::Value, 4> inputs, ori_output;
       ::llvm::SmallVector<mlir::Type, 4> output_types;
@@ -259,11 +261,11 @@ void PhiOpConvertPass::getDependentDialects(
 
 mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass(
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass(
     std::vector<Place> valid_places) {
   return std::make_unique<PhiOpConvertPass>(valid_places);
 }
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass() {
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass() {
   return std::make_unique<PhiOpConvertPass>();
 }

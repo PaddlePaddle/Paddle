@@ -188,7 +188,7 @@ class TestQuantileRuntime(unittest.TestCase):
         self.input_data = np.random.rand(6, 7, 8, 9, 10)
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
-        if paddle.device.is_compiled_with_cuda:
+        if paddle.device.is_compiled_with_cuda():
             self.devices.append('gpu')
 
     def test_dygraph(self):
