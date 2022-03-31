@@ -35,6 +35,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#if defind(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType>
 class TableContainer
     : public concurrent_unordered_map<KeyType, ValType,
@@ -45,31 +46,75 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
+#elif defined(PADDLE_WITH_XPU)
+
+template <typename KeyType, typename ValType>
+class XPUCacheArray {
+ public:
+  explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
+    for (int i = 0; i < capacity; i++) {
+      xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
+      xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
+    }
+  }
+
+  virtual ~XPUCacheArray() {
+    for (int i = 0; i < capacity; i++) {
+      xpu_free(keys[i]);
+      xpu_free(vals[i]);
+    }
+  }
+
+  void print() {}
+
+  ValType* find(const KeyType& key) { return NULL; }
+
+  bool insert(const KeyType& key, const ValType& val) { return true; }
+
+ private:
+  long long capacity_;
+  long long size_;
+  KeyType* keys;
+  ValType* vals;
+};
+
+#endif
 
 template <typename KeyType, typename ValType>
 class HashTable {
  public:
-  HashTable(size_t capacity);
+  explicit HashTable(size_t capacity);
   virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
+
+  template <typename StreamType>
   void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
-              gpuStream_t stream);
+              StreamType stream);
+
+  template <typename StreamType>
   void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
-              gpuStream_t stream);
+              StreamType stream);
+
+  template <typename StreamType>
   void get(const KeyType* d_keys, ValType* d_vals, size_t len,
-           gpuStream_t stream);
-  void get(const KeyType* d_keys, char* d_vals, size_t len, gpuStream_t stream);
+           StreamType stream);
+
+  template <typename StreamType>
+  void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
+
   void show();
-  void dump_to_cpu(int devid, cudaStream_t stream);
 
-  template <typename GradType, typename Sgd>
+  template <typename StreamType>
+  void dump_to_cpu(int devid, StreamType stream);
+
+  template <typename GradType, typename Sgd, typename StreamType>
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
-              Sgd sgd, gpuStream_t stream);
+              Sgd sgd, StreamType stream);
 
-  template <typename Sgd>
+  template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
-              gpuStream_t stream);
+              streamType stream);
 
   int size() { return container_->size(); }
 
@@ -84,7 +129,11 @@ class HashTable {
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
  private:
+#if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
+#elif defined(PADDLE_WITH_XPU)
+  __global__ptr XPUCacheArray<KeyType, ValType>* container_;
+#endif
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
@@ -94,5 +143,5 @@ class HashTable {
 };
 }  // end namespace framework
 }  // end namespace paddle
-#include "hashtable_inl.h"
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable_inl.h"
 #endif

@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename value_type>
 struct ReplaceOp {
   __host__ __device__ value_type operator()(value_type new_value,
@@ -118,16 +119,139 @@ __global__ void dy_mf_update_kernel(Table* table,
     }
   }
 }
+#elif defined(PADDLE_WITH_XPU)
+
+template <typename KeyType, typename ValType, typename Table>
+__global__ void insert_kernel(Table* table, const KeyType* const keys,
+                              const ValType* const vals, size_t len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ KeyType local_keys[buf_size];
+  __local__ ValType local_vals[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    GM2LM(vals, local_vals, read_len * sizeof(ValType));
+    for (int k = 0; k < read_len; k++) {
+      auto status = table->insert(local_keys[k], local_vals[k]);
+      assert(status != false && "error: insert fails: table is full");
+    }
+  }
+}
+
+// template <typename Table>
+// __global__ void insert_kernel(Table* table,
+//                              const typename Table::key_type* const keys,
+//                              size_t len, char* pool, int start_index) {
+//  ReplaceOp<typename Table::mapped_type> op;
+//  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+//
+//  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+//
+//  if (i < len) {
+//    kv.first = keys[i];
+//    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
+//    auto it = table->insert(kv, op);
+//    assert(it != table->end() && "error: insert fails: table is full");
+//  }
+// }
+
+template <typename KeyType, typename ValType, typename Table>
+__global__ void search_kernel(Table* table, const KeyType* const keys,
+                              ValType* const vals, size_t len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ KeyType local_keys[buf_size];
+  __local__ ValType local_vals[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    for (int k = 0; k < read_len; k++) {
+      ValType* val = table->find(local_keys[k]);
+      if (val != NULL) {
+        local_vals[k] = *val;
+      }
+    }
+    LM2GM(local_vals, vals + i, read_len * sizeof(ValType));
+  }
+}
+
+template <typename KeyType, typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table, const KeyType* const keys,
+                              const GradType* const grads, size_t len,
+                              Sgd* sgd) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ KeyType local_keys[buf_size];
+  __local__ GradType local_grads[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    GM2LM(grads, local_grads, read_len * sizeof(GradType));
+
+    for (int k = 0; k < read_len; k++) {
+      ValType* val = table->find(local_keys[k]);
+      if (val != NULL) {
+        sgd->update_value(*val, grads[i]);
+      }
+    }
+  }
+}
+
+#endif
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
+#if defined(PADDLE_WITH_CUDA)
   container_ = new TableContainer<KeyType, ValType>(capacity);
+#elif defined(PADDLE_WITH_XPU)
+  auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
+  xpu_malloc(reinterpret_cast<void**>(&container_),
+             sizeof(XPUCacheArray<KeyType, ValType>));
+  xpu_memcpy(container_, &tmp_container,
+             sizeof(XPUCacheArray<KeyType, ValType>), XPU_HOST_TO_DEVICE);
+#endif
   rwlock_.reset(new phi::RWLock);
 }
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
+#if defined(PADDLE_WITH_CUDA)
   delete container_;
+#elif defined(PADDLE_WITH_XPU)
+  xpu_free(container_)
+#endif
 }
 
 template <typename KeyType, typename ValType>
@@ -135,57 +259,73 @@ void HashTable<KeyType, ValType>::show() {
   container_->print();
 }
 
-template <typename KeyType, typename ValType>
+template <typename KeyType, typename ValType, StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
-                                      size_t len, gpuStream_t stream) {
+                                      size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
+#if defined(PADDLE_WITH_CUDA)
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_vals, len);
+#elif defined(PADDLE_WITH_XPU)
+  search_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+#endif
 }
 
-template <typename KeyType, typename ValType>
+template <typename KeyType, typename ValType, typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
-                                      size_t len, gpuStream_t stream) {
+                                      size_t len, StreamType stream) {
   if (len == 0) {
     return;
   }
+#if defined(PADDLE_WITH_CUDA)
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len, pull_feature_value_size_);
+#endif
 }
 
-template <typename KeyType, typename ValType>
+template <typename KeyType, typename ValType, typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
-                                         gpuStream_t stream) {
+                                         StreamType stream) {
   if (len == 0) {
     return;
   }
+#if defined(PADDLE_WITH_CUDA)
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_vals, len);
+#elif defined(PADDLE_WITH_XPU)
+  insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+#endif
 }
 
-template <typename KeyType, typename ValType>
+template <typename KeyType, typename ValType, typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
                                          char* pool, size_t start_index,
-                                         gpuStream_t stream) {
+                                         StreamType stream) {
   if (len == 0) {
     return;
   }
-  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   if (pool == NULL) {
     return;
   }
+#if defined(PADDLE_WITH_CUDA)
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len,
                                                        pool, start_index);
+#elif defined(PADDLE_WITH_XPU)
+// insert_kernel<<<4, 64, stream>>>(container_, d_keys, len, pool, start_index);
+#endif
 }
 
 template <typename KeyType, typename ValType>
-void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
+template <typename StreamType>
+void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
+#if defined(PADDLE_WITH_CUDA)
   container_->prefetch(cudaCpuDeviceId, stream);
   std::vector<std::thread> threads;
   size_t num = container_->size();
@@ -243,34 +383,44 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
     t.join();
   }
 
+#endif
+
   // container_->prefetch(devid, stream);
 }
 
 template <typename KeyType, typename ValType>
-template <typename GradType, typename Sgd>
+template <typename GradType, typename Sgd, typename StreamType>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const GradType* d_grads, size_t len,
-                                         Sgd sgd, gpuStream_t stream) {
+                                         Sgd sgd, StreamType stream) {
   if (len == 0) {
     return;
   }
+#if defined(PADDLE_WITH_CUDA)
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_grads, len, sgd);
+#elif defined(PADDLE_WITH_XPU)
+  // move sgd to global memory
+  Sgd* xpu_sgd;
+  xpu_malloc(reinterpret_cast<void**>(&xpu_sgd), sizeof(Sgd));
+  update_kernel<<<4, 64, stream>>>(container_, d_keys, d_grads, len, xpu_sgd);
+#endif
 }
 
 template <typename KeyType, typename ValType>
-template <typename Sgd>
+template <typename Sgd, typename StreamType>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const char* d_grads, size_t len,
-                                         Sgd sgd, gpuStream_t stream) {
+                                         Sgd sgd, StreamType stream) {
   if (len == 0) {
     return;
   }
+#if defined(PADDLE_WITH_CUDA)
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-
   dy_mf_update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_grads, len, sgd, push_grad_value_size_);
+#endif
 }
 
 }  // end namespace framework
