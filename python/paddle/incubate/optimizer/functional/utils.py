@@ -92,7 +92,7 @@ def _value_and_gradient(f, x, v=None):
         x.stop_gradient = False
     value = f(x)
     if paddle.in_dynamic_mode():
-        gradient = paddle.grad([value], [x], create_graph=False)
+        gradient = paddle.grad([value], [x], create_graph=False)[0]
     else:
-        gradient = paddle.static.gradients([value], [x])
+        gradient = paddle.static.gradients([value], [x])[0]
     return value, gradient
