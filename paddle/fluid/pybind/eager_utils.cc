@@ -977,7 +977,6 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     return paddle::experimental::IntArray(value);
 
   } else {
-    LOG(ERROR) << type_name;
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or Tensor, but got %s",

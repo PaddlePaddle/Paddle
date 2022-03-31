@@ -715,13 +715,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         num_fwd_outputs = len(forward_outputs_position_map.keys())
         for name, (atype, is_fwd_input,
                    pos) in backward_forward_inputs_map.items():
-            is_optional = (name in optional_inputs or
-                           name in self.backward_optional_list)
-
             if is_fwd_input:
-                # if is_optional:
-                #     set_tensor_wrappers = f" if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
-                # else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
             else:
                 if num_fwd_outputs > 1:
@@ -871,7 +865,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"NEW_{name}"
-            # is_optional = (name in optional_inputs or name in self.backward_optional_list)
             is_optional = False
             if IsPlainTensorType(ttype):
                 if is_optional:
