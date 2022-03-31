@@ -86,7 +86,7 @@ void GraphPyClient::start_client() {
   _ps_env.SetPsServers(&host_sign_list, servers_);
   worker_ptr = std::shared_ptr<paddle::distributed::GraphBrpcClient>(
       (paddle::distributed::GraphBrpcClient*)
-          paddle::distributed::PSClientFactory::create(worker_proto));
+          paddle::distributed::PSClientFactory::Create(worker_proto));
   worker_ptr->Configure(worker_proto, dense_regions, _ps_env, client_id);
   worker_ptr->set_shard_num(get_shard_num());
 }
@@ -100,7 +100,7 @@ void GraphPyServer::start_server(bool block) {
                        this->host_sign_list.size());  // test
   pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
       (paddle::distributed::GraphBrpcServer*)
-          paddle::distributed::PSServerFactory::create(server_proto));
+          paddle::distributed::PSServerFactory::Create(server_proto));
   VLOG(0) << "pserver-ptr created ";
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;

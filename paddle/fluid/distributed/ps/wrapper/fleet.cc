@@ -145,7 +145,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       int servers = host_sign_list.size();
       ps_env_.SetPsServers(&host_sign_list, servers);
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-          paddle::distributed::PSClientFactory::create(ps_param));
+          paddle::distributed::PSClientFactory::Create(ps_param));
       worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
     }
   } else {

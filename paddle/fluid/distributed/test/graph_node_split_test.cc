@@ -169,7 +169,7 @@ void RunServer() {
   _ps_env.SetPsServers(&host_sign_list_, 2);  // test
   pserver_ptr_ = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
       (paddle::distributed::GraphBrpcServer*)
-          paddle::distributed::PSServerFactory::create(server_proto));
+          paddle::distributed::PSServerFactory::Create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
@@ -188,7 +188,7 @@ void RunServer2() {
   _ps_env2.SetPsServers(&host_sign_list_, 2);  // test
   pserver_ptr2 = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
       (paddle::distributed::GraphBrpcServer*)
-          paddle::distributed::PSServerFactory::create(server_proto2));
+          paddle::distributed::PSServerFactory::Create(server_proto2));
   std::vector<framework::ProgramDesc> empty_vec2;
   framework::ProgramDesc empty_prog2;
   empty_vec2.push_back(empty_prog2);
@@ -207,7 +207,7 @@ void RunClient(
   _ps_env.SetPsServers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::GraphBrpcClient>(
       (paddle::distributed::GraphBrpcClient*)
-          paddle::distributed::PSClientFactory::create(worker_proto));
+          paddle::distributed::PSClientFactory::Create(worker_proto));
   worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
   worker_ptr_->set_shard_num(127);
   worker_ptr_->set_local_channel(index);

@@ -230,11 +230,11 @@ int32_t CommonSparseTable::InitializeOptimizer() {
   if (name == "sgd") {
     optimizer_ = std::make_shared<SSGD>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<SAdam>(value_names_, value_dims_,
                                          value_offsets_, value_idx_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "sum") {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
@@ -248,7 +248,7 @@ int32_t CommonSparseTable::InitializeOptimizer() {
 
 int32_t CommonSparseTable::SetGlobalLR(float* lr) {
   _global_lr = lr;
-  optimizer_->set_global_lr(_global_lr);
+  optimizer_->SetGlobalLR(_global_lr);
   return 0;
 }
 
@@ -474,7 +474,7 @@ int32_t CommonSparseTable::_PushSparse(const uint64_t* keys,
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
         [this, shard_id, &keys, &values, num, &offset_bucket]() -> int {
           auto& offsets = offset_bucket[shard_id];
-          optimizer_->update(keys, values, num, offsets,
+          optimizer_->Update(keys, values, num, offsets,
                              shard_values_[shard_id].get());
           return 0;
         });
@@ -536,7 +536,7 @@ int32_t CommonSparseTable::_PushSparse(const uint64_t* keys,
           auto& offsets = offset_bucket[shard_id];
           for (size_t i = 0; i < offsets.size(); ++i) {
             std::vector<uint64_t> tmp_off = {0};
-            optimizer_->update(keys + offsets[i], values[offsets[i]], num,
+            optimizer_->Update(keys + offsets[i], values[offsets[i]], num,
                                tmp_off, shard_values_[shard_id].get());
           }
           return 0;

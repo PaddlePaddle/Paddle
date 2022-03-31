@@ -158,7 +158,7 @@ void RunServer() {
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(&host_sign_list_, 1);
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(server_proto));
+      paddle::distributed::PSServerFactory::Create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
@@ -174,7 +174,7 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(&host_sign_list_, servers_);
   worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-      paddle::distributed::PSClientFactory::create(worker_proto));
+      paddle::distributed::PSClientFactory::Create(worker_proto));
   worker_ptr_->Configure(worker_proto, dense_regions, _ps_env, 0);
 }
 

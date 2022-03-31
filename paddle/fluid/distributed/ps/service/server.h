@@ -160,7 +160,7 @@ REGISTER_PSCORE_REGISTERER(PsBaseService);
 
 class PSServerFactory {
  public:
-  static PSServer *create(const PSParameter &config);
+  static PSServer *Create(const PSParameter &config);
 };
 }  // namespace distributed
 }  // namespace paddle

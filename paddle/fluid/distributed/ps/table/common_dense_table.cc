@@ -106,13 +106,13 @@ int32_t CommonDenseTable::InitializeOptimizer() {
 
   if (name == "sgd") {
     optimizer_ = std::make_shared<DSGD>(common, &values_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<DAdam>(common, &values_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam_d2sum") {
     optimizer_ = std::make_shared<DAdamD2Sum>(common, &values_);
-    // optimizer_->set_global_lr(_global_lr);  //no use
+    // optimizer_->SetGlobalLR(_global_lr);  //no use
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
   } else if (name == "summary") {
@@ -126,7 +126,7 @@ int32_t CommonDenseTable::InitializeOptimizer() {
 
 int32_t CommonDenseTable::SetGlobalLR(float* lr) {
   _global_lr = lr;
-  optimizer_->set_global_lr(_global_lr);
+  optimizer_->SetGlobalLR(_global_lr);
   return 0;
 }
 
@@ -195,7 +195,7 @@ int32_t CommonDenseTable::_PushDense(const float* values, size_t num) {
         [this, shard_id, &buckets, &values]() -> int {
           auto begin = buckets[shard_id];
           auto end = buckets[shard_id + 1];
-          optimizer_->update(values, param_dim_, begin, end);
+          optimizer_->Update(values, param_dim_, begin, end);
           return 0;
         });
   }

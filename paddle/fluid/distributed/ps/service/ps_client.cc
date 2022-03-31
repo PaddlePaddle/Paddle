@@ -54,7 +54,7 @@ int32_t PSClient::Configure(
   return Initialize();
 }
 
-PSClient *PSClientFactory::create(const PSParameter &ps_config) {
+PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
   if (!config.has_downpour_server_param()) {
     LOG(ERROR) << "miss downpour_server_param in ServerParameter";

@@ -29,7 +29,7 @@ REGISTER_PSCORE_CLASS(PsBaseService, BrpcPsService);
 REGISTER_PSCORE_CLASS(PSServer, GraphBrpcServer);
 REGISTER_PSCORE_CLASS(PsBaseService, GraphBrpcService);
 
-PSServer *PSServerFactory::create(const PSParameter &ps_config) {
+PSServer *PSServerFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
 
   if (!config.has_downpour_server_param()) {

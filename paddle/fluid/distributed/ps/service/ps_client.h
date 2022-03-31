@@ -332,7 +332,7 @@ REGISTER_PSCORE_REGISTERER(PSClient);
 
 class PSClientFactory {
  public:
-  static PSClient *create(const PSParameter &config);
+  static PSClient *Create(const PSParameter &config);
 };
 }  // namespace distributed
 }  // namespace paddle
