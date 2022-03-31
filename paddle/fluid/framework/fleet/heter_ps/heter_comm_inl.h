@@ -488,8 +488,8 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
 
   reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys,
-                d_merge_grads_ptr, d_grads, d_num_runs_out, merger_, len,
-                stream, false);
+                d_merge_grads_ptr, d_grads, d_num_runs_out,
+                heter_comm_kernel_->merger_, len, stream, false);
 
 // if (d_temp_storage->size() < temp_storage_bytes) {
 //   d_temp_storage = NULL;
@@ -498,8 +498,8 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
 
   reduce_by_key(d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr,
-                d_keys, d_merge_grads_ptr, d_grads, d_num_runs_out, merger_,
-                len, stream, false);
+                d_keys, d_merge_grads_ptr, d_grads, d_num_runs_out,
+                heter_comm_kernel_->merger_, len, stream, false);
 
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
