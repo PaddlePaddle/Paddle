@@ -36,13 +36,13 @@ void BindTCPStore(py::module *m) {
           *m, "Store")
           .def(py::init<>())
           .def("set",
-              [](distributed::Store &self, const std::string &key,
-                 const std::string &value) {
-                std::vector<uint8_t> data(value.begin(), value.end());
-                self.set(key, data);
-              },
-              py::arg("key"), py::arg("value"),
-              py::call_guard<py::gil_scoped_release>(),R"DOC(
+               [](distributed::Store &self, const std::string &key,
+                  const std::string &value) {
+                 std::vector<uint8_t> data(value.begin(), value.end());
+                 self.set(key, data);
+               },
+               py::arg("key"), py::arg("value"),
+               py::call_guard<py::gil_scoped_release>(),R"DOC(
                The OP inserts the input key-value into the store, and if the key already exists
                in the store, overwrites the old value with the newly supplied value.
                Args:
@@ -63,13 +63,13 @@ void BindTCPStore(py::module *m) {
                     print(ret)
                )DOC"))
           .def("get",
-              [](distributed::Store &self,
-                 const std::string &key) -> py::bytes {
-                auto data = self.get(key);
-                return py::bytes(reinterpret_cast<char *>(data.data()),
-                                 data.size());
-              },
-              py::arg("key"), py::call_guard<py::gil_scoped_release>(),R"DOC(
+               [](distributed::Store &self,
+                  const std::string &key) -> py::bytes {
+                 auto data = self.get(key);
+                 return py::bytes(reinterpret_cast<char *>(data.data()),
+                                  data.size());
+               },
+               py::arg("key"), py::call_guard<py::gil_scoped_release>(),R"DOC(
                The OP returns the value of the given key.
                Args:
                     key (str): The given key in the store.
