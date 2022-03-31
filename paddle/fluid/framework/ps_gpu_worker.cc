@@ -142,7 +142,7 @@ void PSGPUWorker::PrepareCudaGraph() {
     }
     if (!need_skip) {
       bool need_capture = false;
-      if (op_capture_white_list.find(op->Type()) == op_capture_white_list.end()) {
+      if (op_capture_white_list.find(op->Type()) != op_capture_white_list.end()) {
         need_capture = true;
         auto inputs = op->InputVars();
         auto outputs = op->OutputVars(true);
@@ -229,6 +229,9 @@ void PSGPUWorker::TrainFiles() {
       // secend batch we capture the cudagraph
       for (auto& op_or_cuda_graph : op_or_cudagraphs_) {
         if (op_or_cuda_graph.need_capture) {
+          VLOG(0) << "[thread: " << place_.GetDeviceId() << "]"
+            "[op_num: " << op_or_cuda_graph.ops.size() << "]"
+            "cudagraph begin capture";
           if (op_or_cuda_graph.cudagraph == nullptr) {
             platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeThreadLocal);
             for (auto& op : op_or_cuda_graph.ops) {
