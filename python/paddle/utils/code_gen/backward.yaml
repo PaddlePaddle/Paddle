@@ -696,6 +696,28 @@
     backend: out_grad
     layout: out_grad
 
+- backward_api : roi_align_grad
+  forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : roi_align_grad
+  optional : boxes_num
+
+- backward_api : roi_pool_grad
+  forward : roi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale) -> Tensor(out), Tensor(arg_max)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor arg_max, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : roi_pool_grad
+  optional : boxes_num
+
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale, float bias=0.0, bool bias_after_scale=true)

@@ -20,6 +20,7 @@ from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
 from ..fluid.framework import _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
@@ -1062,7 +1063,11 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_pool(x, boxes, boxes_num, pooled_height,
+                                           pooled_width, spatial_scale)
+    if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = _C_ops.roi_pool(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
@@ -1217,7 +1222,12 @@ def roi_align(x,
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
+        return _C_ops.final_state_roi_align(x, boxes, boxes_num, pooled_height,
+                                            pooled_width, spatial_scale,
+                                            sampling_ratio, aligned)
+    if _in_legacy_dygraph():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = _C_ops.roi_align(
             x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
 import math
@@ -173,13 +174,14 @@ class TestROIAlignOp(OpTest):
 
     def setUp(self):
         self.op_type = "roi_align"
+        self.python_api = paddle.vision.ops.roi_align
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestROIAlignInLodOp(TestROIAlignOp):

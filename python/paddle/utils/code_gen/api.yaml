@@ -1154,6 +1154,25 @@
   intermediate : xshape
   backward: reshape_grad
 
+- api : roi_align
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
+  output : Tensor
+  infer_meta :
+    func : RoiAlignInferMeta
+  kernel :
+    func : roi_align
+  optional : boxes_num
+
+- api : roi_pool
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
+  output : Tensor(out), Tensor(arg_max)
+  infer_meta :
+    func : RoiPoolInferMeta
+  kernel :
+    func : roi_pool
+  optional : boxes_num
+  intermediate : arg_max
+
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
   output : Tensor
