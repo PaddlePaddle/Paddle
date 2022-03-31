@@ -25,6 +25,7 @@ class Node(object):
         self.device = Device.parse_device()
         self.ip = self.get_host_ip()
         self.free_ports = []
+        self._allocated_ports = []
 
     def get_host_ip(self):
         try:
@@ -42,13 +43,18 @@ class Node(object):
     def get_ports_occupied(self):
         return self.free_ports
 
-    @classmethod
     def get_free_port(self):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
-                         struct.pack('ii', 1, 0))
-            s.bind(('', 0))
-            return s.getsockname()[1]
+        for _ in range(100):
+            with closing(socket.socket(socket.AF_INET,
+                                       socket.SOCK_STREAM)) as s:
+                s.bind(('', 0))
+                port = s.getsockname()[1]
+                if port in self._allocated_ports:
+                    continue
+                else:
+                    self._allocated_ports.append(port)
+                    return port
+        return port
 
     @classmethod
     def is_server_ready(self, ip, port):

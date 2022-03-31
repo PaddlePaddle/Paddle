@@ -19,9 +19,8 @@ from ..fluid import framework
 from ..fluid.framework import Variable
 from ..fluid.dygraph import base as imperative_base
 from collections.abc import Callable
+from .. import _C_ops
 import paddle
-
-_C_ops = core.ops
 
 __all__ = []
 

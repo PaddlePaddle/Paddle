@@ -295,6 +295,18 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "reduce_sum":
+            need_result = input1 + input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce_prod":
+            need_result = input1 * input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce_max":
+            need_result = np.maximum(input1, input2)
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce_min":
+            need_result = np.minimum(input1, input2)
+            self.assertTrue(np.allclose(tr1_out, need_result))
         elif col_type == "allgather":
             need_result = np.vstack((input1, input2))
             self.assertTrue(np.allclose(tr0_out, need_result))
