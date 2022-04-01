@@ -2374,7 +2374,10 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
     __check_input(input, offset, axis1, axis2)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_trace( x, offset, axis1, axis2 )
+
+    if _in_legacy_dygraph():
         return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     inputs = {'Input': [x]}
@@ -2597,7 +2600,9 @@ def cumsum(x, axis=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cumsum(x, axis, flatten, False, False)
+    if _in_legacy_dygraph():
         if axis is None:
             return _C_ops.cumsum(x, 'flatten', flatten)
         else:
@@ -2854,7 +2859,10 @@ def sign(x, name=None):
           out = paddle.sign(x=x)
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_sign(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.sign(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sign')
@@ -2891,7 +2899,10 @@ def tanh(x, name=None):
             print(out)
             # [-0.37994896 -0.19737532  0.09966799  0.29131261]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tanh( x )
+
+    if _in_legacy_dygraph():
         return _C_ops.tanh(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
@@ -2933,7 +2944,10 @@ def increment(x, value=1.0, name=None):
             # [1.]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_increment( x, value)
+
+    if _in_legacy_dygraph():
         return _C_ops.increment(x, 'step', value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

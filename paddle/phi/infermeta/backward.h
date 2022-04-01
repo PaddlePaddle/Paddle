@@ -111,6 +111,16 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx);
 
+void NllLossGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& label,
+                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& total_weight,
+                          const MetaTensor& out_grad,
+                          int64_t ignore_index,
+                          const std::string& reduction,
+                          MetaTensor* intput_grad,
+                          MetaConfig config = MetaConfig());
+
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
                             paddle::optional<const MetaTensor&> rois_num,

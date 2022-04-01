@@ -505,15 +505,14 @@
     func : mv_grad
 
 - backward_api : nll_loss_grad
-  forward : nll_loss (Tensor x, Tensor label, Tensor weight, int64_t ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)
-  args : (Tensor x, Tensor label,  Tensor weight, Tensor total_weight, Tensor out_grad, int64_t ignore_index, str reduction)
-  output : Tensor (x_grad)
+  forward : nll_loss (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)
+  args : (Tensor input, Tensor label, Tensor weight, Tensor total_weight, Tensor out_grad, int64_t ignore_index, str reduction)
+  output : Tensor(input_grad)
   infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
+    func : NllLossGradInferMeta
   kernel :
     func : nll_loss_grad
-    data_type : out_grad
+    data_type : input
   optional : weight
 
 - backward_api : psroi_pool_grad

@@ -162,6 +162,11 @@ inline void EmplaceDeviceContext(
           dev_ctx->SetAllocator(memory::allocation::AllocatorFacade::Instance()
                                     .GetAllocator(p)
                                     .get());
+          dev_ctx->SetPinnedAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
+                  .get());
+
           cuda_ctx->PartialInitWithAllocator();
           dev_ctx->SetGenerator(
               framework::GetDefaultCUDAGenerator(p.GetDeviceId()).get());
