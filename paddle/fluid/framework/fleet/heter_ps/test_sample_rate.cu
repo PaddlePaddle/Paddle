@@ -52,9 +52,11 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 std::string input_file;
+int exe_count = 100;
 int fixed_key_size = 100, sample_size = 100,
     bfs_sample_nodes_in_each_shard = 10000, init_search_size = 1,
-    bfs_sample_edges = 20;
+    bfs_sample_edges = 20, gpu_num1 = 8, gpu_num = 8;
+int64_t *key[8];
 std::vector<std::string> edges = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
     std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
@@ -169,7 +171,6 @@ void testSampleRate() {
     }
     VLOG(0) << "sum = " << tot;
   }
-  const int gpu_num = 8;
   ::paddle::distributed::GraphParameter table_proto;
   table_proto.set_gpups_mode(true);
   table_proto.set_shard_num(127);
@@ -187,6 +188,7 @@ void testSampleRate() {
   GpuPsGraphTable g(resource);
   g.init_cpu_table(table_proto);
   g.load(std::string(input_file), std::string("e>"));
+  /*
   NodeQueryResult *query_node_res;
   query_node_res = g.query_node_list(0, 0, ids.size() + 10000);
 
@@ -215,15 +217,42 @@ void testSampleRate() {
     VLOG(0) << " the " << i << "th iteration size = " << q->actual_sample_size;
   }
   // NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
-
-  int64_t *key;
+*/
+  for (int i = 0; i < gpu_num1; i++) {
+    // platform::CUDADeviceGuard guard(i);
+    cudaMalloc((void **)&key[i], ids.size() * sizeof(int64_t));
+    cudaMemcpy(key[i], ids.data(), ids.size() * sizeof(int64_t),
+               cudaMemcpyHostToDevice);
+  }
+  /*
   cudaMalloc((void **)&key, ids.size() * sizeof(int64_t));
   cudaMemcpy(key, ids.data(), ids.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
-  std::vector<NeighborSampleResult *> res[gpu_num];
+             */
+  std::vector<std::vector<NeighborSampleResult *>> res(gpu_num1);
+  for (int i = 0; i < gpu_num1; i++) {
+    /*
+      int st = ids.size()/gpu_num1 * i;
+      int size;
+      if(i == gpu_num1 - 1){
+        size = ids.size() - st;
+      } else {
+        size = ids.size()/gpu_num1;
+      }
+      */
+    int st = 0;
+    int size = ids.size();
+    NeighborSampleResult *result = new NeighborSampleResult(sample_size, size);
+    platform::CUDAPlace place = platform::CUDAPlace(i);
+    platform::CUDADeviceGuard guard(i);
+    cudaMalloc((void **)&result->val, size * sample_size * sizeof(int64_t));
+    cudaMalloc((void **)&result->actual_sample_size, size * sizeof(int));
+    res[i].push_back(result);
+  }
   start = 0;
-  auto func = [&rwlock, &g, &res, &start, &gpu_num, &ids, &key](int i) {
+  auto func = [&rwlock, &g, &res, &start, &ids](int i) {
     while (true) {
+      /*
       int s, sn;
       bool exit = false;
       pthread_rwlock_wrlock(&rwlock);
@@ -237,13 +266,31 @@ void testSampleRate() {
       }
       pthread_rwlock_unlock(&rwlock);
       if (exit) break;
-      auto r =
-          g.graph_neighbor_sample(i, (int64_t *)(key + s), sample_size, sn);
-      res[i].push_back(r);
+      */
+      /*
+      int st = ids.size()/gpu_num1 * i;
+      int size;
+      if(i == gpu_num1 - 1){
+        size = ids.size() - st;
+      } else {
+        size = ids.size()/gpu_num1;
+      }
+      */
+      int st = 0;
+      int size = ids.size();
+      // auto r =g.graph_neighbor_sample(i, (int64_t *)key[i], sample_size,
+      // ids.size());
+      for (int k = 0; k < exe_count; k++) {
+        auto r = g.graph_neighbor_sample(i, (int64_t *)(key[i] + st),
+                                         sample_size, size, res[i][0]);
+        //   VLOG(0)<<"call graph_neighbor_sample by "<<i<<" sample_size"<<
+        //   sample_size<< " size " <<size;
+        // res[i].push_back(r);
+      }
+      break;
     }
   };
   auto start1 = std::chrono::steady_clock::now();
-  int gpu_num1 = 8;
   std::thread thr[gpu_num1];
   for (int i = 0; i < gpu_num1; i++) {
     thr[i] = std::thread(func, i);
@@ -252,8 +299,11 @@ void testSampleRate() {
   auto end1 = std::chrono::steady_clock::now();
   auto tt =
       std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-  std::cerr << "total time cost without cache is " << tt.count() << " us"
-            << std::endl;
+  std::cerr << "total time cost without cache is "
+            << tt.count() / exe_count / gpu_num1 << " us" << std::endl;
+  for (int i = 0; i < gpu_num1; i++) {
+    cudaFree(key[i]);
+  }
 #endif
 }
 
@@ -279,5 +329,9 @@ int main(int argc, char *argv[]) {
   VLOG(0) << "sample_size neighbor_size is " << sample_size;
   if (argc > 4) init_search_size = std::stoi(argv[4]);
   VLOG(0) << " init_search_size " << init_search_size;
+  if (argc > 5) gpu_num = std::stoi(argv[5]);
+  VLOG(0) << " gpu_num= " << gpu_num;
+  if (argc > 6) gpu_num1 = std::stoi(argv[6]);
+  VLOG(0) << " gpu_thread_num= " << gpu_num1;
   testSampleRate();
 }

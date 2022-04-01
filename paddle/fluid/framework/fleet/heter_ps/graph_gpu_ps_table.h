@@ -14,6 +14,7 @@
 
 #pragma once
 #include <thrust/host_vector.h>
+#include <chrono>
 #include "heter_comm.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
@@ -29,6 +30,7 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     cpu_table_status = -1;
+    topo_aware_ = 0;
   }
   ~GpuPsGraphTable() {
     if (cpu_table_status != -1) {
@@ -38,7 +40,8 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
   void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
   NodeQueryResult *graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult *graph_neighbor_sample(int gpu_id, int64_t *key,
-                                              int sample_size, int len);
+                                              int sample_size, int len,
+                                              NeighborSampleResult *result);
   NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
@@ -61,6 +64,9 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
 
  private:
   std::vector<GpuPsCommGraph> gpu_graph_list;
+  std::vector<int *> sample_status;
+  const int parallel_sample_size = 1;
+  const int dim_y = 256;
   std::shared_ptr<paddle::distributed::GraphTable> cpu_graph_table;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
   mutable std::mutex mutex_;
