@@ -123,7 +123,8 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 void PSGPUWorker::PrepareCudaGraph() {
   op_or_cudagraphs_.reserve(ops_.size());
   std::unordered_set<std::string> op_capture_white_list = {
-    "data_norm_grad", "mul_grad", "elementwise_add_grad",
+    //"data_norm_grad",
+    "mul_grad", "elementwise_add_grad",
     "auc", "adam", "concat_grad",
     "elementwise_add", "reduce_sum", "relu_grad", "mul", "concat", "relu",
     "cast", "elementwise_mul_grad", "reduce_sum_grad", "elementwise_mul",
@@ -151,19 +152,19 @@ void PSGPUWorker::PrepareCudaGraph() {
         for (auto tensor_name : inputs) {
           auto var = thread_scope_->FindVar(tensor_name);
           if (var == nullptr) {
-            VLOG(0) << "op " << op->Type() << " capture fail, val not found: " << tensor_name;
+            VLOG(5) << "op " << op->Type() << " capture fail, val not found: " << tensor_name;
             need_capture = false;
             break;
           }
           if (!var->IsType<phi::DenseTensor>()) {
-            VLOG(0) << "op " << op->Type() << " capture fail, val is not DenseTensor: " << tensor_name;
+            VLOG(5) << "op " << op->Type() << " capture fail, val is not DenseTensor: " << tensor_name;
             need_capture = false;
             break;
           }
           auto& tensor = var->Get<phi::DenseTensor>();
           auto& lod = tensor.lod();
           if (!lod.empty()) {
-            VLOG(0) << "op " << op->Type() << " capture fail, lod error: " << tensor_name << " " << lod[0].size();
+            VLOG(5) << "op " << op->Type() << " capture fail, lod error: " << tensor_name << " " << lod[0].size();
             need_capture = false;
             break;
           }
@@ -174,7 +175,7 @@ void PSGPUWorker::PrepareCudaGraph() {
         }
         op_or_cudagraphs_.back().ops.emplace_back(op);
       } else {
-          VLOG(0) << "op " << op->Type() << " is not in whitelist";
+          VLOG(5) << "op " << op->Type() << " is not in whitelist";
       }
     }
   }
@@ -234,12 +235,12 @@ void PSGPUWorker::TrainFiles() {
       // secend batch we capture the cudagraph
       for (auto& op_or_cuda_graph : op_or_cudagraphs_) {
         if (op_or_cuda_graph.need_capture) {
-          VLOG(0) << "[thread: " << place_.GetDeviceId() << "]"
-            "[op_num: " << op_or_cuda_graph.ops.size() << "]"
-            "cudagraph begin capture";
           if (op_or_cuda_graph.cudagraph == nullptr) {
             static std::mutex _capture_mutex;
             std::lock_guard<std::mutex> lock(_capture_mutex);
+            VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
+              "[op_num: " << op_or_cuda_graph.ops.size() << "]"
+              "cudagraph begin capture";
             platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeThreadLocal);
             for (auto& op : op_or_cuda_graph.ops) {
               op->Run(*thread_scope_, place_);
