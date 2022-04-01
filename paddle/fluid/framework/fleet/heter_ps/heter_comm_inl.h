@@ -657,7 +657,6 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType, typename GradType>
 template <typename Sgd>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
