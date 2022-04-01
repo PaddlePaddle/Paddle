@@ -120,44 +120,6 @@ void HeterComm<KeyType, ValType, GradType>::memory_copy(
   }
 }
 
-template <typename KeyT, typename ValueT, typename StreamType>
-void HeterComm<KeyType, ValType, GradType>::sort_pairs(
-    void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-    const KeyT* d_keys_in,                             // NOLINT
-    KeyT* d_keys_out, const ValueT* d_values_in, ValueT* d_values_out,
-    int num_items, int begin_bit = 0, int end_bit = sizeof(KeyT) * 8,
-    StreamType stream = 0, bool debug_synchronous = false) {
-#if defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-      d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, d_values_in,
-      d_values_out, num_items, begin_bit, end_bit, stream, debug_synchronous));
-
-#elif defined(PADDLE_WITH_XPU_KP)
-
-#endif
-}
-
-template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
-          typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
-          typename NumRunsOutputIteratorT, typename ReductionOpT,
-          typename StreamType>
-void HeterComm<KeyType, ValType, GradType>::reduce_by_key(
-    void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-    KeysInputIteratorT d_keys_in, UniqueOutputIteratorT d_unique_out,
-    ValuesInputIteratorT d_values_in,
-    AggregatesOutputIteratorT d_aggregates_out,
-    NumRunsOutputIteratorT d_num_runs_out, ReductionOpT reduction_op,
-    int num_items, StreamType stream = 0, bool debug_synchronous = false) {
-#if defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
-      d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, d_values_in,
-      d_aggregates_out, d_num_runs_out, reduction_op, num_items, stream,
-      debug_synchronous));
-#elif defined(PADDLE_WITH_XPU_KP)
-
-#endif
-}
-
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
                                                            int end_index,
@@ -460,32 +422,33 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
   GradType* d_merge_grads_ptr =
       reinterpret_cast<GradType*>(d_merge_grads->ptr());
 
-  sort_pairs(NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_grads,
-             d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
+  heter_comm_kernel_->sort_pairs(NULL, temp_storage_bytes, d_keys,
+                                 d_merge_keys_ptr, d_grads, d_merge_grads_ptr,
+                                 len, 0, 8 * sizeof(KeyType), stream, false);
 
   void* d_buff = NULL;
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-  sort_pairs(d_temp_storage->ptr(), temp_storage_bytes, d_keys,
-             d_merge_keys_ptr, d_grads, d_merge_grads_ptr, len, 0,
-             8 * sizeof(KeyType), stream, false);
+  heter_comm_kernel_->sort_pairs(
+      d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
+      d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
   temp_storage_bytes = 0;
 
   auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
   int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
 
-  reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys,
-                d_merge_grads_ptr, d_grads, d_num_runs_out,
-                heter_comm_kernel_->merger_, len, stream, false);
+  heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr,
+                                    d_keys, d_merge_grads_ptr, d_grads,
+                                    d_num_runs_out, len, stream, false);
 
   if (d_temp_storage->size() < temp_storage_bytes) {
     d_temp_storage = NULL;
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
   }
 
-  reduce_by_key(d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr,
-                d_keys, d_merge_grads_ptr, d_grads, d_num_runs_out,
-                heter_comm_kernel_->merger_, len, stream, false);
+  heter_comm_kernel_->reduce_by_key(
+      d_temp_storage->ptr(), temp_storage_bytes, d_merge_keys_ptr, d_keys,
+      d_merge_grads_ptr, d_grads, d_num_runs_out, len, stream, false);
 
   auto dst_place = platform::CPUPlace();
   auto src_place = place;
@@ -523,14 +486,15 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   size_t temp_storage_bytes;
   const int num_bits = 1 + log2i(total_device);
 
-  sort_pairs(NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
-             d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
+  heter_comm_kernel_->sort_pairs(
+      NULL, temp_storage_bytes, d_shard_index_tmp_ptr, d_shard_index_ptr,
+      d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
 
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-  sort_pairs(d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
-             d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits,
-             stream);
+  heter_comm_kernel_->sort_pairs(
+      d_temp_storage->ptr(), temp_storage_bytes, d_shard_index_tmp_ptr,
+      d_shard_index_ptr, d_idx_tmp_ptr, d_idx_ptr, len, 0, num_bits, stream);
 
   heter_comm_kernel_->calc_shard_offset(d_shard_index_ptr, left, right, len,
                                         total_device, stream);

@@ -186,28 +186,6 @@ class HeterComm {
 #endif
   }
 
-  template <typename KeyT, typename ValueT, typename StreamType>
-  void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-                  const KeyT* d_keys_in, KeyT* d_keys_out,
-                  const ValueT* d_values_in, ValueT* d_values_out,
-                  int num_items, int begin_bit = 0,
-                  int end_bit = sizeof(KeyT) * 8, StreamType stream = 0,
-                  bool debug_synchronous = false);
-
-  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
-            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
-            typename NumRunsOutputIteratorT, typename ReductionOpT,
-            typename StreamType>
-  void reduce_by_key(void* d_temp_storage,
-                     size_t& temp_storage_bytes,  // NOLINT
-                     KeysInputIteratorT d_keys_in,
-                     UniqueOutputIteratorT d_unique_out,
-                     ValuesInputIteratorT d_values_in,
-                     AggregatesOutputIteratorT d_aggregates_out,
-                     NumRunsOutputIteratorT d_num_runs_out,
-                     ReductionOpT reduction_op, int num_items,
-                     StreamType stream = 0, bool debug_synchronous = false);
-
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
