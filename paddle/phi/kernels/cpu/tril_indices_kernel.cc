@@ -24,7 +24,7 @@ void TrilIndicesKernel(const Context& dev_ctx,
                      int rows,
                      int cols,
                      int offset,
-                    DenseTensor* out){
+                     DenseTensor* out){
 
     T* out_data = dev_ctx.template Alloc<T>(out);
     auto out_dims = out->dims();

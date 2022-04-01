@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +28,7 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
   protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Attr<int>("dtype"),
+    return framework::OpKernelType( paddle::framework::proto::VarType::INT64,
                                    ctx.device_context());
   }
 };
@@ -33,25 +36,25 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
 class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddAttr<int>("rows", "int number, the input of tril_indices op").SetDefault(0);;
-    AddAttr<int>("cols", "int number, the input of tril_indices op").SetDefault(0);;
+    AddAttr<int>("rows", "int number, the input of tril_indices op").SetDefault(0);
+    AddAttr<int>("cols", "int number, the input of tril_indices op").SetDefault(0);
     AddAttr<int>("offset", "int number, the input of tril_indices op bounded by [1-rows,cols-1").SetDefault(0);
     AddAttr<int>("dtype","data type ,the input of tril_indices op").SetDefault(framework::proto::VarType::INT64);
     AddOutput("Out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
   
     AddComment(R"DOC(
-TrilIndices Operator.
+  TrilIndices Operator.
 
-The tril_indices operator returns the indices of the lower triangular part of the matrix 
-whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
-of all indices and the second row contains column coordinates. Indices are ordered based on 
-rows and then columns. The lower triangular part of the matrix is defined as the elements on
- and below the diagonal.
+  The tril_indices operator returns the indices of the lower triangular part of the matrix 
+  whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
+  of all indices and the second row contains column coordinates. Indices are ordered based on 
+  rows and then columns. The lower triangular part of the matrix is defined as the elements on
+  and below the diagonal.
 
-The argument offset controls which diagonal to consider, default value is 0.
-A positive valueincludes just as many diagonals above the main diagonal,
-and similarly a negative value excludes just as many diagonals below the main diagonal
-)DOC");
+  The argument offset controls which diagonal to consider, default value is 0.
+  A positive valueincludes just as many diagonals above the main diagonal,
+  and similarly a negative value excludes just as many diagonals below the main diagonal
+  )DOC");
   }
 };
 
@@ -59,8 +62,9 @@ and similarly a negative value excludes just as many diagonals below the main di
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLEAR_INFER_SHAPE_FUNCTOR(tril_indices,TrilIndicesInferShapeFunctor,
-                            PD_INFER_META(phi::TrilIndicesInferMeta))
+DECLARE_INFER_SHAPE_FUNCTOR(tril_indices,TrilIndicesInferShapeFunctor,
+                            PD_INFER_META(phi::TrilIndicesInferMeta));
+
 REGISTER_OPERATOR(tril_indices, ops::TrilIndicesOp, ops::TrilIndicesOpMaker,
                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
                  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,

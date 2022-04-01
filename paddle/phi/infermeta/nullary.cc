@@ -65,11 +65,11 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
   out->set_layout(DataLayout::NCHW);
 }
 
-void TrilIndicesInferMeta(const int& rows,
-                       const int& cols,
-                       const int& offset,
-                       DataType dtype,
-                       MetaTensor* out){
+void TrilIndicesInferMeta(int rows,
+                          int cols,
+                          int offset,
+                          DataType dtype,
+                          MetaTensor* out){
                          
   // number of elements in the first row of the tril,bounded by [0, cols]
   auto m_first_row = offset > 0 ?std::min<int64_t>(cols, 1 + offset) : rows + offset > 0; 
