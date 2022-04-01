@@ -606,15 +606,24 @@ def assign(input, output=None):
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        check_dtype(input.dtype, 'input', [
-            'float16', 'bfloat16, '
-            'float32', 'float64', 'int32', 'int64', 'uint8', 'bool'
-        ], 'assign', '(When the type of input in assign is Variable.)')
-        if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
-        helper.append_op(
-            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
+        if _non_static_mode():
+            if output is None:
+                if _in_legacy_dygraph():
+                    output = core.VarBase()
+                else:
+                    output = core.eager.Tensor()
+            _C_ops.assign(input, output)
+        else:
+            check_dtype(input.dtype, 'input', [
+                'float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64',
+                'uint8', 'bool'
+            ], 'assign', '(When the type of input in assign is Variable.)')
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
+            helper.append_op(
+                type='assign', inputs={'X': [input]},
+                outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         # Not support [var, var, ...] currently.
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
@@ -663,9 +672,7 @@ def assign(input, output=None):
             })
 
     if is_inplace and _non_static_mode():
-        # TODO(jiabin): Remove this when we support inplace
-        if _in_legacy_dygraph():
-            output._bump_inplace_version()
+        output._bump_inplace_version()
 
     return output
 

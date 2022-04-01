@@ -39,13 +39,13 @@ class StreamSafeCUDAAllocation : public Allocation {
                            gpuStream_t owning_stream,
                            StreamSafeCUDAAllocator *allocator);
 
-  void RecordStream(const gpuStream_t &stream);
+  void RecordStream(gpuStream_t stream);
   bool CanBeFreed();
-  const gpuStream_t &GetOwningStream() const;
+  gpuStream_t GetOwningStream() const;
 
  private:
   void RecordGraphCapturingStreams();
-  void RecordStreamWithNoGraphCapturing(const gpuStream_t &stream);
+  void RecordStreamWithNoGraphCapturing(gpuStream_t stream);
   DecoratedAllocationPtr underlying_allocation_;
   std::set<gpuStream_t> graph_capturing_stream_set_;
   std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
@@ -66,8 +66,8 @@ class StreamSafeCUDAAllocator
   ~StreamSafeCUDAAllocator();
 
   bool IsAllocThreadSafe() const override;
-  const gpuStream_t &GetDefaultStream() const;
-  void SetDefaultStream(const gpuStream_t &stream);
+  gpuStream_t GetDefaultStream() const;
+  void SetDefaultStream(gpuStream_t stream);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;

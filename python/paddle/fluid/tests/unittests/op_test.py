@@ -785,10 +785,12 @@ class OpTest(unittest.TestCase):
                 if arg_name in api_ignore_param_list:
                     results.append(get_default(idx, api_defaults))
                 else:
-                    assert idx_of_op_proto_arguments < len(
-                        input_arguments), "Assert False."
-                    tmp = input_arguments[idx_of_op_proto_arguments]
-                    idx_of_op_proto_arguments += 1
+                    if (idx_of_op_proto_arguments < len(input_arguments)):
+                        tmp = input_arguments[idx_of_op_proto_arguments]
+                        idx_of_op_proto_arguments += 1
+                    else:
+                        tmp = Empty()  # use the default value
+
                     if isinstance(tmp, Empty):
                         results.append(get_default(idx, api_defaults))
                     else:
@@ -1360,6 +1362,9 @@ class OpTest(unittest.TestCase):
                 self.op_test = op_test  # stop the op_test object.
                 self.op_type = op_test.op_type
 
+            def init(self):
+                pass
+
             def convert_uint16_to_float(self, actual_np, expect_np):
                 raise NotImplementedError("base class, not implement!")
 
@@ -1391,7 +1396,7 @@ class OpTest(unittest.TestCase):
                         rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                         equal_nan=equal_nan),
                     "Output (" + name + ") has diff at " + str(place) + " in " +
-                    self.checker_name + " checker")
+                    self.checker_name)
 
             def _compare_list(self, name, actual, expect):
                 """ if expect is a tuple, we need to compare list.
@@ -1407,7 +1412,7 @@ class OpTest(unittest.TestCase):
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
-                    self.op_test.assertTrue(actual_np.size == 0)
+                    self.op_test.assertTrue(actual_np.size == 0)  # }}}
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1435,10 +1440,14 @@ class OpTest(unittest.TestCase):
 
                 the main enter point of Checker class
                 """
+                self.init()
                 self.calculate_output()
                 self.compare_outputs_with_expects()
 
         class StaticChecker(Checker):
+            def init(self):
+                self.checker_name = "static checker"
+
             def calculate_output(self):
                 outs, fetch_list = self.op_test._calc_output(
                     place, no_check_set=no_check_set)
@@ -1478,6 +1487,9 @@ class OpTest(unittest.TestCase):
                     "Output (" + name + ") has different lod at " + str(place))
 
         class DygraphChecker(Checker):
+            def init(self):
+                self.checker_name = "dygraph checker"
+
             def calculate_output(self):
                 self.outputs = self.op_test._calc_dygraph_output(
                     place, no_check_set=no_check_set)
@@ -1523,18 +1535,21 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
                             equal_nan=equal_nan),
                         "Output (" + name + ") has diff at " + str(place) +
-                        " in " + self.checker_name + " checker")
+                        " in " + self.checker_name)
 
         class EagerChecker(DygraphChecker):
+            def init(self):
+                self.checker_name = "eager checker"
+
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
-                self.is_python_api_test = True
                 with _test_eager_guard():
+                    self.is_python_api_test = True
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
                         place)
                     if eager_dygraph_outs is None:
-                        # missing KernelSignature, fall back to eager middle output.
                         self.is_python_api_test = False
+                        # missing KernelSignature, fall back to eager middle output.
                         eager_dygraph_outs = self.op_test._calc_dygraph_output(
                             place, no_check_set=no_check_set)
                 self.outputs = eager_dygraph_outs
