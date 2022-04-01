@@ -145,7 +145,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   ASSERT_EQ(acc->Initialize(), 0);
 
   VLOG(3) << "dim: " << acc->common_feature_value.Dim() << "\n";
-  VLOG(3) << "update_dim: " << acc->GetTableInfo(UPDATE_DIM) << "\n";
+  VLOG(3) << "update_dim: " << acc->GetAccessorInfo().update_dim << "\n";
 
   const int field_size = 7 + 8;
   const int item_size = 10;
@@ -162,8 +162,8 @@ TEST(downpour_feature_value_accessor_test, test_update) {
   typedef const float* const_float_ptr;
   const_float_ptr* grad = new const_float_ptr[item_size];
   for (auto i = 0u; i < item_size; ++i) {
-    float* p = new float[acc->GetTableInfo(UPDATE_DIM)];
-    for (auto j = 0u; j < acc->GetTableInfo(UPDATE_DIM); ++j) {
+    float* p = new float[acc->GetAccessorInfo().update_dim];
+    for (auto j = 0u; j < acc->GetAccessorInfo().update_dim; ++j) {
       p[j] = i;
     }
     grad[i] = p;

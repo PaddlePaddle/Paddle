@@ -34,78 +34,21 @@ int DownpourCtrDoubleAccessor::Initialize() {
   _ssd_unseenday_threshold =
       _config.ctr_accessor_param().ssd_unseenday_threshold();
 
+  InitAccessorInfo();
   return 0;
 }
 
-void DownpourCtrDoubleAccessor::SetTableInfo(AccessorInfo& info) {
-  info.dim = Dim();
-  info.size = Size();
-  info.select_dim = SelectDim();
-  info.select_size = SelectSize();
-  info.update_dim = UpdateDim();
-  info.update_size = UpdateSize();
-  info.mf_size = MFSize();
+void DownpourCtrDoubleAccessor::InitAccessorInfo() {
+  auto embedx_dim = _config.embedx_dim();
+  _accessor_info.dim = DownpourCtrDoubleFeatureValue::Dim(embedx_dim);
+  _accessor_info.size = DownpourCtrDoubleFeatureValue::Size(embedx_dim);
+  _accessor_info.select_dim = 3 + embedx_dim;
+  _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
+  _accessor_info.update_dim = 4 + embedx_dim;
+  _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
+  _accessor_info.mf_size = (embedx_dim + 1) * sizeof(float);
 }
 
-size_t DownpourCtrDoubleAccessor::GetTableInfo(InfoKey key) {
-  switch (key) {
-    case DIM:
-      return Dim();
-    case SIZE:
-      return Size();
-    case SELECT_DIM:
-      return SelectDim();
-    case SELECT_SIZE:
-      return SelectSize();
-    case UPDATE_DIM:
-      return UpdateDim();
-    case UPDATE_SIZE:
-      return UpdateSize();
-    case MF_SIZE:
-      return MFSize();
-    default:
-      return 0;
-  }
-  return 0;
-}
-
-size_t DownpourCtrDoubleAccessor::Dim() {
-  auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrDoubleFeatureValue::Dim(embedx_dim);
-}
-size_t DownpourCtrDoubleAccessor::DimSize(size_t dim) {
-  auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrDoubleFeatureValue::DimSize(dim, embedx_dim);
-}
-size_t DownpourCtrDoubleAccessor::Size() {
-  auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrDoubleFeatureValue::Size(embedx_dim);
-}
-size_t DownpourCtrDoubleAccessor::MFSize() {
-  return (_config.embedx_dim() + 1) * sizeof(float);  // embedx embedx_g2sum
-}
-// pull value
-size_t DownpourCtrDoubleAccessor::SelectDim() {
-  auto embedx_dim = _config.embedx_dim();
-  return 3 + embedx_dim;
-}
-size_t DownpourCtrDoubleAccessor::SelectDimSize(size_t dim) {
-  return sizeof(float);
-}
-size_t DownpourCtrDoubleAccessor::SelectSize() {
-  return SelectDim() * sizeof(float);
-}
-// push value
-size_t DownpourCtrDoubleAccessor::UpdateDim() {
-  auto embedx_dim = _config.embedx_dim();
-  return 4 + embedx_dim;
-}
-size_t DownpourCtrDoubleAccessor::UpdateDimSize(size_t dim) {
-  return sizeof(float);
-}
-size_t DownpourCtrDoubleAccessor::UpdateSize() {
-  return UpdateDim() * sizeof(float);
-}
 bool DownpourCtrDoubleAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
@@ -383,7 +326,7 @@ std::string DownpourCtrDoubleAccessor::ParseToString(const float* v,
 int DownpourCtrDoubleAccessor::ParseFromString(const std::string& str,
                                                float* value) {
   int embedx_dim = _config.embedx_dim();
-  float data_buff[Dim() + 2];
+  float data_buff[_accessor_info.dim + 2];
   float* data_buff_ptr = data_buff;
   _embedx_sgd_rule->init_value(
       data_buff_ptr + DownpourCtrDoubleFeatureValue::Embedx_W_Index(),
@@ -394,7 +337,7 @@ int DownpourCtrDoubleAccessor::ParseFromString(const std::string& str,
   int click_index = DownpourCtrDoubleFeatureValue::ClickIndex();
   int embed_w_index = DownpourCtrDoubleFeatureValue::Embed_W_Index();
   // no slot, embedx
-  int value_dim = Dim();
+  int value_dim = _accessor_info.dim;
   int embedx_g2sum_index = DownpourCtrDoubleFeatureValue::embedx_g2sum_index();
   value[DownpourCtrDoubleFeatureValue::SlotIndex()] = -1;
   // other case

@@ -206,7 +206,7 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   }
 
   auto res_data = butil::get_object<std::vector<float>>();
-  res_data->resize(num * table->value_accesor()->GetTableInfo(SELECT_SIZE) /
+  res_data->resize(num * table->value_accesor()->GetAccessorInfo().select_size /
                    sizeof(float));
   TableContext table_context;
   table_context.value_type = Dense;
@@ -386,7 +386,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
 
   CostTimer timer("pserver_server_pull_sparse");
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
-  auto dim = table->value_accesor()->GetTableInfo(SELECT_DIM);
+  auto dim = table->value_accesor()->GetAccessorInfo().select_dim;
 
   thread_local std::string req_buffer;
   req_buffer.reserve(req_buffer_size);

@@ -35,74 +35,22 @@ int CtrCommonAccessor::Initialize() {
   common_feature_value.embedx_sgd_dim = _embedx_sgd_rule->dim();
   _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
 
+  InitAccessorInfo();
   return 0;
 }
 
-void CtrCommonAccessor::SetTableInfo(AccessorInfo& info) {
-  info.dim = Dim();
-  info.size = Size();
-  info.select_dim = SelectDim();
-  info.select_size = SelectSize();
-  info.update_dim = UpdateDim();
-  info.update_size = UpdateSize();
-  info.mf_size = MFSize();
-}
+void CtrCommonAccessor::InitAccessorInfo() {
+  _accessor_info.dim = common_feature_value.Dim();
+  _accessor_info.size = common_feature_value.Size();
 
-size_t CtrCommonAccessor::GetTableInfo(InfoKey key) {
-  switch (key) {
-    case DIM:
-      return Dim();
-    case SIZE:
-      return Size();
-    case SELECT_DIM:
-      return SelectDim();
-    case SELECT_SIZE:
-      return SelectSize();
-    case UPDATE_DIM:
-      return UpdateDim();
-    case UPDATE_SIZE:
-      return UpdateSize();
-    case MF_SIZE:
-      return MFSize();
-    default:
-      return 0;
-  }
-  return 0;
-}
-
-size_t CtrCommonAccessor::Dim() { return common_feature_value.Dim(); }
-
-size_t CtrCommonAccessor::DimSize(size_t dim) {
   auto embedx_dim = _config.embedx_dim();
-  return common_feature_value.DimSize(dim, embedx_dim);
+  _accessor_info.select_dim = 3 + embedx_dim;
+  _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
+  _accessor_info.update_dim = 4 + embedx_dim;
+  _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
+  _accessor_info.mf_size =
+      (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
 }
-
-size_t CtrCommonAccessor::Size() { return common_feature_value.Size(); }
-
-size_t CtrCommonAccessor::MFSize() {
-  return (_config.embedx_dim() + common_feature_value.embedx_sgd_dim) *
-         sizeof(float);  // embedx embedx_g2sum
-}
-
-// pull value
-size_t CtrCommonAccessor::SelectDim() {
-  auto embedx_dim = _config.embedx_dim();
-  return 3 + embedx_dim;
-}
-
-size_t CtrCommonAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
-
-size_t CtrCommonAccessor::SelectSize() { return SelectDim() * sizeof(float); }
-
-// push value
-size_t CtrCommonAccessor::UpdateDim() {
-  auto embedx_dim = _config.embedx_dim();
-  return 4 + embedx_dim;
-}
-
-size_t CtrCommonAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
-
-size_t CtrCommonAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
 
 bool CtrCommonAccessor::Shrink(float* value) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
