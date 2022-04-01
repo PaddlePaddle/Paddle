@@ -23,7 +23,7 @@
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
-// #include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #ifdef PADDLE_WITH_GLOO
@@ -108,6 +108,7 @@ class ProcessGroupHeter : public ProcessGroup {
   int gloo_rank_;
   int gloo_size_;
   bool with_switch_;
+  std::string switch_endpoint_;
 };
 
 }  //  namespace distributed
