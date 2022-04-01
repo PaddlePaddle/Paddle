@@ -167,6 +167,13 @@ if(WIN32 OR APPLE)
         SET(WITH_PSLIB OFF CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
     endif()
 
+    if(WITH_ARM_BRPC)
+        MESSAGE(WARNING
+            "Windows or Mac is not supported with ARM_BRPC in Paddle yet."
+            "Force WITH_ARM_BRPC=OFF")
+        SET(WITH_ARM_BRPC OFF CACHE STRING "Disable ARM_BRPC package in Windows and MacOS" FORCE)
+    endif()
+
     if(WITH_LIBMCT)
         MESSAGE(WARNING
             "Windows or Mac is not supported with LIBMCT in Paddle yet."
