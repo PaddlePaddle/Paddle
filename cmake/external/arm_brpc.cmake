@@ -52,6 +52,23 @@ execute_process(COMMAND tar zxvf ${ARM_BRPC_NAME}.tar.gz)
 execute_process(COMMAND mkdir install)
 execute_process(COMMAND mv base ./install/base)
 
+ExternalProject_Add(
+    ${ARM_BRPC_PROJECT}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    PREFIX                ${ARM_BRPC_PREFIX_DIR}
+    DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
+    #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
+    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
+                            && tar zxvf ${ARM_BRPC_NAME}.tar.gz && mkdir install && mv base ./install/base
+    DOWNLOAD_NO_PROGRESS  1
+    UPDATE_COMMAND        ""
+    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
+                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${ARM_BRPC_INSTALL_ROOT}
+                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+    BUILD_BYPRODUCTS      ${ARM_BRPC_LIB}
+)
+
 ADD_LIBRARY(arm_brpc STATIC IMPORTED GLOBAL)  # 直接导入已经生成的库
 SET_PROPERTY(TARGET arm_brpc PROPERTY IMPORTED_LOCATION ${ARM_BRPC_LIB})
 ADD_DEPENDENCIES(arm_brpc ${ARM_BRPC_PROJECT})
