@@ -479,7 +479,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_dealloc = (destructor)PyLayerDealloc;
   type->tp_methods = pylayer_methods;
   type->tp_getset = pylayer_properties;
-  type->tp_new = PyLayerNew;
+  type->tp_new = (newfunc)PyLayerNew;
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
