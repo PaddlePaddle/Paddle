@@ -16,10 +16,6 @@ limitations under the License. */
 #if defined(__xpu__)
 // #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
-// #include <xpu/runtime.h>
-// #include "xpu/kernel/cluster_header.h"
-// #include "xpu/kernel/math.h"
-// #include "xpu/kernel/simd.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #endif
 

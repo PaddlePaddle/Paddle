@@ -28,11 +28,11 @@ limitations under the License. */
 #include "thrust/pair.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #endif
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 
 namespace paddle {
 namespace framework {
