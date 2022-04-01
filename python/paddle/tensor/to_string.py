@@ -324,7 +324,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
             indent=' ' * indent,
             crows=crows_data,
             cols=cols_data,
-            values=elements_data)
+            values=values_data)
 
 
 def tensor_to_string(tensor, prefix='Tensor'):
@@ -332,11 +332,11 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
-    if not tensor._is_initialized():
-        return "Tensor(Not initialized)"
-
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if not tensor._is_dense_tensor_hold_allocation():
+        return "Tensor(Not initialized)"
     else:
         data = _format_dense_tensor(tensor, indent)
         return _template.format(

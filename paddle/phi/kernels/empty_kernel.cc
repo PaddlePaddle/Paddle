@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
-                 const ScalarArray& shape,
+                 const IntArray& shape,
                  DataType dtype,
                  DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));

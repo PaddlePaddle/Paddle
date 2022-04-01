@@ -139,11 +139,8 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
   phi::Copy(
       dev_ctx_gpu, indices_tensor, phi::GPUPlace(), true, &d_indices_tensor);
 
-  DenseTensor d_features_tensor = phi::Empty(
-      dev_ctx_gpu,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
-                      {non_zero_num, in_channels},
-                      DataLayout::NHWC));
+  DenseTensor d_features_tensor =
+      phi::EmptyLike<T>(dev_ctx_gpu, features_tensor);
   phi::Copy(
       dev_ctx_gpu, features_tensor, phi::GPUPlace(), true, &d_features_tensor);
 
