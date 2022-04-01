@@ -2999,9 +2999,9 @@ function main() {
       build_and_check_cpu)
         set +e
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
-        generate_api_spec ${PYTHON_ABI:-""} "PR"
         check_whl_size
         ;;
       build_and_check_gpu)
