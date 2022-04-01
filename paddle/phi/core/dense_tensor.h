@@ -191,6 +191,7 @@ class DenseTensor : public TensorBase,
       std::make_shared<InplaceVersion>()};
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
+//#include "paddle/fluid/platform/mkldnn_utils.h"
 #include "paddle/phi/core/dense_tensor.inl"
 #endif
 };

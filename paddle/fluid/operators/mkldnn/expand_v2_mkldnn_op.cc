@@ -45,20 +45,19 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
       out_new_dims[i] = out_new_dims[i] > 0 ? out_new_dims[i] : x_vec_dims[i];
     }
 
-    dnnl::memory::format_tag x_format_tag = x->format();
+    dnnl::memory::desc x_mem_desc = x->mem_desc();
     if (x_vec_dims.size() != out_new_dims.size()) {
-      x_format_tag =
-          GetExtendedFormatTag(x_vec_dims, out_new_dims.size(), x_format_tag);
+      x_mem_desc = GetExtendedMemoryDescriptor(x_mem_desc, x_vec_dims,
+                                               out_new_dims.size());
     }
 
     out->Resize(phi::make_ddim(out_new_dims));
-    out->set_format(x_format_tag);
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
         dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,
-        0.0f, 1.0f, x_vec_dims);
+        0.0f, 1.0f, x_mem_desc);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p = handler.AcquireDstMemory(out);
+    auto dst_memory_p = handler.AcquireDstMemory(out);  // acquires zeroed mem
     auto binary_p = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
@@ -70,22 +69,18 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     binary_p->execute(astream, args);
     astream.wait();
 
-    out->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    out->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory_p));
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 
  private:
-  dnnl::memory::format_tag GetExtendedFormatTag(
-      std::vector<int64_t>& dims, int new_size,  // NOLINT
-      dnnl::memory::format_tag format_tag) const {
-    dnnl::memory::desc md(dims, paddle::platform::MKLDNNGetDataType<T>(),
-                          format_tag);
+  dnnl::memory::desc GetExtendedMemoryDescriptor(
+      const dnnl::memory::desc& x_mem_desc,
+      const std::vector<int64_t>& x_vec_dims, int new_size) const {
     std::vector<int64_t> new_dims(new_size, 1);
-    std::copy(dims.begin(), dims.end(),
-              new_dims.begin() + new_size - dims.size());
+    std::copy(x_vec_dims.begin(), x_vec_dims.end(),
+              new_dims.begin() + new_size - x_vec_dims.size());
 
-    dims = std::move(new_dims);
-    return paddle::platform::GetMKLDNNFormat(md.reshape(dims));
+    return x_mem_desc.reshape(new_dims);
   }
 };
 

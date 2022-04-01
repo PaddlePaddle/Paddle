@@ -40,6 +40,7 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
+  mem_desc_ = other.mem_desc_;
 #endif
 }
 
@@ -49,6 +50,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
+  mem_desc_ = other.mem_desc_;
 #endif
   return *this;
 }
@@ -57,6 +59,10 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
+#ifdef PADDLE_WITH_MKLDNN
+  format_ = other.format_;
+  mem_desc_ = other.mem_desc_;
+#endif
   return *this;
 }
 

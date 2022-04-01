@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 
@@ -41,8 +43,13 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
       data[i] = dist(*engine);
     }
 
-    tensor->set_layout(DataLayout::kMKLDNN);
-    tensor->set_format(dnnl::memory::format_tag::oihw);
+    const dnnl::memory::desc out_mem_desc(
+        phi::vectorize(tensor->dims()),
+        framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(tensor->type())),
+        platform::GetPlainMKLDNNFormat(tensor->dims().size()));
+
+    tensor->set_mem_desc(out_mem_desc);
   }
 };
 }  // namespace operators
