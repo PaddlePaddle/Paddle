@@ -43,21 +43,16 @@ SET(ARM_BRPC_INC_DIR       ${ARM_BRPC_ROOT}/include/baidu/rpc)
 SET(ARM_BRPC_LIB_DIR       ${ARM_BRPC_ROOT}/lib)
 SET(ARM_BRPC_LIB           ${ARM_BRPC_LIB_DIR}/libbdrpc.a)
 
+#INCLUDE_DIRECTORIES(${ARM_BRPC_INC_DIR})
+#INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bthread/bthread)
+#INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bvar/bvar)
+#INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/common/base)
+
 FILE(WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(ARM_BRPC)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${ARM_BRPC_NAME}/include ${ARM_BRPC_NAME}/lib \n"
-  "        DESTINATION ${ARM_BRPC_DST_DIR})\n") 
-
-INCLUDE_DIRECTORIES(${ARM_BRPC_INC_DIR})
-INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bthread/bthread)
-INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bvar/bvar)
-INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/common/base)
-
-execute_process(COMMAND cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .)
-execute_process(COMMAND tar zxvf ${ARM_BRPC_NAME}.tar.gz)
-execute_process(COMMAND mkdir install)
-execute_process(COMMAND cp -r base ./install/)
+  "install(DIRECTORY ${ARM_BRPC_DST_DIR}/include ${ARM_BRPC_DST_DIR}/lib \n"
+  "        DESTINATION $ARM_BRPC_INSTALL_ROOT}\n")
 
 ExternalProject_Add(
     ${ARM_BRPC_PROJECT}
@@ -65,16 +60,14 @@ ExternalProject_Add(
     PREFIX                ${ARM_BRPC_PREFIX_DIR}
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
-    #DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
-    #                       && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ./install/
-    DOWNLOAD_COMMAND      ""
+    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
+                           && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ${ARM_BRPC_INSTALL_ROOT}
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
                           -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${ARM_BRPC_INSTALL_ROOT}
                           -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-    #
     BUILD_BYPRODUCTS      ${ARM_BRPC_LIB}
 )
 
