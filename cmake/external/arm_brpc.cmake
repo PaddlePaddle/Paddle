@@ -35,12 +35,12 @@ MESSAGE(STATUS "ARM_BRPC_NAME: ${ARM_BRPC_NAME}, ARM_BRPC_URL: ${ARM_BRPC_URL}")
 SET(ARM_BRPC_PREFIX_DIR    "${THIRD_PARTY_PATH}/arm_brpc")
 SET(ARM_BRPC_PROJECT       "extern_arm_brpc")
 SET(ARM_BRPC_DOWNLOAD_DIR  "${ARM_BRPC_PREFIX_DIR}/src/${ARM_BRPC_PROJECT}")
-SET(ARM_BRPC_DST_DIR       "output")
+SET(ARM_BRPC_DST_DIR       "base")
 SET(ARM_BRPC_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
 SET(ARM_BRPC_INSTALL_DIR   ${ARM_BRPC_INSTALL_ROOT}/${ARM_BRPC_DST_DIR})
 SET(ARM_BRPC_ROOT          ${ARM_BRPC_INSTALL_DIR})
-SET(ARM_BRPC_INC_DIR       ${ARM_BRPC_ROOT}/output/include/baidu/rpc)
-SET(ARM_BRPC_LIB_DIR       ${ARM_BRPC_ROOT}/output/lib)
+SET(ARM_BRPC_INC_DIR       ${ARM_BRPC_ROOT}/baidu-rpc/output/include/baidu/rpc)
+SET(ARM_BRPC_LIB_DIR       ${ARM_BRPC_ROOT}/baidu-rpc/output/lib)
 SET(ARM_BRPC_LIB           ${ARM_BRPC_LIB_DIR}/libbdrpc.a)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${ARM_BRPC_ROOT}/lib")
 
@@ -52,8 +52,8 @@ INCLUDE_DIRECTORIES(${ARM_BRPC_INC_DIR})
 FILE(WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(ARM_BRPC)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${ARM_BRPC_DST_DIR}/include ${ARM_BRPC_DST_DIR}/lib \n"
-  "        DESTINATION ${ARM_BRPC_DST_DIR})\n")
+  "install(DIRECTORY ${ARM_BRPC_DST_DIR} ${ARM_BRPC_DST_DIR} \n"
+  "        DESTINATION ${ARM_BRPC_NAME})\n")
 
 ExternalProject_Add(
     ${ARM_BRPC_PROJECT}
@@ -61,9 +61,9 @@ ExternalProject_Add(
     PREFIX                ${ARM_BRPC_PREFIX_DIR}
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
-    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/output.tar.gz . 
+    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz . 
     #                       && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ${ARM_BRPC_INSTALL_ROOT}
-                          && tar zxvf output.tar.gz
+                          && tar zxvf arm_brpc.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
