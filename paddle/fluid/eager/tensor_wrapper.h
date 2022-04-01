@@ -94,9 +94,9 @@ class TensorWrapper {
       return paddle::experimental::Tensor();
     }
 
-    // if it's full_reserved just return the full copy of tensor
     check_inplace_version();
 
+    // if it's full_reserved just return the full copy of tensor
     paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
     if (!full_reserved_) {
       std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
@@ -122,10 +122,10 @@ class TensorWrapper {
           static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
 
-      uint32_t current_inplace_version =
-          inplace_version_counter.CurrentVersion();
+      uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
+      uint32_t tensor_version = inplace_version_counter.CurrentVersion();
       PADDLE_ENFORCE_EQ(
-          current_inplace_version, inplace_version_snapshot_,
+          tensor_version, wrapper_version_snapshot,
           paddle::platform::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
@@ -133,14 +133,14 @@ class TensorWrapper {
               "Please fix your code to void calling an inplace operator "
               "after using the Tensor which will used in gradient "
               "computation.",
-              intermidiate_tensor_.name(), current_inplace_version,
-              inplace_version_snapshot_));
-      VLOG(6) << " The inplace_version_snapshot_ of Tensor '"
+              intermidiate_tensor_.name(), tensor_version,
+              wrapper_version_snapshot));
+      VLOG(6) << " The wrapper_version_snapshot of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "
-              << inplace_version_snapshot_ << " ]";
-      VLOG(6) << " The current_inplace_version of Tensor '"
-              << intermidiate_tensor_.name() << "' is [ "
-              << current_inplace_version << " ]";
+              << wrapper_version_snapshot << " ]";
+      VLOG(6) << " The tensor_version of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ " << tensor_version
+              << " ]";
     }
   }
 

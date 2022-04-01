@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& num_or_sections,
+                 const IntArray& num_or_sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   // need to infershape output

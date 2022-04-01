@@ -35,8 +35,8 @@ namespace paddle {
 namespace distributed {
 using Tensor = paddle::experimental::Tensor;
 using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
-using ScalarArray =
-    paddle::experimental::ScalarArrayBase<paddle::experimental::Tensor>;
+using IntArray =
+    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
 using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
@@ -52,7 +52,7 @@ class EagerGroup {
   std::vector<phi::DenseTensor> dense_tensors_;
   std::vector<int64_t> length_;
   int64_t all_length_{0};
-  std::vector<ScalarArray> origin_shapes_;
+  std::vector<IntArray> origin_shapes_;
 
   // Global indices of participating tensors in the group
   std::vector<size_t> tensor_indices_;
