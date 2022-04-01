@@ -52,9 +52,13 @@ class HeterComm {
   void show_one_table(int gpu_num);
   int get_index_by_devid(int devid);
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
                    Sgd& sgd);  // NOLINT
+#elif defined(PADDLE_WITH_XPU_KP)
+  void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len);
+#endif
 
   int log2i(int x);
 
