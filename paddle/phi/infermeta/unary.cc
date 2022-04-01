@@ -1215,7 +1215,8 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         input_dims.size()));
-  PADDLE_ENFORCE_GE(downscale_factor, 1,
+  PADDLE_ENFORCE_GE(downscale_factor,
+                    1,
                     phi::errors::InvalidArgument(
                         "downscale_factor should be larger than 0."));
   PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
