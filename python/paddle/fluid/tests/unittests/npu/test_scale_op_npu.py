@@ -39,7 +39,8 @@ class TestScale(OpTest):
         }
         self.attrs = {'scale': -2.3, 'bias': 0, 'bias_after_scale': True}
         self.outputs = {
-            'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
+            'Out': (self.inputs['X'] *
+                    self.dtype(self.attrs['scale'])).astype(self.dtype)
         }
 
     def set_npu(self):
@@ -55,6 +56,16 @@ class TestScale(OpTest):
 class TestFP16Scale(TestScale):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestScaleInt(TestScale):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestScaleInt64(TestScale):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestBiasAfterScale(OpTest):

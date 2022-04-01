@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 import paddle
+from paddle import _C_ops
+from paddle.fluid.framework import _test_eager_guard
 
 
 class MyLayer(fluid.Layer):
@@ -41,15 +43,7 @@ class MyLayer(fluid.Layer):
 
     def forward(self, x):
         for i, p in enumerate(self.params):
-            tmp = self._helper.create_variable_for_type_inference('float32')
-            self._helper.append_op(
-                type="mul",
-                inputs={"X": x,
-                        "Y": p},
-                outputs={"Out": tmp},
-                attrs={"x_num_col_dims": 1,
-                       "y_num_col_dims": 1})
-            x = tmp
+            x = _C_ops.mul(x, p)
         return x
 
 
@@ -80,8 +74,11 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             loss.backward()
 
     def test_paramter_list(self):
-        self.paramter_list(True)
+        with _test_eager_guard():
+            self.paramter_list(False)
+            self.paramter_list(True)
         self.paramter_list(False)
+        self.paramter_list(True)
 
 
 if __name__ == '__main__':

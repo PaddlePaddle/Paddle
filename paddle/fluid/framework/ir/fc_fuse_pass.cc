@@ -130,6 +130,32 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
+
+    // Only support 2D-Tensor as weight for FC
+    std::vector<int64_t> w_shape = w->Var()->GetShape();
+    size_t w_rank = w_shape.size();
+    if (w_rank != 2) return;
+
+    // axis of elementwise_add should be -1 or x_num_col_dims
+    auto x_num_col_dims =
+        BOOST_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims"));
+    auto axis = BOOST_GET_CONST(int, elementwise_add->Op()->GetAttr("axis"));
+    if (axis != -1 && axis != x_num_col_dims) return;
+
+    // Shape of bias should be [1, out_size] or [out_size]
+    std::vector<int64_t> b_shape = bias->Var()->GetShape();
+    if (b_shape.size() == 1) {
+      if (b_shape[0] != w_shape[1]) {
+        return;
+      }
+    } else if (b_shape.size() == 2) {
+      if (b_shape[0] != 1 || b_shape[1] != w_shape[1]) {
+        return;
+      }
+    } else {
+      return;
+    }
+
     Node* relu = nullptr;
     Node* relu_out = nullptr;
     if (with_relu) {

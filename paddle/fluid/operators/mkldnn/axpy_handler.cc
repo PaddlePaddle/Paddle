@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "mkldnn.hpp"
+#include "dnnl.hpp"
 #include "paddle/fluid/operators/mkldnn/axpy_handler.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device_context.h"

@@ -112,7 +112,9 @@ class TestKLDivLossDygraph(unittest.TestCase):
         input = paddle.fluid.data(name='input', shape=[5, 20])
         label = paddle.fluid.data(name='label', shape=[5, 20])
 
-        pred_loss = paddle.nn.functional.kl_div(input, label)
+        paddle.nn.functional.kl_div(input, label)
+        paddle.nn.functional.kl_div(input, label, 'sum')
+        paddle.nn.functional.kl_div(input, label, 'batchmean')
 
 
 class TestKLDivLossTypePromotion(unittest.TestCase):

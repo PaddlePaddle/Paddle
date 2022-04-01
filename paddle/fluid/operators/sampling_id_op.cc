@@ -40,7 +40,7 @@ class SamplingIdOp : public framework::OperatorWithKernel {
             input_dims.size()));
 
     auto dim0 = input_dims[0];
-    framework::DDim dims = framework::make_ddim({dim0});
+    framework::DDim dims = phi::make_ddim({dim0});
     ctx->SetOutputDim("Out", dims);
     ctx->ShareLoD("X", "Out");
   }

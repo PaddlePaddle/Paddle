@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -114,6 +115,10 @@ void VarDesc::SetDataTypes(
 
 proto::VarType::Type VarDesc::GetDataType() const {
   return tensor_desc().data_type();
+}
+
+size_t VarDesc::ElementSize() const {
+  return framework::SizeOfType(GetDataType());
 }
 
 std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {

@@ -29,12 +29,13 @@ class ShareBufferOpKernel : public framework::OpKernel<T> {
     size_t n = inputs.size();
     PADDLE_ENFORCE_EQ(n, outputs.size(), platform::errors::PermissionDenied(
                                              "Variable number not match."));
-    const auto &share_dims = ctx.Attr<std::vector<bool>>("share_dims");
-    if (!share_dims.empty()) {
-      PADDLE_ENFORCE_EQ(
-          n, share_dims.size(),
-          platform::errors::PermissionDenied(
-              "Attribute share_dims number not match input variable number."));
+    const auto &share_dims_and_dtype =
+        ctx.Attr<std::vector<bool>>("share_dims_and_dtype");
+    if (!share_dims_and_dtype.empty()) {
+      PADDLE_ENFORCE_EQ(n, share_dims_and_dtype.size(),
+                        platform::errors::PermissionDenied(
+                            "Attribute share_dims_and_dtype number not match "
+                            "input variable number."));
     }
 
     const std::vector<std::string> *input_args = nullptr,
@@ -50,8 +51,9 @@ class ShareBufferOpKernel : public framework::OpKernel<T> {
       outputs[i]->ShareBufferWith(*inputs[i]);
       VLOG(10) << "Share tensor buffer " << (*input_args)[i] << " -> "
                << (*output_args)[i];
-      if (!share_dims.empty() && share_dims[i]) {
+      if (!share_dims_and_dtype.empty() && share_dims_and_dtype[i]) {
         outputs[i]->Resize(inputs[i]->dims());
+        outputs[i]->ShareDataTypeWith(*inputs[i]);
       }
     }
   }

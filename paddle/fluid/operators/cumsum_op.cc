@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/cum_op.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,18 +24,6 @@ namespace operators {
 class CumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->Attrs().Get<bool>("flatten")) {
-      ctx->SetOutputDim(
-          "Out",
-          framework::make_ddim({framework::product(ctx->GetInputDim("X"))}));
-    } else {
-      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    }
-
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -88,14 +79,12 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-
+DECLARE_INFER_SHAPE_FUNCTOR(cumsum, CumsumInferShapeFunctor,
+                            PD_INFER_META(phi::CumsumInferMeta));
 REGISTER_OPERATOR(cumsum, ops::CumOp, ops::CumsumOpMaker,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
-                  ops::CumsumGradMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(cumsum, ops::CumKernel<CPU, ops::CumsumFunctor<float>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<double>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<int>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<int64_t>>);
+                  ops::CumsumGradMaker<paddle::imperative::OpBase>,
+                  CumsumInferShapeFunctor);
 
 REGISTER_OP_VERSION(cumsum)
     .AddCheckpoint(

@@ -33,5 +33,6 @@ no_check_set_white_list = [
     'softmax_with_cross_entropy',
     'svd',
     'eigh',
+    'eigvalsh',
     'class_center_sample',
 ]

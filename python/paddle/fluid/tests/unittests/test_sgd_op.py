@@ -192,6 +192,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 
 class TestSGDOpWithLargeInput(unittest.TestCase):
     def runTest(self):
+        paddle.enable_static()
         data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
         label = fluid.layers.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32')
@@ -289,6 +290,213 @@ class TestSGDV2(unittest.TestCase):
         out.backward()
         adam.step()
         adam.clear_gradients()
+
+
+class TestSGDMultiPrecision2_0(unittest.TestCase):
+    def dygraph_sgd_mp(self, mp):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device('gpu')
+        input = paddle.randn((2, 2))
+        model = paddle.nn.Linear(2, 2)
+        optimizer = paddle.optimizer.SGD(parameters=model.parameters(),
+                                         multi_precision=mp)
+        if mp == True:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+        for idx in range(5):
+            if mp == True:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                optimizer.step()
+                optimizer.clear_grad()
+
+        return output, model.parameters()
+
+    def static_sgd_mp(self, mp):
+        paddle.enable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.SGD(multi_precision=mp)
+
+        if mp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False)
+        with paddle.static.program_guard(train_program, startup_program):
+            if mp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16')
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32')
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.fluid.layers.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if mp:
+            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            loss_data, = exe.run(train_program,
+                                 feed={"X": x},
+                                 fetch_list=[loss.name])
+            out.append(loss_data)
+        return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        "Test dygraph mode"
+        output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
+        output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
+        self.assertEqual(
+            np.allclose(
+                output1_dy.astype('float32').numpy(),
+                output2_dy.astype('float32').numpy(),
+                atol=1e-01),
+            True)
+        for idx in range(len(params1_dy)):
+            self.assertEqual(
+                np.allclose(
+                    params1_dy[idx].astype('float32').numpy(),
+                    params2_dy[idx].astype('float32').numpy(),
+                    atol=1e-01),
+                True)
+        "Test static mode"
+        output1_st = self.static_sgd_mp(mp=True)
+        output2_st = self.static_sgd_mp(mp=False)
+        for idx in range(len(output1_st)):
+            self.assertEqual(
+                np.allclose(
+                    output1_st[idx].astype('float32'),
+                    output2_st[idx].astype('float32'),
+                    atol=1e-01),
+                True)
+
+
+class TestSGDMultiPrecision1_0(unittest.TestCase):
+    def dygraph_sgd_mp(self, mp):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device('gpu')
+        input = paddle.randn((2, 2))
+        model = paddle.nn.Linear(2, 2)
+        optimizer = paddle.fluid.optimizer.SGD(
+            learning_rate=0.001,
+            parameter_list=model.parameters(),
+            multi_precision=mp)
+        if mp == True:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+        for idx in range(5):
+            if mp == True:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)
+                optimizer.clear_gradients()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                optimizer.minimize(loss)
+                optimizer.clear_gradients()
+
+        return output, model.parameters()
+
+    def static_sgd_mp(self, mp):
+        paddle.enable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001,
+                                               multi_precision=mp)
+
+        if mp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False)
+        with paddle.static.program_guard(train_program, startup_program):
+            if mp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16')
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32')
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.fluid.layers.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if mp:
+            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            loss_data, = exe.run(train_program,
+                                 feed={"X": x},
+                                 fetch_list=[loss.name])
+            out.append(loss_data)
+        return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        "Test dygraph mode"
+        output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
+        output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
+        self.assertEqual(
+            np.allclose(
+                output1_dy.astype('float32').numpy(),
+                output2_dy.astype('float32').numpy(),
+                atol=1e-01),
+            True)
+        for idx in range(len(params1_dy)):
+            self.assertEqual(
+                np.allclose(
+                    params1_dy[idx].astype('float32').numpy(),
+                    params2_dy[idx].astype('float32').numpy(),
+                    atol=1e-01),
+                True)
+        "Test static mode"
+        output1_st = self.static_sgd_mp(mp=True)
+        output2_st = self.static_sgd_mp(mp=False)
+        for idx in range(len(output1_st)):
+            self.assertEqual(
+                np.allclose(
+                    output1_st[idx].astype('float32'),
+                    output2_st[idx].astype('float32'),
+                    atol=1e-01),
+                True)
 
 
 if __name__ == "__main__":

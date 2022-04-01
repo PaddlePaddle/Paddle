@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.static as static
 from op_test import OpTest
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDigammaOp(OpTest):
@@ -28,6 +29,7 @@ class TestDigammaOp(OpTest):
         paddle.enable_static()
 
         self.op_type = 'digamma'
+        self.python_api = paddle.digamma
         self.init_dtype_type()
         shape = (5, 32)
         data = np.random.random(shape).astype(self.dtype) + 1
@@ -40,10 +42,10 @@ class TestDigammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestDigammaOpFp32(TestDigammaOp):
@@ -94,6 +96,10 @@ class TestDigammaAPI(unittest.TestCase):
                     res = paddle.digamma(input_t).numpy()
                     self.assertEqual(np.allclose(res, sc_res, rtol=1e-05), True)
 
+    def test_in_eager_dynamic_mode(self):
+        with _test_eager_guard():
+            self.test_in_dynamic_mode()
+
     def test_name_argument(self):
         with static.program_guard(static.Program()):
             x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
@@ -113,6 +119,13 @@ class TestDigammaAPI(unittest.TestCase):
                 input = np.random.random(self._shape).astype("int32")
                 input_t = paddle.to_tensor(input)
                 res = paddle.digamma(input_t)
+
+        with self.assertRaises(RuntimeError):
+            with fluid.dygraph.guard():
+                with _test_eager_guard():
+                    input = np.random.random(self._shape).astype("int32")
+                    input_t = paddle.to_tensor(input)
+                    res = paddle.digamma(input_t)
 
 
 if __name__ == "__main__":

@@ -78,7 +78,7 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
     if (out_dims[concat_axis] < 0) {
       out_dims[concat_axis] = -1;
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
   }
 };
 

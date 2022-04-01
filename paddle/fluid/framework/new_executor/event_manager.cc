@@ -16,32 +16,41 @@
 
 namespace paddle {
 namespace framework {
-
-void EventManager::WaitEvent(const Instruction& instruction,
-                             const platform::Place& place) {
+namespace interpreter {
+void WaitEvent(const Instruction& instruction, const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) return;
 
-  VLOG(3) << "Deal StreamWaitEventOrSync for "
-          << instruction.kernel_func_.operator_base_->Type();
+  VLOG(3) << "Deal StreamWaitEventOrSync for " << instruction.OpBase()->Type();
 
-  for (auto& event_iter : instruction.intput_events_) {
+  for (auto& event_iter : instruction.InputEvents()) {
     VLOG(3) << "wait var_id: " << event_iter.var_id_
             << " 's event with waiter_type: " << event_iter.waiter_type_;
-    event_iter.event_->Wait(event_iter.waiter_type_, instruction.dev_ctx_);
+    event_iter.event_->Wait(event_iter.waiter_type_,
+                            &instruction.DeviceContext());
   }
 }
 
-void EventManager::RecordEvent(const Instruction& instruction,
-                               const platform::Place& place) {
+void RecordEvent(const Instruction& instruction, const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) return;
 
-  for (auto& event : instruction.output_events_) {
+  for (auto& event : instruction.OutputEvents()) {
     VLOG(3) << "Record event in out_var_id: " << event.var_id_;
-    event.event_->Record(instruction.dev_ctx_);
+    event.event_->Record(&instruction.DeviceContext());
   }
 }
 
+void RecordEvent(const Instruction& instruction) {
+  // If InterpreterCore in on CPUPlace, do nothing.
+  if (platform::is_cpu_place(instruction.DeviceContext().GetPlace())) return;
+
+  for (auto& event : instruction.OutputEvents()) {
+    VLOG(3) << "Record event in out_var_id: " << event.var_id_;
+    event.event_->Record(&instruction.DeviceContext());
+  }
+}
+
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

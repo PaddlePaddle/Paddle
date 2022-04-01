@@ -307,6 +307,19 @@ struct Layers {
     return out;
   }
 
+  VarDesc* matmul_v2(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr,
+                     bool trans_x = false, bool trans_y = false) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("matmul_v2");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("trans_x", trans_x);
+    op->SetAttr("trans_y", trans_y);
+    return out;
+  }
+
   VarDesc* transpose2(VarDesc* x, std::vector<int> axis,
                       bool with_xshape = false) {
     VarDesc* out = lod_tensor(unique_name());

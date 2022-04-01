@@ -11,7 +11,9 @@ nv_library(tensorrt_plugin
            gather_nd_op_plugin.cu
            mish_op_plugin.cu
            pool3d_op_plugin.cu
-           DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
+           deformable_conv_op_plugin.cu
+           matmul_op_int8_plugin.cu
+	   DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
 
 nv_test(test_split_plugin SRCS test_split_plugin.cc DEPS
   paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)

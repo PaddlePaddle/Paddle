@@ -26,6 +26,7 @@ from ....data import data
 from ....layers import mean
 from ....executor import scope_guard
 from ....framework import _get_paddle_place
+from .utils import _channelwise_quant_axis1_ops, quant_tensor
 
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
@@ -59,6 +60,7 @@ _out_scale_op_list = [
     "tanh",
     "prelu",
     "swish",
+    "dropout",
     "softmax",
     "batch_norm",
     "layer_norm",
@@ -68,6 +70,8 @@ _out_scale_op_list = [
     "transpose2",
     "concat",
     "elementwise_mul",
+    "elementwise_pow",
+    "elementwise_sub",
     "scale",
     "slice",
     "hard_swish",
@@ -81,8 +85,54 @@ _out_scale_op_list = [
     "flatten2",
     "transpose",
     "pad2d",
+    "pad3d",
     "reshape",
-    "layer_norm",
+    "split",
+    "flatten_contiguous_range",
+    "squeeze",
+    "squeeze2",
+    "nearest_interp_v2",
+    "fill_constant_batch_size_like",
+    "bilinear_interp",
+    "bilinear_interp_v2",
+    "arg_max",
+    "abs",
+    "assign",
+    "cast",
+    "clip",
+    "box_coder",
+    "crop",
+    "cumsum",
+    "equal",
+    "expand_v2",
+    "fill_any_like",
+    "fill_constant",
+    "gelu",
+    "instance_norm",
+    "lookup_table",
+    "lookup_table_v2",
+    "norm",
+    "p_norm",
+    "pow",
+    "reduce_mean",
+    "stack",
+    "top_k_v2",
+    "unsqueeze",
+    "unsqueeze2",
+    "logical_and",
+    "logical_not",
+    "meshgrid",
+    "roi_align",
+    "strided_slice",
+    "where",
+    "grid_sampler",
+    "tile",
+    "group_norm",
+    "reduce_sum",
+    "square",
+    "softplus",
+    "gather",
+    "shuffle_channel",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -119,7 +169,7 @@ _op_real_in_out_name = {
     "relu": [["X"], ["Out"]],
     "relu6": [["X"], ["Out"]],
     "leaky_relu": [["X"], ["Out"]],
-    "prelu": [["X"], ["Out"]],
+    "prelu": [["X", "Alpha"], ["Out"]],
     "tanh": [["X"], ["Out"]],
     "swish": [["X"], ["Out"]],
     "dropout": [["X"], ["Out"]],
@@ -127,23 +177,62 @@ _op_real_in_out_name = {
     "layer_norm": [["X"], ["Y"]],
     "sigmoid": [["X"], ["Out"]],
     "elementwise_mul": [["X", "Y"], ["Out"]],
+    "elementwise_pow": [["X", "Y"], ["Out"]],
     "scale": [["X"], ["Out"]],
     "hard_swish": [["X"], ["Out"]],
     "hard_sigmoid": [["X"], ["Out"]],
     "gru": [["Input", "Weight"], ["Hidden"]],
     "lstm": [["Input", "Weight"], ["Hidden"]],
     "pad2d": [["X"], ["Out"]],
+    "pad3d": [["X"], ["Out"]],
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
     "unsqueeze2": [["X"], ["Out"]],
-    "flatten_contiguous_range": [['X'], ["Out", "XShape"]],
+    "unsqueeze2": [["X"], ["Out"]],
+    "flatten_contiguous_range": [["X"], ["Out"]],
+    "split": [["X"], ["Out"]],
+    "squeeze2": [["X"], ["Out"]],
+    "nearest_interp_v2": [["X"], ["Out"]],
+    "bilinear_interp": [["X"], ["Out"]],
+    "bilinear_interp_v2": [["X"], ["Out"]],
+    "fill_constant_batch_size_like": [["Input"], ["Out"]],
+    "arg_max": [["X"], ["Out"]],
+    "abs": [["X"], ["Out"]],
+    "assign": [["X"], ["Out"]],
+    "cast": [["X"], ["Out"]],
+    "clip": [["X"], ["Out"]],
+    "box_coder": [["PriorBox"], ["OutputBox"]],
+    "crop": [["X"], ["Out"]],
+    "cumsum": [["X"], ["Out"]],
+    "expand_v2": [["X"], ["Out"]],
+    "fill_any_like": [["X"], ["Out"]],
+    "fill_constant": [[], ["Out"]],
+    "gelu": [["X"], ["Out"]],
+    "instance_norm": [["X"], ["Out"]],
+    "lookup_table": [["W", "Ids"], ["Out"]],
+    "lookup_table_v2": [["W", "Ids"], ["Out"]],
+    "norm": [["X"], ["Norm"]],
+    "p_norm": [["X"], ["Out"]],
+    "pow": [["X"], ["Out"]],
+    "reduce_mean": [["X"], ["Out"]],
+    "stack": [["X"], ["Y"]],
+    "top_k_v2": [["X"], ["Out", "Indices"]],
+    "logical_and": [["X", "Y"], ["Out"]],
+    "logical_not": [["X"], ["Out"]],
+    "meshgrid": [["X"], ["Out"]],
+    "roi_align": [["X", "ROIs"], ["Out"]],
+    "strided_slice": [["Input"], ["Out"]],
+    "where": [["Condition", "X", "Y"], ["Out"]],
+    "grid_sampler": [["X", "Grid"], ["Output"]],
+    "tile": [["X"], ["Out"]],
+    "group_norm": [["X"], ["Y", "Mean", "Variance"]],
+    "reduce_sum": [["X"], ["Out"]],
+    "square": [["X"], ["Out"]],
+    "softplus": [["X"], ["Out"]],
+    "shuffle_channel": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
-
-_channelwise_quant_axis1_ops = [
-    'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
-]
 
 
 def _get_op_input_var_names(op):
@@ -272,7 +361,8 @@ class QuantizationTransformPass(object):
     the quantized ops's inputs.
     """
     _supported_quantizable_op_type = [
-        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul'
+        'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul',
+        'matmul_v2'
     ]
 
     def __init__(self,
@@ -520,6 +610,16 @@ class QuantizationTransformPass(object):
                     dequant_var_node = dequantized_vars[var_node.name()]
                     graph.update_input_link(var_node, dequant_var_node, op)
 
+        def _has_weight(op):
+            has_weight = False
+            for var_node in op.inputs:
+                if var_node.name() not in op.input_arg_names():
+                    continue
+                name = var_node.name()
+                if var_node.name() in persistable_vars:
+                    has_weight = True
+            return has_weight
+
         if not self._is_test:
             self._create_global_step(graph)
         ops = graph.all_op_nodes()
@@ -535,11 +635,11 @@ class QuantizationTransformPass(object):
         # The loop for transforming the forward graph:
         for op in ops:
             if op.name() in self._quantizable_ops:
-                if not self._is_skip_quant(graph, op):
+                if not self._is_skip_quant(graph, op) and _has_weight(op):
                     _transform_forward(graph, op)
         # The loop for renaming the inputs of backward op.
         for op in ops:
-            if op.name() in self._quantizable_grad_ops:
+            if op.name() in self._quantizable_grad_ops and _has_weight(op):
                 _transform_backward(graph, op)
         graph.resolve_hazard()
         return graph
@@ -1103,6 +1203,7 @@ class QuantizationFreezePass(object):
                  bias_correction=False,
                  weight_bits=8,
                  activation_bits=8,
+                 round_type='round',
                  weight_quantize_type='abs_max',
                  quantizable_op_type=None):
         """
@@ -1120,6 +1221,9 @@ class QuantizationFreezePass(object):
                  https://arxiv.org/abs/1810.05723.
             weight_bits(int): quantization bit number for weights.
             activation_bits(int): quantization bit number for activation.
+            round_type(str, optional): The method of converting the quantized weights
+                value from float to int. Currently supports ['round', 'adaround'] methods.
+                Default is `round`, which is rounding nearest to the nearest whole number. 
             weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
                 'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight, 
                 since weights are fixed once the model is well trained.
@@ -1135,6 +1239,7 @@ class QuantizationFreezePass(object):
         self._place = _get_paddle_place(place)
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
+        self._round_type = round_type
         self._weight_quantize_type = weight_quantize_type
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
@@ -1181,18 +1286,22 @@ class QuantizationFreezePass(object):
                     self._quant_var_scale_map[input_arg_name] = scale_v
                     # Quantize weight and restore
                     param_v = self._load_var(input_arg_name)
-                    if isinstance(scale_v, list) and \
-                        any(_check_grandchild_op_node(op_node, op)
-                        for op in _channelwise_quant_axis1_ops):
-                        quant_axis = 1
-                    else:
-                        quant_axis = 0
-                    quantized_param_v = self._quant(
-                        param_v.copy(), scale_v, self._weight_bits, quant_axis)
-                    if self._bias_correction == True:
-                        quantized_param_v = self._bias_correction_w(
-                            param_v, quantized_param_v, scale_v, quant_axis)
-                    self._restore_var(input_arg_name, quantized_param_v)
+                    if self._round_type == 'round':
+                        if any(
+                                _check_grandchild_op_node(op_node, op)
+                                for op in _channelwise_quant_axis1_ops):
+                            quant_axis = 1
+                        else:
+                            quant_axis = 0
+                        quantized_param_v = quant_tensor(param_v.copy(),
+                                                         scale_v, quant_axis,
+                                                         self._weight_bits)
+                        quantized_param_v = np.round(quantized_param_v)
+                        if self._bias_correction == True:
+                            quantized_param_v = self._bias_correction_w(
+                                param_v, quantized_param_v, scale_v, quant_axis)
+                            quantized_param_v = np.round(quantized_param_v)
+                        self._restore_var(input_arg_name, quantized_param_v)
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
 
         # Remove all fake dequant op
@@ -1209,6 +1318,8 @@ class QuantizationFreezePass(object):
             if op_node_desc.has_attr("quantization_type") and \
                 op_node_desc.attr("quantization_type") == "qat_with_weight":
                 if self._weight_quantize_type == 'channel_wise_abs_max':
+                    quant_axis = 1 if op_node.name() in \
+                        _channelwise_quant_axis1_ops else 0
                     self._insert_post_channel_dequant_op(graph, op_node,
                                                          quant_axis)
                 else:
@@ -1281,10 +1392,11 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        x_num_col_dims = 1
+        if op_node.name() in ['matmul', 'matmul_v2', 'mul']:
+            x_num_col_dims = len(op_node.outputs[0].shape()) - 1
         if op_node.op().has_attr("x_num_col_dims"):
             x_num_col_dims = op_node.op().attr("x_num_col_dims")
-        else:
-            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
@@ -1407,31 +1519,6 @@ class QuantizationFreezePass(object):
         return isinstance(v, float) or isinstance(v, np.float32) \
             or isinstance(v, np.float64)
 
-    def _quant(self, x, scale, num_bits, quant_axis):
-        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
-        bnt = (1 << (num_bits - 1)) - 1
-
-        def _clip(x, scale):
-            x[x > scale] = scale
-            x[x < -scale] = -scale
-            return x
-
-        if isinstance(scale, list):
-            for i, s in enumerate(scale):
-                if s == 0.0:
-                    s = 1e-8
-                if quant_axis == 0:
-                    x[i] = _clip(x[i], s)
-                    x[i] = np.round(x[i] / s * bnt)
-                else:
-                    x[:, i] = _clip(x[:, i], s)
-                    x[:, i] = np.round(x[:, i] / s * bnt)
-        else:
-            scale = 1e-8 if scale == 0.0 else scale
-            x = _clip(x, scale)
-            x = np.round(x / scale * bnt)
-        return x
-
     def _bias_correction_w(self, x, x_quant, scale_v, quant_axis):
         '''
         Bias correction for weight
@@ -1468,8 +1555,8 @@ class QuantizationFreezePass(object):
             mean_bias = np.resize(mean_bias, x.shape)
 
         x_dequant = (mean_bias + x_dequant) * std_bias
-        quantized_param_v = self._quant(x_dequant, scale_v, self._weight_bits,
-                                        quant_axis)
+        quantized_param_v = quant_tensor(x_dequant, scale_v, quant_axis,
+                                         self._weight_bits)
         return quantized_param_v
 
 
@@ -1783,14 +1870,93 @@ class AddQuantDequantPass(object):
     quantized ops's inputs.
     """
     _supported_quantizable_op_type = [
-        "pool2d", "elementwise_add", "concat", "softmax", "argmax", "transpose",
-        "equal", "gather", "greater_equal", "greater_than", "less_equal",
-        "less_than", "mean", "not_equal", "reshape", "reshape2",
-        "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
-        "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
-        "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
-        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm",
-        "matmul_v2"
+        "pool2d",
+        "elementwise_add",
+        "concat",
+        "softmax",
+        "argmax",
+        "transpose",
+        "equal",
+        "gather",
+        "greater_equal",
+        "greater_than",
+        "less_equal",
+        "less_than",
+        "mean",
+        "not_equal",
+        "reshape",
+        "reshape2",
+        "dropout",
+        "bilinear_interp",
+        "nearest_interp",
+        "trilinear_interp",
+        "slice",
+        "squeeze",
+        "elementwise_sub",
+        "mul",
+        "matmul",
+        "relu",
+        "relu6",
+        "leaky_relu",
+        "tanh",
+        "swish",
+        "scale",
+        "transpose",
+        "transpose2",
+        "sigmoid",
+        "pad2d",
+        "flatten",
+        "flatten2",
+        "batch_norm",
+        "layer_norm",
+        "matmul_v2",
+        "split",
+        "flatten_contiguous_range",
+        "squeeze2",
+        "nearest_interp_v2",
+        "bilinear_interp",
+        "bilinear_interp_v2",
+        "fill_constant_batch_size_like",
+        "arg_max",
+        "abs",
+        "assign",
+        "cast",
+        "clip",
+        "box_coder",
+        "crop",
+        "cumsum",
+        "elementwise_mul",
+        "elementwise_pow",
+        "expand_v2",
+        "fill_any_like",
+        "fill_constant",
+        "gelu",
+        "hard_sigmoid",
+        "hard_swish",
+        "instance_norm",
+        "lookup_table",
+        "lookup_table_v2",
+        "norm",
+        "p_norm",
+        "pad3d",
+        "pow",
+        "prelu",
+        "reduce_mean",
+        "unsqueeze",
+        "unsqueeze2",
+        "logical_and",
+        "logical_not",
+        "meshgrid",
+        "roi_align",
+        "strided_slice",
+        "where",
+        "grid_sampler",
+        "tile",
+        "group_norm",
+        "reduce_sum",
+        "square",
+        "softplus",
+        "shuffle_channel",
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now

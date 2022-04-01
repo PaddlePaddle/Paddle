@@ -15,7 +15,7 @@
 echo "begin test elastic"
 
 unset GREP_OPTIONS
-rm -rf log
+rm -rf log*
 
 pids=`ps -ef | grep "python -m paddle.distributed.launch elastic_demo.[py]" | awk '{print $2}'`
 if [ -n "$pids" ]; then
@@ -27,6 +27,11 @@ if [ -n "$pids" ]; then
 fi
 
 python -m pip install --no-cache-dir etcd3 -i https://mirror.baidu.com/pypi/simple
+
+
+#############################
+#### test fault tolrance ####
+#############################
 
 # common env
 export PADDLE_ELASTIC_NP=2
@@ -137,7 +142,7 @@ export PADDLE_TRAINER_ID=1
 export PADDLE_TRAINERS_NUM=2
 
 python -m paddle.distributed.launch elastic_demo.py &> log_1.log &
-p1=$!
+p1_1=$!
 
 for i in {1..10}
 do
@@ -184,7 +189,7 @@ export PADDLE_TRAINER_ID=0
 export PADDLE_TRAINERS_NUM=2
 
 python -m paddle.distributed.launch elastic_demo.py &> log_0.log &
-p0=$!
+p0_1=$!
 
 for i in {1..10}
 do
@@ -205,4 +210,102 @@ check_env
 echo "All check done"
 
 sleep 3
-kill $p0 $p1
+kill $p0 $p1 $p0_1 $p1_1
+
+#############################
+#####    test elastic   #####
+#############################
+# common env
+export PADDLE_ELASTIC_NP=2:4
+export PADDLE_ELASTIC_SERVER=127.0.0.1:2379
+export PADDLE_ELASTIC_JOB_ID=elastic-demo-2
+
+# run node 0
+export NVIDIA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0
+export DISTRIBUTED_TRAINER_ENDPOINTS=10.10.10.1:8001,10.10.10.2:8001,10.10.10.3:8001
+export PADDLE_TRAINERS=10.10.10.1,10.10.10.2,10.10.10.3
+export TRAINER_PORTS_NUM=1
+export POD_IP=10.10.10.1
+export PADDLE_TRAINER_ID=0
+export PADDLE_TRAINERS_NUM=3
+
+python -m paddle.distributed.launch elastic_demo.py &> log_pe_0.log &
+pe_0=$!
+
+for i in {1..10}
+do
+    if grep -q "INFO:ELASTIC:not ready" log_pe_0.log; then
+        echo "run node 0 ok"
+        break
+    else
+        sleep 10
+    fi
+    if [ $i -eq 10 ]; then
+        echo "run node 0 error"
+        exit -1
+    fi
+done
+
+# run node 1
+export NVIDIA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=1
+export DISTRIBUTED_TRAINER_ENDPOINTS=10.10.10.1:8001,10.10.10.2:8001,10.10.10.3:8001
+export PADDLE_TRAINERS=10.10.10.1,10.10.10.2,10.10.10.3
+export TRAINER_PORTS_NUM=1
+export POD_IP=10.10.10.2
+export PADDLE_TRAINER_ID=1
+export PADDLE_TRAINERS_NUM=3
+
+python -m paddle.distributed.launch elastic_demo.py &> log_pe_1.log &
+pe_1=$!
+
+for i in {1..10}
+do
+    if grep -q "INFO:ELASTIC:not ready" log_pe_1.log; then
+        echo "run node 1 ok"
+        break
+    else
+        sleep 10
+    fi
+    if [ $i -eq 10 ]; then
+        echo "run node 1 error"
+        exit -1
+    fi
+done
+
+# run node 2
+export NVIDIA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=1
+export DISTRIBUTED_TRAINER_ENDPOINTS=10.10.10.1:8001,10.10.10.2:8001,10.10.10.3:8001
+export PADDLE_TRAINERS=10.10.10.1,10.10.10.2,10.10.10.3
+export TRAINER_PORTS_NUM=1
+export POD_IP=10.10.10.3
+export PADDLE_TRAINER_ID=2
+export PADDLE_TRAINERS_NUM=3
+
+python -m paddle.distributed.launch elastic_demo.py &> log_pe_2.log &
+pe_2=$!
+
+for i in {1..10}
+do
+    if grep -q "INFO:ELASTIC:ready with hosts" log_pe_2.log; then
+        echo "run node 2 ok"
+        break
+    else
+        sleep 10
+    fi
+    if [ $i -eq 10 ]; then
+        echo "run node 2 error"
+        exit -1
+    fi
+done
+
+lw0="log/workerlog.0"
+
+check_env
+
+echo "All check done"
+
+sleep 3
+kill $pe_0 $pe_1 $pe_2

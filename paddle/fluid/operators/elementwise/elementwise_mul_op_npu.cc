@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
       axes.push_back(i);
     }
   }
-  // LOG(INFO) << "axes = " << framework::make_ddim(axes).to_str();
+  // LOG(INFO) << "axes = " << phi::make_ddim(axes).to_str();
   out->mutable_data<T>(ctx.GetPlace());
   const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
                                    {{"axes", axes}, {"keep_dims", false}});
@@ -143,8 +143,16 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(elementwise_mul, ops::ElementwiseMulNPUKernel<float>,
-                       ops::ElementwiseMulNPUKernel<paddle::platform::float16>);
+                       ops::ElementwiseMulNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ElementwiseMulNPUKernel<int64_t>,
+#endif
+                       ops::ElementwiseMulNPUKernel<int>);
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_mul_grad, ops::ElementwiseMulGradNPUKernel<float>,
-    ops::ElementwiseMulGradNPUKernel<paddle::platform::float16>);
+    ops::ElementwiseMulGradNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    ops::ElementwiseMulGradNPUKernel<int64_t>,
+#endif
+    ops::ElementwiseMulGradNPUKernel<int>);

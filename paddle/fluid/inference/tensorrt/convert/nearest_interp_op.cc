@@ -38,8 +38,10 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     auto input = engine_->GetITensor(input_name);
 
-    auto data_layout = framework::StringToDataLayout(
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
+    auto data_layout = !op_desc.HasAttr("data_layout")
+                           ? framework::DataLayout::kNCHW
+                           : framework::StringToDataLayout(BOOST_GET_CONST(
+                                 std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
     bool align_corners =

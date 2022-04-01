@@ -63,6 +63,7 @@ class Node {
   }
 
   enum class Type { kOperation, kVariable };
+  enum class Dep { kSame = 0, kBefore = 1, kAfter = 2, kNoDep = 3 };
 #if !defined(_WIN32)  // msvc not support constexpr correctly.
   static constexpr char kControlDepVarName[] = "__control_var";
 #else
@@ -120,6 +121,11 @@ class Node {
 
   // Please don't use this API!
   int id() const { return id_; }
+
+  // Only use this for auto parallel.
+  // A node does not have original desc if the return is zero.
+  uint64_t OriginalDescId() const { return original_desc_id_; }
+  int GraphId() const { return graph_id_; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
@@ -238,9 +244,15 @@ class Node {
   int desc_order_;
   int block_id_{-1};
 
+  // Store the original id of var desc or op desc.
+  // Only use this for auto parallel.
+  uint64_t original_desc_id_{0};
+  int graph_id_{-1};
+
  private:
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
+  void SetGraphId(int graph_id) { graph_id_ = graph_id; }
 
   // desc_order can only set by a Graph when constructing a Graph from a
   // BlockDesc.
@@ -266,14 +278,16 @@ class Node {
         op_desc_(nullptr),
         type_(Type::kVariable),
         desc_order_(NO_DESC_ORDER),
-        block_id_(block_id) {}
+        block_id_(block_id),
+        original_desc_id_(var_desc->OriginalId()) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation),
-        desc_order_(NO_DESC_ORDER) {}
+        desc_order_(NO_DESC_ORDER),
+        original_desc_id_(op_desc->OriginalId()) {}
 
   Node() = delete;
 

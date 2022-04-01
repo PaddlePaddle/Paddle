@@ -117,9 +117,8 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
       h_starts[i] = h_starts[i - 1] + xs[i - 1]->numel();
     }
     int64_t total_num = h_starts[xs_size];
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 d_starts, cpu_place, h_starts, (xs_size + 1) * sizeof(int64_t),
-                 dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(), d_starts, cpu_place, h_starts,
+                 (xs_size + 1) * sizeof(int64_t), dev_ctx.stream());
 
     // copy each tensor's data address to device
     auto h_mem = memory::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
@@ -134,8 +133,8 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
       h_xs[i] = xs[i]->data<T>();
       h_outs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
     }
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), d_xs,
-                 cpu_place, h_xs, 2 * xs_size * sizeof(T*), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(), d_xs, cpu_place, h_xs,
+                 2 * xs_size * sizeof(T*), dev_ctx.stream());
 
     // Launch Kernel
     int threads_per_block = std::min(static_cast<int64_t>(1024), total_num);

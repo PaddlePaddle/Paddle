@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 DECLARE_bool(sync_nccl_allreduce);
@@ -47,6 +48,8 @@ GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
 #endif
 
 void GradMergeAllReduceOpHandle::RunImpl() {
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   PADDLE_ENFORCE_GT(local_scopes_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The number of local scope should be > 0, but got %zu.",
@@ -96,6 +99,8 @@ FusedGradMergeAllReduceOpHandle::FusedGradMergeAllReduceOpHandle(
 #endif
 
 void FusedGradMergeAllReduceOpHandle::RunImpl() {
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   PADDLE_ENFORCE_GT(local_scopes_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The number of local scope should be > 0, but got %zu.",

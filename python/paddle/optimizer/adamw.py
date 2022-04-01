@@ -19,9 +19,8 @@ from ..fluid import framework
 from ..fluid.framework import Variable
 from ..fluid.dygraph import base as imperative_base
 from collections.abc import Callable
+from .. import _C_ops
 import paddle
-
-_C_ops = core.ops
 
 __all__ = []
 
@@ -282,7 +281,7 @@ class AdamW(Adam):
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(
                 param_and_grad[0])
 
@@ -297,9 +296,8 @@ class AdamW(Adam):
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
                 'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
                 'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
-                'beta2', _beta2, 'coeff', self._coeff, 'multi_precision',
-                find_master, 'lr_ratio', lr_ratio_)
-
+                'beta2', _beta2, "with_decay", with_decay, 'coeff', self._coeff,
+                'multi_precision', find_master, 'lr_ratio', lr_ratio_)
             return None
 
         inputs = {

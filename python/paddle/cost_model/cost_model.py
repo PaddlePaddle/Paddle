@@ -15,6 +15,8 @@
 import paddle
 import paddle.static as static
 import numpy as np
+import json
+import os
 from paddle.fluid import core
 
 
@@ -36,7 +38,6 @@ class CostModel():
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         print("main program is: {}".format(main_program))
-        #print("start up program is: {}".format(startup_program))
 
         return startup_program, main_program
 
@@ -44,7 +45,7 @@ class CostModel():
                         startup_program,
                         main_program,
                         device='gpu',
-                        fetch_cost_list=['time', 'memory']):
+                        fetch_cost_list=['time']):
 
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
@@ -53,17 +54,33 @@ class CostModel():
         exe.run(startup_program)
         paddle.fluid.profiler.start_profiler("All")
         exe.run(main_program, feed={"X": x}, fetch_list=[])
-        # core.CostModel.ProfileMeasure(main_program, device)
-        print("core:<<<<<<<")
 
         cost_model = core.CostModel()
         cost_data = cost_model.ProfileMeasure(device)
-        # cost_list = self.stop_cost_model()
-        # return cost_list
 
+    def static_cost_data(self):
+        static_cost_data_path = os.path.join(
+            os.path.dirname(__file__), "static_op_benchmark.json")
+        with open(static_cost_data_path, 'r') as load_f:
+            load_dict = json.load(load_f)
+        self._static_cost_data = load_dict
+        # return all static cost data
+        return load_dict
 
-cost_model = CostModel()
+    def get_static_op_time(self, op_name, forward=True, dtype="float32"):
+        # if forward is True, return op forward time, otherwise return op backward time.
+        if op_name == None:
+            raise ValueError(
+                'op_name should not be empty when you want to get static op time'
+            )
 
-startup_program, main_program = cost_model.build_program()
+        op_cost = {}
+        for op_data in self._static_cost_data:
+            if (op_data["op"] == op_name) and (dtype in op_data["config"]):
+                if (forward):
+                    op_cost["op_time"] = op_data["paddle_gpu_time"]
+                else:
+                    op_cost["op_time"] = op_data["paddle_gpu_time_backward"]
+                op_cost["config"] = op_data["config"]
 
-cost_model.profile_measure(startup_program, main_program)
+        return op_cost

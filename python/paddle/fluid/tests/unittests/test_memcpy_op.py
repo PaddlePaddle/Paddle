@@ -202,7 +202,7 @@ class TestMemcpyApi(unittest.TestCase):
     def test_api(self):
         a = paddle.ones([1024, 1024])
         b = paddle.tensor.creation._memcpy(a, paddle.CUDAPinnedPlace())
-        self.assertEqual(b.place.__repr__(), "CUDAPinnedPlace")
+        self.assertEqual(b.place.__repr__(), "Place(gpu_pinned)")
         self.assertTrue(np.array_equal(a.numpy(), b.numpy()))
 
 

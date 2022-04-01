@@ -20,10 +20,10 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_activation_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -107,22 +107,21 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
     VLOG(3) << "Setting descriptors.";
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * D * C, 1, W * D * C, D * C, C};
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
-                                                         data_desc_, mode_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_, mode_));
 
     double this_factor = 1. - momentum;
     cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ACTIVATION;
@@ -144,7 +143,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
             "The argument ReserveSpace of batch_norm op is not found."));
 
     // --------------- cudnn batchnorm workspace ---------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::
             cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
                 /*handle=*/handle,
@@ -158,7 +157,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
                 /*sizeInBytes=*/&workspace_size));
 
     // -------------- cudnn batchnorm reserve space --------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
             /*handle=*/handle,
             /*mode=*/mode_,
@@ -167,11 +166,11 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
-    reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->type(),
+    reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->dtype(),
                                                     reserve_space_size);
-    workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->type(),
+    workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->dtype(),
                                                   workspace_size);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
             handle, mode_, bnOps_, CudnnDataType<T>::kOne(),
             CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
@@ -190,9 +189,9 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
             reserve_space_size));
 
     // clean when exit.
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
   }
 };
@@ -257,7 +256,8 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         PADDLE_THROW(
             platform::errors::Unimplemented("Unsupported activation type"));
       }
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+      phi::funcs::SetConstant<platform::CUDADeviceContext,
+                              BatchNormParamType<T>>
           functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
@@ -271,9 +271,9 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -282,12 +282,11 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
-                                                         data_desc_, mode_));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_, mode_));
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
@@ -305,7 +304,7 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     cudnnActivationDescriptor_t activation_desc_ =
         scope_act_desc.descriptor<T>(act_type);
     // --------------- cudnn batchnorm workspace ---------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
             /*handle=*/dev_ctx.cudnn_handle(),
             /*mode=*/mode_,
@@ -322,7 +321,7 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->type(),
                                                   workspace_size);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationBackwardEx(
             /*handle=*/dev_ctx.cudnn_handle(),
             /*mode=*/mode_,
@@ -358,9 +357,9 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
             /*reserveSpaceSizeInBytes=*/reserve_space_size));
 
     // clean when exit.
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
   }
 };

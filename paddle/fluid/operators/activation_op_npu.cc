@@ -15,11 +15,11 @@ limitations under the Licnse. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -76,17 +76,17 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // Step 2: Construct a broadcast factor, which has the same shape with x.
 
     // 2.1 Get a factor tensor with shape [1].
-    Tensor factor_tensor(framework::proto::VarType::FP32);
+    Tensor factor_tensor(experimental::DataType::FLOAT32);
     factor_tensor.mutable_data<float>({1}, place);
     FillNpuTensorWithConstant<float>(&factor_tensor, factor);
 
     // 2.2 Get the factor which has the shape with x and the same value with
     // factor.
-    Tensor factor_bc_tensor(framework::proto::VarType::FP32);
+    Tensor factor_bc_tensor(experimental::DataType::FLOAT32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
     const auto& runner_bc =
         NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
-                    {{"dims", framework::vectorize(x_dims)}});
+                    {{"dims", phi::vectorize(x_dims)}});
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
@@ -503,7 +503,6 @@ class SwishGradNPUKernel : public framework::OpKernel<T> {
     beta_x.mutable_data<T>(x->dims(), ctx.GetPlace());
     sigmoid_out.mutable_data<T>(x->dims(), ctx.GetPlace());
     swish_out.mutable_data<T>(x->dims(), ctx.GetPlace());
-
     const auto& muls_runner =
         NpuOpRunner("Muls", {*x}, {beta_x}, {{"value", beta}});
     muls_runner.Run(stream);
@@ -515,6 +514,9 @@ class SwishGradNPUKernel : public framework::OpKernel<T> {
     const auto& mul_runner =
         NpuOpRunner("Mul", {sigmoid_out, *x}, {swish_out}, {});
     mul_runner.Run(stream);
+    const auto& muls_runner2 =
+        NpuOpRunner("Muls", {swish_out}, {swish_out}, {{"value", beta}});
+    muls_runner2.Run(stream);
 
     const auto& mul_runner1 =
         NpuOpRunner("Mul", {sigmoid_out, swish_out}, {*dx}, {});
@@ -583,7 +585,7 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
     tensor_scale.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
         NpuOpRunner("FillD", {tensor_scale_tmp}, {tensor_scale},
-                    {{"dims", framework::vectorize(x->dims())}});
+                    {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
     Tensor div_val(x->type());
@@ -654,17 +656,18 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
     tensor_threshold.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
         NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
-                    {{"dims", framework::vectorize(x->dims())}});
+                    {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
-    Tensor tmp_bool(framework::proto::VarType::BOOL);
+    Tensor tmp_bool(experimental::DataType::BOOL);
     tmp_bool.mutable_data<bool>(x->dims(), place);
     const auto& runner_less =
         NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool});
     runner_less.Run(stream);
     Tensor tmp4(x->type());
     tmp4.mutable_data<T>(x->dims(), place);
-    auto dst_dtype = ConvertToNpuDtype(x->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
     const auto& runner_cast =
         NpuOpRunner("Cast", {tmp_bool}, {tmp4},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
@@ -808,7 +811,7 @@ class CosGradNPUKernel : public framework::OpKernel<T> {
     runner_dx.Run(stream);
 
     Tensor tmp(x->type());  // Temporary Tensor
-    tmp.Resize(framework::make_ddim({1, 1}));
+    tmp.Resize(phi::make_ddim({1, 1}));
     tmp.mutable_data<T>(place);
     float factor = -1.;
     FillNpuTensorWithConstant<T>(&tmp, static_cast<T>(factor));

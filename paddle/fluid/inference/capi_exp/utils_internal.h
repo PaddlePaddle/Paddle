@@ -115,6 +115,14 @@ std::vector<std::vector<size_t>> CvtTwoDimArrayToVecSize(
     __pd_keep const PD_TwoDimArraySize* array);
 
 ///
+/// \brief Convert the 'std::string' object to a 'PD_Cstr' object.
+///
+/// \param[in] vec source object.
+/// \return target object.
+///
+__pd_give PD_Cstr* CvtStrToCstr(const std::string& vec);
+
+///
 /// \brief Convert the 'PD_PlaceType' object to a 'paddle_infer::PlaceType'
 /// object.
 ///

@@ -14,11 +14,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/mul_op.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -92,8 +92,8 @@ class MulGradXPUKernel : public framework::OpKernel<T> {
                         : static_cast<const Tensor&>(*y);
     auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     Tensor dout_mat;
-    dout_mat.Resize({framework::flatten_to_2d(x->dims(), x_num_col_dims)[0],
-                     framework::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
+    dout_mat.Resize({phi::flatten_to_2d(x->dims(), x_num_col_dims)[0],
+                     phi::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
     auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
     if (dx != nullptr) {

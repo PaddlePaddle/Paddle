@@ -114,9 +114,8 @@ class LazyZeros<platform::CUDADeviceContext, T> {
     for (int i = 0; i < xs_size; i++) {
       h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 d_starts, cpu_place, h_starts, (xs_size + 1) * sizeof(int64_t),
-                 dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(), d_starts, cpu_place, h_starts,
+                 (xs_size + 1) * sizeof(int64_t), dev_ctx.stream());
 
     // copy each tensor of "outs" data address array to device
     auto h_out_addrs_mem = memory::Alloc(cpu_place, xs_size * sizeof(T*));
@@ -128,9 +127,8 @@ class LazyZeros<platform::CUDADeviceContext, T> {
     for (size_t i = 0; i < xs_size; ++i) {
       h_out_addrs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
     }
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 d_out_addrs, cpu_place, h_out_addrs, xs_size * sizeof(T*),
-                 dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(), d_out_addrs, cpu_place, h_out_addrs,
+                 xs_size * sizeof(T*), dev_ctx.stream());
 
     // launch cuda kernel
     int64_t total_num = h_starts[xs_size];

@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,46 +12,177 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-"""Test for fusion of conv, elementwise_add and act."""
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
+
+import hypothesis
+from hypothesis import given, settings, seed, example, assume, reproduce_failure
+import hypothesis.strategies as st
 
 
-class ConvElementwiseAddActFusePassTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 100, 100], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=3,
-                filter_size=3,
-                bias_attr=param_attr,
-                act="relu")
+class TestConvElementwiseAddActPass(PassAutoScanTest):
+    """
+    x_var   f_var(persistable)
+      \       /
+         conv2d 
+           |
+        conv2d_var    y_var(persistable)
+            \          /
+           elementwise_add
+                |
+         elementwise_add_var
+                |
+               act
+                |
+              act_var
+    """
 
-        self.feeds = {
-            "data": np.random.random((1, 3, 100, 100)).astype("float32")
-        }
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = False
+    def sample_predictor_configs(self, program_config):
+        # for gpu
+        config = self.create_inference_config(use_gpu=True)
+        yield config, ["conv2d_fusion"], (1e-4, 1e-5)
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-        self.assertTrue(
-            PassVersionChecker.IsCompatible(
-                'conv_elementwise_add_act_fuse_pass'))
+    def is_program_valid(self, prog_config):
+        paddings = prog_config.ops[0].attrs["paddings"]
+        strides = prog_config.ops[0].attrs["strides"]
+        groups = prog_config.ops[0].attrs["groups"]
+        padding_algorithm = prog_config.ops[0].attrs["padding_algorithm"]
+        dilations = prog_config.ops[0].attrs["dilations"]
+        data_format = prog_config.ops[0].attrs["data_format"]
+        filter_shape = prog_config.weights["filter"].shape
+        input_shape = prog_config.inputs["input_x"].shape
+        if data_format != "NCHW":
+            return False
+        if padding_algorithm == "VALID":
+            if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
+            ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+                return False
+        if padding_algorithm == "EXPLICIT":
+            if ((input_shape[2] + paddings[0] + paddings[1] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
+                ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+                return False
+        if data_format == "NCHW":
+            if input_shape[1] != filter_shape[1] * groups:
+                return False
+            if filter_shape[0] % groups != 0:
+                return False
+        else:
+            if input_shape[3] != filter_shape[1] * groups:
+                return False
+            if filter_shape[0] % groups != 0:
+                return False
+        return True
+
+    def sample_program_config(self, draw):
+        # 1. Generate shape of input:X of conv2d
+        x_shape = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=100), min_size=4, max_size=4))
+        x_shape[1] = draw(st.integers(min_value=1, max_value=10))
+
+        # 2. Generate legal attr:data_format of conv2d
+        data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
+
+        # 3. Generate legal shape of input:Y of conv2d
+        f_shape = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=7), min_size=4, max_size=4))
+        if data_format == "NCHW":
+            f_shape[1] = x_shape[1]
+        else:
+            f_shape[1] = x_shape[3]
+
+        # 4. Generate legal attr:strides of conv2d
+        strides = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=5), min_size=2, max_size=2))
+
+        # 5. Generate legal attr:padding_algorithm of conv2d
+        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
+
+        # 6. Generate legal attr:padding of conv2d
+        padding = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=5), min_size=4, max_size=4))
+
+        # 7. Generate legal attr:groups of conv2d
+        groups = draw(st.integers(min_value=1, max_value=3))
+
+        # 8. Generate legal attr:dilations of conv2d
+        dilations = draw(
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=5), min_size=2, max_size=2))
+
+        # 9. Generate legal input:ResidualData of conv2d
+        res_shape = []
+        if draw(st.booleans()):
+            res_shape = draw(
+                st.lists(
+                    st.integers(
+                        min_value=1, max_value=100),
+                    min_size=4,
+                    max_size=4))
+
+        # 10. Generate legal shape of input:bias of elementwise_add
+        bias_shape = [f_shape[0]]
+
+        # 11. Generate legal attr:axis of elementwise_add
+        axis = 1
+
+        conv2d_op = OpConfig(
+            "conv2d",
+            inputs={
+                "Input": ["input_x"],
+                "Filter": ["filter"],
+                "ResidualData": ["residualdata"]
+            },
+            outputs={"Output": ["conv2d_out"]},
+            strides=strides,
+            padding_algorithm=padding_algorithm,
+            paddings=padding,
+            groups=groups,
+            dilations=dilations,
+            data_format=data_format)
+        add_op = OpConfig(
+            "elementwise_add",
+            inputs={"X": ["conv2d_out"],
+                    "Y": ["bias"]},
+            outputs={"Out": ["add_out"]},
+            axis=axis)
+
+        relu_op = OpConfig(
+            "relu", inputs={"X": ["add_out"]}, outputs={"Out": ["relu_out"]})
+
+        ops = [conv2d_op, add_op, relu_op]
+
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={
+                "filter": TensorConfig(shape=f_shape),
+                "bias": TensorConfig(shape=bias_shape),
+            },
+            inputs={
+                "input_x": TensorConfig(shape=x_shape),
+                "residualdata": TensorConfig(shape=res_shape)
+            },
+            outputs=ops[-1].outputs["Out"], )
+        return program_config
+
+    def test(self):
+        self.run_and_statis(
+            quant=False,
+            max_examples=400,
+            passes=["conv_elementwise_add_act_fuse_pass"])
 
 
 if __name__ == "__main__":

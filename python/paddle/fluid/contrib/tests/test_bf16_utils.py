@@ -57,20 +57,20 @@ class AMPTest(unittest.TestCase):
         self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'lstm'})
 
     def test_amp_lists_4(self):
-        # 4. w=None, b={'elementwise_add'}
-        self.bf16_list.remove('elementwise_add')
-        self.fp32_list.add('elementwise_add')
+        # 4. w=None, b={'matmul_v2'}
+        self.bf16_list.remove('matmul_v2')
+        self.fp32_list.add('matmul_v2')
 
         self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_fp32_list={'elementwise_add'})
+            custom_fp32_list={'matmul_v2'})
 
     def test_amp_lists_5(self):
-        # 5. w=None, b={'elementwise_add'}
-        self.fp32_list.add('elementwise_add')
-        self.bf16_list.remove('elementwise_add')
+        # 5. w=None, b={'matmul_v2'}
+        self.fp32_list.add('matmul_v2')
+        self.bf16_list.remove('matmul_v2')
 
         self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_fp32_list={'elementwise_add'})
+            custom_fp32_list={'matmul_v2'})
 
     def test_amp_lists_6(self):
         # 6. w=None, b={'lstm'}

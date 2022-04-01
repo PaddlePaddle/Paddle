@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 
 namespace paddle {
@@ -29,12 +29,6 @@ namespace platform {
 // WARN: Under Development. Don't depend on it yet.
 //////////////////////
 class Event;
-
-inline uint64_t PosixInNsec() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
-}
 
 // DeviceTracer performs the following tasks:
 // 1. Register cuda callbacks for various events: kernel, memcpy, etc.
@@ -56,7 +50,7 @@ class DeviceTracer {
     uint64_t start_ns;
     uint64_t end_ns;
     int64_t device_id;
-    int64_t thread_id;
+    uint64_t thread_id;
   };
 
   struct MemRecord {
@@ -74,7 +68,7 @@ class DeviceTracer {
     uint64_t end_ns;
     size_t bytes;
     Place place;
-    int64_t thread_id;
+    uint64_t thread_id;
     std::string alloc_in;
     std::string free_in;
   };
@@ -84,7 +78,7 @@ class DeviceTracer {
     uint64_t start_ns;
     uint64_t end_ns;
     int64_t device_id;
-    int64_t thread_id;
+    uint64_t thread_id;
     uint32_t correlation_id;
   };
 
@@ -101,6 +95,9 @@ class DeviceTracer {
   // human-readable annotations.
   virtual void AddAnnotation(uint32_t id, Event* event) = 0;
 
+  virtual void AddAnnotations(
+      const std::map<uint64_t, ThreadEvents>& thr_events) = 0;
+
   virtual void AddMemRecords(const std::string& name, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,
                              int64_t stream_id, uint32_t correlation_id,
@@ -108,17 +105,17 @@ class DeviceTracer {
 
   virtual void AddCPURecords(const std::string& anno, uint64_t start_ns,
                              uint64_t end_ns, int64_t device_id,
-                             int64_t thread_id) = 0;
+                             uint64_t thread_id) = 0;
   virtual void AddActiveKindRecords(const std::string& anno, uint64_t start_ns,
                                     uint64_t end_ns, int64_t device_id,
-                                    int64_t thread_id,
+                                    uint64_t thread_id,
                                     uint32_t correlation_id) = 0;
 
   virtual void AddMemInfoRecord(uint64_t start_ns, uint64_t end_ns,
                                 size_t bytes, const Place& place,
                                 const std::string& alloc_in,
                                 const std::string& free_in,
-                                int64_t thread_id) = 0;
+                                uint64_t thread_id) = 0;
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.
@@ -154,7 +151,6 @@ void ClearCurBlock();
 int BlockDepth();
 
 // Set current thread id, so we can map the system thread id to thread id.
-void RecoreCurThreadId(int32_t id);
-int32_t GetThreadIdFromSystemThreadId(uint32_t id);
+void RecoreCurThreadId(uint64_t id);
 }  // namespace platform
 }  // namespace paddle

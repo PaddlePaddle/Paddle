@@ -202,7 +202,7 @@ class ProgramStats(object):
             if op.desc.has_attr(op_device_attr_name):
                 op_device = op.desc.attr(op_device_attr_name)
 
-            # Setting the force_cpu of seed to true will make the output of seed in cpu memory, 
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory,
             # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
@@ -957,7 +957,7 @@ def _append_backward_ops_with_checkpoints_(
         # added_descs should be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
-        # 3.c. add backward ops for all ops in current segment 
+        # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
@@ -1052,7 +1052,8 @@ def _append_backward_ops_(block,
                           callbacks=None,
                           input_grad_names_set=None,
                           op_path_dict=None,
-                          distop_context=None):
+                          distop_context=None,
+                          rename_var_map=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -1073,6 +1074,8 @@ def _append_backward_ops_(block,
         op_path_dict(dict): op_path_dict will be changed.
             key(int) block index
             val(list) the op path of block(index)
+        rename_var_map(dict): used to associate target_grad var name with first grad_op input name.
+            Only used in for high order gradient.
     """
     if callbacks is not None:
         assert (isinstance(callbacks, (list, tuple)))
@@ -1084,7 +1087,9 @@ def _append_backward_ops_(block,
     grad_op_descs = []
     program = block.program
 
-    rename_var_map = {}
+    if rename_var_map is None:
+        rename_var_map = {}
+    assert isinstance(rename_var_map, dict)
 
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
@@ -1109,10 +1114,11 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+        # Build the mapping between the forward op and backward op (Only for auto parallel)
         if distop_context is not None:
             for op_desc in grad_op_desc:
-                assert op_desc.id() not in distop_context.gradopidx2opidx
-                distop_context.gradopidx2opidx[op_desc.id()] = op.desc.id()
+                assert op_desc.id() not in distop_context.grad_op_id_to_op_id
+                distop_context.grad_op_id_to_op_id[op_desc.id()] = op.desc.id()
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -1131,10 +1137,10 @@ def _append_backward_ops_(block,
         # So rename here before _addup_repetitive_outputs_.
         if program._appending_grad_times > 1:
             for op_desc in grad_op_desc:
-                if not _is_grad_op_(op):
-                    for name in op_desc.input_arg_names():
-                        if name in rename_var_map:
-                            op_desc._rename_input(name, rename_var_map[name])
+                forward_op_inputs = op.desc.input_arg_names()
+                for name in op_desc.input_arg_names():
+                    if name in rename_var_map and name not in forward_op_inputs:
+                        op_desc._rename_input(name, rename_var_map[name])
                 for name in op_desc.output_arg_names():
                     if "@GRAD" not in name:
                         continue
@@ -1153,11 +1159,12 @@ def _append_backward_ops_(block,
         # But this strategy is not suited for while op for some control flow,
         # for example, for while op, the grads maybe generated in next loop.
         if input_grad_names_set is not None:
+            is_grad_name = lambda name: name.find(core.grad_var_suffix()) != -1 or name in input_grad_names_set
             is_append_grad = False
             for op_desc in grad_op_desc:
                 input_grad_names = [
                     name for name in op_desc.input_arg_names()
-                    if name.find(core.grad_var_suffix()) != -1
+                    if is_grad_name(name)
                 ]
                 # some code of gradient ops, like increment, are not very
                 # standard, there is no @GRAD in these ops' inputs.
@@ -1197,6 +1204,12 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
+        # Rebuild the mapping because new_op_desc has a differnt id (Only for auto parallel)
+        if distop_context is not None:
+            if op_desc.id() in distop_context.grad_op_id_to_op_id:
+                distop_context.grad_op_id_to_op_id[new_op_desc.id(
+                )] = distop_context.grad_op_id_to_op_id[op_desc.id()]
+                distop_context.grad_op_id_to_op_id.pop(op_desc.id())
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
@@ -1914,10 +1927,11 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     input_grad_names_set = set()
 
     target_grad_map = {}
+    rename_var_map = {}
     for i, grad in enumerate(target_gradients):
         target = targets[i]
+        grad_name = _append_grad_suffix_(target.name)
         if grad is None:
-            grad_name = _append_grad_suffix_(target.name)
             target_shape = target.name + '_shape'
             block.desc.append_op().copy_from(
                 _create_op_desc_("shape", {'Input': [target.name]},
@@ -1942,11 +1956,14 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                         target.name, grad.name))
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
+            rename_var_map[grad_name] = grad.name
 
     # For double backward, input_grad_names is used for filter
-    # some non-used gradients op.
+    # some non-used gradients op. rename_var_map is used to
+    # associate target_grad var name with first grad_op input name.
     if prog._appending_grad_times == 1:
         input_grad_names_set = None
+        rename_var_map = {}
 
     for input in inputs:
         if input.block.program != prog:
@@ -1973,7 +1990,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         no_grad_dict,
         grad_to_var,
         input_grad_names_set=input_grad_names_set,
-        op_path_dict=op_path_dict)
+        op_path_dict=op_path_dict,
+        rename_var_map=rename_var_map)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have

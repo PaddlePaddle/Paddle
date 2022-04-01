@@ -216,11 +216,35 @@ class CompileTimeStrategy(object):
         except Exception:
             return self.role_maker.get_heter_worker_endpoints()
 
+    def get_next_stage_trainers(self):
+        try:
+            return self.role_maker._get_next_trainers()
+        except Exception:
+            return self.role_maker.get_next_trainers()
+
     def get_heter_worker_endpoint(self):
         try:
             return self.role_maker._get_heter_worker_endpoint()
         except Exception:
             return self.role_maker.get_heter_worker_endpoint()
+
+    def get_trainer_endpoints(self):
+        try:
+            return self.role_maker._get_trainer_endpoints()
+        except Exception:
+            return self.role_maker.get_trainer_endpoints()
+
+    def get_trainer_endpoint(self):
+        try:
+            return self.role_maker._get_trainer_endpoint()
+        except Exception:
+            return self.role_maker.get_trainer_endpoint()
+
+    def get_previous_stage_trainers(self):
+        try:
+            return self.role_maker._get_previous_trainers()
+        except Exception:
+            return self.role_maker.get_previous_trainers()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program
@@ -553,7 +577,7 @@ class CompileTimeStrategy(object):
                 sparse_ctx = CommContext(grad_name, [grad_name],
                                          ["127.0.0.1:6071"], [var_numel],
                                          [grad_name], trainer_id, True, True,
-                                         is_distributed, idx, False)
+                                         is_distributed, idx, False, False, -1)
                 idx += 1
                 send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
@@ -591,7 +615,8 @@ class CompileTimeStrategy(object):
             aggregate = True
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
-                                    aggregate, False, False, idx, False)
+                                    aggregate, False, False, idx, False, False,
+                                    -1)
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
@@ -606,7 +631,7 @@ class CompileTimeStrategy(object):
                 dense_ctx = CommContext(grad_name, [grad_name],
                                         ["127.0.0.1:6071"], [var_numel],
                                         [origin_varname], trainer_id, aggregate,
-                                        False, False, idx, False)
+                                        False, False, idx, False, False, -1)
                 send_ctx[grad_name] = dense_ctx
                 idx += 1
         return idx
@@ -648,7 +673,7 @@ class CompileTimeStrategy(object):
 
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
-                                     is_distributed, idx, False)
+                                     is_distributed, idx, False, False, -1)
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
@@ -726,7 +751,7 @@ class CompileTimeStrategy(object):
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
         ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                          True, False, False, idx, True)
+                          True, False, False, idx, True, False, -1)
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):

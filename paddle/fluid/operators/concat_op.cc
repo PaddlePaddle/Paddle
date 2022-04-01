@@ -18,6 +18,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include <paddle/fluid/platform/mkldnn_helper.h>
@@ -31,41 +35,6 @@ class ConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "Concat");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Concat");
-
-    auto inputs_dims = ctx->GetInputsDim("X");
-
-    const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(
-        inputs_num, static_cast<size_t>(0),
-        platform::errors::InvalidArgument(
-            "The number of input tensors in concat op should > 0. But "
-            "received inputs' length is 0."));
-    if (inputs_num == 1) {
-      VLOG(3) << "Warning: concat op have only one input, may waste memory";
-    }
-
-    if (ctx->HasInput("AxisTensor")) {
-      auto out_dims =
-          framework::make_ddim(std::vector<int>(inputs_dims[0].size(), -1));
-      ctx->SetOutputDim("Out", out_dims);
-      ctx->ShareLoD("X", /*->*/ "Out");
-    } else {
-      size_t axis =
-          ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
-                      static_cast<int64_t>(inputs_dims[0].size()));
-      framework::DDim out_dims =
-          ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims, axis);
-      if (out_dims[axis] < 0) {
-        out_dims[axis] = -1;
-      }
-      ctx->SetOutputDim("Out", out_dims);
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -74,7 +43,7 @@ class ConcatOp : public framework::OperatorWithKernel {
     bool flag = 0;
     for (auto *input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
+        input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
       }
@@ -235,26 +204,19 @@ class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(concat, ConcatInferShapeFunctor,
+                            PD_INFER_META(phi::ConcatInferMeta));
+
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ConcatGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
+                  ConcatInferShapeFunctor);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>>);
+
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,

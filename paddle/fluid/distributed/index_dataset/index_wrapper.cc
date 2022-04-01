@@ -66,9 +66,10 @@ int TreeIndex::Load(const std::string filename) {
       auto code = std::stoull(item.key());
       IndexNode node;
       node.ParseFromString(item.value());
-      PADDLE_ENFORCE_NE(node.id(), 0,
-                        platform::errors::InvalidArgument(
-                            "Node'id should not be equel to zero."));
+
+      // PADDLE_ENFORCE_NE(node.id(), 0,
+      //                  platform::errors::InvalidArgument(
+      //                      "Node'id should not be equel to zero."));
       if (node.is_leaf()) {
         id_codes_map_[node.id()] = code;
       }

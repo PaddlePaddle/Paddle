@@ -3,6 +3,8 @@
 // 1. remove  macro
 // 2. remove LLVM_LIKELY and LLVM_UNLIKELY
 // 3. add at(index) method for small vector
+// 4. wrap the call to max and min with parenthesis to prevent the macro
+// expansion to fix the build error on windows platform
 
 //===- llvm/ADT/SmallVector.h - 'Normally small' vectors --------*- C++ -*-===//
 //
@@ -16,8 +18,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PADDLE_UTILS_SMALL_VECTOR_H_
-#define PADDLE_UTILS_SMALL_VECTOR_H_
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -29,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -90,7 +92,7 @@ class SmallVectorBase {
 
   /// The maximum value of the Size_T used.
   static constexpr size_t SizeTypeMax() {
-    return std::numeric_limits<Size_T>::max();
+    return (std::numeric_limits<Size_T>::max)();
   }
 
   SmallVectorBase() = delete;
@@ -309,7 +311,7 @@ class SmallVectorTemplateCommon
 
   size_type size_in_bytes() const { return size() * sizeof(T); }
   size_type max_size() const {
-    return std::min(this->SizeTypeMax(), size_type(-1) / sizeof(T));
+    return (std::min)(this->SizeTypeMax(), size_type(-1) / sizeof(T));
   }
 
   size_t capacity_in_bytes() const { return capacity() * sizeof(T); }
@@ -727,7 +729,7 @@ class SmallVectorImpl : public SmallVectorTemplateBase<T> {
     }
 
     // Assign over existing elements.
-    std::fill_n(this->begin(), std::min(NumElts, this->size()), Elt);
+    std::fill_n(this->begin(), (std::min)(NumElts, this->size()), Elt);
     if (NumElts > this->size())
       std::uninitialized_fill_n(this->end(), NumElts - this->size(), Elt);
     else if (NumElts < this->size())
@@ -1393,7 +1395,7 @@ static void report_at_maximum_capacity(size_t MaxSize) {
 // Note: Moving this function into the header may cause performance regression.
 template <class Size_T>
 static size_t getNewCapacity(size_t MinSize, size_t TSize, size_t OldCapacity) {
-  constexpr size_t MaxSize = std::numeric_limits<Size_T>::max();
+  constexpr size_t MaxSize = (std::numeric_limits<Size_T>::max)();
 
   // Ensure we can fit the new capacity.
   // This is only going to be applicable when the capacity is 32 bit.
@@ -1408,7 +1410,7 @@ static size_t getNewCapacity(size_t MinSize, size_t TSize, size_t OldCapacity) {
   // In theory 2*capacity can overflow if the capacity is 64 bit, but the
   // original capacity would never be large enough for this to be a problem.
   size_t NewCapacity = 2 * OldCapacity + 1;  // Always grow.
-  return std::min(std::max(NewCapacity, MinSize), MaxSize);
+  return (std::min)((std::max)(NewCapacity, MinSize), MaxSize);
 }
 
 // Note: Moving this function into the header may cause performance regression.
@@ -1458,7 +1460,7 @@ static_assert(sizeof(SmallVectorSizeType<char>) == sizeof(uint32_t),
               "Expected SmallVectorBase<uint32_t> variant to be in use.");
 #endif
 
-}  // end namespace paddle
+}  // namespace paddle
 
 namespace std {
 
@@ -1476,6 +1478,4 @@ inline void swap(paddle::SmallVector<T, N> &LHS,
   LHS.swap(RHS);
 }
 
-}  // end namespace std
-
-#endif  // PADDLE_UTILS_SMALL_VECTOR_H_
+}  // namespace std

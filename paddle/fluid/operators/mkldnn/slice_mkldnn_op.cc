@@ -15,24 +15,24 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-static mkldnn::memory::format_tag get_plain_format_tag(
+static dnnl::memory::format_tag get_plain_format_tag(
     const paddle::framework::Tensor* tensor) {
   auto tensor_dims_size = tensor->dims().size();
 
   switch (tensor_dims_size) {
     case 1:
-      return mkldnn::memory::format_tag::a;
+      return dnnl::memory::format_tag::a;
     case 2:
-      return mkldnn::memory::format_tag::ab;
+      return dnnl::memory::format_tag::ab;
     case 3:
-      return mkldnn::memory::format_tag::abc;
+      return dnnl::memory::format_tag::abc;
     case 4:
-      return mkldnn::memory::format_tag::abcd;
+      return dnnl::memory::format_tag::abcd;
     case 5:
-      return mkldnn::memory::format_tag::abcde;
+      return dnnl::memory::format_tag::abcde;
   }
 
-  return mkldnn::memory::format_tag::abcdef;
+  return dnnl::memory::format_tag::abcdef;
 }
 
 namespace paddle {
@@ -55,7 +55,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<Tensor>("Input");
     auto* out = ctx.Output<Tensor>("Out");
 
-    auto x_vec_dims = framework::vectorize(x->dims());
+    auto x_vec_dims = phi::vectorize(x->dims());
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -95,12 +95,14 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    out->Resize(framework::make_ddim(slice_dims));
+    out->Resize(phi::make_ddim(slice_dims));
 
-    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    dnnl::memory::data_type x_type =
+        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
 
-    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
-                                                   x_type, onednn_engine);
+    platform::ReorderMKLDNNHandler reorder_handler(
+        x_vec_dims, framework::TransToProtoVarType(x->dtype()), x_type,
+        onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
@@ -130,7 +132,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     astream.wait();
-    out->Resize(framework::make_ddim(new_out_dims));
+    out->Resize(phi::make_ddim(new_out_dims));
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(platform::GetMKLDNNFormat(
         reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
@@ -151,8 +153,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
 
-    auto dx_vec_dims = framework::vectorize(dx->dims());
-    auto dout_vec_dims = framework::vectorize(dout->dims());
+    auto dx_vec_dims = phi::vectorize(dx->dims());
+    auto dout_vec_dims = phi::vectorize(dout->dims());
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -192,15 +194,16 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    mkldnn::memory::data_type dout_type =
-        framework::ToMKLDNNDataType(dout->type());
-    mkldnn::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
-                            dout->format());
-    mkldnn::memory::format_tag reorder_format_tag =
+    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
+    dnnl::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
+                          dout->format());
+    dnnl::memory::format_tag reorder_format_tag =
         platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
-    platform::ReorderMKLDNNHandler reorder_handler(slice_dims, dout->type(),
-                                                   dout_type, onednn_engine);
+    platform::ReorderMKLDNNHandler reorder_handler(
+        slice_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         reorder_format_tag, platform::to_void_cast(dout->data<T>()));
@@ -227,6 +230,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(slice, MKLDNN, paddle::platform::CPUPlace,
                    ops::SliceMKLDNNKernel<float>,
+                   ops::SliceMKLDNNKernel<int8_t>,
+                   ops::SliceMKLDNNKernel<uint8_t>,
                    ops::SliceMKLDNNKernel<paddle::platform::bfloat16>);
 
 namespace ops = paddle::operators;
