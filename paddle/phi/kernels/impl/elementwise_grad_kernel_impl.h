@@ -666,4 +666,44 @@ struct MinGradDy {
     return dout * static_cast<T>(x >= y);
   }
 };
+
+template <typename T>
+struct PowGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * y *
+             std::pow(static_cast<double>(x), static_cast<double>(y - 1));
+    }
+#endif
+    return dout * y * std::pow(x, y - 1);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct PowGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * std::log(static_cast<double>(x)) *
+             std::pow(static_cast<double>(x), static_cast<double>(y));
+    }
+#endif
+    return dout * std::log(x) * std::pow(x, y);
+  }
+};
+
+template <typename T, typename Context>
+void ElementwisePowGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
+      dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
+}
+
 }  // namespace phi

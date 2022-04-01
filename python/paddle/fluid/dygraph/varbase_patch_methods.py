@@ -20,6 +20,7 @@ import sys
 
 import paddle
 from .. import framework
+from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
 from .. import core
 from .. import unique_name
 from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
@@ -172,25 +173,24 @@ def monkey_patch_varbase():
             else:
                 self.value().set_string_list(value)
         else:
-            value_np = value
-            if isinstance(value, base_tensor):
-                value_np = value.numpy()
-
-            self_tensor_np = self.numpy()
-
-            assert self_tensor_np.shape == value_np.shape, \
+            assert self.shape == list(value.shape),  \
                 "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                    self.name, self_tensor_np.shape, value_np.shape)
+                    self.name, self.shape, value.shape)
 
-            assert self_tensor_np.dtype == value_np.dtype, \
+            if isinstance(value, base_tensor):
+                dtype = value.dtype
+            else:
+                dtype = convert_np_dtype_to_dtype_(value.dtype)
+
+            assert self.dtype == dtype, \
                 "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    self.name, self_tensor_np.dtype, value_np.dtype)
+                    self.name, self.dtype, dtype)
 
             # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
             # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
-            self.value().get_tensor().set(value_np,
+            self.value().get_tensor().set(value,
                                           framework._current_expected_place())
 
     @framework.dygraph_only
@@ -798,7 +798,11 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        return _C_ops.assign(self)
+        if _in_legacy_dygraph():
+            output = core.VarBase()
+        else:
+            output = core.eager.Tensor()
+        return _C_ops.assign(self, output)
 
     @framework.dygraph_only
     def value(self):
@@ -832,6 +836,16 @@ def monkey_patch_varbase():
             res.persistable = self.persistable
             return res
 
+    @framework.dygraph_only
+    def pin_memory(self):
+        if self.place.is_cuda_pinned_place():
+            return self
+        else:
+            res = self._copy_to(core.CUDAPinnedPlace(), True)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -857,6 +871,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)
+        setattr(core.eager.Tensor, "pin_memory", pin_memory)
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
     else:

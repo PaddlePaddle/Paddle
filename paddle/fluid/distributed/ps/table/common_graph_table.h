@@ -204,7 +204,7 @@ class RandomSampleLRU {
   }
 
   void process_redundant(int process_size) {
-    size_t length = std::min(remove_count, process_size);
+    int length = std::min(remove_count, process_size);
     while (length--) {
       remove(node_head);
       remove_count--;
@@ -306,12 +306,10 @@ class ScaledLRU {
 
     if ((size_t)node_size <= size_t(1.1 * size_limit) + 1) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
-      // VLOG(0)<"in shrink\n";
       global_count = 0;
       for (size_t i = 0; i < lru_pool.size(); i++) {
         global_count += lru_pool[i].node_size - lru_pool[i].remove_count;
       }
-      // VLOG(0)<<"global_count "<<global_count<<"\n";
       if ((size_t)global_count > size_limit) {
         size_t remove = global_count - size_limit;
         for (size_t i = 0; i < lru_pool.size(); i++) {
@@ -319,7 +317,6 @@ class ScaledLRU {
           lru_pool[i].remove_count +=
               1.0 * (lru_pool[i].node_size - lru_pool[i].remove_count) /
               global_count * remove;
-          // VLOG(0)<<i<<" "<<lru_pool[i].remove_count<<std::endl;
         }
       }
       pthread_rwlock_unlock(&rwlock);
@@ -332,8 +329,6 @@ class ScaledLRU {
     if (diff != 0) {
       __sync_fetch_and_add(&global_count, diff);
       if (global_count > int(1.25 * size_limit)) {
-        // VLOG(0)<<"global_count too large "<<global_count<<" enter start
-        // shrink task\n";
         thread_pool->enqueue([this]() -> int { return shrink(); });
       }
     }

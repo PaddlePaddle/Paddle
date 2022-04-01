@@ -943,8 +943,8 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
             slice_shape = shape
         else:
             slice_shape = shape // process_shape[dims_mapping[i]]
-        if shape == 1:
-            index = 0
+        if slice_shape == 1:
+            index = partition_index[i][0]
         else:
             index = (partition_index[i][0] + 1) // slice_shape
         sliced_param_index = sliced_param_index * (shape // slice_shape) + index
@@ -1047,8 +1047,7 @@ def set_grad_var_shape(program, dist_context):
 
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
-
-                assert forward_input_dist_attr is not None, f"{forward_var_name}"
+                assert forward_input_dist_attr is not None, f"{forward_var_name, str(op)}"
                 forward_var = vars[forward_var_name]
                 forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     forward_var)

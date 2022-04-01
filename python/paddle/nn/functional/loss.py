@@ -37,7 +37,7 @@ from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
 from paddle.framework import core
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
 __all__ = []
 
 
@@ -784,11 +784,12 @@ def nll_loss(input,
             input_dims))
     n = input_shape[0]
     c = input_shape[1]
-    if in_dynamic_mode():
+    if _non_static_mode():
         if input_dims != 2 and input_dims != 4:
             input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
             label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
+
         out, total_weight = _C_ops.nll_loss(input, label, weight,
                                             'ignore_index', ignore_index,
                                             'reduction', reduction)
@@ -1818,12 +1819,16 @@ def cross_entropy(input,
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=input.dtype)
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    outputs = {'Softmax': softmax, 'Loss': out}
+    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        backprop = helper.create_variable_for_type_inference(dtype=input.dtype)
+        outputs['Backprop'] = backprop
     helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': input,
                 'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': out},
+        outputs=outputs,
         attrs=attrs)
 
     if weight is not None:

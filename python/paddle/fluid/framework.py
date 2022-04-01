@@ -74,7 +74,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = False
+_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -171,6 +171,12 @@ def _test_eager_guard(place=None):
     if not _already_patch_eager_tensor:
         monkey_patch_varbase()
         monkey_patch_math_varbase()
+
+        # Ugly setting
+        from paddle.tensor.manipulation import fill_, zero_
+        setattr(core.eager.Tensor, 'fill_', fill_)
+        setattr(core.eager.Tensor, 'zero_', zero_)
+
         _already_patch_eager_tensor = True
     try:
         yield
