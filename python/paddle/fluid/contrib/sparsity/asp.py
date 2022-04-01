@@ -43,30 +43,26 @@ def set_excluded_layers(param_names, main_program=None):
     Args:
         param_names (list of string): A list contains names of parameters.
         main_program (Program, optional): Program with model definition and its parameters.
-                                          If None is given, then it would be set as `paddle.static.default.default_main_program().
+                                          If None is given, then it would be set as `paddle.static.default_main_program().
                                           Default is None.
     Examples:
+        1. Usage of Dynamic Graph
         .. code-block:: python
 
             import paddle
             from paddle.static import sparsity
 
-            # Dynamic Graph
             class MyLayer(paddle.nn.Layer):
                 def __init__(self):
                     super(MyLayer, self).__init__()
                     self.conv1 = paddle.nn.Conv2D(
                         in_channels=3, out_channels=4, kernel_size=3, padding=2)
-                    self.linear1 = paddle.nn.Linear(4624, 32)
-                    self.linear2 = paddle.nn.Linear(32, 32)
-                    self.linear3 = paddle.nn.Linear(32, 10)
+                    self.linear1 = paddle.nn.Linear(4624, 100)
 
                 def forward(self, img):
                     hidden = self.conv1(img)
                     hidden = paddle.flatten(hidden, start_axis=1)
-                    hidden = self.linear1(hidden)
-                    hidden = self.linear2(hidden)
-                    prediction = self.linear3(hidden)
+                    prediction = self.linear1(hidden)
                     return prediction
 
             my_layer = MyLayer()
@@ -78,9 +74,26 @@ def set_excluded_layers(param_names, main_program=None):
 
             optimizer = sparsity.decorate(optimizer)
 
+        2. Usage of Static Graph
+        .. code-block:: python
 
-            # Static Graph
+            import paddle
+            from paddle.static import sparsity
+
             paddle.enable_static()
+
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.conv1 = paddle.nn.Conv2D(
+                        in_channels=3, out_channels=4, kernel_size=3, padding=2)
+                    self.linear1 = paddle.nn.Linear(4624, 100)
+
+                def forward(self, img):
+                    hidden = self.conv1(img)
+                    hidden = paddle.flatten(hidden, start_axis=1)
+                    prediction = self.linear1(hidden)
+                    return prediction
 
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
@@ -88,9 +101,8 @@ def set_excluded_layers(param_names, main_program=None):
             with paddle.static.program_guard(main_program, startup_program):
                 input_data = paddle.static.data(name='data', shape=[None, 128])
                 label = paddle.static.data(name='label', shape=[None, 10])
-                hidden = paddle.static.nn.fc(x=input_data, num_flatten_dims=-1, size=32, activation=None, name="need_sparse_fc")
-                hidden = paddle.static.nn.fc(x=hidden, num_flatten_dims=-1, size=32, activation=None, name="need_dense_fc")
-                prob = paddle.static.nn.fc(x=hidden, num_flatten_dims=-1, size=10, activation=None)
+                my_layer = MyLayer()
+                prob = my_layer(input_data)
                 loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
 
                 # Setup exluded layers out from ASP workflow.
@@ -453,6 +465,10 @@ class ASPHelper(object):
         This is the implementation of `sparsity.decorate`, for details please see explanation in `sparsity.decorate`.
         """
         if paddle.in_dynamic_mode():
+            # main_prog and startup_prog would be used with paddle.static.program_guard
+            # to create ASP masks. Moreover, main_prog is a key to map paddle.static.Program
+            # to its own ASP informantion, like ASP mask variables. For dynamic graph, we use
+            # default_main_program as the key.
             main_prog = paddle.static.default_main_program()
             startup_prog = paddle.static.default_startup_program()
             ASPHelper._create_mask_variables(main_prog, startup_prog,
@@ -542,6 +558,8 @@ class ASPHelper(object):
 
             return asp_info.masks.copy()
         else:
+            # This for loop is only used to obtain Block and Program from
+            # first parameters.
             for param in layer.parameters():
                 return ASPHelper.prune_model_by_program(
                     place,
