@@ -85,14 +85,14 @@ def _value_and_gradient(f, x, v=None):
         value: a tensor that holds the function value.
         gradient: a tensor that holds the function gradients.  
     """
-    if not x.stop_gradient:
-        x = paddle.clone(x)
-    else:
-        x = x.detach()
-        x.stop_gradient = False
+    # use detach to cut off relation between x and original graph
+    x = x.detach()
+    x.stop_gradient = False
     value = f(x)
     if paddle.in_dynamic_mode():
+        # only need to compute first order derivative, and some op dont support high order derivative.
         gradient = paddle.grad([value], [x], create_graph=False)[0]
     else:
         gradient = paddle.static.gradients([value], [x])[0]
-    return value, gradient
+    # use detach to make results real number without grad to avoid assign error
+    return value.detach(), gradient.detach()
