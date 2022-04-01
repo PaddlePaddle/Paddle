@@ -23,12 +23,12 @@ namespace distributed {
 int DownpourCtrAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
-  _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
+  _embed_sgd_rule->LoadConfig(_config.embed_sgd_param(), 1);
 
   name = _config.embedx_sgd_param().name();
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
-  _embedx_sgd_rule->load_config(_config.embedx_sgd_param(),
-                                _config.embedx_dim());
+  _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),
+                               _config.embedx_dim());
 
   _show_click_decay_rate = _config.ctr_accessor_param().show_click_decay_rate();
   _ssd_unseenday_threshold =
@@ -60,7 +60,7 @@ bool DownpourCtrAccessor::Shrink(float* value) {
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
 
   // time_decay first
-  auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+  auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
   int16_t day_diff = _day_id - unseen_days;
   if (day_diff < 0 || day_diff > delete_after_unseen_days) {
     return true;
@@ -71,7 +71,7 @@ bool DownpourCtrAccessor::Shrink(float* value) {
       DownpourCtrFeatureValue::Click(value) * _time_decay_rates[day_diff];
 
   // shrink after
-  auto score = show_click_score(show_right, click_right);
+  auto score = ShowClickScore(show_right, click_right);
   if (score < delete_threshold) {
     return true;
   }
@@ -86,7 +86,7 @@ bool DownpourCtrAccessor::save_ssd(float* value) {
   if (_day_id == 0) {
     return true;
   }
-  auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+  auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
   if (unseen_days == 0) {
     return false;
   }
@@ -105,9 +105,9 @@ bool DownpourCtrAccessor::save_ssd(float* value) {
 //         float* value, int param, double global_cache_threshold) {
 //     auto base_threshold = _config.ctr_accessor_param().base_threshold();
 //     auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
-//     auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+//     auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
 //     int16_t day_diff = _day_id - unseen_days;
-//     if (show_click_score(DownpourCtrFeatureValue::Show(value),
+//     if (ShowClickScore(DownpourCtrFeatureValue::Show(value),
 //     DownpourCtrFeatureValue::Click(value)) >= base_threshold
 //         && day_diff <= delta_keep_days) {
 //         return DownpourCtrFeatureValue::Show(value) > global_cache_threshold;
@@ -134,7 +134,7 @@ bool DownpourCtrAccessor::Save(float* value, int param) {
     case 1:
     // save xbox base
     case 2: {
-      auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+      auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
       int16_t day_diff = _day_id - unseen_days;
 
       auto show_right =
@@ -142,12 +142,12 @@ bool DownpourCtrAccessor::Save(float* value, int param) {
       auto click_right =
           DownpourCtrFeatureValue::Click(value) * _time_decay_rates[day_diff];
 
-      if (show_click_score(show_right, click_right) >= base_threshold &&
-          DownpourCtrFeatureValue::delta_score(value) >= delta_threshold &&
+      if (ShowClickScore(show_right, click_right) >= base_threshold &&
+          DownpourCtrFeatureValue::DeltaScore(value) >= delta_threshold &&
           day_diff <= delta_keep_days) {
         // do this after save, because it must not be modified when retry
         if (param == 2) {
-          DownpourCtrFeatureValue::delta_score(value) = 0;
+          DownpourCtrFeatureValue::DeltaScore(value) = 0;
         }
         return true;
       } else {
@@ -159,7 +159,7 @@ bool DownpourCtrAccessor::Save(float* value, int param) {
       // DownpourCtrFeatureValue::Show(value) *= _show_click_decay_rate;
       // DownpourCtrFeatureValue::Click(value) *= _show_click_decay_rate;
       // do this after save, because it must not be modified when retry
-      // DownpourCtrFeatureValue::unseen_days(value)++;
+      // DownpourCtrFeatureValue::UnseenDays(value)++;
       return true;
     }
     default:
@@ -176,23 +176,23 @@ void DownpourCtrAccessor::UpdateStatAfterSave(float* value, int param) {
   }
   switch (param) {
     case 1: {
-      auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+      auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
       int16_t day_diff = _day_id - unseen_days;
       auto show_right =
           DownpourCtrFeatureValue::Show(value) * _time_decay_rates[day_diff];
       auto click_right =
           DownpourCtrFeatureValue::Click(value) * _time_decay_rates[day_diff];
 
-      if (show_click_score(show_right, click_right) >= base_threshold &&
-          DownpourCtrFeatureValue::delta_score(value) >= delta_threshold &&
+      if (ShowClickScore(show_right, click_right) >= base_threshold &&
+          DownpourCtrFeatureValue::DeltaScore(value) >= delta_threshold &&
           day_diff <= delta_keep_days) {
-        DownpourCtrFeatureValue::delta_score(value) = 0;
+        DownpourCtrFeatureValue::DeltaScore(value) = 0;
       }
     }
       return;
     //  case 3:
     //     {
-    //         DownpourCtrFeatureValue::unseen_days(value)++;
+    //         DownpourCtrFeatureValue::UnseenDays(value)++;
     //     }
     //     return;
     default:
@@ -204,17 +204,17 @@ int32_t DownpourCtrAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
-    value[DownpourCtrFeatureValue::unseen_days_index()] = 0;
-    value[DownpourCtrFeatureValue::delta_score_index()] = 0;
+    value[DownpourCtrFeatureValue::UnseenDaysIndex()] = 0;
+    value[DownpourCtrFeatureValue::DeltaScoreIndex()] = 0;
     value[DownpourCtrFeatureValue::ShowIndex()] = 0;
     value[DownpourCtrFeatureValue::ClickIndex()] = 0;
     value[DownpourCtrFeatureValue::SlotIndex()] = -1;
-    _embed_sgd_rule->init_value(
-        value + DownpourCtrFeatureValue::Embed_W_Index(),
-        value + DownpourCtrFeatureValue::embed_g2sum_index(), true);
-    _embedx_sgd_rule->init_value(
-        value + DownpourCtrFeatureValue::Embedx_W_Index(),
-        value + DownpourCtrFeatureValue::embedx_g2sum_index());
+    _embed_sgd_rule->InitValue(
+        value + DownpourCtrFeatureValue::EmbedWIndex(),
+        value + DownpourCtrFeatureValue::EmbedG2SumIndex(), true);
+    _embedx_sgd_rule->InitValue(
+        value + DownpourCtrFeatureValue::EmbedxWIndex(),
+        value + DownpourCtrFeatureValue::EmbedxG2SumIndex());
   }
   return 0;
 }
@@ -230,7 +230,7 @@ bool DownpourCtrAccessor::NeedExtendMF(float* value) {
 }
 
 bool DownpourCtrAccessor::HasMF(size_t size) {
-  return size > DownpourCtrFeatureValue::embedx_g2sum_index();
+  return size > DownpourCtrFeatureValue::EmbedxG2SumIndex();
 }
 
 // from DownpourCtrFeatureValue to DownpourCtrPullValue
@@ -244,10 +244,10 @@ int32_t DownpourCtrAccessor::Select(float** select_values, const float** values,
         value[DownpourCtrFeatureValue::ShowIndex()];
     select_value[DownpourCtrPullValue::ClickIndex()] =
         value[DownpourCtrFeatureValue::ClickIndex()];
-    select_value[DownpourCtrPullValue::Embed_W_Index()] =
-        value[DownpourCtrFeatureValue::Embed_W_Index()];
-    memcpy(select_value + DownpourCtrPullValue::Embedx_W_Index(),
-           value + DownpourCtrFeatureValue::Embedx_W_Index(),
+    select_value[DownpourCtrPullValue::EmbedWIndex()] =
+        value[DownpourCtrFeatureValue::EmbedWIndex()];
+    memcpy(select_value + DownpourCtrPullValue::EmbedxWIndex(),
+           value + DownpourCtrFeatureValue::EmbedxWIndex(),
            embedx_dim * sizeof(float));
   }
   return 0;
@@ -288,20 +288,20 @@ int32_t DownpourCtrAccessor::Update(float** update_values,
     update_value[DownpourCtrFeatureValue::ShowIndex()] += push_show;
     update_value[DownpourCtrFeatureValue::ClickIndex()] += push_click;
     update_value[DownpourCtrFeatureValue::SlotIndex()] = slot;
-    update_value[DownpourCtrFeatureValue::delta_score_index()] +=
+    update_value[DownpourCtrFeatureValue::DeltaScoreIndex()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
     //(push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
     // push_click * _config.ctr_accessor_param().click_coeff();
-    update_value[DownpourCtrFeatureValue::unseen_days_index()] = 0;
-    _embed_sgd_rule->update_value(
-        update_value + DownpourCtrFeatureValue::Embed_W_Index(),
-        update_value + DownpourCtrFeatureValue::embed_g2sum_index(),
-        push_value + DownpourCtrPushValue::Embed_G_Index(), push_show);
-    _embedx_sgd_rule->update_value(
-        update_value + DownpourCtrFeatureValue::Embedx_W_Index(),
-        update_value + DownpourCtrFeatureValue::embedx_g2sum_index(),
-        push_value + DownpourCtrPushValue::Embedx_G_Index(), push_show);
+    update_value[DownpourCtrFeatureValue::UnseenDaysIndex()] = 0;
+    _embed_sgd_rule->UpdateValue(
+        update_value + DownpourCtrFeatureValue::EmbedWIndex(),
+        update_value + DownpourCtrFeatureValue::EmbedG2SumIndex(),
+        push_value + DownpourCtrPushValue::EmbedGIndex(), push_show);
+    _embedx_sgd_rule->UpdateValue(
+        update_value + DownpourCtrFeatureValue::EmbedxWIndex(),
+        update_value + DownpourCtrFeatureValue::EmbedxG2SumIndex(),
+        push_value + DownpourCtrPushValue::EmbedxGIndex(), push_show);
   }
   return 0;
 }
@@ -314,7 +314,7 @@ bool DownpourCtrAccessor::CreateValue(int stage, const float* value) {
   } else if (stage == 1) {
     auto show = DownpourCtrPushValue::Show(const_cast<float*>(value));
     auto click = DownpourCtrPushValue::Click(const_cast<float*>(value));
-    auto score = show_click_score(show, click);
+    auto score = ShowClickScore(show, click);
     if (score <= 0) {
       return false;
     }
@@ -328,7 +328,7 @@ bool DownpourCtrAccessor::CreateValue(int stage, const float* value) {
   }
 }
 
-float DownpourCtrAccessor::show_click_score(float show, float click) {
+float DownpourCtrAccessor::ShowClickScore(float show, float click) {
   // auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
   // auto click_coeff = _config.ctr_accessor_param().click_coeff();
   auto nonclk_coeff = _config.ctr_accessor_param().nonclk_coeff();
@@ -344,7 +344,7 @@ std::string DownpourCtrAccessor::ParseToString(const float* v, int param_size) {
      << v[5] << " " << v[6];
   auto show = DownpourCtrFeatureValue::Show(const_cast<float*>(v));
   auto click = DownpourCtrFeatureValue::Click(const_cast<float*>(v));
-  auto score = show_click_score(show, click);
+  auto score = ShowClickScore(show, click);
   if (score >= _config.embedx_threshold() && param_size > 7) {
     os << " " << v[7];
     for (auto i = 0; i < _config.embedx_dim(); ++i) {
@@ -359,15 +359,15 @@ int DownpourCtrAccessor::ParseFromString(const std::string& str, float* value) {
   float data_buff[_accessor_info.dim];
   float* data_buff_ptr = data_buff;
 
-  _embedx_sgd_rule->init_value(
-      data_buff_ptr + DownpourCtrFeatureValue::Embedx_W_Index(),
-      data_buff_ptr + DownpourCtrFeatureValue::embedx_g2sum_index());
+  _embedx_sgd_rule->InitValue(
+      data_buff_ptr + DownpourCtrFeatureValue::EmbedxWIndex(),
+      data_buff_ptr + DownpourCtrFeatureValue::EmbedxG2SumIndex());
 
   auto str_len = paddle::string::str_to_float(str.data(), data_buff_ptr);
   CHECK(str_len >= 6) << "expect more than 6 real:" << str_len;
   // no slot, embedx
   int value_dim = _accessor_info.dim;
-  int embedx_g2sum_index = DownpourCtrFeatureValue::embedx_g2sum_index();
+  int embedx_g2sum_index = DownpourCtrFeatureValue::EmbedxG2SumIndex();
   value[DownpourCtrFeatureValue::SlotIndex()] = -1;
   // other case
   if (str_len == (value_dim - 1)) {
@@ -400,25 +400,25 @@ void DownpourCtrAccessor::update_time_decay(float* value,
   if (_day_id == 0) {
     return;
   }
-  auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+  auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
   if (unseen_days == 0) {
-    DownpourCtrFeatureValue::unseen_days(value) = _day_id;
+    DownpourCtrFeatureValue::UnseenDays(value) = _day_id;
     return;
   }
   // for the origin load (unseenday = 0 -15)
   if (unseen_days < _config.ctr_accessor_param().delete_after_unseen_days()) {
     // pull
     if (is_update_seen_day) {
-      DownpourCtrFeatureValue::unseen_days(value) = _day_id;
+      DownpourCtrFeatureValue::UnseenDays(value) = _day_id;
       return;
       // save 舍弃原始的unseenday,都变为上一天出现,保证show/click不被重复decay
     } else {
-      DownpourCtrFeatureValue::unseen_days(value) = _day_id - 1;
+      DownpourCtrFeatureValue::UnseenDays(value) = _day_id - 1;
     }
   }
   int16_t day_diff = _day_id - unseen_days;
   if (day_diff < 0) {
-    DownpourCtrFeatureValue::unseen_days(value) = _day_id;
+    DownpourCtrFeatureValue::UnseenDays(value) = _day_id;
     return;
   }
   if (day_diff >= _config.ctr_accessor_param().delete_after_unseen_days()) {
@@ -427,7 +427,7 @@ void DownpourCtrAccessor::update_time_decay(float* value,
   DownpourCtrFeatureValue::Show(value) *= _time_decay_rates[day_diff];
   DownpourCtrFeatureValue::Click(value) *= _time_decay_rates[day_diff];
   if (is_update_seen_day) {
-    DownpourCtrFeatureValue::unseen_days(value) = _day_id;
+    DownpourCtrFeatureValue::UnseenDays(value) = _day_id;
   }
 }
 

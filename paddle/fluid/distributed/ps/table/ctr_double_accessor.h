@@ -43,38 +43,38 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
     static int Size(int embedx_dim) {
       return (Dim(embedx_dim) + 2) * sizeof(float);
     }
-    static int unseen_days_index() { return 0; }
-    static int delta_score_index() {
-      return DownpourCtrDoubleFeatureValue::unseen_days_index() + 1;
+    static int UnseenDaysIndex() { return 0; }
+    static int DeltaScoreIndex() {
+      return DownpourCtrDoubleFeatureValue::UnseenDaysIndex() + 1;
     }
     static int ShowIndex() {
-      return DownpourCtrDoubleFeatureValue::delta_score_index() + 1;
+      return DownpourCtrDoubleFeatureValue::DeltaScoreIndex() + 1;
     }
     // show is double
     static int ClickIndex() {
       return DownpourCtrDoubleFeatureValue::ShowIndex() + 2;
     }
     // click is double
-    static int Embed_W_Index() {
+    static int EmbedWIndex() {
       return DownpourCtrDoubleFeatureValue::ClickIndex() + 2;
     }
-    static int embed_g2sum_index() {
-      return DownpourCtrDoubleFeatureValue::Embed_W_Index() + 1;
+    static int EmbedG2SumIndex() {
+      return DownpourCtrDoubleFeatureValue::EmbedWIndex() + 1;
     }
     static int SlotIndex() {
-      return DownpourCtrDoubleFeatureValue::embed_g2sum_index() + 1;
+      return DownpourCtrDoubleFeatureValue::EmbedG2SumIndex() + 1;
     }
-    static int embedx_g2sum_index() {
+    static int EmbedxG2SumIndex() {
       return DownpourCtrDoubleFeatureValue::SlotIndex() + 1;
     }
-    static int Embedx_W_Index() {
-      return DownpourCtrDoubleFeatureValue::embedx_g2sum_index() + 1;
+    static int EmbedxWIndex() {
+      return DownpourCtrDoubleFeatureValue::EmbedxG2SumIndex() + 1;
     }
-    static float& unseen_days(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::unseen_days_index()];
+    static float& UnseenDays(float* val) {
+      return val[DownpourCtrDoubleFeatureValue::UnseenDaysIndex()];
     }
-    static float& delta_score(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::delta_score_index()];
+    static float& DeltaScore(float* val) {
+      return val[DownpourCtrDoubleFeatureValue::DeltaScoreIndex()];
     }
     static double& Show(float* val) {
       return ((double*)(val + DownpourCtrDoubleFeatureValue::ShowIndex()))[0];
@@ -86,16 +86,16 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
       return val[DownpourCtrDoubleFeatureValue::SlotIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::Embed_W_Index()];
+      return val[DownpourCtrDoubleFeatureValue::EmbedWIndex()];
     }
-    static float& embed_g2sum(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::embed_g2sum_index()];
+    static float& EmbedG2Sum(float* val) {
+      return val[DownpourCtrDoubleFeatureValue::EmbedG2SumIndex()];
     }
-    static float& embedx_g2sum(float* val) {
-      return val[DownpourCtrDoubleFeatureValue::embedx_g2sum_index()];
+    static float& EmbedxG2Sum(float* val) {
+      return val[DownpourCtrDoubleFeatureValue::EmbedxG2SumIndex()];
     }
     static float* EmbedxW(float* val) {
-      return (val + DownpourCtrDoubleFeatureValue::Embedx_W_Index());
+      return (val + DownpourCtrDoubleFeatureValue::EmbedxWIndex());
     }
   };
   struct DownpourCtrDoublePushValue {
@@ -116,11 +116,11 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
     static int ClickIndex() {
       return DownpourCtrDoublePushValue::ShowIndex() + 1;
     }
-    static int Embed_G_Index() {
+    static int EmbedGIndex() {
       return DownpourCtrDoublePushValue::ClickIndex() + 1;
     }
-    static int Embedx_G_Index() {
-      return DownpourCtrDoublePushValue::Embed_G_Index() + 1;
+    static int EmbedxGIndex() {
+      return DownpourCtrDoublePushValue::EmbedGIndex() + 1;
     }
     static float& Slot(float* val) {
       return val[DownpourCtrDoublePushValue::SlotIndex()];
@@ -132,10 +132,10 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
       return val[DownpourCtrDoublePushValue::ClickIndex()];
     }
     static float& EmbedG(float* val) {
-      return val[DownpourCtrDoublePushValue::Embed_G_Index()];
+      return val[DownpourCtrDoublePushValue::EmbedGIndex()];
     }
     static float* EmbedxG(float* val) {
-      return val + DownpourCtrDoublePushValue::Embedx_G_Index();
+      return val + DownpourCtrDoublePushValue::EmbedxGIndex();
     }
   };
   struct DownpourCtrDoublePullValue {
@@ -150,8 +150,8 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
     static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
     static int ShowIndex() { return 0; }
     static int ClickIndex() { return 1; }
-    static int Embed_W_Index() { return 2; }
-    static int Embedx_W_Index() { return 3; }
+    static int EmbedWIndex() { return 2; }
+    static int EmbedxWIndex() { return 3; }
     static float& Show(float* val) {
       return val[DownpourCtrDoublePullValue::ShowIndex()];
     }
@@ -159,10 +159,10 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
       return val[DownpourCtrDoublePullValue::ClickIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[DownpourCtrDoublePullValue::Embed_W_Index()];
+      return val[DownpourCtrDoublePullValue::EmbedWIndex()];
     }
     static float* EmbedxW(float* val) {
-      return val + DownpourCtrDoublePullValue::Embedx_W_Index();
+      return val + DownpourCtrDoublePullValue::EmbedxWIndex();
     }
   };
   DownpourCtrDoubleAccessor() {}
@@ -215,7 +215,7 @@ class DownpourCtrDoubleAccessor : public ValueAccessor {
   // DEFINE_GET_INDEX(DownpourCtrDoubleFeatureValue, embed_w)
   // DEFINE_GET_INDEX(DownpourCtrDoubleFeatureValue, embedx_w)
  private:
-  double show_click_score(double show, double click);
+  double ShowClickScore(double show, double click);
 
  private:
   SparseValueSGDRule* _embed_sgd_rule;
