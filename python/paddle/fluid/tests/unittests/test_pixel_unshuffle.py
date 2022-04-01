@@ -84,16 +84,12 @@ class TestPixelUnshuffleOp(OpTest):
     def test_check_output(self):
         '''test_check_output'''
 
-        paddle.enable_static()
         self.check_output()
-        paddle.disable_static()
 
     def test_check_grad(self):
         '''test_check_grad'''
 
-        paddle.enable_static()
         self.check_grad(["X"], "Out")
-        paddle.disable_static()
 
 
 class TestChannelLast(TestPixelUnshuffleOp):
