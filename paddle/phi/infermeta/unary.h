@@ -343,7 +343,7 @@ void TrilTriuInferMeta(const MetaTensor& x,
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
-                     std::vector<MetaTensor>* outs);
+                     std::vector<MetaTensor*> outs);
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 

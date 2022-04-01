@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
@@ -27,6 +29,8 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 std::vector<Tensor> split_impl(const Tensor& x,
                                const ScalarArray& num_or_sections,
                                const Scalar& axis);
+
+std::vector<Tensor> unbind_impl(const Tensor& input, int axis);
 
 }  // namespace experimental
 }  // namespace paddle

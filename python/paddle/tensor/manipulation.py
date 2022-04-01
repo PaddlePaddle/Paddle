@@ -1476,6 +1476,9 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_unbind(input, axis)
+
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
                         (type(axis)))
@@ -1484,7 +1487,7 @@ def unbind(input, axis=0):
     input_shape = input.shape
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         return _C_ops.unbind(input, num, 'axis', axis)
 
     helper = LayerHelper("unbind", **locals())

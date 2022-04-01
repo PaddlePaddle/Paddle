@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import compiler, Program, program_guard, core
@@ -38,6 +39,21 @@ class TestUnbind(unittest.TestCase):
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
+
+    def test_unbind_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.random.random([2, 3]).astype("float32")
+            x = paddle.to_tensor(np_x)
+            x.stop_gradient = False
+            [res_1, res_2] = paddle.unbind(x, 0)
+            assert np.array_equal(res_1, np_x[0, 0:100])
+            assert np.array_equal(res_2, np_x[1, 0:100])
+
+            res = paddle.add_n([res_1, res_2])
+            out = paddle.mean(res)
+
+            out.backward()
+            print(x.grad)
 
 
 class TestLayersUnbind(unittest.TestCase):
@@ -70,6 +86,7 @@ class TestUnbindOp(OpTest):
 
     def setUp(self):
         self._set_op_type()
+        self.python_api = paddle.unbind
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
