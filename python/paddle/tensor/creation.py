@@ -1326,28 +1326,26 @@ def complex(real, imag, name=None):
 
 def tril_indices(rows,cols,offset=0, dtype=None):
     """
-    This op returns the indices of the lower triangular part of the matrix 
-    whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
-    of all indices and the second row contains column coordinates. Indices are ordered based on 
-    rows and then columns. The lower triangular part of the matrix is defined as the elements on
+    This op returns the indices of the lower triangular part of the 2-D matrix 
+    whose rows and cols is knowed.Indices are ordered based on rows and then columns. 
+    The lower triangular part of the matrix is defined as the elements on
     and below the diagonal.
     
     Args:
         rows (int): The input x which is a int number describe the number of row of the matrix.
         cols (int): The input x which is a int number describe the number of col of the matrix.    
         offset (int, optional): The offset to consider, default value is 0.
-            If :attr:`offset` = 0, all elements on and below the main diagonal are
+            If :attr:``offset`` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
             diagonal, and similarly a negative value excludes just as many diagonals below
             the main diagonal. The main diagonal are the set of indices
             :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        dtype (int, optional): The default value is None. 
+        dtype (int, optional): The default value is None.It describe the type of the out tensor
 
     Returns:
-        Tensor: Results of the indices of lower triangular part of a rows * cols matrix
-        where the first row contains row coordinates of all indices and the second row 
-        contains column coordinates.
+        Tensor: Results of the indices of lower triangular part of a rows * cols matrix,
+        where the first row contains row coordinates of and the second row contains column coordinates.
 
     Raises:
         TypeError: rows,cols,or offset is not a int type.
@@ -1361,22 +1359,29 @@ def tril_indices(rows,cols,offset=0, dtype=None):
             
             # example 1, default offset value
             data1 = paddle.tril_indices(4,4,0)
-            # array([[0, 1, 1, 2, 2, 2, 3, 3, 3, 3], 
-                     [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]])
+            print(data1.numpy())
+            # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3], 
+               [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
 
             # example 2, positive offset value
             data2 = paddle.tril_indices(4,4,2)
-            # array([[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 
-                     [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]])
+            print(data2.numpy())
+            # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 
+               [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
 
             # example 3, negative offset value
             data3 = paddle.tril_indices(4,4,-1)
-            # array([[ 1, 2, 2, 3, 3, 3],
-            #        [ 0, 0, 1, 0, 1, 2]])
+            print(data3.numpy())
+            # [[ 1, 2, 2, 3, 3, 3],
+            #  [ 0, 0, 1, 0, 1, 2]]
 
     """
     if paddle.in_dynamic_mode():
         op = getattr(_C_ops, 'tril_indices')
         return op(rows, cols, 'offset', offset, "dtype", dtype)
+
+    check_type(rows, 'rows', (int), 'tril_indices')
+    check_type(cols, 'cols', (int), 'tril_indices')
+    check_type(offset, 'offset', (int), 'tril_indices')
 
     return _tril_indices_op(LayerHelper('tril_indices', **locals()))
