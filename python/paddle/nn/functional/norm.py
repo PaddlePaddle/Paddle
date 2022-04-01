@@ -181,7 +181,7 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dynamic_mode():
-        # for dygraph need tuple
+
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
