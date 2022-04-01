@@ -75,8 +75,17 @@ class DistributedFusedLamb(Optimizer):
             name=unique_name.generate('found_inf'),
             shape=[1],
             dtype=core.VarDesc.VarType.BOOL)
+        self._step = None
 
         self._param_to_master_param = {}
+
+    def _set_step(self, step):
+        self._step = step
+
+    def _get_or_create_step(self):
+        if self._step is None:
+            self._step = self._create_persistable_var('step', dtype='int64')
+        return self._step
 
     def _set_scale(self, scale):
         assert scale is not None
@@ -189,7 +198,7 @@ class DistributedFusedLamb(Optimizer):
         param_order = self._create_persistable_var('param_order', dtype='int32')
         param_order.is_distributed = True
 
-        step = self._create_persistable_var('step', dtype='int64')
+        step = self._get_or_create_step()
 
         rank = get_rank()
         nranks = get_world_size()
