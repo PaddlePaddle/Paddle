@@ -67,7 +67,10 @@ def bernoulli(x, name=None):
 
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_bernoulli(x)
+
+    if _in_legacy_dygraph():
         return _C_ops.bernoulli(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
@@ -175,7 +178,10 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
     assert core.is_compiled_with_rocm() == False, (
         "multinomial op is not supported on ROCM yet.")
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_multinomial(x, num_samples, replacement)
+
+    if _in_legacy_dygraph():
         return _C_ops.multinomial(x, 'num_samples', num_samples, 'replacement',
                                   replacement)
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -21,9 +22,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-
 using TensorList = std::vector<framework::Tensor>;
-
 template <typename TensorType, typename T>
 void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
                             const int& num_layers, const bool& is_bidirec,
@@ -52,40 +51,74 @@ void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
 }
 
 template <typename DeviceContext, typename T>
+void RunLSTMLayer(const framework::ExecutionContext& ctx, int seq_len,
+                  int batch_size, int xdim, int hidden_size, const T* x, T* y,
+                  const T* init_h, const T* init_c, T* last_h, T* last_c,
+                  int state_offset, const std::vector<int>& seq_len_tensor,
+                  const std::vector<const T*>& param_list, T* i_f_g_o, T* c,
+                  bool is_bidirect, int layer_idx, int offset) {
+  bool is_reverse = false;
+  if (is_bidirect) {
+    layer_idx = 2 * layer_idx + offset;
+    if (offset > 0) {
+      is_reverse = true;
+    }
+  }
+  auto w_x = param_list[0 + offset * 4];
+  auto w_h = param_list[1 + offset * 4];
+  auto b_x = param_list[2 + offset * 4];
+  auto b_h = param_list[3 + offset * 4];
+
+  auto h_0 = init_h + layer_idx * state_offset;
+  auto c_0 = init_c + layer_idx * state_offset;
+  auto last_h_ptr = last_h + layer_idx * state_offset;
+  auto last_c_ptr = last_c + layer_idx * state_offset;
+  auto& dev_ctx = ctx.template device_context<DeviceContext>();
+  int r = xpu::lstm_train<T, T, int16_t>(
+      dev_ctx.x_context(), (const T*)x, (const T*)h_0, (const T*)c_0,
+      (const T*)w_x, (const T*)w_h, (const T*)b_x, (const T*)b_h,
+      reinterpret_cast<T*>(y), reinterpret_cast<T*>(last_h_ptr),
+      reinterpret_cast<T*>(last_c_ptr), batch_size, xdim, hidden_size, seq_len,
+      seq_len_tensor, is_reverse, nullptr, nullptr, nullptr, nullptr,
+      reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c),
+      xpu::Activation_t::TANH, xpu::Activation_t::SIGMOID);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "lstm_train");
+}
+
+template <typename DeviceContext, typename T>
 class RnnXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    // Input
     auto* input = ctx.Input<Tensor>("Input");
     auto pre_state = ctx.MultiInput<Tensor>("PreState");
     auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+    bool has_seq_length = ctx.HasInput("SequenceLength");
+    // Output
     auto state = ctx.MultiOutput<Tensor>("State");
     auto* output = ctx.Output<Tensor>("Out");
+    auto* dropout_mask = ctx.Output<Tensor>("DropoutState");
     auto* reserve_data = ctx.Output<Tensor>("Reserve");
+    // Attrbutes
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const std::string& mode = ctx.Attr<std::string>("mode");
 
-    bool has_seq_length = ctx.HasInput("SequenceLength");
     const Tensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
     }
 
+    if (dropout_mask->IsInitialized()) {
+      if (dropout_mask->numel() != output->numel()) dropout_mask->clear();
+    }
+    dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
+
     PADDLE_ENFORCE_EQ(
         mode, "LSTM",
         platform::errors::InvalidArgument(
             "XPU only support LSTM mode now, current mode is %s", mode));
-
-    PADDLE_ENFORCE_EQ(is_bidirec, false,
-                      platform::errors::InvalidArgument(
-                          "XPU only support unidirectional LSTM now"));
-
-    PADDLE_ENFORCE_EQ(
-        num_layers, 1,
-        platform::errors::InvalidArgument(
-            "XPU only support 1 layer LSTM now, current layer num is %s",
-            num_layers));
 
     auto init_h = pre_state[0];
     auto init_c = pre_state[1];
@@ -93,12 +126,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     auto last_c = state[1];
 
     // check shape
-    int seq_len = input->dims()[0];
-    int batch_size = input->dims()[1];
-    int input_dim = input->dims()[2];
+    const int& seq_len = input->dims()[0];  // time_step
+    const int& batch_size = input->dims()[1];
+    const int& input_dim = input->dims()[2];
+    const int& direction_num = is_bidirec ? 2 : 1;
 
     PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers,
+        init_h->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"
                                           " be the same as first dim of init "
                                           "hidden, but received num_layers:%d,"
@@ -106,13 +140,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
                                           num_layers, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
-        init_c->dims()[0], num_layers,
+        init_c->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument(
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
             " num_layers:%d, dim:%d",
             num_layers, init_c->dims()[0]));
-
+    // weightlist
     std::vector<std::vector<const T*>> parameter_lists;
     parameter_lists.resize(num_layers);
     reset_parameter_vector(weight_list, num_layers, is_bidirec,
@@ -122,41 +156,106 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     last_h->mutable_data<T>(ctx.GetPlace());
     last_c->mutable_data<T>(ctx.GetPlace());
-    reserve_data->Resize({seq_len * batch_size * hidden_size * 5});
-    reserve_data->mutable_data<T>(ctx.GetPlace());
 
+    reserve_data->Resize(
+        {num_layers * direction_num * seq_len * batch_size * hidden_size * 5});
+    reserve_data->mutable_data<T>(ctx.GetPlace());
+    Tensor internal_output_1_tensor, internal_output_2_tensor;
+    T* internal_output_1_ptr = nullptr;
+    T* internal_output_2_ptr = nullptr;
+    if (num_layers >= 2) {
+      internal_output_1_tensor.Resize(output->dims());
+      internal_output_1_ptr =
+          internal_output_1_tensor.mutable_data<T>(ctx.GetPlace());
+    }
+    if (num_layers >= 3) {
+      internal_output_2_tensor.Resize(output->dims());
+      internal_output_2_ptr =
+          internal_output_2_tensor.mutable_data<T>(ctx.GetPlace());
+    }
     // get ptr from tensor
     auto x = input->data<T>();
-    auto h_0 = init_h->data<T>();
-    auto c_0 = init_c->data<T>();
-    auto w_x = parameter_lists[0][0];
-    auto w_h = parameter_lists[0][1];
-    auto b_x = parameter_lists[0][2];
-    auto b_h = parameter_lists[0][3];
+    auto init_h_ptr = init_h->data<T>();
+    auto init_c_ptr = init_c->data<T>();
     auto y = output->data<T>();
     auto last_h_ptr = last_h->data<T>();
     auto last_c_ptr = last_c->data<T>();
     auto i_f_g_o = reserve_data->data<T>();
-    auto c = i_f_g_o + seq_len * batch_size * hidden_size * 4;
+    auto c =
+        i_f_g_o +
+        num_layers * direction_num * seq_len * batch_size * hidden_size * 4;
 
     std::vector<int> seq_len_tensor(batch_size, seq_len);
     if (has_seq_length) {
       seq_len_tensor = operators::GetDataFromTensor(sequence_length);
     }
 
-    // run kernel
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::lstm_train<T, T, int16_t>(
-        dev_ctx.x_context(), (const T*)x, (const T*)h_0, (const T*)c_0,
-        (const T*)w_x, (const T*)w_h, (const T*)b_x, (const T*)b_h,
-        reinterpret_cast<T*>(y), reinterpret_cast<T*>(last_h_ptr),
-        reinterpret_cast<T*>(last_c_ptr), batch_size, input_dim, hidden_size,
-        seq_len, seq_len_tensor, nullptr, nullptr, nullptr, nullptr,
-        reinterpret_cast<T*>(i_f_g_o), reinterpret_cast<T*>(c));
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("RnnXPU(lstm) return wrong "
-                                                 "value[%d %s]",
-                                                 r, XPUAPIErrorMsg[r]));
+    int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
+
+    for (int i = 0; i < num_layers; i++) {
+      const T* cur_input_ptr = nullptr;
+      int cur_xdim = -1;
+      i_f_g_o += i * direction_num * seq_len * batch_size * hidden_size * 4;
+      c += i * direction_num * seq_len * batch_size * hidden_size;
+
+      if (i == 0) {
+        cur_input_ptr = x;
+        cur_xdim = input_dim;
+      } else if (i % 2 != 0) {
+        cur_input_ptr = internal_output_1_ptr;
+        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
+      } else {
+        cur_input_ptr = internal_output_2_ptr;
+        cur_xdim = is_bidirec ? 2 * hidden_size : hidden_size;
+      }
+
+      T* cur_output_ptr = nullptr;
+      if (i == num_layers - 1) {
+        cur_output_ptr = y;
+      } else if (i % 2 != 0) {
+        cur_output_ptr = internal_output_2_ptr;
+      } else {
+        cur_output_ptr = internal_output_1_ptr;
+      }
+
+      if (is_bidirec) {
+        std::vector<Tensor> output_vec(2);
+        std::vector<T*> output_ptr_vec(2);
+        for (int k = 0; k < 2; ++k) {
+          output_vec[k].Resize({seq_len, batch_size, output->dims()[2] / 2});
+          output_ptr_vec[k] = output_vec[k].mutable_data<T>(ctx.GetPlace());
+        }
+        RunLSTMLayer<DeviceContext, T>(
+            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
+            output_ptr_vec[0], init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
+            state_offset, seq_len_tensor, parameter_lists[i], i_f_g_o, c,
+            is_bidirec, i, 0);
+
+        T* bw_i_f_g_o = i_f_g_o + seq_len * batch_size * hidden_size * 4;
+        T* bw_c = c + seq_len * batch_size * hidden_size;
+        RunLSTMLayer<DeviceContext, T>(
+            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
+            output_ptr_vec[1], init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
+            state_offset, seq_len_tensor, parameter_lists[i], bw_i_f_g_o, bw_c,
+            is_bidirec, i, 1);
+
+        // concat
+        int r = xpu::concat<T>(
+            dev_ctx.x_context(), {output_ptr_vec[0], output_ptr_vec[1]},
+            cur_output_ptr, {{seq_len, batch_size, hidden_size},
+                             {seq_len, batch_size, hidden_size}},
+            2);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
+        xpu_wait(dev_ctx.x_context()->xpu_stream);
+      } else {
+        RunLSTMLayer<DeviceContext, T>(
+            ctx, seq_len, batch_size, cur_xdim, hidden_size, cur_input_ptr,
+            cur_output_ptr, init_h_ptr, init_c_ptr, last_h_ptr, last_c_ptr,
+            state_offset, seq_len_tensor, parameter_lists[i], i_f_g_o, c,
+            is_bidirec, i, 0);
+      }
+    }
   }
 };
 
@@ -221,7 +320,6 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     int seq_len = input->dims()[0];
     int batch_size = input->dims()[1];
     int input_dim = input->dims()[2];
-
     PADDLE_ENFORCE_EQ(
         init_h->dims()[0], num_layers,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"
