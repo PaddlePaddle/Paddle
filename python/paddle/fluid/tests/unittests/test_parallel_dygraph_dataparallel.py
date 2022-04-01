@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import time
+import paddle
 import paddle.fluid as fluid
 import copy
 import os
@@ -141,6 +142,13 @@ def start_local_trainers(cluster,
         procs.append(tp)
 
     return procs
+
+
+def get_dist_port_from_flags():
+    DIST_UT_PORT = 6175
+    if os.getenv("PADDLE_DIST_UT_PORT"):
+        DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+    return DIST_UT_PORT
 
 
 class TestMultipleGpus(unittest.TestCase):

@@ -53,7 +53,7 @@ def DataTypeCast(date_type):
 
 
 class TestCollectiveRunnerBase(object):
-    def get_model(self, train_prog, startup_prog):
+    def get_model(self, train_prog, startup_prog, col_type):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
@@ -129,7 +129,7 @@ class TestCollectiveRunnerBase(object):
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
         self.rank = rank
-        result = self.get_model(train_prog, startup_prog)
+        result = self.get_model(train_prog, startup_prog, args["col_type"])
         device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
         place = fluid.MLUPlace(device_id)
         exe = fluid.Executor(place)
@@ -143,7 +143,7 @@ class TestCollectiveRunnerBase(object):
         sys.stdout.buffer.write(pickle.dumps(out))
 
 
-def runtime_main(test_class, col_type, sub_type):
+def runtime_main(test_class):
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_mlus")
@@ -151,7 +151,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
-    args["col_type"] = col_type
+    args["col_type"] = os.getenv("COL_TYPE")
     args["data_type"] = os.getenv("DATA_TYPE")
     model.run_trainer(args)
 
@@ -185,7 +185,7 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
-        #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+
         env0 = {
             "FLAGS_selected_mlus": "0",
             "PADDLE_TRAINER_ID": "0",
@@ -209,7 +209,7 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
-        #print(tr0_cmd) 
+
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -246,6 +246,7 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "DATA_TYPE": data_type,
+            "COL_TYPE": col_type,
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -262,7 +263,7 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
-        elif col_type == "allreduce":
+        elif col_type == "allreduce_sum":
             need_result = input1 + input2
             self.assertTrue(
                 np.allclose(
@@ -270,6 +271,42 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "allreduce_prod":
+            need_result = input1 * input2
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "allreduce_max":
+            need_result = np.maximum(input1, input2)
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "allreduce_min":
+            need_result = np.minimum(input1, input2)
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "reduce_sum":
+            need_result = input1 + input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce_prod":
+            need_result = input1 * input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce_max":
+            need_result = np.maximum(input1, input2)
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce_min":
+            need_result = np.minimum(input1, input2)
+            self.assertTrue(np.allclose(tr1_out, need_result))
         elif col_type == "allgather":
             need_result = np.vstack((input1, input2))
             self.assertTrue(np.allclose(tr0_out, need_result))

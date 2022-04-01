@@ -245,6 +245,9 @@ class KernelFactory {
                                          DataLayout layout,
                                          DataType dtype) const;
 
+  bool IsSelectKernelValid(const std::string& kernel_name,
+                           const KernelKey& kernel_key) const;
+
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;
 

@@ -129,47 +129,42 @@ KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature ReduceSumGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "sum_grad",
-      {"X", GradVarName("Out")},
-      {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
-      {GradVarName("X")});
+  return KernelSignature("sum_grad",
+                         {"X", GradVarName("Out")},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {GradVarName("X")});
 }
 
 KernelSignature ReduceMeanGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "mean_grad",
-      {"X", GradVarName("Out")},
-      {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
-      {GradVarName("X")});
+  return KernelSignature("mean_grad",
+                         {"X", GradVarName("Out")},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {GradVarName("X")});
 }
 
 KernelSignature ReduceMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "max_grad",
-      {"X", "Out", GradVarName("Out")},
-      {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
-      {GradVarName("X")});
+  return KernelSignature("max_grad",
+                         {"X", "Out", GradVarName("Out")},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {GradVarName("X")});
 }
 
 KernelSignature ReduceMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "min_grad",
-      {"X", "Out", GradVarName("Out")},
-      {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
-      {GradVarName("X")});
+  return KernelSignature("min_grad",
+                         {"X", "Out", GradVarName("Out")},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {GradVarName("X")});
 }
 
 KernelSignature ReduceProdGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "prod_grad",
-      {"X", "Out", GradVarName("Out")},
-      {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
-      {GradVarName("X")});
+  return KernelSignature("prod_grad",
+                         {"X", "Out", GradVarName("Out")},
+                         {"dim", "keep_dim", "reduce_all"},
+                         {GradVarName("X")});
 }
 
 }  // namespace phi

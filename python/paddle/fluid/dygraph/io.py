@@ -883,7 +883,7 @@ def _run_dygraph(instance, input, program_holder):
     # transform SelectedRows to LoDTensor forcibly, it may not
     # be user wanted result.
     for persistable_var in persistable_vars:
-        grad_var_name = var.name + core.grad_var_suffix()
+        grad_var_name = persistable_var.name + core.grad_var_suffix()
         grad_var = trace_program.block(0).find_var(cpt.to_bytes(grad_var_name))
         # NOTE: cannot find var desc maybe not problem, 
         # such as in batch_norm
