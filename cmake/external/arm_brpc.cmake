@@ -14,16 +14,16 @@
 
 INCLUDE(ExternalProject)
 
-find_package(OpenSSL REQUIRED)
+#find_package(OpenSSL REQUIRED)
 
-message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
-message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
+#message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
+#message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
 
-ADD_LIBRARY(ssl SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
+#ADD_LIBRARY(ssl SHARED IMPORTED GLOBAL)
+#SET_PROPERTY(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
 
-ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
+#ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
+#SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 
 SET(ARM_BRPC_PROJECT       "extern_arm_brpc")
 IF((NOT DEFINED ARM_BRPC_NAME) OR (NOT DEFINED ARM_BRPC_URL))
@@ -59,7 +59,7 @@ ExternalProject_Add(
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
     DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
-                          && tar zxvf ${ARM_BRPC_NAME}.tar.gz && mv output arm_brpc
+                          && tar zxvf ${ARM_BRPC_NAME}.tar.gz && rm -rf arm_brpc && mv output arm_brpc
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}

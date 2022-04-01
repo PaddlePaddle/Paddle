@@ -125,7 +125,7 @@ if(WITH_PSLIB OR WITH_PSCORE)
         set(BRPC_DEPS pslib_brpc)
     endif()
     if (WITH_ARM_BRPC)
-        set(BRPC_DEPS arm_brpc ssl crypto)
+        set(BRPC_DEPS arm_brpc)
     endif()
 endif()
 
