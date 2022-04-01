@@ -147,7 +147,7 @@ function compile_test() {
              -DWITH_GTEST=ON \
              -DCMAKE_CXX_FLAGS='/std:c++17' \
              -DCMAKE_BUILD_TYPE=Release \
-             -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
+             -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME \
              -DCUDA_LIB="$CUDA_LIB"
         ninja
     else
