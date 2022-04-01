@@ -1039,7 +1039,7 @@ struct ResidualElementwise : public PatternBase {
   ResidualElementwise(PDPattern* pattern, const std::string& name_scope,
                       bool asX)
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
-  PDNode* operator()(PDNode* x_var, PDNode* y_var,
+  PDNode* operator()(PDNode* op_var, PDNode* residual_var,
                      const std::string elementwise_type, bool asX);
 
   PATTERN_DECL_NODE(operator_output);
