@@ -38,14 +38,15 @@ class ReLU(Layer):
         .. code-block:: python
 
             import paddle
-
-            x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
-            dense_x = paddle.to_tensor(x, dtype='float32')
-            sparse_dim = 2
-            sparse_x = dense_x.to_sparse_coo(sparse_dim)
-            relu = paddle.sparse.ReLU()
-            out = relu(x)
-            #out.values: [0., 2., 0., 4., 5.]
+            from paddle.fluid.framework import _test_eager_guard
+            with _test_eager_guard():
+                x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
+                dense_x = paddle.to_tensor(x, dtype='float32')
+                sparse_dim = 2
+                sparse_x = dense_x.to_sparse_coo(sparse_dim)
+                relu = paddle.sparse.ReLU()
+                out = relu(x)
+                #out.values: [0., 2., 0., 4., 5.]
     """
 
     def __init__(self, name=None):
