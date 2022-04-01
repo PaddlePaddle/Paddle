@@ -28,39 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#if defined(PADDLE_WITH_CUDA)
-struct CustomGradMerger {
-  template <typename T>
-  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
-  operator()(const T& a, const T& b) const {
-    T out;
-    out.slot = a.slot;
-    out.show = a.show + b.show;
-    out.clk = a.clk + b.clk;
-    out.lr_g = a.lr_g + b.lr_g;
-    for (int i = 0; i < MF_DIM; ++i) {
-      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
-    }
-    return out;
-  }
-};
-#elif defined(PADDLE_WITH_XPU_KP)
-struct CustomGradMerger {
-  template <typename T>
-  __device__ T operator()(const T& a, const T& b) const {
-    T out;
-    out.slot = a.slot;
-    out.show = a.show + b.show;
-    out.clk = a.clk + b.clk;
-    out.lr_g = a.lr_g + b.lr_g;
-    for (int i = 0; i < MF_DIM; ++i) {
-      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
-    }
-    return out;
-  }
-};
-#endif
-
 class HeterCommKernel {
  public:
   HeterCommKernel() {}
@@ -90,7 +57,26 @@ class HeterCommKernel {
   void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, long long len,
                   const StreamType& stream);
 
-  CustomGradMerger merger_;
+  // CustomGradMerger merger_;
+  template <typename KeyT, typename ValueT, typename StreamType>
+  void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+                  const KeyT* d_keys_in, KeyT* d_keys_out,
+                  const ValueT* d_values_in, ValueT* d_values_out,
+                  int num_items, int begin_bit = 0,
+                  int end_bit = sizeof(KeyT) * 8, StreamType stream = 0,
+                  bool debug_synchronous = false);
+
+  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
+            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+            typename NumRunsOutputIteratorT, typename StreamType>
+  void reduce_by_key(void* d_temp_storage,
+                     size_t& temp_storage_bytes,  // NOLINT
+                     KeysInputIteratorT d_keys_in,
+                     UniqueOutputIteratorT d_unique_out,
+                     ValuesInputIteratorT d_values_in,
+                     AggregatesOutputIteratorT d_aggregates_out,
+                     NumRunsOutputIteratorT d_num_runs_out, int num_items,
+                     StreamType stream = 0, bool debug_synchronous = false);
 
  private:
   int block_size_{256};

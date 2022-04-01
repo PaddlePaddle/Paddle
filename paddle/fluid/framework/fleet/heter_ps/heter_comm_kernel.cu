@@ -21,6 +21,22 @@ namespace framework {
 
 #ifdef PADDLE_WITH_CUDA
 
+struct GPUCustomGradMerger {
+  template <typename T>
+  CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
+  operator()(const T& a, const T& b) const {
+    T out;
+    out.slot = a.slot;
+    out.show = a.show + b.show;
+    out.clk = a.clk + b.clk;
+    out.lr_g = a.lr_g + b.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out.mf_g[i] = a.mf_g[i] + b.mf_g[i];
+    }
+    return out;
+  }
+} gpu_merger;
+
 template <typename T>
 __global__ void fill_idx(T* idx, size_t len) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -157,6 +173,37 @@ void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
   fill_dvals<<<grid_size, block_size_, 0, stream>>>(d_shard_vals, d_vals, idx,
                                                     c_len);
 }
+
+template <typename KeyT, typename ValueT, typename StreamType>
+void HeterCommKernel::sort_pairs(
+    void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+    const KeyT* d_keys_in,                             // NOLINT
+    KeyT* d_keys_out, const ValueT* d_values_in, ValueT* d_values_out,
+    int num_items, int begin_bit = 0, int end_bit = sizeof(KeyT) * 8,
+    StreamType stream = 0, bool debug_synchronous = false) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
+      d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, d_values_in,
+      d_values_out, num_items, begin_bit, end_bit, stream, debug_synchronous));
+}
+
+template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
+          typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+          typename NumRunsOutputIteratorT, typename StreamType>
+void HeterCommKernel::reduce_by_key(void* d_temp_storage,
+                                    size_t& temp_storage_bytes,  // NOLINT
+                                    KeysInputIteratorT d_keys_in,
+                                    UniqueOutputIteratorT d_unique_out,
+                                    ValuesInputIteratorT d_values_in,
+                                    AggregatesOutputIteratorT d_aggregates_out,
+                                    NumRunsOutputIteratorT d_num_runs_out,
+                                    int num_items, StreamType stream = 0,
+                                    bool debug_synchronous = false) {
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
+      d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, d_values_in,
+      d_aggregates_out, d_num_runs_out, gpu_merger, num_items, stream,
+      debug_synchronous));
+}
+
 #endif
 
 }  // end namespace framework
