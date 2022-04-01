@@ -1992,6 +1992,11 @@ set -x
     fi   
 }
 
+function parallel_test_base_custom_device() {
+    echo "IN custom device CI"
+    parallel_test_base_npu
+}
+
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
     if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
@@ -2391,6 +2396,8 @@ function parallel_test() {
         parallel_test_base_gpu
     elif [ "$WITH_XPU" == "ON" ];then
         parallel_test_base_xpu
+    elif [ "$WITH_CUSTOM_DEVICE" == "ON" ];then
+        parallel_test_base_custom_device
     elif [ "$WITH_ASCEND_CL" == "ON" ];then
         parallel_test_base_npu
     elif [ "$WITH_MLU" == "ON" ];then
