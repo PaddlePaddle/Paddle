@@ -212,6 +212,12 @@ if(WITH_HETERPS AND WITH_PSLIB)
         ${GPU_COMMON_FLAGS})
 endif()
 
+if(WITH_ARM_BRPC)
+    set(COMMON_FLAGS
+        -D_GLIBCXX_USE_CXX11_ABI=0
+        ${COMMON_FLAGS})
+endif()
+
 if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
@@ -243,4 +249,3 @@ if(WITH_ROCM)
     string (REPLACE "-Werror" "-Wno-error" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
     string (REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
-
