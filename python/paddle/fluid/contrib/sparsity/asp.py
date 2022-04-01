@@ -560,14 +560,18 @@ class ASPHelper(object):
         else:
             # This for loop is only used to obtain Block and Program from
             # first parameters.
+            target_program = None
             for param in layer.parameters():
-                return ASPHelper.prune_model_by_program(
-                    place,
-                    param.block.program,
-                    n=n,
-                    m=m,
-                    mask_algo=mask_algo,
-                    with_mask=with_mask)
+                target_program = param.block.program
+            assert target_program is not None, \
+                    'Cannot get paddle.static.Program from Paddle.nn.Layer.'
+            return ASPHelper.prune_model_by_program(
+                place,
+                target_program,
+                n=n,
+                m=m,
+                mask_algo=mask_algo,
+                with_mask=with_mask)
 
     @staticmethod
     def _get_mask_name(param_name):
