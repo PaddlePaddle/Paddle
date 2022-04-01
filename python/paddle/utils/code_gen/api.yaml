@@ -918,6 +918,15 @@
     func : max
   backward : max_grad
 
+- api : maximum
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : maximum
+  backward : maximum_grad
+
 - api : mean
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -935,6 +944,15 @@
   kernel :
     func : min
   backward : min_grad
+
+- api : minimum
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : minimum
+  backward : minimum_grad
 
 - api : mode
   args : (Tensor x,  int axis,  bool keepdim)

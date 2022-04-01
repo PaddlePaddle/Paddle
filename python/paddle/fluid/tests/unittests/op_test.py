@@ -1408,7 +1408,7 @@ class OpTest(unittest.TestCase):
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
-                    self.op_test.assertTrue(actual_np.size == 0)
+                    self.op_test.assertTrue(actual_np.size == 0)  # }}}
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1539,13 +1539,13 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
-                self.is_python_api_test = True
                 with _test_eager_guard():
+                    self.is_python_api_test = True
                     eager_dygraph_outs = self.op_test._calc_python_api_output(
                         place)
                     if eager_dygraph_outs is None:
-                        # missing KernelSignature, fall back to eager middle output.
                         self.is_python_api_test = False
+                        # missing KernelSignature, fall back to eager middle output.
                         eager_dygraph_outs = self.op_test._calc_dygraph_output(
                             place, no_check_set=no_check_set)
                 self.outputs = eager_dygraph_outs
