@@ -89,7 +89,6 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 
 #ifndef PADDLE_WITH_XPU_KP
 // get blockDim for reduceLastDim and reduceAny
-#ifndef PADDLE_WITH_XPU_KP
 static inline int GetBlockDim(int block_dim) {  // 不应该在XPU时编译到
   return block_dim >= kps::details::kReduceMaxThread
              ? kps::details::kReduceMaxThread
