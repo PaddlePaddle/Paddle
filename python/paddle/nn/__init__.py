@@ -41,7 +41,7 @@ from .layer.activation import Sigmoid  # noqa: F401
 from .layer.activation import Hardsigmoid  # noqa: F401
 from .layer.activation import LogSigmoid  # noqa: F401
 from .layer.activation import Softmax  # noqa: F401
-from .layer.activation import Softmax2D
+from .layer.activation import Softmax2D  # noqa: F401
 from .layer.activation import Softplus  # noqa: F401
 from .layer.activation import Softshrink  # noqa: F401
 from .layer.activation import Softsign  # noqa: F401

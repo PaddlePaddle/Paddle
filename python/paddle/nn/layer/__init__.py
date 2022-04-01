@@ -26,7 +26,7 @@ from .activation import LeakyReLU  # noqa: F401
 from .activation import Sigmoid  # noqa: F401
 from .activation import Softmax  # noqa: F401
 from .activation import LogSoftmax  # noqa: F401
-from .activation import Softmax2D
+from .activation import Softmax2D  # noqa: F401
 from .common import Bilinear  # noqa: F401
 from .common import Pad1D  # noqa: F401
 from .common import Pad2D  # noqa: F401
