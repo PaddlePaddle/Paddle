@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 
 namespace paddle {
 namespace experimental {
@@ -25,7 +25,7 @@ namespace experimental {
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
 std::vector<Tensor> split_impl(const Tensor& x,
-                               const ScalarArray& num_or_sections,
+                               const IntArray& num_or_sections,
                                const Scalar& axis);
 
 }  // namespace experimental

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
