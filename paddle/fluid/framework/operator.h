@@ -560,34 +560,10 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool SupportGPU() const override {
-    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-        phi::TransToPhiKernelName(type_));
-    auto has_phi_kernel =
-        std::any_of(phi_kernels.begin(), phi_kernels.end(),
-                    [](phi::KernelKeyMap::const_reference kern_pair) {
-                      return kern_pair.first.backend() == phi::Backend::GPU;
-                    });
-    if (has_phi_kernel) {
-      return true;
-    } else {
-      auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-      return std::any_of(
-          op_kernels.begin(), op_kernels.end(),
-          [](OpKernelMap::const_reference kern_pair) {
-            return platform::is_gpu_place(kern_pair.first.place_);
-          });
-    }
-  }
+  bool SupportGPU() const override;
 
-  bool SupportNPU() const override {
-    // TODO(zhiqiu): support phi if needed?
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_npu_place(kern_pair.first.place_);
-                       });
-  }
+  bool SupportNPU() const override;
+
   bool SupportMLU() const override {
     // TODO(zhiqiu): support phi if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
@@ -147,7 +149,6 @@ class GradNodeBase {
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                       size_t slot_rank);
-
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
