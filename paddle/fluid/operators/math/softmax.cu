@@ -29,9 +29,9 @@ using DataLayout = platform::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-template <typename T>
-void SoftmaxCUDNNFunctor<T>::operator()(
-    const platform::CUDADeviceContext& context, const framework::Tensor* X,
+template <typename T, typename DeviceContext>
+void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
+    const DeviceContext& context, const framework::Tensor* X,
     framework::Tensor* Y) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
@@ -69,9 +69,9 @@ void SoftmaxCUDNNFunctor<T>::operator()(
 #endif
 }
 
-template <typename T>
-void SoftmaxGradCUDNNFunctor<T>::operator()(
-    const platform::CUDADeviceContext& context, const framework::Tensor* Y,
+template <typename T, typename DeviceContext>
+void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
+    const DeviceContext& context, const framework::Tensor* Y,
     const framework::Tensor* YGrad, framework::Tensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
@@ -116,19 +116,31 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
 #endif
 }
 
-template class SoftmaxCUDNNFunctor<float>;
-template class SoftmaxCUDNNFunctor<platform::float16>;
-template class SoftmaxGradCUDNNFunctor<float>;
-template class SoftmaxGradCUDNNFunctor<platform::float16>;
+template class SoftmaxCUDNNFunctor<float, platform::CUDADeviceContext>;
+template class SoftmaxCUDNNFunctor<platform::float16,
+                                   platform::CUDADeviceContext>;
+template class SoftmaxGradCUDNNFunctor<float, platform::CUDADeviceContext>;
+template class SoftmaxGradCUDNNFunctor<platform::float16,
+                                       platform::CUDADeviceContext>;
+template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<platform::float16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<platform::float16, phi::GPUContext>;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-template class SoftmaxCUDNNFunctor<platform::bfloat16>;
-template class SoftmaxGradCUDNNFunctor<platform::bfloat16>;
+template class SoftmaxCUDNNFunctor<platform::bfloat16,
+                                   platform::CUDADeviceContext>;
+template class SoftmaxGradCUDNNFunctor<platform::bfloat16,
+                                       platform::CUDADeviceContext>;
+template class SoftmaxCUDNNFunctor<platform::bfloat16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<platform::bfloat16, phi::GPUContext>;
 #endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
-template class SoftmaxCUDNNFunctor<double>;
-template class SoftmaxGradCUDNNFunctor<double>;
+template class SoftmaxCUDNNFunctor<double, platform::CUDADeviceContext>;
+template class SoftmaxGradCUDNNFunctor<double, platform::CUDADeviceContext>;
+template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
 
 template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,

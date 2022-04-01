@@ -1365,6 +1365,7 @@ function parallel_test_base_gpu() {
     ========================================
 EOF
 
+
 set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
@@ -1522,7 +1523,7 @@ set +x
         card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
         card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
         card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
-        card_test "$single_card_tests_forth_high_parallel" 1 7          # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_forth_high_parallel" 1 5          # run cases 5 job each time with single GPU
         card_test "$single_card_tests_fifth_high_parallel" 1 4          # run cases 4 job each time with single GPU
         card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
@@ -2777,7 +2778,8 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 gpu; example_error=$?
+        SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2

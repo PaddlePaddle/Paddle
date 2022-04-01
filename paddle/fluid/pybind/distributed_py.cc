@@ -213,16 +213,20 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
-           py::call_guard<py::gil_scoped_release>());
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
+                    int>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
   py::class_<distributed::ProcessGroupHCCL,
              std::shared_ptr<distributed::ProcessGroupHCCL>>(
       *m, "ProcessGroupHCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
-           py::call_guard<py::gil_scoped_release>());
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
+                    int>(),
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>());
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
@@ -238,10 +242,10 @@ void BindDistributed(py::module *m) {
   py::class_<ProcessGroupGloo, std::shared_ptr<ProcessGroupGloo>>(
       *m, "ProcessGroupGloo", ProcessGroup)
       .def(py::init<const std::shared_ptr<paddle::distributed::Store> &, int,
-                    int, std::shared_ptr<GlooOptions> &>(),
+                    int, int, std::shared_ptr<GlooOptions> &>(),
            py::call_guard<py::gil_scoped_release>())
       .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
-                       int rank, int world_size) {
+                       int rank, int world_size, int gid) {
              auto opts = GlooOptions::create();
              char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
              if (ifname && strlen(ifname) > 1) {
@@ -251,10 +255,10 @@ void BindDistributed(py::module *m) {
                opts->device = ProcessGroupGloo::createDefaultDevice();
              }
              return std::make_shared<ProcessGroupGloo>(store, rank, world_size,
-                                                       opts);
+                                                       gid, opts);
            }),
            py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::call_guard<py::gil_scoped_release>())
+           py::arg("group_id") = 0, py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);
 #endif

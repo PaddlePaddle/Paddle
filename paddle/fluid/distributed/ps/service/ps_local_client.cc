@@ -126,11 +126,13 @@ std::future<int32_t> PsLocalClient::Load(const LoadSaveContext& load_context) {
     Region* dense_region = reinterpret_cast<Region*>(pull_context.dense_values);
     pull_dense(dense_region, pull_context.num, pull_context.table);
   } else {  // pull sparse
-    uint64_t* keys = reinterpret_cast<uint64_t*>(pull_context.keys);
-    char** select_values = reinterpret_cast<char**>(pull_context.sparse_values);
+    // uint64_t* keys = reinterpret_cast<uint64_t*>(pull_context.keys);
+    // char** select_values =
+    // reinterpret_cast<char**>(pull_context.sparse_values);
     size_t table_id = pull_context.table;
     size_t num = pull_context.num;
-    pull_sparse_ptr(select_values, table_id, keys, num);
+    pull_sparse_ptr(reinterpret_cast<char**>(pull_context.sparse_values),
+                    table_id, pull_context.keys, num);
   }
 }
 
@@ -172,7 +174,8 @@ std::future<int32_t> PsLocalClient::Load(const LoadSaveContext& load_context) {
   auto* accessor = table_accessor(table_id);
   auto* table_ptr = table(table_id);
 
-  uint32_t num_per_shard = dense_dim_per_shard(accessor->fea_dim(), 1);
+  uint32_t num_per_shard =
+      dense_dim_per_shard(accessor->GetTableInfo(FEA_DIM), 1);
   std::vector<float> region_buffer;
   region_buffer.resize(num_per_shard);
   table_ptr->pull_dense(region_buffer.data(), region_buffer.size());
@@ -217,7 +220,8 @@ std::future<int32_t> PsLocalClient::Load(const LoadSaveContext& load_context) {
   auto* table_ptr = table(table_id);
 
   std::vector<float> region_buffer;
-  region_buffer.resize(dense_dim_per_shard(accessor->fea_dim(), 1), 0);
+  region_buffer.resize(dense_dim_per_shard(accessor->GetTableInfo(FEA_DIM), 1),
+                       0);
   for (size_t i = 0, offset = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
     memcpy(region_buffer.data() + offset, regions[i].data, regions[i].size);
@@ -250,7 +254,7 @@ std::future<int32_t> PsLocalClient::Load(const LoadSaveContext& load_context) {
   auto* table_ptr = table(table_id);
 
   std::vector<float> region_buffer;
-  region_buffer.resize(dense_dim_per_shard(accessor->fea_dim(), 1));
+  region_buffer.resize(dense_dim_per_shard(accessor->GetTableInfo(FEA_DIM), 1));
   size_t data_size = region_buffer.size();
   for (size_t i = 0, offset = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
