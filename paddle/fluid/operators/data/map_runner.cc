@@ -44,13 +44,13 @@ MapRunner::MapRunner(
                         "input_var_names length should be equal to input_queues length, "
                         "but recieve %d != %d.",
                         input_var_names_.size(),
-                        input_var_names_.size()));
+                        input_queues_.size()));
   PADDLE_ENFORCE_EQ(output_var_names_.size(), output_queues_.size(),
                     platform::errors::InvalidArgument(
                         "output_var_names length should be equal to output_queues length, "
                         "but recieve %d != %d.",
                         output_var_names_.size(),
-                        output_var_names_.size()));
+                        output_queues_.size()));
 
   StartMapThread(scope);
 }

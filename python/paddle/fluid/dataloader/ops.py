@@ -21,6 +21,8 @@ from ...fluid.layers.utils import _hash_with_id
 from ...fluid.framework import in_dygraph_mode
 from ...common_ops_import import *
 
+from collections.abc import Sequence, Mapping
+
 __all__ = ["map", "data_reader"]
 
 
@@ -60,29 +62,57 @@ def _generate_stream_id():
     return _stream_id_generator.get_stream_id()
 
 
-def map(map_func, inputs=[]):
-    def _build_program_inputs(x, map_block):
-        assert isinstance(x, (list, tuple))
-        assert len(x) > 0, "map function must have inputs"
-        outputs = []
-        if isinstance(x[0], (list, tuple)):
-            for item in x:
-                outputs.append(_build_program_inputs(item, map_block))
-        else:
-            for item in x:
-                outputs.append(
-                    map_block.create_var(
-                        name=unique_name.generate("map_sub"),
-                        type=item.desc.type(),
-                        dtype=item.desc.dtype(),
-                        persistable=False))
-        return outputs
-
-    inputs = _to_list(inputs)
+def map(map_func, *args, **kwargs):
     if in_dygraph_mode():
         return map_func(inputs)
 
     helper = LayerHelper("map", **locals())
+
+    # NOTE: map_func can take List(Tensor) (while batch_size > 1) as
+    #       inputs or outputs, which means we need to keep the structure
+    #       info when calling map_func, _build_program_inputs used to
+    #       generate 3 kinds of infos:
+    #       1. return value: holds variables in map_block, and keeps the
+    #          structure info of map inputs, will be used to call map_func
+    #       2. input_vars: holds variables in map_block in flatten format,
+    #          will be used to generate input_var_names
+    #       3. flat_inputs: holds variables in main_program/global_block in
+    #          flatten format, will be used as inputs for appendding map OP
+    #       and _parse_program_outputs follows similar logic
+    def _build_program_inputs(inputs, map_block,
+                              input_vars=[], flat_inputs=[]):
+        if isinstance(inputs, Sequence):
+            return [_build_program_inputs(inp, map_block, input_vars,
+                        flat_inputs) for inp in inputs]
+        elif isinstance(inputs, Mapping):
+            return {k: _build_program_inputs(v, map_block, input_vars,
+                        flat_inputs) for k,v in inputs.items()}
+        else:
+            var = map_block.create_var(
+                        name=unique_name.generate("map_sub"),
+                        type=inputs.desc.type(),
+                        dtype=inputs.desc.dtype(),
+                        persistable=False)
+            input_vars.append(var)
+            flat_inputs.append(inputs)
+            return var
+
+    def _parse_program_outputs(outputs, output_vars=[], flat_outputs=[]):
+        if isinstance(outputs, Sequence):
+            return [_parse_program_outputs(outp, output_vars,
+                        flat_outputs) for outp in outputs]
+        elif isinstance(outputs, Mapping):
+            return {k: _parse_program_outputs(v, output_vars,
+                        flat_outputs) for outp in outputs}
+        else:
+            var = helper.create_variable(
+                            name=unique_name.generate("map"),
+                            type=outputs.desc.type(),
+                            dtype=outputs.desc.dtype(),
+                            persistable=True)
+            flat_outputs.append(var)
+            output_vars.append(outputs)
+            return var
 
     # build map block
     main_program = helper.main_program
@@ -90,27 +120,23 @@ def map(map_func, inputs=[]):
         program_id = _hash_with_id(main_program, map_func)
         map_block = main_program.current_block()
 
-        program_inputs = _build_program_inputs(inputs, map_block)
+        input_vars, flat_inputs = [], []
+        program_inputs_args = _build_program_inputs(
+                                args, map_block, input_vars, flat_inputs)
+        program_inputs_kwargs = _build_program_inputs(
+                                kwargs, map_block, input_vars, flat_inputs)
 
-        program_outputs = map_func(*program_inputs)
-        program_outputs = _to_list(program_outputs)
-        input_var_names = []
-        for variables in program_inputs:
-            if isinstance(variables, (list, tuple)):
-                inputs = inputs[0]
-                for v in variables:
-                    input_var_names.append(v.name)
-            else:
-                input_var_names.append(variables.name)
+        program_outputs = map_func(*program_inputs_args,
+                                   **program_inputs_kwargs)
 
-        output_var_names = [v.name for v in program_outputs]
+    # NOTE: _parse_program_outputs create main_program variables, so
+    #       we need to call it outside of _ProgramGuard
+    output_vars, flat_outputs = [], []
+    outputs = _parse_program_outputs(program_outputs, output_vars,
+                                     flat_outputs)
+    input_var_names = [v.name for v in input_vars]
+    output_var_names = [v.name for v in output_vars]
 
-    outputs = \
-        [helper.create_variable(
-            name=unique_name.generate("map"),
-            type=outp.desc.type(),
-            dtype=outp.desc.dtype(),
-            persistable=True) for outp in program_outputs]
     attrs = {
         "map_block": map_block,
         "program_id": program_id,
@@ -124,8 +150,8 @@ def map(map_func, inputs=[]):
 
     helper.append_op(
         type="map",
-        inputs={"In": inputs},
-        outputs={"Out": outputs},
+        inputs={"In": flat_inputs},
+        outputs={"Out": flat_outputs},
         attrs=attrs)
 
     return outputs

@@ -60,7 +60,7 @@ class BatchDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "A one dimensional uint8 tensor containing the raw bytes "
              "of the JPEG image. It is a tensor with rank 1.");
-    AddOutput("Out", "The output tensor of DecodeJpeg op");
+    AddOutput("Out", "The output tensor of DecodeJpeg op").AsDuplicable();
     AddComment(R"DOC(
 This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
 or 1 dimensional Gray Tensor. Optionally converts the image to the 
