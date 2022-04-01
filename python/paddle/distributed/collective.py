@@ -200,15 +200,20 @@ def get_group(id=0):
     return gm[id] if id in gm else None
 
 
-def _new_process_group_impl(backend, store, rank, world_size, group_name,
-                            pg_options):
+def _new_process_group_impl(backend,
+                            store,
+                            rank,
+                            world_size,
+                            group_name,
+                            pg_options,
+                            group_id=0):
     pg = None
     if backend == "gloo":
-        pg = core.ProcessGroupGloo(store, rank, world_size)
+        pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL(store, rank, world_size)
+        pg = core.ProcessGroupNCCL(store, rank, world_size, group_id)
     elif backend == "hccl":
-        pg = core.ProcessGroupHCCL(store, rank, world_size)
+        pg = core.ProcessGroupHCCL(store, rank, world_size, group_id)
 
     return pg
 
@@ -246,10 +251,10 @@ def barrier(group=None):
     ring_id = 0 if group is None else group.id
 
     temp = fill_constant([1], dtype="int32", value="1")
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
 
-    op_type = "barrier"
+    op_type = 'barrier'
 
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'group' for barrier must be int.")
@@ -308,7 +313,8 @@ def new_group(ranks=None, backend=None):
                 rank,
                 size,
                 group_name,
-                pg_options=None)
+                pg_options=None,
+                group_id=gid)
         else:
             rank = -1
             pg = None
@@ -580,8 +586,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
-        elif op == ReduceOp.PROD:
-            op_type = core.ReduceOp.PRODUCT
+        else:
+            raise ValueError("Unknown reduce_op type for allreduce.")
         group = _get_default_group() if group is None else group
         task = group.process_group.allreduce(tensor, op_type)
         if use_calc_stream:
@@ -682,8 +688,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
             op_type = core.ReduceOp.MAX
         elif op == ReduceOp.MIN:
             op_type = core.ReduceOp.MIN
-        elif op == ReduceOp.PROD:
-            op_type = core.ReduceOp.PRODUCT
+        else:
+            raise ValueError("Unknown reduce_op type for reduce.")
         group = _get_default_group() if group is None else group
         gdst = group.get_group_rank(dst)
         assert gdst >= 0, ("dst rank out of group, need global rank")
@@ -1772,7 +1778,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
     if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        task = group.send(tensor, dst)
+        task = group.process_group.send(tensor, dst)
         if use_calc_stream:
             task.wait()
             return None
@@ -1835,7 +1841,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
     if framework._in_eager_mode_ and in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        task = group.recv(tensor, src)
+        task = group.process_group.recv(tensor, src)
         if use_calc_stream:
             task.wait()
             return None
