@@ -58,7 +58,7 @@ ExternalProject_Add(
     PREFIX                ${ARM_BRPC_PREFIX_DIR}
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
-    DOWNLOAD_COMMAND      cp /home/wangbin/the_one_ps/baidu/base/baidu-rpc/arm_brpc.tar.gz .
+    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
                           && tar zxvf ${ARM_BRPC_NAME}.tar.gz && mv output arm_brpc
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
