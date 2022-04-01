@@ -133,7 +133,7 @@ class HashTable {
  private:
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
-#elif defined(PADDLE_WITH_XPU_KP)
+#elif defined(__xpu__)
   __global__ptr XPUCacheArray<KeyType, ValType>* container_;
 #endif
   int BLOCK_SIZE_{256};
@@ -145,5 +145,4 @@ class HashTable {
 };
 }  // end namespace framework
 }  // end namespace paddle
-#include "paddle/fluid/framework/fleet/heter_ps/hashtable_inl.h"
 #endif
