@@ -189,11 +189,10 @@ def batch_norm(x,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
 
-        empty_tensor = core.eager.Tensor() if in_dygraph_mode(
-        ) else helper.create_variable_for_type_inference(x.dtype)
+        MomentumTensor = None
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, empty_tensor, mean_out,
-            variance_out, *attrs)
+            x, weight, bias, running_mean, running_var, MomentumTensor,
+            mean_out, variance_out, *attrs)
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
