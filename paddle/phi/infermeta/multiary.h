@@ -169,8 +169,6 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
-void DiagBlockInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
-
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,

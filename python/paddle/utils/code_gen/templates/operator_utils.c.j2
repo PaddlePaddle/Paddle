@@ -11,9 +11,7 @@ class {{api_name | to_pascal_case}}OpMaker : public framework::OpProtoAndChecker
       {% endif %}
     {% endfor %}
     {% for output in api["outputs"] %}
-      {% if output["name"] in api["kernel"]["param"] %}
 {{add_output(loop.index0, output, api_name)}};
-      {% endif %}
     {% endfor %}
     {% for attr in api["attrs"] %}
       {% if attr["name"] in api["kernel"]["param"] %}
