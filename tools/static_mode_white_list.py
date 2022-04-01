@@ -306,6 +306,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_linear_interp_op',
     'test_linear_interp_v2_op',
     'test_linspace',
+    'test_logspace',
     'test_load_op',
     'test_load_vars_shape_check',
     'test_locality_aware_nms_op',
