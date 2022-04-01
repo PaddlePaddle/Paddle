@@ -15,15 +15,17 @@
 from __future__ import print_function
 
 import unittest
-import numpy
+import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from op_test import OpTest
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 
 
-class TestTrunctedGaussianRandomOp(unittest.TestCase):
+class TestTrunctedGaussianRandomOp(OpTest):
     def setUp(self):
         self.op_type = "truncated_gaussian_random"
         self.inputs = {}
@@ -33,8 +35,15 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
             "std": 1.,
             "seed": 10,
         }
-
         self.outputs = ["Out"]
+
+    def verify_output(self, outs):
+        tensor = outs[0]
+        self.assertAlmostEqual(numpy.mean(tensor), .0, delta=0.1)
+        self.assertAlmostEqual(numpy.var(tensor), 0.773, delta=0.1)
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
 
     def test_cpu(self):
         self.gaussian_random_test(place=fluid.CPUPlace())
