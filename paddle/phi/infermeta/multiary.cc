@@ -358,6 +358,7 @@ void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
                   const MetaTensor& stat_neg,
+                  const MetaTensor& ins_tag_weight,
                   const std::string& curve,
                   int num_thresholds,
                   int slide_steps,
@@ -399,12 +400,18 @@ void AucInferMeta(const MetaTensor& input,
   }
   auto predict_height = input.dims()[0];
   auto label_height = label.dims()[0];
+  auto ins_tag_height = ins_tag_height.dims()[0]
 
-  if (config.is_runtime) {
+                        if (config.is_runtime) {
     PADDLE_ENFORCE_EQ(
         predict_height,
         label_height,
         phi::errors::InvalidArgument("Out and Label should have same height."));
+
+    PADDLE_ENFORCE_EQ(ins_tag_weight_height,
+                      label_height,
+                      phi::errors::InvalidArgument(
+                          "Ins_tag_weight and Label should have same height."));
   }
 
   int num_pred_buckets = num_thresholds + 1;

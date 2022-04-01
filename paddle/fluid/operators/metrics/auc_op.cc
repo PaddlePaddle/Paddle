@@ -43,6 +43,8 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
+    AddInput("InsTagWeight",
+             "(Tensor) instag weight, 1 means real data, 0 means false data");
 
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
