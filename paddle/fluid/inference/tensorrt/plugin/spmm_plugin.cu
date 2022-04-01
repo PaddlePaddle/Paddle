@@ -127,7 +127,6 @@ void SpmmPluginDynamic::cusparseLtContext::init(
              "cusparLtContext only supports data type "
              "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]");
   }
-  cout << "m: " << m << " n: " << n << " k: " << k << endl;
   CHECK_CUSPARSE(cusparseLtDenseDescriptorInit(
       &handle, &matA, m, k, k, alignment, type, CUSPARSE_ORDER_ROW))
   CHECK_CUSPARSE(cusparseLtStructuredDescriptorInit(
@@ -247,8 +246,6 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   */
   precision_size_ = getElementSize(precision);
   element_size_ = (precision_ == DataType::kINT8 ? 4 : precision_size_);
-  cout << "layer name: " << layer_name << " weight count: " << weight.count
-       << " out dim: " << out_dim;
   assert(weight.count % out_dim == 0 &&
          "The size of weight should be divided by output dimension.");
   k_ = weight.count / out_dim;
@@ -343,8 +340,6 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   */
   precision_size_ = getElementSize(precision);
   element_size_ = (precision_ == DataType::kINT8 ? 4 : precision_size_);
-  cout << "calling clone function for spmm plugin, compressed_size: "
-       << compressed_size_ << endl;
   // Each plugin has a copy of compressed weight
   weight_compressed_ = new char[compressed_size];
   std::copy_n(static_cast<const char*>(weight_compressed), compressed_size,
@@ -398,7 +393,6 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name, const void* data,
   assert(is_configured_ && "Deserialize data should be configured");
 
   weight_compressed_ = new char[compressed_size_];
-  cout << "compressed size: " << compressed_size_ << endl;
   deserialize_value_size(&data, &length, weight_compressed_, compressed_size_);
   CHECK_CUDA(cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
                         compressed_size_))
@@ -512,9 +506,6 @@ void SpmmPluginDynamic::configurePlugin(const DynamicPluginTensorDesc* inputs,
     assert(nbInputs == 1);
     assert(precision_ == inputs[0].desc.type);
     const auto& inDims0 = inputs[0].desc.dims;
-    cout << "nbdims: " << inDims0.nbDims << "d: " << inDims0.d[0] << ","
-         << inDims0.d[1] << "," << inDims0.d[2] << "," << inDims0.d[3] << ","
-         << inDims0.d[4] << endl;
     assert(inDims0.nbDims == 5);
     assert(k_ == inDims0.d[2]);
     assert(inDims0.d[3] == 1);
@@ -541,7 +532,6 @@ void SpmmPluginDynamic::configurePlugin(const DynamicPluginTensorDesc* inputs,
       CHECK_CUDA(cudaMemcpy(bias_dev_, bias_, sizeof(float) * out_dim_,
                             cudaMemcpyHostToDevice))
     }
-    cout << "m_max is: " << m_max_;
     cudaDataType_t dataType = convertTrtType(precision_);
     spmm_context_.init(m_max_, out_dim_, k_, dataType, bias_dev_, activation_);
 
