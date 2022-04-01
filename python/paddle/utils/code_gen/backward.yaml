@@ -637,15 +637,15 @@
   optional : weight
 
 - backward_api : psroi_pool_grad
-  forward : psroi_pool (Tensor x, Tensor rois, Tensor rois_num, int pooled_weight, int pooled_width, int output_channels, float spatial_scale ) -> Tensor(out)
-  args : (Tensor x, Tensor rois, Tensor rois_num, Tensor out_grad, int pooled_weight, int pooled_width, int output_channels, float spatial_scale)
+  forward : psroi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale) -> Tensor(out)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
   output : Tensor(x_grad)
   infer_meta :
-    func : UnchangedInferMeta
+    func : GeneralUnaryGradInferMeta
     param : [x]
   kernel :
     func : psroi_pool_grad
-  optional : rois_num
+  optional : boxes_num
 
 # output is optional
 - backward_api : put_along_axis_grad

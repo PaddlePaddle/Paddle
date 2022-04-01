@@ -953,7 +953,11 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     assert len(x.shape) == 4, \
             "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_psroi_pool(x, boxes, boxes_num, pooled_height,
+                                             pooled_width, output_channels,
+                                             spatial_scale)
+    if _in_legacy_dygraph():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                  output_channels, "spatial_scale",
                                  spatial_scale, "pooled_height", pooled_height,
