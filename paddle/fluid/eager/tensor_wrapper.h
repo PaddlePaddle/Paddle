@@ -95,19 +95,19 @@ class TensorWrapper {
     }
 
     // if it's full_reserved just return the full copy of tensor
-    if (full_reserved_) {
-      check_inplace_version();
-      return intermidiate_tensor_;
-    } else {
+    check_inplace_version();
+
+    paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
+    if (!full_reserved_) {
       std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
       auto p_ab_autograd_meta =
           std::make_shared<AutogradMeta>(Edge(new_grad_node, out_rank_info_));
-      intermidiate_tensor_.set_autograd_meta(
+      recovered_tensor.set_autograd_meta(
           std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
               p_ab_autograd_meta));
-      check_inplace_version();
-      return intermidiate_tensor_;
     }
+
+    return recovered_tensor;
   }
 
   void check_inplace_version() {
