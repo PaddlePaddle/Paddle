@@ -253,15 +253,6 @@
 #   kernel :
 #     func : histogram
 
-# python API: paddle.nn.initializer.TruncatedNormal
-# - api : truncated_gaussian_random
-#   args : (int[] shape, float mean, float std, int seed, DataType dtype)
-#   output : Tensor
-#   infer_meta :
-#     func : TruncatedGaussianRandomInferMeta
-#   kernel :
-#     func : truncated_gaussian_random
-
 - api : abs
   args : (Tensor x)
   output : Tensor
@@ -1453,6 +1444,15 @@
   kernel :
     func : trunc
   backward : trunc_grad
+
+# python API: paddle.nn.initializer.TruncatedNormal
+- api : truncated_gaussian_random
+  args : (int[] shape, float mean, float std, int seed, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+  kernel :
+    func : truncated_gaussian_random
 
 # unfold
 - api : unfold
