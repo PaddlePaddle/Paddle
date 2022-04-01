@@ -18,6 +18,7 @@ limitations under the License. */
 // #include
 // "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include <iostream>
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
 
 namespace paddle {
@@ -110,4 +111,5 @@ class HBMMemoryPool : public managed {
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif
 #endif

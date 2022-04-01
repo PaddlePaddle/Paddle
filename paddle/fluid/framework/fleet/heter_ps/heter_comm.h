@@ -18,7 +18,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "cub/cub.cuh"
 #include "cub/util_allocator.cuh"
-#include "hashtable.h"       // NOLINT
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "thrust/pair.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 #include <xpu/runtime.h>
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"       // NOLINT
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"

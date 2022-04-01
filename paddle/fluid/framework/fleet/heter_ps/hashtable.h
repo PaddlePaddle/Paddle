@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
 #include <limits>
 #include <memory>
@@ -23,14 +24,15 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
 #endif
-#include "paddle/phi/core/utils/rw_lock.h"
+#ifdef PADDLE_WITH_CUDA
 #include "thrust/pair.h"
-// #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#endif
+// #include "cudf/concurrent_unordered_map.cuh.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
-#ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 
 namespace paddle {
 namespace framework {
