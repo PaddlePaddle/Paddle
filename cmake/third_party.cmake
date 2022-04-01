@@ -338,9 +338,14 @@ if (WITH_PSCORE)
 
     include(external/leveldb)
     list(APPEND third_party_deps extern_leveldb)
-
-    include(external/brpc)
-    list(APPEND third_party_deps extern_brpc)
+    
+    if (WITH_ARM_BRPC)
+        include(external/arm_brpc)
+        list(APPEND third_party_deps extern_arm_brpc)
+    else()
+        include(external/brpc)
+        list(APPEND third_party_deps extern_brpc)
+    endif()
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
