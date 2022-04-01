@@ -327,6 +327,20 @@
     func : addmm
   backward : addmm_grad
 
+- api : arange
+  args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
+  output : Tensor
+  infer_meta :
+    func : ArangeInferMeta
+    param : [start, end, step]
+  kernel :
+    func : arange
+    param : [start, end, step]
+    data_type : dtype
+    backend : place
+  data_transform :
+    support_trans_dtype : start, end, step
+
 # arg_max
 - api : argmax
   args : (Tensor x, int64_t axis, bool keepdims, bool flatten, int dtype)
@@ -1103,6 +1117,18 @@
     func : put_along_axis
     data_type : x
   backward : put_along_axis_grad
+
+- api : randperm
+  args : (int n, DataType dtype, Place place={})
+  output : Tensor
+  infer_meta :
+    func : RandpermInferMeta
+    param : [n, dtype]
+  kernel :
+    func : randperm
+    param : [n, dtype]
+    data_type : dtype
+    backend : place
 
 - api : reciprocal
   args : (Tensor x)

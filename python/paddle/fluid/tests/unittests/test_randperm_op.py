@@ -18,6 +18,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
+from paddle.fluid.framework import _test_eager_guard
 import os
 
 
@@ -50,6 +51,7 @@ class TestRandpermOp(OpTest):
 
     def setUp(self):
         self.op_type = "randperm"
+        self.python_api = paddle.randperm
         self.n = 200
         self.dtype = "int64"
 
@@ -71,6 +73,10 @@ class TestRandpermOp(OpTest):
         out_np = np.array(outs[0])
         self.assertTrue(
             check_randperm_out(self.n, out_np), msg=error_msg(out_np))
+
+    def test_eager(self):
+        with _test_eager_guard():
+            self.test_check_output()
 
 
 class TestRandpermOpN(TestRandpermOp):
