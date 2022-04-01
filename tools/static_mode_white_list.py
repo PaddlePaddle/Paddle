@@ -384,6 +384,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_partial_sum_op',
     'test_pass_builder',
     'test_pixel_shuffle',
+    'test_pixel_unshuffle',
     'test_polygon_box_transform',
     'test_pool1d_api',
     'test_pool2d_api',
