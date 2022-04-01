@@ -233,7 +233,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
         memory_copy(dst_place, cur_task.path->nodes_[cur_step + 1].val_storage,
                     src_place, cur_task.path->nodes_[cur_step].val_storage,
                     cur_task.path->nodes_[cur_step + 1].val_bytes_len,
-                    cur_task.path->nodes_[cur_step + 1].in_stream)
+                    cur_task.path->nodes_[cur_step + 1].in_stream);
       }
     }
   }
@@ -313,7 +313,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
                   reinterpret_cast<char*>(src_val + h_left[end_index]),
                   src_place, cur_task.path->nodes_[cur_step].val_storage,
                   cur_task.path->nodes_[cur_step].val_bytes_len,
-                  cur_task.path->nodes_[cur_step].out_stream)
+                  cur_task.path->nodes_[cur_step].out_stream);
     }
   }
 }
@@ -399,7 +399,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
   }
   for (int i = 0; i < stream_num; ++i) {
     sync_stream(streams[i]);
-    destroy_stream(streams[i])
+    destroy_stream(streams[i]);
   }
 }
 
@@ -606,7 +606,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   walk_to_src(num, total_device, h_left, h_right, d_shard_vals_ptr);
 
-  for (int i = 0; i < total_gpu; ++i) {
+  for (int i = 0; i < total_device; ++i) {
     auto& node = path_[num][i].nodes_.front();
     sync_stream(node.out_stream);
   }
