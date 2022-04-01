@@ -20,7 +20,7 @@
 namespace paddle {
 namespace distributed {
 
-int SparseAccessor::initialize() {
+int SparseAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
@@ -38,51 +38,73 @@ int SparseAccessor::initialize() {
   return 0;
 }
 
-void SparseAccessor::GetTableInfo(AccessorInfo& info) {
-  info.dim = dim();
-  info.size = size();
-  info.select_dim = select_dim();
-  info.select_size = select_size();
-  info.update_dim = update_dim();
-  info.update_size = update_size();
-  info.fea_dim = fea_dim();
+void SparseAccessor::SetTableInfo(AccessorInfo& info) {
+  info.dim = Dim();
+  info.size = Size();
+  info.select_dim = SelectDim();
+  info.select_size = SelectSize();
+  info.update_dim = UpdateDim();
+  info.update_size = UpdateSize();
+  info.mf_size = MFSize();
 }
 
-size_t SparseAccessor::dim() { return sparse_feature_value.dim(); }
+size_t SparseAccessor::GetTableInfo(InfoKey key) {
+  switch (key) {
+    case DIM:
+      return Dim();
+    case SIZE:
+      return Size();
+    case SELECT_DIM:
+      return SelectDim();
+    case SELECT_SIZE:
+      return SelectSize();
+    case UPDATE_DIM:
+      return UpdateDim();
+    case UPDATE_SIZE:
+      return UpdateSize();
+    case MF_SIZE:
+      return MFSize();
+    default:
+      return 0;
+  }
+  return 0;
+}
 
-size_t SparseAccessor::dim_size(size_t dim) {
+size_t SparseAccessor::Dim() { return sparse_feature_value.Dim(); }
+
+size_t SparseAccessor::DimSize(size_t dim) {
   auto embedx_dim = _config.embedx_dim();
-  return sparse_feature_value.dim_size(dim, embedx_dim);
+  return sparse_feature_value.DimSize(dim, embedx_dim);
 }
 
-size_t SparseAccessor::size() { return sparse_feature_value.size(); }
+size_t SparseAccessor::Size() { return sparse_feature_value.Size(); }
 
-size_t SparseAccessor::mf_size() {
+size_t SparseAccessor::MFSize() {
   return (_config.embedx_dim() + sparse_feature_value.embedx_sgd_dim) *
          sizeof(float);  // embedx embedx_g2sum
 }
 
 // pull value
-size_t SparseAccessor::select_dim() {
+size_t SparseAccessor::SelectDim() {
   auto embedx_dim = _config.embedx_dim();
   return 1 + embedx_dim;
 }
 
-size_t SparseAccessor::select_dim_size(size_t dim) { return sizeof(float); }
+size_t SparseAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
 
-size_t SparseAccessor::select_size() { return select_dim() * sizeof(float); }
+size_t SparseAccessor::SelectSize() { return SelectDim() * sizeof(float); }
 
 // push value
-size_t SparseAccessor::update_dim() {
+size_t SparseAccessor::UpdateDim() {
   auto embedx_dim = _config.embedx_dim();
   return 4 + embedx_dim;
 }
 
-size_t SparseAccessor::update_dim_size(size_t dim) { return sizeof(float); }
+size_t SparseAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
 
-size_t SparseAccessor::update_size() { return update_dim() * sizeof(float); }
+size_t SparseAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
 
-bool SparseAccessor::shrink(float* value) {
+bool SparseAccessor::Shrink(float* value) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delete_after_unseen_days =
@@ -90,12 +112,12 @@ bool SparseAccessor::shrink(float* value) {
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
 
   // time_decay first
-  sparse_feature_value.show(value) *= _show_click_decay_rate;
-  sparse_feature_value.click(value) *= _show_click_decay_rate;
+  sparse_feature_value.Show(value) *= _show_click_decay_rate;
+  sparse_feature_value.Click(value) *= _show_click_decay_rate;
 
   // shrink after
-  auto score = show_click_score(sparse_feature_value.show(value),
-                                sparse_feature_value.click(value));
+  auto score = show_click_score(sparse_feature_value.Show(value),
+                                sparse_feature_value.Click(value));
   auto unseen_days = sparse_feature_value.unseen_days(value);
   if (score < delete_threshold || unseen_days > delete_after_unseen_days) {
     return true;
@@ -103,7 +125,7 @@ bool SparseAccessor::shrink(float* value) {
   return false;
 }
 
-bool SparseAccessor::save(float* value, int param) {
+bool SparseAccessor::Save(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -119,8 +141,8 @@ bool SparseAccessor::save(float* value, int param) {
     case 1:
     // save xbox base
     case 2: {
-      if (show_click_score(sparse_feature_value.show(value),
-                           sparse_feature_value.click(value)) >=
+      if (show_click_score(sparse_feature_value.Show(value),
+                           sparse_feature_value.Click(value)) >=
               base_threshold &&
           sparse_feature_value.delta_score(value) >= delta_threshold &&
           sparse_feature_value.unseen_days(value) <= delta_keep_days) {
@@ -148,7 +170,7 @@ bool SparseAccessor::save(float* value, int param) {
   }
 }
 
-void SparseAccessor::update_stat_after_save(float* value, int param) {
+void SparseAccessor::UpdateStatAfterSave(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -157,8 +179,8 @@ void SparseAccessor::update_stat_after_save(float* value, int param) {
   }
   switch (param) {
     case 1: {
-      if (show_click_score(sparse_feature_value.show(value),
-                           sparse_feature_value.click(value)) >=
+      if (show_click_score(sparse_feature_value.Show(value),
+                           sparse_feature_value.Click(value)) >=
               base_threshold &&
           sparse_feature_value.delta_score(value) >= delta_threshold &&
           sparse_feature_value.unseen_days(value) <= delta_keep_days) {
@@ -175,48 +197,48 @@ void SparseAccessor::update_stat_after_save(float* value, int param) {
   }
 }
 
-int32_t SparseAccessor::create(float** values, size_t num) {
+int32_t SparseAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[sparse_feature_value.unseen_days_index()] = 0;
     value[sparse_feature_value.delta_score_index()] = 0;
-    value[sparse_feature_value.show_index()] = 0;
-    value[sparse_feature_value.click_index()] = 0;
-    value[sparse_feature_value.slot_index()] = -1;
+    value[sparse_feature_value.ShowIndex()] = 0;
+    value[sparse_feature_value.ClickIndex()] = 0;
+    value[sparse_feature_value.SlotIndex()] = -1;
     _embed_sgd_rule->init_value(
-        value + sparse_feature_value.embed_w_index(),
+        value + sparse_feature_value.Embed_W_Index(),
         value + sparse_feature_value.embed_g2sum_index());
     _embedx_sgd_rule->init_value(
-        value + sparse_feature_value.embedx_w_index(),
+        value + sparse_feature_value.Embedx_W_Index(),
         value + sparse_feature_value.embedx_g2sum_index(), false);
   }
   return 0;
 }
 
-bool SparseAccessor::need_extend_mf(float* value) {
-  float show = value[sparse_feature_value.show_index()];
-  float click = value[sparse_feature_value.click_index()];
+bool SparseAccessor::NeedExtendMF(float* value) {
+  float show = value[sparse_feature_value.ShowIndex()];
+  float click = value[sparse_feature_value.ClickIndex()];
   float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
                 click * _config.ctr_accessor_param().click_coeff();
   return score >= _config.embedx_threshold();
 }
 
-bool SparseAccessor::has_mf(size_t size) {
+bool SparseAccessor::HasMF(size_t size) {
   return size > sparse_feature_value.embedx_g2sum_index();
 }
 
 // from SparseFeatureValue to SparsePullValue
-int32_t SparseAccessor::select(float** select_values, const float** values,
+int32_t SparseAccessor::Select(float** select_values, const float** values,
                                size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
     const float* value = values[value_item];
-    select_value[SparsePullValue::embed_w_index()] =
-        value[sparse_feature_value.embed_w_index()];
-    memcpy(select_value + SparsePullValue::embedx_w_index(),
-           value + sparse_feature_value.embedx_w_index(),
+    select_value[SparsePullValue::Embed_W_Index()] =
+        value[sparse_feature_value.Embed_W_Index()];
+    memcpy(select_value + SparsePullValue::Embedx_W_Index(),
+           value + sparse_feature_value.Embedx_W_Index(),
            embedx_dim * sizeof(float));
   }
   return 0;
@@ -225,15 +247,15 @@ int32_t SparseAccessor::select(float** select_values, const float** values,
 // from SparsePushValue to SparsePushValue
 // first dim: item
 // second dim: field num
-int32_t SparseAccessor::merge(float** update_values,
+int32_t SparseAccessor::Merge(float** update_values,
                               const float** other_update_values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
-  size_t total_dim = SparsePushValue::dim(embedx_dim);
+  size_t total_dim = SparsePushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
     for (auto i = 0u; i < total_dim; ++i) {
-      if (i != SparsePushValue::slot_index()) {
+      if (i != SparsePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }
@@ -244,43 +266,43 @@ int32_t SparseAccessor::merge(float** update_values,
 // from SparsePushValue to SparseFeatureValue
 // first dim: item
 // second dim: field num
-int32_t SparseAccessor::update(float** update_values, const float** push_values,
+int32_t SparseAccessor::Update(float** update_values, const float** push_values,
                                size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* push_value = push_values[value_item];
-    float push_show = push_value[SparsePushValue::show_index()];
-    float push_click = push_value[SparsePushValue::click_index()];
-    float slot = push_value[SparsePushValue::slot_index()];
-    update_value[sparse_feature_value.show_index()] += push_show;
-    update_value[sparse_feature_value.click_index()] += push_click;
-    update_value[sparse_feature_value.slot_index()] = slot;
+    float push_show = push_value[SparsePushValue::ShowIndex()];
+    float push_click = push_value[SparsePushValue::ClickIndex()];
+    float slot = push_value[SparsePushValue::SlotIndex()];
+    update_value[sparse_feature_value.ShowIndex()] += push_show;
+    update_value[sparse_feature_value.ClickIndex()] += push_click;
+    update_value[sparse_feature_value.SlotIndex()] = slot;
     update_value[sparse_feature_value.delta_score_index()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
     update_value[sparse_feature_value.unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
-        update_value + sparse_feature_value.embed_w_index(),
+        update_value + sparse_feature_value.Embed_W_Index(),
         update_value + sparse_feature_value.embed_g2sum_index(),
-        push_value + SparsePushValue::embed_g_index());
+        push_value + SparsePushValue::Embed_G_Index());
     _embedx_sgd_rule->update_value(
-        update_value + sparse_feature_value.embedx_w_index(),
+        update_value + sparse_feature_value.Embedx_W_Index(),
         update_value + sparse_feature_value.embedx_g2sum_index(),
-        push_value + SparsePushValue::embedx_g_index());
+        push_value + SparsePushValue::Embedx_G_Index());
   }
   return 0;
 }
 
-bool SparseAccessor::create_value(int stage, const float* value) {
+bool SparseAccessor::CreateValue(int stage, const float* value) {
   // stage == 0, pull
   // stage == 1, push
   if (stage == 0) {
     return true;
   } else if (stage == 1) {
     // operation
-    auto show = SparsePushValue::show(const_cast<float*>(value));
-    auto click = SparsePushValue::click(const_cast<float*>(value));
+    auto show = SparsePushValue::Show(const_cast<float*>(value));
+    auto click = SparsePushValue::Click(const_cast<float*>(value));
     auto score = show_click_score(show, click);
     if (score <= 0) {
       return false;
@@ -301,34 +323,34 @@ float SparseAccessor::show_click_score(float show, float click) {
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 
-std::string SparseAccessor::parse_to_string(const float* v, int param) {
+std::string SparseAccessor::ParseToString(const float* v, int param) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4] << " "
      << v[5];
   for (int i = sparse_feature_value.embed_g2sum_index();
-       i < sparse_feature_value.embedx_w_index(); i++) {
+       i < sparse_feature_value.Embedx_W_Index(); i++) {
     os << " " << v[i];
   }
-  auto show = sparse_feature_value.show(const_cast<float*>(v));
-  auto click = sparse_feature_value.click(const_cast<float*>(v));
+  auto show = sparse_feature_value.Show(const_cast<float*>(v));
+  auto click = sparse_feature_value.Click(const_cast<float*>(v));
   auto score = show_click_score(show, click);
   if (score >= _config.embedx_threshold() &&
-      param > sparse_feature_value.embedx_w_index()) {
-    for (auto i = sparse_feature_value.embedx_w_index();
-         i < sparse_feature_value.dim(); ++i) {
+      param > sparse_feature_value.Embedx_W_Index()) {
+    for (auto i = sparse_feature_value.Embedx_W_Index();
+         i < sparse_feature_value.Dim(); ++i) {
       os << " " << v[i];
     }
   }
   return os.str();
 }
 
-int SparseAccessor::parse_from_string(const std::string& str, float* value) {
+int SparseAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
 
   _embedx_sgd_rule->init_value(
-      value + sparse_feature_value.embedx_w_index(),
+      value + sparse_feature_value.Embedx_W_Index(),
       value + sparse_feature_value.embedx_g2sum_index());
   auto ret = paddle::string::str_to_float(str.data(), value);
   CHECK(ret >= 6) << "expect more than 6 real:" << ret;

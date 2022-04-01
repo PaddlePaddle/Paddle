@@ -201,10 +201,10 @@ def yolo_loss(x,
                                              scale_x_y=1.)
     """
 
-    if _non_static_mode() and gt_score is None:
+    if _non_static_mode():
         loss, _, _ = _C_ops.yolov3_loss(
-            x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
-            'class_num', class_num, 'ignore_thresh', ignore_thresh,
+            x, gt_box, gt_label, gt_score, 'anchors', anchors, 'anchor_mask',
+            anchor_mask, 'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
             use_label_smooth, 'scale_x_y', scale_x_y)
         return loss
@@ -384,6 +384,12 @@ def yolo_box(x,
                                                    clip_bbox=True,
                                                    scale_x_y=1.)
     """
+    if in_dygraph_mode():
+        boxes, scores = _C_ops.final_state_yolo_box(
+            x, img_size, anchors, class_num, conf_thresh, downsample_ratio,
+            clip_bbox, scale_x_y, iou_aware, iou_aware_factor)
+        return boxes, scores
+
     if _non_static_mode():
         boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,

@@ -87,6 +87,23 @@ std::vector<MetaTensor*> InferMetaContext::InputsBetween(size_t start,
   return result;
 }
 
+paddle::optional<const std::vector<const MetaTensor*>>
+InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
+  const auto& first = inputs_.at(start);
+
+  if (first) {
+    std::vector<const MetaTensor*> result;
+    result.reserve(end - start);
+
+    for (size_t i = start; i < end; ++i) {
+      result.push_back(inputs_.at(i).get());
+    }
+
+    return paddle::optional<const std::vector<const MetaTensor*>>(result);
+  }
+  return paddle::optional<const std::vector<const MetaTensor*>>(paddle::none);
+}
+
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
 }

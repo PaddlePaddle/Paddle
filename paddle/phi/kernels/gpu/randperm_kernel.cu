@@ -89,12 +89,12 @@ void RandpermRawKernel(
     RandintKernel<int, Context>(dev_ctx,
                                 std::numeric_limits<int>::min(),
                                 std::numeric_limits<int>::max(),
-                                ScalarArray({n}),
+                                IntArray({n}),
                                 phi::DataType::INT32,
                                 &key);
-    DenseTensor key_out = Empty<int, Context>(dev_ctx, ScalarArray({n}));
+    DenseTensor key_out = Empty<int, Context>(dev_ctx, IntArray({n}));
 
-    DenseTensor range = Empty<T, Context>(dev_ctx, ScalarArray({n}));
+    DenseTensor range = Empty<T, Context>(dev_ctx, IntArray({n}));
     T* range_data = range.data<T>();
     funcs::ForRange<Context> for_range(dev_ctx, n);
     for_range([range_data] __device__(size_t idx) {

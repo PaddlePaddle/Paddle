@@ -219,6 +219,9 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "reduce":
+            need_result = input1 + input2
+            self.assertTrue(np.allclose(tr0_out, need_result))
         elif col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
