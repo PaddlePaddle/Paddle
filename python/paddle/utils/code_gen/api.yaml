@@ -306,6 +306,15 @@
     func : cross
   backward : cross_grad
 
+# Part of python API paddle.nn.functional.cross_entropy
+- api : cross_entropy_with_softmax
+  args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
+  output : Tensor(softmax), Tensor(loss)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxInferMeta
+  kernel :
+    func : cross_entropy_with_softmax
+
 # cumsum
 - api : cumsum
   args : (Tensor x, int axis, bool flatten, bool exclusive, bool reverse)

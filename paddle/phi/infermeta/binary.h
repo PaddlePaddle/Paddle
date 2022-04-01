@@ -112,6 +112,17 @@ void CrossInferMeta(const MetaTensor& x,
                     int axis,
                     MetaTensor* out);
 
+void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
+                                      const MetaTensor& label,
+                                      bool soft_label,
+                                      bool use_softmax,
+                                      bool numeric_stable_mode,
+                                      int ignore_index,
+                                      int axis,
+                                      MetaTensor* softmax,
+                                      MetaTensor* loss,
+                                      MetaConfig config = MetaConfig());
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
