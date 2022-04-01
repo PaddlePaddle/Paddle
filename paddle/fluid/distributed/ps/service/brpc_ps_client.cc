@@ -662,9 +662,7 @@ std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
                                               size_t table_id) {
   auto timer = std::make_shared<CostTimer>("pserver_client_pull_dense");
   auto *accessor = table_accessor(table_id);
-  auto accessor_info = accessor->GetAccessorInfo();
-  auto fea_dim = accessor_info.fea_dim;
-  auto select_size = accessor_info.select_size;
+  auto fea_dim = accessor->GetAccessorInfo().fea_dim;
   size_t request_call_num = _server_channels.size();
   uint32_t num_per_shard = dense_dim_per_shard(fea_dim, request_call_num);
   // callback 将各shard结果，顺序填入region
@@ -675,7 +673,8 @@ std::future<int32_t> BrpcPsClient::pull_dense(Region *regions,
         size_t region_idx = 0;       // 当前填充的region偏移
         size_t region_data_idx = 0;  // 当前填充的region内data偏移
         auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
-        size_t shard_data_size = num_per_shard * select_size;
+        size_t shard_data_size =
+            num_per_shard * accessor->GetAccessorInfo().select_size;
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PULL_DENSE_TABLE) != 0) {
             ret = -1;

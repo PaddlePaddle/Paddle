@@ -75,8 +75,8 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
           << acc->common_feature_value.embedx_sgd_dim << " "
           << acc->common_feature_value.Dim() << "\n";
 
-  float* value = new float[acc->Dim()];
-  for (auto i = 0u; i < acc->Dim(); ++i) {
+  float* value = new float[acc->GetAccessorInfo().dim];
+  for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
     value[i] = i * 1.0;
   }
   ASSERT_TRUE(!acc->Shrink(value));
@@ -94,8 +94,8 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   ASSERT_EQ(acc->Configure(parameter), 0);
   ASSERT_EQ(acc->Initialize(), 0);
 
-  float* value = new float[acc->Dim()];
-  for (auto i = 0u; i < acc->Dim(); ++i) {
+  float* value = new float[acc->GetAccessorInfo().dim];
+  for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
     value[i] = i * 1.0;
   }
 
@@ -109,7 +109,7 @@ TEST(downpour_feature_value_accessor_test, test_save) {
   ASSERT_TRUE(acc->Save(value, 2));
 
   VLOG(3) << "test_save:";
-  for (auto i = 0u; i < acc->Dim(); ++i) {
+  for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
     VLOG(3) << value[i];
   }
 }
@@ -251,14 +251,14 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     acc->_embedx_sgd_rule->update_value(&v.embedx_w[0], &v.embedx_g2sum[0],
                                         &push_v.embedx_g[0]);
 
-    float* ptr = new float[acc->Dim()];
+    float* ptr = new float[acc->GetAccessorInfo().dim];
     v.to_array(ptr, parameter.embedx_dim());
     exp_value.push_back(ptr);
   }
   acc->Update(value, grad, item_size);
 
   for (auto i = 0u; i < item_size; ++i) {
-    for (auto j = 0u; j < acc->Dim(); ++j) {
+    for (auto j = 0u; j < acc->GetAccessorInfo().dim; ++j) {
       VLOG(3) << value[i][j] << ":" << exp_value[i][j] << " ";
       ASSERT_FLOAT_EQ(value[i][j], exp_value[i][j]);
     }
