@@ -1331,85 +1331,6 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method___getstate__(TensorObject* self,
-                                            PyObject* ignored) {
-  EAGER_TRY
-  auto dense_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-  PADDLE_ENFORCE_NOT_NULL(dense_tensor,
-                          platform::errors::PreconditionNotMet(
-                              "Tensor::__getstate__ only support LoDTensor."));
-
-  auto holder = dense_tensor->Holder();
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(holder->place()), true,
-                    platform::errors::PreconditionNotMet(
-                        "Tensor is not on CPU."
-                        "Now only Tensor on CPU can be serialized."));
-
-  auto* mmap_writer_allocation =
-      dynamic_cast<memory::allocation::MemoryMapWriterAllocation*>(
-          holder.get());
-  PADDLE_ENFORCE_NOT_NULL(
-      mmap_writer_allocation,
-      platform::errors::PreconditionNotMet(
-          "Tensor is not in shared memory."
-          "Now only Tensor on shared memory can be serialized."));
-  int type_idx = static_cast<int>(dense_tensor->type());
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&self->tensor);
-  return ToPyObject(std::make_tuple(
-      mmap_writer_allocation->ipc_name(), mmap_writer_allocation->size(),
-      type_idx, phi::vectorize(dense_tensor->dims()), dense_tensor->lod(),
-      self->tensor.name(), autograd_meta->StopGradient(),
-      autograd_meta->Persistable()));
-
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* tensor_method___setstate__(TensorObject* self,
-                                            PyObject* state) {
-  EAGER_TRY
-  Py_ssize_t len = PyTuple_Size(state);
-  PADDLE_ENFORCE_EQ(len, 5,
-                    platform::errors::PreconditionNotMet(
-                        "Tensor::_setstate__ input size must equal 5."));
-
-  // 1. Create a new C++ instance
-  auto tensor = std::make_shared<phi::DenseTensor>();
-
-  // 2. Rebuild Allocation
-  const std::string& ipc_name =
-      CastPyArg2AttrString(PyTuple_GET_ITEM(state, 0), 0);
-  size_t size = CastPyArg2AttrSize_t(PyTuple_GET_ITEM(state, 1), 1);
-  auto shared_reader_holder =
-      memory::allocation::RebuildMemoryMapReaderAllocation(ipc_name, size);
-
-  // 3. Maintain global fd set
-  VLOG(3) << "Tensor ipc name: " << ipc_name;
-  memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
-
-  // 4. Rebuild Tensor
-  tensor->ResetHolderWithType(
-      shared_reader_holder,
-      static_cast<paddle::experimental::DataType>(
-          CastPyArg2AttrInt(PyTuple_GET_ITEM(state, 2), 2)));
-  tensor->Resize(
-      phi::make_ddim(CastPyArg2VectorOfInt(PyTuple_GET_ITEM(state, 3), 3)));
-  tensor->set_lod(
-      CastPyArg2VectorOfVectorOfSize_t(PyTuple_GET_ITEM(state, 4), 4));
-
-  self->tensor.set_impl(tensor);
-  self->tensor.set_name(CastPyArg2AttrString(PyTuple_GET_ITEM(state, 5), 5));
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&self->tensor);
-  autograd_meta->SetStopGradient(
-      CastPyArg2AttrBoolean(PyTuple_GET_ITEM(state, 6), 6));
-  autograd_meta->SetPersistable(
-      CastPyArg2AttrBoolean(PyTuple_GET_ITEM(state, 7), 7));
-
-  Py_INCREF(Py_None);
-  return Py_None;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
@@ -1546,10 +1467,6 @@ PyMethodDef variable_methods[] = {
     {"_reset_grad_inplace_version",
      (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"__getstate__", (PyCFunction)(void (*)(void))tensor_method___getstate__,
-     METH_NOARGS, NULL},
-    {"__setstate__", (PyCFunction)(void (*)(void))tensor_method___setstate__,
-     METH_O, NULL},
     {"_share_memory", (PyCFunction)(void (*)(void))tensor_method__share_memory,
      METH_VARARGS | METH_KEYWORDS, NULL},
 
