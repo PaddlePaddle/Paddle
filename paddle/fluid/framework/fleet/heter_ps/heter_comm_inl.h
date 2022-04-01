@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
@@ -26,8 +27,8 @@ template <typename KeyType, typename ValType, typename GradType>
 HeterComm<KeyType, ValType, GradType>::HeterComm(
     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
   resource_ = resource;
-  storage_.resize(resource_->total_gpu());
-  for (int i = 0; i < resource_->total_gpu(); ++i) {
+  storage_.resize(resource_->total_device());
+  for (int i = 0; i < resource_->total_device(); ++i) {
 #ifdef PADDLE_WITH_CUDA
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
@@ -53,9 +54,9 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
   path_.resize(total_device);
   if (!topo_aware_) {
     VLOG(0) << "init path without topo aware";
-    for (int i = 0; i < total_gpu; ++i) {
-      path_[i].resize(total_gpu);
-      for (int j = 0; j < total_gpu; ++j) {
+    for (int i = 0; i < total_device; ++i) {
+      path_[i].resize(total_device);
+      for (int j = 0; j < total_device; ++j) {
         auto& nodes = path_[i][j].nodes_;
         nodes.resize(1);
         nodes[0].in_stream = resource_->comm_stream(i, j);
@@ -68,9 +69,9 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
     }
   } else {
     VLOG(0) << "init path with topo aware";
-    for (int i = 0; i < total_gpu; ++i) {
-      path_[i].resize(total_gpu);
-      for (int j = 0; j < total_gpu; ++j) {
+    for (int i = 0; i < total_device; ++i) {
+      path_[i].resize(total_device);
+      for (int j = 0; j < total_device; ++j) {
         auto& nodes = path_[i][j].nodes_;
         int from = resource_->dev_id(i);
         int to = resource_->dev_id(j);
@@ -103,26 +104,15 @@ template <typename KeyType, typename ValType, typename GradType>
 template <typename DstPlace, typename SrcPlace, typename StreamType>
 void HeterComm<KeyType, ValType, GradType>::memory_copy(
     DstPlace dst_place, void* dst, SrcPlace src_place, const void* src,
-    size_t count, StreamType stream = 0) {
-  // stream=0 means launch copy operation in default stream
-  if (paddle::platform::is_xpu_place(dst_place)) {
-    memory::Copy(dst_place, dst, src_place, src, count);
-  } else if (paddle::platform::is_gpu_place(dst_place)) {
-    cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
-    if (stream == 0) {
-      cudaStreamSynchronize(0);
-    }
-  } else if (paddle::platform::is_cpu_place(
-                 dst_place)) {  // ds_place == cpu place
-    if (paddle::platform::is_xpu_place(src_place)) {
-      memory::Copy(dst_place, dst, src_place, src, count);
-    } else if (paddle::platform::is_gpu_place(src_place)) {
-      cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
-      if (stream == 0) {
-        cudaStreamSynchronize(0);
-      }
-    }
+    size_t count, StreamType stream) {
+#if defined(PADDLE_WITH_CUDA)
+  cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
+  if (stream == 0) {
+    cudaStreamSynchronize(0);
   }
+#elif defined(PADDLE_WITH_XPU_KP)
+  memory::Copy(dst_place, dst, src_place, src, count);
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -150,9 +140,10 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
-    auto node_keys_mem = memory::Alloc(place_, keylen);
+    auto place = DevPlace(resource_->dev_id(nodes[i].dev_num));
+    auto node_keys_mem = memory::Alloc(place, keylen);
     nodes[i].key_storage = reinterpret_cast<char*>(node_keys_mem->ptr());
-    auto node_vals_mem = memory::Alloc(place_, vallen);
+    auto node_vals_mem = memory::Alloc(place, vallen);
     nodes[i].val_storage = reinterpret_cast<char*>(node_vals_mem->ptr());
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
@@ -163,11 +154,11 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
                                                             int end_index) {
+#if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
 
-#if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
 
     allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
@@ -175,8 +166,8 @@ void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
     allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
                           nodes[i].val_storage);
   }
-}
 #endif
+}
 
 template <typename KeyType, typename ValType, typename GradType>
 
@@ -190,7 +181,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_dest(int start_index,
     need_copy_val = 1;
   }
   std::queue<CopyTask> que;
-  for (int i = 0; i < gpu_num; i++) {
+  for (int i = 0; i < num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
@@ -309,7 +300,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
       memory_copy(dst_place, cur_task.path->nodes_[cur_step - 1].val_storage,
                   src_place, cur_task.path->nodes_[cur_step].val_storage,
                   cur_task.path->nodes_[cur_step - 1].val_bytes_len,
-                  cur_task.path->nodes_[cur_step - 1].out_stream)
+                  cur_task.path->nodes_[cur_step - 1].out_stream);
 
     } else if (cur_step == 0) {
       int end_index = cur_task.path->nodes_.back().dev_num;
@@ -424,21 +415,19 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
 
   size_t temp_storage_bytes;
 
-  KeyType* d_merge_keys_ptr = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_merge_keys_ptr),
-             len * sizeof(KeyType));
-
-  GradType* d_merge_grads_ptr = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_merge_grads_ptr),
-             len * sizeof(GradType));
+  auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
+  KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
+  auto d_merge_grads = memory::Alloc(place, len * sizeof(GradType));
+  GradType* d_merge_grads_ptr =
+      reinterpret_cast<GradType*>(d_merge_grads->ptr());
 
 
   heter_comm_kernel_->sort_pairs(NULL, temp_storage_bytes, d_keys,
                                  d_merge_keys_ptr, d_grads, d_merge_grads_ptr,
                                  len, 0, 8 * sizeof(KeyType), stream, false);
 
-  // void* d_buff = NULL;
-  // auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  void* d_buff = NULL;
+  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
 
   heter_comm_kernel_->sort_pairs(
@@ -446,8 +435,8 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(
       d_grads, d_merge_grads_ptr, len, 0, 8 * sizeof(KeyType), stream, false);
   temp_storage_bytes = 0;
 
-  int* d_num_runs_out = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&d_num_runs_out), sizeof(int));
+  auto d_num_runs_out_mem = memory::Alloc(place, sizeof(int));
+  int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
 
 
   heter_comm_kernel_->reduce_by_key(NULL, temp_storage_bytes, d_merge_keys_ptr,
@@ -553,28 +542,25 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
-  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_xpu, -1);
+  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r,
                         XPUAPIErrorMsg[r]));
-  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_xpu, -1);
+  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
                         XPUAPIErrorMsg[r2]));
 #endif
 
-  T* d_idx = nullptr;
-  xpu_malloc(reinterpret_cast<*void**>(&d_idx), len * sizeof(int));
-  int* d_idx_ptr = reinterpret_cast<int*>(d_idx);
+  auto d_idx = memory::Alloc(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
-  int* d_shard_keys_ptr = nullptr;
-  int* d_shard_vals_ptr = nullptr;
-  xpu_malloc(reinterpret_cast<*void**>(&d_shard_keys_ptr),
-                len * sizeof(KeyType));
-  xpu_malloc(reinterpret_cast<*void**>(&d_shard_vals_ptr),
-             len * sizeof(ValType));
+  auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
+  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+  auto d_shard_vals = memory::Alloc(place, len * sizeof(ValType));
+  ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
 
   split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
 
@@ -661,7 +647,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int dev_id = resource_->dev_id(dev_num);
 
   DevPlace place = DevPlace(dev_id);
-  platform::AnyDeviceGuard guard(dev_id);
+  AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
 
   int h_left[total_device];   // NOLINT
@@ -682,12 +668,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
-  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_xpu, -1);
+  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r,
                         XPUAPIErrorMsg[r]));
-  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_xpu, -1);
+  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
@@ -697,19 +683,14 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   // cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream);
   // cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream);
 
-  T* d_idx = nullptr;
-  xpu_malloc(reinterpret_cast<*void**>(&d_idx), len * sizeof(int));
-  int* d_idx_ptr = reinterpret_cast<int*>(d_idx);
+  auto d_idx = memory::Alloc(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
-  T* d_shard_keys = nullptr;
-  xpu_malloc(reinterpret_cast<*void**>(&d_shard_keys),
-                len * sizeof(KeyType));
-  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys);
-
-  T* d_shard_grads = nullptr;
-  xpu_malloc(reinterpret_cast<*void**>(&d_shard_grads),
-                len * sizeof(GradType));
-  GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads);
+  auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
+  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+  auto d_shard_grads = memory::Alloc(place, len * sizeof(GradType));
+  GradType* d_shard_grads_ptr =
+      reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
   int uniq_len = len;
 
@@ -754,7 +735,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     auto& node = path_[dev_num][i].nodes_.back();
     sync_stream(node.in_stream);
 
-    platform::AnyDeviceGuard guard(resource_->dev_id(i));
+    AnyDeviceGuard guard(resource_->dev_id(i));
     tables_[i]->rwlock_->WRLock();
     tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
                        reinterpret_cast<GradType*>(node.val_storage),
@@ -817,7 +798,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse_multi_node(
 template <typename KeyType, typename ValType, typename GradType>
 int HeterComm<KeyType, ValType, GradType>::gather_one_node_grad(
     int gpu_num, KeyType* d_keys, GradType* d_grads, int len) {
-  int total_gpu = resource_->total_gpu();
+  int total_gpu = resource_->total_device();
   int dev_id = resource_->dev_id(gpu_num);
   auto& storage = storage_[gpu_num];
   platform::CUDAPlace place = platform::CUDAPlace(dev_id);
@@ -963,7 +944,7 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::end_pass() {
-  int total_gpu = resource_->total_gpu();
+  int total_gpu = resource_->total_device();
   std::vector<std::thread> threads;
 
 #ifdef PADDLE_WITH_CUDA

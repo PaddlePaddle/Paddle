@@ -223,11 +223,7 @@ class HeterComm {
 #if defined(PADDLE_WITH_CUDA)
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
-#endif
-#if defined(PADDLE_WITH_CUDA)
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
-#elif defined(PADDLE_WITH_XPU_KP)
-  // std::vector<std::shared_ptr<>> allocators_;
 #endif
 };
 
