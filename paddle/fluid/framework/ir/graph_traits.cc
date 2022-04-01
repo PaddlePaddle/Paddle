@@ -48,7 +48,7 @@ bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
 
     if (!cur) return false;
 
-    for (auto n : cur->outputs) {
+    for (const auto &n : cur->outputs) {
       if (n == to) {
         return true;
       }
@@ -63,7 +63,7 @@ bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
 }
 
 Node *FindNode(ir::Graph *graph, const Node *node) {
-  for (auto n : graph->Nodes()) {
+  for (const auto &n : graph->Nodes()) {
     if (n == node) {
       return n;
     }

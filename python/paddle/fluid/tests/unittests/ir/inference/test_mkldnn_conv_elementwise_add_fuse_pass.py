@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 
 
 # the two inputs of elementwise_add are tensor
-class TestConvElementwiseAddMkldnnFusePass1(PassAutoScanTest):
+class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs

@@ -1033,14 +1033,14 @@ struct Elementwise : public PatternBase {
 };
 
 // Residual Elementwise ops
-// This pattern allows operator (FC/Conv) output to be X or Y
-// and residual data Y or X, based on flag
+// This pattern allows operator output to be X or Y
+// and residual data Y or X, based on as_x flag
 struct ResidualElementwise : public PatternBase {
   ResidualElementwise(PDPattern* pattern, const std::string& name_scope,
-                      bool asX)
+                      bool as_x)
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
   PDNode* operator()(PDNode* op_var, PDNode* residual_var,
-                     const std::string elementwise_type, bool asX);
+                     const std::string elementwise_type, bool as_x);
 
   PATTERN_DECL_NODE(operator_output);
   PATTERN_DECL_NODE(residual_data);
