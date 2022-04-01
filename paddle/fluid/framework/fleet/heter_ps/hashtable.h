@@ -71,6 +71,12 @@ class XPUCacheArray {
 
   bool insert(const KeyType& key, const ValType& val) { return true; }
 
+  size_t size() {
+    return 0;
+    // size_t real_size = (size_t)size_;
+    // return real_size;
+  }
+
  private:
   long long capacity_;
   long long size_;
