@@ -42,6 +42,7 @@ class TestSparseCreate(unittest.TestCase):
             values = [1.0, 2.0, 3.0]
             dense_shape = [2, 3]
             coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+            print(coo)
             assert np.array_equal(indices, coo.non_zero_indices().numpy())
             assert np.array_equal(values, coo.non_zero_elements().numpy())
 
@@ -94,8 +95,9 @@ class TestSparseCreate(unittest.TestCase):
             csr = paddle.sparse.sparse_csr_tensor(
                 crows, cols, values, [3, 5], place=place)
             assert csr.place.is_cpu_place()
-            assert csr.non_zero_elements().is_cpu_place()
-            assert csr.non_zero_indices().is_cpu_place()
+            assert csr.non_zero_crows().place.is_cpu_place()
+            assert csr.non_zero_cols().place.is_cpu_place()
+            assert csr.non_zero_elements().place.is_cpu_place()
 
     def test_dtype(self):
         with _test_eager_guard():
@@ -106,7 +108,6 @@ class TestSparseCreate(unittest.TestCase):
             values = paddle.to_tensor(values, dtype='float32')
             coo = paddle.sparse.sparse_coo_tensor(
                 indices, values, dense_shape, dtype='float64')
-            print(coo.dtype)
             assert coo.dtype == paddle.float64
 
             crows = [0, 2, 3, 5]
@@ -115,6 +116,15 @@ class TestSparseCreate(unittest.TestCase):
             csr = paddle.sparse.sparse_csr_tensor(
                 crows, cols, values, [3, 5], dtype='float16')
             assert csr.dtype == paddle.float16
+
+    def test_create_coo_no_shape(self):
+        with _test_eager_guard():
+            indices = [[0, 1], [0, 1]]
+            values = [1.0, 2.0]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            coo = paddle.sparse.sparse_coo_tensor(indices, values)
+            assert [2, 2] == coo.shape
 
 
 class TestSparseConvert(unittest.TestCase):
