@@ -244,7 +244,7 @@ option(NEW_RELEASE_ALL   "PaddlePaddle next-level release strategy for all arche
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
-option(WITH_OPENCV    "Compile with opencv"      ON)
+option(WITH_OPENCV    "Compile with opencv"      OFF)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 

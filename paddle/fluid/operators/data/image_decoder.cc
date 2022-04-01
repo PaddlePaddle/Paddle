@@ -18,13 +18,12 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-ImageDecoder::ImageDecoder(std::string mode, int dev_id,
+ImageDecoder::ImageDecoder(int dev_id,
                            size_t host_memory_padding,
                            size_t device_memory_padding) 
   : nvjpeg_streams_(2),
     pinned_buffers_(2),
-    page_id_(0),
-    mode_(mode) {
+    page_id_(0) {
   platform::SetDeviceId(dev_id);
 
   // create nvjpeg handle and stream
@@ -141,33 +140,7 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
   int64_t width = static_cast<int64_t>(widths[0]);
   int64_t height = static_cast<int64_t>(heights[0]);
 
-  nvjpegOutputFormat_t output_format;
-  int output_components;
-
-  if (mode_ == "unchanged") {
-    if (components == 1) {
-      output_format = NVJPEG_OUTPUT_Y;
-      output_components = 1;
-    } else if (components == 3) {
-      output_format = NVJPEG_OUTPUT_RGBI;
-      output_components = 3;
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "The provided mode(%s) does not support components(%d)",
-          mode_, components));
-    }
-  } else if (mode_ == "gray") {
-    output_format = NVJPEG_OUTPUT_Y;
-    output_components = 1;
-  } else if (mode_ == "rgb") {
-    output_format = NVJPEG_OUTPUT_RGBI;
-    output_components = 3;
-  } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "The provided mode is not supported for JPEG files on GPU: %s!", mode_));
-  }
-
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_, output_format));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_, NVJPEG_OUTPUT_RGBI));
 
   if (roi_generator) {
     ROI roi;
@@ -178,13 +151,13 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
     width = roi.w;
   }
 
-  std::vector<int64_t> out_shape = {height, width, output_components};
+  std::vector<int64_t> out_shape = {height, width, 3};
   out->Resize(phi::make_ddim(out_shape));
 
   // allocate memory and assign to out_image
   auto* data = out->mutable_data<uint8_t>(place);
   out_image->channel[0] = data;
-  out_image->pitch[0] = output_components * width;
+  out_image->pitch[0] = width * 3;
 
   return NVJPEG_STATUS_SUCCESS;
 }
@@ -223,10 +196,9 @@ void ImageDecoder::Run(
 }
 
 ImageDecoderThreadPool::ImageDecoderThreadPool(
-    const int num_threads, const std::string mode, const int dev_id,
+    const int num_threads, const int dev_id,
     const size_t host_memory_padding, const size_t device_memory_padding)
   : threads_(num_threads),
-    mode_(mode),
     dev_id_(dev_id),
     shutdown_(false),
     running_(false),
@@ -294,7 +266,7 @@ void ImageDecoderThreadPool::SortTaskByLengthDescend() {
 void ImageDecoderThreadPool::ThreadLoop(
       const int thread_idx, const size_t host_memory_padding,
       const size_t device_memory_padding) {
-  ImageDecoder* decoder = new ImageDecoder(mode_, dev_id_,
+  ImageDecoder* decoder = new ImageDecoder(dev_id_,
                                            host_memory_padding,
                                            device_memory_padding);
 

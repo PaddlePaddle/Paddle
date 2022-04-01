@@ -868,7 +868,7 @@ def read_file(filename, name=None):
     return out
 
 
-def image_decode(x, mode='unchanged', num_threads=2,
+def image_decode(x, num_threads=2,
                  host_memory_padding=0, device_memory_padding=0,
                  name=None):
     """
@@ -912,14 +912,13 @@ def image_decode(x, mode='unchanged', num_threads=2,
                            core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode(
-                x, out, "mode", mode, "num_threads", num_threads,
+                x, out, "num_threads", num_threads,
                 "local_rank", local_rank, "program_id", program_id,
                 "host_memory_padding", host_memory_padding,
                 "device_memory_padding", device_memory_padding)
 
     inputs = {'X': x}
-    attrs = {"mode": mode,
-             "num_threads": num_threads,
+    attrs = {"num_threads": num_threads,
              "local_rank": local_rank,
              "program_id": utils._hash_with_id(default_main_program()),
              "host_memory_padding": host_memory_padding,
@@ -937,11 +936,10 @@ def image_decode(x, mode='unchanged', num_threads=2,
 
 
 def image_decode_random_crop(x,
-                             mode='unchanged',
                              num_threads=2,
                              host_memory_padding=0,
                              device_memory_padding=0,
-                             data_layout='NCHW',
+                             data_format='NCHW',
                              aspect_ratio_min=3./4.,
                              aspect_ratio_max=4./3.,
                              area_min=0.08,
@@ -956,8 +954,6 @@ def image_decode_random_crop(x,
     Args:
         x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
             of the JPEG image.
-        mode (str): The read mode used for optionally converting the image. 
-            Default: 'unchanged'.
         num_threads (int): parallel thread number.
         aspect_ratio_min (float): 
         aspect_ratio_max (float): 
@@ -992,8 +988,8 @@ def image_decode_random_crop(x,
                 core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode_random_crop(
-                x, out, "mode", mode, "num_threads", num_threads,
-                "data_layout", data_layout, "aspect_ratio_min",
+                x, out, "num_threads", num_threads,
+                "data_format", data_format, "aspect_ratio_min",
                 aspect_ratio_min, "aspect_ratio_max", aspect_ratio_max,
                 "area_min", area_min, "area_max", area_max,
                 "num_attempts", num_attempts, "local_rank", local_rank,
@@ -1002,11 +998,10 @@ def image_decode_random_crop(x,
                 "device_memory_padding", device_memory_padding)
 
     inputs = {'X': x}
-    attrs = {"mode": mode,
-             "num_threads": num_threads,
+    attrs = {"num_threads": num_threads,
              "host_memory_padding": host_memory_padding,
              "device_memory_padding": device_memory_padding,
-             "data_layout": data_layout,
+             "data_format": data_format,
              "aspect_ratio_min": aspect_ratio_min,
              "aspect_ratio_max": aspect_ratio_max,
              "area_min": area_min,

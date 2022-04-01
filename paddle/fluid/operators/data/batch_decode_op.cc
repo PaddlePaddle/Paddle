@@ -69,12 +69,6 @@ and 255.
 )DOC");
     AddAttr<int>("num_threads", "Path of the file to be readed.")
       .SetDefault(2);
-    AddAttr<std::string>(
-        "mode",
-        "(string, default \"unchanged\"), The read mode used "
-        "for optionally converting the image, can be \"unchanged\" "
-        ",\"gray\" , \"rgb\" .")
-        .SetDefault("unchanged");
     AddAttr<int>("local_rank",
                  "(int)"
                  "The index of the op to start execution");

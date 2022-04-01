@@ -28,7 +28,6 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_threads = ctx.Attr<int>("num_threads");
-    auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     auto program_id = ctx.Attr<int64_t>("program_id");
     auto host_memory_padding = ctx.Attr<int64_t>("host_memory_padding");
@@ -37,7 +36,7 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
     // multi-phrase decode thread pool
     auto* decode_pool = 
       ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
-                          program_id, num_threads, mode, local_rank,
+                          program_id, num_threads, local_rank,
                           static_cast<size_t>(host_memory_padding),
                           static_cast<size_t>(device_memory_padding));
     

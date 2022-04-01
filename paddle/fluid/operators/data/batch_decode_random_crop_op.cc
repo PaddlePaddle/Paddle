@@ -110,12 +110,6 @@ and 255.
                  "The index of the op to start execution");
     AddAttr<int>("num_threads", "Path of the file to be readed.")
       .SetDefault(2);
-    AddAttr<std::string>(
-        "mode",
-        "(string, default \"unchanged\"), The read mode used "
-        "for optionally converting the image, can be \"unchanged\" "
-        ",\"gray\" , \"rgb\" .")
-        .SetDefault("unchanged");
     AddAttr<int64_t>(
         "host_memory_padding",
         "(int64, default 0), pinned memory allocation padding number for Nvjpeg decoding")
@@ -125,7 +119,7 @@ and 255.
         "(int64, default 0), device memory allocation padding number for Nvjpeg decoding")
         .SetDefault(0);
     AddAttr<std::string>(
-        "data_layout",
+        "data_format",
         "(string, default NCHW) Only used in "
         "an optional string from: \"NHWC\", \"NCHW\". "
         "Specify that the data format of the input and output data is "

@@ -92,10 +92,6 @@ def file_label_loader(data_root, indices, name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     """
-    # from paddle.vision.datasets import DatasetFolder
-    # data_folder = DatasetFolder(data_root)
-    # samples = [s[0] for s in data_folder.samples]
-    # targets = [s[1] for s in data_folder.samples]
 
     if in_dygraph_mode():
         image = core.VarBase(core.VarDesc.VarType.UINT8, [],

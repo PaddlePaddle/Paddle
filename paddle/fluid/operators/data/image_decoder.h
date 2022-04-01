@@ -55,7 +55,7 @@ struct ImageDecodeTask {
 
 class ImageDecoder {
   public:
-    ImageDecoder(const std::string mode, int dev_id,
+    ImageDecoder(int dev_id,
                  size_t host_memory_padding=0,
                  size_t device_memory_padding=0);
 
@@ -94,14 +94,12 @@ class ImageDecoder {
     nvjpegBufferDevice_t device_buffer_ = nullptr;
 
     int page_id_;
-
-    const std::string mode_;
 };
 
 class ImageDecoderThreadPool {
   public:
-    ImageDecoderThreadPool(const int num_threads, const std::string mode,
-                           const int dev_id, size_t host_memory_padding,
+    ImageDecoderThreadPool(const int num_threads, const int dev_id,
+                           size_t host_memory_padding,
                            size_t device_memory_padding);
 
     ~ImageDecoderThreadPool();
@@ -123,7 +121,6 @@ class ImageDecoderThreadPool {
                     const size_t device_memory_padding);
 
     std::vector<std::thread> threads_;
-    std::string mode_;
     int dev_id_;
 
     std::deque<std::shared_ptr<ImageDecodeTask>> task_queue_;
@@ -159,15 +156,14 @@ class ImageDecoderThreadPoolManager {
   }
 
   ImageDecoderThreadPool* GetDecoderThreadPool(
-      const int64_t program_id, const int num_threads,
-      const std::string mode, const int dev_id,
+      const int64_t program_id, const int num_threads, const int dev_id,
       const size_t host_memory_padding,
       const size_t device_memory_padding) {
     auto iter = prog_id_to_pool_.find(program_id);
     if (iter == prog_id_to_pool_.end()) {
       prog_id_to_pool_[program_id] = 
         std::unique_ptr<ImageDecoderThreadPool>(
-            new ImageDecoderThreadPool(num_threads, mode, dev_id,
+            new ImageDecoderThreadPool(num_threads, dev_id,
                                        host_memory_padding,
                                        device_memory_padding));
     }

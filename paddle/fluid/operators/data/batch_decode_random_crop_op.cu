@@ -35,7 +35,6 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_threads = ctx.Attr<int>("num_threads");
-    auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     auto program_id = ctx.Attr<int64_t>("program_id");
     auto host_memory_padding = ctx.Attr<int64_t>("host_memory_padding");
@@ -44,7 +43,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     // multi-phrase decode thread pool
     auto* decode_pool = 
       ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
-                          program_id, num_threads, mode, local_rank,
+                          program_id, num_threads, local_rank,
                           static_cast<size_t>(host_memory_padding),
                           static_cast<size_t>(device_memory_padding));
 
@@ -58,12 +57,12 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
     out_array.resize(batch_size);
 
-    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const std::string data_format_str = ctx.Attr<std::string>("data_format");
+    const DataLayout data_format =
+        framework::StringToDataLayout(data_format_str);
 
     framework::LoDTensorArray temp_array;
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_format == DataLayout::kNCHW) {
       temp_array.resize(batch_size);
     }
 
@@ -84,7 +83,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
       auto* x_data = x.data<T>();
       size_t x_numel = static_cast<size_t>(x.numel());
       
-      if (data_layout == DataLayout::kNCHW){
+      if (data_format == DataLayout::kNCHW){
         ImageDecodeTask task = {
           .bit_stream = x_data,
           .bit_len = x_numel,
@@ -109,7 +108,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
 
     decode_pool->RunAll(true);
 
-    if (data_layout == DataLayout::kNCHW){
+    if (data_format == DataLayout::kNCHW){
       const auto& dev_ctx = ctx.cuda_device_context();
       phi::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
       std::vector<int> axis = {2, 0, 1};
