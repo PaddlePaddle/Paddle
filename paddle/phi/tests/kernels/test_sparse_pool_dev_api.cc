@@ -56,6 +56,10 @@ void TestMaxPoolBase(const std::vector<int>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
+  dev_ctx_cpu.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
   dev_ctx_cpu.Init();
 
   const int in_channels = x_dims[4];
@@ -142,11 +146,8 @@ void TestMaxPoolBase(const std::vector<int>& indices,
   phi::Copy(
       dev_ctx_gpu, indices_tensor, phi::GPUPlace(), true, &d_indices_tensor);
 
-  DenseTensor d_features_tensor = phi::Empty(
-      dev_ctx_gpu,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
-                      {non_zero_num, in_channels},
-                      DataLayout::NHWC));
+  DenseTensor d_features_tensor =
+      phi::EmptyLike<T>(dev_ctx_gpu, features_tensor);
   phi::Copy(
       dev_ctx_gpu, features_tensor, phi::GPUPlace(), true, &d_features_tensor);
 
@@ -182,11 +183,8 @@ void TestMaxPoolBase(const std::vector<int>& indices,
                             correct_out_indices.size() * sizeof(int));
   ASSERT_EQ(cmp_indices2, 0);
 
-  DenseTensor h_features_tensor = phi::Empty(
-      dev_ctx_cpu,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
-                      {d_out.nnz()},
-                      d_out.layout()));
+  DenseTensor h_features_tensor =
+      phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_elements(),
@@ -202,9 +200,7 @@ void TestMaxPoolBase(const std::vector<int>& indices,
                                                 d_out,
                                                 d_out.non_zero_elements(),
                                                 kernel_sizes);
-    DenseTensor h_features_grad = phi::Empty(
-        dev_ctx_cpu,
-        DenseTensorMeta(x_grad.dtype(), x_grad.dims(), x_grad.layout()));
+    DenseTensor h_features_grad = phi::EmptyLike<T>(dev_ctx_cpu, x_grad);
     phi::Copy(dev_ctx_gpu, x_grad, phi::CPUPlace(), true, &h_features_grad);
     f_verify(h_features_grad.data<T>(), features_grad);
   }

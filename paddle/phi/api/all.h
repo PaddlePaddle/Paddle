@@ -32,9 +32,9 @@ limitations under the License. */
 // phi common headers
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 
 // original custom op headers
 #include "paddle/phi/api/ext/dispatch.h"

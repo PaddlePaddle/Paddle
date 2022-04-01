@@ -33,8 +33,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
@@ -59,6 +59,7 @@ DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DECLARE_bool(run_kp_kernel);
+DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {
@@ -264,7 +265,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           Type(), platform::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
-          op_name, platform::TracerEventType::Operator, 10,
+          op_name, platform::TracerEventType::Operator,
+          FLAGS_enable_host_event_recorder_hook ? 20 : 1,
           platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
@@ -1118,6 +1120,56 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
+bool OperatorWithKernel::SupportGPU() const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(), phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::GPU;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_);
+          });
+    }
+  }
+}
+
+bool OperatorWithKernel::SupportNPU() const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(), phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::NPU;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_npu_place(kern_pair.first.place_);
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
@@ -1543,6 +1595,17 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (kernel_iter == kernels.end() &&
       platform::is_mlu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing MLU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (kernel_iter == kernels.end() &&
+      platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -2104,7 +2167,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  typeid(paddle::optional<const phi::DenseTensor&>)) ||
          input_defs[i].type_index ==
              std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
+                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<
+                        const std::vector<const phi::DenseTensor*>>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2196,24 +2263,24 @@ void OperatorWithKernel::BuildPhiKernelContext(
   VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
-    if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
+    if (attr_defs[i].type_index == std::type_index(typeid(phi::IntArray))) {
       auto attr_iter = Attrs().find(attr_names[i]);
       if (attr_iter != Attrs().end()) {  // shape is in the attribute
         if (std::type_index(attr_iter->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::ScalarArray(
+          pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
               BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
         } else if (std::type_index(attr_iter->second.type()) ==
                    std::type_index(typeid(std::vector<int32_t>))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::ScalarArray(
+          pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
               BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
         } else if (std::type_index(attr_iter->second.type()) ==
                    std::type_index(typeid(int32_t))) {
-          pt_kernel_context->EmplaceBackAttr(std::move(phi::ScalarArray(
-              &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
+          pt_kernel_context->EmplaceBackAttr(std::move(
+              phi::IntArray(&BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to ScalarArray when "
+              "Unsupported cast op attribute `%s` to IntArray when "
               "construct KernelContext.",
               attr_names[i]));
         }
@@ -2221,10 +2288,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
         auto& ins_vector = ctx.inputs.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVar(*ins_vector.front())));
+              experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
         } else {  // ShapeTensorList
-          pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVarList(ins_vector)));
+          pt_kernel_context->EmplaceBackAttr(
+              std::move(experimental::MakePhiIntArrayFromVarList(ins_vector)));
         }
       }
     } else if (attr_defs[i].type_index ==
@@ -2366,6 +2433,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<float>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
