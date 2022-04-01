@@ -18,16 +18,19 @@ import numpy as np
 import paddle
 import scipy.stats
 
-from config import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
-                    xrand)
+import config
+import parameterize as param
+from config import ATOL, RTOL
+from parameterize import xrand
 
 paddle.enable_static()
 
 
-@place(DEVICES)
-@parameterize((TEST_CASE_NAME, 'alpha', 'beta'), [('test-tensor', xrand(
-    (10, 10)), xrand((10, 10))), ('test-broadcast', xrand((2, 1)), xrand(
-        (2, 5))), ('test-larger-data', xrand((10, 20)), xrand((10, 20)))])
+@param.place(config.DEVICES)
+@param.parameterize_cls(
+    (param.TEST_CASE_NAME, 'alpha', 'beta'), [('test-tensor', xrand(
+        (10, 10)), xrand((10, 10))), ('test-broadcast', xrand((2, 1)), xrand(
+            (2, 5))), ('test-larger-data', xrand((10, 20)), xrand((10, 20)))])
 class TestBeta(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()

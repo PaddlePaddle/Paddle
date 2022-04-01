@@ -81,7 +81,7 @@ bool CheckConvertToONNX(const AnalysisConfig &config) {
 bool ONNXRuntimePredictor::Init() {
   VLOG(3) << "ONNXRuntime Predictor::init()";
 
-  // Now ONNXRuntime only suuport CPU
+  // Now ONNXRuntime only support CPU
   const char *device_name = config_.use_gpu() ? "Cuda" : "Cpu";
   if (config_.use_gpu()) {
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());

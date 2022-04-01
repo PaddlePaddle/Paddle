@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -25,9 +25,9 @@ template <typename T, typename Context>
 void SetTensorValueKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& value,
-                          const ScalarArray& starts,
-                          const ScalarArray& ends,
-                          const ScalarArray& steps,
+                          const IntArray& starts,
+                          const IntArray& ends,
+                          const IntArray& steps,
                           const std::vector<int64_t>& axes,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
@@ -36,9 +36,9 @@ void SetTensorValueKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SetValueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const ScalarArray& starts,
-                    const ScalarArray& ends,
-                    const ScalarArray& steps,
+                    const IntArray& starts,
+                    const IntArray& ends,
+                    const IntArray& steps,
                     const std::vector<int64_t>& axes,
                     const std::vector<int64_t>& decrease_axes,
                     const std::vector<int64_t>& none_axes,
