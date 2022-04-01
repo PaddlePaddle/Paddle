@@ -1120,6 +1120,56 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
+bool OperatorWithKernel::SupportGPU() const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(), phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::GPU;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_);
+          });
+    }
+  }
+}
+
+bool OperatorWithKernel::SupportNPU() const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(), phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::NPU;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_npu_place(kern_pair.first.place_);
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
@@ -1545,6 +1595,17 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (kernel_iter == kernels.end() &&
       platform::is_mlu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing MLU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (kernel_iter == kernels.end() &&
+      platform::is_custom_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -2106,7 +2167,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  typeid(paddle::optional<const phi::DenseTensor&>)) ||
          input_defs[i].type_index ==
              std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
+                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<
+                        const std::vector<const phi::DenseTensor*>>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2368,6 +2433,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<float>))) {
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<float>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

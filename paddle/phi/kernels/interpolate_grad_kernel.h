@@ -14,19 +14,26 @@
 
 #pragma once
 
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SliceRawKernel(const Context& ctx,
-                    const DenseTensor& input,
-                    const std::vector<int64_t>& axes,
-                    const IntArray& starts,
-                    const IntArray& ends,
-                    const std::vector<int64_t>& infer_flags,
-                    const std::vector<int64_t>& decrease_axis,
-                    DenseTensor* out);
+void BilinearInterpGradKernel(
+    const Context& ctx,
+    const DenseTensor& x,
+    paddle::optional<const DenseTensor&> out_size,
+    paddle::optional<const std::vector<const DenseTensor*>> size_tensor,
+    paddle::optional<const DenseTensor&> scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad);
 
 }  // namespace phi

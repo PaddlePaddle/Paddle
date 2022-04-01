@@ -135,6 +135,11 @@ class TestBatchNorm(unittest.TestCase):
                 with fluid.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     y = bn(paddle.to_tensor(x))
+
+                    with _test_eager_guard():
+                        bn = paddle.nn.BatchNorm2D(shape[1])
+                        eag_y = bn(paddle.to_tensor(x))
+                    assert np.allclose(eag_y.numpy(), y.numpy())
                 return y.numpy()
 
             def compute_v3(x, is_test, trainable_statistics):

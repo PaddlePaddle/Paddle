@@ -1976,15 +1976,15 @@ void SqueezeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void StridedSliceInferMeta(const MetaTensor& x,
-                           const std::vector<int>& axes,
-                           const IntArray& starts,
-                           const IntArray& ends,
-                           const IntArray& strides,
-                           const std::vector<int>& infer_flags,
-                           const std::vector<int>& decrease_axis,
-                           MetaTensor* out,
-                           MetaConfig config) {
+void StridedSliceRawInferMeta(const MetaTensor& x,
+                              const std::vector<int>& axes,
+                              const IntArray& starts,
+                              const IntArray& ends,
+                              const IntArray& strides,
+                              const std::vector<int>& infer_flags,
+                              const std::vector<int>& decrease_axis,
+                              MetaTensor* out,
+                              MetaConfig config) {
   auto in_dims = x.dims();
   PADDLE_ENFORCE_LT(
       in_dims.size(),
@@ -2104,6 +2104,19 @@ void StridedSliceInferMeta(const MetaTensor& x,
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void StridedSliceInferMeta(const MetaTensor& x,
+                           const std::vector<int>& axes,
+                           const IntArray& starts,
+                           const IntArray& ends,
+                           const IntArray& strides,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  std::vector<int> infer_flags(axes.size(), 1);
+  std::vector<int> decrease_axis;
+  StridedSliceRawInferMeta(
+      x, axes, starts, ends, strides, infer_flags, decrease_axis, out, config);
 }
 
 /*  Why not use SumRawInferMeta directly?
