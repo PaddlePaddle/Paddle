@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .creation import sparse_coo_tensor
-from .creation import sparse_csr_tensor
-from .layer.activation import ReLU
+from .activation import ReLU
 
-__all__ = ['sparse_coo_tensor', 'sparse_csr_tensor', 'ReLU']
+__all__ = []
