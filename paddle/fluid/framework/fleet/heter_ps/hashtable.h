@@ -31,7 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #endif
 #if defined(__xpu__)
-#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+// #include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/math.h"
+#include "xpu/kernel/simd.h"
 #endif
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/phi/core/utils/rw_lock.h"
