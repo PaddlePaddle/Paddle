@@ -141,7 +141,7 @@ HashTable<KeyType, ValType>::HashTable(size_t capacity) {
 
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
-  xpu_free(container_)
+  xpu_free(container_);
 }
 
 template <typename KeyType, typename ValType>
@@ -169,7 +169,8 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
   // TODO(zhangminxu): to be implemented
 }
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
                                          StreamType stream) {
@@ -179,7 +180,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 }
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
                                          char* pool, size_t start_index,
                                          StreamType stream) {
