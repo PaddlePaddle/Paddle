@@ -410,7 +410,7 @@ void AutoInitStringTensorByPyArray(
   // If u want to update this constructor with new arguments,
   // need to update this map and to add or change related code.
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{
-      {"value", 1}, {"place", 2}, {"zero_copy", 3}, {"name", 4}};
+      {"value", 1}, {"zero_copy", 2}, {"name", 3}};
   py::object numpy_value = py::object();
   paddle::platform::Place place =
       egr::Controller::Instance().GetExpectedPlace();
@@ -419,7 +419,6 @@ void AutoInitStringTensorByPyArray(
 
   numpy_value =
       ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
   zero_copy = (1 == ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
                                      flag_kwargs, args_num));
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
@@ -774,12 +773,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
    * ** dims: vector<int>,
    * ** name: std::string)
    *
-   * 3. (multi-place)
+   * 3.
    * (should have at least one parameter, one parameter equals to case 4, zero
    * parameter equals to case 1)
    * def __init__ (
    * ** value: ndarray,
-   * ** place: paddle::platform::Place,
    * ** zero_copy: bool,
    * ** name: std::string)
    *
@@ -791,12 +789,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
    * def __init__ (
    * ** tensor: Tensor)
    *
-   * 6. (multi-place)
+   * 6.
    * (should have at least one parameter, one parameter equals to case 5, zero
    * parameter equals to case 1.)
    * def __init__ (
    * ** tensor: Tensor,
-   * ** place: paddle::platform::Place,
    * ** name: std::string)
    * **/
 int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
@@ -808,15 +805,13 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   PyObject* kw_zero_copy = NULL;
 
   PyObject* kw_value = NULL;  // receive PyArray or Tensor
-  PyObject* kw_place = NULL;
   PyObject* kw_name = NULL;
   PyObject* kw_dims = NULL;
 
   // the keywords argument
   static char* kwlist[] = {
-      const_cast<char*>("value"),     const_cast<char*>("place"),
-      const_cast<char*>("zero_copy"), const_cast<char*>("name"),
-      const_cast<char*>("dims"),      NULL};
+      const_cast<char*>("value"), const_cast<char*>("zero_copy"),
+      const_cast<char*>("name"), const_cast<char*>("dims"), NULL};
   // 'O' Store a Python object (without any conversion) in a C object pointer,
   // '|' Indicates that the remaining arguments in the Python argument list are
   // optional.
@@ -824,13 +819,12 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // takes both positional and keyword parameters into local variables,
   // which enhance case1, case2, case3, case4, case 5, case 6.
   bool flag_ =
-      PyArg_ParseTupleAndKeywords(args, kwargs, "|OOOOOO", kwlist, &kw_value,
-                                  &kw_place, &kw_zero_copy, &kw_name, &kw_dims);
+      PyArg_ParseTupleAndKeywords(args, kwargs, "|OOOOO", kwlist, &kw_value,
+                                  &kw_zero_copy, &kw_name, &kw_dims);
 
   // helper map
   std::unordered_map<std::string, PyObject*> kws_map{
       {"value", kw_value},
-      {"place", kw_place},
       {"zero_copy", kw_zero_copy},
       {"name", kw_name},
       {"dims", kw_dims}};
@@ -841,7 +835,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                         "please check your input first and make"
                         "sure you are on the right way. "
                         "The expected arguments as follow: ("
-                        "value, place, zero_copy, name, dims, dtype)"));
+                        "value, zero_copy, name, dims, dtype)"));
 
   PADDLE_ENFORCE_NOT_NULL(
       self, paddle::platform::errors::Fatal(
@@ -917,39 +911,30 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     }
   } else if (args_num == (Py_ssize_t)2) {  // case 2
     // 2 position args, remainting arguments are kwargs
-    VLOG(6) << "Calling case2's string initializer.";
-    std::vector<int> dims = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 0), 0);
-    std::string act_name = "";
-    PyObject* name_obj = PyTuple_GET_ITEM(args, 1);
-    if (name_obj == Py_None) {
-      act_name = egr::Controller::Instance().GenerateUniqueName(
-          "generated_string_tensor");
-    } else {
-      act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
-    }
-    EmptyStringTensorInitializer(py_tensor_ptr, act_name,
-                                 egr::Controller::Instance().GetExpectedPlace(),
-                                 dims);
-    return 0;
-  } else if (args_num == (Py_ssize_t)3) {  // case 6
-    // 2 position args, remainting arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (PyObject_IsInstance(
             arg0_ptr, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
       VLOG(6) << "Calling case6's string initializer.";
       // AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
-      // flag_kwargs,
-      //                        args_num);
+      // flag_kwargs, args_num);
       return 0;
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Could not parse the first keyword argument successfully, "
-          "the first keyword argument is value, but it should be PyArray "
-          "or StringTensor."
-          "Please check your input first and make sure you are on the "
-          "right way."));
+      VLOG(6) << "Calling case2's string initializer.";
+      std::vector<int> dims = CastPyArg2VectorOfInt(arg0_ptr, 0);
+      std::string act_name = "";
+      PyObject* name_obj = PyTuple_GET_ITEM(args, 1);
+      if (name_obj == Py_None) {
+        act_name = egr::Controller::Instance().GenerateUniqueName(
+            "generated_string_tensor");
+      } else {
+        act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
+      }
+      EmptyStringTensorInitializer(
+          py_tensor_ptr, act_name,
+          egr::Controller::Instance().GetExpectedPlace(), dims);
+      return 0;
     }
-  } else if (args_num == (Py_ssize_t)4) {  // case 3
+  } else if (args_num == (Py_ssize_t)3) {  // case 3
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
       if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
