@@ -466,6 +466,7 @@ void BatchNormKernel(const Context &ctx,
       // backward. Thus this tensor shouldn't be temp.
       // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
       if (reserve_space == nullptr) {
+        LOG(ERROR) << "is empty ";
         reserve_space = &reserve_space_tensor;
       }
       PADDLE_ENFORCE_NOT_NULL(
@@ -496,7 +497,6 @@ void BatchNormKernel(const Context &ctx,
                   /*activationDesc=*/nullptr,
                   /*xDesc=*/data_desc_,
                   /*sizeInBytes=*/&reserve_space_size));
-
       reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
       reserve_space_ptr = ctx.template Alloc<T>(reserve_space);
       workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});

@@ -209,6 +209,31 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
   }
 }
 
+void LayerNormInferMeta(const MetaTensor& x,
+                        paddle::optional<const MetaTensor&> scale,
+                        paddle::optional<const MetaTensor&> bias,
+                        float epsilon,
+                        int begin_norm_axis,
+                        bool is_test,
+                        MetaTensor* out,
+                        MetaTensor* mean,
+                        MetaTensor* variance,
+                        MetaConfig config) {
+  auto x_dim = x.dims();
+
+  auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
+  int left = static_cast<int>(matrix_dim[0]);
+
+  out->set_dims(x_dim);
+  if (mean) {
+    mean->set_dims({left});
+  }
+  if (variance) {
+    variance->set_dims({left});
+  }
+  out->share_lod(x);
+}
+
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,
