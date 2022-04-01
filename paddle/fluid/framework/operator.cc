@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -2233,11 +2236,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  typeid(paddle::optional<const phi::DenseTensor&>)) ||
          input_defs[i].type_index ==
              std::type_index(
-                 typeid(paddle::optional<const phi::SelectedRows&>)) ||
-         input_defs[i].type_index ==
-             std::type_index(
-                 typeid(paddle::optional<
-                        const std::vector<const phi::DenseTensor*>>)))) {
+                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2499,10 +2498,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  std::type_index(typeid(std::vector<std::string>))) {
         pt_kernel_context->EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
-      } else if (attr_defs[i].type_index ==
-                 std::type_index(typeid(std::vector<float>))) {
-        pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<float>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "

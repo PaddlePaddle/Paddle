@@ -489,11 +489,6 @@ static void PreparedOpRunPtImpl(
     pt_kernel(&pt_kernel_context);
   }
 
-  if (FLAGS_check_nan_inf) {
-    framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
-        op.Type(), outs, dev_ctx->GetPlace());
-  }
-
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
