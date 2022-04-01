@@ -424,7 +424,6 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(
                 src_place, h_vals + cur_len, sizeof(ValType) * tmp_len);
 
     auto cur_use_stream = streams[cur_stream];
-#if defined(PADDLE_WITH_CUDA)
 #if defined(PADDLE_WITH_XPU_KP)
     cur_use_stream = 0;
 #endif
