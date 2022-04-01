@@ -65,14 +65,10 @@ class TestChannelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        paddle.enable_static()
         self.check_output()
-        paddle.disable_static()
 
     def test_check_grad(self):
-        paddle.enable_static()
         self.check_grad(['X'], 'Out')
-        paddle.disable_static()
 
 
 class TestChannelLast(TestChannelShuffleOp):
