@@ -866,7 +866,6 @@ class OpTest(unittest.TestCase):
 
             kernel_sig = _get_kernel_signature(
                 eager_tensor_inputs, eager_tensor_outputs, attrs_outputs)
-            print("kernel_sig: ", kernel_sig)
             if not kernel_sig:
                 return None
             assert hasattr(
@@ -1613,7 +1612,6 @@ class OpTest(unittest.TestCase):
             # yield the original state
             g_disable_legacy_dygraph()
         if check_eager:
-            print("check_eager...")
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
@@ -2009,7 +2007,6 @@ class OpTest(unittest.TestCase):
                                                              outputs)
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_eager or eager_outputs is None:
-                print("xxxxx :", _in_eager_without_dygraph_check())
                 block.append_op(
                     type=self.op_type,
                     inputs=inputs,
@@ -2046,7 +2043,6 @@ class OpTest(unittest.TestCase):
                         persistable=False,
                         stop_gradient=False,
                         shape=[1])
-                    print("type(loss):", type(loss))
                     for outputs_valid_key in outputs_valid:
                         block.append_op(
                             type="mean",
@@ -2089,9 +2085,6 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
-                print(loss)
-                print(type(loss))
-                print(_in_eager_without_dygraph_check())
                 loss.backward()
 
                 fetch_list_grad = []
