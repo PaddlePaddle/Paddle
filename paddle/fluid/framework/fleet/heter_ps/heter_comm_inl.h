@@ -548,7 +548,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
 
-  heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr, len);
+  heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr, len,
+                                     stream);
 
   sync_stream(stream);
 
