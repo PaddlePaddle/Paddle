@@ -237,6 +237,9 @@ void PSGPUWorker::TrainFiles() {
         if (op_or_cuda_graph.need_capture) {
           if (op_or_cuda_graph.cudagraph == nullptr) {
             static std::mutex _capture_mutex;
+            VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
+              "[op_num: " << op_or_cuda_graph.ops.size() << "]"
+              "cudagraph before capture";
             std::lock_guard<std::mutex> lock(_capture_mutex);
             VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
               "[op_num: " << op_or_cuda_graph.ops.size() << "]"
@@ -246,6 +249,9 @@ void PSGPUWorker::TrainFiles() {
               op->Run(*thread_scope_, place_);
             }
             op_or_cuda_graph.cudagraph = platform::EndCUDAGraphCapture();
+            VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
+              "[op_num: " << op_or_cuda_graph.ops.size() << "]"
+              "cudagraph end capture";
           }
           op_or_cuda_graph.cudagraph->Replay();
         } else {
