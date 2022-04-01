@@ -59,7 +59,7 @@ ExternalProject_Add(
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
     DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
-                          && tar zxvf ${ARM_BRPC_NAME}.tar.gz && rm -rf arm_brpc && mv output arm_brpc
+                          && tar zxvf ${ARM_BRPC_NAME}.tar.gz && mv base ./install/arm_brpc
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
