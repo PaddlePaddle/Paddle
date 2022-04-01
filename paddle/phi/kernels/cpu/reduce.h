@@ -239,4 +239,29 @@ void Reduce(const DeviceContext& dev_ctx,
   }
 }
 
+template <typename DeviceContext, typename OutT, typename Functor>
+void BoolReduceKernel(const DeviceContext& dev_ctx,
+                      const phi::DenseTensor& input,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      phi::DenseTensor* output) {
+  dev_ctx.template Alloc<OutT>(output);
+
+  // The dims has full dim, set the reduce_all is True
+  const auto& input_dim_size = input.dims().size();
+  std::set<int> dims_set(dims.begin(), dims.end());
+  bool full_dim = true;
+  for (auto i = 0; i < input_dim_size; i++) {
+    if (dims_set.find(i) == dims_set.end()) {
+      full_dim = false;
+      break;
+    }
+  }
+  reduce_all = (reduce_all || full_dim);
+
+  ReduceKernelImpl<DeviceContext, bool, OutT, Functor>(
+      dev_ctx, input, output, dims, keep_dim, reduce_all);
+}
+
 }  // namespace phi

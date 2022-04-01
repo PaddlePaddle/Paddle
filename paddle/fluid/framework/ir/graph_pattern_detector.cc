@@ -918,6 +918,36 @@ PDNode *patterns::ConvActivation::operator()(
   return activation_out_var;
 }
 
+PDNode *patterns::ElementwiseActivation::operator()(
+    paddle::framework::ir::PDNode *elementwise_a,
+    const std::string &elementwise_type, const std::string &activation_type) {
+  // Create Operators
+  elementwise_a->assert_is_op_input(elementwise_type, "X");
+  auto *elementwise_op =
+      pattern->NewNode(elementwise_repr())->assert_is_op(elementwise_type);
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // Create variables
+  auto *elementwise_b = pattern->NewNode(elementwise_b_repr())
+                            ->AsInput()
+                            ->assert_is_op_input(elementwise_type, "Y");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *elementwise_out_var =
+      pattern->NewNode(elementwise_out_repr())
+          ->AsIntermediate()
+          ->assert_is_only_output_of_op(elementwise_type)
+          ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out_var = pattern->NewNode(activation_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output(activation_type);
+
+  elementwise_op->LinksFrom({elementwise_a, elementwise_b})
+      .LinksTo({elementwise_out_var});
+  activation_op->LinksFrom({elementwise_out_var}).LinksTo({activation_out_var});
+  return activation_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
@@ -2022,18 +2052,19 @@ PDNode *patterns::Pool::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
-  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
-                                ->assert_is_op("elementwise_add");
+PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
+                                          const std::string elementwise_type) {
+  auto elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
-  x_var->AsInput()->assert_is_op_input("elementwise_add", "X");
-  y_var->AsInput()->assert_is_op_input("elementwise_add", "Y");
-  auto out_var = pattern->NewNode(elementwise_add_out_repr())
+  x_var->AsInput()->assert_is_op_input(elementwise_type, "X");
+  y_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
+  auto out_var = pattern->NewNode(elementwise_out_repr())
                      ->AsOutput()
-                     ->assert_is_op_output("elementwise_add", "Out");
+                     ->assert_is_op_output(elementwise_type, "Out");
 
-  elementwise_add_op->LinksFrom({x_var, y_var});
-  elementwise_add_op->LinksTo({out_var});
+  elementwise_op->LinksFrom({x_var, y_var});
+  elementwise_op->LinksTo({out_var});
 
   return out_var;
 }

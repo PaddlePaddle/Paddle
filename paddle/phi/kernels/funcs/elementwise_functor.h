@@ -67,6 +67,11 @@ struct InverseMultiplyFunctor<bool> {
   }
 };
 
+template <typename T>
+struct IsZeroFunctor {
+  HOSTDEVICE bool operator()(T x) const { return x == static_cast<T>(0); }
+};
+
 // Divide
 #define DIV_ERROR_INFO                                             \
   "InvalidArgumentError: Integer division by zero encountered in " \
@@ -159,6 +164,219 @@ struct DivGradYFunctor<ComplexType<T>> {
     return -a * out_div_c_conj;
   }
 };
+// Fmin
+template <typename T>
+struct FMinFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return std::fmin(a, b);
+  }
+};
+
+template <>
+struct FMinFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int> {
+  inline HOSTDEVICE int operator()(const int a, const int b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmin(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
+// Fmax
+template <typename T>
+struct FMaxFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return std::fmax(a, b);
+  }
+};
+
+template <>
+struct FMaxFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<int> {
+  inline HOSTDEVICE int operator()(const int a, const int b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmax(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
+template <typename T>
+struct FMaxGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>((x >= y) || isnan(y));
+  }
+};
+
+template <>
+struct FMaxGradDx<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>((x >= y) || dtype::isnan(y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>((x >= y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>((x >= y));
+  }
+};
+
+template <typename T>
+struct FMaxGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(!((x >= y) || isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>(!((x >= y) || dtype::isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>(!((x >= y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>(!((x >= y)));
+  }
+};
+
+template <typename T>
+struct FMinGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>((x <= y) || isnan(y));
+  }
+};
+
+template <>
+struct FMinGradDx<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>((x <= y) || dtype::isnan(y));
+  }
+};
+
+template <>
+struct FMinGradDx<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>((x <= y));
+  }
+};
+
+template <>
+struct FMinGradDx<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>((x <= y));
+  }
+};
+
+template <typename T>
+struct FMinGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(!((x <= y) || isnan(y)));
+  }
+};
+
+template <>
+struct FMinGradDy<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>(!((x <= y) || dtype::isnan(y)));
+  }
+};
+
+template <>
+struct FMinGradDy<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>(!((x <= y)));
+  }
+};
+
+template <>
+struct FMinGradDy<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>(!((x <= y)));
+  }
+};
 
 template <typename T>
 struct MultiplyGradFunctor {
@@ -204,5 +422,156 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
   }
 };
 
+// Maximum
+template <typename T>
+struct MaximumFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a > b ? a : b;
+  }
+};
+
+template <typename T>
+struct MaxGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+
+template <typename T>
+struct MaxGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MaxGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * (x > y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
+    // dy = dout * (x <= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
+    return outs;
+  }
+};
+
+// Minimum
+template <typename T>
+struct MinimumFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a < b ? a : b;
+  }
+};
+template <typename T>
+struct MinGradXFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x < y);
+  }
+};
+template <typename T>
+struct MinGradYFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout * static_cast<T>(x >= y);
+  }
+};
+
+template <typename InT, typename OutT>
+struct MinGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x,
+                                                   const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * (x < y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
+    // dy = dout * (x >= y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    return outs;
+  }
+};
+
+// Modulo
+template <typename T, typename Enable = void>
+struct ModuloFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = a % b;
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((b ^ res) < 0)) res += b;
+    return res;
+  }
+};
+
+template <typename T>
+struct ModuloFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(a, b);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((res < 0) != (b < 0))) res += b;
+    return res;
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseModuloFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = b % a;
+    if ((res != 0) && ((res < 0) != (a < 0))) res += a;
+    return res;
+  }
+};
+
+template <typename T>
+struct InverseModuloFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    T res = fmod(b, a);
+    if ((res != 0) && ((a < 0) != (res < 0))) res += a;
+    return res;
+  }
+};
+
+template <typename T>
+struct FloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return static_cast<T>(std::trunc(a / b));
+  }
+};
+
+template <typename T>
+struct InverseFloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+    return static_cast<T>(std::trunc(b / a));
+  }
+};
+
+template <typename T>
+struct ElementwisePowFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+// TODO(wujionghao): A potential speed improvement is supporting different
+// types in C++.
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+    // it will return a float number like 2.99... , which floor to 2
+    // when cast to int by default and it is wrong.
+    // Use llrint to cast it to the nearest integer, which is 3.
+    if (std::is_integral<T>::value) {
+      return std::llrint(
+          std::pow(static_cast<double>(a), static_cast<double>(b)));
+    }
+#endif
+    return std::pow(a, b);
+  }
+};
 }  // namespace funcs
 }  // namespace phi

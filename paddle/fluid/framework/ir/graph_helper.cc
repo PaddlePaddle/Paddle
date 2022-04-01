@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include <queue>
 #include <stack>
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 DECLARE_bool(convert_all_blocks);
@@ -449,6 +450,19 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
 
 static void GetGraphOpDesc(const std::vector<Node *> &nodes,
                            std::vector<OpDesc> *ops) {
+  auto is_fused_opt = [](Node *n) -> bool {
+    auto op_type = n->Op()->Type();
+    auto is_opt =
+        (op_type == "adam" || op_type == "momentum" || op_type == "sgd");
+    auto input_names = n->Op()->InputArgumentNames();
+    auto contains_fused_var = std::any_of(
+        input_names.begin(), input_names.end(), [](std::string name) {
+          return name.find(details::kFusedVarNamePrefix) != std::string::npos;
+        });
+    VLOG(4) << is_opt << " " << contains_fused_var;
+    return is_opt && contains_fused_var;
+  };
+
   for (Node *n : nodes) {
     // if node is not Op, skip
     if (!n->IsOp()) continue;
@@ -459,6 +473,26 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
     } else if (n->Op()) {
+      VLOG(4) << "convert op node to desc " << n->Op()->Type();
+      VLOG(4) << n->ToString();
+      if (is_fused_opt(n)) {
+        OpDesc depend_desc(n->Op()->Block());
+
+        std::vector<std::string> deps;
+        for (auto in : n->inputs) {
+          if (in->IsVar() && !in->IsCtrlVar()) {
+            deps.push_back(in->Name());
+          }
+        }
+        depend_desc.SetType("depend");
+        depend_desc.SetInput("X",
+                             n->Op()->Inputs().at(n->Op()->InputNames()[0]));
+        depend_desc.SetInput("Dep", deps);
+        depend_desc.SetOutput("Out",
+                              n->Op()->Inputs().at(n->Op()->InputNames()[0]));
+        ops->emplace_back(depend_desc);
+        VLOG(4) << "add depend op";
+      }
       ops->emplace_back(*n->Op());
     }
     // delete no OpDesc op

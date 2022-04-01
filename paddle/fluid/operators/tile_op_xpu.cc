@@ -11,10 +11,13 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/tile_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/tile_op_functor.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 class TileXPUKernel : public framework::OpKernel<T> {

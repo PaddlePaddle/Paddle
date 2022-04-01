@@ -67,8 +67,6 @@ int32_t PSServer::configure(
   _config = config.server_param();
   _rank = server_rank;
   _environment = &env;
-  _shuffled_ins =
-      paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>();
   size_t shard_num = env.get_ps_servers().size();
 
   const auto &downpour_param = _config.downpour_server_param();

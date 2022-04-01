@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -958,6 +958,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
+        self.python_api = paddle.sqrt
         self.init_dtype()
 
         np.random.seed(1023)
@@ -970,7 +971,10 @@ class TestSqrt(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -978,6 +982,7 @@ class TestSqrt(TestActivation, TestParameter):
 class TestSqrtBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
+        self.python_api = paddle.sqrt
         self.init_dtype()
 
         np.random.seed(1023)
@@ -994,11 +999,11 @@ class TestSqrtBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
 
 class TestRsqrt(TestActivation):
@@ -1039,7 +1044,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestCeil(TestActivation):
@@ -2048,6 +2053,7 @@ class TestCELUAPI(unittest.TestCase):
 class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"
+        self.python_api = paddle.reciprocal
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2060,7 +2066,10 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestLog(TestActivation):
@@ -2236,6 +2245,7 @@ class TestLog1p(TestActivation):
 class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
+        self.python_api = paddle.square
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2248,7 +2258,11 @@ class TestSquare(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.007, check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -2256,6 +2270,7 @@ class TestSquare(TestActivation):
 class TestSquareBF16(OpTest):
     def setUp(self):
         self.op_type = "square"
+        self.python_api = paddle.square
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2272,11 +2287,12 @@ class TestSquareBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.5)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.5, check_eager=True)
 
 
 class TestPow(TestActivation):

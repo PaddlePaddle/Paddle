@@ -258,6 +258,102 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     dout_result.device(place) = static_cast<T>(-1) * dout_result;
   }
 }
+template <typename T, typename Context>
+void ElementwiseFMaxGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+
+  auto out = out_grad;  // Fake out, not used
+  auto x_dim = x.dims();
+  auto y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    funcs::ElemwiseGradComputeNoBroadcast<Context,
+                                          T,
+                                          funcs::FMaxGradDx<T>,
+                                          funcs::FMaxGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMaxGradDx<T>(),
+        funcs::FMaxGradDy<T>());
+  } else {
+    funcs::ElemwiseGradComputeWithBroadcast<T,
+                                            funcs::FMaxGradDx<T>,
+                                            funcs::FMaxGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMaxGradDx<T>(),
+        funcs::FMaxGradDy<T>());
+  }
+}
+
+template <typename T, typename Context>
+void ElementwiseFMinGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  auto out = out_grad;  // Fake out, not used
+  auto x_dim = x.dims();
+  auto y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    funcs::ElemwiseGradComputeNoBroadcast<Context,
+                                          T,
+                                          funcs::FMinGradDx<T>,
+                                          funcs::FMinGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMinGradDx<T>(),
+        funcs::FMinGradDy<T>());
+  } else {
+    funcs::ElemwiseGradComputeWithBroadcast<T,
+                                            funcs::FMinGradDx<T>,
+                                            funcs::FMinGradDy<T>>(
+        dev_ctx,
+        x_dim,
+        y_dim,
+        x,
+        y,
+        out,
+        out_grad,
+        axis,
+        x_grad,
+        y_grad,
+        funcs::FMinGradDx<T>(),
+        funcs::FMinGradDy<T>());
+  }
+}
 
 template <typename T>
 struct MulGradDX {
@@ -530,6 +626,84 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
     auto d_ddy_tmp_t = phi::EigenVector<T>::Flatten(d_ddy_tmp);
     d_ddy_t.device(place) = d_ddy_t + d_ddy_tmp_t;
   }
+}
+
+/*
+******************************
+    Maximum Grad
+******************************
+*/
+
+template <typename T>
+struct MaxGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x > y);
+  }
+};
+
+template <typename T>
+struct MaxGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x <= y);
+  }
+};
+
+/*
+******************************
+    Minimum Grad
+******************************
+*/
+template <typename T>
+struct MinGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x < y);
+  }
+};
+
+template <typename T>
+struct MinGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(x >= y);
+  }
+};
+
+template <typename T>
+struct PowGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * y *
+             std::pow(static_cast<double>(x), static_cast<double>(y - 1));
+    }
+#endif
+    return dout * y * std::pow(x, y - 1);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct PowGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return dout * std::log(static_cast<double>(x)) *
+             std::pow(static_cast<double>(x), static_cast<double>(y));
+    }
+#endif
+    return dout * std::log(x) * std::pow(x, y);
+  }
+};
+
+template <typename T, typename Context>
+void ElementwisePowGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
+      dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
 
 }  // namespace phi

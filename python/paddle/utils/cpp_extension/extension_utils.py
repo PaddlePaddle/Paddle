@@ -146,6 +146,9 @@ def custom_write_stub(resource, pyfile):
         import types
         import paddle
         
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        so_path = os.path.join(cur_dir, "{resource}")
+        
         def inject_ext_module(module_name, api_names):
             if module_name in sys.modules:
                 return sys.modules[module_name]
@@ -157,9 +160,6 @@ def custom_write_stub(resource, pyfile):
             return new_module
 
         def __bootstrap__():
-            cur_dir = os.path.dirname(os.path.abspath(__file__))
-            so_path = os.path.join(cur_dir, "{resource}")
-
             assert os.path.exists(so_path)
 
             # load custom op shared library with abs path
@@ -169,6 +169,7 @@ def custom_write_stub(resource, pyfile):
         __bootstrap__()
 
         {custom_api}
+
         """).lstrip()
 
     # Parse registerring op information
@@ -900,7 +901,7 @@ def _generate_python_module(module_name,
     # delete the temp file before exit python process    
     atexit.register(lambda: remove_if_exit(api_file))
 
-    # write into .py file with RWLock
+    # write into .py file with RWLockc
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))
@@ -911,13 +912,15 @@ def _generate_python_module(module_name,
 
 
 def _custom_api_content(op_name):
-    params_str, ins_str, attrs_str, outs_str = _get_api_inputs_str(op_name)
-
+    params_str, ins_str, attrs_str, outs_str, in_names, attrs_names = _get_api_inputs_str(
+        op_name)
+    lower_in_names = [p.split("@")[0].lower() for p in in_names]
     API_TEMPLATE = textwrap.dedent("""
-        from paddle.fluid.core import VarBase
-        from paddle.fluid.framework import in_dygraph_mode, _dygraph_tracer
+        import paddle.fluid.core as core
+        from paddle.fluid.core import VarBase, CustomOpKernelContext
+        from paddle.fluid.framework import _non_static_mode, _dygraph_tracer, _in_legacy_dygraph, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
-
+        
         def {op_name}({inputs}):
             # prepare inputs and outputs
             ins = {ins}
@@ -928,15 +931,26 @@ def _custom_api_content(op_name):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
             if in_dygraph_mode():
+                ctx = CustomOpKernelContext()
+                for i in {in_names}:
+                    ctx.add_inputs(i)
+                for j in {attr_names}:
+                    ctx.add_attr(j)
                 for out_name in out_names:
-                    outs[out_name] = VarBase()
-                _dygraph_tracer().trace_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
+                    outs[out_name] = core.eager.Tensor()
+                    ctx.add_outputs(outs[out_name])
+                core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
-                helper = LayerHelper("{op_name}", **locals())
-                for out_name in out_names:
-                    outs[out_name] = helper.create_variable(dtype='float32')
+                if _in_legacy_dygraph():
+                    for out_name in out_names:
+                        outs[out_name] = VarBase()
+                    _dygraph_tracer().trace_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
+                else:
+                    helper = LayerHelper("{op_name}", **locals())
+                    for out_name in out_names:
+                        outs[out_name] = helper.create_variable(dtype='float32')
 
-                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
+                    helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
 
             res = [outs[out_name] for out_name in out_names]
 
@@ -949,6 +963,9 @@ def _custom_api_content(op_name):
         inputs=params_str,
         ins=ins_str,
         attrs=attrs_str,
+        # "[x, y, z]""
+        in_names="[" + ",".join(lower_in_names) + "]",
+        attr_names="[" + ",".join(attrs_names) + "]",
         out_names=outs_str)
 
     return api_content
@@ -996,7 +1013,7 @@ def _get_api_inputs_str(op_name):
     ])
     # e.g: ['Out', 'Index']
     outs_str = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
-    return params_str, ins_str, attrs_str, outs_str
+    return params_str, ins_str, attrs_str, outs_str, in_names, attr_names
 
 
 def _write_setup_file(name,

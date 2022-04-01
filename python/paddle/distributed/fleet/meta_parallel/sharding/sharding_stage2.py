@@ -28,7 +28,7 @@ from types import MethodType
 
 import paddle
 from paddle import nn
-import paddle.distributed as dist
+from paddle.distributed import collective as dist
 from paddle.distributed.collective import _get_global_group
 
 from ...utils.internal_storage import GradStorage
@@ -157,6 +157,17 @@ class ShardingStage2(nn.Layer):
         fw = self._layer(*inputs, **kwargs)
 
         return fw
+
+    def set_state_dict(self, state_dict, use_structured_name=True):
+        self._layer.set_state_dict(
+            state_dict, use_structured_name=use_structured_name)
+
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
+        return self._layer.state_dict(
+            destination=None, include_sublayers=True, structured_name_prefix="")
 
     def _clear_gradients(self):
         """

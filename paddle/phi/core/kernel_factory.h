@@ -197,7 +197,15 @@ class Kernel {
 
   const KernelArgsDef& args_def() const { return args_def_; }
 
+  const TensorArgDef& InputAt(size_t idx) const {
+    return args_def_.input_defs().at(idx);
+  }
+
   TensorArgDef& InputAt(size_t idx) { return args_def_.input_defs().at(idx); }
+
+  const TensorArgDef& OutputAt(size_t idx) const {
+    return args_def_.output_defs().at(idx);
+  }
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
@@ -236,6 +244,9 @@ class KernelFactory {
                                          Backend backend,
                                          DataLayout layout,
                                          DataType dtype) const;
+
+  bool IsSelectKernelValid(const std::string& kernel_name,
+                           const KernelKey& kernel_key) const;
 
   Kernel SelectKernel(const std::string& kernel_name,
                       const KernelKey& kernel_key) const;

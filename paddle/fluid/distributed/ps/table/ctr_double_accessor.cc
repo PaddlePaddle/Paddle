@@ -20,7 +20,7 @@
 namespace paddle {
 namespace distributed {
 
-int DownpourCtrDoubleAccessor::initialize() {
+int DownpourCtrDoubleAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
@@ -37,44 +37,76 @@ int DownpourCtrDoubleAccessor::initialize() {
   return 0;
 }
 
-size_t DownpourCtrDoubleAccessor::dim() {
-  auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrDoubleFeatureValue::dim(embedx_dim);
+void DownpourCtrDoubleAccessor::SetTableInfo(AccessorInfo& info) {
+  info.dim = Dim();
+  info.size = Size();
+  info.select_dim = SelectDim();
+  info.select_size = SelectSize();
+  info.update_dim = UpdateDim();
+  info.update_size = UpdateSize();
+  info.mf_size = MFSize();
 }
-size_t DownpourCtrDoubleAccessor::dim_size(size_t dim) {
-  auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrDoubleFeatureValue::dim_size(dim, embedx_dim);
+
+size_t DownpourCtrDoubleAccessor::GetTableInfo(InfoKey key) {
+  switch (key) {
+    case DIM:
+      return Dim();
+    case SIZE:
+      return Size();
+    case SELECT_DIM:
+      return SelectDim();
+    case SELECT_SIZE:
+      return SelectSize();
+    case UPDATE_DIM:
+      return UpdateDim();
+    case UPDATE_SIZE:
+      return UpdateSize();
+    case MF_SIZE:
+      return MFSize();
+    default:
+      return 0;
+  }
+  return 0;
 }
-size_t DownpourCtrDoubleAccessor::size() {
+
+size_t DownpourCtrDoubleAccessor::Dim() {
   auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrDoubleFeatureValue::size(embedx_dim);
+  return DownpourCtrDoubleFeatureValue::Dim(embedx_dim);
 }
-size_t DownpourCtrDoubleAccessor::mf_size() {
+size_t DownpourCtrDoubleAccessor::DimSize(size_t dim) {
+  auto embedx_dim = _config.embedx_dim();
+  return DownpourCtrDoubleFeatureValue::DimSize(dim, embedx_dim);
+}
+size_t DownpourCtrDoubleAccessor::Size() {
+  auto embedx_dim = _config.embedx_dim();
+  return DownpourCtrDoubleFeatureValue::Size(embedx_dim);
+}
+size_t DownpourCtrDoubleAccessor::MFSize() {
   return (_config.embedx_dim() + 1) * sizeof(float);  // embedx embedx_g2sum
 }
 // pull value
-size_t DownpourCtrDoubleAccessor::select_dim() {
+size_t DownpourCtrDoubleAccessor::SelectDim() {
   auto embedx_dim = _config.embedx_dim();
   return 3 + embedx_dim;
 }
-size_t DownpourCtrDoubleAccessor::select_dim_size(size_t dim) {
+size_t DownpourCtrDoubleAccessor::SelectDimSize(size_t dim) {
   return sizeof(float);
 }
-size_t DownpourCtrDoubleAccessor::select_size() {
-  return select_dim() * sizeof(float);
+size_t DownpourCtrDoubleAccessor::SelectSize() {
+  return SelectDim() * sizeof(float);
 }
 // push value
-size_t DownpourCtrDoubleAccessor::update_dim() {
+size_t DownpourCtrDoubleAccessor::UpdateDim() {
   auto embedx_dim = _config.embedx_dim();
   return 4 + embedx_dim;
 }
-size_t DownpourCtrDoubleAccessor::update_dim_size(size_t dim) {
+size_t DownpourCtrDoubleAccessor::UpdateDimSize(size_t dim) {
   return sizeof(float);
 }
-size_t DownpourCtrDoubleAccessor::update_size() {
-  return update_dim() * sizeof(float);
+size_t DownpourCtrDoubleAccessor::UpdateSize() {
+  return UpdateDim() * sizeof(float);
 }
-bool DownpourCtrDoubleAccessor::shrink(float* value) {
+bool DownpourCtrDoubleAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -84,11 +116,11 @@ bool DownpourCtrDoubleAccessor::shrink(float* value) {
       _config.ctr_accessor_param().delete_after_unseen_days();
   auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
   // time_decay first
-  DownpourCtrDoubleFeatureValue::show(value) *= _show_click_decay_rate;
-  DownpourCtrDoubleFeatureValue::click(value) *= _show_click_decay_rate;
+  DownpourCtrDoubleFeatureValue::Show(value) *= _show_click_decay_rate;
+  DownpourCtrDoubleFeatureValue::Click(value) *= _show_click_decay_rate;
   // shrink after
-  auto score = show_click_score(DownpourCtrDoubleFeatureValue::show(value),
-                                DownpourCtrDoubleFeatureValue::click(value));
+  auto score = show_click_score(DownpourCtrDoubleFeatureValue::Show(value),
+                                DownpourCtrDoubleFeatureValue::Click(value));
   auto unseen_days = DownpourCtrDoubleFeatureValue::unseen_days(value);
   if (score < delete_threshold || unseen_days > delete_after_unseen_days) {
     return true;
@@ -106,16 +138,16 @@ bool DownpourCtrDoubleAccessor::save_ssd(float* value) {
 //         float* value, int param, double global_cache_threshold) {
 //     auto base_threshold = _config.ctr_accessor_param().base_threshold();
 //     auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
-//     if (show_click_score(DownpourCtrDoubleFeatureValue::show(value),
-//     DownpourCtrDoubleFeatureValue::click(value)) >= base_threshold
+//     if (show_click_score(DownpourCtrDoubleFeatureValue::Show(value),
+//     DownpourCtrDoubleFeatureValue::Click(value)) >= base_threshold
 //         && DownpourCtrDoubleFeatureValue::unseen_days(value) <=
 //         delta_keep_days) {
-//         return DownpourCtrDoubleFeatureValue::show(value) >
+//         return DownpourCtrDoubleFeatureValue::Show(value) >
 //         global_cache_threshold;
 //     }
 //     return false;
 // }
-bool DownpourCtrDoubleAccessor::save(float* value, int param) {
+bool DownpourCtrDoubleAccessor::Save(float* value, int param) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -134,8 +166,8 @@ bool DownpourCtrDoubleAccessor::save(float* value, int param) {
     case 1:
     // save xbox base
     case 2: {
-      if (show_click_score(DownpourCtrDoubleFeatureValue::show(value),
-                           DownpourCtrDoubleFeatureValue::click(value)) >=
+      if (show_click_score(DownpourCtrDoubleFeatureValue::Show(value),
+                           DownpourCtrDoubleFeatureValue::Click(value)) >=
               base_threshold &&
           DownpourCtrDoubleFeatureValue::delta_score(value) >=
               delta_threshold &&
@@ -152,8 +184,8 @@ bool DownpourCtrDoubleAccessor::save(float* value, int param) {
     }
     // already decayed in shrink
     case 3: {
-      // DownpourCtrFeatureValue::show(value) *= _show_click_decay_rate;
-      // DownpourCtrFeatureValue::click(value) *= _show_click_decay_rate;
+      // DownpourCtrFeatureValue::Show(value) *= _show_click_decay_rate;
+      // DownpourCtrFeatureValue::Click(value) *= _show_click_decay_rate;
       // do this after save, because it must not be modified when retry
       // DownpourCtrDoubleFeatureValue::unseen_days(value)++;
       return true;
@@ -163,8 +195,7 @@ bool DownpourCtrDoubleAccessor::save(float* value, int param) {
   };
 }
 
-void DownpourCtrDoubleAccessor::update_stat_after_save(float* value,
-                                                       int param) {
+void DownpourCtrDoubleAccessor::UpdateStatAfterSave(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -173,8 +204,8 @@ void DownpourCtrDoubleAccessor::update_stat_after_save(float* value,
   }
   switch (param) {
     case 1: {
-      if (show_click_score(DownpourCtrDoubleFeatureValue::show(value),
-                           DownpourCtrDoubleFeatureValue::click(value)) >=
+      if (show_click_score(DownpourCtrDoubleFeatureValue::Show(value),
+                           DownpourCtrDoubleFeatureValue::Click(value)) >=
               base_threshold &&
           DownpourCtrDoubleFeatureValue::delta_score(value) >=
               delta_threshold &&
@@ -193,29 +224,29 @@ void DownpourCtrDoubleAccessor::update_stat_after_save(float* value,
   };
 }
 
-int32_t DownpourCtrDoubleAccessor::create(float** values, size_t num) {
+int32_t DownpourCtrDoubleAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[DownpourCtrDoubleFeatureValue::unseen_days_index()] = 0;
     value[DownpourCtrDoubleFeatureValue::delta_score_index()] = 0;
-    *(double*)(value + DownpourCtrDoubleFeatureValue::show_index()) = 0;
-    *(double*)(value + DownpourCtrDoubleFeatureValue::click_index()) = 0;
-    value[DownpourCtrDoubleFeatureValue::slot_index()] = -1;
+    *(double*)(value + DownpourCtrDoubleFeatureValue::ShowIndex()) = 0;
+    *(double*)(value + DownpourCtrDoubleFeatureValue::ClickIndex()) = 0;
+    value[DownpourCtrDoubleFeatureValue::SlotIndex()] = -1;
     _embed_sgd_rule->init_value(
-        value + DownpourCtrDoubleFeatureValue::embed_w_index(),
+        value + DownpourCtrDoubleFeatureValue::Embed_W_Index(),
         value + DownpourCtrDoubleFeatureValue::embed_g2sum_index());
     _embedx_sgd_rule->init_value(
-        value + DownpourCtrDoubleFeatureValue::embedx_w_index(),
+        value + DownpourCtrDoubleFeatureValue::Embedx_W_Index(),
         value + DownpourCtrDoubleFeatureValue::embedx_g2sum_index(), false);
   }
   return 0;
 }
-bool DownpourCtrDoubleAccessor::need_extend_mf(float* value) {
+bool DownpourCtrDoubleAccessor::NeedExtendMF(float* value) {
   auto show =
-      ((double*)(value + DownpourCtrDoubleFeatureValue::show_index()))[0];
+      ((double*)(value + DownpourCtrDoubleFeatureValue::ShowIndex()))[0];
   auto click =
-      ((double*)(value + DownpourCtrDoubleFeatureValue::click_index()))[0];
+      ((double*)(value + DownpourCtrDoubleFeatureValue::ClickIndex()))[0];
   // float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff()
   auto score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
                click * _config.ctr_accessor_param().click_coeff();
@@ -223,20 +254,20 @@ bool DownpourCtrDoubleAccessor::need_extend_mf(float* value) {
   return score >= _config.embedx_threshold();
 }
 // from DownpourCtrFeatureValue to DownpourCtrPullValue
-int32_t DownpourCtrDoubleAccessor::select(float** select_values,
+int32_t DownpourCtrDoubleAccessor::Select(float** select_values,
                                           const float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
     float* value = const_cast<float*>(values[value_item]);
-    select_value[DownpourCtrDoublePullValue::show_index()] =
-        (float)*(double*)(value + DownpourCtrDoubleFeatureValue::show_index());
-    select_value[DownpourCtrDoublePullValue::click_index()] =
-        (float)*(double*)(value + DownpourCtrDoubleFeatureValue::click_index());
-    select_value[DownpourCtrDoublePullValue::embed_w_index()] =
-        value[DownpourCtrDoubleFeatureValue::embed_w_index()];
-    memcpy(select_value + DownpourCtrDoublePullValue::embedx_w_index(),
-           value + DownpourCtrDoubleFeatureValue::embedx_w_index(),
+    select_value[DownpourCtrDoublePullValue::ShowIndex()] =
+        (float)*(double*)(value + DownpourCtrDoubleFeatureValue::ShowIndex());
+    select_value[DownpourCtrDoublePullValue::ClickIndex()] =
+        (float)*(double*)(value + DownpourCtrDoubleFeatureValue::ClickIndex());
+    select_value[DownpourCtrDoublePullValue::Embed_W_Index()] =
+        value[DownpourCtrDoubleFeatureValue::Embed_W_Index()];
+    memcpy(select_value + DownpourCtrDoublePullValue::Embedx_W_Index(),
+           value + DownpourCtrDoubleFeatureValue::Embedx_W_Index(),
            embedx_dim * sizeof(float));
   }
   return 0;
@@ -244,23 +275,23 @@ int32_t DownpourCtrDoubleAccessor::select(float** select_values,
 // from DownpourCtrPushValue to DownpourCtrPushValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrDoubleAccessor::merge(float** update_values,
+int32_t DownpourCtrDoubleAccessor::Merge(float** update_values,
                                          const float** other_update_values,
                                          size_t num) {
   auto embedx_dim = _config.embedx_dim();
-  size_t total_dim = DownpourCtrDoublePushValue::dim(embedx_dim);
+  size_t total_dim = DownpourCtrDoublePushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
-    /**(double*)(update_value + DownpourCtrDoublePushValue::show_index()) +=
-    *(double*)(other_update_value + DownpourCtrDoublePushValue::show_index());
-    *(double*)(update_value + DownpourCtrDoublePushValue::click_index()) +=
-    *(double*)(other_update_value + DownpourCtrDoublePushValue::click_index());
+    /**(double*)(update_value + DownpourCtrDoublePushValue::ShowIndex()) +=
+    *(double*)(other_update_value + DownpourCtrDoublePushValue::ShowIndex());
+    *(double*)(update_value + DownpourCtrDoublePushValue::ClickIndex()) +=
+    *(double*)(other_update_value + DownpourCtrDoublePushValue::ClickIndex());
     for (auto i = 3u; i < total_dim; ++i) {
         update_value[i] += other_update_value[i];
     }*/
     for (auto i = 0u; i < total_dim; ++i) {
-      if (i != DownpourCtrDoublePushValue::slot_index()) {
+      if (i != DownpourCtrDoublePushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }
@@ -270,21 +301,21 @@ int32_t DownpourCtrDoubleAccessor::merge(float** update_values,
 // from DownpourCtrPushValue to DownpourCtrFeatureValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrDoubleAccessor::update(float** update_values,
+int32_t DownpourCtrDoubleAccessor::Update(float** update_values,
                                           const float** push_values,
                                           size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* push_value = push_values[value_item];
-    float push_show = push_value[DownpourCtrDoublePushValue::show_index()];
-    float push_click = push_value[DownpourCtrDoublePushValue::click_index()];
-    float slot = push_value[DownpourCtrDoublePushValue::slot_index()];
-    *(double*)(update_value + DownpourCtrDoubleFeatureValue::show_index()) +=
+    float push_show = push_value[DownpourCtrDoublePushValue::ShowIndex()];
+    float push_click = push_value[DownpourCtrDoublePushValue::ClickIndex()];
+    float slot = push_value[DownpourCtrDoublePushValue::SlotIndex()];
+    *(double*)(update_value + DownpourCtrDoubleFeatureValue::ShowIndex()) +=
         (double)push_show;
-    *(double*)(update_value + DownpourCtrDoubleFeatureValue::click_index()) +=
+    *(double*)(update_value + DownpourCtrDoubleFeatureValue::ClickIndex()) +=
         (double)push_click;
-    update_value[DownpourCtrDoubleFeatureValue::slot_index()] = slot;
+    update_value[DownpourCtrDoubleFeatureValue::SlotIndex()] = slot;
     update_value[DownpourCtrDoubleFeatureValue::delta_score_index()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
@@ -292,24 +323,24 @@ int32_t DownpourCtrDoubleAccessor::update(float** update_values,
     // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[DownpourCtrDoubleFeatureValue::unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
-        update_value + DownpourCtrDoubleFeatureValue::embed_w_index(),
+        update_value + DownpourCtrDoubleFeatureValue::Embed_W_Index(),
         update_value + DownpourCtrDoubleFeatureValue::embed_g2sum_index(),
-        push_value + DownpourCtrDoublePushValue::embed_g_index(), push_show);
+        push_value + DownpourCtrDoublePushValue::Embed_G_Index(), push_show);
     _embedx_sgd_rule->update_value(
-        update_value + DownpourCtrDoubleFeatureValue::embedx_w_index(),
+        update_value + DownpourCtrDoubleFeatureValue::Embedx_W_Index(),
         update_value + DownpourCtrDoubleFeatureValue::embedx_g2sum_index(),
-        push_value + DownpourCtrDoublePushValue::embedx_g_index(), push_show);
+        push_value + DownpourCtrDoublePushValue::Embedx_G_Index(), push_show);
   }
   return 0;
 }
-bool DownpourCtrDoubleAccessor::create_value(int stage, const float* value) {
+bool DownpourCtrDoubleAccessor::CreateValue(int stage, const float* value) {
   // stage == 0, pull
   // stage == 1, push
   if (stage == 0) {
     return true;
   } else if (stage == 1) {
-    auto show = DownpourCtrDoublePushValue::show(const_cast<float*>(value));
-    auto click = DownpourCtrDoublePushValue::click(const_cast<float*>(value));
+    auto show = DownpourCtrDoublePushValue::Show(const_cast<float*>(value));
+    auto click = DownpourCtrDoublePushValue::Click(const_cast<float*>(value));
     auto score = show_click_score(show, click);
     if (score <= 0) {
       return false;
@@ -330,16 +361,16 @@ double DownpourCtrDoubleAccessor::show_click_score(double show, double click) {
   auto click_coeff = _config.ctr_accessor_param().click_coeff();
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
-std::string DownpourCtrDoubleAccessor::parse_to_string(const float* v,
-                                                       int param_size) {
+std::string DownpourCtrDoubleAccessor::ParseToString(const float* v,
+                                                     int param_size) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
   os << v[0] << " " << v[1] << " " << (float)((double*)(v + 2))[0] << " "
      << (float)((double*)(v + 4))[0] << " " << v[6] << " " << v[7] << " "
      << v[8];
-  auto show = DownpourCtrDoubleFeatureValue::show(const_cast<float*>(v));
-  auto click = DownpourCtrDoubleFeatureValue::click(const_cast<float*>(v));
+  auto show = DownpourCtrDoubleFeatureValue::Show(const_cast<float*>(v));
+  auto click = DownpourCtrDoubleFeatureValue::Click(const_cast<float*>(v));
   auto score = show_click_score(show, click);
   if (score >= _config.embedx_threshold() && param_size > 9) {
     os << " " << v[9];
@@ -349,23 +380,23 @@ std::string DownpourCtrDoubleAccessor::parse_to_string(const float* v,
   }
   return os.str();
 }
-int DownpourCtrDoubleAccessor::parse_from_string(const std::string& str,
-                                                 float* value) {
+int DownpourCtrDoubleAccessor::ParseFromString(const std::string& str,
+                                               float* value) {
   int embedx_dim = _config.embedx_dim();
-  float data_buff[dim() + 2];
+  float data_buff[Dim() + 2];
   float* data_buff_ptr = data_buff;
   _embedx_sgd_rule->init_value(
-      data_buff_ptr + DownpourCtrDoubleFeatureValue::embedx_w_index(),
+      data_buff_ptr + DownpourCtrDoubleFeatureValue::Embedx_W_Index(),
       data_buff_ptr + DownpourCtrDoubleFeatureValue::embedx_g2sum_index());
   auto str_len = paddle::string::str_to_float(str.data(), data_buff_ptr);
   CHECK(str_len >= 6) << "expect more than 6 real:" << str_len;
-  int show_index = DownpourCtrDoubleFeatureValue::show_index();
-  int click_index = DownpourCtrDoubleFeatureValue::click_index();
-  int embed_w_index = DownpourCtrDoubleFeatureValue::embed_w_index();
+  int show_index = DownpourCtrDoubleFeatureValue::ShowIndex();
+  int click_index = DownpourCtrDoubleFeatureValue::ClickIndex();
+  int embed_w_index = DownpourCtrDoubleFeatureValue::Embed_W_Index();
   // no slot, embedx
-  int value_dim = dim();
+  int value_dim = Dim();
   int embedx_g2sum_index = DownpourCtrDoubleFeatureValue::embedx_g2sum_index();
-  value[DownpourCtrDoubleFeatureValue::slot_index()] = -1;
+  value[DownpourCtrDoubleFeatureValue::SlotIndex()] = -1;
   // other case
   if (str_len == (value_dim - 1)) {
     // copy unseen_days..delta_score
@@ -374,7 +405,7 @@ int DownpourCtrDoubleAccessor::parse_from_string(const std::string& str,
     *(double*)(value + show_index) = (double)data_buff_ptr[2];
     *(double*)(value + click_index) = (double)data_buff_ptr[3];
     // copy others
-    value[DownpourCtrDoubleFeatureValue::embed_w_index()] = data_buff_ptr[4];
+    value[DownpourCtrDoubleFeatureValue::Embed_W_Index()] = data_buff_ptr[4];
     value[DownpourCtrDoubleFeatureValue::embed_g2sum_index()] =
         data_buff_ptr[5];
     memcpy(value + embedx_g2sum_index, data_buff_ptr + 6,

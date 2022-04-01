@@ -23,6 +23,7 @@ from ...tensor.math import multiply
 import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import convert_np_dtype_to_dtype_
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -560,9 +561,10 @@ def relu(x, name=None):
             out = F.relu(x) # [0., 0., 1.]
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_relu(x)
+    if _in_legacy_dygraph():
         return _C_ops.relu(x)
-
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
     helper = LayerHelper('relu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -576,6 +578,8 @@ def relu_(x, name=None):
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
+    if paddle.fluid.framework._in_eager_mode_:
+        return _C_ops.final_state_relu_(x)
     return _C_ops.relu_(x)
 
 

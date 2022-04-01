@@ -14,6 +14,7 @@
 #pragma once
 
 #include <iostream>
+#include "paddle/phi/core/enforce.h"
 
 static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
                                        PyObject *kwargs) {
@@ -31,16 +32,26 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
 
     tstate = PyEval_SaveThread();
     run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
-    std::cout << "end run_program_dygraph_function" << std::endl;
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
+    Py_RETURN_NONE;
+  } catch (paddle::platform::EnforceNotMet &exception) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    std::ostringstream sout;
+    sout << exception.what();
+    sout << "  [operator < run_program > error]";
+    exception.set_error_str(sout.str());
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
   } catch (...) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
     ThrowExceptionToPython(std::current_exception());
+    return nullptr;
   }
-  Py_RETURN_NONE;
 }
 
 static PyMethodDef CustomEagerFinalStateMethods[] = {
