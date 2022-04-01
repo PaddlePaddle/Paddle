@@ -99,25 +99,15 @@ template <typename DstPlace, typename SrcPlace, typename StreamType>
 void HeterComm<KeyType, ValType, GradType>::memory_copy(
     DstPlace dst_place, void* dst, SrcPlace src_place, const void* src,
     size_t count, StreamType stream = 0) {
-  // stream=0 means launch copy operation in default stream
-  if (paddle::platform::is_xpu_place(dst_place)) {
-    memory::Copy(dst_place, dst, src_place, src, count);
-  } else if (paddle::platform::is_gpu_place(dst_place)) {
-    cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
-    if (stream == 0) {
-      cudaStreamSynchronize(0);
-    }
-  } else if (paddle::platform::is_cpu_place(
-                 dst_place)) {  // ds_place == cpu place
-    if (paddle::platform::is_xpu_place(src_place)) {
-      memory::Copy(dst_place, dst, src_place, src, count);
-    } else if (paddle::platform::is_gpu_place(src_place)) {
-      cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
-      if (stream == 0) {
-        cudaStreamSynchronize(0);
-      }
-    }
+  
+#if defined(PADDLE_WITH_CUDA)
+  cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
+  if (stream == 0) {
+    cudaStreamSynchronize(0);
   }
+#elif defined(PADDLE_WITH_XPU_KP)
+  memory::Copy(dst_place, dst, src_place, src, count);
+#endif
 }
 
 template <typename KeyType, typename ValType, typename GradType>
@@ -145,9 +135,10 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
-    auto node_keys_mem = memory::Alloc(place_, keylen);
+    auto place = DevPlace(resource_->dev_id(nodes[i].dev_num));
+    auto node_keys_mem = memory::Alloc(place, keylen);
     nodes[i].key_storage = reinterpret_cast<char*>(node_keys_mem->ptr());
-    auto node_vals_mem = memory::Alloc(place_, vallen);
+    auto node_vals_mem = memory::Alloc(place, vallen);
     nodes[i].val_storage = reinterpret_cast<char*>(node_vals_mem->ptr());
     nodes[i].key_bytes_len = keylen;
     nodes[i].val_bytes_len = vallen;
@@ -158,10 +149,10 @@ void HeterComm<KeyType, ValType, GradType>::create_storage(int start_index,
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::destroy_storage(int start_index,
                                                             int end_index) {
+#if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
-#if defined(PADDLE_WITH_CUDA)
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
 
     allocator->DeviceFree(resource_->dev_id(nodes[i].dev_num),
