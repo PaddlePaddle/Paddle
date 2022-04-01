@@ -974,6 +974,19 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
     :return: inner_inputs, inner_outputs
     """
 
+    def is_ignore_vars(op, var_name):
+        # NOTE(dev): There are some persistable var created in some non-standard API
+        # such as "contrib.layers.shuffle_batch". It create a "Seed" used both in
+        # Input and Output. This var shall not be considered as a loop_var in
+        # control_flow.
+        IGNORE_VAR_NAMES = {"shuffle_batch": ["shuffle_batch_seed"]}
+        if op.type in IGNORE_VAR_NAMES:
+            var_names = IGNORE_VAR_NAMES[op.type]
+            for name in var_names:
+                if name in var_name:
+                    return True
+        return False
+
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
     # but some variables are created without appendding a real op.
@@ -982,7 +995,8 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
         assert isinstance(op, Operator)
         for iname in op.input_names:
             for in_var_name in op.input(iname):
-                if in_var_name not in inner_outputs:
+                if in_var_name not in inner_outputs and not is_ignore_vars(
+                        op, in_var_name):
                     inner_inputs.add(in_var_name)
 
         for oname in op.output_names:
