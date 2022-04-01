@@ -189,6 +189,8 @@ class DistributedFusedLamb(Optimizer):
         param_order = self._create_persistable_var('param_order', dtype='int32')
         param_order.is_distributed = True
 
+        step = self._create_persistable_var('step', dtype='int64')
+
         rank = get_rank()
         nranks = get_world_size()
         scale = self._get_or_create_scale()
@@ -234,6 +236,7 @@ class DistributedFusedLamb(Optimizer):
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
                 'ParamOrder': [param_order],
+                'Step': [step],
             },
             attrs={
                 'alignment': self._alignment,
@@ -290,6 +293,7 @@ class DistributedFusedLamb(Optimizer):
                 'ParamOut': params,
                 'GradOut': grads,
                 'FoundInf': [self._found_inf],
+                'Step': [step],
             },
             attrs={
                 'weight_decay': self._weight_decay,
