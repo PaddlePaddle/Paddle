@@ -46,8 +46,8 @@ int32_t PSClient::Configure(
     auto *accessor = CREATE_PSCORE_CLASS(
         ValueAccessor,
         work_param.downpour_table_param(i).accessor().accessor_class());
-    accessor->configure(work_param.downpour_table_param(i).accessor());
-    accessor->initialize();
+    accessor->Configure(work_param.downpour_table_param(i).accessor());
+    accessor->Initialize();
     _table_accessors[work_param.downpour_table_param(i).table_id()].reset(
         accessor);
   }

@@ -232,9 +232,9 @@ int32_t CommonDenseTable::Load(const std::string& path,
   int load_param = atoi(param.c_str());
   FsChannelConfig channel_config;
 
-  channel_config.converter = _value_accesor->converter(load_param).converter;
+  channel_config.converter = _value_accesor->Converter(load_param).converter;
   channel_config.deconverter =
-      _value_accesor->converter(load_param).deconverter;
+      _value_accesor->Converter(load_param).deconverter;
   bool is_read_failed = false;
   int err_no = 0;
   int retry_num = 0;
@@ -329,9 +329,9 @@ int32_t CommonDenseTable::Save(const std::string& path,
         "%s/part-%03d", TableDir(path).c_str(), _shard_idx);
   }
   _afs_client.remove(channel_config.path);
-  channel_config.converter = _value_accesor->converter(save_param).converter;
+  channel_config.converter = _value_accesor->Converter(save_param).converter;
   channel_config.deconverter =
-      _value_accesor->converter(save_param).deconverter;
+      _value_accesor->Converter(save_param).deconverter;
 
   bool is_write_failed = false;
   std::vector<std::vector<std::string>> result_buffer_param(
