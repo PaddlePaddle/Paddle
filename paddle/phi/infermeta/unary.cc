@@ -2891,16 +2891,16 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(input_dims[1] % groups,
                       0,
                       phi::errors::InvalidArgument(
-                          "The number of groups to divide channels in[%u] "
-                          "should divide the number of channel[%u]",
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
                           groups,
                           input_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(input_dims[3] % groups,
                       0,
                       phi::errors::InvalidArgument(
-                          "The number of groups to divide channels in[%u] "
-                          "should divide the number of channel[%u]",
+                          "The number of groups to divide channels in [%u] "
+                          "should divide the number of channel [%u]",
                           groups,
                           input_dims[3]));
   }
