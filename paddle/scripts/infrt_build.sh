@@ -81,6 +81,7 @@ function init() {
 }
 
 function infrt_gen_and_build() {
+    parallel_number=24
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
@@ -98,7 +99,6 @@ function infrt_gen_and_build() {
         exit 7;
     fi
 
-    #add trt
     make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec phi-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
