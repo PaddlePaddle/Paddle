@@ -4790,7 +4790,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
-    helper = LayerHelper('reduce_prod', **locals())
+
     if dim is not None and not isinstance(dim, list):
         if isinstance(dim, tuple):
             dim = list(dim)
@@ -4800,6 +4800,12 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             raise TypeError(
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
+    if in_dygraph_mode():
+        return _C_ops.final_state_reduce_prod(
+            input, dim if dim != None and dim != [] else [0], keep_dim, True if
+            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+
+    helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())

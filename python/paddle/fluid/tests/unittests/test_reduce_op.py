@@ -237,6 +237,7 @@ class TestMin8DOp(OpTest):
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = paddle.prod
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
