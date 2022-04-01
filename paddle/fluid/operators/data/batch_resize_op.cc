@@ -24,28 +24,27 @@ class BatchResizeOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchResize");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "BatchResize");
+    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "Inputs(X) of BatchResize should not be empty."));
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "BatchResize");
 
     auto size = ctx->Attrs().Get<std::vector<int64_t>>("size");
     PADDLE_ENFORCE_EQ(size.size(), 2,
                       platform::errors::InvalidArgument(
                           "The length of Attrs(size) should be 2."));
-    PADDLE_ENFORCE_GT(size[0], 0,
-                      platform::errors::InvalidArgument(
-                          "h in Attr(size) of Op(BatchResize) "
-                          "should be greater than 0."));
-    PADDLE_ENFORCE_GT(size[1], 0,
-                      platform::errors::InvalidArgument(
-                          "w in Attr(size) of Op(BatchResize) "
-                          "should be greater than 0."));
+    PADDLE_ENFORCE_GT(size[0], 0, platform::errors::InvalidArgument(
+                                      "h in Attr(size) of Op(BatchResize) "
+                                      "should be greater than 0."));
+    PADDLE_ENFORCE_GT(size[1], 0, platform::errors::InvalidArgument(
+                                      "w in Attr(size) of Op(BatchResize) "
+                                      "should be greater than 0."));
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::proto::VarType::UINT8, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::UINT8,
+                                   ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -62,7 +61,8 @@ class BatchResizeOp : public framework::OperatorWithKernel {
 class BatchResizeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensorArray). A batch of instances to random crop.");
+    AddInput("X", "(List[LoDTensor]). A batch of instances to random crop.")
+        .AsDuplicable();
     AddOutput("Out", "(Tensor). The cropped instance batch.");
     AddAttr<std::vector<int64_t>>(
         "size", "expected output size of the crop, for each edge.");
@@ -103,10 +103,8 @@ class BatchResizeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    batch_resize, ops::data::BatchResizeOp,
-    ops::data::BatchResizeOpMaker,
+    batch_resize, ops::data::BatchResizeOp, ops::data::BatchResizeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(batch_resize,
-                       ops::data::BatchResizeCPUKernel<uint8_t>)
+REGISTER_OP_CPU_KERNEL(batch_resize, ops::data::BatchResizeCPUKernel<uint8_t>)

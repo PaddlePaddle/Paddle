@@ -868,8 +868,11 @@ def read_file(filename, name=None):
     return out
 
 
-def image_decode(x, mode='unchanged', num_threads=2,
-                 host_memory_padding=0, device_memory_padding=0,
+def image_decode(x,
+                 mode='unchanged',
+                 num_threads=2,
+                 host_memory_padding=0,
+                 device_memory_padding=0,
                  name=None):
     """
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
@@ -912,18 +915,19 @@ def image_decode(x, mode='unchanged', num_threads=2,
                            core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode(
-                x, out, "mode", mode, "num_threads", num_threads,
-                "local_rank", local_rank, "program_id", program_id,
-                "host_memory_padding", host_memory_padding,
-                "device_memory_padding", device_memory_padding)
+            x, out, "mode", mode, "num_threads", num_threads, "local_rank",
+            local_rank, "program_id", program_id, "host_memory_padding",
+            host_memory_padding, "device_memory_padding", device_memory_padding)
 
     inputs = {'X': x}
-    attrs = {"mode": mode,
-             "num_threads": num_threads,
-             "local_rank": local_rank,
-             "program_id": utils._hash_with_id(default_main_program()),
-             "host_memory_padding": host_memory_padding,
-             "device_memory_padding": device_memory_padding}
+    attrs = {
+        "mode": mode,
+        "num_threads": num_threads,
+        "local_rank": local_rank,
+        "program_id": utils._hash_with_id(default_main_program()),
+        "host_memory_padding": host_memory_padding,
+        "device_memory_padding": device_memory_padding
+    }
 
     helper = LayerHelper("batch_decode", **locals())
     out = helper.create_variable(
@@ -942,8 +946,8 @@ def image_decode_random_crop(x,
                              host_memory_padding=0,
                              device_memory_padding=0,
                              data_layout='NCHW',
-                             aspect_ratio_min=3./4.,
-                             aspect_ratio_max=4./3.,
+                             aspect_ratio_min=3. / 4.,
+                             aspect_ratio_max=4. / 3.,
                              area_min=0.08,
                              area_max=1.,
                              num_attempts=10,
@@ -988,40 +992,49 @@ def image_decode_random_crop(x,
     local_rank = paddle.distributed.get_rank()
     if in_dygraph_mode():
         out = core.VarBase(core.VarDesc.VarType.UINT8, [],
-                unique_name.generate("image_decode_random_crop"),
-                core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
+                           unique_name.generate("image_decode_random_crop"),
+                           core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
         program_id = utils._hash_with_id(mode, num_threads, name, local_rank)
         return _C_ops.batch_decode_random_crop(
-                x, out, "mode", mode, "num_threads", num_threads,
-                "data_layout", data_layout, "aspect_ratio_min",
-                aspect_ratio_min, "aspect_ratio_max", aspect_ratio_max,
-                "area_min", area_min, "area_max", area_max,
-                "num_attempts", num_attempts, "local_rank", local_rank,
-                "program_id", program_id,
-                "host_memory_padding", host_memory_padding,
-                "device_memory_padding", device_memory_padding)
+            x, out, "mode", mode, "num_threads", num_threads, "data_layout",
+            data_layout, "aspect_ratio_min", aspect_ratio_min,
+            "aspect_ratio_max", aspect_ratio_max, "area_min", area_min,
+            "area_max", area_max, "num_attempts", num_attempts, "local_rank",
+            local_rank, "program_id", program_id, "host_memory_padding",
+            host_memory_padding, "device_memory_padding", device_memory_padding)
 
     inputs = {'X': x}
-    attrs = {"mode": mode,
-             "num_threads": num_threads,
-             "host_memory_padding": host_memory_padding,
-             "device_memory_padding": device_memory_padding,
-             "data_layout": data_layout,
-             "aspect_ratio_min": aspect_ratio_min,
-             "aspect_ratio_max": aspect_ratio_max,
-             "area_min": area_min,
-             "area_max": area_max,
-             "num_attempts": num_attempts, 
-             "local_rank": local_rank,
-             "program_id": utils._hash_with_id(default_main_program())}
+    attrs = {
+        "mode": mode,
+        "num_threads": num_threads,
+        "host_memory_padding": host_memory_padding,
+        "device_memory_padding": device_memory_padding,
+        "data_layout": data_layout,
+        "aspect_ratio_min": aspect_ratio_min,
+        "aspect_ratio_max": aspect_ratio_max,
+        "area_min": area_min,
+        "area_max": area_max,
+        "num_attempts": num_attempts,
+        "local_rank": local_rank,
+        "program_id": utils._hash_with_id(default_main_program())
+    }
 
     helper = LayerHelper("batch_decode_random_crop", **locals())
-    out = helper.create_variable(
-        name=unique_name.generate("image_decode_random_crop"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=x.dtype)
+    # out = helper.create_variable(
+    #     name=unique_name.generate("image_decode_random_crop"),
+    #     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    #     dtype=x.dtype)
+    out = [
+        helper.create_variable(
+            name=unique_name.generate("file_label_loader"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype='uint8') for i in range(len(x))
+    ]
     helper.append_op(
-        type="batch_decode_random_crop", inputs=inputs, attrs=attrs, outputs={"Out": out})
+        type="batch_decode_random_crop",
+        inputs=inputs,
+        attrs=attrs,
+        outputs={"Out": out})
 
     return out
 
@@ -1030,12 +1043,12 @@ def random_flip(x, prob=0.5, name=None):
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
 
-    rand_vec = layers.uniform_random_batch_size_like(
-                                    x, [1, 1], min=0., max=1.)
+    rand_vec = layers.uniform_random_batch_size_like(x, [1, 1], min=0., max=1.)
     return rand_vec < prob
 
 
-def mirror_normalize(x, mirror,
+def mirror_normalize(x,
+                     mirror,
                      mean=[123.675, 116.28, 103.53],
                      std=[58.395, 57.120, 57.375],
                      name=None):
@@ -1054,17 +1067,18 @@ def mirror_normalize(x, mirror,
     std = _to_list_3(std)
 
     if _non_static_mode():
-        return _C_ops.mirror_normalize(x, mirror, "mean", mean,
-                                       "std", std)
+        return _C_ops.mirror_normalize(x, mirror, "mean", mean, "std", std)
 
     helper = LayerHelper("mirror_normalize", **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="mirror_normalize",
-        inputs={"X": x, "Mirror": mirror},
+        inputs={"X": x,
+                "Mirror": mirror},
         outputs={"Out": out},
-        attrs={"mean": mean, "std": std})
+        attrs={"mean": mean,
+               "std": std})
     return out
 
 
@@ -1508,8 +1522,8 @@ class RoIAlign(Layer):
 
 def random_crop_and_resize(x,
                            size,
-                           aspect_ratio_min=3./4.,
-                           aspect_ratio_max=4./3.,
+                           aspect_ratio_min=3. / 4.,
+                           aspect_ratio_max=4. / 3.,
                            area_min=0.08,
                            area_max=1.,
                            num_attempts=10,
@@ -1574,10 +1588,9 @@ def random_crop_and_resize(x,
         out = _C_ops.batch_random_crop_and_resize(
             x, "size", size, "aspect_ratio_min", aspect_ratio_min,
             "aspect_ratio_max", aspect_ratio_max, "area_max", area_max,
-            "area_min", area_min, "num_attempts", num_attempts,
-            "interp_method", interp_method, "align_corners",
-            align_corners, "align_mode", align_mode,
-            "data_format", data_format, "seed", seed)
+            "area_min", area_min, "num_attempts", num_attempts, "interp_method",
+            interp_method, "align_corners", align_corners, "align_mode",
+            align_mode, "data_format", data_format, "seed", seed)
         return out
 
     helper = LayerHelper('batch_random_crop_and_resize', **locals())
@@ -1662,10 +1675,10 @@ def image_resize(x,
         size = (size, size)
 
     if in_dygraph_mode():
-        out = _C_ops.batch_resize(
-            x, "size", size, "interp_method", interp_method,
-            "align_corners", align_corners, "align_mode",
-            align_mode, "data_format", data_format, "seed", seed)
+        out = _C_ops.batch_resize(x, "size", size, "interp_method",
+                                  interp_method, "align_corners", align_corners,
+                                  "align_mode", align_mode, "data_format",
+                                  data_format, "seed", seed)
         return out
 
     helper = LayerHelper('batch_resize', **locals())
@@ -1681,10 +1694,7 @@ def image_resize(x,
         "seed": seed,
     }
     helper.append_op(
-        type="batch_resize",
-        inputs=inputs,
-        outputs={"Out": out},
-        attrs=attrs)
+        type="batch_resize", inputs=inputs, outputs={"Out": out}, attrs=attrs)
     return out
 
 

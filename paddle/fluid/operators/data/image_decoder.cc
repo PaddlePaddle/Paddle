@@ -20,73 +20,88 @@ namespace data {
 
 ImageDecoder::ImageDecoder(std::string mode, int dev_id,
                            size_t host_memory_padding,
-                           size_t device_memory_padding) 
-  : nvjpeg_streams_(2),
-    pinned_buffers_(2),
-    page_id_(0),
-    mode_(mode) {
+                           size_t device_memory_padding)
+    : nvjpeg_streams_(2), pinned_buffers_(2), page_id_(0), mode_(mode) {
   platform::SetDeviceId(dev_id);
 
   // create nvjpeg handle and stream
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(
-      platform::dynload::nvjpegCreateEx(NVJPEG_BACKEND_HYBRID, &device_allocator_,
-                           &pinned_allocator_, 0, &handle_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegCreateEx(
+      NVJPEG_BACKEND_HYBRID, &device_allocator_, &pinned_allocator_, 0,
+      &handle_));
 
   // set pinned/device memory padding
   if (host_memory_padding > 0) {
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegSetPinnedMemoryPadding(host_memory_padding, handle_));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(
+        platform::dynload::nvjpegSetPinnedMemoryPadding(host_memory_padding,
+                                                        handle_));
   }
   if (device_memory_padding > 0) {
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegSetDeviceMemoryPadding(device_memory_padding, handle_));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(
+        platform::dynload::nvjpegSetDeviceMemoryPadding(device_memory_padding,
+                                                        handle_));
   }
 
   // create nvjpeg stream
   for (size_t i = 0; i < nvjpeg_streams_.size(); i++) {
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamCreate(handle_, &nvjpeg_streams_[i]));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamCreate(
+        handle_, &nvjpeg_streams_[i]));
   }
 
   // create decode params, decoder and state
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsCreate(handle_, &decode_params_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderCreate(handle_, NVJPEG_BACKEND_HYBRID, &decoder_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderStateCreate(handle_, decoder_, &state_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegDecodeParamsCreate(handle_, &decode_params_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderCreate(
+      handle_, NVJPEG_BACKEND_HYBRID, &decoder_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegDecoderStateCreate(handle_, decoder_, &state_));
 
   // create device & pinned buffer
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegBufferDeviceCreate(handle_, &device_allocator_, &device_buffer_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegBufferDeviceCreate(
+      handle_, &device_allocator_, &device_buffer_));
   for (size_t i = 0; i < pinned_buffers_.size(); i++) {
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegBufferPinnedCreate(handle_, &pinned_allocator_, &pinned_buffers_[i]));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegBufferPinnedCreate(
+        handle_, &pinned_allocator_, &pinned_buffers_[i]));
   }
 }
 
 ImageDecoder::~ImageDecoder() {
   // destroy nvjpeg streams
   for (size_t i = 0; i < nvjpeg_streams_.size(); i++) {
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamDestroy(nvjpeg_streams_[i]));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(
+        platform::dynload::nvjpegJpegStreamDestroy(nvjpeg_streams_[i]));
   }
 
   // destroy decode params, decoder and state
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsDestroy(decode_params_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecoderDestroy(decoder_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStateDestroy(state_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegDecodeParamsDestroy(decode_params_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegDecoderDestroy(decoder_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegJpegStateDestroy(state_));
 
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegBufferDeviceDestroy(device_buffer_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegBufferDeviceDestroy(device_buffer_));
   for (size_t i = 0; i < pinned_buffers_.size(); i++) {
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegBufferPinnedDestroy(pinned_buffers_[i]));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(
+        platform::dynload::nvjpegBufferPinnedDestroy(pinned_buffers_[i]));
   }
 
   // destroy nvjpeg handle at last
   PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDestroy(handle_));
 }
 
-void ImageDecoder::CPUDecodeRandomCrop(
-                        const uint8_t* data, size_t length,
-                        RandomROIGenerator* roi_generator,
-                        unsigned char* workspace, size_t workspace_size,
-                        framework::LoDTensor* out, platform::Place place) {
+void ImageDecoder::CPUDecodeRandomCrop(const uint8_t* data, size_t length,
+                                       RandomROIGenerator* roi_generator,
+                                       unsigned char* workspace,
+                                       size_t workspace_size,
+                                       framework::LoDTensor* out,
+                                       platform::Place place) {
   VLOG(4) << "CPUDecodeRandomCropResize enter";
 #ifdef PADDLE_WITH_OPENCV
-  cv::Mat image =
-      cv::imdecode(cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)), cv::IMREAD_COLOR);
-  
+  cv::Mat image = cv::imdecode(
+      cv::Mat(1, length, CV_8UC1, const_cast<unsigned char*>(data)),
+      cv::IMREAD_COLOR);
+
   cv::Mat cropped;
   int height = image.rows;
   int width = image.cols;
@@ -112,7 +127,8 @@ void ImageDecoder::CPUDecodeRandomCrop(
   cpu_tensor.Resize(phi::make_ddim(out_shape));
   auto* cpu_data = cpu_tensor.mutable_data<uint8_t>(platform::CPUPlace());
 
-  cv::Mat cpu_mat(height, width, CV_8UC3, const_cast<unsigned char*>(cpu_data), cv::Mat::AUTO_STEP);
+  cv::Mat cpu_mat(height, width, CV_8UC3, const_cast<unsigned char*>(cpu_data),
+                  cv::Mat::AUTO_STEP);
   cv::cvtColor(cropped, cpu_mat, cv::COLOR_BGR2RGB);
 
   // copy cpu tensor to output gpu tensor
@@ -132,9 +148,8 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
   int widths[NVJPEG_MAX_COMPONENT];
   int heights[NVJPEG_MAX_COMPONENT];
 
-  
-  nvjpegStatus_t status = platform::dynload::nvjpegGetImageInfo(handle_, bit_stream, bit_len,
-                         &components, &subsampling, widths, heights);
+  nvjpegStatus_t status = platform::dynload::nvjpegGetImageInfo(
+      handle_, bit_stream, bit_len, &components, &subsampling, widths, heights);
 
   if (status != NVJPEG_STATUS_SUCCESS) return status;
 
@@ -153,8 +168,8 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
       output_components = 3;
     } else {
       PADDLE_THROW(platform::errors::Fatal(
-          "The provided mode(%s) does not support components(%d)",
-          mode_, components));
+          "The provided mode(%s) does not support components(%d)", mode_,
+          components));
     }
   } else if (mode_ == "gray") {
     output_format = NVJPEG_OUTPUT_Y;
@@ -164,16 +179,20 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
     output_components = 3;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "The provided mode is not supported for JPEG files on GPU: %s!", mode_));
+        "The provided mode is not supported for JPEG files on GPU: %s!",
+        mode_));
   }
 
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_, output_format));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegDecodeParamsSetOutputFormat(decode_params_,
+                                                           output_format));
 
   if (roi_generator) {
     ROI roi;
     roi_generator->GenerateRandomROI(width, height, &roi);
 
-    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(decode_params_, roi.x, roi.y, roi.w, roi.h));
+    PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeParamsSetROI(
+        decode_params_, roi.x, roi.y, roi.w, roi.h));
     height = roi.h;
     width = roi.w;
   }
@@ -189,56 +208,73 @@ nvjpegStatus_t ImageDecoder::ParseDecodeParams(
   return NVJPEG_STATUS_SUCCESS;
 }
 
-nvjpegStatus_t ImageDecoder::GPUDecodeRandomCrop(const uint8_t* bit_stream, size_t bit_len, nvjpegImage_t* out_image) {
+nvjpegStatus_t ImageDecoder::GPUDecodeRandomCrop(const uint8_t* bit_stream,
+                                                 size_t bit_len,
+                                                 nvjpegImage_t* out_image) {
   auto buffer = pinned_buffers_[page_id_];
   auto stream = nvjpeg_streams_[page_id_];
   page_id_ ^= 1;
 
   // decode jpeg in host to pinned buffer
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamParse(handle_, bit_stream, bit_len, false, false, stream));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegStateAttachPinnedBuffer(state_, buffer));
-  nvjpegStatus_t status = platform::dynload::nvjpegDecodeJpegHost(handle_, decoder_, state_, decode_params_, stream);
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegJpegStreamParse(
+      handle_, bit_stream, bit_len, false, false, stream));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegStateAttachPinnedBuffer(state_, buffer));
+  nvjpegStatus_t status = platform::dynload::nvjpegDecodeJpegHost(
+      handle_, decoder_, state_, decode_params_, stream);
   if (status != NVJPEG_STATUS_SUCCESS) return status;
 
   // transfer and decode to device buffer
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegStateAttachDeviceBuffer(state_, device_buffer_));
-  PADDLE_ENFORCE_NVJPEG_SUCCESS(platform::dynload::nvjpegDecodeJpegTransferToDevice(handle_, decoder_, state_, stream, cuda_stream_));
-  status = platform::dynload::nvjpegDecodeJpegDevice(handle_, decoder_, state_, out_image, nullptr);
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegStateAttachDeviceBuffer(state_, device_buffer_));
+  PADDLE_ENFORCE_NVJPEG_SUCCESS(
+      platform::dynload::nvjpegDecodeJpegTransferToDevice(
+          handle_, decoder_, state_, stream, cuda_stream_));
+  status = platform::dynload::nvjpegDecodeJpegDevice(handle_, decoder_, state_,
+                                                     out_image, nullptr);
   return status;
 }
 
-void ImageDecoder::Run(
-    const uint8_t* bit_stream, size_t bit_len, framework::LoDTensor* out,
-    RandomROIGenerator* roi_generator, platform::Place& place) {
+void ImageDecoder::Run(const uint8_t* bit_stream, size_t bit_len,
+                       framework::LoDTensor* out,
+                       RandomROIGenerator* roi_generator,
+                       platform::Place& place) {
   nvjpegImage_t image;
-  nvjpegStatus_t status = ParseDecodeParams(bit_stream, bit_len, out, roi_generator, &image, place);
+
+  nvjpegStatus_t status =
+      ParseDecodeParams(bit_stream, bit_len, out, roi_generator, &image, place);
   if (status != NVJPEG_STATUS_SUCCESS) {
-    CPUDecodeRandomCrop(bit_stream, bit_len, roi_generator, nullptr, 0, out, place);
+    CPUDecodeRandomCrop(bit_stream, bit_len, roi_generator, nullptr, 0, out,
+                        place);
     return;
   }
+
   status = GPUDecodeRandomCrop(bit_stream, bit_len, &image);
   if (status != NVJPEG_STATUS_SUCCESS) {
-    CPUDecodeRandomCrop(bit_stream, bit_len, roi_generator, nullptr, 0, out, place);
+    CPUDecodeRandomCrop(bit_stream, bit_len, roi_generator, nullptr, 0, out,
+                        place);
   }
 }
 
 ImageDecoderThreadPool::ImageDecoderThreadPool(
     const int num_threads, const std::string mode, const int dev_id,
     const size_t host_memory_padding, const size_t device_memory_padding)
-  : threads_(num_threads),
-    mode_(mode),
-    dev_id_(dev_id),
-    shutdown_(false),
-    running_(false),
-    completed_(false),
-    outstand_tasks_(0) {
-  PADDLE_ENFORCE_GT(num_threads, 0, platform::errors::InvalidArgument(
-                    "num_threads shoule be a positive interger, "
-                    "but got %d", num_threads));
+    : threads_(num_threads),
+      mode_(mode),
+      dev_id_(dev_id),
+      shutdown_(false),
+      running_(false),
+      completed_(false),
+      outstand_tasks_(0) {
+  PADDLE_ENFORCE_GT(num_threads, 0,
+                    platform::errors::InvalidArgument(
+                        "num_threads shoule be a positive interger, "
+                        "but got %d",
+                        num_threads));
   for (int i = 0; i < num_threads; i++) {
     threads_.emplace_back(
-        std::thread(std::bind(&ImageDecoderThreadPool::ThreadLoop,
-            this, i, host_memory_padding, device_memory_padding)));
+        std::thread(std::bind(&ImageDecoderThreadPool::ThreadLoop, this, i,
+                              host_memory_padding, device_memory_padding)));
   }
 }
 
@@ -278,29 +314,29 @@ void ImageDecoderThreadPool::ShutDown() {
   task_queue_.clear();
 
   for (auto& thread : threads_) {
-    if (thread.joinable())  thread.join();
+    if (thread.joinable()) thread.join();
   }
 }
 
 void ImageDecoderThreadPool::SortTaskByLengthDescend() {
   std::lock_guard<std::mutex> lock(mutex_);
   std::sort(task_queue_.begin(), task_queue_.end(),
-      [](const std::shared_ptr<ImageDecodeTask> a,
-         const std::shared_ptr<ImageDecodeTask> b) {
-          return b->bit_len < a->bit_len;
-      });
+            [](const std::shared_ptr<ImageDecodeTask> a,
+               const std::shared_ptr<ImageDecodeTask> b) {
+              return b->bit_len < a->bit_len;
+            });
 }
 
-void ImageDecoderThreadPool::ThreadLoop(
-      const int thread_idx, const size_t host_memory_padding,
-      const size_t device_memory_padding) {
-  ImageDecoder* decoder = new ImageDecoder(mode_, dev_id_,
-                                           host_memory_padding,
+void ImageDecoderThreadPool::ThreadLoop(const int thread_idx,
+                                        const size_t host_memory_padding,
+                                        const size_t device_memory_padding) {
+  ImageDecoder* decoder = new ImageDecoder(mode_, dev_id_, host_memory_padding,
                                            device_memory_padding);
-
   while (!shutdown_) {
     std::unique_lock<std::mutex> lock(mutex_);
-    running_cond_.wait(lock, [this] { return (running_ && !task_queue_.empty()) || shutdown_; });
+    running_cond_.wait(lock, [this] {
+      return (running_ && !task_queue_.empty()) || shutdown_;
+    });
     if (shutdown_) break;
 
     auto task = task_queue_.front();
@@ -322,7 +358,8 @@ void ImageDecoderThreadPool::ThreadLoop(
 }
 
 // initialization static variables out of ImageDecoderThreadPoolManager
-ImageDecoderThreadPoolManager* ImageDecoderThreadPoolManager::pm_instance_ptr_ = nullptr;
+ImageDecoderThreadPoolManager* ImageDecoderThreadPoolManager::pm_instance_ptr_ =
+    nullptr;
 std::mutex ImageDecoderThreadPoolManager::m_;
 
 }  // namespace data

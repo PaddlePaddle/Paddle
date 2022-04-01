@@ -25,7 +25,8 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 using DataLayout = framework::DataLayout;
 
 ImageDecoderThreadPool* decode_pool = nullptr;
@@ -42,21 +43,17 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     auto device_memory_padding = ctx.Attr<int64_t>("device_memory_padding");
 
     // multi-phrase decode thread pool
-    auto* decode_pool = 
-      ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
-                          program_id, num_threads, mode, local_rank,
-                          static_cast<size_t>(host_memory_padding),
-                          static_cast<size_t>(device_memory_padding));
+    auto* decode_pool =
+        ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
+            program_id, num_threads, mode, local_rank,
+            static_cast<size_t>(host_memory_padding),
+            static_cast<size_t>(device_memory_padding));
 
-    const framework::LoDTensorArray* inputs =
-        ctx.Input<framework::LoDTensorArray>("X");
-    int batch_size = inputs->size();
+    auto inputs = ctx.MultiInput<framework::LoDTensor>("X");
+    int batch_size = inputs.size();
 
-    auto* out = ctx.OutputVar("Out");
+    auto out_array = ctx.MultiOutput<framework::LoDTensor>("Out");
     auto dev = platform::CUDAPlace(local_rank);
-    
-    auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    out_array.resize(batch_size);
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
@@ -76,52 +73,46 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     AreaRange area_range{area_min, area_max};
 
     auto* generators = GeneratorManager::Instance()->GetGenerators(
-                          program_id, batch_size, aspect_ratio_range,
-                          area_range);
+        program_id, batch_size, aspect_ratio_range, area_range);
 
-    for (size_t i = 0; i < inputs->size(); i++) {
-      const framework::LoDTensor x = inputs->at(i);
-      auto* x_data = x.data<T>();
-      size_t x_numel = static_cast<size_t>(x.numel());
-      
-      if (data_layout == DataLayout::kNCHW){
-        ImageDecodeTask task = {
-          .bit_stream = x_data,
-          .bit_len = x_numel,
-          .tensor = &temp_array[i],
-          .roi_generator = generators->at(i).get(),
-          .place = dev
-        };
+    for (size_t i = 0; i < inputs.size(); i++) {
+      const framework::LoDTensor* x = inputs.at(i);
+      auto* x_data = x->data<T>();
+      size_t x_numel = static_cast<size_t>(x->numel());
+
+      if (data_layout == DataLayout::kNCHW) {
+        ImageDecodeTask task = {.bit_stream = x_data,
+                                .bit_len = x_numel,
+                                .tensor = &temp_array[i],
+                                .roi_generator = generators->at(i).get(),
+                                .place = dev};
+        decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
+      } else {
+        ImageDecodeTask task = {.bit_stream = x_data,
+                                .bit_len = x_numel,
+                                .tensor = out_array[i],
+                                .roi_generator = generators->at(i).get(),
+                                .place = dev};
         decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
       }
-      else{
-        ImageDecodeTask task = {
-          .bit_stream = x_data,
-          .bit_len = x_numel,
-          .tensor = &out_array[i],
-          .roi_generator = generators->at(i).get(),
-          .place = dev
-        };
-        decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
-      }
-      
     }
 
     decode_pool->RunAll(true);
 
-    if (data_layout == DataLayout::kNCHW){
+    if (data_layout == DataLayout::kNCHW) {
       const auto& dev_ctx = ctx.cuda_device_context();
       phi::funcs::Transpose<paddle::platform::CUDADeviceContext, T, 3> trans;
       std::vector<int> axis = {2, 0, 1};
-      for (size_t i = 0; i < inputs->size(); i++) {
+      for (size_t i = 0; i < inputs.size(); i++) {
         // Do transpose
         const framework::DDim& in_sizes = temp_array[i].dims();
         framework::DDim transposed_input_shape = in_sizes.transpose(axis);
         std::vector<int64_t> transposed_input_shape_ =
             phi::vectorize(transposed_input_shape);
-        out_array[i].Resize(transposed_input_shape);
-        out_array[i].mutable_data<T>(dev_ctx.GetPlace());
-        trans(dev_ctx, temp_array[i], &out_array[i], axis);
+
+        out_array[i]->Resize(transposed_input_shape);
+        out_array[i]->mutable_data<T>(dev_ctx.GetPlace());
+        trans(dev_ctx, temp_array[i], out_array[i], axis);
       }
     }
   }
@@ -132,6 +123,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(batch_decode_random_crop, ops::data::GPUBatchDecodeRandomCropKernel<uint8_t>)
+REGISTER_OP_CUDA_KERNEL(batch_decode_random_crop,
+                        ops::data::GPUBatchDecodeRandomCropKernel<uint8_t>)
 
 #endif

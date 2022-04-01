@@ -27,9 +27,9 @@ class FileLabelLoaderOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Indices"), true,
                       platform::errors::InvalidArgument(
                           "Input(Indices) of ReadFileLoaderOp is null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Image"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Image) of ReadFileLoaderOp is null."));
+    // PADDLE_ENFORCE_EQ(ctx->HasOutput("Image"), true,
+    //                   platform::errors::InvalidArgument(
+    //                       "Output(Image) of ReadFileLoaderOp is null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Label"), true,
                       platform::errors::InvalidArgument(
                           "Output(Label) of ReadFileLoaderOp is null."));
@@ -51,7 +51,8 @@ class FileLabelLoaderOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Indices", "The batch indices of input samples");
-    AddOutput("Image", "The output image tensor of ReadFileLoader op");
+    AddOutput("Image", "The output image tensor of ReadFileLoader op")
+        .AsDuplicable();
     AddOutput("Label", "The output label tensor of ReadFileLoader op");
     AddAttr<std::string>("data_root", "Path of root directory of dataset");
     AddComment(R"DOC(
@@ -71,4 +72,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(file_label_loader, ops::FileLabelLoaderCPUKernel<uint8_t>)
+REGISTER_OP_CPU_KERNEL(file_label_loader,
+                       ops::FileLabelLoaderCPUKernel<uint8_t>)

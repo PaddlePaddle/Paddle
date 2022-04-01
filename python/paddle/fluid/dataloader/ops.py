@@ -21,7 +21,6 @@ from ...fluid.layers.utils import _hash_with_id
 from ...fluid.framework import in_dygraph_mode
 from ...common_ops_import import *
 
-
 __all__ = ["map", "data_reader"]
 
 
@@ -62,9 +61,26 @@ def _generate_stream_id():
 
 
 def map(map_func, inputs=[]):
+    def _build_program_inputs(x, map_block):
+        assert isinstance(x, (list, tuple))
+        assert len(x) > 0, "map function must have inputs"
+        outputs = []
+        if isinstance(x[0], (list, tuple)):
+            for item in x:
+                outputs.append(_build_program_inputs(item, map_block))
+        else:
+            for item in x:
+                outputs.append(
+                    map_block.create_var(
+                        name=unique_name.generate("map_sub"),
+                        type=item.desc.type(),
+                        dtype=item.desc.dtype(),
+                        persistable=False))
+        return outputs
+
     inputs = _to_list(inputs)
     if in_dygraph_mode():
-        return map_func(*inputs)
+        return map_func(inputs)
 
     helper = LayerHelper("map", **locals())
 
@@ -74,16 +90,19 @@ def map(map_func, inputs=[]):
         program_id = _hash_with_id(main_program, map_func)
         map_block = main_program.current_block()
 
-        program_inputs = [
-            map_block.create_var(
-                name=unique_name.generate("map_sub"),
-                type=inp.desc.type(),
-                dtype=inp.desc.dtype(),
-                persistable=False) for inp in inputs]
+        program_inputs = _build_program_inputs(inputs, map_block)
+
         program_outputs = map_func(*program_inputs)
         program_outputs = _to_list(program_outputs)
-    
-        input_var_names = [v.name for v in program_inputs]
+        input_var_names = []
+        for variables in program_inputs:
+            if isinstance(variables, (list, tuple)):
+                inputs = inputs[0]
+                for v in variables:
+                    input_var_names.append(v.name)
+            else:
+                input_var_names.append(variables.name)
+
         output_var_names = [v.name for v in program_outputs]
 
     outputs = \
@@ -128,22 +147,39 @@ def data_reader(reader_func,
         reader_block = main_program.current_block()
 
         indices_var = reader_block.create_var(
-                        name=unique_name.generate("data_reader_sub"),
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        dtype="int64",
-                        persistable=False)
+            name=unique_name.generate("data_reader_sub"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype="int64",
+            persistable=False)
         program_outputs = reader_func(indices_var)
         program_outputs = _to_list(program_outputs)
-    
-        indices_var_name = indices_var.name
-        output_var_names = [v.name for v in program_outputs]
 
-    outputs = \
-        [helper.create_variable(
-            name=unique_name.generate("data_reader"),
-            type=outp.desc.type(),
-            dtype=outp.desc.dtype(),
-            persistable=True) for outp in program_outputs]
+        indices_var_name = indices_var.name
+        output_var_names = []
+        for outs in program_outputs:
+            if isinstance(outs, (list, tuple)):
+                for out in outs:
+                    output_var_names.append(out.name)
+            else:
+                output_var_names.append(outs.name)
+
+    outputs = []
+    for outps in program_outputs:
+        if isinstance(outps, (list, tuple)):
+            for outp in outps:
+                outputs.append(
+                    helper.create_variable(
+                        name=unique_name.generate("data_reader"),
+                        type=outp.desc.type(),
+                        dtype=outp.desc.dtype(),
+                        persistable=True))
+        else:
+            outputs.append(
+                helper.create_variable(
+                    name=unique_name.generate("data_reader"),
+                    type=outps.desc.type(),
+                    dtype=outps.desc.dtype(),
+                    persistable=True))
 
     attrs = {
         "reader_id": _hash_with_id(main_program),
@@ -160,9 +196,6 @@ def data_reader(reader_func,
     }
 
     helper.append_op(
-        type="data_reader",
-        inputs={},
-        outputs={"Out": outputs},
-        attrs=attrs)
+        type="data_reader", inputs={}, outputs={"Out": outputs}, attrs=attrs)
 
     return outputs
