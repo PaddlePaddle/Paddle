@@ -636,8 +636,8 @@
     layout: out_grad
 
 - backward_api : roll_grad
-  forward : roll(Tensor x, ScalarArray shifts, int64_t[] axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, ScalarArray shifts, int64_t[] axis)
+  forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray shifts, int64_t[] axis)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
