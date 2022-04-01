@@ -2973,13 +2973,12 @@ def batch_norm(input,
                     input, scale, bias, mean, variance, momentum, mean_out,
                     variance_out, *attrs_)
             else:
-                empty_tensor = core.eager.Tensor()
                 batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-                    input, scale, bias, mean, variance, empty_tensor, mean_out,
+                    input, scale, bias, mean, variance, None, mean_out,
                     variance_out, *attrs_)
 
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=None, use_mkldnn=False)
+                batch_norm_out, act=act, use_mkldnn=False)
 
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
@@ -3210,9 +3209,8 @@ def inplace_abn(input,
                     variance_out, *attrs__)
                 return batch_norm_out
             else:
-                empty_tensor = core.eager.Tensor()
                 batch_norm_out, _, _, _, _, _ = _C_ops.inplace_abn_(
-                    input, scale, bias, mean, variance, empty_tensor, mean_out,
+                    input, scale, bias, mean, variance, None, mean_out,
                     variance_out, *attrs__)
                 return batch_norm_out
 

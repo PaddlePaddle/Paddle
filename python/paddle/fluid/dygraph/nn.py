@@ -1345,11 +1345,10 @@ class BatchNorm(layers.Layer):
                      "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
-            empty_tensor = core.eager.Tensor() if in_dygraph_mode(
-            ) else self._helper.create_variable_for_type_inference(self._dtype)
+            MomentumTensor = None
             batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
-                empty_tensor, mean_out, variance_out, *attrs)
+                MomentumTensor, mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
