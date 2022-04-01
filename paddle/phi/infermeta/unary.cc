@@ -1922,15 +1922,15 @@ void SqueezeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void StridedSliceInferMeta(const MetaTensor& x,
-                           const std::vector<int>& axes,
-                           const IntArray& starts,
-                           const IntArray& ends,
-                           const IntArray& strides,
-                           const std::vector<int>& infer_flags,
-                           const std::vector<int>& decrease_axis,
-                           MetaTensor* out,
-                           MetaConfig config) {
+void StridedSliceRawInferMeta(const MetaTensor& x,
+                              const std::vector<int>& axes,
+                              const IntArray& starts,
+                              const IntArray& ends,
+                              const IntArray& strides,
+                              const std::vector<int>& infer_flags,
+                              const std::vector<int>& decrease_axis,
+                              MetaTensor* out,
+                              MetaConfig config) {
   auto in_dims = x.dims();
   PADDLE_ENFORCE_LT(
       in_dims.size(),
@@ -2050,6 +2050,19 @@ void StridedSliceInferMeta(const MetaTensor& x,
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void StridedSliceInferMeta(const MetaTensor& x,
+                           const std::vector<int>& axes,
+                           const IntArray& starts,
+                           const IntArray& ends,
+                           const IntArray& strides,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  std::vector<int> infer_flags(axes.size(), 1);
+  std::vector<int> decrease_axis;
+  StridedSliceRawInferMeta(
+      x, axes, starts, ends, strides, infer_flags, decrease_axis, out, config);
 }
 
 /*  Why not use SumRawInferMeta directly?
@@ -2552,6 +2565,85 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void UniqueInferMeta(const MetaTensor& x,
+                     bool return_index,
+                     bool return_inverse,
+                     bool return_counts,
+                     const std::vector<int>& axis,
+                     DataType dtype,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaTensor* index,
+                     MetaTensor* counts) {
+  bool is_sorted = true;
+  UniqueRawInferMeta(x,
+                     return_index,
+                     return_inverse,
+                     return_counts,
+                     axis,
+                     dtype,
+                     is_sorted,
+                     out,
+                     indices,
+                     index,
+                     counts);
+}
+
+void UniqueRawInferMeta(const MetaTensor& x,
+                        bool return_index,
+                        bool return_inverse,
+                        bool return_counts,
+                        const std::vector<int>& axis,
+                        DataType dtype,
+                        bool is_sorted,
+                        MetaTensor* out,
+                        MetaTensor* indices,
+                        MetaTensor* index,
+                        MetaTensor* counts) {
+  if (!is_sorted) {
+    PADDLE_ENFORCE_EQ(
+        x.dims().size(),
+        1,
+        phi::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
+                                     "But now the dims of Input(X) is %d.",
+                                     x.dims().size()));
+    out->set_dims(phi::make_ddim({-1}));
+    index->set_dims(x.dims());
+    return;
+  }
+
+  if (axis.empty()) {
+    out->set_dims(phi::make_ddim({-1}));
+    if (return_inverse) {
+      index->set_dims(phi::make_ddim({phi::product(x.dims())}));
+    }
+  } else {
+    int axis_value = axis[0];
+    if (axis_value < 0) {
+      axis_value += x.dims().size();
+    }
+    PADDLE_ENFORCE_LT(
+        axis_value,
+        x.dims().size(),
+        phi::errors::InvalidArgument("The axis(%d) should be less than "
+                                     "the dimension size(%d) of x.",
+                                     axis_value,
+                                     x.dims().size()));
+    auto out_dims = x.dims();
+    out_dims[axis_value] = -1;
+    out->set_dims(out_dims);
+    if (return_inverse) {
+      index->set_dims(phi::make_ddim({x.dims()[axis_value]}));
+    }
+  }
+  if (return_index) {
+    indices->set_dims(phi::make_ddim({-1}));
+  }
+  if (return_counts) {
+    counts->set_dims(phi::make_ddim({-1}));
+  }
+}
+
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         MetaTensor* xshape,
@@ -2593,6 +2685,53 @@ void UnsqueezeInferMeta(const MetaTensor& x,
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
   xshape->set_dtype(x.dtype());
+}
+
+void UnStackInferMeta(const MetaTensor& x,
+                      int axis,
+                      int num,
+                      std::vector<MetaTensor*> outs) {
+  auto x_dim = x.dims();
+  int rank = x_dim.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -rank,
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-rank, rank), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank,
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-rank, rank), where rank = %d",
+                        rank));
+  if (axis < 0) axis += rank;
+
+  size_t output_count = outs.size();
+  PADDLE_ENFORCE_EQ(output_count,
+                    static_cast<size_t>(num),
+                    phi::errors::InvalidArgument(
+                        "Number of Outputs(Y) is wrong. Got %d , but it must "
+                        "equal to attribute num which is %d.",
+                        output_count,
+                        static_cast<size_t>(num)));
+  if (x_dim[axis] > 0) {
+    PADDLE_ENFORCE_EQ(
+        num,
+        x_dim[axis],
+        phi::errors::InvalidArgument(
+            "The number of attribute num is not equal to the length of the "
+            "%d axis of Input(X). Expect %d but got %d.",
+            axis,
+            x_dim[axis],
+            num));
+  }
+  auto vec = phi::vectorize<int>(x_dim);
+  vec.erase(vec.begin() + axis);
+  for (size_t i = 0; i < output_count; i++) {
+    outs[i]->set_dims(phi::make_ddim(vec));
+    outs[i]->set_dtype(x.dtype());
+  }
 }
 
 void OneHotRawInferMeta(const MetaTensor& x,

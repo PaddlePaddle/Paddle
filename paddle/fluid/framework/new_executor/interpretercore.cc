@@ -501,7 +501,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 
   // for debug nan/inf
-  if (FLAGS_check_nan_inf) {
+  if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op, *global_scope_,
@@ -542,10 +542,12 @@ void InterpreterCore::ExecuteInstructionList(
     if (exception_holder_.Type() != "EOF") {
       async_work_queue_->Cancel();
     }
+    VLOG(4) << "Cancel ok";
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(), 0,
         platform::errors::PreconditionNotMet(
             "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
   }
 }
@@ -637,15 +639,18 @@ void InterpreterCore::RunInstructionAsync(
     auto* op = instr_node.OpBase();
     platform::RecordEvent instruction_event(
         op->Type(), platform::TracerEventType::Operator, 1);
-    interpreter::WaitEvent(instr_node, place_);
 
     try {
+      interpreter::WaitEvent(instr_node, place_);
+
       RunInstruction(instr_node);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       RecordStreamForGC(instr_node);
 #endif
       CheckGC(instr_node, atomic_var_ref);
+
+      interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -676,8 +681,6 @@ void InterpreterCore::RunInstructionAsync(
         completion_notifier_->NotifyEvent();
       }
     }
-
-    interpreter::RecordEvent(instr_node, place_);
 
     RunNextInstructions(instr_node, &ready_ops, atomic_deps, atomic_var_ref);
   }
