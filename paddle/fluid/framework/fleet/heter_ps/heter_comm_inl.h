@@ -301,7 +301,7 @@ void HeterComm<KeyType, ValType, GradType>::walk_to_src(int start_index,
       memory_copy(dst_place, cur_task.path->nodes_[cur_step - 1].val_storage,
                   src_place, cur_task.path->nodes_[cur_step].val_storage,
                   cur_task.path->nodes_[cur_step - 1].val_bytes_len,
-                  cur_task.path->nodes_[cur_step - 1].out_stream)
+                  cur_task.path->nodes_[cur_step - 1].out_stream);
 
     } else if (cur_step == 0) {
       int end_index = cur_task.path->nodes_.back().dev_num;
@@ -636,7 +636,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   int dev_id = resource_->dev_id(dev_num);
 
   DevPlace place = DevPlace(dev_id);
-  platform::AnyDeviceGuard guard(dev_id);
+  AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
 
   int h_left[total_device];   // NOLINT
@@ -717,7 +717,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     auto& node = path_[dev_num][i].nodes_.back();
     sync_stream(node.in_stream);
 
-    platform::AnyDeviceGuard guard(resource_->dev_id(i));
+    AnyDeviceGuard guard(resource_->dev_id(i));
     tables_[i]->rwlock_->WRLock();
     tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
                        reinterpret_cast<GradType*>(node.val_storage),
