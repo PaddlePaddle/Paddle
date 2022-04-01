@@ -256,7 +256,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
 
     DenseTensor h_kernel_grad = phi::EmptyLike<T>(dev_ctx_cpu, d_kernel_grad);
     phi::Copy(
-        dev_ctx_gpu, d_kernel_grad, phi::CPUPlace(), true, &h_kernel_grad);
+        dev_ctx_gpu, std::get<1>(grads), phi::CPUPlace(), true, &h_kernel_grad);
     f_verify(h_kernel_grad.data<T>(), kernel_grad);
   }
 #endif
