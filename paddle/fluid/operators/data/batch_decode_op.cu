@@ -14,6 +14,7 @@
 
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
+#include "paddle/fluid/operators/data/batch_decode_op.h"
 #include "paddle/fluid/operators/data/batch_decode_random_crop_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
@@ -21,26 +22,26 @@ namespace paddle {
 namespace operators {
 namespace data {
 
-using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHolder;
+using LoDTensorBlockingQueueHolder =
+    operators::reader::LoDTensorBlockingQueueHolder;
 
 template <typename T>
 class GPUBatchDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_threads = ctx.Attr<int>("num_threads");
-    auto mode = ctx.Attr<std::string>("mode");
     auto local_rank = ctx.Attr<int>("local_rank");
     auto program_id = ctx.Attr<int64_t>("program_id");
     auto host_memory_padding = ctx.Attr<int64_t>("host_memory_padding");
     auto device_memory_padding = ctx.Attr<int64_t>("device_memory_padding");
 
     // multi-phrase decode thread pool
-    auto* decode_pool = 
-      ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
-                          program_id, num_threads, mode, local_rank,
-                          static_cast<size_t>(host_memory_padding),
-                          static_cast<size_t>(device_memory_padding));
-    
+    auto* decode_pool =
+        ImageDecoderThreadPoolManager::Instance()->GetDecoderThreadPool(
+            program_id, num_threads, local_rank,
+            static_cast<size_t>(host_memory_padding),
+            static_cast<size_t>(device_memory_padding));
+
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
 
@@ -53,13 +54,11 @@ class GPUBatchDecodeKernel : public framework::OpKernel<T> {
       auto* x_data = x.data<T>();
       size_t x_numel = static_cast<size_t>(x.numel());
 
-      ImageDecodeTask task = {
-        .bit_stream = x_data,
-        .bit_len = x_numel,
-        .tensor = &out_array[i],
-        .roi_generator = nullptr,
-        .place = ctx.GetPlace()
-      };
+      ImageDecodeTask task = {.bit_stream = x_data,
+                              .bit_len = x_numel,
+                              .tensor = &out_array[i],
+                              .roi_generator = nullptr,
+                              .place = ctx.GetPlace()};
       decode_pool->AddTask(std::make_shared<ImageDecodeTask>(task));
     }
 

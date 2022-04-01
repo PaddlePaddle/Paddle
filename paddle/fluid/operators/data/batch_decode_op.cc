@@ -30,8 +30,8 @@ class BatchDecodeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::proto::VarType::UINT8, ctx.GetPlace());
+    return framework::OpKernelType(framework::proto::VarType::UINT8,
+                                   ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -67,14 +67,7 @@ or 1 dimensional Gray Tensor. Optionally converts the image to the
 desired format. The values of the output tensor are uint8 between 0 
 and 255.
 )DOC");
-    AddAttr<int>("num_threads", "Path of the file to be readed.")
-      .SetDefault(2);
-    AddAttr<std::string>(
-        "mode",
-        "(string, default \"unchanged\"), The read mode used "
-        "for optionally converting the image, can be \"unchanged\" "
-        ",\"gray\" , \"rgb\" .")
-        .SetDefault("unchanged");
+    AddAttr<int>("num_threads", "Path of the file to be readed.").SetDefault(2);
     AddAttr<int>("local_rank",
                  "(int)"
                  "The index of the op to start execution");
@@ -84,11 +77,13 @@ and 255.
                      "decode thread pool");
     AddAttr<int64_t>(
         "host_memory_padding",
-        "(int64, default 0), pinned memory allocation padding number for Nvjpeg decoding")
+        "(int64, default 0),"
+        "pinned memory allocation padding number for Nvjpeg decoding")
         .SetDefault(0);
     AddAttr<int64_t>(
         "device_memory_padding",
-        "(int64, default 0), device memory allocation padding number for Nvjpeg decoding")
+        "(int64, default 0),"
+        "device memory allocation padding number for Nvjpeg decoding")
         .SetDefault(0);
   }
 };
