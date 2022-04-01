@@ -94,9 +94,9 @@ class TensorWrapper {
       return paddle::experimental::Tensor();
     }
 
+    check_inplace_version();
     // if it's full_reserved just return the full copy of tensor
     if (full_reserved_) {
-      check_inplace_version();
       return intermidiate_tensor_;
     } else {
       std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
@@ -105,7 +105,6 @@ class TensorWrapper {
       intermidiate_tensor_.set_autograd_meta(
           std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
               p_ab_autograd_meta));
-      check_inplace_version();
       return intermidiate_tensor_;
     }
   }
