@@ -106,6 +106,7 @@ class EagerReducer {
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
   void FusedAllReduceSchedule(EagerGroup *group, const int curr_group_index);
+  void AllReduceSparse(EagerGroup *group, const int curr_group_index);
   void FinalizeBackward();
   void TraverseBackwardGraph(const std::vector<Tensor> &outputs);
   void ProcessUnusedDenseVars();

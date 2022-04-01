@@ -87,9 +87,6 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<Tensor>& tensors,
       const AllreduceOptions& = AllreduceOptions()) override;
 
-  std::shared_ptr<ProcessGroup::Task> AllReduceSparse(
-      std::vector<Tensor>& tensors) override;
-
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<Tensor>& tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
