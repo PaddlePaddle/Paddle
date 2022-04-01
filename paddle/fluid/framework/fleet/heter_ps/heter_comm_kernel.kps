@@ -280,11 +280,7 @@ void HeterCommKernel::sort_pairs(
     const KeyT* d_keys_in,                             // NOLINT
     KeyT* d_keys_out, const ValueT* d_values_in, ValueT* d_values_out,
     int num_items, int begin_bit = 0, int end_bit = sizeof(KeyT) * 8,
-    StreamType stream = 0, bool debug_synchronous = false) {
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
-      d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, d_values_in,
-      d_values_out, num_items, begin_bit, end_bit, stream, debug_synchronous));
-}
+    StreamType stream = 0, bool debug_synchronous = false) {}
 
 template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
           typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
@@ -297,12 +293,7 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
                                     AggregatesOutputIteratorT d_aggregates_out,
                                     NumRunsOutputIteratorT d_num_runs_out,
                                     int num_items, StreamType stream = 0,
-                                    bool debug_synchronous = false) {
-  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
-      d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, d_values_in,
-      d_aggregates_out, d_num_runs_out, xpu_merger, num_items, stream,
-      debug_synchronous));
-}
+                                    bool debug_synchronous = false) {}
 
 #endif
 
