@@ -22,15 +22,14 @@ import paddle
 from paddle.common_ops_import import *
 from paddle import _C_ops
 
-__all__ = [ #noqa
+__all__ = [  #noqa
     'file_label_loader',
     'file_label_reader',
 ]
 
 
 class _Sampler(object):
-    def __init__(self, batch_size, num_samples,
-                 shuffle=False, drop_last=False):
+    def __init__(self, batch_size, num_samples, shuffle=False, drop_last=False):
         self.batch_size = batch_size
         self.num_samples = num_samples
         self.shuffle = shuffle
@@ -49,7 +48,7 @@ class _Sampler(object):
         batch_len = min(self.batch_size, self.num_samples - self.start_idx)
         indices = self.sample_ids[self.start_idx:self.start_idx + batch_len]
         self.start_idx += batch_len
-        
+
         if self.drop_last and len(indices) < self.batch_size:
             self.reset()
             return self.__next__()
@@ -66,13 +65,16 @@ class _SamplerManager(object):
     def __init__(self):
         self.samplers = {}
 
-    def get(self, sample_id, batch_size, num_samples,
-            shuffle=False, drop_last=False):
+    def get(self,
+            sample_id,
+            batch_size,
+            num_samples,
+            shuffle=False,
+            drop_last=False):
         if sample_id in self.samplers:
             return self.samplers[sample_id]
 
-        sampler = _Sampler(batch_size, num_samples,
-                           shuffle, drop_last)
+        sampler = _Sampler(batch_size, num_samples, shuffle, drop_last)
         self.samplers[sample_id] = sampler
         return sampler
 
@@ -80,7 +82,7 @@ class _SamplerManager(object):
 _sampler_manager = _SamplerManager()
 
 
-def file_label_loader(data_root, indices, name=None):
+def file_label_loader(data_root, indices, batch_size, name=None):
     """
     Reads a batch of data, outputs the bytes contents of a file
     as a uint8 Tensor with one dimension.
@@ -94,23 +96,25 @@ def file_label_loader(data_root, indices, name=None):
     """
 
     if in_dygraph_mode():
-        image = core.VarBase(core.VarDesc.VarType.UINT8, [],
-                             unique_name.generate("file_label_loader"),
-                             core.VarDesc.VarType.LOD_TENSOR_ARRAY, False)
-        return _C_ops.file_label_loader(indices, image, 'data_root',
-                                        data_root)
+        image = [
+            core.VarBase(core.VarDesc.VarType.UINT8, [],
+                         unique_name.generate("file_label_loader"),
+                         core.VarDesc.VarType.LOD_TENSOR, False)
+            for i in range(batch_size)
+        ]
+        return _C_ops.file_label_loader(indices, image, 'data_root', data_root)
 
     inputs = {"Indices": indices}
-    attrs = {
-        'data_root': data_root,
-    }
+    attrs = {'data_root': data_root, }
 
     helper = LayerHelper("file_label_loader", **locals())
-    image = helper.create_variable(
-        name=unique_name.generate("file_label_loader"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype='uint8')
-    
+    image = [
+        helper.create_variable(
+            name=unique_name.generate("file_label_loader"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype='uint8') for i in range(batch_size)
+    ]
+
     label = helper.create_variable(
         name=unique_name.generate("file_label_loader"),
         type=core.VarDesc.VarType.LOD_TENSOR,
@@ -159,23 +163,25 @@ def file_label_reader(file_root,
     targets = [s[1] for s in data_folder.samples]
 
     if in_dygraph_mode():
-        sample_id = utils._hash_with_id(file_root, batch_size,
-                                        shuffle, drop_last)
+        sample_id = utils._hash_with_id(file_root, batch_size, shuffle,
+                                        drop_last)
         sampler = _sampler_manager.get(sample_id,
                                        batch_size=batch_size,
                                        num_samples=len(samples),
                                        shuffle=shuffle,
                                        drop_last=drop_last)
         indices = paddle.to_tensor(next(sampler), dtype='int64')
-        return file_label_loader(file_root, indices)
+        outs = file_label_loader(file_root, indices, batch_size)
+        return outs[:-1], outs[-1]
 
     def _reader(indices):
-        return file_label_loader(file_root, indices)
+        return file_label_loader(file_root, indices, batch_size)
 
-    return paddle.io.data_reader(_reader,
-                                 batch_size=batch_size,
-                                 num_samples=len(samples),
-                                 shuffle=shuffle,
-                                 drop_last=drop_last,
-                                 seed=seed)
-
+    outs = paddle.io.data_reader(
+        _reader,
+        batch_size=batch_size,
+        num_samples=len(samples),
+        shuffle=shuffle,
+        drop_last=drop_last,
+        seed=seed)
+    return outs[:-1], outs[-1]

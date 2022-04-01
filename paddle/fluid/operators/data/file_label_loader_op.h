@@ -13,19 +13,19 @@
 // limitations under the License.
 
 #pragma once
+#include <dirent.h>
+#include <sys/stat.h>
+#include <cstring>
 #include <fstream>
 #include <string>
-#include <cstring>
 #include <vector>
-#include <sys/stat.h>
-#include <dirent.h>
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +39,7 @@ constexpr char DIR_SEP = '\\';
 constexpr char DIR_SEP = '/';
 #endif
 
-static std::string JoinPath(const std::string path1,
-                            const std::string path2) {
+static std::string JoinPath(const std::string path1, const std::string path2) {
   // empty check
   if (path1.empty()) return path2;
   if (path1.empty()) return path1;
@@ -56,11 +55,12 @@ static std::string JoinPath(const std::string path1,
   return path1 + DIR_SEP + path2;
 }
 
-static void ParseFilesAndLabels(const std::string data_root,
-              std::vector<std::pair<std::string, int>>* samples) {
+static void ParseFilesAndLabels(
+    const std::string data_root,
+    std::vector<std::pair<std::string, int>>* samples) {
   auto* dir = opendir(data_root.c_str());
   PADDLE_ENFORCE_NE(dir, nullptr, platform::errors::InvalidArgument(
-                      "Cannot open directory %s", data_root));
+                                      "Cannot open directory %s", data_root));
 
   // Step 1: parse classes info
   std::vector<std::string> classes;
@@ -69,13 +69,13 @@ static void ParseFilesAndLabels(const std::string data_root,
     if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
       entry = readdir(dir);
       continue;
-    } 
+    }
 
     auto cls_path = JoinPath(data_root, entry->d_name);
     struct stat s;
     int ret = stat(cls_path.c_str(), &s);
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::InvalidArgument(
-          "Directory %s is unaccessiable.", cls_path));
+                                  "Directory %s is unaccessiable.", cls_path));
 
     if (S_ISDIR(s.st_mode)) classes.emplace_back(entry->d_name);
 
@@ -89,13 +89,12 @@ static void ParseFilesAndLabels(const std::string data_root,
 
   // Step 2: traverse directory to generate samples
   for (int class_id = 0; class_id < static_cast<int>(classes.size());
-      class_id++) {
-    auto cur_dir = data_root + DIR_SEP + classes[class_id]; 
+       class_id++) {
+    auto cur_dir = data_root + DIR_SEP + classes[class_id];
     dir = opendir(cur_dir.c_str());
     entry = readdir(dir);
     while (entry) {
-      if (strcmp(entry->d_name, ".") == 0
-          || strcmp(entry->d_name, "..") == 0) {
+      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
         entry = readdir(dir);
         continue;
       }
@@ -107,12 +106,13 @@ static void ParseFilesAndLabels(const std::string data_root,
     }
     closedir(dir);
   }
-  
 }
 
-std::map<std::string, std::vector<std::pair<std::string, int>>> root_to_samples_;
+std::map<std::string, std::vector<std::pair<std::string, int>>>
+    root_to_samples_;
 
-static std::vector<std::pair<std::string, int>>* GetFilesAndLabelsFromCache(const std::string data_root) {
+static std::vector<std::pair<std::string, int>>* GetFilesAndLabelsFromCache(
+    const std::string data_root) {
   auto iter = root_to_samples_.find(data_root);
   if (iter == root_to_samples_.end()) {
     std::vector<std::pair<std::string, int>> samples;
@@ -120,16 +120,16 @@ static std::vector<std::pair<std::string, int>>* GetFilesAndLabelsFromCache(cons
     VLOG(4) << "Init sample number: " << samples.size();
     root_to_samples_[data_root] = samples;
   }
-  
+
   return &(root_to_samples_[data_root]);
 }
 
 template <typename T>
-class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
+class FileLabelLoaderCPUKernel : public framework::OpKernel<T> {
  public:
-   void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto* indices = ctx.Input<LoDTensor>("Indices");
-    auto* image_arr = ctx.Output<LoDTensorArray>("Image");
+    auto image_arr = ctx.MultiOutput<LoDTensor>("Image");
     auto* label_tensor = ctx.Output<LoDTensor>("Label");
 
     auto data_root = ctx.Attr<std::string>("data_root");
@@ -138,11 +138,9 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     auto batch_size = indices->dims()[0];
     const int64_t* indices_data = indices->data<int64_t>();
 
-    image_arr->clear();
-    image_arr->reserve(batch_size);
-    label_tensor->Resize(
-        phi::make_ddim({static_cast<int64_t>(batch_size)}));
-    auto* label_data = label_tensor->mutable_data<int64_t>(platform::CPUPlace());
+    label_tensor->Resize(phi::make_ddim({static_cast<int64_t>(batch_size)}));
+    auto* label_data =
+        label_tensor->mutable_data<int64_t>(platform::CPUPlace());
     for (int64_t i = 0; i < batch_size; i++) {
       int64_t index = static_cast<int>(indices_data[i]);
       auto file = samples->at(index).first;
@@ -153,15 +151,14 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
 
       input.seekg(0, std::ios::beg);
 
-      framework::LoDTensor image;
+      auto image = image_arr[i];
       std::vector<int64_t> image_len = {file_size};
-      image.Resize(phi::make_ddim(image_len));
+      image->Resize(phi::make_ddim(image_len));
 
-      uint8_t* data = image.mutable_data<uint8_t>(platform::CPUPlace());
+      uint8_t* data = image->mutable_data<uint8_t>(platform::CPUPlace());
 
       input.read(reinterpret_cast<char*>(data), file_size);
 
-      image_arr->emplace_back(image);
       label_data[i] = static_cast<int64_t>(label);
     }
   }
@@ -174,7 +171,6 @@ class FileLabelLoaderCPUKernel: public framework::OpKernel<T> {
     framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
-
 };
 
 }  // namespace data
