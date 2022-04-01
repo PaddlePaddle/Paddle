@@ -42,10 +42,10 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
 
         for data_layout in ["NCHW"]:
             for interp_method in ["bilinear"]:
-                for align_corners in [True, False]:
+                for align_corners in [False]:
                     for align_model in [0, 1]:
                         for scale_y in [2.0, -1.0]:
-                            for scale_x in [2.0, 0.0]:
+                            for scale_x in [2.0]:
                                 scale = [scale_y, scale_x]
                                 for out_h in [64, -32]:
                                     for out_w in [32]:
