@@ -15318,7 +15318,9 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mish(x, threshold)
+    if _in_legacy_dygraph():
         return _C_ops.mish(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
