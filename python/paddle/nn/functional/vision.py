@@ -17,6 +17,7 @@ from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
+from ...fluid.framework import _non_static_mode
 import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
@@ -384,7 +385,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
                          "But recevie Attr(data_format): {} ".format(
                              data_format))
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         return _C_ops.pixel_unshuffle(x, "downscale_factor", downscale_factor,
                                       "data_format", data_format)
 
