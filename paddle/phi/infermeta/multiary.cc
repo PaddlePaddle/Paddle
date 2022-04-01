@@ -400,9 +400,9 @@ void AucInferMeta(const MetaTensor& input,
   }
   auto predict_height = input.dims()[0];
   auto label_height = label.dims()[0];
-  auto ins_tag_height = ins_tag_height.dims()[0]
+  auto ins_tag_weight_height = ins_tag_weight.dims()[0];
 
-                        if (config.is_runtime) {
+  if (config.is_runtime) {
     PADDLE_ENFORCE_EQ(
         predict_height,
         label_height,
