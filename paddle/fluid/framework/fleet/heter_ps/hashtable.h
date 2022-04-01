@@ -136,9 +136,8 @@ class HashTable {
  private:
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
-#endif
-#if defined(__xpu__)
-  __global__ptr XPUCacheArray<KeyType, ValType>* container_;
+#elif defined(__xpu__)
+  __global_ptr__ XPUCacheArray<KeyType, ValType>* container_;
 #endif
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
