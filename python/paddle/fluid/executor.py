@@ -406,6 +406,8 @@ def _is_enable_standalone_executor():
 
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
+        warnings.warn("STANDALONE_EXECUTOR is enabled.")
+
     return flag
 
 
