@@ -1,10 +1,10 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
-// Licensed under the Apache License, Version 2.3 (the "License");
+// Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.3
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/delete_weight_quant_dequant_linear_op_pass.h"
+#include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_pass.h"
 
 #include <algorithm>
 #include <memory>
@@ -283,7 +283,7 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
     /*
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "delete_weight_quant_dequant_linear_op_pass "
+      LOG(WARNING) << "delete_weight_dequant_linear_op_pass "
                       "compat check failed.";
       return;
     }
@@ -411,5 +411,5 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(delete_weight_quant_dequant_linear_op_pass,
+REGISTER_PASS(delete_weight_dequant_linear_op_pass,
               paddle::framework::ir::DeleteWeightQuantDequantLinearOpPass);
