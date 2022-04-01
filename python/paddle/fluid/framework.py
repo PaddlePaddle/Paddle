@@ -171,6 +171,12 @@ def _test_eager_guard(place=None):
     if not _already_patch_eager_tensor:
         monkey_patch_varbase()
         monkey_patch_math_varbase()
+
+        # Ugly setting
+        from paddle.tensor.manipulation import fill_, zero_
+        setattr(core.eager.Tensor, 'fill_', fill_)
+        setattr(core.eager.Tensor, 'zero_', zero_)
+
         _already_patch_eager_tensor = True
     try:
         yield

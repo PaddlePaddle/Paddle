@@ -1824,7 +1824,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           // Bump inplace version of inplace tensor.
           auto inplace_input_name = inplace_map[output_name];
           const char* FWD_OUT_TENSOR_TEMPLATE =
-              "  egr::EagerUtils::ModifyInplaceInput(outs[\"%s\"][0], &%s);\n"
+              "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n"
               "  %s.bump_inplace_version();\n"
               "  VLOG(3) << \"Tensor(\" << %s.name() << \") uses Inplace "
               "Strategy.\";\n";
