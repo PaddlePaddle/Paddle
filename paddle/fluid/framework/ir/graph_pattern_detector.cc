@@ -2071,11 +2071,11 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
 
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var, PDNode *residual_var, const std::string elementwise_type,
-    bool asX) {
+    bool as_x) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
-  if (asX) {
+  if (as_x) {
     op_var->AsInput()->assert_is_op_input(elementwise_type, "X");
     residual_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
   } else {

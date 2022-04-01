@@ -78,17 +78,17 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     const std::string& name_scope, const GraphWithStats& graph_with_stats,
-    bool asX) const {
+    bool as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
 
   patterns::Conv conv_pattern{pattern, name_scope};
   auto conv_output = conv_pattern();
 
-  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, asX};
+  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, as_x};
   elementwise_pattern(
       conv_output, pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add", asX);
+      "elementwise_add", as_x);
   conv_output->AsIntermediate();
 
   int found_conv_count = 0;
@@ -108,9 +108,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
                               elementwise_pattern);
 
     if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
-
     if (!IsReachable(g, residual_data, conv_output)) return;
-
     if (HasFusedActivation(conv_op)) return;
 
     if (!IsCompat(subgraph, g)) {
@@ -134,7 +132,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
   gpd(graph_with_stats.first, handler);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     std::stringstream msg_ss;
-    std::string fusionMode = asX ? "x" : "y";
+    std::string fusionMode = as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_conv_count << " conv (as " << fusionMode
            << ") + elementwise_add patterns";
     paddle::string::PrettyLogDetail(msg_ss.str().c_str());
@@ -182,7 +180,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
-          << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+          << "op compat for conv_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
 
