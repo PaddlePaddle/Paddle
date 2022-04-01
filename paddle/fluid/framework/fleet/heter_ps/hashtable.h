@@ -30,6 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #endif
+#if defined(__xpu__)
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#endif
 // #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
@@ -54,7 +57,7 @@ template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-    for (int i = 0; i < capacity; i++) {
+    for (size_t i = 0; i < capacity; i++) {
       xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
       xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
     }
@@ -133,7 +136,8 @@ class HashTable {
  private:
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
-#elif defined(__xpu__)
+#endif
+#if defined(__xpu__)
   __global__ptr XPUCacheArray<KeyType, ValType>* container_;
 #endif
   int BLOCK_SIZE_{256};

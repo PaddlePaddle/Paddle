@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
+#include <paddle/fluid/framework/fleet/heter_ps/hashtable.h>
 
 namespace paddle {
 namespace framework {
 
-#if defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU_KP)
 
 template <typename KeyType, typename ValType, typename Table>
 __global__ void insert_kernel(Table* table, const KeyType* const keys,
