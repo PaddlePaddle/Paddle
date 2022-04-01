@@ -177,8 +177,6 @@ void SpmmPluginDynamic::cusparseLtContext::init(
 }
 
 void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
-  // Plan needs alg id, so if the alg id is changed, we need to reinitialize a
-  // new plan
   assert(is_initialized &&
          "Descriptor should be initialized before setting algorithm");
   CHECK_CUSPARSE(cusparseLtMatmulAlgSetAttribute(
@@ -693,8 +691,6 @@ void SpmmPluginDynamic::setPluginNamespace(const char* libNamespace) noexcept {
 const char* SpmmPluginDynamic::getPluginNamespace() const noexcept {
   return namespace_.c_str();
 }
-
-/////////////////////////////////////////////////////////
 
 inline nvinfer1::DataType fieldTypeToDataType(
     const nvinfer1::PluginFieldType ftype) {
