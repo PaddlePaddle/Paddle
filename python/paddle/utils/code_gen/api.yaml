@@ -547,6 +547,15 @@
     func : hard_sigmoid
   backward : hard_sigmoid_grad
 
+# histogram
+- api : histogram
+  args : (Tensor x, int64_t bins, int min, int max)
+  output : Tensor
+  infer_meta :
+    func : HistogramInferMeta
+  kernel :
+    func : histogram
+
 - api : huber_loss
   args : (Tensor input, Tensor label, float delta)
   output : Tensor(out), Tensor(residual)
