@@ -1,5 +1,5 @@
 PyGithub
-coverage
+coverage==5.5
 pycrypto ; platform_system != "Windows"
 mock
 gym
