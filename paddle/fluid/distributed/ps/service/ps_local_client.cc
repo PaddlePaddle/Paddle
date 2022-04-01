@@ -99,8 +99,7 @@ int32_t PsLocalClient::Initialize() {
   auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
-  uint32_t num_per_shard =
-      DenseDimPerShard(accessor->GetTableInfo(FEA_DIM), 1);
+  uint32_t num_per_shard = DenseDimPerShard(accessor->GetTableInfo(FEA_DIM), 1);
 
   std::vector<float> region_buffer;
   region_buffer.resize(num_per_shard);
