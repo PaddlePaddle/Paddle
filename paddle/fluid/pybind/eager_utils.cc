@@ -36,6 +36,7 @@ namespace paddle {
 namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
+extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_vartype_pytype;
@@ -75,6 +76,8 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::NPY_COMPLEX64;
     case phi::DataType::COMPLEX128:
       return pybind11::detail::NPY_COMPLEX128;
+    case phi::DataType::PSTRING:
+      return pybind11::detail::npy_api::NPY_UNICODE_;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
@@ -664,6 +667,9 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
   }
 
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject*>(obj)->tensor;
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

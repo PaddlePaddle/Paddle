@@ -552,7 +552,9 @@ void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
     auto dst = self->mutable_data(place);
     if (array.dtype().kind() == 'S') {
       for (int i = 0; i < self->numel(); ++i) {
-        dst[i] = reinterpret_cast<const char *>(array.data()) + itemsize * i;
+        dst[i] =
+            pstring(reinterpret_cast<const char *>(array.data()) + itemsize * i,
+                    itemsize);
       }
     } else {
       // array.dtype().kind() == 'U'
@@ -560,16 +562,17 @@ void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
       for (int i = 0; i < self->numel(); ++i) {
         // Note(zhoushunjie): The itemsize of unicode numpy array is the
         // the size of each unicode string. Each unicode string is aligned
-        // to same length, so the size of each unicode string is same. The
-        // size of each unicode character is 4, so the size of unicode string
-        // is 4 times of the length of unicode string.
+        // to max length of the array of unicode strings, so the size of
+        // each unicode string is same. The size of each unicode character is
+        // 4, so the size of unicode string is 4 times of the length of
+        // unicode string.
         auto unicode_len = itemsize / 4;
         auto utf8_len = phi::strings::GetUTF8StrLen(
-            reinterpret_cast<const uint32_t *>(array.data()) + itemsize * i,
+            reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
             unicode_len);
-        pstring pstr(utf8_len, 0);
+        pstring pstr(utf8_len - 1, 0);
         phi::strings::GetUTF8Str(
-            reinterpret_cast<const uint32_t *>(array.data()) + itemsize * i,
+            reinterpret_cast<const uint32_t *>(array.data()) + unicode_len * i,
             pstr.mdata(), unicode_len);
         dst[i] = pstr;
       }

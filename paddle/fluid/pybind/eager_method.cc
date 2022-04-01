@@ -254,6 +254,72 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_TRY
+  auto& api = pybind11::detail::npy_api::get();
+  if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
+    VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
+               "numpy array.";
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+    py_dims[0] = 0;
+    py_strides[0] = 0;
+
+    PyObject* array = api.PyArray_NewFromDescr_(
+        api.PyArray_Type_,
+        api.PyArray_DescrFromType_(pybind11::detail::npy_api::NPY_UNICODE_), 1,
+        py_dims, py_strides, nullptr,
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+        nullptr);
+    return array;
+  }
+
+  if (self->tensor.is_cpu()) {
+    VLOG(6) << "Getting StringTensor's numpy value";
+    auto string_tensor =
+        std::dynamic_pointer_cast<phi::StringTensor>(self->tensor.impl());
+    const auto* st_ptr = string_tensor->data();
+    auto numel = self->tensor.numel();
+    auto tensor_dims = self->tensor.shape();
+    // Get the max unicode length of StringTensor to create numpy unicode string
+    // array.
+    auto* longest_pstring = std::max_element(
+        st_ptr, st_ptr + numel, [](const auto& a, const auto& b) {
+          auto a_unicode_len =
+              phi::strings::GetUnicodeStrLen(a.data(), a.size());
+          auto b_unicode_len =
+              phi::strings::GetUnicodeStrLen(b.data(), b.size());
+          return a_unicode_len < b_unicode_len;
+        });
+    size_t max_unicode_length = phi::strings::GetUnicodeStrLen(
+        longest_pstring->data(), longest_pstring->size());
+    max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
+    VLOG(6) << "The max unicode length is " << max_unicode_length;
+    auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
+    auto py_array_data = sp.get();
+    memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
+    for (int64_t i = 0; i < numel; ++i) {
+      auto curr_unicode_len =
+          phi::strings::GetUnicodeStrLen(st_ptr[i].data(), st_ptr[i].size());
+      phi::strings::GetUnicodeStr(st_ptr[i].data(),
+                                  py_array_data + i * max_unicode_length,
+                                  curr_unicode_len);
+    }
+    py::array array(py::dtype("U" + std::to_string(max_unicode_length)),
+                    tensor_dims, {}, py_array_data);
+    return array.release().ptr();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "StringTensor.numpy() only support cpu tensor."));
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__is_initialized(TensorObject* self,
                                                PyObject* args,
                                                PyObject* kwargs) {
@@ -1508,7 +1574,8 @@ PyMethodDef variable_methods[] = {
 // variable_methods for core.eager.StringTensor
 PyMethodDef string_tensor_variable_methods[] = {
     // TODO(zhoushunjie): update string tensor numpy
-    {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
+    {"numpy",
+     (PyCFunction)(void (*)(void))tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_is_initialized",
      (PyCFunction)(void (*)(void))tensor_method__is_initialized,
@@ -1517,10 +1584,7 @@ PyMethodDef string_tensor_variable_methods[] = {
      (PyCFunction)(
          void (*)(void))tensor_method__is_string_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_copy_to", (PyCFunction)(void (*)(void))tensor_method__copy_to,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"copy_", (PyCFunction)(void (*)(void))tensor_method_copy_,
-     METH_VARARGS | METH_KEYWORDS, NULL},
+    // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {NULL, NULL, 0, NULL}};
 
 }  // namespace pybind

@@ -95,14 +95,16 @@ void EmptyStringTensorInitializer(TensorObject* self, const std::string& name,
                                   const std::vector<int>& dims = {}) {
   auto ddims = phi::make_ddim(dims);
   self->tensor.set_name(name);
+  // Note(zhoushunjie): Only support CPUPlace when create StringTensor
+  auto actual_place = platform::CPUPlace();
   // Allocate memory
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(place);
+      std::make_unique<paddle::experimental::DefaultAllocator>(actual_place);
   const auto alloc = string_allocator.get();
   std::shared_ptr<phi::StringTensor> string_tensor =
       std::make_shared<phi::StringTensor>(alloc, phi::StringTensorMeta{ddims});
   if (phi::product(ddims) > 0) {
-    string_tensor->mutable_data(place);
+    string_tensor->mutable_data(actual_place);
   }
   self->tensor.set_impl(string_tensor);
 }
@@ -143,8 +145,9 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj,
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(), true,
       paddle::platform::errors::Fatal(
-          "Calling InitStringTensorWithNumpyValue of Eager Tensor without "
-          "EmptyTensorInitializer is "
+          "Calling InitStringTensorWithNumpyValue of Eager StringTensor "
+          "without "
+          "EmptyStringTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
   phi::StringTensor* impl_ptr =
@@ -855,7 +858,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   if (args_num == (Py_ssize_t)0) {
     if (!flag_kwargs) {
       // case 1
-      VLOG(6) << "Calling case1's initializer.";
+      VLOG(6) << "Calling case1's string initializer.";
       EmptyStringTensorInitializer(
           py_tensor_ptr, egr::Controller::Instance().GenerateUniqueName(
                              "generated_string_tensor"),
@@ -864,13 +867,13 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       if (kw_value != NULL) {
         if (pybind11::detail::npy_api::get().PyArray_Check_(kw_value)) {
-          VLOG(6) << "Calling case3's or case4's initializer";
+          VLOG(6) << "Calling case3's or case4's string initializer";
           AutoInitStringTensorByPyArray(py_tensor_ptr, kws_map, args,
                                         flag_kwargs, args_num);
           return 0;
         } else if (PyObject_IsInstance(kw_value, reinterpret_cast<PyObject*>(
                                                      p_string_tensor_type))) {
-          VLOG(6) << "Calling case5's or case6's initializer";
+          VLOG(6) << "Calling case5's or case6's string initializer";
           // AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
           // flag_kwargs, args_num);
           return 0;
@@ -895,13 +898,13 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     // 1 position args, remainting arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-      VLOG(6) << "Calling case3's or case4's initializer.";
+      VLOG(6) << "Calling case3's or case4's string initializer.";
       AutoInitStringTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
                                     args_num);
       return 0;
     } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
                                                  p_string_tensor_type))) {
-      VLOG(6) << "Calling case5's or case6's initializer.";
+      VLOG(6) << "Calling case5's or case6's string initializer.";
       // AutoInitStringTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
       //                        args_num);
       return 0;
@@ -915,7 +918,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     }
   } else if (args_num == (Py_ssize_t)2) {  // case 2
     // 2 position args, remainting arguments are kwargs
-    VLOG(6) << "Calling case2's initializer.";
+    VLOG(6) << "Calling case2's string initializer.";
     std::vector<int> dims = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 0), 0);
     std::string act_name = "";
     PyObject* name_obj = PyTuple_GET_ITEM(args, 1);
@@ -934,7 +937,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (PyObject_IsInstance(
             arg0_ptr, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
-      VLOG(6) << "Calling case6's initializer.";
+      VLOG(6) << "Calling case6's string initializer.";
       // AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
       // flag_kwargs,
       //                        args_num);
@@ -951,7 +954,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
       if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
-        VLOG(6) << "Calling case3's initializer.";
+        VLOG(6) << "Calling case3's string initializer.";
         AutoInitStringTensorByPyArray(py_tensor_ptr, kws_map, args, flag_kwargs,
                                       args_num);
         return 0;
