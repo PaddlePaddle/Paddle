@@ -631,6 +631,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   }
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType, typename GradType>
 template <typename Sgd>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
@@ -754,6 +755,123 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     destroy_storage(dev_num, i);
   }
 }
+
+#elif defined(PADDLE_WITH_XPU_KP)
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
+                                                        KeyType* d_keys,
+                                                        GradType* d_grads,
+                                                        size_t len) {
+  if (len == 0) {
+    return;
+  }
+
+  int total_device = resource_->total_device();
+  int dev_id = resource_->dev_id(dev_num);
+
+  DevPlace place = DevPlace(dev_id);
+  AnyDeviceGuard guard(dev_id);
+  auto stream = resource_->local_stream(dev_num, 0);
+
+  int h_left[total_device];   // NOLINT
+  int h_right[total_device];  // NOLINT
+
+  auto d_left = memory::Alloc(place, total_device * sizeof(int));
+  auto d_right = memory::Alloc(place, total_device * sizeof(int));
+  int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
+  int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
+
+#if defined(PADDLE_WITH_CUDA)
+  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
+  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
+
+#elif defined(PADDLE_WITH_XPU_KP)
+  // get XPUDeviceContext according to xpu place
+  paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
+  auto xpu_context = xpu_dev_ctx.x_context();
+
+  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
+  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU constant kernel return wrong value[%d %s]", r,
+                        XPUAPIErrorMsg[r]));
+  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
+  PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU constant kernel return wrong value[%d %s]", r2,
+                        XPUAPIErrorMsg[r2]));
+#endif
+
+  auto d_idx = memory::Alloc(place, len * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+
+  auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
+  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+  auto d_shard_grads = memory::Alloc(place, len * sizeof(GradType));
+  GradType* d_shard_grads_ptr =
+      reinterpret_cast<GradType*>(d_shard_grads->ptr());
+
+  int uniq_len = len;
+  merge_grad(dev_num, d_keys, d_grads, len, uniq_len);
+
+  int grid_size = (uniq_len - 1) / block_size_ + 1;
+
+  split_input_to_shard(d_keys, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr,
+                       dev_num);
+
+  heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
+                                       d_shard_grads_ptr, d_grads, d_idx_ptr,
+                                       uniq_len, stream);
+
+  sync_stream(stream);
+
+  auto dst_place = platform::CPUPlace();
+  auto src_place = place;
+  memory_copy(dst_place, h_left, src_place, d_left_ptr,
+              total_device * sizeof(int));
+  memory_copy(dst_place, h_right, src_place, d_right_ptr,
+              total_device * sizeof(int));
+
+  for (int i = 0; i < total_device; ++i) {
+    int shard_len = h_right[i] - h_left[i] + 1;
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    create_storage(dev_num, i, shard_len * sizeof(KeyType),
+                   shard_len * sizeof(GradType));
+  }
+
+  walk_to_dest(dev_num, total_device, h_left, h_right, d_shard_keys_ptr,
+               d_shard_grads_ptr);
+
+  for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    auto& node = path_[dev_num][i].nodes_.back();
+    sync_stream(node.in_stream);
+
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->rwlock_->WRLock();
+    tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
+                       reinterpret_cast<GradType*>(node.val_storage),
+                       h_right[i] - h_left[i] + 1,
+                       resource_->remote_stream(i, dev_num));
+  }
+
+  for (int i = 0; i < total_device; ++i) {
+    sync_stream(resource_->remote_stream(i, dev_num));
+    if (h_left[i] != -1) {
+      tables_[i]->rwlock_->UNLock();
+    }
+  }
+
+  for (int i = 0; i < total_device; ++i) {
+    destroy_storage(dev_num, i);
+  }
+}
+
+#endif
 
 #if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType, typename GradType>

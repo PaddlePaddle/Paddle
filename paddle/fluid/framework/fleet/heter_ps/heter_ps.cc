@@ -29,7 +29,9 @@ HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
   comm_ =
       std::make_shared<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>>(
           capacity, resource);
+#if defined(PADDLE_WITH_CUDA)
   opt_ = Optimizer<FeatureValue, FeaturePushValue>();
+#endif
 }
 
 HeterPs::~HeterPs() {}
@@ -54,7 +56,11 @@ void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
                           FeaturePushValue* d_grads, size_t len) {
+#if defined(PADDLE_WITH_CUDA)
   comm_->push_sparse(num, d_keys, d_grads, len, opt_);
+#elif defined(PADDLE_WITH_XPU_KP)
+  comm_->push_sparse(num, d_keys, d_grads, len);
+#endif
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
 

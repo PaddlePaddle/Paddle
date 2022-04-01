@@ -123,6 +123,8 @@ class HashTable {
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
 
+#if defined(PADDLE_WITH_CUDA)
+
   template <typename GradType, typename Sgd, typename StreamType>
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
               Sgd sgd, StreamType stream);
@@ -130,6 +132,17 @@ class HashTable {
   template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
               StreamType stream);
+
+#elif defined(PADDLE_WITH_XPU_KP)
+  template <typename GradType, typename StreamType>
+  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
+              StreamType stream);
+
+  template <typename StreamType>
+  void update(const KeyType* d_keys, const char* d_grads, size_t len,
+              StreamType stream);
+
+#endif
 
   int size() { return container_->size(); }
 
