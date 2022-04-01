@@ -156,6 +156,13 @@ class Tracer(core.Tracer):
             attrs_list.append(v)
         returns = function_ptr(*arg_list, *attrs_list)
 
+        if type == 'load_combine':
+            assert len(outputs.keys()) == 1
+            key = list(outputs.keys())[0]
+            for j in range(len(returns)):
+                returns[j]._share_underline_tensor_to(outputs[key][j])
+            return
+
         if isinstance(returns, tuple):
             for i in range(len(op_returns)):
                 retname = op_returns[i]

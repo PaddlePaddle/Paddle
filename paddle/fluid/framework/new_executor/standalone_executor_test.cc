@@ -35,7 +35,7 @@ USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(tanh);
 USE_OP_ITSELF(elementwise_mul);
-USE_OP(softmax_with_cross_entropy);
+USE_OP_ITSELF(softmax_with_cross_entropy);
 USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);
@@ -83,6 +83,8 @@ PD_DECLARE_KERNEL(max_raw, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sgd, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(slice, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
 
 DECLARE_double(eager_delete_tensor_gb);
