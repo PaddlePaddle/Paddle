@@ -16,11 +16,12 @@
 #include <memory>
 #include <unordered_map>
 #ifdef PADDLE_WITH_ARM_BRPC
+#include "bvar/bvar/latency_recorder.h"
 #include "common/base/time.h"
 #else
 #include "butil/time.h"
-#endif
 #include "bvar/latency_recorder.h"
+#endif
 #include "glog/logging.h"
 
 namespace paddle {
