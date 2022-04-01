@@ -1626,7 +1626,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             shape=[1],
             value=bool(0),
             dtype='bool',
-            persistable=False,
+            persistable=True,
             force_cpu=True)
 
         with device_guard("cpu"):

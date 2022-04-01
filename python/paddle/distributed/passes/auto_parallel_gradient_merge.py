@@ -112,7 +112,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
         shape=[1],
         value=bool(0),
         dtype='bool',
-        persistable=False,
+        persistable=True,
         force_cpu=True)
     set_var_dist_attr(dist_context, cond_var, [-1], world_process_group.ranks)
 
@@ -137,7 +137,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
             outputs={'Out': cond_var})
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             equal_op, world_process_group.ranks, [-1], dist_context)
-
+    print('cond_var', cond_var, flush=1)
     return cond_var
 
 
