@@ -1573,7 +1573,6 @@ PyMethodDef variable_methods[] = {
 
 // variable_methods for core.eager.StringTensor
 PyMethodDef string_tensor_variable_methods[] = {
-    // TODO(zhoushunjie): update string tensor numpy
     {"numpy",
      (PyCFunction)(void (*)(void))tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},

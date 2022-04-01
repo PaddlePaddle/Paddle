@@ -577,10 +577,10 @@ void SetStringTensorFromPyArray(phi::StringTensor *self, const py::array &array,
         dst[i] = pstr;
       }
     }
-  } else if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// TODO(zhoushunjie): add gpu place
-#endif
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "StringTensor only support CPUPlace now, but receive %s",
+        place.DebugString()));
   }
 }
 

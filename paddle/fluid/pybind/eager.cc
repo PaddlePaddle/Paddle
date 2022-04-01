@@ -156,11 +156,10 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj,
   auto array = obj.cast<py::array>();
   if (platform::is_cpu_place(place)) {
     SetStringTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place);
-  } else if (platform::is_gpu_place(place)) {
-    SetStringTensorFromPyArray<platform::CUDAPlace>(impl_ptr, array, place);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place of StringTensor should be one of CPUPlace/CUDAPlace"));
+        "StringTensor only support CPUPlace now, but receive %s",
+        place.DebugString()));
   }
 }
 
