@@ -54,14 +54,20 @@ INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bthread/bthread)
 INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bvar/bvar)
 INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/common/base)
 
+execute_process(COMMAND cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .)
+execute_process(COMMAND tar zxvf ${ARM_BRPC_NAME}.tar.gz)
+execute_process(COMMAND mkdir install)
+execute_process(COMMAND cp -r base ./install/)
+
 ExternalProject_Add(
     ${ARM_BRPC_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${ARM_BRPC_PREFIX_DIR}
     DOWNLOAD_DIR          ${ARM_BRPC_DOWNLOAD_DIR}
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
-    DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
-                            && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ./install/
+    #DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
+    #                       && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ./install/
+    DOWNLOAD_COMMAND      ""
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
