@@ -19,6 +19,7 @@ import unittest
 import time
 import paddle
 import paddle.incubate.multiprocessing as mp
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
@@ -174,25 +175,45 @@ class TestMultiprocessingBase(unittest.TestCase):
 
 
 class TestMultiprocessingCpu(TestMultiprocessingBase):
-    def test_pass_tensor(self):
+    def func_test_pass_tensor(self):
         paddle.set_device("cpu")
         self._test_sharing(repeat=REPEAT)
 
-    def test_pass_parambase(self):
+    def test_pass_tensor(self):
+        with _test_eager_guard():
+            self.func_test_pass_tensor()
+        self.func_test_pass_tensor()
+
+    def func_test_pass_parambase(self):
         paddle.set_device("cpu")
         self._test_sharing(repeat=1, param=True)
 
-    def test_pass_empty(self):
+    def test_pass_parambase(self):
+        with _test_eager_guard():
+            self.func_test_pass_parambase()
+        self.func_test_pass_parambase()
+
+    def func_test_pass_empty(self):
         paddle.set_device("cpu")
         self._test_empty()
+
+    def test_pass_empty(self):
+        with _test_eager_guard():
+            self.func_test_pass_empty()
+        self.func_test_pass_empty()
 
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):
     @unittest.skipIf(not paddle.fluid.core.is_compiled_with_cuda(),
                      "core is not compiled with CUDA")
-    def test_pass_tensor(self):
+    def func_test_pass_tensor(self):
         paddle.set_device("gpu")
         self._test_sharing(mp.get_context("spawn"), "gpu")
+
+    def test_pass_tensor(self):
+        with _test_eager_guard():
+            self.func_test_pass_tensor()
+        self.func_test_pass_tensor()
 
 
 if __name__ == "__main__":
