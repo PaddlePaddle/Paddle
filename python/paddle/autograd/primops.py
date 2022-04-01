@@ -15,6 +15,7 @@
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 
+
 def _simple_unop(helper):
     optype = helper.layer_type
     x, out = tuple(map(helper.kwargs.get, ('x', 'out')))
@@ -62,6 +63,18 @@ def _manipulation_unop(helper):
 
 
 # Each primitive op is given a Python constructor for sake of convenience.
+def fill_const(value, shape, dtype, out=None):
+    attrs = {'value': value, 'shape': shape, 'dtype': dtype}
+    helper = LayerHelper('fill_const_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=xs[0].dtype)
+    helper.append_op(
+        type=helper.layer_type,
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
 def add(x, y, out=None):
     return _simple_binop(LayerHelper('add_p', **locals()))    
 
@@ -189,6 +202,8 @@ def slice_assign(x, y, axis, starts, ends, strides):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
+
 
 
 if __name__ == '__main__':
