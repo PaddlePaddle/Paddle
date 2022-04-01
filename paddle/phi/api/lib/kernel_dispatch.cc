@@ -70,11 +70,22 @@ phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {
 }
 
 DataType ParseDataType(DataType dtype) { return dtype; }
-DataType ParseDataType(const Tensor& tensor) { return tensor.type(); }
+DataType ParseDataType(const Tensor& tensor) {
+  if (tensor.impl() == nullptr) {
+    return DataType::UNDEFINED;
+  }
+  return tensor.type();
+}
+
 DataType ParseDataType(const std::vector<Tensor>& tensors) {
   if (tensors.empty()) {
     return DataType::UNDEFINED;
   }
+
+  if (tensors[0].impl() == nullptr) {
+    return DataType::UNDEFINED;
+  }
+
   DataType dtype = tensors[0].type();
   auto n = tensors.size();
   for (size_t i = 1; i < n; ++i) {
@@ -91,6 +102,9 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
 }
 
 DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
+  if (tensor.impl() == nullptr) {
+    return dtype;
+  }
   return dtype != DataType::UNDEFINED ? dtype : ParseDataType(tensor);
 }
 
@@ -98,6 +112,9 @@ Backend ParseBackend(const Place& place) {
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
+  if (tensor.impl() == nullptr) {
+    return Backend::UNDEFINED;
+  }
   return phi::TransToPhiBackend(tensor.inner_place());
 }
 
@@ -108,9 +125,17 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
 }
 
 DataLayout ParseLayout(DataLayout layout) { return layout; }
-DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+DataLayout ParseLayout(const Tensor& tensor) {
+  if (tensor.impl() == nullptr) {
+    return DataLayout::UNDEFINED;
+  }
+  return tensor.layout();
+}
 
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
+  if (tensor.impl() == nullptr) {
+    return layout;
+  }
   return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
 }
 

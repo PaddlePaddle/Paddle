@@ -93,6 +93,10 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
+    if (x.impl() == nullptr) {
+      // skip empty tensor
+      return;
+    }
     const phi::TensorBase& tensor = *x.impl();
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
@@ -107,6 +111,9 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   }
 
   void operator()(const std::vector<Tensor>& x) {
+    if (x.at(0).impl() == nullptr) {
+      return;
+    }
     const phi::TensorBase& tensor = *x.at(0).impl();
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
@@ -128,6 +135,9 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
+    if (x.impl() == nullptr) {
+      return;
+    }
     if (phi::SelectedRows::classof(x.impl().get())) {
       kernel_type = KernelType::SELECTED_ROWS_KENREL;
     }
