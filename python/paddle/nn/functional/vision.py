@@ -21,6 +21,7 @@ import numpy as np
 from paddle import _C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
+from paddle.framework import _non_static_mode
 
 __all__ = []
 
@@ -396,7 +397,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
                          "But recevie Attr(data_format): {} ".format(
                              data_format))
 
-    if in_dynamic_mode():
+    if _non_static_mode():
         return _C_ops.channel_shuffle(x, "groups", groups, "data_format",
                                       data_format)
 
