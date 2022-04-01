@@ -90,7 +90,7 @@ void IndexSelectGradKernel(const Context& ctx,
 
   auto stream = ctx.stream();
 
-  dim3 block_dim = dim3(PADDLE_CUDA_NUM_THREADS);
+  int block_dim = 256;
   dim3 grid_dim =
       dim3((numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS);
   paddle::platform::LimitGridDim(ctx, &grid_dim);
@@ -100,7 +100,7 @@ void IndexSelectGradKernel(const Context& ctx,
 
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_select with single thread.";
-    block_dim.x = 1;
+    block_dim = 1;
     grid_dim.x = 1;
   }
 
