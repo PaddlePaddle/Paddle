@@ -14,19 +14,15 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SliceRawKernel(const Context& ctx,
-                    const DenseTensor& input,
-                    const std::vector<int64_t>& axes,
-                    const ScalarArray& starts,
-                    const ScalarArray& ends,
-                    const std::vector<int64_t>& infer_flags,
-                    const std::vector<int64_t>& decrease_axis,
-                    DenseTensor* out);
+void UnStackKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int axis,
+                   int num,
+                   std::vector<DenseTensor*> outs);
 
 }  // namespace phi

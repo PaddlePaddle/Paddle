@@ -40,6 +40,7 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'fc',
@@ -204,7 +205,6 @@ def _elementwise_op_in_dygraph(x,
                                op_name=None):
     op = getattr(_C_ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -11426,6 +11426,10 @@ def strided_slice(input, axes, starts, ends, strides):
             sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_strided_slice(input, axes, starts, ends,
+                                                strides)
+
     helper = LayerHelper('strided_slice', **locals())
 
     check_variable_and_dtype(input, 'input',
@@ -11590,7 +11594,11 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_shape(input)
+        out.stop_gradient = True
+        return out
+    if _in_legacy_dygraph():
         out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
@@ -12529,6 +12537,9 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res) # [True False True False]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_and(x, y)
+
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12568,6 +12579,8 @@ def logical_or(x, y, out=None, name=None):
             res = paddle.logical_or(x, y)
             print(res) # [[ True  True] [ True False]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12607,6 +12620,9 @@ def logical_xor(x, y, out=None, name=None):
             res = paddle.logical_xor(x, y)
             print(res) # [[False,  True], [ True, False]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_xor(x, y)
+
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12639,7 +12655,8 @@ def logical_not(x, out=None, name=None):
             res = paddle.logical_not(x)
             print(res) # [False  True False  True]
     """
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
 
