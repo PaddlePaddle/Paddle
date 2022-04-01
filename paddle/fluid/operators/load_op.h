@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoadLodTensor(fin, place, out_var, ctx);
-    } else if (out_var->IsType<pten::SelectedRows>()) {
+    } else if (out_var->IsType<phi::SelectedRows>()) {
       LoadSelectedRows(fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -106,7 +106,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
 
   void LoadSelectedRows(std::istream &fin, const platform::Place &place,
                         framework::Variable *var) const {
-    auto *selectedRows = var->GetMutable<pten::SelectedRows>();
+    auto *selectedRows = var->GetMutable<phi::SelectedRows>();
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);

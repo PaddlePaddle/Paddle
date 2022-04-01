@@ -30,7 +30,7 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
 
@@ -104,7 +104,7 @@ void BasicEngine::Init(
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-      pten::funcs::set_constant(*dev_ctx, grad_var, 1.0);
+      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
     } else {
       paddle::framework::TensorCopy(
           grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
@@ -154,11 +154,11 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         // Here, we use the type of the corresponding forward datatype.
 
         tensor->mutable_data(
-            op.place(), framework::TransToPtenDataType(var->ForwardDataType()));
+            op.place(), framework::TransToPhiDataType(var->ForwardDataType()));
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());
-        pten::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
   }
@@ -317,6 +317,7 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
         auto tmp_var = var;
         for (const auto& hook_pair : var->GetVariableWrapperHooks()) {
           tmp_var = (*hook_pair.second)(tmp_var);
+          CheckVar(var, tmp_var);
         }
         (*tmp_ins_ptr)[pair.first][i] = tmp_var;
       }
@@ -388,6 +389,9 @@ static void PerformBackwardInplace(const std::string& op_type,
 }
 
 void BasicEngine::Execute() {
+  platform::RecordEvent backward_record_event(
+      "backward", platform::TracerEventType::Operator, 1);
+
   if (init_nodes_.empty()) {
     return;
   }
@@ -410,7 +414,8 @@ void BasicEngine::Execute() {
     auto& inplace_grad_name_map = shared_cur_node->InplaceGradNameMap();
 
     for (auto& cur_op : *shared_cur_node) {
-      platform::RecordEvent op_type_record_event(cur_op.Type());
+      platform::RecordEvent op_type_record_event(
+          cur_op.Type() + " grad_node", platform::TracerEventType::Operator, 1);
 
       ++op_num;
 

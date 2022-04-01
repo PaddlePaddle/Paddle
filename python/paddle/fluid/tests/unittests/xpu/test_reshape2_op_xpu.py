@@ -14,194 +14,167 @@
 
 from __future__ import print_function
 
-import unittest
 import numpy as np
 import sys
-
+import unittest
 sys.path.append("..")
-from op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+paddle.enable_static()
 
 
-# situation 1: have shape( list, no tensor), no actual shape(Tensor)
-class TestReshapeOp(OpTest):
-    def setUp(self):
-        self.init_data()
-        self.op_type = "reshape2"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
-        self.attrs = {"shape": self.new_shape, "use_xpu": True}
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
-        }
+class XPUTestReshapeOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "reshape2"
+        self.use_dynamic_create_class = False
 
-    def init_data(self):
-        self.ori_shape = (2, 60)
-        self.new_shape = (12, 10)
-        self.infered_shape = (12, 10)
+    # situation 1: have shape( list, no tensor), no actual shape(Tensor)
+    class TestReshapeOp(XPUOpTest):
+        def setUp(self):
+            self.init_data()
+            self.op_type = "reshape2"
+            self.init_test_input()
+            self.init_test_output()
+            self.init_attrs()
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, no_check_set=['XShape'])
+        def init_data(self):
+            self.ori_shape = (2, 60)
+            self.new_shape = (12, 10)
+            self.infered_shape = (12, 10)
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ["X"], "Out")
+        def init_test_input(self):
+            self.inputs = {
+                "X": np.random.random(self.ori_shape).astype(self.dtype)
+            }
 
+        def init_test_output(self):
+            self.outputs = {
+                "Out": self.inputs["X"].reshape(self.infered_shape),
+                'XShape': np.random.random(self.ori_shape).astype(self.dtype)
+            }
 
-class TestReshapeOpDimInfer1(TestReshapeOp):
-    def init_data(self):
-        self.ori_shape = (5, 25)
-        self.new_shape = (5, -1, 5)
-        self.infered_shape = (5, -1, 5)
+        def init_attrs(self):
+            self.attrs = {"shape": self.new_shape, "use_xpu": True}
 
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_output_with_place(place, no_check_set=['XShape'])
 
-class TestReshapeOpDimInfer2(TestReshapeOp):
-    def init_data(self):
-        self.ori_shape = (10, 2, 6)
-        self.new_shape = (10, 0, 3, -1)
-        self.infered_shape = (10, 2, 3, -1)
+        def test_check_grad(self):
+            if paddle.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
+                self.check_grad_with_place(place, ["X"], "Out")
 
+    class TestReshapeOpDimInfer1(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (5, 25)
+            self.new_shape = (5, -1, 5)
+            self.infered_shape = (5, -1, 5)
 
-# situation 2: have shape(list, no tensor), have actual shape(Tensor)
-class TestReshapeOpWithInputShape(OpTest):
-    def setUp(self):
-        self.init_data()
-        self.op_type = "reshape2"
+    class TestReshapeOpDimInfer2(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (10, 2, 6)
+            self.new_shape = (10, 0, 3, -1)
+            self.infered_shape = (10, 2, 3, -1)
 
-        self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
-            "Shape": np.array(
-                self.actual_shape, dtype="int32")
-        }
-        self.attrs = {"shape": self.new_shape, "use_xpu": True}
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.actual_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
-        }
+    # situation 2: have shape(list, no tensor), have actual shape(Tensor)
+    class TestReshapeOpWithInputShape(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (6, 20)
+            self.new_shape = (0, -1, 20)
+            self.actual_shape = (2, 3, 20)
 
-    def init_data(self):
-        self.ori_shape = (6, 20)
-        self.new_shape = (0, -1, 20)
-        self.actual_shape = (2, 3, 20)
+        def init_test_input(self):
+            self.inputs = {
+                "X": np.random.random(self.ori_shape).astype(self.dtype),
+                "Shape": np.array(
+                    self.actual_shape, dtype="int32")
+            }
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, no_check_set=['XShape'])
+        def init_test_output(self):
+            self.outputs = {
+                "Out": self.inputs["X"].reshape(self.actual_shape),
+                'XShape': np.random.random(self.ori_shape).astype(self.dtype)
+            }
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ["X"], "Out")
+    # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
+    class TestReshapeOp_attr_ShapeTensor(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (4, 25)
+            self.new_shape = (10, 10)
+            self.infered_shape = (10, 10)
+            self.shape = (-1, -1)
 
+        def init_test_input(self):
+            shape_tensor = []
+            for index, ele in enumerate(self.new_shape):
+                shape_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
 
-# Situation 3: have shape(list, have tensor), no actual shape(Tensor)
-class TestReshapeOp_attr_ShapeTensor(OpTest):
-    def setUp(self):
-        self.init_data()
-        self.op_type = "reshape2"
+            self.inputs = {
+                "X": np.random.random(self.ori_shape).astype(self.dtype),
+                'ShapeTensor': shape_tensor
+            }
 
-        shape_tensor = []
-        for index, ele in enumerate(self.new_shape):
-            shape_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+        def init_attrs(self):
+            self.attrs = {'shape': self.shape, "use_xpu": True}
 
-        self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
-            'ShapeTensor': shape_tensor
-        }
-        self.attrs = {'shape': self.shape, "use_xpu": True}
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
-        }
+    class TestReshapeOpDimInfer1_attr_ShapeTensor(
+            TestReshapeOp_attr_ShapeTensor):
+        def init_data(self):
+            self.ori_shape = (5, 20)
+            self.new_shape = (5, -1, 20)
+            self.infered_shape = (5, -1, 20)
+            self.shape = (5, -1, -1)
 
-    def init_data(self):
-        self.ori_shape = (4, 25)
-        self.new_shape = (10, 10)
-        self.infered_shape = (10, 10)
-        self.shape = (-1, -1)
+    class TestReshapeOpDimInfer2_attr_ShapeTensor(
+            TestReshapeOp_attr_ShapeTensor):
+        def init_data(self):
+            self.ori_shape = (10, 2, 6)
+            self.new_shape = (10, 0, 3, -1)
+            self.infered_shape = (10, 2, 3, -1)
+            self.shape = (10, 0, 3, -1)
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, no_check_set=['XShape'])
+    # Situation 4: have shape(Tensor), no actual shape(Tensor)
+    class TestReshapeOp_attr_OnlyShape(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (4, 25)
+            self.new_shape = (10, 10)
+            self.infered_shape = (10, 10)
 
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ["X"], "Out")
+        def init_test_input(self):
+            self.inputs = {
+                "X": np.random.random(self.ori_shape).astype(self.dtype),
+                "Shape": np.array(
+                    self.new_shape, dtype="int32")
+            }
 
+        def init_attrs(self):
+            self.attrs = {"use_xpu": True}
 
-class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
-    def init_data(self):
-        self.ori_shape = (5, 20)
-        self.new_shape = (5, -1, 20)
-        self.infered_shape = (5, -1, 20)
-        self.shape = (5, -1, -1)
+    class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
+        def init_data(self):
+            self.ori_shape = (5, 20)
+            self.new_shape = (5, -1, 10)
+            self.infered_shape = (5, -1, 10)
+            self.shape = (5, -1, -1)
 
-
-class TestReshapeOpDimInfer2_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
-    def init_data(self):
-        self.ori_shape = (10, 2, 6)
-        self.new_shape = (10, 0, 3, -1)
-        self.infered_shape = (10, 2, 3, -1)
-        self.shape = (10, 0, 3, -1)
-
-
-# Situation 4: have shape(Tensor), no actual shape(Tensor)
-class TestReshapeOp_attr_OnlyShape(OpTest):
-    def setUp(self):
-        self.init_data()
-        self.op_type = "reshape2"
-
-        self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
-            "Shape": np.array(
-                self.new_shape, dtype="int32")
-        }
-        self.attrs = {"use_xpu": True}
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
-        }
-
-    def init_data(self):
-        self.ori_shape = (4, 25)
-        self.new_shape = (10, 10)
-        self.infered_shape = (10, 10)
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, no_check_set=['XShape'])
-
-    def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ["X"], "Out")
+    class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
+        def init_data(self):
+            self.ori_shape = (10, 2, 6)
+            self.new_shape = (10, 0, 3, -1)
+            self.infered_shape = (10, 2, 3, -1)
+            self.shape = (10, 0, 3, -1)
 
 
-class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
-    def init_data(self):
-        self.ori_shape = (5, 20)
-        self.new_shape = (5, -1, 10)
-        self.infered_shape = (5, -1, 10)
-        self.shape = (5, -1, -1)
-
-
-class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
-    def init_data(self):
-        self.ori_shape = (10, 2, 6)
-        self.new_shape = (10, 0, 3, -1)
-        self.infered_shape = (10, 2, 3, -1)
-        self.shape = (10, 0, 3, -1)
-
+support_types = get_xpu_op_support_types("reshape2")
+for stype in support_types:
+    create_test_class(globals(), XPUTestReshapeOp, stype)
 
 if __name__ == "__main__":
     unittest.main()

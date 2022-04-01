@@ -77,6 +77,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
       .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable)
+      .def("set_clients", &FleetWrapper::SetClients)
+      .def("get_client_info", &FleetWrapper::GetClientsInfo)
       .def("create_client2client_connection",
            &FleetWrapper::CreateClient2ClientConnection);
 }
@@ -103,11 +105,13 @@ void BindCommunicatorContext(py::module* m) {
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
                    const std::vector<std::string>&, int, bool, bool, bool, int,
-                   bool>())
+                   bool, bool, int64_t>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
       .def("table_id", [](const CommContext& self) { return self.table_id; })
+      .def("program_id",
+           [](const CommContext& self) { return self.program_id; })
       .def("split_varnames",
            [](const CommContext& self) { return self.splited_varnames; })
       .def("split_endpoints",
@@ -122,6 +126,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.origin_varnames; })
       .def("is_tensor_table",
            [](const CommContext& self) { return self.is_tensor_table; })
+      .def("is_datanorm_table",
+           [](const CommContext& self) { return self.is_datanorm_table; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 
@@ -221,7 +227,7 @@ void BindGraphPyClient(py::module* m) {
       .def("stop_server", &GraphPyClient::stop_server)
       .def("get_node_feat",
            [](GraphPyClient& self, std::string node_type,
-              std::vector<uint64_t> node_ids,
+              std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
@@ -235,7 +241,7 @@ void BindGraphPyClient(py::module* m) {
            })
       .def("set_node_feat",
            [](GraphPyClient& self, std::string node_type,
-              std::vector<uint64_t> node_ids,
+              std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());

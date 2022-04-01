@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -236,7 +236,7 @@ void RunGraphSplit() {
   sleep(2);
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
   dense_regions.insert(
-      std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
+      std::pair<int64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
 
   RunClient(dense_regions, 0, pserver_ptr_->get_service());
@@ -250,16 +250,16 @@ void RunGraphSplit() {
       worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
   srand(time(0));
   pull_status.wait();
-  std::vector<std::vector<uint64_t>> _vs;
+  std::vector<std::vector<int64_t>> _vs;
   std::vector<std::vector<float>> vs;
   pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 10240001024), 4, _vs, vs, true);
+      0, std::vector<int64_t>(1, 10240001024), 4, _vs, vs, true);
   pull_status.wait();
   ASSERT_EQ(0, _vs[0].size());
   _vs.clear();
   vs.clear();
   pull_status = worker_ptr_->batch_sample_neighbors(
-      0, std::vector<uint64_t>(1, 97), 4, _vs, vs, true);
+      0, std::vector<int64_t>(1, 97), 4, _vs, vs, true);
   pull_status.wait();
   ASSERT_EQ(3, _vs[0].size());
   std::remove(edge_file_name);

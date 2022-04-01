@@ -74,7 +74,7 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
                              GetBasePtr(&regularized_grad), use_nesterov,
                              GetBasePtr(learning_rate), GetBasePtr(&mu_tensor),
                              GetBasePtr(param_out), GetBasePtr(velocity_out));
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(false, true, platform::errors::PermissionDenied(
                                          "Unsupport SparseMomentum"));
     } else {

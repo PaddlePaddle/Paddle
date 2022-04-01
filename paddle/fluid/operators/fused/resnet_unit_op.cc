@@ -29,7 +29,7 @@ static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
   int32_t nhw_int32_elems = ((nhw + 31) & ~31);
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
-  return framework::make_ddim(bitmask_shape);
+  return phi::make_ddim(bitmask_shape);
 }
 
 class ResNetUnitOp : public framework::OperatorWithKernel {
@@ -110,11 +110,11 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const auto w_dims = ctx->GetInputDim("FilterX");
     std::vector<int64_t> bn_param_shape =
-        framework::vectorize(ctx->GetInputDim("ScaleX"));
+        phi::vectorize(ctx->GetInputDim("ScaleX"));
     if (1 == bn_param_shape.size()) {
       bn_param_shape = {1, 1, 1, bn_param_shape[0]};
     }
-    framework::DDim bn_param_dims = framework::make_ddim(bn_param_shape);
+    framework::DDim bn_param_dims = phi::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(x_dims.size(), 4, platform::errors::InvalidArgument(
                                             "The dimensions of input "
                                             "must equal to 4."
@@ -153,7 +153,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
     std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
 
-    auto y_dims = framework::make_ddim(out_shape);
+    auto y_dims = phi::make_ddim(out_shape);
     auto bitmask_dims = GetBitmaskDims(out_shape);
     // Set dims of outputs
     ctx->SetOutputDim("Y", y_dims);

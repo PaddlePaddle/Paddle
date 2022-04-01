@@ -19,24 +19,25 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/core/selected_rows.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/selected_rows.h"
 
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full_like, CPU, ALL_LAYOUT);
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
 TEST(GradTensorHolder, Constructor) {
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder = GradTensorHolder({slot_meta});
   GradTensorHolder grad_tensor_holder2 = GradTensorHolder(grad_tensor_holder);
 
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({2, 2}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({2, 2}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -51,9 +52,9 @@ TEST(GradTensorHolder, Constructor) {
 
 TEST(GradTensorHolder, Interfaces) {
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-  std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -61,7 +62,7 @@ TEST(GradTensorHolder, Interfaces) {
   dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
   paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
-  std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
+  std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -70,8 +71,7 @@ TEST(GradTensorHolder, Interfaces) {
   paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
   // Constructor empty GradTensorHolder
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
 
@@ -94,10 +94,10 @@ TEST(GradTensorHolder, Interfaces) {
   const auto& holder_et1 = grad_tensor_holder[1][0];
 
   auto* holder_et0_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(holder_et0.impl())
+      std::dynamic_pointer_cast<phi::DenseTensor>(holder_et0.impl())
           ->data<float>();
   auto* holder_et1_ptr =
-      std::dynamic_pointer_cast<pten::DenseTensor>(holder_et1.impl())
+      std::dynamic_pointer_cast<phi::DenseTensor>(holder_et1.impl())
           ->data<float>();
 
   CHECK_EQ(holder_et0_ptr[0], 1.0f);
@@ -105,18 +105,17 @@ TEST(GradTensorHolder, Interfaces) {
 }
 
 TEST(GradTensorHolder, SelectedRowsMergeAdd) {
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
 
   std::vector<int64_t> rows{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   int64_t table_size = 10;
   int64_t embedding_width = 10;
 
-  auto sr1 = std::make_shared<pten::SelectedRows>(rows, table_size);
-  auto sr2 = std::make_shared<pten::SelectedRows>(rows, table_size);
+  auto sr1 = std::make_shared<phi::SelectedRows>(rows, table_size);
+  auto sr2 = std::make_shared<phi::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(
-      pten::framework::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -125,21 +124,19 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(
-      pten::framework::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
       data_sr2[i * embedding_width + j] = static_cast<float>(i);
     }
   }
-  // new 2 pten::Tensor
+  // new 2 phi::Tensor
   paddle::experimental::Tensor t1(sr1);
   paddle::experimental::Tensor t2(sr2);
 
   // Constructor empty GradTensorHolder
-  GradSlotMeta slot_meta;
-  slot_meta.Init(1);
+  std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
 
@@ -157,7 +154,7 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   const auto& holder_et0 = grad_tensor_holder[0][0];
 
   auto* tmp_buffer_tensor =
-      static_cast<pten::SelectedRows*>(holder_et0.impl().get());
+      static_cast<phi::SelectedRows*>(holder_et0.impl().get());
   auto* tmp_buffer_data_sr =
       tmp_buffer_tensor->mutable_value()->mutable_data<float>(cpu);
 

@@ -11,12 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#include "paddle/fluid/operators/p_norm_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -81,68 +84,11 @@ where, $\sum_i $ is calculated along the `axis` dimension.
 class PnormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "p_norm");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "p_norm");
-    auto x_dim = ctx->GetInputDim("X");
-    auto x_rank = x_dim.size();
-    int axis = ctx->Attrs().Get<int>("axis");
-    bool keepdim = ctx->Attrs().Get<bool>("keepdim");
-
-    PADDLE_ENFORCE_GE(axis, -x_rank,
-                      platform::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-R, R-1], R is "
-                          "the rank of Input(X). But received axis: %d, R: %d. "
-                          "Current Input(X)'s shape is=[%s].",
-                          axis, x_rank, x_dim));
-    PADDLE_ENFORCE_LT(axis, x_rank,
-                      platform::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-R, R-1], R is "
-                          "the rank of Input(X). But received axis: %d, R: %d. "
-                          "Current Input(X)'s shape is=[%s].",
-                          axis, x_rank, x_dim));
-
-    std::vector<int> reduce_dims;
-    bool asvector = ctx->Attrs().Get<bool>("asvector");
-    if (asvector) {
-      reduce_dims.emplace_back(1);
-      if (keepdim) {
-        for (int i = 1; i < x_dim.size(); ++i) {
-          reduce_dims.emplace_back(1);
-        }
-        x_dim = framework::make_ddim(reduce_dims);
-      }
-    } else {
-      if (axis < 0) axis = x_dim.size() + axis;
-      for (int i = 0; i < x_dim.size(); ++i) {
-        if (i != axis) reduce_dims.emplace_back(x_dim[i]);
-      }
-      if (reduce_dims.size() == 0) {
-        reduce_dims.emplace_back(1);
-      }
-    }
-    x_dim[axis] = 1;
-
-    if (keepdim) {
-      ctx->SetOutputDim("Out", x_dim);
-    } else {
-      ctx->SetOutputDim("Out", framework::make_ddim(reduce_dims));
-    }
-  }
 };
 
 class PnormOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "p_norm");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "p_norm");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "p_norm");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "p_norm");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
 };
 
 template <typename T>
@@ -167,14 +113,17 @@ class PnormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
+DECLARE_INFER_SHAPE_FUNCTOR(p_norm, PNormInferShapeFunctor,
+                            PD_INFER_META(phi::PNormInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(p_norm_grad, PNormGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
+
 REGISTER_OPERATOR(p_norm, ops::PnormOp, ops::PnormOpMaker,
                   ops::PnormOpGradOpMaker<paddle::framework::OpDesc>,
-                  ops::PnormOpGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(p_norm_grad, ops::PnormOpGrad);
-REGISTER_OP_CPU_KERNEL(p_norm, ops::PnormKernel<CPU, float>,
-                       ops::PnormKernel<CPU, double>);
-REGISTER_OP_CPU_KERNEL(p_norm_grad, ops::PnormGradKernel<CPU, float>,
-                       ops::PnormGradKernel<CPU, double>);
+                  ops::PnormOpGradOpMaker<paddle::imperative::OpBase>,
+                  PNormInferShapeFunctor);
+REGISTER_OPERATOR(p_norm_grad, ops::PnormOpGrad, PNormGradInferShapeFunctor);
+
 REGISTER_OP_VERSION(p_norm)
     .AddCheckpoint(
         R"ROC(

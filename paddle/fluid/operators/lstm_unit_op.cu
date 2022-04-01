@@ -19,7 +19,7 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.c
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cross_entropy_op.h"
 #include "paddle/fluid/operators/lstm_unit_op.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

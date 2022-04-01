@@ -21,29 +21,64 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// CPU event tracing. A trace marks something that happens but has no duration
+// Default tracing level.
+// It is Recommended to set the level explicitly.
+static constexpr uint32_t kDefaultTraceLevel = 4;
+
+// Host event tracing. A trace marks something that happens but has no duration
 // associated with it. For example, thread starts working.
 // Chrome Trace Viewer Format: Instant Event
 struct RecordInstantEvent {
+  /**
+   * @param name: It is the caller's reponsibility to manage the underlying
+   * storage. RecordInstantEvent stores the pointer.
+   * @param type: Classification which is used to instruct the profiling
+   * data statistics.
+   * @param level: Used to filter events, works like glog VLOG(level).
+   * RecordEvent will works if HostTraceLevel >= level.
+   */
   explicit RecordInstantEvent(const char* name, TracerEventType type,
-                              uint32_t level = 1);
+                              uint32_t level = kDefaultTraceLevel);
 };
 
-// CPU event tracing. A trace starts when an object of this clas is created and
+// Host event tracing. A trace starts when an object of this clas is created and
 // stops when the object is destroyed.
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
-  explicit RecordEvent(const std::string& name,
-                       const EventRole role = EventRole::kOrdinary,
-                       uint32_t level = 1);
+  /**
+   * @param name: If your string argument has a longer lifetime (e.g.: string
+   * literal, static variables, etc) than the event, use 'const char* name'.
+   * Do your best to avoid using 'std::string' as the argument type. It will
+   * cause deep-copy to harm performance.
+   * @param type: Classification which is used to instruct the profiling
+   * data statistics.
+   * @param level: Used to filter events, works like glog VLOG(level).
+   * RecordEvent will works if HostTraceLevel >= level.
+   */
+  explicit RecordEvent(
+      const std::string& name,
+      const TracerEventType type = TracerEventType::UserDefined,
+      uint32_t level = kDefaultTraceLevel,
+      const EventRole role = EventRole::kOrdinary);
 
-  explicit RecordEvent(const char* name,
-                       const EventRole role = EventRole::kOrdinary,
-                       uint32_t level = 1);
+  /**
+   * @param name: It is the caller's reponsibility to manage the underlying
+   * storage. RecordEvent stores the pointer.
+   * @param type: Classification which is used to instruct the profiling
+   * data statistics.
+   * @param level: Used to filter events, works like glog VLOG(level).
+   * RecordEvent will works if HostTraceLevel >= level.
+   */
+  explicit RecordEvent(const char* name, const TracerEventType type =
+                                             TracerEventType::UserDefined,
+                       uint32_t level = kDefaultTraceLevel,
+                       const EventRole role = EventRole::kOrdinary);
 
-  RecordEvent(const std::string& name, const EventRole role,
-              const std::string& attr, uint32_t level = 1);
+  RecordEvent(const std::string& name, const std::string& attr,
+              const TracerEventType type = TracerEventType::UserDefined,
+              uint32_t level = kDefaultTraceLevel,
+              const EventRole role = EventRole::kOrdinary);
 
   // Stop event tracing explicitly before the object goes out of scope.
   // Sometimes it's inconvenient to use RAII
@@ -65,6 +100,7 @@ class RecordEvent {
   // different kernel invocations within an op.
   // std::string full_name_;
   EventRole role_{EventRole::kOrdinary};
+  TracerEventType type_{TracerEventType::UserDefined};
   std::string* attr_{nullptr};
   bool finished_{false};
 };

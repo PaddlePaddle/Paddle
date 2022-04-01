@@ -136,7 +136,7 @@ class FillDiagonalTensorKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*xin, ctx.GetPlace(), out);
     auto out_dims = out->dims();
     auto matdims = srctensor->dims();
-    auto fill_dims = flatten_to_2d(matdims, matdims.size() - 1);
+    auto fill_dims = phi::flatten_to_2d(matdims, matdims.size() - 1);
 
     int64_t new_dims[2], strides[2];
     std::vector<int64_t> matdim;

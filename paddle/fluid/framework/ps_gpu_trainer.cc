@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <google/protobuf/text_format.h>
 #include <cstdlib>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
@@ -44,6 +46,7 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
       dense_grad_names_[table_id][j] = table.dense_grad_name(j);
     }
   }
+  InitializeGPUServer(trainer_desc);
   scale_datanorm_ = trainer_desc.scale_datanorm();
   int place_num = trainer_desc.worker_places_size();
   const std::vector<paddle::framework::DataFeed*> readers =
@@ -82,6 +85,166 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->SetWorkerNum(place_num);
   }
   return;
+}
+
+void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
+  // add for hbmps optimizer config
+  auto fleet_desc_str = trainer_desc.fleet_desc();
+  google::protobuf::TextFormat::ParseFromString(fleet_desc_str, &_ps_param);
+  auto sparse_table =
+      _ps_param.server_param().downpour_server_param().downpour_table_param(0);
+  auto sparse_table_accessor = sparse_table.accessor();
+  auto sparse_table_accessor_parameter =
+      sparse_table_accessor.downpour_accessor_param();
+  auto accessor_class = sparse_table_accessor.accessor_class();
+  // gpups' sparse table optimizer config
+  // now only support single sparse table
+  // auto sparse_table = param_.sparse_table(0);
+  std::unordered_map<std::string, float> config;
+  if (accessor_class == "DownpourFeatureValueAccessor" ||
+      accessor_class == "DownpourCtrAccessor" ||
+      accessor_class == "DownpourCtrDoubleAccessor") {
+    config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
+    config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
+    config["learning_rate"] =
+        sparse_table_accessor.sparse_sgd_param().learning_rate();
+    config["initial_g2sum"] =
+        sparse_table_accessor.sparse_sgd_param().initial_g2sum();
+    config["initial_range"] =
+        sparse_table_accessor.sparse_sgd_param().initial_range();
+    if (sparse_table_accessor.sparse_sgd_param().weight_bounds_size() == 2) {
+      config["min_bound"] =
+          sparse_table_accessor.sparse_sgd_param().weight_bounds()[0];
+      config["max_bound"] =
+          sparse_table_accessor.sparse_sgd_param().weight_bounds()[1];
+    }
+    config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
+  } else if (accessor_class == "DownpourSparseValueAccessor") {
+    auto optimizer_name = sparse_table_accessor.sparse_commonsgd_param().name();
+    if (optimizer_name == "naive") {
+      config["learning_rate"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .naive()
+                                    .learning_rate();
+      config["initial_range"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .naive()
+                                    .initial_range();
+      if (sparse_table_accessor.sparse_commonsgd_param()
+              .naive()
+              .weight_bounds_size() == 2) {
+        config["min_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                  .naive()
+                                  .weight_bounds()[0];
+        config["max_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                  .naive()
+                                  .weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adagrad") {
+      config["learning_rate"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adagrad()
+                                    .learning_rate();
+      config["initial_range"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adagrad()
+                                    .initial_range();
+      config["initial_g2sum"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adagrad()
+                                    .initial_g2sum();
+      if (sparse_table_accessor.sparse_commonsgd_param()
+              .adagrad()
+              .weight_bounds_size() == 2) {
+        config["min_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                  .adagrad()
+                                  .weight_bounds()[0];
+        config["max_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                  .adagrad()
+                                  .weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adam") {
+      config["learning_rate"] =
+          sparse_table_accessor.sparse_commonsgd_param().adam().learning_rate();
+      config["initial_range"] =
+          sparse_table_accessor.sparse_commonsgd_param().adam().initial_range();
+      if (sparse_table_accessor.sparse_commonsgd_param()
+              .adam()
+              .weight_bounds_size() == 2) {
+        config["min_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                  .adam()
+                                  .weight_bounds()[0];
+        config["max_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                  .adam()
+                                  .weight_bounds()[1];
+      }
+    }
+  } else if (accessor_class == "DownpourUnitAccessor" ||
+             accessor_class == "DownpourDoubleUnitAccessor") {
+    config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
+    config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
+    auto optimizer_name = sparse_table_accessor.embedx_sgd_param().name();
+    if (optimizer_name == "naive") {
+      config["mf_learning_rate"] =
+          sparse_table_accessor.embedx_sgd_param().naive().learning_rate();
+      config["mf_initial_range"] =
+          sparse_table_accessor.embedx_sgd_param().naive().initial_range();
+      if (sparse_table_accessor.embedx_sgd_param()
+              .naive()
+              .weight_bounds_size() == 2) {
+        config["mf_min_bound"] =
+            sparse_table_accessor.embedx_sgd_param().naive().weight_bounds()[0];
+        config["mf_max_bound"] =
+            sparse_table_accessor.embedx_sgd_param().naive().weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adagrad") {
+      config["mf_learning_rate"] =
+          sparse_table_accessor.embedx_sgd_param().adagrad().learning_rate();
+      config["mf_initial_range"] =
+          sparse_table_accessor.embedx_sgd_param().adagrad().initial_range();
+      config["mf_initial_g2sum"] =
+          sparse_table_accessor.embedx_sgd_param().adagrad().initial_g2sum();
+      if (sparse_table_accessor.embedx_sgd_param()
+              .adagrad()
+              .weight_bounds_size() == 2) {
+        config["mf_min_bound"] = sparse_table_accessor.embedx_sgd_param()
+                                     .adagrad()
+                                     .weight_bounds()[0];
+        config["mf_max_bound"] = sparse_table_accessor.embedx_sgd_param()
+                                     .adagrad()
+                                     .weight_bounds()[1];
+      }
+    } else if (optimizer_name == "std_adagrad") {
+      config["mf_learning_rate"] =
+          sparse_table_accessor.embedx_sgd_param().adagrad().learning_rate();
+      config["mf_initial_range"] =
+          sparse_table_accessor.embedx_sgd_param().adagrad().initial_range();
+      config["mf_initial_g2sum"] =
+          sparse_table_accessor.embedx_sgd_param().adagrad().initial_g2sum();
+      if (sparse_table_accessor.embedx_sgd_param()
+              .adagrad()
+              .weight_bounds_size() == 2) {
+        config["mf_min_bound"] = sparse_table_accessor.embedx_sgd_param()
+                                     .adagrad()
+                                     .weight_bounds()[0];
+        config["mf_max_bound"] = sparse_table_accessor.embedx_sgd_param()
+                                     .adagrad()
+                                     .weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adam") {
+      config["mf_learning_rate"] =
+          sparse_table_accessor.embedx_sgd_param().adam().learning_rate();
+      config["mf_initial_range"] =
+          sparse_table_accessor.embedx_sgd_param().adam().initial_range();
+      if (sparse_table_accessor.embedx_sgd_param()
+              .adam()
+              .weight_bounds_size() == 2) {
+        config["mf_min_bound"] =
+            sparse_table_accessor.embedx_sgd_param().adam().weight_bounds()[0];
+        config["mf_max_bound"] =
+            sparse_table_accessor.embedx_sgd_param().adam().weight_bounds()[1];
+      }
+    }
+    config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
+  }
+
+  auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+  ps_gpu_wrapper->InitializeGPUServer(config);
 }
 
 std::string PSGPUTrainer::GetDumpPath(int tid) {

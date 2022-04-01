@@ -20,18 +20,18 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 const int kBoxDim = 4;
 
-inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
+inline std::vector<size_t> GetLodFromRoisNum(
+    const framework::Tensor* rois_num) {
   std::vector<size_t> rois_lod;
   auto* rois_num_data = rois_num->data<int>();
-  Tensor cpu_tensor;
+  framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(rois_num->place())) {
     paddle::framework::TensorCopySync(*rois_num, platform::CPUPlace(),
                                       &cpu_tensor);
@@ -93,7 +93,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<size_t> fpn_rois_lod;
     int fpn_rois_num;
     if (context.HasInput("RoisNum")) {
-      auto* rois_num = context.Input<Tensor>("RoisNum");
+      auto* rois_num = context.Input<framework::Tensor>("RoisNum");
       fpn_rois_lod = GetLodFromRoisNum(rois_num);
     } else {
       fpn_rois_lod = fpn_rois->lod().back();
@@ -105,7 +105,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<int> num_rois_level(num_level, 0);
     std::vector<int> num_rois_level_integral(num_level + 1, 0);
     for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
-      Tensor fpn_rois_slice =
+      auto fpn_rois_slice =
           fpn_rois->Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
       const T* rois_data = fpn_rois_slice.data<T>();
       for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
@@ -140,7 +140,7 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<int> restore_index_inter(fpn_rois_num, -1);
     // distribute the rois into different fpn level by target level
     for (size_t i = 0; i < fpn_rois_lod.size() - 1; ++i) {
-      Tensor fpn_rois_slice =
+      auto fpn_rois_slice =
           fpn_rois->Slice(fpn_rois_lod[i], fpn_rois_lod[i + 1]);
       const T* rois_data = fpn_rois_slice.data<T>();
       size_t cur_offset = fpn_rois_lod[i];
@@ -163,7 +163,8 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < fpn_rois_num; ++i) {
       restore_index_data[restore_index_inter[i]] = i;
     }
-    auto multi_rois_num = context.MultiOutput<Tensor>("MultiLevelRoIsNum");
+    auto multi_rois_num =
+        context.MultiOutput<framework::Tensor>("MultiLevelRoIsNum");
     if (multi_rois_num.size() > 0) {
       int batch_size = fpn_rois_lod.size() - 1;
       for (int i = 0; i < num_level; ++i) {

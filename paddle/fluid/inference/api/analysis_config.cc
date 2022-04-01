@@ -83,6 +83,7 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
+
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   int device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -97,8 +98,22 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 
   Update();
 }
+
 void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
+
+  Update();
+}
+
+void AnalysisConfig::Exp_EnableUseGpuFp16(
+    std::unordered_set<std::string> op_list) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  use_gpu_fp16_ = true;
+  gpu_fp16_disabled_op_types_.insert(op_list.begin(), op_list.end());
+#else
+  LOG(ERROR) << "Please compile with gpu to Exp_EnableUseGpuFp16()";
+  use_gpu_fp16_ = false;
+#endif
 
   Update();
 }
@@ -142,17 +157,55 @@ void AnalysisConfig::EnableNpu(int device_id) {
 
   Update();
 }
-void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
-                               int ipu_batches_per_step, int ipu_batch_size,
-                               bool ipu_need_avg_shard) {
+
+void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
+                               bool ipu_enable_pipelining,
+                               int ipu_batches_per_step) {
   enable_ir_optim_ = true;
 
   use_ipu_ = true;
-  ipu_device_num_ = device_num;
+  ipu_device_num_ = ipu_device_num;
+  ipu_micro_batch_size_ = ipu_micro_batch_size;
   ipu_enable_pipelining_ = ipu_enable_pipelining;
   ipu_batches_per_step_ = ipu_batches_per_step;
-  ipu_batch_size_ = ipu_batch_size;
-  ipu_need_avg_shard_ = ipu_need_avg_shard;
+
+  Update();
+}
+
+void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16, int ipu_replica_num,
+                                  float ipu_available_memory_proportion,
+                                  bool ipu_enable_half_partial) {
+  ipu_enable_fp16_ = ipu_enable_fp16;
+  ipu_replica_num_ = ipu_replica_num;
+  ipu_available_memory_proportion_ = ipu_available_memory_proportion;
+  ipu_enable_half_partial_ = ipu_enable_half_partial;
+
+  Update();
+}
+
+void AnalysisConfig::EnableONNXRuntime() {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  use_onnxruntime_ = true;
+#else
+  LOG(ERROR) << "Please compile with onnxruntime to EnableONNXRuntime()";
+  use_onnxruntime_ = false;
+#endif
+
+  Update();
+}
+
+void AnalysisConfig::DisableONNXRuntime() {
+  use_onnxruntime_ = false;
+  Update();
+}
+
+void AnalysisConfig::EnableORTOptimization() {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  enable_ort_optimization_ = true;
+#else
+  LOG(ERROR) << "Please compile with onnxruntime to EnableORTOptimization()";
+  enable_ort_optimization_ = false;
+#endif
 
   Update();
 }
@@ -175,6 +228,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
+  CP_MEMBER(use_gpu_fp16_);
+  CP_MEMBER(gpu_fp16_disabled_op_types_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -255,10 +310,16 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // ipu related
   CP_MEMBER(use_ipu_);
   CP_MEMBER(ipu_device_num_);
+  CP_MEMBER(ipu_micro_batch_size_);
   CP_MEMBER(ipu_enable_pipelining_);
   CP_MEMBER(ipu_batches_per_step_);
-  CP_MEMBER(ipu_batch_size_);
-  CP_MEMBER(ipu_need_avg_shard_);
+  CP_MEMBER(ipu_enable_fp16_);
+  CP_MEMBER(ipu_replica_num_);
+  CP_MEMBER(ipu_available_memory_proportion_);
+  CP_MEMBER(ipu_enable_half_partial_);
+
+  // fleet exe related
+  CP_MEMBER(dist_config_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -529,6 +590,20 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_gpu_fp16_) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "Exp_EnableUseGpuFp16() only works when IR optimization is "
+                    "enabled.";
+    } else if (!use_gpu()) {
+      LOG(ERROR)
+          << "Exp_EnableUseGpuFp16() only works when use_gpu is enabled.";
+    } else {
+      pass_builder()->Exp_EnableUseGpuFp16();
+    }
+#endif
+  }
+
   if (use_mkldnn_) {
 #ifdef PADDLE_WITH_MKLDNN
     if (!enable_ir_optim_) {
@@ -625,6 +700,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_gpu_fp16_;
+  for (auto &item : gpu_fp16_disabled_op_types_) ss << item;
   ss << use_fc_padding_;
   ss << gpu_device_id_;
   ss << xpu_device_id_;
@@ -684,10 +761,13 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_ipu_;
   ss << ipu_device_num_;
+  ss << ipu_micro_batch_size_;
   ss << ipu_enable_pipelining_;
   ss << ipu_batches_per_step_;
-  ss << ipu_batch_size_;
-  ss << ipu_need_avg_shard_;
+  ss << ipu_enable_fp16_;
+  ss << ipu_replica_num_;
+  ss << ipu_available_memory_proportion_;
+  ss << ipu_enable_half_partial_;
 
   return ss.str();
 }

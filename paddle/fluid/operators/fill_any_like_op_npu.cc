@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_any_like_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -54,7 +54,7 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
         std::isnan(value), false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
-    Tensor tensor_tmp(framework::TransToPtenDataType(data_type));
+    Tensor tensor_tmp(framework::TransToPhiDataType(data_type));
     tensor_tmp.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value));
 
@@ -65,7 +65,7 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
     auto shape = out->dims();
     NpuOpRunner runner;
     runner.SetType("Fill")
-        .AddInput(framework::vectorize(shape))
+        .AddInput(phi::vectorize(shape))
         .AddInput(tensor_tmp)
         .AddOutput(*out)
         .Run(stream);

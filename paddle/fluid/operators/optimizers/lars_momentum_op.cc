@@ -76,11 +76,11 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
                      "MasterParamOut", "LarsMomentumMultiPrecision");
     }
     for (size_t i = 0; i < lr_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(framework::product(lr_dims[i]), 1,
+      PADDLE_ENFORCE_EQ(phi::product(lr_dims[i]), 1,
                         platform::errors::InvalidArgument(
                             "Learning_rate should be a scalar. But Received "
                             "LearningRate's dim [%s]",
-                            framework::product(lr_dims[i])));
+                            phi::product(lr_dims[i])));
     }
 
     for (size_t i = 0; i < param_dim.size(); ++i) {

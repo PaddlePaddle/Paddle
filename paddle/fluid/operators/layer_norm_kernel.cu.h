@@ -22,10 +22,10 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace paddle {
 namespace operators {
@@ -186,8 +186,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     const ScaleT *__restrict__ gamma_ptr, const ScaleT *__restrict__ beta_ptr,
     U *__restrict__ mean_out_ptr, U *__restrict__ var_out_ptr,
     T *__restrict__ y_ptr) {
-  using Vec = platform::AlignedVector<T, VecSize>;
-  using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
+  using Vec = phi::AlignedVector<T, VecSize>;
+  using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -203,8 +203,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
   Vec_scale beta[LDGS];
 #pragma unroll
   for (int it = 0, col = c; it < LDGS; it++) {
-    platform::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
-    platform::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
+    phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+    phi::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
     col += THREADS_PER_ROW;
   }
 
@@ -213,8 +213,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
     Vec x[LDGS];
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize,
-                                 &x[it]);
+      phi::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize, &x[it]);
       col += THREADS_PER_ROW;
     }
     U xf[LDGS * VecSize];
@@ -276,8 +275,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_fwd_1024_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Store<T, VecSize>(x[it],
-                                  y_ptr + row * LN_NUM_COLS + col * VecSize);
+      phi::Store<T, VecSize>(x[it], y_ptr + row * LN_NUM_COLS + col * VecSize);
       col += THREADS_PER_ROW;
     }
   }
@@ -401,9 +399,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     U *__restrict__ dgamma_temp_ptr, U *__restrict__ dbeta_temp_ptr,
     T *__restrict__ dx_ptr, const MaskType *mask_ptr = nullptr,
     T factor = static_cast<T>(0), T *d_dropout_src_ptr = nullptr) {
-  using Vec = platform::AlignedVector<T, VecSize>;
-  using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
-  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
+  using Vec = phi::AlignedVector<T, VecSize>;
+  using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
+  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -439,7 +437,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
   int col = c;
 #pragma unroll
   for (int it = 0; it < LDGS; it++) {
-    platform::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+    phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
     col += THREADS_PER_ROW;
   }
 
@@ -452,12 +450,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     int col = c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
-      platform::Load<T, VecSize>(dout_ptr + row * LN_NUM_COLS + col * VecSize,
-                                 &dout[it]);
-      platform::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize,
-                                 &x[it]);
+      phi::Load<T, VecSize>(dout_ptr + row * LN_NUM_COLS + col * VecSize,
+                            &dout[it]);
+      phi::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize, &x[it]);
       if (isFusedDropoutResidualLn) {
-        platform::Load<MaskType, VecSize>(
+        phi::Load<MaskType, VecSize>(
             mask_ptr + row * LN_NUM_COLS + col * VecSize, &mask_vec[it]);
       }
 
@@ -474,11 +471,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     for (int it = 0; it < LDGS; it++) {
 #pragma unroll
       for (int jt = 0; jt < VecSize; jt++) {
-        U x_tmp = x[it][jt];
+        U x_tmp = static_cast<U>(x[it][jt]);
         U y_tmp = var_cur_row * (x_tmp - mean_cur_row);
         U dy_tmp = static_cast<U>(gamma[it][jt]) *
-                   static_cast<U>(dout[it][jt]);  // scale * dy
-        U dout_tmp = dout[it][jt];                // dy
+                   static_cast<U>(dout[it][jt]);    // scale * dy
+        U dout_tmp = static_cast<U>(dout[it][jt]);  // dy
 
         // used for get dx (row reduction)
         sum_loss1 += dy_tmp;          // scale * dy, sum_1
@@ -552,10 +549,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     col = c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
-      platform::Store<T, VecSize>(x[it],
-                                  dx_ptr + row * LN_NUM_COLS + col * VecSize);
+      phi::Store<T, VecSize>(x[it], dx_ptr + row * LN_NUM_COLS + col * VecSize);
       if (isFusedDropoutResidualLn) {
-        platform::Store<T, VecSize>(
+        phi::Store<T, VecSize>(
             dout[it], d_dropout_src_ptr + row * LN_NUM_COLS + col * VecSize);
       }
       col += THREADS_PER_ROW;
@@ -641,7 +637,7 @@ template <
 __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
     const int rows, U *__restrict__ dg_part_, U *__restrict__ db_part_,
     ScaleT *__restrict__ dg_, ScaleT *__restrict__ db_) {
-  using Vec = platform::AlignedVector<U, VecSize>;
+  using Vec = phi::AlignedVector<U, VecSize>;
   static_assert(VEC_COLS == LN_NUM_COLS / VecSize, "");
 
   const int tidx = threadIdx.x;
@@ -669,8 +665,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
     for (int row = r; row < rows; row += ROWS_PER_CTA) {
       Vec dg;
       Vec db;
-      platform::Load<U, VecSize>(dg_part_ptr, &dg);
-      platform::Load<U, VecSize>(db_part_ptr, &db);
+      phi::Load<U, VecSize>(dg_part_ptr, &dg);
+      phi::Load<U, VecSize>(db_part_ptr, &db);
       dg_part_ptr += ROWS_PER_CTA * LN_NUM_COLS;
       db_part_ptr += ROWS_PER_CTA * LN_NUM_COLS;
 
@@ -762,12 +758,14 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_1024_final_kernel(
 */
 template <typename T, typename U, typename ScaleT = U,
           typename MaskType = uint8_t>
-void ln_bwd_1024_kernel_driver(
-    const platform::CUDADeviceContext &dev_ctx, const int rows, const int cols,
-    float epsilon, const T *x_ptr, const ScaleT *scale_ptr, const U *mean_ptr,
-    const U *var_ptr, const T *dout_ptr, T *dx_ptr, ScaleT *dscale_ptr,
-    ScaleT *dbias_ptr, const MaskType *mask_ptr = nullptr,
-    T factor = static_cast<T>(0), T *d_dropout_src_ptr = nullptr) {
+void ln_bwd_1024_kernel_driver(const phi::GPUContext &dev_ctx, const int rows,
+                               const int cols, float epsilon, const T *x_ptr,
+                               const ScaleT *scale_ptr, const U *mean_ptr,
+                               const U *var_ptr, const T *dout_ptr, T *dx_ptr,
+                               ScaleT *dscale_ptr, ScaleT *dbias_ptr,
+                               const MaskType *mask_ptr = nullptr,
+                               T factor = static_cast<T>(0),
+                               T *d_dropout_src_ptr = nullptr) {
   auto stream = dev_ctx.stream();
   if (cols == 1024) {
     // step-1: compute dx and reduced part results of dscale and dbias.
@@ -1338,8 +1336,7 @@ static void LayerNormBackward(
     const U *mean, const U *var, T *d_x,
     LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_scale,
     LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_bias, float epsilon,
-    int64_t batch_size, int64_t feature_size,
-    const platform::CUDADeviceContext &dev_ctx) {
+    int64_t batch_size, int64_t feature_size, const phi::GPUContext &dev_ctx) {
   auto stream = dev_ctx.stream();
 #ifdef __HIPCC__
   const int kMaxBlockDim = 256;

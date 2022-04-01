@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -33,45 +33,6 @@ class MatrixSolveFunctor<platform::CPUDeviceContext, T> {
 
 template class MatrixSolveFunctor<platform::CPUDeviceContext, float>;
 template class MatrixSolveFunctor<platform::CPUDeviceContext, double>;
-
-template <typename T>
-class TriangularSolveFunctor<platform::CPUDeviceContext, T> {
- public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor* a, framework::Tensor* b, bool left,
-                  bool upper, bool transpose, bool unitriangular) {
-    CBLAS_SIDE side = left ? CblasLeft : CblasRight;
-    CBLAS_UPLO uplo = upper ? CblasUpper : CblasLower;
-    CBLAS_TRANSPOSE transA = transpose ? CblasTrans : CblasNoTrans;
-    CBLAS_DIAG diag = unitriangular ? CblasUnit : CblasNonUnit;
-
-    const T* a_data = a->data<T>();
-    T* b_data = b->mutable_data<T>(context.GetPlace());
-
-    int a_dim_size = a->dims().size();
-    int b_dim_size = b->dims().size();
-
-    int M = static_cast<int>(b->dims()[b_dim_size - 2]);
-    int N = static_cast<int>(b->dims()[b_dim_size - 1]);
-    auto lda = left ? std::max(1, M) : std::max(1, N);
-    auto ldb = std::max(1, N);
-
-    int batch_size = 1;
-    auto& a_dim = a->dims();
-    for (int i = 0; i < a_dim_size - 2; i++) {
-      batch_size *= a_dim[i];
-    }
-
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    for (int i = 0; i < batch_size; i++) {
-      blas.TRSM(side, uplo, transA, diag, M, N, T(1), a_data + i * M * M, lda,
-                b_data + i * N * M, ldb);
-    }
-  }
-};
-
-template class TriangularSolveFunctor<platform::CPUDeviceContext, float>;
-template class TriangularSolveFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

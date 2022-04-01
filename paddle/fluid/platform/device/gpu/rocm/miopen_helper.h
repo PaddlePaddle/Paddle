@@ -141,6 +141,23 @@ class CudnnDataType<float16> {
 };
 
 template <>
+class CudnnDataType<bfloat16> {
+ public:
+  static const miopenDataType_t type = miopenBFloat16;
+  // The scaling param type is float for HALF and FLOAT tensors
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+
+template <>
 class CudnnDataType<float> {
  public:
   static const miopenDataType_t type = miopenFloat;

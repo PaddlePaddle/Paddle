@@ -17,13 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace fw = paddle::framework;
 namespace plat = paddle::platform;
-namespace math = paddle::operators::math;
 
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MLU);
 
 // relu

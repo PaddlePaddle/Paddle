@@ -16,8 +16,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/operators/erf_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,18 +30,6 @@ class ErfOp : public framework::OperatorWithKernel {
         const framework::VariableNameMap &outputs,
         const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(%s) of ErfOp should not be null.", "X"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(%s) of ErfOp should not be null.", "Out"));
-
-    ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -116,28 +106,10 @@ class ErfGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(erf, ErfInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(erf, ops::ErfOp, ops::ErfOpMaker,
                   ops::ErfGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ErfGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ErfGradOpMaker<paddle::imperative::OpBase>,
+                  ErfInferShapeFunctor);
 REGISTER_OPERATOR(erf_grad, ops::ErfGradOp);
-REGISTER_OP_CPU_KERNEL(
-    erf, ops::ErfKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ErfKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ErfKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::float16>);
-REGISTER_OP_CPU_KERNEL(
-    erf_grad, ops::ErfGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ErfGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ErfGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::float16>);
-
-REGISTER_OP_CUDA_KERNEL(
-    erf, ops::ErfKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ErfKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ErfKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    erf_grad, ops::ErfGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ErfGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ErfGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::float16>);

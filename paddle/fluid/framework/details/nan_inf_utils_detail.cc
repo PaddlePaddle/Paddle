@@ -322,8 +322,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<pten::SelectedRows>()) {
-    tensor = &var->Get<pten::SelectedRows>().value();
+  } else if (var->IsType<phi::SelectedRows>()) {
+    tensor = &var->Get<phi::SelectedRows>().value();
   } else {
     VLOG(10) << var_name << " var_name need not to check";
     return;
@@ -422,8 +422,11 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 bool IsSkipOp(const framework::OperatorBase& op) {
   if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
 
-  int op_role = op.template Attr<int>(
-      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+  int op_role = 0;
+  if (op.HasAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName())) {
+    op_role = op.template Attr<int>(
+        framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+  }
 
   // kForward=0, can't filter
   if (op_role == static_cast<int>(framework::OpRole::kForward)) {
@@ -471,8 +474,8 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
     tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<pten::SelectedRows>()) {
-    tensor = &var->Get<pten::SelectedRows>().value();
+  } else if (var->IsType<phi::SelectedRows>()) {
+    tensor = &var->Get<phi::SelectedRows>().value();
   } else {
     VLOG(10) << var_name << " var_name need not to check";
     return;

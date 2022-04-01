@@ -9,9 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/roi_align_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -54,7 +54,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
     framework::NPUAttributeMap attr_cast = {{"dst_type", dtype}};
     Tensor ROIsNum_fp(ROIs->dtype());
-    ROIsNum_fp.Resize(framework::make_ddim({ROIs->dims()[0], 1}));
+    ROIsNum_fp.Resize(phi::make_ddim({ROIs->dims()[0], 1}));
     ROIsNum_fp.mutable_data<T>(ctx.GetPlace());
 
     const auto& runner_c =
@@ -68,7 +68,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     auto axis = 1;
     // output of concate
     Tensor ROIs_N5(ROIs->dtype());
-    ROIs_N5.Resize(framework::make_ddim({ROIs->dims()[0], 5}));
+    ROIs_N5.Resize(phi::make_ddim({ROIs->dims()[0], 5}));
     ROIs_N5.mutable_data<T>(ctx.GetPlace());
 
     // attribute of concate
@@ -169,7 +169,7 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     int roi_end_mode = 0;
     const auto& runner_roi_align_grad =
         NpuOpRunner("ROIAlignGrad", {*out_grad, ROIs_N5}, {*in_grad},
-                    {{"xdiff_shape", framework::vectorize<int>(in_dims)},
+                    {{"xdiff_shape", phi::vectorize<int>(in_dims)},
                      {"pooled_width", pooled_width},
                      {"pooled_height", pooled_height},
                      {"spatial_scale", spatial_scale},

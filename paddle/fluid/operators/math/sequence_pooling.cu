@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -168,41 +168,42 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
     const size_t item_dim = output->numel() / output->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
+    paddle::framework::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_kernel<
           T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           MaxPoolFunctor<T>(), input.data<T>(), pad_value,
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_kernel<
           T, AvgPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           AvgPoolFunctor<T>(), input.data<T>(), pad_value,
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_kernel<
           T, SumPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           SumPoolFunctor<T>(), input.data<T>(), pad_value,
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_kernel<
           T, SqrtPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           SqrtPoolFunctor<T>(), input.data<T>(), pad_value,
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_kernel<
           T, LastPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           LastPoolFunctor<T>(), input.data<T>(), pad_value,
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_kernel<
           T, FirstPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           FirstPoolFunctor<T>(), input.data<T>(), pad_value,
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -335,41 +336,42 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
+    paddle::framework::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_grad_kernel<
           T, MaxPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           MaxPoolGradFunctor<T>(), out_grad.data<T>(),
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_grad_kernel<
           T, AvgPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           AvgPoolGradFunctor<T>(), out_grad.data<T>(),
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_grad_kernel<
           T, SumPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           SumPoolGradFunctor<T>(), out_grad.data<T>(),
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_grad_kernel<
           T, SqrtPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           SqrtPoolGradFunctor<T>(), out_grad.data<T>(),
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_grad_kernel<
           T, LastPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           LastPoolGradFunctor<T>(), out_grad.data<T>(),
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_grad_kernel<
           T, FirstPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           FirstPoolGradFunctor<T>(), out_grad.data<T>(),
-          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          mix_vector.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
 
     } else {

@@ -33,7 +33,6 @@ class BaseLogger {
   virtual void LogHostTraceEventNode(const HostTraceEventNode&) {}
   virtual void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) {}
   virtual void LogNodeTrees(const NodeTrees&) {}
-  virtual void LogMetaInfo() {}
 };
 
 }  // namespace platform

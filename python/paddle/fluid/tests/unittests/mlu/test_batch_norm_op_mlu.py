@@ -29,6 +29,7 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 _set_use_system_allocator(True)
+paddle.enable_static()
 
 
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
@@ -698,5 +699,4 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

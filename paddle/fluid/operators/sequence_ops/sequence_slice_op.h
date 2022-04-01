@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -117,8 +117,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     out->set_lod(out_lod);
 
-    auto in_stride = framework::stride(in->dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = phi::stride(in->dims());
+    auto out_stride = phi::stride(out->dims());
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
@@ -168,7 +168,7 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
       x_grad->set_lod(in->lod());
-      pten::funcs::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), x_grad,
                static_cast<T>(0));
 
@@ -177,9 +177,9 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
         Tensor out_grad_t =
             out_grad->Slice(static_cast<int>(out_lod[0][i]),
                             static_cast<int>(out_lod[0][i + 1]));
-        auto out_grad_stride = framework::stride(out_grad_t.dims());
+        auto out_grad_stride = phi::stride(out_grad_t.dims());
 
-        auto x_grad_stride = framework::stride(x_grad->dims());
+        auto x_grad_stride = phi::stride(x_grad->dims());
 
         Tensor x_grad_t = x_grad->Slice(
             static_cast<int>(lod[0][i] + offset_data[i]),

@@ -17,10 +17,14 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+#include "paddle/phi/core/ddim.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -29,43 +33,6 @@ using DDim = framework::DDim;
 class QrOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "qr");
-    OP_INOUT_CHECK(ctx->HasOutput("Q"), "Output", "Q", "qr");
-    OP_INOUT_CHECK(ctx->HasOutput("R"), "Output", "R", "qr");
-
-    auto x_dims = ctx->GetInputDim("X");
-    int x_rank = x_dims.size();
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "the rank of input must greater than 2"));
-    bool compute_q;
-    bool reduced_mode;
-    int m = x_dims[x_rank - 2];
-    int n = x_dims[x_rank - 1];
-    int min_mn = std::min(m, n);
-    std::string mode = ctx->Attrs().Get<std::string>("mode");
-    std::tie(compute_q, reduced_mode) = _parse_qr_mode(mode);
-
-    if (compute_q) {
-      int k = reduced_mode ? min_mn : m;
-      auto q_dims_vec = framework::vectorize(x_dims);
-      q_dims_vec[q_dims_vec.size() - 1] = k;
-      ctx->SetOutputDim("Q", framework::make_ddim(q_dims_vec));
-    } else {
-      ctx->SetOutputDim("Q", framework::make_ddim({0}));
-    }
-
-    int k = reduced_mode ? min_mn : m;
-    auto r_dims_vec = framework::vectorize(x_dims);
-    r_dims_vec[r_dims_vec.size() - 2] = k;
-    r_dims_vec[r_dims_vec.size() - 1] = n;
-    ctx->SetOutputDim("R", framework::make_ddim(r_dims_vec));
-
-    ctx->ShareLoD("X", /*->*/ "Q");
-    ctx->ShareLoD("X", /*->*/ "R");
-  }
 };
 
 class QrOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -83,10 +50,8 @@ class QrOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("reduced");
     AddComment(R"DOC(
 Qr Operator.
-
 This operator is used to perform QR operation for batched matrics $X$.
 $$Q, R = qr(X)$$
-
 )DOC");
   }
 };
@@ -138,14 +103,15 @@ class QrGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(qr, QrInferShapeFunctor,
+                            PD_INFER_META(phi::QrInferMeta));
 
 REGISTER_OPERATOR(qr, ops::QrOp, ops::QrOpMaker,
                   ops::QrGradMaker<paddle::framework::OpDesc>,
-                  ops::QrGradMaker<paddle::imperative::OpBase>);
+                  ops::QrGradMaker<paddle::imperative::OpBase>,
+                  QrInferShapeFunctor);
 
 REGISTER_OPERATOR(qr_grad, ops::QrGradOp);
-
-REGISTER_OP_CPU_KERNEL(qr, ops::QrCPUKernel<float>, ops::QrCPUKernel<double>);
 
 REGISTER_OP_CPU_KERNEL(
     qr_grad, ops::QrGradKernel<paddle::platform::CPUDeviceContext, float>,

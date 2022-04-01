@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace platform {
@@ -74,9 +74,9 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // because cuBlas assumes column-major while Paddle uses row-majar.
     Tensor tmp_b(b.type());
     const auto& new_dims_vec = getNewDimsVec(b_dims);
-    tmp_b.Resize(framework::make_ddim(new_dims_vec));
+    tmp_b.Resize(phi::make_ddim(new_dims_vec));
     tmp_b.mutable_data<T>(context.GetPlace());
-    pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
+    phi::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans;
     std::vector<int> new_axis = getNewAxis(b_rank);
     trans(context, b, &tmp_b, new_axis);
 
@@ -105,7 +105,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
         memory::Alloc(context, num_ints * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
 
     // only for singular checking
     std::vector<int> info;
@@ -149,7 +149,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
                           -host_info));
 
     // transpose tmp_b to get the final result in row-major form.
-    pten::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans2;
+    phi::funcs::TransposeNormal<platform::CUDADeviceContext, T> trans2;
     trans2(context, tmp_b, out, new_axis);
 
 #else
@@ -160,67 +160,6 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
 
 template class MatrixSolveFunctor<platform::CUDADeviceContext, float>;
 template class MatrixSolveFunctor<platform::CUDADeviceContext, double>;
-
-template <typename T>
-class TriangularSolveFunctor<platform::CUDADeviceContext, T> {
- public:
-  void operator()(const platform::CUDADeviceContext& context, const Tensor* a,
-                  Tensor* b, bool left, bool upper, bool transpose,
-                  bool unitriangular) {
-    CBLAS_SIDE side = left ? CblasLeft : CblasRight;
-    CBLAS_UPLO uplo = upper ? CblasUpper : CblasLower;
-    CBLAS_TRANSPOSE transA = transpose ? CblasTrans : CblasNoTrans;
-    CBLAS_DIAG diag = unitriangular ? CblasUnit : CblasNonUnit;
-
-    const T* a_data = a->data<T>();
-    T* b_data = b->mutable_data<T>(context.GetPlace());
-
-    int a_dim_size = a->dims().size();
-    int b_dim_size = b->dims().size();
-
-    int M = static_cast<int>(b->dims()[b_dim_size - 2]);
-    int N = static_cast<int>(b->dims()[b_dim_size - 1]);
-    auto lda = left ? std::max(1, M) : std::max(1, N);
-    auto ldb = std::max(1, N);
-
-    int batch_size = 1;
-    auto& a_dim = a->dims();
-    for (int i = 0; i < a_dim_size - 2; i++) {
-      batch_size *= a_dim[i];
-    }
-
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
-    if (batch_size <= 8 && M >= 64) {
-      for (auto i = 0; i < batch_size; i++) {
-        blas.TRSM(side, uplo, transA, diag, M, N, static_cast<T>(1.0),
-                  a_data + i * M * M, lda, b_data + i * N * M, ldb);
-      }
-    } else {
-      std::vector<const T*> cpu_ptrs(batch_size * 2);
-      for (int i = 0; i < batch_size; ++i) {
-        cpu_ptrs[i] = a_data + i * M * M;
-        cpu_ptrs[i + batch_size] = b_data + i * M * N;
-      }
-
-      // Copy the addresses of A and tmp_b from host to device.
-      memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-          memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-      memory::Copy(context.GetPlace(), tmp_gpu_ptrs_data->ptr(),
-                   platform::CPUPlace(), static_cast<void*>(cpu_ptrs.data()),
-                   cpu_ptrs.size() * sizeof(T*), context.stream());
-
-      const T** gpu_a_ptrs =
-          reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr());
-      T** gpu_b_ptrs =
-          reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
-      blas.BatchedTRSM(side, uplo, transA, diag, M, N, static_cast<T>(1.0),
-                       gpu_a_ptrs, lda, gpu_b_ptrs, ldb, batch_size);
-    }
-  }
-};
-
-template class TriangularSolveFunctor<platform::CUDADeviceContext, float>;
-template class TriangularSolveFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

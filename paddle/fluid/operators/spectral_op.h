@@ -11,8 +11,11 @@
 
 #pragma once
 #define NOMINMAX  // to use std::min std::max correctly on windows
+#include <algorithm>
+#include <functional>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/convert_utils.h"
@@ -23,9 +26,11 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/padding.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"
 #endif
@@ -244,10 +249,10 @@ template <typename DeviceContext, typename C>
 void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
                const std::vector<int64_t>& axes) {
   std::vector<int64_t> src_strides_v =
-      framework::vectorize<int64_t>(framework::stride(src->dims()));
+      phi::vectorize<int64_t>(phi::stride(src->dims()));
   std::vector<int64_t> dst_strides_v =
-      framework::vectorize<int64_t>(framework::stride(dst->dims()));
-  std::vector<int64_t> dst_shape_v = framework::vectorize<int64_t>(dst->dims());
+      phi::vectorize<int64_t>(phi::stride(dst->dims()));
+  std::vector<int64_t> dst_shape_v = phi::vectorize<int64_t>(dst->dims());
   const auto src_data = src->data<C>();
   auto dst_data = dst->data<C>();
   const auto last_axis = axes.back();
@@ -389,8 +394,9 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
       std::vector<int> pads(rank * 2, 0);
       pads[axes.back() * 2 + 1] = zero_length;
 
-      paddle::operators::math::PaddingFunctor<DeviceContext, C>(
-          rank, ctx, pads, static_cast<C>(0), *dy, &full_dy);
+      phi::funcs::PaddingFunctor<DeviceContext, C>(
+          rank, ctx.template device_context<DeviceContext>(), pads,
+          static_cast<C>(0), *dy, &full_dy);
       fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization,
                    !forward);
     }
@@ -442,11 +448,10 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
 
     const int64_t double_length =
         dy->dims()[axes.back()] - dx->dims()[axes.back()];
-    const framework::DDim strides = framework::stride(dx->dims());
+    const framework::DDim strides = phi::stride(dx->dims());
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-    const thrust::device_vector<int64_t> strides_g(
-        framework::vectorize(strides));
+    const thrust::device_vector<int64_t> strides_g(phi::vectorize(strides));
     const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
 #else
     const int64_t* pstrides = strides.Get();

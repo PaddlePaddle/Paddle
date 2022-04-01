@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/pten/api/ext/op_meta_info.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 
 // NOTE(zengjinle): this macro is only for internal usage. Commonly, users
 // should not use this macro.

@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
                  "InstanceNorm");
 
   const auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
+  PADDLE_ENFORCE_NE(phi::product(x_dims), 0,
                     platform::errors::PreconditionNotMet(
                         "The Input variable X(%s) has not "
                         "been initialized. You may need to confirm "
@@ -68,7 +68,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
             "of scale is [%d]",
             scale_dim, scale_dim.size()));
 
-    bool check = !((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0));
+    bool check = !((!ctx->IsRuntime()) && (phi::product(scale_dim) <= 0));
 
     if (check) {
       PADDLE_ENFORCE_EQ(scale_dim[0], C,
@@ -88,7 +88,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
             "of bias is [%d]",
             bias_dim, bias_dim.size()));
 
-    bool check = !((!ctx->IsRuntime()) && (framework::product(bias_dim) <= 0));
+    bool check = !((!ctx->IsRuntime()) && (phi::product(bias_dim) <= 0));
     if (check) {
       PADDLE_ENFORCE_EQ(bias_dim[0], C,
                         platform::errors::InvalidArgument(
@@ -210,7 +210,7 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     Eigen::IndexList<Eigen::type2index<1>> rdims;
 #endif
 
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
@@ -358,7 +358,7 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     NxC_shape.set(0, NxC);
 #endif
 
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     Tensor scale_data;
     if (!scale) {
@@ -494,7 +494,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     auto *ddY = ctx.Output<Tensor>("DDY");
 
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     const auto &x_dims = X->dims();
     int N, C, H, W, D;

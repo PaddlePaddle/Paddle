@@ -414,7 +414,7 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto interp_method = ctx.Attr<std::string>("interp_method");
+    const auto& interp_method = ctx.Attr<std::string>("interp_method");
     // TODO(danqing): support other interp_method
     if (this->CanMKLDNNBeUsed(ctx, data_type) &&
         (interp_method == "nearest" || interp_method == "bilinear")) {

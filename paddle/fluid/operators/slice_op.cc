@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -101,15 +102,17 @@ class SliceOp : public framework::OperatorWithKernel {
               "The size of ends must be equal to the size of axes."));
     }
 
-    CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends, nullptr,
-                                  &infer_flags);
+    phi::funcs::CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends,
+                                              nullptr, &infer_flags);
 
-    auto slice_dims =
-        GetSliceDims<int>(in_dims, axes, starts, ends, nullptr, &infer_flags);
+    auto slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
+                                                    nullptr, &infer_flags);
     if (ctx->IsRuntime()) {
-      out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, &infer_flags);
+      out_dims = phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis,
+                                                   &infer_flags);
     } else {
-      out_dims = GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
+      out_dims =
+          phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
     }
 
     ctx->SetOutputDim("Out", out_dims);
@@ -145,7 +148,7 @@ class SliceOp : public framework::OperatorWithKernel {
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
         auto tmp_md = dnnl::memory::desc(
-            framework::vectorize(ctx.Input<Tensor>("Input")->dims()),
+            phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
             dnnl::memory::data_type::f32, ctx.Input<Tensor>("Input")->format());
         if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -324,7 +327,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       auto tmp_md = dnnl::memory::desc(
-          framework::vectorize(
+          phi::vectorize(
               ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
           dnnl::memory::data_type::f32,
           ctx.Input<Tensor>(framework::GradVarName("Out"))->format());

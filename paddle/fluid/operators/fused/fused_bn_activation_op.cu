@@ -23,7 +23,7 @@
 #include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -256,8 +256,8 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         PADDLE_THROW(
             platform::errors::Unimplemented("Unsupported activation type"));
       }
-      pten::funcs::SetConstant<platform::CUDADeviceContext,
-                               BatchNormParamType<T>>
+      phi::funcs::SetConstant<platform::CUDADeviceContext,
+                              BatchNormParamType<T>>
           functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));

@@ -33,7 +33,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_DGC)
 #include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
@@ -777,8 +777,8 @@ size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
     PADDLE_ENFORCE_NOT_NULL(var_desc,
                             platform::errors::NotFound(
                                 "Can not find Var(%s) in Var Desc.", var_name));
-    auto dim = framework::make_ddim(var_desc->GetShape());
-    int64_t numel = framework::product(dim);
+    auto dim = phi::make_ddim(var_desc->GetShape());
+    int64_t numel = phi::product(dim);
     PADDLE_ENFORCE_GT(numel, 0,
                       platform::errors::InvalidArgument(
                           "The numel of Var(%s) must greater than 0"

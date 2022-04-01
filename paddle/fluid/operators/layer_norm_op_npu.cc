@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/layer_norm_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -61,7 +61,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     auto* variance = ctx.Output<Tensor>("Variance");
     const auto& x_dims = x->dims();
     std::vector<int> axes;
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int right = static_cast<int>(matrix_dim[1]);
 
     // The shape of scale and bias should be equal to x.shape[begin_norm_axis:],
@@ -77,7 +77,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
 
     Tensor default_scale(x->type());
     if (!scale) {
-      default_scale.mutable_data<T>(framework::make_ddim(axes), place);
+      default_scale.mutable_data<T>(phi::make_ddim(axes), place);
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
@@ -86,12 +86,12 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
       scale = &default_scale;
     } else {
-      const_cast<Tensor*>(scale)->Resize(framework::make_ddim(axes));
+      const_cast<Tensor*>(scale)->Resize(phi::make_ddim(axes));
     }
 
     Tensor default_bias(x->type());
     if (!bias) {
-      default_bias.mutable_data<T>(framework::make_ddim(axes), place);
+      default_bias.mutable_data<T>(phi::make_ddim(axes), place);
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(0));
@@ -100,7 +100,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
       bias = &default_bias;
     } else {
-      const_cast<Tensor*>(bias)->Resize(framework::make_ddim(axes));
+      const_cast<Tensor*>(bias)->Resize(phi::make_ddim(axes));
     }
 
     // cast scale from LayerNormParamType to T if needed
@@ -210,8 +210,8 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     // revert shape of scale and bias
     // TODO(zhiqiu): better implementation, use tmp tensor to avoid write input
     // tensor.
-    const_cast<Tensor*>(scale)->Resize(framework::make_ddim({right}));
-    const_cast<Tensor*>(bias)->Resize(framework::make_ddim({right}));
+    const_cast<Tensor*>(scale)->Resize(phi::make_ddim({right}));
+    const_cast<Tensor*>(bias)->Resize(phi::make_ddim({right}));
   }
 };
 
@@ -231,7 +231,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     auto* dscale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto* dbias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int right = static_cast<int>(matrix_dim[1]);
 
     std::vector<int> axes;
@@ -259,12 +259,12 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     auto mean_dims = mean->dims();
-    const_cast<Tensor*>(mean)->Resize(framework::make_ddim({new_shape}));
-    const_cast<Tensor*>(variance)->Resize(framework::make_ddim({new_shape}));
+    const_cast<Tensor*>(mean)->Resize(phi::make_ddim({new_shape}));
+    const_cast<Tensor*>(variance)->Resize(phi::make_ddim({new_shape}));
 
     Tensor default_scale(x->type());
     if (!scale) {
-      default_scale.mutable_data<T>(framework::make_ddim(axes), place);
+      default_scale.mutable_data<T>(phi::make_ddim(axes), place);
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
@@ -273,7 +273,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
       scale = &default_scale;
     } else {
-      const_cast<Tensor*>(scale)->Resize(framework::make_ddim(axes));
+      const_cast<Tensor*>(scale)->Resize(phi::make_ddim(axes));
     }
 
     // cast scale from LayerNormParamType to T if needed
@@ -338,9 +338,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     dx->Resize(x->dims());
     dx->mutable_data<T>(ctx.GetPlace());
 
-    dscale->Resize(framework::make_ddim(axes));
+    dscale->Resize(phi::make_ddim(axes));
 
-    dbias->Resize(framework::make_ddim(axes));
+    dbias->Resize(phi::make_ddim(axes));
 
     // dscale should be of  U type
     Tensor* tmp_dscale = dscale;
@@ -408,9 +408,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
 
     const_cast<Tensor*>(mean)->Resize(mean_dims);
     const_cast<Tensor*>(variance)->Resize(mean_dims);
-    const_cast<Tensor*>(scale)->Resize(framework::make_ddim({right}));
-    dscale->Resize(framework::make_ddim({right}));
-    dbias->Resize(framework::make_ddim({right}));
+    const_cast<Tensor*>(scale)->Resize(phi::make_ddim({right}));
+    dscale->Resize(phi::make_ddim({right}));
+    dbias->Resize(phi::make_ddim({right}));
   }
 };
 

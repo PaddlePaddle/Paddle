@@ -16,8 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/kron_op.h"
-#include "paddle/fluid/operators/scatter_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -44,7 +43,7 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
       std::vector<int64_t> new_dim = {index_dims[0], 1};
-      tmp_tensor.Resize(framework::make_ddim(new_dim));
+      tmp_tensor.Resize(phi::make_ddim(new_dim));
       index = &tmp_tensor;
     }
 

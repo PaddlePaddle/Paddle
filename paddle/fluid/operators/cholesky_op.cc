@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cholesky_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -23,26 +26,6 @@ using framework::Tensor;
 class CholeskyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Cholesky");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Cholesky");
-    auto dims = ctx->GetInputDim("X");
-    auto rank = dims.size();
-    PADDLE_ENFORCE_GE(rank, 2,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) should have at least 2 dimensions. But "
-                          "received a %d dimension tensor.",
-                          rank));
-    PADDLE_ENFORCE_EQ(
-        dims[rank - 2], dims[rank - 1],
-        platform::errors::InvalidArgument(
-            "The inner-most 2 dimensions of Input(X) all should be symmetric "
-            "positive-definite matrices and have the same size. But received "
-            "X's shape[-2] = %d and shape[-1] = %d.",
-            dims[rank - 2], dims[rank - 1]));
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-  }
 };
 
 class CholeskyOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -107,15 +90,10 @@ class CholeskyGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(cholesky, CholeskyInferShapeFunctor,
+                            PD_INFER_META(phi::CholeskyInferMeta));
 REGISTER_OPERATOR(cholesky, ops::CholeskyOp, ops::CholeskyOpMaker,
                   ops::CholeskyGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CholeskyGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CholeskyGradOpMaker<paddle::imperative::OpBase>,
+                  CholeskyInferShapeFunctor);
 REGISTER_OPERATOR(cholesky_grad, ops::CholeskyGradOp);
-
-REGISTER_OP_CPU_KERNEL(cholesky, ops::CholeskyCPUKernel<float>,
-                       ops::CholeskyCPUKernel<double>);
-
-REGISTER_OP_CPU_KERNEL(
-    cholesky_grad,
-    ops::CholeskyGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CholeskyGradKernel<paddle::platform::CPUDeviceContext, double>);

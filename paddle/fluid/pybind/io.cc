@@ -49,7 +49,7 @@ void BindIO(pybind11::module *m) {
     return tellg;
   });
 
-  m->def("save_selected_rows", [](const pten::SelectedRows &selected_rows,
+  m->def("save_selected_rows", [](const phi::SelectedRows &selected_rows,
                                   const std::string &str_file_name) {
     std::ofstream fout(str_file_name, std::ios::binary);
     PADDLE_ENFORCE_EQ(
@@ -63,7 +63,7 @@ void BindIO(pybind11::module *m) {
     return tellp;
   });
 
-  m->def("load_selected_rows", [](pten::SelectedRows &selected_rows,
+  m->def("load_selected_rows", [](phi::SelectedRows &selected_rows,
                                   const std::string &str_file_name) {
     std::ifstream fin(str_file_name, std::ios::binary);
     PADDLE_ENFORCE_EQ(
@@ -91,14 +91,14 @@ void BindIO(pybind11::module *m) {
   });
 
   m->def("save_selected_rows_to_memory",
-         [](const pten::SelectedRows &selected_rows) -> py::bytes {
+         [](const phi::SelectedRows &selected_rows) -> py::bytes {
            std::ostringstream ss;
            paddle::framework::SerializeToStream(ss, selected_rows);
            return ss.str();
          });
 
   m->def("load_selected_rows_from_memory",
-         [](pten::SelectedRows &selected_rows,
+         [](phi::SelectedRows &selected_rows,
             const std::string &selected_rows_bytes) {
            std::istringstream fin(selected_rows_bytes,
                                   std::ios::in | std::ios::binary);

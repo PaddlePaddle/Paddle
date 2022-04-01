@@ -46,7 +46,7 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
       }
 
       framework::DDim out_dims =
-          pten::funcs::ComputeAndCheckShape(true, ins_dims, axis);
+          phi::funcs::ComputeAndCheckShape(true, ins_dims, axis);
       out->Resize(out_dims);
     }
     const int axis_t = axis;
@@ -61,15 +61,13 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
     std::vector<cnnlTensorDescriptor_t> desc_vector;
     for (size_t i = 0; i < ins_size; i++) {
       input_descs.emplace_back(MLUCnnlTensorDesc(
-          *ins[i], CNNL_LAYOUT_ARRAY,
-          ToCnnlDataType(framework::TransToProtoVarType(ins[i]->dtype()))));
+          *ins[i], CNNL_LAYOUT_ARRAY, ToCnnlDataType(ins[i]->dtype())));
       desc_vector.push_back(input_descs.back().get());
       inputs.push_back(GetBasePtr(ins[i]));
     }
     // init out tensors
-    MLUCnnlTensorDesc output_desc(
-        *out, CNNL_LAYOUT_ARRAY,
-        ToCnnlDataType(framework::TransToProtoVarType(out->dtype())));
+    MLUCnnlTensorDesc output_desc(*out, CNNL_LAYOUT_ARRAY,
+                                  ToCnnlDataType(out->dtype()));
 
     // MLU should do sth
     MLUCnnl::Concat(ctx, ins_size_t, axis_t, desc_vector.data(), inputs.data(),

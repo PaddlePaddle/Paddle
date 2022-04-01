@@ -17,9 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/mask_util.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -122,7 +121,7 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 
   int* mask_targets_data =
       mask_targets->mutable_data<int>({num_mask, mask_dim}, ctx.GetPlace());
-  pten::funcs::set_constant(ctx, mask_targets, -1);
+  phi::funcs::set_constant(ctx, mask_targets, -1);
   for (int64_t mask_id = 0; mask_id < num_mask; ++mask_id) {
     int cls = mask_class_labels_data[mask_id];
     int start = M * cls;
@@ -271,7 +270,7 @@ std::vector<Tensor> SampleMaskForOneImage(
     }
     masks.mutable_data<uint8_t>({bg_num, resolution * resolution},
                                 ctx.GetPlace());
-    pten::funcs::set_constant(ctx, &masks, -1);
+    phi::funcs::set_constant(ctx, &masks, -1);
     int* mask_class_labels_data =
         mask_class_labels.mutable_data<int>({bg_num, 1}, ctx.GetPlace());
     mask_class_labels_data[0] = 0;

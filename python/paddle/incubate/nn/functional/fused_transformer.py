@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode, default_main_program
+from paddle.fluid.framework import _non_static_mode, default_main_program
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid import core, dygraph_utils
 from paddle import _C_ops
@@ -46,7 +46,7 @@ def fused_feedforward(x,
                       training=True,
                       mode='upscale_in_train',
                       name=None):
-    """
+    r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
     This operator only supports running on GPU. The function of the operator is consistent with
     the following pseudo code:
@@ -118,7 +118,7 @@ def fused_feedforward(x,
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
@@ -223,14 +223,16 @@ def fused_multi_head_attention(x,
                                pre_ln_epsilon=1e-05,
                                qkv_bias=None,
                                linear_bias=None,
+                               cache_kv=None,
                                attn_mask=None,
                                dropout_rate=0.5,
                                attn_dropout_rate=0.5,
                                ln_epsilon=1e-05,
                                training=True,
                                mode='upscale_in_train',
+                               ring_id=-1,
                                name=None):
-    """
+    r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
@@ -242,8 +244,8 @@ def fused_multi_head_attention(x,
     	    out = layer_norm(x)
             out = linear(out) + qkv) + bias
     	else:
-	    out = linear(x) + bias
-    	out = transpose(out, perm=[2, 0, 3, 1, 4])
+            out = linear(x) + bias
+            out = transpose(out, perm=[2, 0, 3, 1, 4])
     	# extract q, k and v from out.
     	q = out[0:1,::]
     	k = out[1:2,::]
@@ -257,8 +259,8 @@ def fused_multi_head_attention(x,
     	out = out_linear(out)
     	if pre_layer_norm:
     	    out = x + dropout(linear_bias + out)
-	else:
-    	    out = layer_norm(x + dropout(linear_bias + out))
+        else:
+            out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
@@ -276,6 +278,7 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
+        cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
  	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
@@ -303,6 +306,7 @@ def fused_multi_head_attention(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -333,7 +337,7 @@ def fused_multi_head_attention(x,
             output = F.fused_multi_head_attention(
                 x, qkv_weight, linear_weight, False,
                 None, None, None, None, 1e-5, qkv_bias,
-                linear_bias, attn_mask)
+                linear_bias, None, attn_mask)
             # [2, 4, 128]
             print(output.shape)
     """
@@ -344,7 +348,7 @@ def fused_multi_head_attention(x,
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
@@ -359,17 +363,20 @@ def fused_multi_head_attention(x,
         assert qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[
             3], "embed_dim must be divisible by num_heads."
 
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, final_out = _C_ops.fused_attention(
-            x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, attn_mask,
-            linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
-            pre_layer_norm, 'epsilon', pre_ln_epsilon, 'dropout_rate',
-            dropout_rate, 'attn_dropout_rate', attn_dropout_rate, 'ln_epsilon',
-            ln_epsilon, 'attn_dropout_is_test', not training, 'dropout_is_test',
-            not training, 'attn_dropout_fix_seed', seed is not None,
-            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _C_ops.fused_attention(
+            x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, cache_kv,
+            attn_mask, linear_weight, linear_bias, ln_scale, ln_bias,
+            'pre_layer_norm', pre_layer_norm, 'epsilon', pre_ln_epsilon,
+            'dropout_rate', dropout_rate, 'attn_dropout_rate',
+            attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'attn_dropout_is_test',
+            not training, 'dropout_is_test', not training,
+            'attn_dropout_fix_seed', seed is not None, 'dropout_fix_seed',
+            seed is not None, 'attn_dropout_seed', seed
             if seed is not None else 0, 'dropout_seed', seed
             if seed is not None else 0, 'attn_dropout_implementation', mode,
-            'dropout_implementation', mode)
+            'dropout_implementation', mode, 'ring_id', ring_id)
+        if cache_kv is not None:
+            return final_out, cache_kv_out
         return final_out
     else:
         helper = LayerHelper('fused_multi_head_attention', **locals())
@@ -398,6 +405,7 @@ def fused_multi_head_attention(x,
             inputs['Ln2Scale'] = [ln_scale]
         if ln_bias:
             inputs['Ln2Bias'] = [ln_bias]
+        if cache_kv: inputs['CacheKV'] = [cache_kv]
 
         if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
             seed = helper.main_program.random_seed
@@ -417,6 +425,7 @@ def fused_multi_head_attention(x,
             'dropout_seed': seed if seed is not None else 0,
             'attn_dropout_implementation': mode,
             'dropout_implementation': mode,
+            'ring_id': ring_id
         }
 
         # set outputs
@@ -449,6 +458,7 @@ def fused_multi_head_attention(x,
         bias_dropout_residual_out = helper.create_variable_for_type_inference(
             dtype=dtype)
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
+        cache_kv_out = helper.create_variable_for_type_inference(dtype=dtype)
 
         helper.append_op(
             type='fused_attention',
@@ -472,7 +482,9 @@ def fused_multi_head_attention(x,
                 "Ln2Mean": ln_mean_out,
                 "Ln2Variance": ln_variance_out,
                 "BiasDropoutResidualOut": bias_dropout_residual_out,
-                'Y': final_out
+                'Y': final_out,
+                'CacheKVOut': cache_kv_out
             },
             attrs=attrs)
-        return final_out
+
+        return (final_out, cache_kv_out) if cache_kv else final_out

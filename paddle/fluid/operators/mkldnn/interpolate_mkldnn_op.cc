@@ -37,8 +37,8 @@ class InterpolateMKLDNNHandler
                            const Tensor* x, Tensor* z)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    const auto src_x_tz = framework::vectorize(x->dims());
-    const auto dst_tz = framework::vectorize(z->dims());
+    const auto src_x_tz = phi::vectorize(x->dims());
+    const auto dst_tz = phi::vectorize(z->dims());
     const auto src_md = dnnl::memory::desc(
         src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
     const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
@@ -53,17 +53,13 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
   std::vector<int> ComputeOutputShape(
       const framework::ExecutionContext& ctx) const {
     const auto* x = ctx.Input<Tensor>("X");
-    auto in_dims = x->dims();
-    const bool is_channel_last = false;  // In mkldnn kernel, always use NCHW
+    const auto& in_dims = x->dims();
 
-    framework::DDim in_dhw_dims;
-    if (is_channel_last) {  // NDHWC, NHWC, NWC
-      in_dhw_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    } else {  // NCDHW, NCHW, NCW
-      in_dhw_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    }
+    const framework::DDim in_dhw_dims =
+        phi::slice_ddim(in_dims, 2, in_dims.size());
 
     std::vector<int> out_dims;
+    out_dims.reserve(5);
     if (in_dhw_dims.size() == 1) {
       out_dims.push_back(ctx.Attr<int>("out_w"));
     } else if (in_dhw_dims.size() == 2) {
@@ -112,7 +108,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
       }
       if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {
         int j = 0;
-        std::vector<int64_t> in_dhw_vec = framework::vectorize(in_dhw_dims);
+        std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
         std::transform(
             in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
             [&](int64_t i) -> int { return static_cast<int>(i * scale[j++]); });
@@ -125,12 +121,8 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
                              "out_d, out_h, out_w of Op(interpolate) "
                              "should be greater than 0."));
 
-    out_dims.insert(out_dims.begin(), in_dims[0]);
-    if (is_channel_last) {
-      out_dims.push_back(in_dims[in_dims.size() - 1]);
-    } else {
-      out_dims.insert(out_dims.begin() + 1, in_dims[1]);
-    }
+    const std::vector<int64_t> nc_dims = {in_dims[0], in_dims[1]};
+    out_dims.insert(out_dims.begin(), nc_dims.begin(), nc_dims.end());
     return out_dims;
   }
 
@@ -143,13 +135,13 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     const auto* x = ctx.Input<Tensor>("X");
     auto* z = ctx.Output<Tensor>("Out");
 
-    auto interp_method = ctx.Attr<std::string>("interp_method");
-    dnnl::algorithm algo = (interp_method == "nearest")
-                               ? dnnl::algorithm::resampling_nearest
-                               : dnnl::algorithm::resampling_linear;
+    const auto interp_method = ctx.Attr<std::string>("interp_method");
+    const dnnl::algorithm algo = (interp_method == "nearest")
+                                     ? dnnl::algorithm::resampling_nearest
+                                     : dnnl::algorithm::resampling_linear;
 
-    auto out_dims_vec = ComputeOutputShape(ctx);
-    framework::DDim dim_out = framework::make_ddim(out_dims_vec);
+    const auto out_dims_vec = ComputeOutputShape(ctx);
+    framework::DDim dim_out = phi::make_ddim(out_dims_vec);
     z->Resize(dim_out);
 
     InterpolateMKLDNNHandler<T> handler(algo, mkldnn_engine, ctx.GetPlace(), x,
@@ -162,6 +154,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
     resampling_prim->execute(astream, args);
     astream.wait();
 
@@ -184,6 +177,7 @@ REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
 
 REGISTER_OP_KERNEL(nearest_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>,
+                   ops::InterpolateMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::InterpolateMKLDNNKernel<int8_t>,
                    ops::InterpolateMKLDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,

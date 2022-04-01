@@ -29,6 +29,8 @@ TEST(AdaptivePool2dConvertGlobalPass, basic) {
   AttributeMap attrs;
   attrs["adaptive"] = true;
   attrs["ksize"] = std::vector<int>{1, 1};
+  attrs["pooling_type"] =
+      std::string("avg");  // adaptive has no effect on max pooling
   layers.pool2d(x, false, &attrs);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));

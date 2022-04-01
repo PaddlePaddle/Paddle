@@ -15,8 +15,8 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/index_select_op.h"
 namespace paddle {
@@ -46,7 +46,7 @@ void RepeatsTensor2IndexTensor(const LoDTensor& repeats, LoDTensor* index) {
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(framework::make_ddim({index_size}));
+  index->Resize(phi::make_ddim({index_size}));
 
   auto ctx =
       paddle::platform::DeviceContextPool::Instance().Get(repeats.place());
@@ -95,17 +95,17 @@ class RepeatInterleaveKernel : public framework::OpKernel<T> {
 
       if (index_type == framework::proto::VarType::INT32) {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
-        auto output_dim = framework::vectorize(inputs.dims());
+        auto output_dim = phi::vectorize(inputs.dims());
         output_dim[dim] = index.dims()[0];
-        output->Resize(framework::make_ddim(output_dim));
+        output->Resize(phi::make_ddim(output_dim));
         IndexSelectInner<DeviceContext, T, int>(context, &inputs, index, output,
                                                 dim);
       } else if (index_type == framework::proto::VarType::INT64) {
         RepeatsTensor2IndexTensor<DeviceContext, int64_t>(*repeats_tensor,
                                                           &index);
-        auto output_dim = framework::vectorize(inputs.dims());
+        auto output_dim = phi::vectorize(inputs.dims());
         output_dim[dim] = index.dims()[0];
-        output->Resize(framework::make_ddim(output_dim));
+        output->Resize(phi::make_ddim(output_dim));
         IndexSelectInner<DeviceContext, T, int64_t>(context, &inputs, index,
                                                     output, dim);
       }
@@ -115,12 +115,12 @@ class RepeatInterleaveKernel : public framework::OpKernel<T> {
       for (int i = 0; i < inputs.dims()[dim]; i++) {
         std::fill_n(index_vec.begin() + i * repeats, repeats, i);
       }
-      index.Resize(framework::make_ddim({index_size}));
+      index.Resize(phi::make_ddim({index_size}));
       paddle::framework::TensorFromVector<int>(index_vec, &index);
 
-      auto output_dim = framework::vectorize(inputs.dims());
+      auto output_dim = phi::vectorize(inputs.dims());
       output_dim[dim] = index_size;
-      output->Resize(framework::make_ddim(output_dim));
+      output->Resize(phi::make_ddim(output_dim));
 
       IndexSelectInner<DeviceContext, T, int>(context, &inputs, index, output,
                                               dim);
@@ -182,7 +182,7 @@ class RepeatInterleaveGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < x_grad->dims()[dim]; i++) {
         std::fill_n(index_vec.begin() + i * repeats, repeats, i);
       }
-      index.Resize(framework::make_ddim({index_size}));
+      index.Resize(phi::make_ddim({index_size}));
       paddle::framework::TensorFromVector<int>(index_vec, &index);
 
       IndexSelectGradInner<DeviceContext, T, int>(context, *out_grad, index,

@@ -92,6 +92,13 @@ __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
 }
 
 template <>
+__forceinline__ __device__ bfloat16 CudaShuffleXorSync(unsigned mask,
+                                                       bfloat16 val,
+                                                       int width) {
+  return bfloat16(__shfl_xor(static_cast<float>(val), width));
+}
+
+template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
     unsigned mask, paddle::platform::complex<float> val, int width) {
   float real = __shfl_xor(val.real, width);

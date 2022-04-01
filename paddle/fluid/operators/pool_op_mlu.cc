@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -71,20 +72,19 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
     int64_t out_h = out_dims[2];
     int64_t out_w = out_dims[3];
     auto in_x_dims = in_x->dims();
-    framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
     if (channel_last) {
       cnnl_layout = CNNL_LAYOUT_NHWC;
       out_h = out_dims[1];
       out_w = out_dims[2];
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
     MLUCnnlTensorDesc in_x_desc(*in_x, cnnl_layout, ToCnnlDataType<T>());
@@ -187,16 +187,15 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
     const bool channel_last = data_format == "NHWC";
 
     auto in_x_dims = in_x->dims();
-    framework::DDim data_dims =
-        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                  data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
+                              padding_algorithm, data_dims, strides, ksize);
     if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
     // inputs need with NHWC layout

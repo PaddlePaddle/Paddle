@@ -15,11 +15,11 @@ limitations under the Licnse. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -86,7 +86,7 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     factor_bc_tensor.mutable_data<float>(x_dims, place);
     const auto& runner_bc =
         NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
-                    {{"dims", framework::vectorize(x_dims)}});
+                    {{"dims", phi::vectorize(x_dims)}});
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
@@ -585,7 +585,7 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
     tensor_scale.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
         NpuOpRunner("FillD", {tensor_scale_tmp}, {tensor_scale},
-                    {{"dims", framework::vectorize(x->dims())}});
+                    {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
     Tensor div_val(x->type());
@@ -656,7 +656,7 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
     tensor_threshold.mutable_data<T>(x->dims(), place);
     const auto& runner_fill =
         NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
-                    {{"dims", framework::vectorize(x->dims())}});
+                    {{"dims", phi::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
     Tensor tmp_bool(experimental::DataType::BOOL);
@@ -811,7 +811,7 @@ class CosGradNPUKernel : public framework::OpKernel<T> {
     runner_dx.Run(stream);
 
     Tensor tmp(x->type());  // Temporary Tensor
-    tmp.Resize(framework::make_ddim({1, 1}));
+    tmp.Resize(phi::make_ddim({1, 1}));
     tmp.mutable_data<T>(place);
     float factor = -1.;
     FillNpuTensorWithConstant<T>(&tmp, static_cast<T>(factor));

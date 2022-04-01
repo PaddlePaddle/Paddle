@@ -30,9 +30,9 @@ class AlignedAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  pten::Allocation* AllocateImpl(size_t size) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
 
-  void FreeImpl(pten::Allocation* allocation) override;
+  void FreeImpl(phi::Allocation* allocation) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

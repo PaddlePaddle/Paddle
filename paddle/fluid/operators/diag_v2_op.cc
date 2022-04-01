@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/diag_v2_op.h"
-#include <algorithm>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -23,44 +23,6 @@ namespace operators {
 class DiagV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "diag_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "diag_v2");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto offset = ctx->Attrs().Get<int>("offset");
-
-    if (x_dims.size() == 1UL) {
-      int64_t size_ = x_dims[0] + std::abs(offset);
-      ctx->SetOutputDim("Out", {size_, size_});
-    } else if (x_dims.size() == 2UL) {
-      int64_t size_ = 0;
-      if (offset >= 0) {
-        // Note(LutaoChu): Do not use std::min here, otherwise the calculation
-        // of `size_` will have unexpected result on Windows Python3.8
-        if (x_dims[0] < x_dims[1] - offset) {
-          size_ = x_dims[0];
-        } else {
-          size_ = x_dims[1] - offset;
-        }
-      } else {
-        // Note(LutaoChu): Do not use std::min here, otherwise the calculation
-        // of `size_` will have unexpected result on Windows Python3.8
-        if (x_dims[0] + offset < x_dims[1]) {
-          size_ = x_dims[0] + offset;
-        } else {
-          size_ = x_dims[1];
-        }
-      }
-      ctx->SetOutputDim("Out", {size_});
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The input tensor X's dimensions of DiagV2Op should be either 1 or "
-          "2, but received %d.",
-          x_dims.size()));
-    }
-  }
 };
 
 class DiagV2OpMaker : public framework::OpProtoAndCheckerMaker {
@@ -94,59 +56,56 @@ class DiagV2OpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename DeviceContext, typename T>
-class DiagV2Kernel : public framework::OpKernel<T> {
+class DiagV2GradOp : public framework::OperatorWithKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<framework::Tensor>("X");
-    auto* x_data = X->data<T>();
-    auto x_dims = X->dims();
-    int offset = context.Attr<int>("offset");
-    auto* out = context.Output<framework::Tensor>("Out");
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-    auto out_dims = out->dims();
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-    int64_t i;
-    if (x_dims.size() == 1) {
-      float padding_value = context.Attr<float>("padding_value");
-      pten::funcs::SetConstant<DeviceContext, T> set_padding_value;
-      auto& dev_ctx = context.template device_context<DeviceContext>();
-      set_padding_value(dev_ctx, out, static_cast<T>(padding_value));
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "X", "X", "DiagV2Grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "DiagV2Grad");
 
-      auto x_length = x_dims[0];
-      const int& x_stride = ComputeStride(0, x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
 
-      auto out_stride_0 = ComputeStride(0, out_dims);
-      auto out_stride_1 = ComputeStride(1, out_dims);
-      out_data +=
-          (offset >= 0 ? offset * out_stride_1 : -offset * out_stride_0);
-
-      for (i = 0; i < x_length; i++) {
-        out_data[i * (out_stride_0 + out_stride_1)] = x_data[i * x_stride];
-      }
-    } else {
-      auto out_length = out_dims[0];
-      const int& x_stride_0 = ComputeStride(0, x_dims);
-      const int& x_stride_1 = ComputeStride(1, x_dims);
-
-      auto out_stride_0 = ComputeStride(0, out_dims);
-      x_data += (offset >= 0 ? offset * x_stride_1 : -offset * x_stride_0);
-      for (i = 0; i < out_length; i++) {
-        out_data[i * out_stride_0] = x_data[i * (x_stride_0 + x_stride_1)];
-      }
-    }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
+
+template <typename T>
+class DiagV2GradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("diag_v2_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagGradV2NoNeedBufferVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    diag_v2, ops::DiagV2Op, ops::DiagV2OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    diag_v2, ops::DiagV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::DiagV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DiagV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::DiagV2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+DECLARE_INFER_SHAPE_FUNCTOR(diag_v2, DiagInferShapeFunctor,
+                            PD_INFER_META(phi::DiagInferMeta));
+
+REGISTER_OPERATOR(diag_v2, ops::DiagV2Op, ops::DiagV2OpMaker,
+                  ops::DiagV2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::DiagV2GradOpMaker<paddle::imperative::OpBase>,
+                  DiagInferShapeFunctor);
+
+REGISTER_OPERATOR(diag_v2_grad, ops::DiagV2GradOp,
+                  ops::DiagGradV2NoNeedBufferVarsInferer);

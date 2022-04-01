@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
 
-#include "paddle/pten/kernels/concat_kernel.h"
-#include "paddle/pten/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/concat_kernel.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 namespace paddle {
 namespace operators {

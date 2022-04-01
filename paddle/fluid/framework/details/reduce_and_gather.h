@@ -21,9 +21,9 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 
-namespace pten {
+namespace phi {
 class SelectedRows;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -101,10 +101,10 @@ struct ReduceBufferData {
 
 struct GatherLocalSelectedRowsFunctor {
   GatherLocalSelectedRowsFunctor(
-      const std::vector<const pten::SelectedRows *> &src_selected_rows,
+      const std::vector<const phi::SelectedRows *> &src_selected_rows,
       const std::vector<platform::Place> &in_places,
       const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-      const platform::Place &out_place, pten::SelectedRows *dst_selected_rows)
+      const platform::Place &out_place, phi::SelectedRows *dst_selected_rows)
       : dev_ctxes_(dev_ctxes),
         in_places_(in_places),
         out_place_(out_place),
@@ -153,7 +153,7 @@ struct GatherLocalSelectedRowsFunctor {
   std::vector<Tensor> in_tensors_;
 
   platform::Place out_place_;
-  pten::SelectedRows *dst_selected_rows_;
+  phi::SelectedRows *dst_selected_rows_;
 };
 
 }  // namespace details

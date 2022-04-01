@@ -98,7 +98,7 @@ class CheckFiniteAndUnscaleXPUKernel : public framework::OpKernel<T> {
       framework::Tensor float_x;
       framework::Tensor float_out;
       if (std::is_same<T, paddle::platform::float16>::value &&
-          (version == pten::backends::xpu::XPUVersion::XPU1)) {
+          (version == phi::backends::xpu::XPUVersion::XPU1)) {
         float_x.mutable_data<MPDType>(dev_ctx.GetPlace(),
                                       x->numel() * sizeof(MPDType));
         float_out.mutable_data<MPDType>(dev_ctx.GetPlace(),

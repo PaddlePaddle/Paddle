@@ -16,7 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lu_op.h"
-#include "paddle/fluid/operators/tril_triu_op.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 
 namespace paddle {
 namespace operators {
@@ -87,7 +88,8 @@ class LU_UnpackGradKernel : public framework::OpKernel<T> {
     auto W = ldims[ldims.size() - 1];
     auto L_dataptr = dl_tril.mutable_data<T>(dev_ctx.GetPlace());
     platform::ForRange<DeviceContext> l_for_range(dev_ctx, dl->numel());
-    TrilTriuCompute<T> tril_computer(dl->data<T>(), -1, true, H, W, L_dataptr);
+    phi::funcs::TrilTriuCompute<T> tril_computer(dl->data<T>(), -1, true, H, W,
+                                                 L_dataptr);
     l_for_range(tril_computer);
 
     const auto udims = du->dims();
@@ -96,7 +98,8 @@ class LU_UnpackGradKernel : public framework::OpKernel<T> {
     W = udims[udims.size() - 1];
     auto U_dataptr = du_triu.mutable_data<T>(dev_ctx.GetPlace());
     platform::ForRange<DeviceContext> u_for_range(dev_ctx, du->numel());
-    TrilTriuCompute<T> triu_computer(du->data<T>(), 0, false, H, W, U_dataptr);
+    phi::funcs::TrilTriuCompute<T> triu_computer(du->data<T>(), 0, false, H, W,
+                                                 U_dataptr);
     u_for_range(triu_computer);
 
     auto xdims = dx->dims();
@@ -110,7 +113,7 @@ class LU_UnpackGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> slice_ends(2, 0);
     auto valuedims = vectorize(xdims);
 
-    pten::funcs::SetConstant<DeviceContext, T> setter;
+    phi::funcs::SetConstant<DeviceContext, T> setter;
     setter(dev_ctx, dx, static_cast<T>(0));
     if (m <= n) {
       slice_starts[0] = 0;

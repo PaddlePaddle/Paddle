@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -28,9 +32,17 @@ class CPUDeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_all, ReduceAllInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+class ReduceAllOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_all"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_all"; }
+};
 // kernel's device type is decided by input tensor place, to be consistent with
 // compare and logical ops
-REGISTER_REDUCE_OP_WITHOUT_GRAD(reduce_all, UseInputPlace);
-REGISTER_OP_CPU_KERNEL(reduce_all,
-                       ops::BoolReduceKernel<paddle::platform::CPUDeviceContext,
-                                             bool, ops::AllFunctor>);
+REGISTER_OPERATOR(
+    reduce_all, ops::ReduceOpUseInputPlace, ReduceAllOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ReduceAllInferShapeFunctor);

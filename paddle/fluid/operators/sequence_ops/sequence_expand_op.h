@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -168,11 +168,11 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
         int x_seq_len = x_end - x_start;
         if (x_seq_len == 0) continue;
         auto dx_sub = dx->Slice(x_start, x_end);
-        dx_sub.Resize(flatten_to_1d(dx_sub.dims()));
+        dx_sub.Resize(phi::flatten_to_1d(dx_sub.dims()));
         int dout_end = dout_offset + repeat_num * x_seq_len;
         auto dout_sub = dout.Slice(dout_offset, dout_end);
         dout_sub.Resize({repeat_num, dx_sub.dims()[0]});
-        pten::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
+        phi::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
         col_sum(context, dout_sub, &dx_sub);
         dout_offset += repeat_num * x_seq_len;
       }
@@ -194,7 +194,7 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     g_x->set_lod(x->lod());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, g_x, static_cast<T>(0));
 
     auto& y_lod = y->lod();

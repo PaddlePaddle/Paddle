@@ -15,7 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/mul_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -50,7 +50,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         }
         int64_t first_dim = x->dims()[0];
         tmp_x.ShareDataWith(*x);
-        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        tmp_x.Resize(phi::make_ddim({first_dim, sec_dim}));
         out->mutable_data<T>(ctx.GetPlace());
         // matmul
         const auto& runner =
@@ -89,14 +89,14 @@ class MulNPUKernel : public framework::OpKernel<T> {
         int64_t first_dim = x->dims()[0] * x->dims()[1];
         int64_t sec_dim = x->dims()[2];
         tmp_x.ShareDataWith(*x);
-        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        tmp_x.Resize(phi::make_ddim({first_dim, sec_dim}));
 
         // matmul [6,4] , [4, 5] => [6, 5]
         out->mutable_data<T>(ctx.GetPlace());
 
         Tensor tmp_out(x->type());
         tmp_out.ShareDataWith(*out);
-        tmp_out.Resize(framework::make_ddim({first_dim, y->dims()[1]}));
+        tmp_out.Resize(phi::make_ddim({first_dim, y->dims()[1]}));
 
         const auto& runner_matmul =
             NpuOpRunner("MatMul", {tmp_x, *y}, {tmp_out},
@@ -148,7 +148,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           dx->mutable_data<T>(ctx.GetPlace());
           Tensor tmp_dx(x->type());
           tmp_dx.ShareDataWith(*dx);
-          tmp_dx.Resize(framework::make_ddim({dout->dims()[0], y->dims()[0]}));
+          tmp_dx.Resize(phi::make_ddim({dout->dims()[0], y->dims()[0]}));
 
           const auto& runner_matmul =
               NpuOpRunner("MatMul", {*dout, *y}, {tmp_dx},
@@ -165,7 +165,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           }
           int64_t first_dim = x->dims()[0];
           tmp_x.ShareDataWith(*x);
-          tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+          tmp_x.Resize(phi::make_ddim({first_dim, sec_dim}));
           dy->mutable_data<T>(ctx.GetPlace());
           const auto& runner_dy =
               NpuOpRunner("MatMul", {tmp_x, *dout}, {*dy},
@@ -185,7 +185,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
       int64_t dout_first_dim = dout->dims()[0] * dout->dims()[1];
       int64_t dout_sec_dim = dout->dims()[2];
       tmp_dout.ShareDataWith(*dout);
-      tmp_dout.Resize(framework::make_ddim({dout_first_dim, dout_sec_dim}));
+      tmp_dout.Resize(phi::make_ddim({dout_first_dim, dout_sec_dim}));
 
       if (dx) {
         // tmp_dout * y [2, 3, 5] * [4,5] => [2, 3, 4]
@@ -208,7 +208,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           dx->mutable_data<T>(ctx.GetPlace());
           Tensor tmp_dx(x->type());
           tmp_dx.ShareDataWith(*dx);
-          tmp_dx.Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
+          tmp_dx.Resize(phi::make_ddim({dout_first_dim, y->dims()[0]}));
 
           const auto& runner_matmul =
               NpuOpRunner("MatMul", {tmp_dout, *y}, {tmp_dx},
@@ -222,7 +222,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         int64_t first_dim = x->dims()[0] * x->dims()[1];
         int64_t sec_dim = x->dims()[2];
         tmp_x.ShareDataWith(*x);
-        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        tmp_x.Resize(phi::make_ddim({first_dim, sec_dim}));
         // mamtul [6,4] [6,5] =>[4,5]
         dy->mutable_data<T>(ctx.GetPlace());
         const auto& runner_dy =

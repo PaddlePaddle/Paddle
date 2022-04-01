@@ -59,16 +59,14 @@ class SGD(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
             sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
-            back = out.backward()
+            out.backward()
             sgd.step()
             sgd.clear_grad()
 
@@ -146,7 +144,7 @@ class SGD(Optimizer):
                          if find_master else None)
 
         lr = self._create_param_lr(param_and_grad)
-        if framework.in_dygraph_mode():
+        if framework._non_static_mode():
             _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
                        param_and_grad[0], master_weight)
             return None

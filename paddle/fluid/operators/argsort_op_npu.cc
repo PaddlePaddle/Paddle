@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/argsort_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -106,7 +106,7 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         for (size_t i = 0; i < perm.size(); i++) {
           shape.emplace_back(in_dims[perm[i]]);
         }
-        auto trans_dims = framework::make_ddim(shape);
+        auto trans_dims = phi::make_ddim(shape);
 
         Tensor trans_input(input_fp32.type());
         trans_input.Resize(trans_dims);
@@ -144,7 +144,7 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
         for (size_t i = 0; i < perm.size(); i++) {
           shape.emplace_back(in_dims[perm[i]]);
         }
-        auto trans_dims = framework::make_ddim(shape);
+        auto trans_dims = phi::make_ddim(shape);
 
         Tensor trans_input(input->type());
         trans_input.Resize(trans_dims);
@@ -174,18 +174,18 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
                           const framework::DDim in_dims, const Tensor& input,
                           const Tensor& indices, Tensor* t_out) {
   const int64_t input_height =
-      framework::product(framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
   const int64_t input_width = in_dims[in_dims.size() - 1];
 
   Tensor input_tmp;
   input_tmp.ShareDataWith(input);
   input_tmp.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height * input_width}));
+      phi::make_ddim(std::vector<int64_t>{input_height * input_width}));
 
   Tensor indices_tmp;
   indices_tmp.ShareDataWith(indices);
   indices_tmp.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height, input_width}));
+      phi::make_ddim(std::vector<int64_t>{input_height, input_width}));
 
   std::vector<int64_t> indexs_value;
   for (Type i = 0; i < input_height; i++) {
@@ -194,8 +194,7 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
   Tensor indexs_tmp(indices.type());
   framework::TensorFromVector<int64_t>(indexs_value, ctx.device_context(),
                                        &indexs_tmp);
-  indexs_tmp.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height, 1}));
+  indexs_tmp.Resize(phi::make_ddim(std::vector<int64_t>{input_height, 1}));
 
   Tensor indices_index(indices.type());
   indices_index.mutable_data<int64_t>(indices_tmp.dims(), ctx.GetPlace());
@@ -204,7 +203,7 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
   runner_add.Run(stream);
 
   indices_index.Resize(
-      framework::make_ddim(std::vector<int64_t>{input_height * input_width}));
+      phi::make_ddim(std::vector<int64_t>{input_height * input_width}));
 
   t_out->mutable_data<T>(ctx.GetPlace());
   Tensor out_tmp(t_out->type());
@@ -244,7 +243,7 @@ class ArgsortGradNPUKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < perm.size(); i++) {
         shape.emplace_back(in_dims[perm[i]]);
       }
-      auto trans_dims = framework::make_ddim(shape);
+      auto trans_dims = phi::make_ddim(shape);
 
       Tensor trans_dout(dO->type());
       Tensor trans_ids(indices->type());

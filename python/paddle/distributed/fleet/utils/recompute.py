@@ -107,6 +107,15 @@ class RecomputeFunction(PyLayer):
         else:
             raise ValueError("unsupported amp level: {}".format(
                 tracer._amp_level))
+
+        if tracer._amp_dtype == 'float16':
+            ctx.amp_dtype = 'float16'
+        elif tracer._amp_dtype in ('bfloat16', 'float32'):
+            ctx.amp_dtype = 'bfloat16'
+        else:
+            raise ValueError("unsupported amp dtype: {}".format(
+                tracer._amp_dtype))
+
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -137,7 +146,8 @@ class RecomputeFunction(PyLayer):
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
                             custom_black_list=ctx.amp_black_list,
-                            level=ctx.amp_level):
+                            level=ctx.amp_level,
+                            dtype=ctx.amp_dtype):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
@@ -145,7 +155,8 @@ class RecomputeFunction(PyLayer):
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level):
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
@@ -171,9 +182,10 @@ class RecomputeFunction(PyLayer):
                     "none of output has requires_grad=True, this recompute() is not necessary"
                 )
 
-            # actually backward            
-            paddle.autograd.backward(forward_outputs_with_grad,
-                                     backward_inputs_with_grad)
+            # actually backward
+            with paddle.amp.auto_cast(enable=False):
+                paddle.autograd.backward(forward_outputs_with_grad,
+                                         backward_inputs_with_grad)
 
             grads = list(inp._grad_ivar() for inp in detached_inputs
                          if isinstance(inp, core.VarBase))

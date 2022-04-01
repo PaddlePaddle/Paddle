@@ -132,6 +132,27 @@ bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
   return false;
 }
 
+bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
+    Node* quant_op, Node* dequant_in, Node* next_op) const {
+  bool is_concat_signed =
+      quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
+  bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
+  /* TODO(sfraczek): remove elementwise from this condition when BinaryMKLDNN
+   kernel will support two different input data types */
+  bool is_next_op_concat_or_elementwise =
+      next_op->Op()->Type() == "concat" ||
+      next_op->Op()->Type().find("elementwise") == 0;
+  if (is_next_op_concat_or_elementwise && is_concat_signed &&
+      is_input_unsigned) {
+    VLOG(4) << "Do not squash dequant-quant, because "
+            << "next_op is: " << next_op->Op()->Type()
+            << ", is_concat_signed: " << is_concat_signed
+            << ", is_input_unsigned: " << is_input_unsigned << ".";
+    return true;
+  }
+  return false;
+}
+
 void CPUQuantizeSquashPass::DequantQuantSquash(
     Graph* graph,
     std::unordered_map<const Node*, int>* nodes_keep_counter) const {
@@ -151,9 +172,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
-    // Don't squash if e.g. just one concat input is unsigned
-    if (IsDequantizeInputUint8(dequant_in) &&
-        !quant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+    if (IsDequantizeQuantizeIncompatible(quant_op, dequant_in, next_op)) {
       return;
     }
 
@@ -415,9 +434,17 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
             platform::errors::NotFound("Operator after quantize operator(%s) "
                                        "should has quantize output as input.",
                                        quant_out->Name()));
-        last_op->Op()->SetInput(
-            last_op_input_name,
-            std::vector<std::string>({first_quant_out->Name()}));
+
+        // update the next operator input,
+        // by replacing quant_out with first_quant_out
+        auto last_op_names = last_op->Op()->Input(last_op_input_name);
+        last_op_names.erase(std::remove(last_op_names.begin(),
+                                        last_op_names.end(), quant_out->Name()),
+                            last_op_names.end());
+        last_op_names.push_back(first_quant_out->Name());
+        last_op->Op()->SetInput(last_op_input_name,
+                                std::vector<std::string>(last_op_names));
+
         IR_NODE_LINK_TO(first_quant_out, last_op);
         GraphSafeRemoveNodes(graph, {quant_op, quant_out});
         removed_quantize++;

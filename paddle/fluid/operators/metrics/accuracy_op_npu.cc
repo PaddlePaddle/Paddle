@@ -12,8 +12,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/controlflow/compare_op.h"
-#include "paddle/fluid/operators/metrics/accuracy_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -93,7 +93,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     // [correct]
     // reduce_max
     Tensor tmp_correct_max(experimental::DataType::FLOAT32);
-    tmp_correct_max.Resize(framework::make_ddim({num_samples}));
+    tmp_correct_max.Resize(phi::make_ddim({num_samples}));
     tmp_correct_max.mutable_data<float>(ctx.GetPlace());
     const auto& runner_reduce_max =
         NpuOpRunner("ReduceMaxD", {tmp_equal_cast}, {tmp_correct_max},

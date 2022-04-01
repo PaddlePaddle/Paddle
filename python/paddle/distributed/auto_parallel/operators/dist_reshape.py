@@ -24,7 +24,7 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from ..utils import set_dist_op_desc_original_id
 from paddle.fluid import core, unique_name
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from .dist_default import DistributedDefaultImpl0
@@ -130,9 +130,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         """
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
@@ -287,9 +287,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         """
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))

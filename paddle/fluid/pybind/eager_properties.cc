@@ -25,9 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
@@ -52,6 +52,12 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
+  EAGER_TRY
+  return ToPyObject(egr::egr_utils_api::IsLeafTensor(self->tensor));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 int tensor_properties_set_name(TensorObject* self, PyObject* value,
                                void* closure) {
   EAGER_TRY
@@ -70,26 +76,13 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
 
 PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
-    std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    return ToPyObject(*accumulation_grad_node->Grad());
+  VLOG(6) << "Get grad for tensor: " << self->tensor.name();
+  auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
+  if (meta && meta->Grad().initialized()) {
+    return ToPyObject(meta->Grad());
   } else {
-    VLOG(6) << "Get grad for tensor: " << self->tensor.name();
-    auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-    if (meta) {
-      return ToPyObject(meta->Grad());
-    } else {
-      Py_INCREF(Py_None);
-      return Py_None;
-    }
+    Py_INCREF(Py_None);
+    return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -101,16 +94,15 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
   PADDLE_ENFORCE(
       egr::egr_utils_api::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
-  std::shared_ptr<egr::GradNodeBase> grad_node =
-      egr::EagerUtils::grad_node(self->tensor);
-  PADDLE_ENFORCE(
-      grad_node.get() != nullptr,
-      paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                      "Leaf tensor should have had grad_node "
-                                      "with type: GradNodeAccumulation"));
-  auto accumulation_grad_node =
-      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-  accumulation_grad_node->Grad()->copy_(src, true);
+
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  grad->copy_(src, self->tensor.inner_place(), true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
@@ -120,6 +112,9 @@ int tensor_properties_set_stop_gradient(TensorObject* self, PyObject* value,
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
+  if (!meta->GradNode()) {
+    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+  }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
@@ -193,6 +188,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
+    {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind

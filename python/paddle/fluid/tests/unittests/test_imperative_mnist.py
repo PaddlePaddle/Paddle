@@ -27,6 +27,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -114,7 +115,7 @@ class TestImperativeMnist(unittest.TestCase):
 
         return _reader_imple
 
-    def test_mnist_float32(self):
+    def func_test_mnist_float32(self):
         seed = 90
         epoch_num = 1
         batch_size = 128
@@ -152,7 +153,7 @@ class TestImperativeMnist(unittest.TestCase):
                     label = data[1]
                     label.stop_gradient = True
 
-                    if batch_id % 10 == 0:
+                    if batch_id % 10 == 0 and _in_legacy_dygraph():
                         cost, traced_layer = paddle.jit.TracedLayer.trace(
                             mnist, inputs=img)
                         if program is not None:
@@ -256,6 +257,11 @@ class TestImperativeMnist(unittest.TestCase):
 
         for key, value in six.iteritems(static_param_value):
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+
+    def test_mnist_float32(self):
+        with _test_eager_guard():
+            self.func_test_mnist_float32()
+        self.func_test_mnist_float32()
 
 
 if __name__ == '__main__':

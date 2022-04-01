@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace distributed {
@@ -36,9 +36,9 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

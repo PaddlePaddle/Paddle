@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,16 +22,6 @@ namespace operators {
 class MaskedSelectOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Input", "MaskedSelect");
-    OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "MaskedSelect");
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Out", "MaskedSelect");
-
-    // output will only be a 1-D Tensor
-    ctx->SetOutputDim("Y", framework::make_ddim({-1}));
-    ctx->ShareLoD("X", /*->*/ "Y");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -100,8 +92,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(MaskedSelectedGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(masked_select, MaksedSelectInferShapeFunctor,
+                            PD_INFER_META(phi::MaskedSelectInferMeta));
+
 REGISTER_OPERATOR(masked_select, ops::MaskedSelectOp, ops::MaskedSelectOpMaker,
                   ops::MaskedSelectGradOpMaker<paddle::framework::OpDesc>,
-                  ops::MaskedSelectGradOpMaker<paddle::imperative::OpBase>);
+                  ops::MaskedSelectGradOpMaker<paddle::imperative::OpBase>,
+                  MaksedSelectInferShapeFunctor);
 REGISTER_OPERATOR(masked_select_grad, ops::MaskedSelectOpGrad,
                   ops::MaskedSelectedGradNoNeedBufferVarsInferer);

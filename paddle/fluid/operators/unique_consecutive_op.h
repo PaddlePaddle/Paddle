@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -60,20 +60,20 @@ static void UniqueConsecutiveFlattendTensor(
   }
   out_vec.resize(output_size);
 
-  out->Resize(framework::make_ddim({output_size}));
+  out->Resize(phi::make_ddim({output_size}));
   auto* out_data = out->mutable_data<InT>(context.GetPlace());
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
-    inverse->Resize(framework::make_ddim({in.numel()}));
+    inverse->Resize(phi::make_ddim({in.numel()}));
     auto* inverse_data = inverse->mutable_data<IndexT>(context.GetPlace());
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
 
   if (return_counts) {
     auto* count = context.Output<framework::Tensor>("Counts");
-    count->Resize(framework::make_ddim({out->numel()}));
+    count->Resize(phi::make_ddim({out->numel()}));
     auto* counts_data = count->mutable_data<IndexT>(context.GetPlace());
     std::copy(counts_vec.begin(), counts_vec.end(), counts_data);
   }
@@ -119,19 +119,18 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(framework::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   framework::Tensor in_trans;
-  framework::DDim in_trans_dims = framework::make_ddim(in_trans_dims_vec);
+  framework::DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
   TransCompute<DeviceContext, InT>(in.dims().size(), dev_ctx, in, &in_trans,
                                    permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  framework::DDim in_trans_flat_dims =
-      framework::flatten_to_2d(in_trans_dims, 1);
+  framework::DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   std::vector<IndexT> sorted_indices_vec(in_trans.dims()[0]);
@@ -163,10 +162,10 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   framework::Tensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(framework::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
   out_trans.mutable_data<InT>(context.GetPlace());
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(framework::make_ddim(out_trans_dims_vec));
+  out->Resize(phi::make_ddim(out_trans_dims_vec));
   out->mutable_data<InT>(context.GetPlace());
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,

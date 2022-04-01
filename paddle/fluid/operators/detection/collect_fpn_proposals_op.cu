@@ -23,11 +23,11 @@ namespace cub = hipcub;
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -160,9 +160,9 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     sorted_rois.mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
     Tensor sorted_batch_id;
     sorted_batch_id.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
-    GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
-    GPUGather<int>(dev_ctx, roi_batch_id_list_gpu, index_out_t,
-                   &sorted_batch_id);
+    phi::funcs::GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
+    phi::funcs::GPUGather<int>(dev_ctx, roi_batch_id_list_gpu, index_out_t,
+                               &sorted_batch_id);
 
     Tensor batch_index_t;
     int* batch_idx_in =
@@ -190,12 +190,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num, 0,
         sizeof(int) * 8, dev_ctx.stream());
 
-    GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
+    phi::funcs::GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
     Tensor length_lod;
     int* length_lod_data =
         length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
-    pten::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
     set_zero(dev_ctx, &length_lod, static_cast<int>(0));
 
     int blocks = NumBlocks(real_post_num);

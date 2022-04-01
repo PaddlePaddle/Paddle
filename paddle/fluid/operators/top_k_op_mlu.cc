@@ -47,7 +47,7 @@ class TopkMLUKernel : public framework::OpKernel<T> {
     const bool sorted = true;
     const int axis = -1;
     // cnnl only support int32/int16 type of indices
-    framework::Tensor indices_int32(VT::INT32);
+    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 

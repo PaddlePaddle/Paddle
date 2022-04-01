@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/fluid/operators/top_k_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "xpu/refactor/math.h"
 
@@ -67,8 +67,8 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
       int32_t* indices_int_data =
           RAII_GUARD.alloc_l3_or_gm<int32_t>(indices->numel());
 
-      const size_t row = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const size_t row =
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const size_t col = in_dims[in_dims.size() - 1];
       int r = xpu::sorted_topk<T>(dev_ctx.x_context(), in_data, output_data,
                                   indices_int_data, row, col, k);
@@ -131,8 +131,8 @@ class TopkV2XPUKernel : public framework::OpKernel<T> {
           RAII_GUARD.alloc_l3_or_gm<int64_t>(output->numel());
       int32_t* trans_idx_int32_data =
           RAII_GUARD.alloc_l3_or_gm<int32_t>(output->numel());
-      const size_t row = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const size_t row =
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const size_t col = trans_dims[trans_dims.size() - 1];
 
       // Do top k on transposed input

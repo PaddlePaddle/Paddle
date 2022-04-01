@@ -46,8 +46,7 @@ class IpuRuntimeOp : public framework::OperatorBase {
     for (size_t i = 0; i < outputs.size(); ++i) {
       auto* out = outputs[i];
       if (out->dims().size() == 0) {
-        auto tensor_dtype = framework::TransToProtoVarType(out->dtype());
-        auto sizeof_dtype = framework::SizeOfType(tensor_dtype);
+        auto sizeof_dtype = framework::DataTypeSize(out->dtype());
         int64_t dim = out->memory_size() / sizeof_dtype;
         out->Resize({dim});
         VLOG(10) << "set ipu_runtime_op output: " << output_names[i]

@@ -5,3 +5,4 @@ Pillow
 six
 decorator
 astor
+paddle_bfloat==0.1.2

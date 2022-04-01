@@ -187,7 +187,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
           "V_out numel error, V_out numel is %d.", v_out->numel()));
     }
 
-    pten::funcs::SetConstant<DeviceContext, T> tset;
+    phi::funcs::SetConstant<DeviceContext, T> tset;
     tset(dev_ctx, grad_out, static_cast<T>(0));
   }
 };

@@ -44,6 +44,7 @@ def create_test_class(in_typename, out_typename):
                 'out_dtype': typeid_dict[out_typename],
             }
             self.op_type = 'cast'
+            self.__class__.no_need_check_grad = True
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
@@ -67,15 +68,6 @@ class TestCastOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.XPUPlace(0))
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
-            # The input dtype of cast_op must be float32, int32, int64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='int16')
-            self.assertRaises(TypeError, fluid.layers.cast, x2, 'int32')
-
-            def test_dtype_type():
-                x4 = fluid.layers.data(name='x4', shape=[4], dtype='int32')
-                output = fluid.layers.cast(x=x4, dtype='int16')
-
-            self.assertRaises(TypeError, test_dtype_type)
 
 
 if __name__ == '__main__':

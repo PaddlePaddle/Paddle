@@ -15,6 +15,7 @@
 import copy
 from collections import defaultdict
 from paddle.fluid import framework
+from paddle.fluid.framework import get_flags, set_flags
 from paddle.fluid import core
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
@@ -39,18 +40,27 @@ def set_default_distributed_context(dist_context):
     _g_default_distributed_context = dist_context
 
 
+def _node_id(node):
+    return (node.node.graph_id(), node.node.id())
+
+
 class DistributedContext:
     """
     DistributedContext is used to collect related distributed information for program and graph.
     One auto-parallel run should use its own DistributedContext to avoid interfering other run.
     """
 
-    def __init__(self, program=None):
+    def __init__(self,
+                 serial_main_prog=None,
+                 serial_startup_prog=None,
+                 dist_main_progs=None,
+                 dist_startup_progs=None):
         # Program related data members
-        self._serial_program = program
+        self._serial_program = serial_main_prog
         self._is_initialized_for_program = False
         self._dist_tensors_for_program = {}
         self._dist_ops_for_program = {}
+        self._block_state = BlockState()
         # Graph related data members
         self._is_initialized_for_graph = False
         self._serial_graph = None
@@ -65,8 +75,12 @@ class DistributedContext:
         self._tensor_id_to_tensor_node_ids = {}
 
         # Distributed programs
-        self._dist_main_programs = {}
-        self._dist_startup_programs = {}
+        self._dist_main_programs = dist_main_progs
+        if not self._dist_main_programs:
+            self._dist_main_programs = {}
+        self._dist_startup_programs = dist_startup_progs
+        if not self._dist_startup_programs:
+            self._dist_startup_programs = {}
 
     @property
     def serial_program(self):
@@ -78,8 +92,8 @@ class DistributedContext:
 
     @serial_program.setter
     def serial_program(self, program):
-        assert self._serial_program is None, \
-            "This distributed context has already been realted to a serial program"
+        # assert self._serial_program is None, \
+        #     "This distributed context has already been realted to a serial program"
         self._serial_program = program
 
     @property
@@ -93,6 +107,10 @@ class DistributedContext:
     @property
     def dist_op_context(self):
         return self._dist_op_context
+
+    @property
+    def block_state(self):
+        return self._block_state
 
     @property
     def dist_main_programs(self):
@@ -133,7 +151,7 @@ class DistributedContext:
                 return None
 
     def get_dist_tensor_for_graph(self, serial_tensor_node):
-        serial_tensor_node_id = serial_tensor_node.id()
+        serial_tensor_node_id = _node_id(serial_tensor_node)
         return self._dist_tensors_for_graph.get(serial_tensor_node_id, None)
 
     def get_dist_op_for_program(self, serial_op):
@@ -155,7 +173,7 @@ class DistributedContext:
             del self._dist_ops_for_program[serial_tensor_id]
 
     def get_dist_op_for_graph(self, serial_op_node):
-        serial_op_node_id = serial_op_node.id()
+        serial_op_node_id = _node_id(serial_op_node)
         return self._dist_ops_for_graph.get(serial_op_node_id, None)
 
     def get_tensor_dist_attr_for_program(self, serial_tensor):
@@ -184,7 +202,7 @@ class DistributedContext:
         self.add_dist_tensor_for_program(dist_tensor)
 
     def get_tensor_dist_attr_for_graph(self, serial_tensor_node):
-        serial_tensor_node_id = serial_tensor_node.id()
+        serial_tensor_node_id = _node_id(serial_tensor_node)
         dist_tensor = self._dist_tensors_for_graph.get(serial_tensor_node_id,
                                                        None)
         if dist_tensor:
@@ -229,7 +247,7 @@ class DistributedContext:
         self.add_dist_op_for_program(dist_op)
 
     def get_op_dist_attr_for_graph(self, serial_op_node):
-        serial_op_node_id = serial_op_node.id()
+        serial_op_node_id = _node_id(serial_op_node)
         dist_op = self._dist_ops_for_graph.get(serial_op_node_id, None)
         if dist_op:
             return dist_op.dist_attr
@@ -249,7 +267,7 @@ class DistributedContext:
 
     def get_dist_attr_for_graph(self, serial_node):
         if serial_node.is_var() and serial_node.var() is not None:
-            serial_tensor_node_id = serial_node.id()
+            serial_tensor_node_id = _node_id(serial_node)
             dist_tensor = self._dist_tensors_for_graph.get(
                 serial_tensor_node_id, None)
             if dist_tensor:
@@ -257,7 +275,7 @@ class DistributedContext:
             else:
                 return None
         if serial_node.is_op() and serial_node.op() is not None:
-            serial_op_node_id = serial_node.id()
+            serial_op_node_id = _node_id(serial_node)
             dist_op = self._dist_ops_for_graph.get(serial_op_node_id, None)
             if dist_op:
                 return dist_op.dist_attr
@@ -298,40 +316,69 @@ class DistributedContext:
     def order_nodes_by_program_order(self):
         def _contains(nodes, target_node):
             for node in nodes:
-                if node.id() == target_node.id():
+                if _node_id(node) == _node_id(target_node):
                     return True
             return False
 
-        ordered_tensor_nodes = []
-        ordered_op_nodes = []
-        all_nodes = self._serial_graph.all_nodes()
+        serial_ordered_tensor_nodes = []
+        serial_ordered_op_nodes = []
+        all_nodes = []
+        # for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
+        for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
+            for node in graph.all_nodes():
+                all_nodes.append(node)
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
-                ordered_tensor_nodes.append(node)
+                serial_ordered_tensor_nodes.append(node)
             if node.is_op() and node.op() is not None:
-                ordered_op_nodes.append(node)
-        ordered_tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
-        ordered_op_nodes.sort(key=lambda node: node.node.original_desc_id())
-        for op_node in ordered_op_nodes:
+                serial_ordered_op_nodes.append(node)
+        serial_ordered_tensor_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        serial_ordered_op_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        num_nodes_before = len(serial_ordered_tensor_nodes) + len(
+            serial_ordered_op_nodes)
+
+        new_serial_ordered_tensor_nodes = []
+        new_serial_ordered_op_nodes = []
+        for op_node in serial_ordered_op_nodes:
             tensor_nodes = []
             for tensor_node in op_node.inputs:
                 if tensor_node.is_var() \
                     and tensor_node.var() is not None \
                     and not _contains(self._serial_ordered_nodes, tensor_node):
                     tensor_nodes.append(tensor_node)
+                    new_serial_ordered_tensor_nodes.append(tensor_node)
             tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
             self._serial_ordered_nodes.extend(tensor_nodes)
             self._serial_ordered_nodes.append(op_node)
+            new_serial_ordered_op_nodes.append(op_node)
             tensor_nodes = []
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() \
                     and tensor_node.var() is not None \
                     and not _contains(self._serial_ordered_nodes, tensor_node):
                     tensor_nodes.append(tensor_node)
+                    new_serial_ordered_tensor_nodes.append(tensor_node)
+            tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
             self._serial_ordered_nodes.extend(tensor_nodes)
-        num_nodes_before = len(ordered_tensor_nodes) + len(ordered_op_nodes)
-        assert len(self._serial_ordered_nodes) == num_nodes_before, \
-            "The number of nodes before ordering is not the same after ordering."
+        new_serial_ordered_tensor_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        new_serial_ordered_op_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        self._serial_ordered_tensor_nodes = new_serial_ordered_tensor_nodes
+        self._serial_ordered_op_nodes = new_serial_ordered_op_nodes
+        assert len(self._serial_ordered_nodes) == len(
+            self._serial_ordered_tensor_nodes) + len(
+                self._serial_ordered_op_nodes)
+        self._serial_orphan_tensor_nodes = []
+        for tensor_node in serial_ordered_tensor_nodes:
+            if not _contains(self._serial_ordered_tensor_nodes, tensor_node):
+                self._serial_orphan_tensor_nodes.append(tensor_node)
+        if len(self._serial_ordered_nodes) != num_nodes_before:
+            print(
+                "WARNING: there are some orphan tensors or ops which are not used in the execution."
+            )
 
     def init_dist_attr_for_graph(self):
         assert self._is_initialized_for_program, \
@@ -339,9 +386,9 @@ class DistributedContext:
         if self._is_initialized_for_graph:
             return
         # Convert program to graph
+        set_flags({"FLAGS_convert_all_blocks": True})
         self._serial_graph = framework.IrGraph(
             core.Graph(self._serial_program.desc))
-        all_nodes = self._serial_graph.all_nodes()
         self.order_nodes_by_program_order()
         for node in self.serial_ordered_nodes:
             if node.is_var() and node.var() is not None:
@@ -352,10 +399,11 @@ class DistributedContext:
                     if tensor_id == cur_tensor_id \
                         or tensor_id == cur_dist_tensor.serial_tensor.desc.original_id():
                         dist_tensor = cur_dist_tensor
-                        self._node_id_to_tensor_id[node.id()] = cur_tensor_id
+                        self._node_id_to_tensor_id[_node_id(
+                            node)] = cur_tensor_id
                 assert dist_tensor is not None, \
                     "Tensor must have a distributed tensor after the initialization for program."
-                serial_tensor_node_id = node.id()
+                serial_tensor_node_id = _node_id(node)
                 new_dist_tensor = DistributedTensor(dist_tensor.serial_tensor,
                                                     dist_tensor.dist_attr)
                 self._dist_tensors_for_graph[
@@ -368,10 +416,10 @@ class DistributedContext:
                     if op_id == cur_op_id \
                         or op_id == cur_dist_op.serial_op.desc.original_id():
                         dist_op = cur_dist_op
-                        self._node_id_to_op_id[node.id()] = cur_op_id
+                        self._node_id_to_op_id[_node_id(node)] = cur_op_id
                 assert dist_op is not None, \
                     "Operator must have a distributed operator after the initialization for program."
-                serial_op_node_id = node.id()
+                serial_op_node_id = _node_id(node)
                 new_dist_op = DistributedOperator(dist_op.serial_op,
                                                   dist_op.dist_attr)
                 self._dist_ops_for_graph[serial_op_node_id] = new_dist_op
@@ -389,10 +437,11 @@ class DistributedContext:
         assert self._is_initialized_for_program and self._is_initialized_for_graph, \
             "Both program and graph must be initialized."
         updated_tensors = {}
-        all_nodes = self._serial_graph.all_nodes()
+        # all_nodes = self._serial_graph.all_nodes()
+        all_nodes = self._serial_ordered_nodes
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
-                tensor_id = self._node_id_to_tensor_id[node.id()]
+                tensor_id = self._node_id_to_tensor_id[_node_id(node)]
                 updated = updated_tensors.get(tensor_id, False)
                 # If a var has multiples var nodes in graph, only use the first one for now
                 if not updated:
@@ -403,16 +452,31 @@ class DistributedContext:
                     dist_tensor_for_program.dist_attr = tensor_dist_attr_for_graph
                     updated_tensors[tensor_id] = True
             if node.is_op() and node.op() is not None:
-                op_id = self._node_id_to_op_id[node.id()]
+                op_id = self._node_id_to_op_id[_node_id(node)]
                 op_dist_attr_for_graph = self.get_op_dist_attr_for_graph(node)
                 dist_op_for_program = self._dist_ops_for_program[op_id]
                 dist_op_for_program.dist_attr = op_dist_attr_for_graph
+        # TODO: the completion algorithm will skip orphan tensors, 
+        # here we just set there process_mesh to the first one.
+        for orphan_node in self._serial_orphan_tensor_nodes:
+            serial_tensor_id = orphan_node.var().id()
+            dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id,
+                                                             None)
+            if dist_tensor:
+                dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
+            else:
+                serial_tensor_id = orphan_node.var().original_id()
+                dist_tensor = self._dist_tensors_for_program.get(
+                    serial_tensor_id, None)
+                dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
 
     def amend_dist_attr_for_program(self):
         for dist_tensor in self._dist_tensors_for_program.values():
             serial_tensor = dist_tensor.serial_tensor
             dist_attr = dist_tensor.dist_attr
-            if serial_tensor.type == core.VarDesc.VarType.READER:
+            if serial_tensor.type == core.VarDesc.VarType.READER \
+                or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
                 tensor_shape = serial_tensor.shape
@@ -433,6 +497,7 @@ class DistributedContext:
                     tensor_shape = []
                 else:
                     if dist_op.get_serial_input(arg_name).type == core.VarDesc.VarType.READER \
+                        or dist_op.get_serial_input(arg_name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
                         or dist_op.serial_op.type == "create_py_reader":
                         tensor_shape = []
                     else:
@@ -446,8 +511,9 @@ class DistributedContext:
                         and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
                         dims_mapping[i] = -1
             for arg_name in serial_op.output_arg_names:
-                if dist_op.get_serial_output(
-                        arg_name).type == core.VarDesc.VarType.READER:
+                if dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.READER \
+                    or dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                    or dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.STEP_SCOPES:
                     tensor_shape = []
                 else:
                     tensor_shape = dist_op.get_serial_output(arg_name).shape
@@ -485,7 +551,8 @@ class DistributedContext:
         for k, v in self.__dict__.items():
             if k == "_serial_program" or k == "_serial_graph" \
                 or k == "_dist_main_programs" or k == "_dist_startup_programs" \
-                or k == "_serial_ordered_nodes":
+                or k == "_serial_ordered_nodes" or k == "_serial_ordered_tensor_nodes" \
+                or k == "_serial_ordered_op_nodes":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
@@ -504,66 +571,83 @@ class DistributedOperatorContext:
 
     def __init__(self):
         self._dst_main_program = None
+        self._main_block = None
         self._dst_startup_program = None
-        self._varname_mapping = None
-        self._rank_id = None
+        self._startup_block = None
         self._cur_src_op = None
         self._cur_dist_attr = None
         self.grad_op_id_to_op_id = {}
+        self._work_block = None
         self.already_init_sync_vars = set()
+        self.varname_mapping = None
+        self.rank_id = None
 
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_dst_main_program" or k == "_dst_startup_program" or k == "_cur_src_op":
+            if k in [
+                    "_dst_main_program", "_dst_startup_program", "_cur_src_op",
+                    "_work_block", "_main_block", "_startup_block"
+            ]:
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def set_dst_main_program(self, prog):
-        self._dst_main_program = prog
-
-    def get_dst_main_program(self):
+    @property
+    def dst_main_program(self):
         return self._dst_main_program
 
-    def set_dst_startup_program(self, prog):
-        self._dst_startup_program = prog
+    @dst_main_program.setter
+    def dst_main_program(self, prog):
+        self._dst_main_program = prog
+        self._main_block = prog.blocks[0]
 
-    def get_dst_startup_program(self):
+    @property
+    def main_block(self):
+        return self._main_block
+
+    @property
+    def dst_startup_program(self):
         return self._dst_startup_program
 
-    def set_varname_mapping(self, mapping):
-        self._varname_mapping = mapping
+    @dst_startup_program.setter
+    def dst_startup_program(self, prog):
+        self._dst_startup_program = prog
+        self._startup_block = prog.blocks[0]
 
-    def get_varname_mapping(self):
-        return self._varname_mapping
+    @property
+    def startup_block(self):
+        return self._startup_block
 
-    def set_rank_id(self, rank_id):
-        self._rank_id = rank_id
+    @property
+    def work_block(self):
+        assert self._work_block is not None
+        return self._work_block
 
-    def get_rank_id(self):
-        return self._rank_id
+    @work_block.setter
+    def work_block(self, block):
+        assert block is not None
+        self._work_block = block
 
-    def set_cur_src_op(self, cur_src_op):
-        self._cur_src_op = cur_src_op
-
-    def get_cur_src_op(self):
+    @property
+    def cur_src_op(self):
+        assert self._cur_src_op is not None
         return self._cur_src_op
 
     def prepare_context(self, src_op):
 
-        self.set_cur_src_op(src_op)
+        self._cur_src_op = src_op
 
         # build input varname mapping
         kinputs = {}
         for input_name in src_op.desc.input_names():
             varnames = []
             for varname in src_op.desc.input(input_name):
-                assert varname in self._varname_mapping
-                varnames.append(self._varname_mapping[varname])
+                assert varname in self.varname_mapping
+                varnames.append(self.varname_mapping[varname])
             kinputs[input_name] = varnames
 
         # build output varname mapping
@@ -571,8 +655,52 @@ class DistributedOperatorContext:
         for output_name in src_op.desc.output_names():
             varnames = []
             for varname in src_op.desc.output(output_name):
-                assert varname in self._varname_mapping
-                varnames.append(self._varname_mapping[varname])
+                assert varname in self.varname_mapping
+                varnames.append(self.varname_mapping[varname])
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
+
+
+class BlockState(object):
+    def __init__(self):
+        self.nblock = 0
+        self.forward_indices = []
+        self.backward_indices = []
+        self.backward_to_forward_index_map = {}
+
+    def parse_forward_blocks(self, program):
+
+        while program.current_block_idx != 0:
+            program._rollback()
+
+        assert program.current_block_idx == 0
+
+        for idx, block in enumerate(program.blocks):
+
+            assert idx == block.idx, "index doesn't match"
+            assert block.forward_block_idx == -1, "forward_block_idx of forward block [{}] is not [{}]".format(
+                idx, block.forward_block_idx)
+            self.forward_indices.append(idx)
+            self.nblock += 1
+
+        assert self.nblock >= 1
+
+    def parse_backward_blocks(self, program):
+
+        assert 0 in self.forward_indices, "forward block idx are{}".format(
+            self.forward_indices)
+        self.backward_to_forward_index_map[0] = 0
+
+        for idx, block in enumerate(program.blocks):
+
+            if idx < len(self.forward_indices):
+                continue
+
+            assert idx == block.idx, "index doesn't match"
+            assert block.forward_block_idx in self.forward_indices
+            self.backward_indices.append(idx)
+            self.backward_to_forward_index_map[idx] = block.forward_block_idx
+            self.nblock += 1
+
+        assert self.nblock == len(program.blocks)

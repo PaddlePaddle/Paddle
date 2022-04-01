@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -91,7 +91,7 @@ class ModifiedHuberLossGradCPUKernel : public framework::OpKernel<T> {
       const T* y_ptr = in0->data<T>();
       const T* inter_val_ptr = in1->data<T>();
       const T* out_grad_ptr = in2->data<T>();
-      size_t counts = static_cast<size_t>(framework::product(in1->dims()));
+      size_t counts = static_cast<size_t>(phi::product(in1->dims()));
       T* x_grad_ptr = out0->mutable_data<T>(context.GetPlace());
       for (size_t i = 0; i < counts; ++i) {
         if (inter_val_ptr[i] < -1) {

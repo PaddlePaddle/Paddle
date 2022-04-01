@@ -41,7 +41,7 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
       axes.push_back(i);
     }
   }
-  // LOG(INFO) << "axes = " << framework::make_ddim(axes).to_str();
+  // LOG(INFO) << "axes = " << phi::make_ddim(axes).to_str();
   out->mutable_data<T>(ctx.GetPlace());
   const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
                                    {{"axes", axes}, {"keep_dims", false}});

@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/pscore/distributed_push_sparse_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -104,6 +104,9 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training.")
+        .SetDefault(false);
+
+    AddAttr<bool>("use_cvm_op", "(boolean, default false) Use cvm op or not.")
         .SetDefault(false);
 
     AddComment(R"DOC(

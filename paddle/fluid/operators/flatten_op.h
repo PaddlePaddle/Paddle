@@ -15,14 +15,13 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/kernels/empty_kernel.h"
-#include "paddle/pten/kernels/flatten_grad_kernel.h"
-#include "paddle/pten/kernels/flatten_kernel.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/flatten_grad_kernel.h"
+#include "paddle/phi/kernels/flatten_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +35,7 @@ class FlattenKernel : public framework::OpKernel<T> {
 
     auto &axes = context.Attr<int>("axis");
     auto x_dims = in->dims();
-    auto out_dims = framework::make_ddim(GetOutputShape(axes, x_dims));
+    auto out_dims = phi::make_ddim(GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
@@ -90,7 +89,7 @@ class Flatten2Kernel : public framework::OpKernel<T> {
 
     auto *out = context.Output<framework::LoDTensor>("Out");
 
-    auto out_dims = framework::make_ddim(
+    auto out_dims = phi::make_ddim(
         FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
@@ -110,54 +109,13 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
     auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
         *d_out, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), d_x);
     d_x->Resize(x_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    out->mutable_data(context.GetPlace(), in->type());
-    auto &start_axis = context.Attr<int>("start_axis");
-    auto &stop_axis = context.Attr<int>("stop_axis");
-    auto &dev_ctx = context.device_context<DeviceContext>();
-
-    // call new kernel
-    pten::FlattenKernel<T, typename paddle::framework::ConvertToPtenContext<
-                               DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
-            DeviceContext>::TYPE &>(dev_ctx),
-        *in, start_axis, stop_axis, out);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *xshape = ctx.Input<framework::LoDTensor>("XShape");
-
-    d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    auto &dev_ctx = ctx.device_context<DeviceContext>();
-
-    // call new kernel
-    pten::FlattenGradKernel<T, typename paddle::framework::ConvertToPtenContext<
-                                   DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
-            DeviceContext>::TYPE &>(dev_ctx),
-        *d_out, *xshape, d_x);
   }
 };
 

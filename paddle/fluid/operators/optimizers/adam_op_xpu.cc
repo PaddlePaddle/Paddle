@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "gflags/gflags.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/optimizers/adam_op_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -195,8 +195,8 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           xpu_wait(dev_ctx.x_context()->xpu_stream);
         }
       }
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
-      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto* grad = ctx.Input<phi::SelectedRows>("Grad");
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
       if (grad->rows().size() == 0) {
@@ -213,8 +213,8 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      pten::SelectedRows tmp_grad_merge;
-      const pten::SelectedRows* grad_merge_ptr;
+      phi::SelectedRows tmp_grad_merge;
+      const phi::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {

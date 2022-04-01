@@ -40,7 +40,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace distributed {
@@ -70,18 +70,34 @@ class GraphPyService {
     ::paddle::distributed::TableAccessorParameter* accessor_proto =
         sparse_table_proto->mutable_accessor();
 
-    ::paddle::distributed::CommonAccessorParameter* common_proto =
-        sparse_table_proto->mutable_common();
+    // ::paddle::distributed::CommonAccessorParameter* common_proto =
+    //     sparse_table_proto->mutable_common();
 
+    ::paddle::distributed::GraphParameter* graph_proto =
+        sparse_table_proto->mutable_graph_parameter();
+
+    ::paddle::distributed::GraphFeature* graph_feature =
+        graph_proto->mutable_graph_feature();
+
+    graph_proto->set_task_pool_size(24);
+
+    graph_proto->set_table_name(table_name);
+    graph_proto->set_table_type(table_type);
+    graph_proto->set_use_cache(false);
     // Set GraphTable Parameter
-    common_proto->set_table_name(table_name);
-    common_proto->set_name(table_type);
-    for (size_t i = 0; i < feat_name.size(); i++) {
-      common_proto->add_params(feat_dtype[i]);
-      common_proto->add_dims(feat_shape[i]);
-      common_proto->add_attributes(feat_name[i]);
-    }
+    // common_proto->set_table_name(table_name);
+    // common_proto->set_name(table_type);
+    // for (size_t i = 0; i < feat_name.size(); i++) {
+    //   common_proto->add_params(feat_dtype[i]);
+    //   common_proto->add_dims(feat_shape[i]);
+    //   common_proto->add_attributes(feat_name[i]);
+    // }
 
+    for (size_t i = 0; i < feat_name.size(); i++) {
+      graph_feature->add_dtype(feat_dtype[i]);
+      graph_feature->add_shape(feat_shape[i]);
+      graph_feature->add_name(feat_name[i]);
+    }
     accessor_proto->set_accessor_class("CommMergeAccessor");
   }
 
@@ -143,24 +159,24 @@ class GraphPyClient : public GraphPyService {
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
-  void add_graph_node(std::string name, std::vector<uint64_t>& node_ids,
+  void add_graph_node(std::string name, std::vector<int64_t>& node_ids,
                       std::vector<bool>& weight_list);
-  void remove_graph_node(std::string name, std::vector<uint64_t>& node_ids);
+  void remove_graph_node(std::string name, std::vector<int64_t>& node_ids);
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
-  std::pair<std::vector<std::vector<uint64_t>>, std::vector<float>>
-  batch_sample_neighbors(std::string name, std::vector<uint64_t> node_ids,
+  std::pair<std::vector<std::vector<int64_t>>, std::vector<float>>
+  batch_sample_neighbors(std::string name, std::vector<int64_t> node_ids,
                          int sample_size, bool return_weight,
                          bool return_edges);
-  std::vector<uint64_t> random_sample_nodes(std::string name, int server_index,
-                                            int sample_size);
+  std::vector<int64_t> random_sample_nodes(std::string name, int server_index,
+                                           int sample_size);
   std::vector<std::vector<std::string>> get_node_feat(
-      std::string node_type, std::vector<uint64_t> node_ids,
+      std::string node_type, std::vector<int64_t> node_ids,
       std::vector<std::string> feature_names);
   void use_neighbors_sample_cache(std::string name, size_t total_size_limit,
                                   size_t ttl);
-  void set_node_feat(std::string node_type, std::vector<uint64_t> node_ids,
+  void set_node_feat(std::string node_type, std::vector<int64_t> node_ids,
                      std::vector<std::string> feature_names,
                      const std::vector<std::vector<std::string>> features);
   std::vector<FeatureNode> pull_graph_list(std::string name, int server_index,

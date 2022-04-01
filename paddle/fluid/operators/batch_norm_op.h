@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -111,24 +111,6 @@ class BatchNormOpInferVarType
     static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
     return m;
   }
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormDoubleGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
 }  // namespace operators

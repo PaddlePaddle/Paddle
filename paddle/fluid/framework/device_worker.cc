@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

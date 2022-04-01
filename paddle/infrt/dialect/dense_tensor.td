@@ -2,7 +2,7 @@
 #else
 #define DT_OPS
 
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "paddle/infrt/dialect/tensor_shape_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
@@ -28,7 +28,7 @@ class CreateUninitTensorOp<string dtype>
   }];
 
   let arguments = (ins I64ArrayAttr:$shape);
-  let results = (outs TensorType:$output);
+  let results = (outs DenseTensor:$output);
 
   let parser  = [{ return infrt::dt::parseCreateUninitTensorOp(parser, result); }];
   let printer = [{ return infrt::dt::printCreateUninitTensorOp(p, *this); }];
@@ -43,8 +43,8 @@ def ShallowCopyTensorOp
       An operation that copy a tensor shallowly.
   }];
 
-  let arguments = (ins TensorType:$input);
-  let results = (outs TensorType:$output);
+  let arguments = (ins DenseTensor:$input);
+  let results = (outs DenseTensor:$output);
 
   let assemblyFormat = "$input attr-dict `:` type($input) `->` type($output)";
 }
@@ -59,7 +59,7 @@ class FillTensorWithConstantOp<string dtype> :
   }];
 
   let arguments = (ins
-      TensorType:$input,
+      DenseTensor:$input,
       AnyAttr:$value
   );
   let results = (outs);
@@ -77,7 +77,7 @@ def PrintTensorOp : DT_Op<"print_tensor"> {
     An operation that prints a tensor.
   }];
 
-  let arguments = (ins TensorType:$input);
+  let arguments = (ins DenseTensor:$input);
   let results = (outs);
   let assemblyFormat = "`(` $input `:` type($input) `)` attr-dict";
 }
@@ -90,7 +90,7 @@ class SetTensorOp<string dtype> :
     An operation that sets an input tensor with given values.
   }];
 
-  let arguments = (ins TensorType);
+  let arguments = (ins DenseTensor);
   let results = (outs);
 
   let parser  = [{ return infrt::dt::parseSetTensorOp(parser, result); }];
@@ -105,12 +105,12 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   }];
 
   // input path of model params.
-  let arguments = (ins StringType:$path);
-  let results = (outs TensorMapType);
+  let arguments = (ins StrAttr:$path);
+  let results = (outs DenseHostTensorMap:$out);
 
-  let assemblyFormat = "`(` operands `)` attr-dict";
-  let verifier = ?;
+  let assemblyFormat = "`(``)`attr-dict";
 }
+
 
 def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
   let summary = "dt.tensor_map_get_tensor operation";
@@ -121,24 +121,50 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
 
   // input path of model params.
   let arguments = (ins
-          TensorMapType:$map,
-          StringType:$name
+          DenseHostTensorMap:$map,
+          StrAttr:$name
           );
-  let results = (outs TensorType:$output);
+  let results = (outs DenseTensor:$output);
   let assemblyFormat = "`(` operands `)` attr-dict `->` type($output)";
   let verifier = ?;
 }
 
 def TensorMapGetSizeOp : DT_Op<"tensor_map_get_size", [NoSideEffect]> {
-  let summary = "ddt.tensor_map_get_size operation";
+  let summary = "dt.tensor_map_get_size operation";
 
   let description = [{
     An operation that get the size of a TensorMap.
   }];
 
-  let arguments = (ins TensorMapType:$map);
+  let arguments = (ins DenseHostTensorMap:$map);
   let results = (outs I32:$size);
   let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
+}
+
+def Infrt_TensorListGetTensorOp : DT_Op<"tensor_list_get_tensor", [NoSideEffect]> {
+  let summary = "dt.tensor_list_get_tensor operation";
+
+  let description = [{
+    An operation that can get a tensor from a TensorList.
+  }];
+
+  let arguments = (ins
+          DenseTensorList:$l,
+          I32Attr:$id
+          );
+  let results = (outs DenseTensor:$output);
+  let verifier = ?;
+}
+
+def TensorListGetSizeOp : DT_Op<"tensor_list_get_size", [NoSideEffect]> {
+  let summary = "dt.tensor_list_get_size operation";
+
+  let description = [{
+    An operation that get the size of a TensorList.
+  }];
+
+  let arguments = (ins DenseTensorList:$map);
+  let results = (outs I32:$size);
 }
 
 def GetTensorShapeOp : DT_Op<"get_tensor_shape", [NoSideEffect]> {
@@ -148,7 +174,7 @@ def GetTensorShapeOp : DT_Op<"get_tensor_shape", [NoSideEffect]> {
       An operation that returns the shape of the input tensor.
   }];
 
-  let arguments = (ins TensorType:$input);
+  let arguments = (ins DenseTensor:$input);
   let results = (outs TS_Shape:$output);
   let assemblyFormat = "$input attr-dict `:` type($input) `->` type($output)";
 }
@@ -161,8 +187,8 @@ class NaiveElementwiseAddOp<string dtype> :
     Naive elementwise_add operation.
     Just for testing.
   }];
-  let arguments = (ins TensorType:$a, TensorType:$b);
-  let results = (outs TensorType:$output);
+  let arguments = (ins DenseTensor:$a, DenseTensor:$b);
+  let results = (outs DenseTensor:$output);
   let assemblyFormat = "`(` $a `,` $b `)` attr-dict `:` `(` type($a) `,` type($b) `)` `->` type($output)";
 }
 
@@ -174,8 +200,8 @@ class NaiveMatmulOp<string dtype> :
     Naive matmul operation.
     Just for testing.
   }];
-  let arguments = (ins TensorType:$x, TensorType:$w);
-  let results = (outs TensorType:$output);
+  let arguments = (ins DenseTensor:$x, DenseTensor:$w);
+  let results = (outs DenseTensor:$output);
   let assemblyFormat = "`(` $x `,` $w `)` attr-dict `:` `(` type($x) `,` type($w) `)` `->` type($output)";
 }
 
