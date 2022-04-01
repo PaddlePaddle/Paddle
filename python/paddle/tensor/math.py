@@ -3002,7 +3002,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 def any(x, axis=None, keepdim=False, name=None):
     """
-    Computes the the ``logical or`` of tensor elements over the given dimension.
+    Computes the the ``logical or`` of tensor elements over the given dimension, and return the result, type is bool.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
@@ -3027,32 +3027,37 @@ def any(x, axis=None, keepdim=False, name=None):
 
     Examples:
         .. code-block:: python
+           :name: code-example1
 
             import paddle
             import numpy as np
-            
-            # x is a bool Tensor with following elements:
-            #    [[True, False]
-            #     [False, False]]
-            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
-            print(x)
+
+            x = paddle.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
             x = paddle.cast(x, 'bool')
-            
+            print(x)
+
+            # [[True, False],
+            # [False, False]]
+
+            # paddle.assign: copies the input to the output, and return to a tensor.
+            # paddle.cast: returns a same shape tensor as input, change the dtype as given
+
+
             # out1 should be [True]
-            out1 = paddle.any(x)  # [True]
-            print(out1)
+            out1 = paddle.any(x)
+            print(out1)  # [True]
             
             # out2 should be [True, True]
-            out2 = paddle.any(x, axis=0)  # [True, True]
-            print(out2)
-            
-            # keep_dim=False, out3 should be [True, True], out.shape should be (2,)
-            out3 = paddle.any(x, axis=-1)  # [True, True]
-            print(out3)
+            out2 = paddle.any(x, axis=0)
+            print(out2) # [True, False]
+
+            # keep_dim=False,default value, out3 should be [True, True], out.shape should be (2,)
+            out3 = paddle.any(x, axis=-1)
+            print(out3) # [True, False]
             
             # keep_dim=True, result should be [[True], [True]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keepdim=True)
-            out4 = paddle.cast(out4, 'int32')  # [[True], [True]]
+            out4 = paddle.any(x, axis=1, keepdim=True) # out4 = [[True], [False]]
+            out4 = paddle.cast(out4, 'int32')   # out4 = [[1],[0]]
             print(out4)
             
     """
