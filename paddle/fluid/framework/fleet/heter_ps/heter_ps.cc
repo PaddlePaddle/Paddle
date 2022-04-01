@@ -64,11 +64,13 @@ void HeterPs::push_sparse(int num, FeatureKey* d_keys,
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
 
+#if defined(PADDLE_WITH_CUDA)
 void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                                      const std::vector<ncclComm_t>& inter_comms,
                                      int comm_size) {
   comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
 }
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle

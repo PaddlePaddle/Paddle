@@ -64,18 +64,18 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
           local_dest_vals[j * hidden + 1] = 0;
           local_dest_vals[j * hidden + 2] = 0;
         } else {
-          local_dest_vals[j * hidden] = local_slot_vals[j]->show;
-          local_dest_vals[j * hidden + 1] = local_slot_vals[j]->clk;
-          local_dest_vals[j * hidden + 2] = local_slot_vals[j]->lr;
+          local_dest_vals[j * hidden] = local_slot_vals[j].show;
+          local_dest_vals[j * hidden + 1] = local_slot_vals[j].clk;
+          local_dest_vals[j * hidden + 2] = local_slot_vals[j].lr;
         }
 
-        if (local_slot_vals[j]->mf_size == 0 || local_slot_keys[j] == 0) {
+        if (local_slot_vals[j].mf_size == 0 || local_slot_keys[j] == 0) {
           for (int m = 0; m < hidden - 3; m++) {
             local_dest_vals[j * hidden + 3 + m] = 0;
           }
         } else {
           for (int m = 0; m < hidden - 3; m++) {
-            local_dest_vals[j * hidden + 3 + m] = local_slot_vals[j]->mf[1 + m];
+            local_dest_vals[j * hidden + 3 + m] = local_slot_vals[j].mf[1 + m];
           }
         }
       }
@@ -146,12 +146,12 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, int64_t* len,
             real_read_len * hidden * sizeof(float));
       // copy from slots' grad to total grad
       for (int j = 0; j < real_read_len; j++) {
-        local_dest_grads[j]->slot = local_slot[i];
-        local_dest_grads[j]->show = local_slot_grads[j * hidden];
-        local_dest_grads[j]->clk = local_slot_grads[j * hidden + 1];
-        local_dest_grads[j]->lr_g = local_slot_grads[j * hidden + 2] * -1. * bs;
-        for (int m = 0; m < hidden - 3; j++) {
-          local_dest_grads[j]->mf_g[m] =
+        local_dest_grads[j].slot = local_slot[i];
+        local_dest_grads[j].show = local_slot_grads[j * hidden];
+        local_dest_grads[j].clk = local_slot_grads[j * hidden + 1];
+        local_dest_grads[j].lr_g = local_slot_grads[j * hidden + 2] * -1. * bs;
+        for (int m = 0; m < hidden - 3; m++) {
+          local_dest_grads[j].mf_g[m] =
               local_slot_grads[j * hidden + 3 + m] * -1. * bs;
         }
       }
@@ -237,9 +237,9 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
     slot_lengths_lod[i] += slot_lengths_lod[i - 1];
   }
 
-  T* buf_grad_value = nullptr;
-  T* buf_length = nullptr;
-  T* buf_slot_vector = nullptr;
+  float* buf_grad_value = nullptr;
+  int64_t* buf_length = nullptr;
+  int* buf_slot_vector = nullptr;
 
   xpu_malloc(reinterpret_cast<void**>(&buf_grad_value),
              grad_values.size() * sizeof(float*));
@@ -284,19 +284,19 @@ void PSGPUWrapper::SetSparseSGD(float nonclk_coeff, float clk_coeff,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::initial_range),
              sizeof(float));
 
-  xpu_memory(optimizer_config::nonclk_coeff, &nonclk_coeff, sizeof(float),
+  xpu_memcpy(optimizer_config::nonclk_coeff, &nonclk_coeff, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::clk_coeff, &clk_coeff, sizeof(float),
+  xpu_memcpy(optimizer_config::clk_coeff, &clk_coeff, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::min_bound, &min_bound, sizeof(float),
+  xpu_memcpy(optimizer_config::min_bound, &min_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::max_bound, &max_bound, sizeof(float),
+  xpu_memcpy(optimizer_config::max_bound, &max_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::learning_rate, &learning_rate, sizeof(float),
+  xpu_memcpy(optimizer_config::learning_rate, &learning_rate, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::initial_g2sum, &initial_g2sum, sizeof(float),
+  xpu_memcpy(optimizer_config::initial_g2sum, &initial_g2sum, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::initial_range, &initial_range, sizeof(float),
+  xpu_memcpy(optimizer_config::initial_range, &initial_range, sizeof(float),
              XPU_HOST_TO_DEVICE);
 }
 
@@ -317,17 +317,17 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
   xpu_malloc(reinterpret_cast<void**>(&optimizer_config::mf_max_bound),
              sizeof(float));
 
-  xpu_memory(optimizer_config::mf_create_thresholds, &mf_create_thresholds, ,
+  xpu_memcpy(optimizer_config::mf_create_thresholds, &mf_create_thresholds, ,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
+  xpu_memcpy(optimizer_config::mf_initial_g2sum, &mf_initial_g2sum,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_initial_range, &mf_initial_range,
+  xpu_memcpy(optimizer_config::mf_initial_range, &mf_initial_range,
              sizeof(float), XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_min_bound, &mf_min_bound, sizeof(float),
+  xpu_memcpy(optimizer_config::mf_min_bound, &mf_min_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_max_bound, &mf_max_bound, sizeof(float),
+  xpu_memcpy(optimizer_config::mf_max_bound, &mf_max_bound, sizeof(float),
              XPU_HOST_TO_DEVICE);
-  xpu_memory(optimizer_config::mf_learning_rate, &mf_learning_rate,
+  xpu_memcpy(optimizer_config::mf_learning_rate, &mf_learning_rate,
              sizeof(float), XPU_HOST_TO_DEVICE);
 }
 

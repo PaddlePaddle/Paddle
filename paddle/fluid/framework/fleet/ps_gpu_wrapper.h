@@ -58,7 +58,7 @@ namespace framework {
 
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper() { delete HeterPs_; }
+  virtual ~PSGPUWrapper();
 
   PSGPUWrapper() {
     HeterPs_ = NULL;
@@ -124,7 +124,7 @@ class PSGPUWrapper {
 #ifdef PADDLE_WITH_CUDA
       resource_->enable_p2p();
 #endif
-      keys_tensor.resize(resource_->total_gpu());
+      keys_tensor.resize(resource_->total_device());
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {

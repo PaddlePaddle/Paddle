@@ -174,13 +174,13 @@ class HeterComm {
 
   template <typename StreamType>
   void sync_stream(const StreamType& stream) {
-    if (stream >= 0) {
+    // if (stream >= 0) {
 #if defined(PADDLE_WITH_CUDA)
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 #elif defined(PADDLE_WITH_XPU_KP)
       PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(stream));
 #endif
-    }
+    // }
   }
 
   template <typename StreamType>
