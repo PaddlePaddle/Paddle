@@ -579,6 +579,7 @@ class PSGPUWorker : public HogwildWorker {
     std::vector<OperatorBase*> ops;
     bool need_capture;
     std::unique_ptr<platform::CUDAGraph> cudagraph;
+    std::string name;
   }; 
   std::vector<OpOrCudaGraph> op_or_cudagraphs_;
 

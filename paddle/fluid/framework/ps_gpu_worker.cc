@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
@@ -123,7 +125,7 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 void PSGPUWorker::PrepareCudaGraph() {
   op_or_cudagraphs_.reserve(ops_.size());
   std::unordered_set<std::string> op_capture_white_list = {
-    //"data_norm_grad",
+    "data_norm_grad",
     "mul_grad", "elementwise_add_grad",
     "auc", "adam", "concat_grad",
     "elementwise_add", "reduce_sum", "relu_grad", "mul", "concat", "relu",
@@ -169,14 +171,19 @@ void PSGPUWorker::PrepareCudaGraph() {
             break;
           }
         }
-        if (op_or_cudagraphs_.empty() || op_or_cudagraphs_.back().need_capture != need_capture) {
-          op_or_cudagraphs_.emplace_back();
-          op_or_cudagraphs_.back().need_capture = need_capture;
-        }
-        op_or_cudagraphs_.back().ops.emplace_back(op);
       } else {
           VLOG(5) << "op " << op->Type() << " is not in whitelist";
       }
+      if (op_or_cudagraphs_.empty() || op_or_cudagraphs_.back().need_capture != need_capture) {
+        op_or_cudagraphs_.emplace_back();
+        op_or_cudagraphs_.back().need_capture = need_capture;
+      }
+      auto& op_or_cuda_graph = op_or_cudagraphs_.back();
+      if (!op_or_cuda_graph.name.empty()) {
+        op_or_cuda_graph.name += "_";
+      }
+      op_or_cuda_graph.name += op->Type();
+      op_or_cuda_graph.ops.emplace_back(op);
     }
   }
 }
@@ -237,22 +244,16 @@ void PSGPUWorker::TrainFiles() {
         if (op_or_cuda_graph.need_capture) {
           if (op_or_cuda_graph.cudagraph == nullptr) {
             static std::mutex _capture_mutex;
-            VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
-              "[op_num: " << op_or_cuda_graph.ops.size() << "]"
-              "cudagraph before capture";
             std::lock_guard<std::mutex> lock(_capture_mutex);
-            VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
-              "[op_num: " << op_or_cuda_graph.ops.size() << "]"
-              "cudagraph begin capture";
             platform::BeginCUDAGraphCapture(place_, cudaStreamCaptureModeThreadLocal);
             for (auto& op : op_or_cuda_graph.ops) {
               op->Run(*thread_scope_, place_);
             }
             op_or_cuda_graph.cudagraph = platform::EndCUDAGraphCapture();
-            VLOG(0) << "[thread: " << (int)place_.GetDeviceId() << "]"
-              "[op_num: " << op_or_cuda_graph.ops.size() << "]"
-              "cudagraph end capture";
           }
+
+          platform::RecordEvent op_type_record_event(
+              op_or_cuda_graph.name, platform::TracerEventType::Operator, 1);
           op_or_cuda_graph.cudagraph->Replay();
         } else {
           for (auto& op : op_or_cuda_graph.ops) {
