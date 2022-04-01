@@ -37,13 +37,13 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
-from paddle.fluid.tests.unittests.testsuite import (
+from testsuite import (
     create_op,
     set_input,
     append_input_output,
     append_loss_ops, )
 from paddle.fluid import unique_name
-from paddle.fluid.tests.unittests.white_list import (
+from white_list import (
     op_accuracy_white_list,
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -51,6 +51,11 @@ from paddle.fluid.tests.unittests.white_list import (
     op_threshold_white_list,
     no_grad_set_white_list, )
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+
+# For switch new eager mode globally
+g_is_in_eager = _in_eager_without_dygraph_check()
+g_enable_legacy_dygraph = _enable_legacy_dygraph if g_is_in_eager else lambda: None
+g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda: None
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -859,6 +864,7 @@ class OpTest(unittest.TestCase):
 
             kernel_sig = _get_kernel_signature(
                 eager_tensor_inputs, eager_tensor_outputs, attrs_outputs)
+            print("kernel_sig: ", kernel_sig)
             if not kernel_sig:
                 return None
             assert hasattr(
@@ -1575,10 +1581,15 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
         if check_dygraph:
+            # always enable legacy dygraph
+            print("check_dygraph...")
+            g_enable_legacy_dygraph()
+
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
         if check_eager:
+            print("check_eager...")
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
@@ -1899,6 +1910,9 @@ class OpTest(unittest.TestCase):
                               "Gradient Check On %s" % str(place))
 
         if check_dygraph:
+            # ensure switch into legacy dygraph
+            g_enable_legacy_dygraph()
+
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set, False)
@@ -1912,6 +1926,8 @@ class OpTest(unittest.TestCase):
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
+            # ensure switch back eager dygraph
+            g_disable_legacy_dygraph()
 
         if check_eager:
             with fluid.dygraph.base.guard(place):
@@ -1971,6 +1987,7 @@ class OpTest(unittest.TestCase):
                                                              outputs)
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_eager or eager_outputs is None:
+                print("xxxxx :", _in_eager_without_dygraph_check())
                 block.append_op(
                     type=self.op_type,
                     inputs=inputs,
@@ -2007,6 +2024,7 @@ class OpTest(unittest.TestCase):
                         persistable=False,
                         stop_gradient=False,
                         shape=[1])
+                    print("type(loss):", type(loss))
                     for outputs_valid_key in outputs_valid:
                         block.append_op(
                             type="mean",
@@ -2049,7 +2067,9 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
-
+                print(loss)
+                print(type(loss))
+                print(_in_eager_without_dygraph_check())
                 loss.backward()
 
                 fetch_list_grad = []
