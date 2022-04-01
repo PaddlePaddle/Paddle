@@ -284,13 +284,21 @@ void SqueezeInferMeta(const MetaTensor& x,
                       MetaTensor* xshape,
                       MetaTensor* out);
 
+void StridedSliceRawInferMeta(const MetaTensor& x,
+                              const std::vector<int>& axes,
+                              const IntArray& starts,
+                              const IntArray& ends,
+                              const IntArray& strides,
+                              const std::vector<int>& infer_flags,
+                              const std::vector<int>& decrease_axis,
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
+
 void StridedSliceInferMeta(const MetaTensor& x,
                            const std::vector<int>& axes,
                            const IntArray& starts,
                            const IntArray& ends,
                            const IntArray& strides,
-                           const std::vector<int>& infer_flags,
-                           const std::vector<int>& decrease_axis,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
 
