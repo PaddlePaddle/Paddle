@@ -534,13 +534,13 @@ class TestSliceAPI(unittest.TestCase):
         # value_int64 is greater than 2147483647 which is the max of int32
         value_int64 = fluid.layers.fill_constant([1], "int64", 2147483648)
 
-        out_1 = fluid.layers.slice(
+        out_1 = paddle.slice(
             x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[value_int64, 100, -1])
-        out_2 = fluid.layers.slice(
+        out_2 = paddle.slice(
             x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1])
-        out_3 = fluid.layers.slice(
+        out_3 = paddle.slice(
             x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, minus_1])
-        out_4 = fluid.layers.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
+        out_4 = paddle.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
 
         out_5 = x[-3:3, 0:100, 2:-1]
         out_6 = x[minus_3:3, 0:100, :, 2:-1]

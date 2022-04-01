@@ -16,7 +16,7 @@
 
 from ..framework import core
 from ..framework import convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle

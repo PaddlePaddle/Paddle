@@ -16,7 +16,7 @@
 
 import numpy as np
 from ..static import Variable
-from ..fluid.layer_helper import LayerHelper
+from ..framework import LayerHelper
 from ..framework import core
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
