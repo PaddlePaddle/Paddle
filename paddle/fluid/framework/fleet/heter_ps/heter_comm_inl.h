@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -98,7 +99,7 @@ template <typename KeyType, typename ValType, typename GradType>
 template <typename DstPlace, typename SrcPlace, typename StreamType>
 void HeterComm<KeyType, ValType, GradType>::memory_copy(
     DstPlace dst_place, void* dst, SrcPlace src_place, const void* src,
-    size_t count, StreamType stream = 0) {
+    size_t count, StreamType stream) {
   
 #if defined(PADDLE_WITH_CUDA)
   cudaMemcpyAsync(dst, src, count, cudaMemcpyDefault, stream);
@@ -526,12 +527,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
-  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_xpu, -1);
+  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r,
                         XPUAPIErrorMsg[r]));
-  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_xpu, -1);
+  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
@@ -647,12 +648,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   paddle::platform::XPUDeviceContext xpu_dev_ctx(place);
   auto xpu_context = xpu_dev_ctx.x_context();
 
-  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_xpu, -1);
+  int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r,
                         XPUAPIErrorMsg[r]));
-  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_xpu, -1);
+  int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r2, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU constant kernel return wrong value[%d %s]", r2,
