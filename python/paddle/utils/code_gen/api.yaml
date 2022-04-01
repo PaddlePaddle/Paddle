@@ -739,8 +739,10 @@
   infer_meta :
     func : FlattenWithXShapeInferMeta
   kernel :
-    func : flatten
-  intermediate : xshape 
+    func : flatten_with_xshape
+    backend : x
+  inplace : (x -> out)
+  view : (x -> out)
   backward : flatten_grad
 
 # flip

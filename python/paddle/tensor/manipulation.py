@@ -698,7 +698,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
-        dy_out = _C_ops.final_state_flatten(x, start_axis, stop_axis)
+        dy_out, _ = _C_ops.final_state_flatten(x, start_axis, stop_axis)
         return dy_out
 
     if _in_legacy_dygraph():
