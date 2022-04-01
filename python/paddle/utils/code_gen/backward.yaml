@@ -369,15 +369,6 @@
     func : layer_norm_grad
     data_type : out_grad
   optional : scale, bias
-- backward_api : top_k_grad
-  forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : top_k_grad
 
 - backward_api : leaky_relu_grad
   forward : leaky_relu (Tensor x, float alpha) -> Tensor(out)
@@ -699,20 +690,10 @@
 
 - backward_api : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, Scalar axis)
+  args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
-
-- backward_api : split_grad
-  forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, Scalar axis = -1)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : ConcatInferMeta
-    param : [out_grad, axis]
-  kernel :
-    func : split_grad
 
 - backward_api : sqrt_grad
   forward : sqrt (Tensor x) -> Tensor(out)
@@ -803,6 +784,16 @@
     param : [x]
   kernel :
     func : tile_grad
+
+- backward_api : top_k_grad
+  forward : top_k (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : top_k_grad
 
 - backward_api : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)

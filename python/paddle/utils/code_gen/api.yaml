@@ -1108,11 +1108,6 @@
   invoke : split_impl(x, num_or_sections, axis)
   backward : split_grad
 
-- api : split
-  args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
-  output : Tensor[]
-  invoke : split_impl(x, num_or_sections, axis)
-
 - api : sqrt
   args : (Tensor x)
   output : Tensor
