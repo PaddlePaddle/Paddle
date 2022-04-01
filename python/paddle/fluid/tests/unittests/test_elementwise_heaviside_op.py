@@ -29,14 +29,18 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        paddle.enable_static()
         self.check_output()
-        paddle.disable_static()
 
     def test_check_grad_normal(self):
-        paddle.enable_static()
         self.check_grad(['X', 'Y'], 'Out')
-        paddle.disable_static()
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 class TestElementwiseHeavisideOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
