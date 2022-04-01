@@ -35,7 +35,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#if defind(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType>
 class TableContainer
     : public concurrent_unordered_map<KeyType, ValType,
