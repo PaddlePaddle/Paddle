@@ -814,6 +814,14 @@ class TestListIndex(unittest.TestCase):
         with paddle.static.program_guard(program):
             self.run_setitem_list_index(array, index, value_np)
 
+        # case 4:
+        array = np.ones((4, 2, 3), dtype='float32')
+        value_np = np.random.random((2, 3)).astype('float32')
+        index = np.array([False, False, False, False])
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            self.run_setitem_list_index(array, index, value_np)
+
     def test_static_graph_setitem_bool_scalar_index(self):
         paddle.enable_static()
         array = np.ones((1, 2, 3), dtype='float32')

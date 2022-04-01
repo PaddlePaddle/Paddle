@@ -410,6 +410,10 @@ def _getitem_impl_(var, item):
                                 "dimension {}, the target dimension is {}, but received {}.".
                                 format(i, var.shape[i], dim_len))
                     bool_2_idx = where(slice_item == True)
+                    if 0 in bool_2_idx.shape:
+                        var_shape = var.shape
+                        var_shape[0] = 0
+                        return paddle.empty(var_shape, dtype=var.dtype)
                     return gather_nd(var, bool_2_idx)
                 else:
                     if len(slice_item.shape) == 1:
