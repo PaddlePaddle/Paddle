@@ -87,7 +87,7 @@ TEST(tensorrt_tester_resnet50, trt_fp32_bz2) {
   SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
                          &infer_output_data);
   // check outputs
-  CompareRecord(&truth_output_data, &infer_output_data);
+  CompareRecord(&truth_output_data, &infer_output_data, 2e-4);
   std::cout << "finish test" << std::endl;
 }
 
@@ -122,7 +122,7 @@ TEST(tensorrt_tester_resnet50, serial_diff_batch_trt_fp32) {
     SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
                            &infer_output_data);
     // check outputs
-    CompareRecord(&truth_output_data, &infer_output_data);
+    CompareRecord(&truth_output_data, &infer_output_data, 1e-4);
   }
   std::cout << "finish test" << std::endl;
 }
@@ -164,7 +164,7 @@ TEST(tensorrt_tester_resnet50, multi_thread4_trt_fp32_bz2) {
   for (int i = 0; i < thread_num; ++i) {
     LOG(INFO) << "join tid : " << i;
     threads[i].join();
-    CompareRecord(&truth_output_data, &infer_output_data);
+    CompareRecord(&truth_output_data, &infer_output_data, 2e-4);
   }
 
   std::cout << "finish multi-thread test" << std::endl;
