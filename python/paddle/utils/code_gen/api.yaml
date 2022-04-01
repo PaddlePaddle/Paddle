@@ -322,6 +322,7 @@
     func : UnchangedInferMeta
   kernel :
     func : determinant
+  backward : det_grad
 
 - api : diag
   args : (Tensor x, int offset, float padding_value)
