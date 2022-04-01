@@ -226,8 +226,8 @@ class HeterComm {
                    ValType* src_val);
 
  protected:
-  // using Table = HashTable<KeyType, ValType>;
-  // std::vector<Table*> tables_;
+  using Table = HashTable<KeyType, ValType>;
+  std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};

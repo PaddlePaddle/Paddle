@@ -119,7 +119,7 @@ __global__ void dy_mf_update_kernel(Table* table,
     }
   }
 }
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 template <typename KeyType, typename ValType, typename Table>
 __global__ void insert_kernel(Table* table, const KeyType* const keys,
@@ -235,7 +235,7 @@ template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
 #if defined(PADDLE_WITH_CUDA)
   container_ = new TableContainer<KeyType, ValType>(capacity);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
   xpu_malloc(reinterpret_cast<void**>(&container_),
              sizeof(XPUCacheArray<KeyType, ValType>));
@@ -249,7 +249,7 @@ template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
 #if defined(PADDLE_WITH_CUDA)
   delete container_;
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   xpu_free(container_)
 #endif
 }
@@ -269,7 +269,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_vals, len);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   search_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 #endif
 }
@@ -298,7 +298,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_vals, len);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
 #endif
 }
@@ -317,7 +317,7 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys, len,
                                                        pool, start_index);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 // insert_kernel<<<4, 64, stream>>>(container_, d_keys, len, pool, start_index);
 #endif
 }
@@ -400,7 +400,7 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   update_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(container_, d_keys,
                                                        d_grads, len, sgd);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   // move sgd to global memory
   Sgd* xpu_sgd;
   xpu_malloc(reinterpret_cast<void**>(&xpu_sgd), sizeof(Sgd));

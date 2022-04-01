@@ -46,7 +46,7 @@ class TableContainer
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
@@ -131,7 +131,7 @@ class HashTable {
  private:
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
   __global__ptr XPUCacheArray<KeyType, ValType>* container_;
 #endif
   int BLOCK_SIZE_{256};
