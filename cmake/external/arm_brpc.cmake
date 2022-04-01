@@ -45,7 +45,9 @@ SET(ARM_BRPC_LIB           ${ARM_BRPC_LIB_DIR}/libbdrpc.a)
 
 FILE(WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(ARM_BRPC)\n"
-  "cmake_minimum_required(VERSION 3.0)\n")  # do nothing
+  "cmake_minimum_required(VERSION 3.0)\n"
+  "install(DIRECTORY ${ARM_BRPC_NAME}/include ${ARM_BRPC_NAME}/lib \n"
+  "        DESTINATION ${ARM_BRPC_DST_DIR})\n") 
 
 INCLUDE_DIRECTORIES(${ARM_BRPC_INC_DIR})
 INCLUDE_DIRECTORIES(${ARM_BRPC_INSTALL_ROOT}/base/bthread/bthread)
@@ -60,13 +62,14 @@ ExternalProject_Add(
     #DOWNLOAD_COMMAND      wget --no-check-certificate ${ARM_BRPC_URL} -c -q -O ${ARM_BRPC_NAME}.tar.gz
     DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .
                             && tar zxvf ${ARM_BRPC_NAME}.tar.gz && cp -r base ./install/
-    #DOWNLOAD_NO_PROGRESS  1
-    #UPDATE_COMMAND        ""
-    #CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
-    #                      -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-    #CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${ARM_BRPC_INSTALL_ROOT}
-    #                      -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-    #BUILD_BYPRODUCTS      ${ARM_BRPC_LIB}
+    DOWNLOAD_NO_PROGRESS  1
+    UPDATE_COMMAND        ""
+    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
+                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${ARM_BRPC_INSTALL_ROOT}
+                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+    #
+    BUILD_BYPRODUCTS      ${ARM_BRPC_LIB}
 )
 
 ADD_LIBRARY(arm_brpc STATIC IMPORTED GLOBAL)  # 直接导入已经生成的库
