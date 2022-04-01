@@ -121,7 +121,8 @@ void SparseCsrToCooKernel(const Context& dev_ctx,
   const auto place = dev_ctx.GetPlace();
   DenseTensorMeta indices_meta(
       DataType::INT64, {sparse_dim, non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
+  DenseTensorMeta values_meta(
+      x.dtype(), {non_zero_num}, x.non_zero_elements().layout());
   phi::DenseTensor indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor values = phi::Empty(dev_ctx, std::move(values_meta));
   int64_t* coo_indices = indices.mutable_data<int64_t>(place);
@@ -174,7 +175,8 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   DenseTensorMeta crows_meta(
       DataType::INT64, {batchs * (rows + 1)}, DataLayout::NCHW);
   DenseTensorMeta cols_meta(DataType::INT64, {non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(x.dtype(), {non_zero_num}, x.layout());
+  DenseTensorMeta values_meta(
+      x.dtype(), {non_zero_num}, x.non_zero_elements().layout());
   phi::DenseTensor non_zero_crows(
       phi::make_intrusive<paddle::experimental::SharedStorage>(place),
       std::move(crows_meta));
