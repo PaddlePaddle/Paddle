@@ -710,6 +710,8 @@ class OpTest(unittest.TestCase):
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
+                
+                NOTE: the op_proto_attrs and op_proto_ins is a default dict. default value is []
             """
 
             class Empty:
@@ -770,7 +772,9 @@ class OpTest(unittest.TestCase):
                 api_params), "Error happens. contack xiongkun03 to solve."
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
-            input_arguments = [op_proto_ins[name] for name in inputs_sig] + [
+            input_arguments = [
+                op_proto_ins.get(name, Empty()) for name in inputs_sig
+            ] + [
                 parse_attri_value(name, op_proto_ins, op_proto_attrs)
                 for name in attrs_sig
             ]
@@ -814,16 +818,19 @@ class OpTest(unittest.TestCase):
             transform inputs by the following rules:
                 1. [Tensor] -> Tensor
                 2. [Tensor, Tensor, ...] -> list of Tensors
+                3. None -> None
+                4. Others: raise Error
 
             only support "X" is list of Tensor, currently don't support other structure like dict.
             """
-            for inp in args[:inp_num]:
+            inp_args = [[inp] if inp is None else inp
+                        for inp in args[:inp_num]]  # convert None -> [None]
+            for inp in inp_args:
                 assert isinstance(
                     inp, list
                 ), "currently only support `X` is [Tensor], don't support other structure."
-            args = [
-                inp[0] if len(inp) == 1 else inp for inp in args[:inp_num]
-            ] + args[inp_num:]
+            args = [inp[0] if len(inp) == 1 else inp
+                    for inp in inp_args] + args[inp_num:]
             return args
 
         def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
