@@ -147,7 +147,8 @@ class TestTrilinearInterpOp(OpTest):
         self.op_type = "trilinear_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
-        self.check_eager = True
+        # TODO(dev): add self.python_api
+        self.check_eager = False
         input_np = np.random.random(self.input_shape).astype("float32")
 
         scale_w = 0
@@ -363,7 +364,8 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
-        self.check_eager = True
+        # TODO(dev): add self.python_api
+        self.check_eager = False
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape).astype("uint8")
 
@@ -520,7 +522,8 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
-        self.check_eager = True
+        # TODO(dev): add self.python_api
+        self.check_eager = False
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {

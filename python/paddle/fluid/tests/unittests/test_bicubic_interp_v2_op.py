@@ -137,7 +137,8 @@ class TestBicubicInterpOp(OpTest):
         self.op_type = "bicubic_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
-        self.check_eager = True
+        # TODO(dev): add self.python_api
+        self.check_eager = False
         input_np = np.random.random(self.input_shape).astype("float64")
         scale_h = 0
         scale_w = 0
