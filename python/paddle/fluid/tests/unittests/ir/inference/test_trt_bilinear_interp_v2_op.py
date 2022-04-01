@@ -44,11 +44,11 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
             for interp_method in ["bilinear"]:
                 for align_corners in [True, False]:
                     for align_model in [0, 1]:
-                        for scale_y in [2.0, -1.0, 0.0]:
-                            for scale_x in [2.0, -1.0, 0.0]:
+                        for scale_y in [2.0, -1.0]:
+                            for scale_x in [2.0, 0.0]:
                                 scale = [scale_y, scale_x]
-                                for out_h in [32, 64, 128, 32]:
-                                    for out_w in [32, 32]:
+                                for out_h in [64, -32]:
+                                    for out_w in [32]:
                                         dics = [{
                                             "data_layout": data_layout,
                                             "interp_method": interp_method,

@@ -45,7 +45,7 @@ class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
                 for align_corners in [True, False]:
                     for align_model in [0, 1]:
                         for scale in [2.0, -1.0, 0.0]:
-                            for out_h in [32, 64, 128 - 32]:
+                            for out_h in [32, 64]:
                                 for out_w in [32, -32]:
                                     dics = [{
                                         "data_layout": data_layout,
