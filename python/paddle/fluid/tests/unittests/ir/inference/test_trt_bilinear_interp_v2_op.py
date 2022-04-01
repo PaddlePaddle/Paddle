@@ -40,7 +40,7 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
             return np.random.uniform(
                 low=0.5, high=6.0, size=(2)).astype("float32")
 
-        for data_layout in ["NCHW", "NHWC"]:
+        for data_layout in ["NCHW"]:
             for interp_method in ["bilinear"]:
                 for align_corners in [True, False]:
                     for align_model in [0, 1]:
