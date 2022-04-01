@@ -359,6 +359,12 @@ CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
     if({}.initialized()) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
 """
 
+CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = \
+"""
+    paddle::optional<const paddle::experimental::Tensor&> {}_optional = paddle::none;
+    if( {}.impl() ) {}_optional = paddle::make_optional<const paddle::experimental::Tensor&>({});
+"""
+
 
 #######################
 ## Generator Helpers ##
@@ -437,8 +443,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         ]  #[ [arg_name, arg_type, orig_position], ...]
         self.backward_returns_list = [
         ]  #[ [ret_name, ret_type, orig_position], ...]
-
-        self.backward_optional_list = []  #[ name ]
 
         # SlotNameMatched Backward Data
         self.backward_forward_inputs_map = {
@@ -549,15 +553,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             assert pos > max_grad_tensor_position, AssertMessage(
                 pos, max_grad_tensor_position)
             max_attr_position = max(max_attr_position, pos)
-
-    def ParseDispensable(self):
-
-        if 'optional' in self.grad_api_contents.keys():
-            optional_inputs_str = self.grad_api_contents['optional']
-            for name in optional_inputs_str.split(","):
-                name = name.strip()
-                name = RemoveSpecialSymbolsInName(name)
-                self.backward_optional_list.append(name)
 
     def IntermediateValidationCheck(self):
         intermediate_outputs = self.intermediate_outputs
@@ -725,15 +720,24 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         num_fwd_outputs = len(forward_outputs_position_map.keys())
         for name, (atype, is_fwd_input,
                    pos) in backward_forward_inputs_map.items():
+            is_optional = (name in optional_inputs)
+
             if is_fwd_input:
-                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+                if is_optional:
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), true);"
+                else:
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, true);"
             else:
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
                     assert name in forward_outputs_position_map.keys(
                     ), AssertMessage(name, forward_outputs_position_map.keys())
                     fwd_output_pos = forward_outputs_position_map[name][1]
-                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+
+                if is_optional:
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()), false);"
+                else:
+                    set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}, false);"
             set_tensor_wrappers_list.append(set_tensor_wrappers)
         set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -742,11 +746,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_edges_list = []
         for name, (_, pos) in forward_inputs_position_map.items():
             input_autograd_meta_name = GetAutoGradMetaName(name)
-            is_optional = (name in self.optional_inputs or
-                           name in self.backward_optional_list)
+            is_optional = (name in self.optional_inputs)
             if is_optional:
-                set_grad_out_meta = f"            if({name}.impl() != nullptr) grad_node->SetGradOutMeta({name}, {pos});"
-                set_edges = f"            if({name}.impl() != nullptr)  grad_node->AddEdges({input_autograd_meta_name}, {pos});"
+                set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                set_edges = f"{indent}if({name}.get_ptr() != nullptr)  grad_node->AddEdges({input_autograd_meta_name}, {pos});"
             else:
                 set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
                 set_edges = f"{indent}grad_node->AddEdges({input_autograd_meta_name}, {pos});"
@@ -807,8 +810,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         # Parse intermediate_outputs
         self.ParseIntermediate()
         self.IntermediateValidationCheck()
-
-        self.ParseDispensable()
 
         # Initialize backward_forward_str, backward_inputs_list, backward_attrs_list, backward_returns_list
         self.CollectBackwardInfo()
@@ -876,7 +877,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"NEW_{name}"
-            is_optional = False
+            is_optional = (name in optional_inputs)
             if IsPlainTensorType(ttype):
                 if is_optional:
                     arg_str = f"const paddle::optional<const paddle::experimental::Tensor&> {name}"
@@ -1252,8 +1253,19 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             transformed_tensor_name = TransformGradVarNameForDoubleGradGeneration(
                 name)
 
-            tensor_wrapper_recover_str = f"auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr);"
-            grad_api_args[grad_api_position] = transformed_tensor_name
+            is_optional = (name in self.optional_inputs)
+            tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr);"
+            if is_optional:
+                tensor_wrapper_recover_str += "\n" + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
+                    transformed_tensor_name, transformed_tensor_name,
+                    transformed_tensor_name, transformed_tensor_name)
+
+                grad_api_args[
+                    grad_api_position] = transformed_tensor_name + "_optional"
+
+            else:
+                grad_api_args[grad_api_position] = transformed_tensor_name
+
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
