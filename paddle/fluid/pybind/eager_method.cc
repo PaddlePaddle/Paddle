@@ -1427,6 +1427,7 @@ static PyObject* tensor_method__share_memory(TensorObject* self, PyObject* args,
       framework::SizeOfType(framework::TransToProtoVarType(t->dtype()));
   auto shared_writer_holder =
       memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
+  std::cout << "wanghuan 1 prt = " << shared_writer_holder->ptr() << std::endl;
   // 3. maintain mmap fd set & backup ipc_name
   const std::string& ipc_name = shared_writer_holder->ipc_name();
   memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
