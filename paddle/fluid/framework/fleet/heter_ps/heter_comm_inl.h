@@ -562,7 +562,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   sync_stream(stream);
 
   auto dst_place = platform::CPUPlace();
-  auto src_place = platform::place;
+  auto src_place = place;
 
   memory_copy(dst_place, h_left, src_place, d_left_ptr,
               total_device * sizeof(int));
@@ -587,7 +587,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     auto& node = path_[num][i].nodes_.back();
     sync_stream(node.in_stream);
 
-    platform::AnyDeviceGuard guard(resource_->dev_id(i));
+    AnyDeviceGuard guard(resource_->dev_id(i));
 
     tables_[i]->rwlock_->RDLock();
     tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),

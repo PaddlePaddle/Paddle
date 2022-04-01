@@ -19,6 +19,7 @@ limitations under the License. */
 #include "cub/util_allocator.cuh"
 #include "hashtable.h"       // NOLINT
 #include "heter_resource.h"  // NOLINT
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
