@@ -135,7 +135,7 @@ class HashTable {
 
 #endif
 
-  int size() { return container_->size(); }
+  // int size() { return container_->size(); }
 
   void set_feature_value_size(size_t pull_feature_value_size,
                               size_t push_grad_value_size) {
