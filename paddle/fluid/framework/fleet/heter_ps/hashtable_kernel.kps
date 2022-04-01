@@ -224,6 +224,7 @@ void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
   }
   // TODO(zhangminxu): to be implemented
 }
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle
