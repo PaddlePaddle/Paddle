@@ -311,6 +311,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         crows_tensor = tensor.non_zero_crows()
         cols_tensor = tensor.non_zero_cols()
         elements_tensor = tensor.non_zero_elements()
+<<<<<<< HEAD
         crows_data = 'crows=' + _format_dense_tensor(crows_tensor, indent +
                                                      len('crows='))
         cols_data = 'cols=' + _format_dense_tensor(cols_tensor, indent +
@@ -328,6 +329,22 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
             crows=crows_data,
             cols=cols_data,
             values=values_data)
+=======
+        crows_data = _format_dense_tensor(crows_tensor, indent)
+        cols_data = _format_dense_tensor(cols_tensor, indent)
+        elements_data = _format_dense_tensor(elements_tensor, indent)
+        data = 'non_zero_crows=' + crows_data + ',\nnon_zero_cols=' + cols_data + ',\nnon_zero_elements=' + elements_data
+
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=tensor.dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
+        indent=' ' * indent,
+        data=data)
+
+>>>>>>> revert tensor.to_string modification
 
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
@@ -336,6 +353,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         dtype = 'bfloat16'
 
+<<<<<<< HEAD
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     if tensor.is_sparse():
@@ -343,6 +361,13 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if not tensor._is_dense_tensor_hold_allocation():
         return "Tensor(Not initialized)"
+=======
+    if not tensor._is_initialized():
+        return "Tensor(Not initialized)"
+
+    if tensor.is_sparse():
+        return sparse_tensor_to_string(tensor, prefix)
+>>>>>>> revert tensor.to_string modification
     else:
         data = _format_dense_tensor(tensor, indent)
         return _template.format(
