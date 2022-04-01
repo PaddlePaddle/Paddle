@@ -3136,7 +3136,7 @@ def create_test_act_fp16_class(parent,
 
 
 create_test_act_fp16_class(TestActivation)
-create_test_act_fp16_class(TestExpm1)
+create_test_act_fp16_class(TestExp)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestLogSigmoid)
