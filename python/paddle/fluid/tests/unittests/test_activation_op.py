@@ -25,6 +25,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -1733,7 +1734,7 @@ class TestHardSwish(TestActivation):
     def setUp(self):
         self.op_type = 'hard_swish'
         self.init_dtype()
-
+        self.python_api = paddle.nn.functional.hardswish
         skip_check_grad_ci(reason="not implemented yet")
 
         np.random.seed(1024)
@@ -1755,7 +1756,10 @@ class TestHardSwish(TestActivation):
             return
 
         return  # not implemented yet
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestHardswishAPI(unittest.TestCase):
@@ -1815,6 +1819,11 @@ class TestHardswishAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardswish(x_fp16)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_dygraph_api()
+            self.test_errors()
 
 
 class TestSoftRelu(TestActivation):

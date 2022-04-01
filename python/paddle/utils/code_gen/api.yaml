@@ -547,6 +547,16 @@
     func : hard_sigmoid
   backward : hard_sigmoid_grad
 
+- api : hard_swish
+  args : (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_swish
+  backward : hard_swish_grad
+
 # histogram
 - api : histogram
   args : (Tensor x, int64_t bins, int min, int max)
@@ -621,6 +631,15 @@
   kernel :
     func : isnan, isnan_sr
 
+- api : kron
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : KronInferMeta
+  kernel :
+    func : kron
+  backward : kron_grad
+
 # leaky_relu
 - api : leaky_relu
   args : (Tensor x, float alpha)
@@ -656,6 +675,15 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+
+- api : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : LinspaceInferMeta
+  kernel :
+    func : linspace
+    data_type : dtype
 
 # log_loss
 - api : log_loss
@@ -702,6 +730,17 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_xor
+
+# logit
+- api : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : logit
+  backward : logit_grad
 
 # logsigmoid
 - api : logsigmoid

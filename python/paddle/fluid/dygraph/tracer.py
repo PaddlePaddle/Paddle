@@ -22,6 +22,28 @@ from paddle.fluid import framework
 from paddle import _C_ops
 
 final_state_name_mapping = {
+    "hard_swish": {
+        "final_op_name": "final_state_hard_swish",
+        "x": "X",
+        "out": "Out",
+    },
+    "kron": {
+        "final_op_name": "final_state_kron",
+        "x": "X",
+        "y": "Y",
+        "out": "Out",
+    },
+    "linspace": {
+        "final_op_name": "final_state_linspace",
+        "start": "Start",
+        "stop": "Stop",
+        "number": "Num",
+    },
+    "logit": {
+        "final_op_name": "final_state_logit",
+        "x": "X",
+        "out": "Out",
+    },
     "matmul_v2": {
         "final_op_name": "final_state_matmul",
         "transpose_x": "trans_x",
