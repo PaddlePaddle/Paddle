@@ -1,0 +1,226 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#ifdef PADDLE_WITH_HETERPS
+
+namespace paddle {
+namespace framework {
+
+#if defined(PADDLE_WITH_XPU)
+
+template <typename KeyType, typename ValType, typename Table>
+__global__ void insert_kernel(Table* table, const KeyType* const keys,
+                              const ValType* const vals, size_t len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ KeyType local_keys[buf_size];
+  __local__ ValType local_vals[buf_size];
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    GM2LM(vals, local_vals, read_len * sizeof(ValType));
+    for (int k = 0; k < read_len; k++) {
+      auto status = table->insert(local_keys[k], local_vals[k]);
+      assert(status != false && "error: insert fails: table is full");
+    }
+  }
+}
+
+// template <typename Table>
+// __global__ void insert_kernel(Table* table,
+//                              const typename Table::key_type* const keys,
+//                              size_t len, char* pool, int start_index) {
+//  ReplaceOp<typename Table::mapped_type> op;
+//  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+//
+//  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+//
+//  if (i < len) {
+//    kv.first = keys[i];
+//    kv.second = (Table::mapped_type)(pool + (start_index + i) * 80);
+//    auto it = table->insert(kv, op);
+//    assert(it != table->end() && "error: insert fails: table is full");
+//  }
+// }
+
+template <typename KeyType, typename ValType, typename Table>
+__global__ void search_kernel(Table* table, const KeyType* const keys,
+                              ValType* const vals, size_t len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ KeyType local_keys[buf_size];
+  __local__ ValType local_vals[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    for (int k = 0; k < read_len; k++) {
+      ValType* val = table->find(local_keys[k]);
+      if (val != NULL) {
+        local_vals[k] = *val;
+      }
+    }
+    LM2GM(local_vals, vals + i, read_len * sizeof(ValType));
+  }
+}
+
+template <typename KeyType, typename Table, typename GradType, typename Sgd>
+__global__ void update_kernel(Table* table, const KeyType* const keys,
+                              const GradType* const grads, size_t len,
+                              Sgd* sgd) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+
+  const int buf_size = 1024;
+  __local__ KeyType local_keys[buf_size];
+  __local__ GradType local_grads[buf_size];
+
+  int len_per_loop = min(buf_size, roundup_div(len, nthreads));
+  for (int i = thread_id * len_per_loop; i < len;
+       i += nthreads * len_per_loop) {
+    int read_len = min(len_per_loop, len - i);
+
+    GM2LM(keys, local_keys, read_len * sizeof(KeyType));
+    GM2LM(grads, local_grads, read_len * sizeof(GradType));
+
+    for (int k = 0; k < read_len; k++) {
+      ValType* val = table->find(local_keys[k]);
+      if (val != NULL) {
+        sgd->update_value(*val, grads[i]);
+      }
+    }
+  }
+}
+
+template <typename KeyType, typename ValType>
+HashTable<KeyType, ValType>::HashTable(size_t capacity) {
+  auto tmp_container = XPUCacheArray<KeyType, ValType>(capacity);
+  xpu_malloc(reinterpret_cast<void**>(&container_),
+             sizeof(XPUCacheArray<KeyType, ValType>));
+  xpu_memcpy(container_, &tmp_container,
+             sizeof(XPUCacheArray<KeyType, ValType>), XPU_HOST_TO_DEVICE);
+  rwlock_.reset(new phi::RWLock);
+}
+
+template <typename KeyType, typename ValType>
+HashTable<KeyType, ValType>::~HashTable() {
+  xpu_free(container_)
+}
+
+template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::show() {
+  container_->print();
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
+                                      size_t len, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  search_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
+                                      size_t len, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  // TODO(zhangminxu): to be implemented
+}
+
+template <typename KeyType, typename ValType, typename StreamType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         const ValType* d_vals, size_t len,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  insert_kernel<<<4, 64, stream>>>(container_, d_keys, d_vals, len);
+}
+
+template <typename KeyType, typename ValType, typename StreamType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
+                                         char* pool, size_t start_index,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  if (pool == NULL) {
+    return;
+  }
+  // TODO(zhangminxu): to be implemented
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
+  // TODO(zhangminxu): to be implemented
+}
+
+template <typename KeyType, typename ValType>
+template <typename GradType, typename Sgd, typename StreamType>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+                                         const GradType* d_grads, size_t len,
+                                         Sgd sgd, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  // move sgd to global memory
+  Sgd* xpu_sgd;
+  xpu_malloc(reinterpret_cast<void**>(&xpu_sgd), sizeof(Sgd));
+  update_kernel<<<4, 64, stream>>>(container_, d_keys, d_grads, len, xpu_sgd);
+}
+
+template <typename KeyType, typename ValType>
+template <typename Sgd, typename StreamType>
+void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
+                                         const char* d_grads, size_t len,
+                                         Sgd sgd, StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  // TODO(zhangminxu): to be implemented
+}
+
+}  // end namespace framework
+}  // end namespace paddle
+#endif
