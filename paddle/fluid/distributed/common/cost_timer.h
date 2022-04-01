@@ -15,7 +15,11 @@
 #pragma once
 #include <memory>
 #include <unordered_map>
+#ifdef PADDLE_WITH_ARM_BRPC
+#include "common/base/time.h"
+#else
 #include "butil/time.h"
+#endif
 #include "bvar/latency_recorder.h"
 #include "glog/logging.h"
 
