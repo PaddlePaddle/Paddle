@@ -18,7 +18,7 @@ limitations under the License. */
 #include <ctime>
 #include <memory>
 #include <numeric>
-// #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 #include <xpu/runtime.h>  // NOLINT
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "xpu/kernel/cluster_header.h"  // NOLINT
