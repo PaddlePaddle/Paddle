@@ -1345,10 +1345,10 @@ class BatchNorm(layers.Layer):
                      "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
-            MomentumTensor = None
+            momentum_tensor = None
             batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
-                MomentumTensor, mean_out, variance_out, *attrs)
+                momentum_tensor, mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 

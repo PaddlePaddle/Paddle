@@ -189,9 +189,9 @@ def batch_norm(x,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
 
-        MomentumTensor = None
+        momentum_tensor = None
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, MomentumTensor,
+            x, weight, bias, running_mean, running_var, momentum_tensor,
             mean_out, variance_out, *attrs)
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
