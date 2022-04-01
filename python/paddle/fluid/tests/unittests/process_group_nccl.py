@@ -99,6 +99,29 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test allreduce max api ok")
 
+            # test allreduce min
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            min_result = paddle.minimum(tensor_x, tensor_y)
+
+            if pg.rank() == 0:
+                task = dist.all_reduce(
+                    tensor_x, dist.ReduceOp.MIN, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_x, min_result)
+            else:
+                task = dist.all_reduce(
+                    tensor_y, dist.ReduceOp.MIN, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_y, min_result)
+
+            print("test allreduce min api ok")
+
             # test broadcast
             # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
@@ -215,6 +238,50 @@ class TestProcessGroupFp32(unittest.TestCase):
                 assert np.array_equal(tensor_x, sum_result)
             print("test reduce sum api ok\n")
 
+            # test reduce max
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            max_result = paddle.maximum(tensor_x, tensor_y)
+
+            if pg.rank() == 0:
+                task = dist.reduce(
+                    tensor_x, 0, dist.ReduceOp.MAX, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_x, max_result)
+            else:
+                task = dist.reduce(
+                    tensor_y, 0, dist.ReduceOp.MAX, use_calc_stream=False)
+                task.wait()
+
+            print("test reduce max api ok")
+
+            # test reduce min
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            min_result = paddle.minimum(tensor_x, tensor_y)
+
+            if pg.rank() == 0:
+                task = dist.reduce(
+                    tensor_x, 0, dist.ReduceOp.MIN, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_x, min_result)
+            else:
+                task = dist.reduce(
+                    tensor_y, 0, dist.ReduceOp.MIN, use_calc_stream=False)
+                task.wait()
+
+            print("test reduce min api ok")
+
             # test Scatter
             # rank 0
             in_shape = list(self.shape)
@@ -242,6 +309,40 @@ class TestProcessGroupFp32(unittest.TestCase):
             else:
                 assert np.array_equal(tensor_y, out2)
             print("test scatter api ok\n")
+
+            # test send min
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            if pg.rank() == 0:
+                task = dist.send(tensor_x, 1, use_calc_stream=False)
+                task.wait()
+            else:
+                task = dist.recv(tensor_y, 0, use_calc_stream=False)
+                task.wait()
+                assert np.array_equal(tensor_y, tensor_x)
+
+            print("test send api ok")
+
+            # test send min
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            # rank 1
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_y = paddle.to_tensor(y)
+
+            if pg.rank() == 0:
+                task = dist.send(tensor_x, 1, use_calc_stream=True)
+            else:
+                task = dist.recv(tensor_y, 0, use_calc_stream=True)
+                assert np.array_equal(tensor_y, tensor_x)
+
+            print("test send api ok")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
