@@ -61,7 +61,7 @@ class XPUCacheArray {
   }
 
   virtual ~XPUCacheArray() {
-    for (int i = 0; i < capacity; i++) {
+    for (int i = 0; i < capacity_; i++) {
       xpu_free(keys[i]);
       xpu_free(vals[i]);
     }
@@ -116,7 +116,7 @@ class HashTable {
 
   template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
-              streamType stream);
+              StreamType stream);
 
   int size() { return container_->size(); }
 

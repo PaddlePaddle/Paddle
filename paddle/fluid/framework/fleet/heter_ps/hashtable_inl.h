@@ -259,7 +259,8 @@ void HashTable<KeyType, ValType>::show() {
   container_->print();
 }
 
-template <typename KeyType, typename ValType, StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
                                       size_t len, StreamType stream) {
   if (len == 0) {
@@ -274,7 +275,8 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 #endif
 }
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
                                       size_t len, StreamType stream) {
   if (len == 0) {
