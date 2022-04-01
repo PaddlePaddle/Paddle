@@ -13,6 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#if defined(__xpu__)
+// #ifdef PADDLE_WITH_XPU_KP
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+// #include <xpu/runtime.h>
+// #include "xpu/kernel/cluster_header.h"
+// #include "xpu/kernel/math.h"
+// #include "xpu/kernel/simd.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#endif
+
 
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
@@ -34,7 +44,7 @@ struct CustomGradMerger {
     return out;
   }
 };
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU_KP)
 struct CustomGradMerger {
   template <typename T>
   __device__ T operator()(const T& a, const T& b) const {

@@ -26,8 +26,9 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h
+#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
@@ -103,9 +104,6 @@ class HeterComm {
   void end_pass();
 
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
-
-
-  void end_pass();
 
   struct Node {
     ppStream in_stream;
@@ -209,15 +207,16 @@ class HeterComm {
 
   template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
             typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
-            typename NumRunsOutputIteratorT, typename ReductionOpT>
-  void ReduceByKey(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+            typename NumRunsOutputIteratorT, typename ReductionOpT,
+            typename StreamType>
+  void reduce_by_key(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
                    KeysInputIteratorT d_keys_in,
                    UniqueOutputIteratorT d_unique_out,
                    ValuesInputIteratorT d_values_in,
                    AggregatesOutputIteratorT d_aggregates_out,
                    NumRunsOutputIteratorT d_num_runs_out,
                    ReductionOpT reduction_op, int num_items,
-                   cudaStream_t stream = 0, bool debug_synchronous = false);
+                   StreamType stream = 0, bool debug_synchronous = false);
 
   void create_storage(int start_index, int end_index, int keylen, int vallen);
   void destroy_storage(int start_index, int end_index);
@@ -227,15 +226,15 @@ class HeterComm {
                    ValType* src_val);
 
  protected:
-  using Table = HashTable<KeyType, ValType>;
-  std::vector<Table*> tables_;
-#endif
+  // using Table = HashTable<KeyType, ValType>;
+  // std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
   std::vector<std::vector<Path>> path_;
   float load_factor_{0.75};
   int block_size_{256};
 
  private:
+  std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
   std::vector<LocalStorage> storage_;
   int topo_aware_{0};
   int feanum_{1800 * 2048};
@@ -246,7 +245,6 @@ class HeterComm {
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
 #endif
-  int node_size_;
 #if defined(PADDLE_WITH_CUDA)
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #elif defined(PADDLE_WITH_XPU_KP)
