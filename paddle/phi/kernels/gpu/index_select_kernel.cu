@@ -75,8 +75,7 @@ void IndexSelectKernel(const Context& ctx,
   auto stream = ctx.stream();
 
   int block_dim = 256;
-  dim3 grid_dim =
-      dim3((numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS);
+  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
   paddle::platform::LimitGridDim(ctx, &grid_dim);
 
   if (index_type == phi::DataType::INT64) {
