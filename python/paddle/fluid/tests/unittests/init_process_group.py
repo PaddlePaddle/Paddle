@@ -40,6 +40,12 @@ class TestProcessGroupFp32(unittest.TestCase):
         with _test_eager_guard():
             paddle.distributed.init_parallel_env()
             paddle.distributed.new_group()
+            group = paddle.distributed.new_group([-1, -2])
+            assert group.process_group == None
+
+            group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
+            ret = paddle.distributed.barrier(group)
+            assert ret == None
         print("test ok\n")
 
 

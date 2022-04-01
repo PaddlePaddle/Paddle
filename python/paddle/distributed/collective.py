@@ -213,6 +213,54 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
     return pg
 
 
+def barrier(group=None):
+    """
+
+    Barrier among all participators in the group.
+
+    Args:
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            paddle.distributed.barrier()
+    """
+    if group is not None and not group.is_member():
+        return
+
+    if framework._in_eager_mode_ and in_dygraph_mode():
+        group = _get_default_group() if group is None else group
+        task = group.process_group.barrier()
+        task.wait()
+        return
+
+    ring_id = 0 if group is None else group.id
+
+    temp = fill_constant([1], dtype="int32", value="1")
+    if in_dygraph_mode():
+        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
+
+    op_type = "barrier"
+
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [temp]},
+        attrs={'ring_id': ring_id})
+
+
 def new_group(ranks=None, backend=None):
     """
 
@@ -324,54 +372,6 @@ def new_group(ranks=None, backend=None):
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
     return gp
-
-
-def barrier(group=None):
-    """
-
-    Barrier among all participators in the group.
-
-    Args:
-        group (Group): The group instance return by new_group or None for global default group.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.distributed import init_parallel_env
-
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            paddle.distributed.barrier()
-    """
-    if group is not None and not group.is_member():
-        return
-
-    if framework._in_eager_mode_ and in_dygraph_mode():
-        group = _get_default_group() if group is None else group
-        task = group.process_group.barrier()
-        task.wait()
-        return
-
-    ring_id = 0 if group is None else group.id
-
-    temp = fill_constant([1], dtype="int32", value="1")
-    if in_dygraph_mode():
-        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
-
-    op_type = "barrier"
-
-    if not isinstance(ring_id, int):
-        raise ValueError("The type of 'group' for barrier must be int.")
-    helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [temp]},
-        attrs={'ring_id': ring_id})
 
 
 def wait(tensor, group=None, use_calc_stream=True):
