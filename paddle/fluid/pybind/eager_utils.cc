@@ -633,8 +633,15 @@ paddle::optional<const paddle::experimental::Tensor&> GetOptionalTensorFromArgs(
     return paddle::none;
   }
 
-  return paddle::make_optional<const paddle::experimental::Tensor&>(
-      reinterpret_cast<TensorObject*>(obj)->tensor);
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return paddle::make_optional<const paddle::experimental::Tensor&>(
+        reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 static paddle::experimental::Tensor& GetTensorFromPyObject(
@@ -654,7 +661,14 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
     return emptytensor;
   }
 
-  return reinterpret_cast<TensorObject*>(obj)->tensor;
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return reinterpret_cast<TensorObject*>(obj)->tensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 // For Intermediate State Dygraph,
@@ -744,7 +758,14 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     return &emptytensor;
   }
 
-  return &(reinterpret_cast<TensorObject*>(obj)->tensor);
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return &(reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s", op_type,
+        arg_name, arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
 }
 
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
@@ -929,9 +950,10 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   return paddle::experimental::Scalar(1.0);
 }
 
-paddle::experimental::ScalarArray CastPyArg2ScalarArray(
-    PyObject* obj, const std::string& op_type, ssize_t arg_pos) {
-  // In case of ScalarArray, only two possible PyObjects:
+paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos) {
+  // In case of IntArray, only two possible PyObjects:
   // 1. list of int
   // 2. Tensor
   if (obj == Py_None) {
@@ -947,12 +969,12 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple") {
     std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
-    return paddle::experimental::ScalarArray(value);
+    return paddle::experimental::IntArray(value);
 
   } else if (type_name == "paddle.Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
-    return paddle::experimental::ScalarArray(value);
+    return paddle::experimental::IntArray(value);
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -962,8 +984,8 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
-  // Fake a ScalarArray
-  return paddle::experimental::ScalarArray({1});
+  // Fake a IntArray
+  return paddle::experimental::IntArray({1});
 }
 
 paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {

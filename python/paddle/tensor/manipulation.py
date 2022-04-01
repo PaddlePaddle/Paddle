@@ -17,7 +17,7 @@ from collections import Counter
 
 from ..static import Variable, device_guard
 from ..framework import core
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _in_eager_without_dygraph_check, _non_static_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -1852,7 +1852,7 @@ def expand_as(x, y, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(

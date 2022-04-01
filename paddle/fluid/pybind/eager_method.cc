@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -33,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/slice_utils.h"
-#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -41,6 +39,9 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/detail/internals.h"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/framework/python_headers.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 
 namespace paddle {
 namespace pybind {
@@ -682,6 +683,103 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__getitem_from_offset(TensorObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr, platform::errors::InvalidArgument("%s is not a DenseTensor.",
+                                             self->tensor.name()));
+  const auto& tensor = *ptr;
+  PADDLE_ENFORCE_EQ(
+      tensor.IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor of %s is Empty, please check if it has no data.",
+          self->tensor.name()));
+
+  const auto& tensor_dims = tensor.dims();
+
+  std::vector<size_t> dims(tensor_dims.size());
+  std::vector<size_t> strides(tensor_dims.size());
+
+  size_t numel = 1;
+  for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+    strides[i] = numel;
+    dims[i] = static_cast<size_t>(tensor_dims[i]);
+    numel *= dims[i];
+  }
+  size_t offset = 0;
+  if (PyTuple_Size(args) == 0) {
+    PADDLE_ENFORCE_EQ(numel, 1,
+                      platform::errors::InvalidArgument(
+                          "only one element tensors can be converted to Python "
+                          "scalars when no input coordinates"));
+  } else if (PyTuple_Size(args) == 1) {
+    offset = CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+    PADDLE_ENFORCE_LT(
+        offset, numel,
+        platform::errors::InvalidArgument(
+            "index %d is out of bounds for size %d", offset, numel));
+  } else {
+    PADDLE_ENFORCE_EQ(PyTuple_Size(args), dims.size(),
+                      platform::errors::InvalidArgument(
+                          "incorrect number of indices for Tensor"));
+
+    for (Py_ssize_t i = 0; i < PyTuple_Size(args); ++i) {
+      size_t index = CastPyArg2AttrLong(PyTuple_GET_ITEM(args, i), i);
+      PADDLE_ENFORCE_LT(
+          index, dims[i],
+          platform::errors::InvalidArgument(
+              "index %d is out fo bounds for axis %d with size %d", index, i,
+              dims[i]));
+      offset += index * strides[i];
+    }
+  }
+#define PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(_) \
+  _(bool, DataType::BOOL)                     \
+  _(int8_t, DataType::INT8)                   \
+  _(uint8_t, DataType::UINT8)                 \
+  _(int16_t, DataType::INT16)                 \
+  _(uint16_t, DataType::UINT16)               \
+  _(int32_t, DataType::INT32)                 \
+  _(uint32_t, DataType::UINT32)               \
+  _(int64_t, DataType::INT64)                 \
+  _(uint64_t, DataType::UINT64)               \
+  _(bfloat16, DataType::BFLOAT16)             \
+  _(float16, DataType::FLOAT16)               \
+  _(float, DataType::FLOAT32)                 \
+  _(double, DataType::FLOAT64)                \
+  _(complex64, DataType::COMPLEX64)           \
+  _(complex128, DataType::COMPLEX128)
+
+#define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
+  if (tensor.dtype() == proto_type) {                                        \
+    auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
+    T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
+    py_dims[0] = 1;                                                          \
+    py_strides[0] = 1;                                                       \
+    auto& api = pybind11::detail::npy_api::get();                            \
+    PyObject* array = api.PyArray_NewFromDescr_(                             \
+        api.PyArray_Type_, api.PyArray_DescrFromType_(numpy_dtype), 1,       \
+        py_dims, py_strides, nullptr,                                        \
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |                      \
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,                 \
+        nullptr);                                                            \
+    std::memcpy(                                                             \
+        reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data), \
+        static_cast<void*>(&b), sizeof(b));                                  \
+    return array;                                                            \
+  }
+
+  PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(TENSOR_TO_PY_SCALAR);
+#undef TENSOR_TO_PY_SCALAR
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Unsupported tensor data type: %s", tensor.dtype()));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
@@ -991,7 +1089,7 @@ static PyObject* tensor__set_grad_type(TensorObject* self, PyObject* args,
   EAGER_TRY
   auto var_type = pybind::CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensor =
-      egr::EagerUtils::unsafe_autograd_meta(self->tensor)->MutableGrad();
+      egr::EagerUtils::autograd_meta(&self->tensor)->MutableGrad();
   if (var_type == framework::proto::VarType::LOD_TENSOR) {
     grad_tensor->set_impl(std::make_shared<phi::DenseTensor>());
   } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
@@ -1210,6 +1308,27 @@ static PyObject* tensor_method_get_rows(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool set_to_zero = true;
+  if (args_num == (Py_ssize_t)1) {
+    set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
+
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  if (grad && grad->defined() && grad->is_dense_tensor() &&
+      grad->initialized()) {
+    grad->reset_inplace_version(set_to_zero);
+  }
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -1251,6 +1370,9 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_getitem_index_not_tensor",
      (PyCFunction)(void (*)(void))tensor__getitem_index_not_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_getitem_from_offset",
+     (PyCFunction)(void (*)(void))tensor__getitem_from_offset,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"__setitem_eager_tensor__",
      (PyCFunction)(void (*)(void))tensor_method__setitem_eager_tensor,
@@ -1305,6 +1427,9 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_is_selected_rows,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"rows", (PyCFunction)(void (*)(void))tensor_method_get_rows,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_reset_grad_inplace_version",
+     (PyCFunction)(void (*)(void))tensor__reset_grad_inplace_version,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
