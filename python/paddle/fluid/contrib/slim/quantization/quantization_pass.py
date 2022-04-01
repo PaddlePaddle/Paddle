@@ -54,10 +54,11 @@ _fake_dequant_op_list = [
 _fake_quant_dequant_op_list = [
     'fake_quantize_dequantize_moving_average_abs_max',
     "fake_channel_wise_quantize_dequantize_abs_max",
-    "fake_quantize_dequantize_moving_average_abs_max"
 ]
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
+
+_SCALE_DEFAULT_VALUE = 0.001
 
 
 def _init_var_node(var_node, value, scope, place):
@@ -491,7 +492,7 @@ class QuantizationTransformPass(object):
         _init_var_node(
             scale_in_node,
             np.array(
-                [0.001], dtype=data_type),
+                [_SCALE_DEFAULT_VALUE], dtype=data_type),
             self._scope,
             self._place)
 
@@ -559,7 +560,7 @@ class QuantizationTransformPass(object):
         _init_var_node(
             scale_in_node,
             np.array(
-                [0.001], dtype=data_type),
+                [_SCALE_DEFAULT_VALUE], dtype=data_type),
             self._scope,
             self._place)
 
@@ -1707,7 +1708,7 @@ class AddQuantDequantPass(object):
         _init_var_node(
             scale_in_node,
             np.array(
-                [0.001], dtype=data_type),
+                [_SCALE_DEFAULT_VALUE], dtype=data_type),
             self._scope,
             self._place)
 
@@ -1812,7 +1813,7 @@ class InsertQuantizeLinear(object):
         else:
             scale_var_shape = 1
             scale_var_type = var_node.type()
-            init_scale_value = np.array([0.001], dtype=data_type)
+            init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_var_node = graph.create_persistable_node(
             name=self._quantized_scale_name(var_node.name()),
             var_type=scale_var_type,
@@ -1844,7 +1845,9 @@ class InsertQuantizeLinear(object):
         if not self._is_test:
             attrs["is_test"] = self._is_test
             attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
-            outputs["OutScale"] = scale_var_node
+            scale_out_node = graph.create_var_node_from_desc(scale_var_node.var(
+            ))
+            outputs["OutScale"] = scale_out_node
 
         quant_op_node = graph.create_op_node(
             op_type="quantize_linear",
@@ -1857,6 +1860,8 @@ class InsertQuantizeLinear(object):
         if zero_point_node is not None:
             graph.link_to(zero_point_node, quant_op_node)
         graph.link_to(quant_op_node, quant_var_node)
+        if not self._is_test:
+            graph.link_to(quant_op_node, scale_out_node)
         return quant_var_node, scale_var_node
 
     def insert_dequant_op(self, graph, var_node, scale_var_node):
@@ -2020,7 +2025,6 @@ class QuantizationTransformPassV2(object):
 
     def _transform_forward(self, graph, op):
         op.op()._set_attr("quantization_type", "qat_with_weight")
-        #op.op()._set_attr("with_quant_attr", True)
         inputs = op.inputs
         for var_node in inputs:
             if var_node.name() not in op.input_arg_names():
@@ -2149,8 +2153,8 @@ class QuantizationTransformPassV2(object):
             op_node.op().attr("skip_quant"):
             is_skip = True
         # if the inputs of mul and matmul are not all persistable, use
-        # AddQuantDequantPass to quantize them.
-        if op_node.name() in ["mul", "matmul"] and \
+        # AddQuantDequantPassV2 to quantize them.
+        if op_node.name() in ["mul", "matmul", "matmul_v2"] and \
             _is_input_all_not_persistable(graph, op_node):
             is_skip = True
         if op_node.op().has_attr("quantization_type") and \
@@ -2486,14 +2490,21 @@ class QuantWeightPass(object):
             If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the index of the GPUs.
         bias_correction(bool): whether use bias correction for post-training quantization.
              https://arxiv.org/abs/1810.05723.
+        quant_bits(int, optional): quantization bit number for weight. Default is 8.
+        save_int_weight(bool, optional): Whether the type saving the weight is int. Default is True.
     """
 
-    def __init__(self, scope, place, bias_correction=False, quant_bits=8):
+    def __init__(self,
+                 scope,
+                 place,
+                 bias_correction=False,
+                 quant_bits=8,
+                 save_int_weight=True):
         self._place = _get_paddle_place(place)
         self._scope = scope
         self._bias_correction = bias_correction
         self._quant_bits = quant_bits
-        #self.scale_dict = scale_dict
+        self._save_int_weight = save_int_weight
         assert self._scope != None, "scope must not be None."
         assert self._place != None, "place must not be None."
 
@@ -2536,12 +2547,14 @@ class QuantWeightPass(object):
                         scale_v,
                         quant_axis,
                         weight_bits=bits_length)
-                if self._quant_bits == 8:
-                    save_weight_dtype = np.int8
-                elif self._quant_bits == 4:
-                    save_weight_dtype = np.int4
-                # cast weight type
-                quantized_param_v = quantized_param_v.astype(save_weight_dtype)
+                if self._save_int_weight:
+                    # cast weight type to int
+                    if self._quant_bits == 8:
+                        save_weight_dtype = np.int8
+                    elif self._quant_bits == 4:
+                        save_weight_dtype = np.int4
+                    quantized_param_v = quantized_param_v.astype(
+                        save_weight_dtype)
                 self._restore_var(x_node.name(), quantized_param_v)
 
                 for next_op_node in out_node.outputs:

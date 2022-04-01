@@ -17,51 +17,49 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
+struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
-                  const int scale_num, T max_range, const int quant_axis,
-                  const int x_num_col_dims, framework::Tensor* out) {
-    if (scale_num == 1) {
-      // Dequant op is before quantized op
-      // Dequantize the weight of quantized op
-      auto in_dims = in->dims();
-      const int64_t channel = in_dims[quant_axis];
-      const T* scale_factor = scale->data<T>();
-      if (quant_axis == 0) {
-        for (int64_t i = 0; i < channel; i++) {
-          T s = scale_factor[i];
-          framework::Tensor one_channel_in = in->Slice(i, i + 1);
-          framework::Tensor one_channel_out = out->Slice(i, i + 1);
-          auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
-          auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-          auto& dev = *dev_ctx.eigen_device();
-          out_e.device(dev) = in_e * s / max_range;
-        }
-      } else if (quant_axis == 1) {
-        int64_t out_iter = 1;
-        for (int i = 0; i < quant_axis; i++) {
-          out_iter *= in_dims[i];
-        }
-        int64_t step_i = in->numel() / out_iter;
-        int64_t step_j = in->numel() / (out_iter * channel);
-        auto* in_data = in->data<T>();
-        auto* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-        for (int64_t i = 0; i < out_iter; i++) {
-          for (int64_t j = 0; j < channel; j++) {
-            auto* cur_in = in_data + i * step_i + j * step_j;
-            auto* cur_out = out_data + i * step_i + j * step_j;
-            T s = scale_factor[j];
-            for (int64_t k = 0; k < step_j; k++) {
-              *cur_out = (*cur_in) * s / max_range;
-              ++cur_in;
-              ++cur_out;
-            }
+                  T max_range, const int quant_axis, framework::Tensor* out) {
+    // Dequant op is before quantized op
+    // Dequantize the weight of quantized op
+    auto in_dims = in->dims();
+    const int64_t channel = in_dims[quant_axis];
+    const T* scale_factor = scale->data<T>();
+    if (quant_axis == 0) {
+      for (int64_t i = 0; i < channel; i++) {
+        T s = scale_factor[i];
+        framework::Tensor one_channel_in = in->Slice(i, i + 1);
+        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
+        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+        auto& dev = *dev_ctx.eigen_device();
+        out_e.device(dev) = in_e * s / max_range;
+      }
+    } else if (quant_axis == 1) {
+      int64_t out_iter = 1;
+      for (int i = 0; i < quant_axis; i++) {
+        out_iter *= in_dims[i];
+      }
+      int64_t step_i = in->numel() / out_iter;
+      int64_t step_j = in->numel() / (out_iter * channel);
+      auto* in_data = in->data<T>();
+      auto* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      for (int64_t i = 0; i < out_iter; i++) {
+        for (int64_t j = 0; j < channel; j++) {
+          auto* cur_in = in_data + i * step_i + j * step_j;
+          auto* cur_out = out_data + i * step_i + j * step_j;
+          T s = scale_factor[j];
+          for (int64_t k = 0; k < step_j; k++) {
+            *cur_out = (*cur_in) * s / max_range;
+            ++cur_in;
+            ++cur_out;
           }
         }
       }
@@ -71,8 +69,8 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
 
 template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
 template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
-template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, double>;
+template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, float>;
+template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, double>;
 
 class QuantizeLinearOp : public framework::OperatorWithKernel {
  public:

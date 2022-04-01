@@ -18,11 +18,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(const T* in, const T* scale, T max_range, int num,
-                             T* out) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < num) {
-    out[idx] = in[idx] * scale[0] / max_range;
+__global__ void KeDequantize(const T* in, const T* scale, T max_range,
+                             int64_t num, T* out) {
+  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    out[i] = in[i] * scale[0] / max_range;
   }
 }
 
@@ -35,11 +35,16 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
     const T* scale_factor = scale->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
-    int num = in->numel();
-    int block = 512;
-    int grid = (num + block - 1) / block;
-
-    KeDequantize<T><<<grid, block, 0, dev_ctx.stream()>>>(
+    int64_t num = in->numel();
+    int64_t block_size = std::min(
+        num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
+    int64_t max_threads =
+        dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
+    const int64_t max_blocks =
+        std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+    const int64_t grid_size =
+        std::min(max_blocks, (num + block_size - 1) / block_size);
+    KeDequantize<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
         in_data, scale_factor, max_range, num, out_data);
   }
 };
@@ -96,31 +101,24 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
     if (scale_num == 1) {
       int64_t num = in->numel();
       const T* scale_factor = scales[0]->data<T>();
-      if (quant_axis == 0) {
-        int grid = in_dims[0];
-        int block = 1024;
-        DequantizeOneScaleQuantAxis0<T><<<grid, block, 0, dev_ctx.stream()>>>(
-            in_data, scale_factor, max_range, num, in_dims[0], out_data);
-      } else {
-        int quant_stride = 1;
-        for (int i = quant_axis + 1; i < in_dims.size(); i++) {
-          quant_stride *= in_dims[i];
-        }
+      int64_t block_size = std::min(
+          num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
+      int64_t max_threads =
+          dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
+      const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1),
+                                          static_cast<int64_t>(1));
+      const int64_t grid_size =
+          std::min(max_blocks, (num + block_size - 1) / block_size);
 
-        int64_t block_size = std::min(
-            num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
-        int64_t max_threads =
-            dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
-        const int64_t max_blocks = std::max(
-            ((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
-        const int64_t grid_size =
-            std::min(max_blocks, (num + block_size - 1) / block_size);
-
-        DequantizeOneScaleQuantAxisN<
-            T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            in_data, scale_factor, max_range, num, in_dims[quant_axis],
-            quant_stride, out_data);
+      int quant_stride = 1;
+      for (int i = quant_axis + 1; i < in_dims.size(); i++) {
+        quant_stride *= in_dims[i];
       }
+
+      DequantizeOneScaleQuantAxisN<
+          T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+          in_data, scale_factor, max_range, num, in_dims[quant_axis],
+          quant_stride, out_data);
     } else if (scale_num == 2) {
       // Not need to consider quant_axis
       int num = in->numel();

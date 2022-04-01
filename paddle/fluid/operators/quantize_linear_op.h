@@ -13,7 +13,6 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -24,10 +23,16 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext, typename T>
+struct ChannelDequantizeFunctorV2 {
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
+                  const framework::Tensor** scales, const int scale_num,
+                  T max_range, const int quant_axis, framework::Tensor* out);
+};
 
 template <typename DeviceContext, typename T>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
@@ -62,9 +67,12 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
         FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
                                                      out_scale_data);
+        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
+      } else {
+        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *in_scale, bin_cnt, quant_axis, out);
       }
-      ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-          dev_ctx, *in, *in_scale, bin_cnt, quant_axis, out);
     }
   }
 };
@@ -92,12 +100,6 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
       DequantizeFunctor<DeviceContext, D>()(dev_ctx, &in_tmp, scale,
                                             static_cast<D>(max_range), out);
     } else {
-      auto x_num_col_dims = 1;
-      int max_range = 1;
-
-      out->mutable_data<D>(dev_ctx.GetPlace());
-      // Now only support scale_num = 1
-      int scale_num = 1;
       PADDLE_ENFORCE_EQ(
           scale->numel(), in_tmp.dims()[quant_axis],
           platform::errors::PreconditionNotMet(
@@ -105,11 +107,10 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
               "quant_axis dimension value of Input(X) when the `scale` has "
               "only one element, but %ld != %ld here.",
               scale->numel(), in_tmp.dims()[quant_axis]));
-      max_range *= (std::pow(2, bit_length - 1) - 1);
+      int max_range = (std::pow(2, bit_length - 1) - 1);
 
-      ChannelDequantizeFunctor<DeviceContext, D>()(
-          dev_ctx, &in_tmp, scale, scale_num, static_cast<D>(max_range),
-          quant_axis, x_num_col_dims, out);
+      ChannelDequantizeFunctorV2<DeviceContext, D>()(
+          dev_ctx, &in_tmp, scale, static_cast<D>(max_range), quant_axis, out);
     }
   }
 };

@@ -21,11 +21,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(const T* in, const T* scale, T max_range, int num,
-                             T* out) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx < num) {
-    out[idx] = in[idx] * scale[0] / max_range;
+__global__ void KeDequantize(const T* in, const T* scale, T max_range,
+                             int64_t num, T* out) {
+  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    out[i] = in[i] * scale[0] / max_range;
   }
 }
 
@@ -38,27 +38,19 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
     const T* scale_factor = scale->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
-    int num = in->numel();
-    int block = 512;
-    int grid = (num + block - 1) / block;
-
-    KeDequantize<T><<<grid, block, 0, dev_ctx.stream()>>>(
+    int64_t num = in->numel();
+    int64_t block_size = std::min(
+        num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
+    int64_t max_threads =
+        dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
+    const int64_t max_blocks =
+        std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+    const int64_t grid_size =
+        std::min(max_blocks, (num + block_size - 1) / block_size);
+    KeDequantize<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
         in_data, scale_factor, max_range, num, out_data);
   }
 };
-
-template <typename T>
-__global__ void DequantizeOneScaleQuantAxis0(const T* in, const T* scale,
-                                             T max_range, int num, int channel,
-                                             T* out) {
-  int tid = threadIdx.x;
-  int channel_size = num / channel;
-  const T* in_c = in + blockIdx.x * channel_size;
-  T* out_c = out + blockIdx.x * channel_size;
-  for (int i = tid; i < channel_size; i += blockDim.x) {
-    out_c[i] = in_c[i] * scale[blockIdx.x] / max_range;
-  }
-}
 
 template <typename T>
 __global__ void DequantizeOneScaleQuantAxisN(const T* in, const T* scale,
@@ -74,50 +66,40 @@ __global__ void DequantizeOneScaleQuantAxisN(const T* in, const T* scale,
 }
 
 template <typename T>
-struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
+struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
-                  const int scale_num, T max_range, const int quant_axis,
-                  const int x_num_col_dims, framework::Tensor* out) {
+                  T max_range, const int quant_axis, framework::Tensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-    if (scale_num == 1) {
-      int64_t num = in->numel();
-      const T* scale_factor = scale->data<T>();
-      if (quant_axis == 0) {
-        int grid = in_dims[0];
-        int block = 1024;
-        DequantizeOneScaleQuantAxis0<T><<<grid, block, 0, dev_ctx.stream()>>>(
-            in_data, scale_factor, max_range, num, in_dims[0], out_data);
-      } else {
-        int quant_stride = 1;
-        for (int i = quant_axis + 1; i < in_dims.size(); i++) {
-          quant_stride *= in_dims[i];
-        }
+    int64_t num = in->numel();
+    const T* scale_factor = scale->data<T>();
+    int64_t block_size = std::min(
+        num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
+    int64_t max_threads =
+        dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
+    const int64_t max_blocks =
+        std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+    const int64_t grid_size =
+        std::min(max_blocks, (num + block_size - 1) / block_size);
 
-        int64_t block_size = std::min(
-            num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
-        int64_t max_threads =
-            dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
-        const int64_t max_blocks = std::max(
-            ((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
-        const int64_t grid_size =
-            std::min(max_blocks, (num + block_size - 1) / block_size);
-
-        DequantizeOneScaleQuantAxisN<
-            T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            in_data, scale_factor, max_range, num, in_dims[quant_axis],
-            quant_stride, out_data);
-      }
+    int quant_stride = 1;
+    for (int i = quant_axis + 1; i < in_dims.size(); i++) {
+      quant_stride *= in_dims[i];
     }
+
+    DequantizeOneScaleQuantAxisN<
+        T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+        in_data, scale_factor, max_range, num, in_dims[quant_axis],
+        quant_stride, out_data);
   }
 };
 
 template struct DequantizeFunctor<platform::CUDADeviceContext, float>;
 template struct DequantizeFunctor<platform::CUDADeviceContext, double>;
-template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, float>;
-template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, double>;
+template struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, float>;
+template struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, double>;
 
 template <typename T>
 __global__ void FindAbsMaxKernel(const T* in, const int n, T* out) {
@@ -127,13 +109,14 @@ __global__ void FindAbsMaxKernel(const T* in, const int n, T* out) {
   extern __shared__ char* shared_max_data_tmp[];
   auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
   if (gridDim.x > 1) {
-    shared_max_data[tid] = T(0);
+    T local_max_data = T(0);
     for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
       T tmp = abs(in[i]);
-      if (tmp > shared_max_data[tid]) {
-        shared_max_data[tid] = tmp;
+      if (tmp > local_max_data) {
+        local_max_data = tmp;
       }
     }
+    shared_max_data[tid] = local_max_data;
   } else {
     if (bid < n) {
       shared_max_data[tid] = abs(in[bid]);
@@ -212,13 +195,14 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
   int tid = threadIdx.x;
   int bid = blockIdx.x;
   const T* in_current = in + tid * cout_wh_size + bid * wh_size;
-  shared_max_data[tid] = T(0);
+  T local_max_data = T(0);
   for (int i = 0; i < wh_size; i++) {
     T tmp = fabs(in_current[i]);
-    if (tmp > shared_max_data[tid]) {
-      shared_max_data[tid] = tmp;
+    if (tmp > local_max_data) {
+      local_max_data = tmp;
     }
   }
+  shared_max_data[tid] = local_max_data;
   __syncthreads();
 
   int len = blockDim.x;

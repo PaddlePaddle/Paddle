@@ -196,7 +196,7 @@ class PostTrainingQuantization(object):
                 the fake ops in saving quantized model, and we save the scale obtained
                 by post training quantization in fake ops. Compared to 'abs_max',
                 the model accuracy is usually higher when it is 'channel_wise_abs_max'.
-            onnx_format(bool): Whether to export the quantized model with format of onnx.
+            onnx_format(bool): Whether to export the quantized model with format of ONNX.
                 Default is False.
             optimize_model(bool, optional): If set optimize_model as True, it applies
                 some passes to the model before quantization, and it supports
