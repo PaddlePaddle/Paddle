@@ -547,6 +547,15 @@
     func : hard_sigmoid
   backward : hard_sigmoid_grad
 
+# histogram
+- api : histogram
+  args : (Tensor x, int64_t bins, int min, int max)
+  output : Tensor
+  infer_meta :
+    func : HistogramInferMeta
+  kernel :
+    func : histogram
+
 - api : huber_loss
   args : (Tensor input, Tensor label, float delta)
   output : Tensor(out), Tensor(residual)
@@ -735,6 +744,15 @@
     func : matrix_power
   backward : matrix_power_grad
 
+- api : maximum
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : maximum
+  backward : maximum_grad
+
 - api : mean
   args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
   output : Tensor
@@ -742,6 +760,15 @@
     func : ReduceInferMeta
   kernel :
     func : mean
+
+- api : minimum
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : minimum
+  backward : minimum_grad
 
 - api : modulo
   args : (Tensor x, Tensor y)
@@ -942,6 +969,14 @@
     func : selu
   backward : selu_grad
 
+- api : shape
+  args : (Tensor input)
+  output : Tensor
+  infer_meta :
+    func : ShapeInferMeta
+  kernel :
+    func : shape, shape_sr
+
 # shard_index
 - api : shard_index
   args : (Tensor in, int index_num, int nshards, int shard_id, int ignore_value)
@@ -1060,6 +1095,15 @@
   kernel :
     func : square
   backward : square_grad
+
+- api : strided_slice
+  args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
+  output : Tensor
+  infer_meta :
+    func : StridedSliceInferMeta
+  kernel :
+    func : strided_slice
+  backward : strided_slice_grad
 
 - api : subtract
   args : (Tensor x, Tensor y)

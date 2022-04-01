@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 class TestExpandAsOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
         x = np.random.rand(100).astype("float64")
         target_tensor = np.random.rand(2, 100).astype("float64")
         self.inputs = {'X': x}

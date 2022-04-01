@@ -207,6 +207,22 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* pre_out,
                                   MetaTensor* w_out);
 
+void InterpolateInferMeta(
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> out_size,
+    paddle::optional<const std::vector<const MetaTensor*>> size_tensor,
+    paddle::optional<const MetaTensor&> scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    MetaTensor* output,
+    MetaConfig config = MetaConfig());
+
 void MeshgridInferMeta(const std::vector<MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
