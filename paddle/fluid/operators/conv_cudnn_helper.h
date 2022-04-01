@@ -63,8 +63,17 @@ static double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);
 }
 
-static size_t CaclWorkspaceLimitInBytes() {
-  return platform::GpuAvailableMemToAlloc();
+static size_t CaclWorkspaceLimitInBytes(const phi::GPUContext& ctx) {
+  int device_id = platform::GetCurrentDeviceId();
+  int64_t allocated = memory::StatGetCurrentValue("Allocated", device_id);
+  int64_t reserved = memory::StatGetCurrentValue("Reserved", device_id);
+  int64_t availble = platform::GpuAvailableMemToAlloc();
+  int64_t cur_workspace_size = ctx.cudnn_workspace_handle().WorkspaceSize();
+  VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
+          << " MB, reserved=" << ToMegaBytes(reserved)
+          << " MB, available_to_alloc=" << ToMegaBytes(availble)
+          << " MB, current_workspace_size=" << ToMegaBytes(cur_workspace_size);
+  return std::max(std::max(availble, cur_workspace_size), reserved - allocated);
   // return FLAGS_conv_workspace_size_limit * 1024 * 1024;
 }
 
@@ -115,15 +124,13 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
 static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
                             const platform::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-  auto& dev_ctx = ctx;
-  if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
+  if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
         cdesc.desc(), CUDNN_TENSOR_OP_MATH));
     VLOG(5) << "use cudnn_tensor_op_math";
 #if CUDA_VERSION >= 11000
 #if CUDNN_VERSION_MIN(8, 1, 0)
-  } else if (dev_ctx.GetComputeCapability() >= 80 &&
-             dtype == CUDNN_DATA_BFLOAT16) {
+  } else if (ctx.GetComputeCapability() >= 80 && dtype == CUDNN_DATA_BFLOAT16) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
         cdesc.desc(), CUDNN_TENSOR_OP_MATH));
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
@@ -150,7 +157,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     SearchResultT result;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size = 0;
-    size_t workspace_size_limit = CaclWorkspaceLimitInBytes();
+    size_t workspace_size_limit = CaclWorkspaceLimitInBytes(ctx);
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (!exhaustive_search && !deterministic) {
@@ -195,8 +202,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     } else if (deterministic) {
       result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
     } else {
-      auto& dev_ctx = ctx;
-      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto workspace_handle = ctx.cudnn_workspace_handle();
       auto x_dims = phi::vectorize(args.x->dims());
       auto w_dims = phi::vectorize(args.w->dims());
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
@@ -226,9 +232,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                       perf_results.data(), cudnn_workspace_ptr,
                       max_workspace_size));
             };
-            workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size);
-            // Avoid cache of workspace allocated during searching algorithm.
-            memory::Release(dev_ctx.GetPlace());
+            workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
+                                         false);
 
             VLOG(3) << GetPerfResultString<PerfT>(
                 perf_results, returned_algo_count, workspace_size_limit);
@@ -281,7 +286,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     SearchResultT result;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size = 0;
-    size_t workspace_size_limit = CaclWorkspaceLimitInBytes();
+    size_t workspace_size_limit = CaclWorkspaceLimitInBytes(ctx);
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (!exhaustive_search && !deterministic) {
@@ -337,8 +342,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     } else if (deterministic) {
       result.algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     } else {
-      auto& dev_ctx = ctx;
-      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto workspace_handle = ctx.cudnn_workspace_handle();
       auto x_dims = phi::vectorize(args.x->dims());
       auto w_dims = phi::vectorize(args.w->dims());
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t"
@@ -370,9 +374,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                           perf_results.data(), cudnn_workspace_ptr,
                           max_workspace_size));
             };
-            workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size);
-            // Avoid cache of workspace allocated during searching algorithm.
-            memory::Release(dev_ctx.GetPlace());
+            workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
+                                         false);
 
             VLOG(3) << GetPerfResultString<PerfT>(
                 perf_results, returned_algo_count, workspace_size_limit);
@@ -428,7 +431,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     platform::CUDAGraphCaptureModeGuard guard;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size = 0;
-    size_t workspace_size_limit = CaclWorkspaceLimitInBytes();
+    size_t workspace_size_limit = CaclWorkspaceLimitInBytes(ctx);
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (!exhaustive_search && !deterministic) {
@@ -474,8 +477,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     } else if (deterministic) {
       result.algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
-      auto& dev_ctx = ctx;
-      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto workspace_handle = ctx.cudnn_workspace_handle();
       auto x_dims = phi::vectorize(args.x->dims());
       auto w_dims = phi::vectorize(args.w->dims());
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
@@ -508,9 +510,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                             perf_results.data(), cudnn_workspace_ptr,
                             max_workspace_size));
               };
-              workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size);
-              // Avoid cache of workspace allocated during searching algorithm.
-              memory::Release(dev_ctx.GetPlace());
+              workspace_handle.RunFuncSync(cudnn_find_func, max_workspace_size,
+                                           false);
 
               VLOG(3) << GetPerfResultString<PerfT>(
                   perf_results, returned_algo_count, workspace_size_limit);
