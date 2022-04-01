@@ -117,7 +117,7 @@ endif()
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
 # seperate init from device_context to avoid cycle dependencies
-cc_library(init SRCS init.cc DEPS device_context phi_custom_kernel)
+cc_library(init SRCS init.cc DEPS device_context custom_kernel context_pool)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -192,13 +192,13 @@ add_subdirectory(profiler)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
-  nv_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce dynload_cuda)
+  nv_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce dynload_cuda new_profiler)
   nv_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
-  hip_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce)
+  hip_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce new_profiler)
   hip_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
 else()
-  cc_library(profiler SRCS profiler.cc DEPS os_info device_tracer enforce)
+  cc_library(profiler SRCS profiler.cc DEPS os_info device_tracer enforce new_profiler)
   cc_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info place)
 endif()
 

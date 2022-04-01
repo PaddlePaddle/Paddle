@@ -32,7 +32,7 @@ template <typename T, typename Context>
 DenseTensor Transpose(const Context& dev_ctx,
                       const DenseTensor& x,
                       const std::vector<int>& axis) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TransposeInferMeta(x, axis, &meta_out);
   TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);

@@ -197,7 +197,15 @@ class Kernel {
 
   const KernelArgsDef& args_def() const { return args_def_; }
 
+  const TensorArgDef& InputAt(size_t idx) const {
+    return args_def_.input_defs().at(idx);
+  }
+
   TensorArgDef& InputAt(size_t idx) { return args_def_.input_defs().at(idx); }
+
+  const TensorArgDef& OutputAt(size_t idx) const {
+    return args_def_.output_defs().at(idx);
+  }
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 

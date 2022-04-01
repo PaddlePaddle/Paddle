@@ -18,7 +18,7 @@
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
 #include <string>
-#include "paddle/infrt/dialect/infrt/common_type.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_baseDialect.h.inc"
 

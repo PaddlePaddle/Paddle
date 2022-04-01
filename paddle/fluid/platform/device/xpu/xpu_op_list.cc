@@ -111,6 +111,22 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU_KP
+std::vector<vartype::Type> get_xpu_kp_op_support_type(
+    const std::string& op_name, phi::backends::xpu::XPUVersion version) {
+  std::vector<vartype::Type> res;
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
+                                                              : get_kp_ops();
+  if (ops.find(op_name) != ops.end()) {
+    XPUKernelSet& type_set = ops[op_name];
+    for (auto& item : type_set) {
+      res.push_back(item.data_type_);
+    }
+  }
+  return res;
+}
+#endif
+
 std::vector<vartype::Type> get_xpu_op_support_type(
     const std::string& op_name, phi::backends::xpu::XPUVersion version) {
   std::vector<vartype::Type> res;

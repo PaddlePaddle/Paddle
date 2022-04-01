@@ -154,8 +154,8 @@ void LoadCustomDevice(const std::string &library_dir) {
             "Fail to open library: %s with error: %s", lib_path, dlerror()));
 
     phi::LoadCustomRuntimeLib(lib_path, dso_handle);
-    phi::LoadCustomKernelLib(lib_path, dso_handle);
   }
+  phi::CustomKernelMap::Instance().RegisterCustomKernels();
   LOG(INFO) << "Finished in LoadCustomDevice with libs_path: [" << library_dir
             << "]";
 }

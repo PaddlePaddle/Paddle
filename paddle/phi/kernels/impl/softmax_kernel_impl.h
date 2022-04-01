@@ -22,10 +22,10 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SoftmaxRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      int axis,
-                      DenseTensor* out) {
+void SoftmaxKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int axis,
+                   DenseTensor* out) {
   const int rank = x.dims().size();
   const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[calc_axis];

@@ -52,11 +52,17 @@ class KernelContext {
 
   void EmplaceBackInputs(paddle::SmallVector<const TensorBase*> inputs);
 
+  void EmplaceBackInputsWithoutSetRange(
+      paddle::SmallVector<const TensorBase*> inputs);
+
   void EmplaceBackOutput(TensorBase* output);
 
   void EmplaceBackOutputWithoutSetRange(TensorBase* output);
 
   void EmplaceBackOutputs(paddle::SmallVector<TensorBase*> outputs);
+
+  void EmplaceBackOutputsWithoutSetRange(
+      paddle::SmallVector<TensorBase*> outputs);
 
   void EmplaceBackAttr(paddle::any attr);
 

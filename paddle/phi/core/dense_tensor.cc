@@ -36,6 +36,7 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
+  inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
@@ -45,6 +46,7 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
+  inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
 #endif
@@ -54,6 +56,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
+  std::swap(inplace_version_counter_, other.inplace_version_counter_);
   return *this;
 }
 
@@ -110,8 +113,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
 template <typename T>
 const T* DenseTensor::data() const {
   check_memory_size();
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+  PADDLE_ENFORCE_EQ(
+      dtype(),
+      paddle::experimental::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));

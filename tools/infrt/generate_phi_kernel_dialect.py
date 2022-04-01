@@ -13,12 +13,22 @@
 # limitations under the License.
 
 import json
+import yaml
 import sys
+import os
+from get_compat_kernel_signature import get_compat_kernels_info
 
-attr_type_converter = {"i": 'SI32Attr', "b": 'BoolAttr', "l": 'SI64Attr'}
-supported_kernels = ['sign', 'dot', 'digamma', 'conj', 'abs', 'add_raw']
+#TODO @DannyIsFunny: more attr types need to be supported.
+attr_type_converter = {
+    "i": 'SI32Attr',
+    "b": 'BoolAttr',
+    "l": 'SI64Attr',
+    "f": 'F32Attr',
+    "NSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE": 'StrAttr',
+    "St6vectorIiSaIiEE": 'I32ArrayAttr'
+}
 
-target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
+target_type_converter = {"CPU": "CPU", "GPU": "GPU", "Undefined": "UNK"}
 layout_type_converter = {
     "NCHW": "NCHW",
     "NHWC": "NHWC",
@@ -36,8 +46,34 @@ precision_type_converter = {
     "float64": "FLOAT64",
     "complex64": "COMPLEX64",
     "complex128": "COMPLEX128",
-    "bool": "BOOL"
+    "bool": "BOOL",
+    "Undefined": "UNK"
 }
+
+kernel_types_info_file = "./kernels.json"
+kernel_signature_info_file = "./kernel_signature.json"
+
+skipped_phi_api_list_file = "./skipped_phi_api.json"
+
+
+def get_skipped_kernel_list():
+    skiped_kernel_list = []
+    with open(skipped_phi_api_list_file, 'r') as f:
+        skiped_api_list = json.load(f)
+    infer_meta_data = get_api_yaml_info("../../")
+    for api in infer_meta_data:
+        if "kernel" not in api or "infer_meta" not in api:
+            continue
+        if api["api"] in skiped_api_list["phi_apis"]:
+            skiped_kernel_list.append(api["kernel"]["func"])
+    skiped_kernel_list += skiped_api_list["phi_kernels"]
+    return skiped_kernel_list
+
+
+def get_api_yaml_info(file_path):
+    f = open(file_path + "/python/paddle/utils/code_gen/api.yaml", "r")
+    cont = f.read()
+    return yaml.load(cont, Loader=yaml.FullLoader)
 
 
 def generate_kernel_name(op_name, place_str):
@@ -45,34 +81,25 @@ def generate_kernel_name(op_name, place_str):
     target_ = target_type_converter[target_.strip()]
     layout_ = layout_type_converter[layout_.strip()]
     precision_ = precision_type_converter[precision_.strip()]
+    class_name_ = "{}{}".format(
+        op_name.replace("_", "").title(), "".join([
+            target_.strip().title(), precision_.strip(), layout_.strip().title()
+            .title()
+        ]))
     alias_ = "{}.{}".format(op_name, ".".join(
-        [target_.strip(), layout_.strip(), precision_.strip()]))
-    return alias_
+        [target_.strip(), precision_.strip(), layout_.strip()]))
+    return alias_, class_name_
 
 
 def generate_attrs_info(op_name, attrs_info):
-    kernel_attrs_names = {
-        'split': ['sections', 'num', 'axis', 'mkldnn_data_type'],
-        'sign': [],
-        'masked_select': [],
-        'trace': ['offset', 'axis1', 'axis2'],
-        'concat': ['axis'],
-        'empty': ['shape', 'dtype'],
-        'conj': [],
-        'norm': ['axis', 'epsilon', 'is_test'],
-        'histogram': ['bins', 'min', 'max'],
-        'dot': [],
-        'scale': ['scale', 'bias', 'bias_after_scale'],
-        'digamma': [],
-        'lerp': [],
-        'cast': ['out_dtype', 'in_dtype'],
-        'abs': [],
-        'add_raw': ['axis'],
-    }
+    kernel_attrs_names = {}
     attrs_args_ = ""
-    if len(kernel_attrs_names[op_name]) == len(attrs_info):
+    with open(kernel_signature_info_file) as f:
+        kernel_attrs_names = json.load(f)
+        kernel_attrs_names.update(get_compat_kernels_info())
+    if len(kernel_attrs_names[op_name]["attrs"]) == len(attrs_info):
         for index in range(len(attrs_info)):
-            attr_name = kernel_attrs_names[op_name][index]
+            attr_name = kernel_attrs_names[op_name]["attrs"][index]
             attr_type = attr_type_converter[attrs_info[index]]
             attrs_args_ += '{type_}:${name_},'.format(
                 type_=attr_type, name_=attr_name)
@@ -97,7 +124,11 @@ def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
     context_args = "Context:$dev_ctx"
-    argument_ = "{},{},{}".format(context_args, input_args, attr_args)
+    argument_list = [context_args] + input_args.split(",") + attr_args.split(
+        ",")
+    while ("" in argument_list):
+        argument_list.remove("")
+    argument_ = ",".join(argument_list)
     return (("let arguments = (ins {});".format(argument_.strip(","))))
 
 
@@ -116,6 +147,10 @@ def generate_results_info(output_info):
 
 def generate_supported_kernel_list(load_dict):
     supported_kernels_list_ = []
+    kernel_attrs_names = {}
+    with open(kernel_signature_info_file) as f:
+        kernel_attrs_names = json.load(f)
+        kernel_attrs_names.update(get_compat_kernels_info())
     for op_name in load_dict:
         kernel_list = load_dict[op_name]
         for kernel_info in kernel_list:
@@ -125,13 +160,14 @@ def generate_supported_kernel_list(load_dict):
                 for attribute in attributes:
                     if attribute not in attr_type_converter:
                         flag = False
-                if flag:
+                if flag and op_name in kernel_attrs_names:
                     supported_kernels_list_.append(op_name)
-
-                alias_ = generate_kernel_dialect(op_name, kernel_alias_,
-                                                 kernel_info[kernel_alias_])
     supported_kernels_list_ = list(set(supported_kernels_list_))
-    print(supported_kernels_list_)
+    skipped_kernel_list = get_skipped_kernel_list()
+    for skipped_kernel in skipped_kernel_list:
+        if skipped_kernel in skipped_kernel_list:
+            supported_kernels_list_.remove(skipped_kernel)
+    return supported_kernels_list_
 
 
 def scan_kernel_info(load_dict):
@@ -156,16 +192,14 @@ def scan_kernel_info(load_dict):
 
 def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
-    alias = generate_kernel_name(op_name, kernel_alias_)
+    alias, class_name = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
     dialect_name = alias.split(".")
     dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
         3]
 
     header = 'def {kernel_name} : PDTCPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        kernel_name=alias.replace(".", ""),
-        name=dialect_name.lower(),
-        left_brace="{")
+        kernel_name=class_name, name=dialect_name.lower(), left_brace="{")
 
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
@@ -185,16 +219,14 @@ def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
 def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
-    alias = generate_kernel_name(op_name, kernel_alias_)
+    alias, class_name = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
     dialect_name = alias.split(".")
     dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
         3]
 
     header = 'def {kernel_name} : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        kernel_name=alias.replace(".", ""),
-        name=dialect_name.lower(),
-        left_brace="{")
+        kernel_name=class_name, name=dialect_name.lower(), left_brace="{")
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
     arguments = generate_arguments_info(op_name, inputs_, attributes)
@@ -236,14 +268,18 @@ def get_kernel_target(kernel_alias_):
     return target[0]
 
 
-def main(path_):
-    with open(path_, "r") as f:
+def main():
+    with open(kernel_types_info_file, "r") as f:
         load_dict = json.load(f)
 
         head = generate_dialect_head()
 
         cpu_registry_ = ""
         gpu_registry_ = ""
+        supported_kernels = generate_supported_kernel_list(load_dict)
+
+        print("Supported kernels:")
+        print(supported_kernels)
         for op_name in load_dict:
             if op_name not in supported_kernels:
                 continue
@@ -273,5 +309,12 @@ def main(path_):
 
 
 if __name__ == '__main__':
-    path = sys.argv[1]
-    main(path)
+    if not os.path.exists(kernel_types_info_file):
+        print("Error: '{file_name}' not exist!".format(
+            file_name=kernel_types_info_file))
+    if not os.path.exists(kernel_signature_info_file):
+        print("Error: '{file_name}' not exist!".format(
+            file_name=kernel_signature_info_file))
+    if os.path.exists(kernel_types_info_file) and os.path.exists(
+            kernel_signature_info_file):
+        main()

@@ -103,11 +103,11 @@ DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
-DELCARE_INFER_SHAPE_FUNCTOR(scatter, ScatterInferShapeFunctor,
-                            PT_INFER_META(phi::ScatterInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(scatter, ScatterInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterInferMeta));
 
-DELCARE_INFER_SHAPE_FUNCTOR(scatter_grad, ScatterGradInferShapeFunctor,
-                            PT_INFER_META(phi::ScatterGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_grad, ScatterGradInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterGradInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,

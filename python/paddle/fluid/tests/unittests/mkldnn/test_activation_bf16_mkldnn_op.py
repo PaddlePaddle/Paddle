@@ -50,11 +50,11 @@ class MKLDNNBF16ActivationOp(object):
         self.dtype = np.uint16
         self.init_data()
         self.config()
+        self.set_attrs()
         self.out = self.op_forward(self.x)
 
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': self.out}
-        self.set_attrs()
 
     def calculate_grads(self):
         self.dx = self.op_grad(self.out, self.x)
@@ -160,6 +160,111 @@ class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
                                                                  ) + 4 * (x + 1)
         delta = np.exp(2 * x) + 2 * np.exp(x) + 2
         return dout * ((np.exp(x) * omega) / delta**2)
+
+
+class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "relu6"
+
+    def op_forward(self, x):
+        return np.clip(x, 0, 6)
+
+    def op_grad(self, dout, x):
+        return np.where((x > 0) & (x <= 6), dout, 0)
+
+
+class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "leaky_relu"
+
+    def op_forward(self, x):
+        return np.where(x > 0, x, self.alpha * x)
+
+    def op_grad(self, dout, x):
+        return np.where(x > 0, dout, self.alpha * dout)
+
+    def set_attrs(self):
+        self.alpha = 0.2
+        self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
+
+
+class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "swish"
+
+    def expit(self, val):
+        return 1 / (1 + np.exp(-self.beta * val))
+
+    def op_forward(self, x):
+        return x * self.expit(x)
+
+    def op_grad(self, dout, x):
+        return dout * self.expit(x) * (1 + self.beta * x * (1 - self.expit(x)))
+
+    def set_attrs(self):
+        self.beta = 0.2
+        self.attrs = {"use_mkldnn": True, "beta": self.beta}
+
+
+class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "hard_swish"
+
+    def op_forward(self, x):
+        result = np.where(x < -3, 0, x)
+        return np.where(result > 3, result, result * (result + 3) / 6)
+
+    def op_grad(self, dout, x):
+        result = np.where(x < -3, 0, x)
+        return np.where(result > 3, dout, dout * (2 * x + 3) / 6)
+
+
+class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "tanh"
+
+    def op_forward(self, x):
+        return np.tanh(x)
+
+    def op_grad(self, dout, x):
+        return dout * (1 - np.tanh(x)**2)
+
+
+class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "abs"
+
+    def op_forward(self, x):
+        return np.absolute(x)
+
+    def op_grad(self, dout, x):
+        return dout * np.sign(x)
+
+
+class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "elu"
+
+    def op_forward(self, x):
+        return np.where(x > 0, x, self.alpha * (np.exp(x) - 1))
+
+    def op_grad(self, dout, x):
+        return np.where(x > 0, dout, dout * self.alpha * np.exp(x))
+
+    def set_attrs(self):
+        self.alpha = 0.2
+        self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
+
+
+class TestMKLDNNExpBF16Op(MKLDNNBF16ActivationOp, TestActivation):
+    def config(self):
+        self.op_type = "exp"
+
+    def op_forward(self, x):
+        return np.exp(x)
+
+    def op_grad(self, dout, x):
+        return dout * np.exp(x)
 
 
 if __name__ == '__main__':

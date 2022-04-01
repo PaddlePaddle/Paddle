@@ -29,7 +29,7 @@ from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from distutils.util import strtobool
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
 
@@ -145,7 +145,7 @@ def global_scatter(x,
         return
 
     ring_id = 0 if group is None else group.id
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.global_scatter(x, local_count, \
                                     global_count,  \
                                     'use_calc_stream', use_calc_stream, \
@@ -257,7 +257,7 @@ def global_gather(x,
         return
 
     ring_id = 0 if group is None else group.id
-    if in_dygraph_mode():
+    if _non_static_mode():
         return _C_ops.global_gather(x, local_count, \
                                     global_count, \
                                     'use_calc_stream', use_calc_stream, \
@@ -546,13 +546,15 @@ class Pod(object):
 
 def get_logger(log_level, name="root"):
     logger = logging.getLogger(name)
-    logger.setLevel(log_level)
+    # Avoid printing multiple logs
+    if not logger.handlers:
+        logger.setLevel(log_level)
 
-    log_handler = logging.StreamHandler()
-    log_format = logging.Formatter(
-        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-    log_handler.setFormatter(log_format)
-    logger.addHandler(log_handler)
+        log_handler = logging.StreamHandler()
+        log_format = logging.Formatter(
+            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+        log_handler.setFormatter(log_format)
+        logger.addHandler(log_handler)
 
     return logger
 

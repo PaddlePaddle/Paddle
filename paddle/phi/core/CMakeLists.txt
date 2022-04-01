@@ -19,13 +19,14 @@ cc_library(lod_utils SRCS lod_utils.cc DEPS phi_enforce)
 cc_library(dense_tensor SRCS dense_tensor.cc dense_tensor_impl.cc DEPS fluid_convert_utils tensor_meta tensor_base)
 cc_library(sparse_coo_tensor SRCS sparse_coo_tensor.cc DEPS tensor_meta tensor_base)
 cc_library(sparse_csr_tensor SRCS sparse_csr_tensor.cc DEPS dense_tensor tensor_base)
+cc_library(string_tensor SRCS string_tensor.cc DEPS convert_utils tensor_meta tensor_base)
 
 cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_tensor)
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 cc_library(selected_rows SRCS selected_rows_impl.cc DEPS dense_tensor phi_enforce ddim memcpy)
 cc_library(phi_device_context SRCS device_context.cc DEPS dense_tensor selected_rows)
 
-cc_library(phi_custom_kernel SRCS custom_kernel.cc DEPS kernel_factory convert_utils op_registry phi_tensor_raw)
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS kernel_factory)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)

@@ -24,6 +24,7 @@ class BackwardAPI(BaseAPI):
     def __init__(self, backward_item_yaml):
         super(BackwardAPI, self).__init__(backward_item_yaml)
         self.check_args(backward_item_yaml['forward'])
+        self.no_need_buffer = self.parse_no_need_buffer(backward_item_yaml)
 
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['backward_api']
@@ -35,10 +36,20 @@ class BackwardAPI(BaseAPI):
             forward_config)
         api = result.group('api')
         _, outputs, _ = self.parse_output(self.api, result.group('outputs'))
+        outputs = [item.split('@')[0] for item in outputs]
         fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
             api, result.group('args'))
 
         return api, fw_inputs, fw_attrs, outputs
+
+    def parse_no_need_buffer(self, api_item_yaml):
+        no_need_buffer = []
+        if 'no_need_buffer' in api_item_yaml:
+            no_need_buffer = [
+                item.strip()
+                for item in api_item_yaml['no_need_buffer'].split(',')
+            ]
+        return no_need_buffer
 
     def check_args(self, forward_config):
         # parse the forward and backward config
@@ -66,6 +77,19 @@ class BackwardAPI(BaseAPI):
             f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
 
+    def gene_kernel_backend_select(self):
+        all_no_need_buffer = True
+        for in_name in self.inputs['names']:
+            if in_name not in self.no_need_buffer:
+                all_no_need_buffer = False
+
+        if all_no_need_buffer:
+            return """
+  kernel_backend = ParseBackend(egr::Controller::Instance().GetExpectedPlace());
+"""
+        else:
+            return super().gene_kernel_backend_select()
+
     def get_return_type(self, out_type_list):
         return out_type_list[0] if len(
             out_type_list) == 1 else "std::vector<std::vector<Tensor>>"
@@ -86,33 +110,33 @@ class BackwardAPI(BaseAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out{inplace_assign};
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out({len(output_type_list)});"""
+{code_indent}  {self.outputs['return_type']} api_output({len(output_type_list)});"""
 
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 if out_type_item == 'Tensor':
-                    get_out_code = f'&out[{i}][0]'
+                    get_out_code = f'&api_output[{i}][0]'
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:
                         output_create = output_create + f"""
-{code_indent}  out[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
+{code_indent}  api_output[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
 
                     else:
                         output_create = output_create + f"""
-{code_indent}  out[{i}].emplace_back();"""
+{code_indent}  api_output[{i}].emplace_back();"""
 
                 else:
-                    get_out_code = f'&out[{i}]'
+                    get_out_code = f'&api_output[{i}]'
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:
                         output_create = output_create + f"""
-{code_indent}  out[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+{code_indent}  api_output[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
@@ -132,7 +156,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
@@ -145,7 +169,6 @@ def source_include(header_file_path):
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -153,6 +176,9 @@ def source_include(header_file_path):
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
+
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
 

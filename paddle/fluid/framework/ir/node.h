@@ -125,6 +125,7 @@ class Node {
   // Only use this for auto parallel.
   // A node does not have original desc if the return is zero.
   uint64_t OriginalDescId() const { return original_desc_id_; }
+  int GraphId() const { return graph_id_; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
@@ -246,10 +247,12 @@ class Node {
   // Store the original id of var desc or op desc.
   // Only use this for auto parallel.
   uint64_t original_desc_id_{0};
+  int graph_id_{-1};
 
  private:
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
+  void SetGraphId(int graph_id) { graph_id_ = graph_id; }
 
   // desc_order can only set by a Graph when constructing a Graph from a
   // BlockDesc.

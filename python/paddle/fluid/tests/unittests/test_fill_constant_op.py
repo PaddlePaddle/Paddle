@@ -83,6 +83,27 @@ class TestFillConstantOp4(OpTest):
         self.check_output()
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFillConstantBF16Op(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.dtype = np.uint16
+        self.inputs = {}
+        self.attrs = {
+            'shape': [123, 92],
+            'value': 3.8,
+            'dtype': core.VarDesc.VarType.BF16
+        }
+        self.outputs = {'Out': convert_float_to_uint16(np.full((123, 92), 3.8))}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()

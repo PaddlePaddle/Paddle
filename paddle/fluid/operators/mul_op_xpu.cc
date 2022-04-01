@@ -14,11 +14,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/mul_op.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {

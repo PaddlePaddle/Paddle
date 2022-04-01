@@ -67,8 +67,8 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(eye, EyeInferShapeFunctor,
-                            PT_INFER_META(phi::EyeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(eye, EyeInferShapeFunctor,
+                            PD_INFER_META(phi::EyeInferMeta));
 
 REGISTER_OPERATOR(
     eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,

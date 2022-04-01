@@ -58,8 +58,8 @@ class CompareReduceOp : public framework::OperatorWithKernel {
   };                                                                       \
   char _##op_type##Comment::type[]{#op_type};                              \
   char _##op_type##Comment::equation[]{_equation};                         \
-  DELCARE_INFER_SHAPE_FUNCTOR(op_type, op_type##_InferShapeFunctor,        \
-                              PT_INFER_META(phi::CompareAllInferMeta));    \
+  DECLARE_INFER_SHAPE_FUNCTOR(op_type, op_type##_InferShapeFunctor,        \
+                              PD_INFER_META(phi::CompareAllInferMeta));    \
   REGISTER_OPERATOR(                                                       \
       op_type, ::paddle::operators::CompareReduceOp<_##op_type##Comment>,  \
       ::paddle::operators::CompareReduceOpProtoMaker<_##op_type##Comment>, \

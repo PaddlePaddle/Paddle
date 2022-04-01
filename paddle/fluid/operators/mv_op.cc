@@ -94,8 +94,8 @@ class MVOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DELCARE_INFER_SHAPE_FUNCTOR(mv, MvInferShapeFunctor,
-                            PT_INFER_META(phi::MvInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(mv, MvInferShapeFunctor,
+                            PD_INFER_META(phi::MvInferMeta));
 
 REGISTER_OPERATOR(mv, ops::MVOp, ops::MVOpMaker,
                   ops::MVOpGradMaker<paddle::framework::OpDesc>,

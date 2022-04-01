@@ -4,6 +4,7 @@ option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL.
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
+option(WITH_ONNXRUNTIME       "Compile demo with ONNXRuntime"       OFF)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -46,6 +47,13 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
+if (WITH_ONNXRUNTIME)
+  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
+  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/include")
+
+  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib")
+  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
+endif()
 
 if (WIN32)
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
@@ -151,6 +159,17 @@ else()
   endif()
 endif()
 
+if (WITH_ONNXRUNTIME)
+  if(WIN32)
+    set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib paddle2onnx)
+  elseif(APPLE)
+    set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.1.10.0.dylib paddle2onnx)
+  else()
+    set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.so.1.10.0 paddle2onnx)
+  endif()
+endif()
+
+
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
@@ -211,6 +230,14 @@ if(WIN32)
   else()
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}/Release
+    )
+  endif()
+  if(WITH_ONNXRUNTIME)
+    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.dll
+      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib/paddle2onnx.dll
+      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
     )
   endif()
   if(NOT WITH_STATIC_LIB)

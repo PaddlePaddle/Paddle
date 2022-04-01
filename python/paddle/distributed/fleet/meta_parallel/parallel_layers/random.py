@@ -18,7 +18,7 @@ import numpy as np
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode, default_main_program
+from paddle.fluid.framework import _non_static_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -202,7 +202,7 @@ def dropout(x,
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
-    if in_dygraph_mode():
+    if _non_static_mode():
         out, mask = _C_ops.dropout(x, 'dropout_prob', p, 'is_test',
                                    not training, 'fix_seed', False, 'seed', 0,
                                    'dropout_implementation', mode)

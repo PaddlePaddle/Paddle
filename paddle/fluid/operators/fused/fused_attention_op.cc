@@ -61,6 +61,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("QKTVOut"), "Output", "QKTVOut",
                    "FusedAttentionOp");
 
+    if (ctx->HasInput("CacheKV")) {
+      OP_INOUT_CHECK(ctx->HasOutput("CacheKVOut"), "Output", "CacheKVOut",
+                     "FusedAttentionOp");
+    }
     if (ctx->HasInput("SrcMask")) {
       OP_INOUT_CHECK(ctx->HasOutput("SrcMaskOut"), "Output", "SrcMaskOut",
                      "FusedAttentionOp");
@@ -105,12 +109,14 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           "input qkv_weight = [%s]",
                           x_dim, y_dim));
 
-    PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
-                      platform::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4"
-                          "(3, num_head, dim_head, dim_embed),"
-                          "and must satisfy the limitations: "
-                          "(num_head * dim_head == dim_embed)"));
+    if (ctx->Attrs().Get<int>("ring_id") == -1) {
+      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
+                        platform::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 4"
+                            "(3, num_head, dim_head, dim_embed),"
+                            "and must satisfy the limitations: "
+                            "(num_head * dim_head == dim_embed)"));
+    }
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
@@ -132,20 +138,64 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // [3, batch_size, num_head, seq_len, head_size]
     ctx->SetOutputDim("TransposeOut2",
                       {y_dim[0], x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
-    // [batch, num_head, seq_len, seq_len]
-    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+
+    // cache_seq_len + seq_len if cache else seq_len
+    auto out_seq_len = x_dim[1];
+    if (ctx->HasInput("CacheKV")) {
+      // [2, batch_size, num_head, cache_seq_len, head_size]
+      auto c_dim = ctx->GetInputDim("CacheKV");
+
+      PADDLE_ENFORCE_EQ(
+          c_dim.size(), 5,
+          paddle::platform::errors::InvalidArgument(
+              "The CacheKV must be 5 dims, but got %d", c_dim.size()));
+      PADDLE_ENFORCE_EQ(c_dim[0], 2,
+                        paddle::platform::errors::InvalidArgument(
+                            "The first dim of CacheKV must be 2, but got %d",
+                            c_dim[0]));  // 2
+      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0],
+                        paddle::platform::errors::InvalidArgument(
+                            "The second dim of CacheKV must be equal with "
+                            "batch size %d, but got %d",
+                            x_dim[0], c_dim[1]));  // batch_size
+      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1],
+                        paddle::platform::errors::InvalidArgument(
+                            "The third dim of CacheKV must be equal with num "
+                            "head %d, but got %d",
+                            y_dim[1], c_dim[2]));  // num_head
+      PADDLE_ENFORCE_GE(
+          c_dim[3], 0,
+          paddle::platform::errors::InvalidArgument(
+              "The forth dim of CacheKV must be greater than 0, but got %d",
+              c_dim[3]));  // cache_seq_len
+      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2],
+                        paddle::platform::errors::InvalidArgument(
+                            "The fifth dim of CacheKV must be equal with head "
+                            "size %d, but got %d",
+                            y_dim[2], c_dim[4]));  // head_size
+
+      out_seq_len += c_dim[3];
+      // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
+      ctx->SetOutputDim("CacheKVOut",
+                        {c_dim[0], c_dim[1], c_dim[2], out_seq_len, c_dim[4]});
+    }
+
+    // [batch, num_head, seq_len, out_seq_len]
+    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
 
     if (ctx->HasInput("SrcMask")) {
-      ctx->SetOutputDim("SrcMaskOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+      ctx->SetOutputDim("SrcMaskOut",
+                        {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     }
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
-                      {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+                      {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
-                        {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+                        {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     }
-    ctx->SetOutputDim("SoftmaxOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+    ctx->SetOutputDim("SoftmaxOut",
+                      {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     // [batch_size, num_heads, seq_len, head_dim]
     ctx->SetOutputDim("QKTVOut", {x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     // [batch_size, seq_len, number of heads*head size]
@@ -182,6 +232,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("QKVW", "The qkv weight tensor.");
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable();
+    AddInput("CacheKV", "(optional) The cached KV for generation inference.")
+        .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
         .AsDispensable();
     AddInput("OutLinearW", "The out_linear weight tensor.");
@@ -217,6 +269,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("BiasDropoutResidualOut",
               "Result of residual + dropout(src + bias).")
         .AsIntermediate();
+    AddOutput("CacheKVOut", "The udpated cache KV.");
     AddOutput("Y", "Result after attention.");
 
     AddAttr<bool>("pre_layer_norm",
@@ -324,6 +377,10 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "0.0 and 0.001, But received [%s].",
                                 ln_epsilon));
         });
+    AddAttr<int>(
+        "ring_id",
+        "ring id for tensor model parallel. distributed training and inference")
+        .SetDefault(-1);
 
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:
