@@ -133,8 +133,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         # [10, 3, 5, 5]
 
     """
-    op_type = 'matmul_v2'
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matmul(x, y, transpose_x, transpose_y)
+
+    if _in_legacy_dygraph():
+        op_type = 'matmul_v2'
         op = getattr(_C_ops, op_type)
         return op(x, y, 'trans_x', transpose_x, 'trans_y', transpose_y)
 
@@ -1394,7 +1397,10 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_histogram(input, bins, min, max)
+
+    if _in_legacy_dygraph():
         return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
