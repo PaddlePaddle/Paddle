@@ -165,6 +165,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#include "paddle/fluid/pybind/paddle_bfloat/bfloat16.h"
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
@@ -539,6 +541,11 @@ PYBIND11_MODULE(core_avx, m) {
 #else
 PYBIND11_MODULE(core_noavx, m) {
 #endif
+
+  static bool is_numpy_bf16_initialized =
+      paddle_bfloat::RegisterNumpyBfloat16();
+
+  is_numpy_bf16_initialized = is_numpy_bf16_initialized;
 
   BindImperative(&m);
   BindEager(&m);

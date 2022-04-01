@@ -1528,6 +1528,22 @@ bool Initialize() {
     return false;
   }
 
+  Safe_PyObjectPtr typeDict_obj =
+      make_safe(PyObject_GetAttrString(numpy.get(), "sctypeDict"));
+  if (!typeDict_obj) return false;
+
+  // Add the type object to `numpy.typeDict`: that makes
+  // `numpy.dtype('bfloat16')` work.
+  if (PyDict_SetItemString(typeDict_obj.get(), "bfloat16",
+                           reinterpret_cast<PyObject *>(&bfloat16_type)) < 0) {
+    return false;
+  }
+
+  if (PyDict_SetItemString(typeDict_obj.get(), "E",
+                           reinterpret_cast<PyObject *>(&bfloat16_type)) < 0) {
+    return false;
+  }
+
   // Support dtype(bfloat16)
   if (PyDict_SetItemString(bfloat16_type.tp_dict, "dtype",
                            reinterpret_cast<PyObject *>(&NPyBfloat16_Descr)) <
