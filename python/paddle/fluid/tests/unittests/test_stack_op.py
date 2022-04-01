@@ -40,6 +40,7 @@ class TestStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -55,7 +56,7 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(self.get_x_names(), 'Y')
@@ -111,6 +112,7 @@ class TestStackBF16Op(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
@@ -128,7 +130,7 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(self.get_x_names(), 'Y')
