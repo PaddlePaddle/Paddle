@@ -47,6 +47,31 @@ class TestSqrtOpError(unittest.TestCase):
 
 class TestActivation(OpTest):
     def setUp(self):
+        self.op_type = "expm1"
+        self.init_dtype()
+
+        np.random.seed(2049)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.expm1(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def test_check_output(self):
+        self.check_output()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_kernel_type(self):
+        pass
+
+
+class TestExp(TestActivation):
+    def setUp(self):
         self.python_api = paddle.exp
         self.op_type = "exp"
         self.init_dtype()
@@ -66,28 +91,6 @@ class TestActivation(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_eager=True)
-
-    def init_dtype(self):
-        self.dtype = np.float64
-
-    def init_kernel_type(self):
-        pass
-
-
-class TestExpm1(TestActivation):
-    def setUp(self):
-        self.op_type = "expm1"
-        self.init_dtype()
-
-        np.random.seed(2049)
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        out = np.expm1(x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
 
 class TestExpm1API(unittest.TestCase):
