@@ -4528,12 +4528,21 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        reduce_all = True if dim == None or dim == [] or len(dim) == len(
+            input.shape) else False
+        dim = dim if dim != None and dim != [] else [0]
+        if reduce_all:
+            dim = range(len(input.shape))
+        return _C_ops.final_state_reduce_sum(input, dim, keep_dim)
+
+    if _in_legacy_mode():
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
+
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,

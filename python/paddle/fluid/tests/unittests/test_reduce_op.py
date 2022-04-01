@@ -26,19 +26,21 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 class TestSumOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp_fp16(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
@@ -50,7 +52,7 @@ class TestSumOp_fp16(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -58,7 +60,8 @@ class TestSumOp_fp16(OpTest):
         return grad,
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -66,6 +69,7 @@ class TestSumOp_fp16(OpTest):
 class TestSumOp_bf16(OpTest):
     def setUp(self):
         np.random.seed(100)
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.dtype = np.uint16
         self.x = np.random.uniform(0, 0.1, (2, 5, 10)).astype(np.float32)
@@ -79,12 +83,15 @@ class TestSumOp_bf16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', user_defined_grads=self.gradient)
+            place, ['X'],
+            'Out',
+            user_defined_grads=self.gradient,
+            check_eager=True)
 
     def calc_gradient(self):
         x = self.x
@@ -94,6 +101,7 @@ class TestSumOp_bf16(OpTest):
 
 class TestSumOp_fp16_withInt(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
@@ -107,19 +115,21 @@ class TestSumOp_fp16_withInt(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def calc_gradient(self):
         x = self.inputs["X"]
-        grad = np.ones(x.shape, dtype=x.dtype)
+        grad = np.ones(x.shape, dtype=x.dtype, check_eager=True)
         return grad,
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True)
 
 
 class TestSumOp5D(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.random((1, 2, 5, 6, 10)).astype("float64")
@@ -127,14 +137,15 @@ class TestSumOp5D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp6D(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.random((1, 1, 2, 5, 6, 10)).astype("float64")
@@ -142,14 +153,15 @@ class TestSumOp6D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp8D(OpTest):
     def setUp(self):
+        self.python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.inputs = {
             'X': np.random.random((1, 3, 1, 2, 1, 4, 3, 10)).astype("float64")
@@ -158,10 +170,10 @@ class TestSumOp8D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=(0, 3))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 @skip_check_grad_ci(

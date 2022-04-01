@@ -880,6 +880,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        if reduce_all_flag:
+            axis = range(len(x.shape))
+        return _C_ops.final_state_reduce_sum(x, axis, keepdim)
+
     def get_dtype(x, dtype):
         if dtype is not None:
             return (True, dtype)
@@ -889,7 +894,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return (False, src_type)
 
     dtype_flag, dtype = get_dtype(x, dtype)
-    if paddle.in_dynamic_mode():
+    if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
