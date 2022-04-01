@@ -261,11 +261,11 @@ void PhiOpConvertPass::getDependentDialects(
 
 mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass(
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass(
     std::vector<Place> valid_places) {
   return std::make_unique<PhiOpConvertPass>(valid_places);
 }
 
-std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass() {
+std::unique_ptr<mlir::Pass> infrt::CreatePhiOpCvtPass() {
   return std::make_unique<PhiOpConvertPass>();
 }

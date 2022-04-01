@@ -97,7 +97,7 @@ int32_t Table::initialize_accessor() {
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }
-  if (accessor->configure(_config.accessor()) || accessor->initialize() != 0) {
+  if (accessor->Configure(_config.accessor()) || accessor->Initialize() != 0) {
     LOG(ERROR) << " accessor initialize failed, table_id:" << _config.table_id()
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
