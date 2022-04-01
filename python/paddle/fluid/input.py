@@ -19,6 +19,8 @@ from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype
 from ..utils import deprecated
 
+from paddle_bfloat import bfloat16
+
 __all__ = ['one_hot', 'embedding']
 
 
@@ -312,7 +314,7 @@ def embedding(input,
 
     helper = LayerHelper('embedding', **locals())
     check_variable_and_dtype(input, 'input', ['int64'], 'fluid.embedding')
-    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64', 'bfloat16'],
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64', bfloat16],
                 'fluid.embedding')
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:

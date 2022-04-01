@@ -21,6 +21,8 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5, TestSoftmaxOp6
 from paddle import enable_static
 
+from paddle_bfloat import bfloat16
+
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
@@ -41,7 +43,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
         self.use_mkldnn = True
-        self.dtype = "bfloat16"
+        self.dtype = bfloat16
         self.init_kernel_type()
         self.shape = self.get_x_shape()
         self.axis = self.get_axis()

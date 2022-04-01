@@ -20,6 +20,8 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 from paddle.fluid.tests.unittests.op_test import OpTest
 
+from paddle_bfloat import bfloat16
+
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
@@ -27,7 +29,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest
                  "core is compiled with CUDA which has no BF implementation")
 class TestSplitSectionsBF16OneDNNOp(OpTest):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("bfloat16")
+        self.x = np.random.random((4, 5, 6)).astype(bfloat16)
         self.axis = 1
         self.sections = [2, 1, 2]
         indices_or_sections = [2, 3]  # sections
@@ -75,7 +77,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
 
 class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 8, 5, 3)).astype("bfloat16")
+        self.x = np.random.random((4, 8, 5, 3)).astype(bfloat16)
         self.axis = 1
         self.sections = []
         self.num = 4
@@ -85,7 +87,7 @@ class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
 
 class TestSplitNumAxisTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("bfloat16")
+        self.x = np.random.random((4, 5, 6)).astype(bfloat16)
         self.axis = None
         self.sections = []
         self.num = 3
@@ -96,7 +98,7 @@ class TestSplitNumAxisTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
 
 class TestSplitSectionsTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("bfloat16")
+        self.x = np.random.random((4, 5, 6)).astype(bfloat16)
         self.axis = 1
         self.sections = [2, 1, 2]
         self.sections_tensor_list = []
@@ -110,7 +112,7 @@ class TestSplitSectionsTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
 
 class TestSplitOpUnknownSectionBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("bfloat16")
+        self.x = np.random.random((4, 5, 6)).astype(bfloat16)
         self.axis = 2
         self.sections = [2, 2, -1]
         indices_or_sections = [2, 4]  #sections

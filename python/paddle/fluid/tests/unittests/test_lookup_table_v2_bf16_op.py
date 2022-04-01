@@ -25,6 +25,7 @@ from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
     TestLookupTableBF16OpWIsSelectedRows4DIds)
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle_bfloat import bfloat16
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
@@ -104,7 +105,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="emb_weight", initializer=self.initializer),
                 is_sparse=False,
-                dtype="bfloat16")  # bfloat16
+                dtype=bfloat16)  # bfloat16
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
         self.result = exe.run(self.prog,

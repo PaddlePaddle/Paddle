@@ -27,10 +27,10 @@ from paddle_bfloat import bfloat16
 class TestUniformRandomOpBF16(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
-        self.dtype = "bfloat16"
+        self.dtype = bfloat16
         self.inputs = {}
         self.init_attrs()
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("bfloat16")}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype(bfloat16)}
 
     def init_attrs(self):
         self.attrs = {
@@ -64,14 +64,14 @@ class TestUniformRandomOpBF16AttrTensorList(TestUniformRandomOpBF16):
     def setUp(self):
         self.op_type = "uniform_random"
         self.new_shape = (1000, 784)
-        self.dtype = "bfloat16"
+        self.dtype = bfloat16
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(("x" + str(index), np.ones(
                 (1)).astype("int64") * ele))
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("bfloat16")}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype(bfloat16)}
 
     def init_attrs(self):
         self.attrs = {
@@ -87,10 +87,10 @@ class TestUniformRandomOpBF16AttrTensorInt32(
         TestUniformRandomOpBF16AttrTensorList):
     def setUp(self):
         self.op_type = "uniform_random"
-        self.dtype = "bfloat16"
+        self.dtype = bfloat16
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int32")}
         self.init_attrs()
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("bfloat16")}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype(bfloat16)}
 
 
 class TestUniformRandomOpBF16WithDiagInit(TestUniformRandomOpBF16):
@@ -260,7 +260,7 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name="input", shape=[1, 3], dtype='bfloat16')
+            input = fluid.data(name="input", shape=[1, 3], dtype=bfloat16)
             out_1 = fluid.layers.uniform_random_batch_size_like(
                 input, [2, 4], dtype=bfloat16)  # out_1.shape=[1, 4]
 

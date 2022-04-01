@@ -22,6 +22,7 @@ from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle import _C_ops
+from paddle_bfloat import bfloat16
 
 __all__ = []
 
@@ -92,7 +93,7 @@ def mean(x, axis=None, keepdim=False, name=None):
                                   'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x/input',
-                             ['bfloat16', 'float16', 'float32', 'float64'],
+                             [bfloat16, 'float16', 'float32', 'float64'],
                              'mean/reduce_mean')
     check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
     if isinstance(axis, (list, tuple)):

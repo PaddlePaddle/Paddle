@@ -28,6 +28,8 @@ from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import _refer
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 
+from paddle_bfloat import bfloat16
+
 np.random.random(123)
 
 _set_use_system_allocator(True)
@@ -85,7 +87,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 if name == 'x_bf16' or name == 'y_bf16':
                     block.create_var(
                         name=name,
-                        dtype="bfloat16",
+                        dtype=bfloat16,
                         shape=ground_truth[name].shape)
                 else:
                     block.create_var(

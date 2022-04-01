@@ -20,6 +20,8 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
 
+from paddle_bfloat import bfloat16
+
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
@@ -41,7 +43,7 @@ class TestTransposeOp(OpTest):
         }
 
         self.outputs = {
-            'XShape': np.random.random(self.shape).astype('bfloat16'),
+            'XShape': np.random.random(self.shape).astype(bfloat16),
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
