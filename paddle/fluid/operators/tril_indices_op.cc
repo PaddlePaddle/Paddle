@@ -28,7 +28,7 @@ class TrilIndicesOp : public framework::OperatorWithKernel {
   protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType( paddle::framework::proto::VarType::INT64,
+    return framework::OpKernelType(paddle::framework::proto::VarType::INT64,
                                    ctx.device_context());
   }
 };
