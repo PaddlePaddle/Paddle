@@ -26,7 +26,6 @@ INCLUDE(ExternalProject)
 #SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 
 IF((NOT DEFINED ARM_BRPC_NAME) OR (NOT DEFINED ARM_BRPC_URL))
-  MESSAGE(STATUS "use pre defined download url")
   SET(ARM_BRPC_VER "0.1.0" CACHE STRING "" FORCE)
   SET(ARM_BRPC_NAME "arm_brpc" CACHE STRING "" FORCE)
   SET(ARM_BRPC_URL "https://arm_brpc.bj.bcebos.com/arm_brpc.tar.gz" CACHE STRING "" FORCE)
@@ -46,10 +45,11 @@ SET(ARM_BRPC_LIB           ${ARM_BRPC_LIB_DIR}/libbdrpc.a)
 
 FILE(WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(ARM_BRPC)\n"
-  "cmake_minimum_required(VERSION 3.0)\n")
+  "cmake_minimum_required(VERSION 3.0)\n")  # do nothing
 
 execute_process(COMMAND cp /home/wangbin44/Paddle/build/arm_brpc.tar.gz .)
 execute_process(COMMAND tar zxvf ${ARM_BRPC_NAME}.tar.gz)
+execute_process(COMMAND mkdir install)
 execute_process(COMMAND mv base ./install/base)
 
 ADD_LIBRARY(arm_brpc STATIC IMPORTED GLOBAL)  # 直接导入已经生成的库
