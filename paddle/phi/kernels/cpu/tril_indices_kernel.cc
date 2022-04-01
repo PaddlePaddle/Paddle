@@ -18,14 +18,15 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+namespace phi {
 template <typename T,typename Context>
 void TrilIndicesKernel(const Context& dev_ctx,
                      int rows,
                      int cols,
                      int offset,
-                    DenseTensor* out){
+                     DenseTensor* out){
 
-    T* out_data = dec_ctx.template Alloc<T>(out);
+    T* out_data = dev_ctx.template Alloc<T>(out);
     auto out_dims = out->dims();
     int64_t tril_size = out_dims[1];
 
@@ -47,10 +48,11 @@ void TrilIndicesKernel(const Context& dev_ctx,
     }
 
 }
+}//namespace phi
 
 PD_REGISTER_KERNEL(tril_indices,
                   CPU,
                   ALL_LAYOUT,
-                  phi::TrilIndiceKernel,
+                  phi::TrilIndicesKernel,
                   int,
                   int64_t){}
