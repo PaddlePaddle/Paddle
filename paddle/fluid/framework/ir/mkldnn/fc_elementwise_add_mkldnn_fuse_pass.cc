@@ -59,9 +59,9 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .End();
 }
 
-GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
-    const std::string& name_scope,
-    const GraphWithStats& graph_with_stats) const {
+GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
+    const std::string& name_scope, const GraphWithStats& graph_with_stats,
+    bool asX) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope};
@@ -70,13 +70,14 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
           "fc", "Input"),
       true);
 
-  patterns::Elementwise elementwise_pattern{pattern, name_scope};
+  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, asX};
   elementwise_pattern(
-      fc_output, pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
-      "elementwise_add");
+      fc_output,
+      pattern->NewNode(elementwise_pattern.residual_data_repr()),
+      "elementwise_add", asX);
   fc_output->AsIntermediate();
 
-  int found_fc_as_x_count = 0;
+  int found_fc_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -87,14 +88,14 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
                               elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_y, elementwise_y,
+    GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data,
                               elementwise_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
                               elementwise_pattern);
 
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
 
-    if (!IsReachable(g, elementwise_y, fc_output)) return;
+    if (!IsReachable(g, residual_data, fc_output)) return;
 
     if (HasFusedActivation(fc_op)) return;
 
@@ -104,98 +105,29 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
       return;
     }
 
-    fc_op->Op()->SetInput("ResidualData", {elementwise_y->Name()});
+    fc_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
     fc_op->Op()->SetAttr("fuse_residual_connection", true);
 
     GraphSafeRemoveNodes(g, {fc_output, elementwise_op});
 
-    IR_NODE_LINK_TO(elementwise_y, fc_op);
+    IR_NODE_LINK_TO(residual_data, fc_op);
     IR_NODE_LINK_TO(fc_op, elementwise_out);
 
-    found_fc_as_x_count++;
+    found_fc_count++;
   };
 
   gpd(graph_with_stats.first, handler);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     std::stringstream msg_ss;
-    msg_ss << "---    Fused " << found_fc_as_x_count
-           << " fc (as x) + elementwise_add patterns";
+    std::string fusionMode = asX ? "x" : "y";
+    msg_ss << "---    Fused " << found_fc_count << " fc (as " << fusionMode
+           << ") + elementwise_add patterns";
     paddle::string::PrettyLogDetail(msg_ss.str().c_str());
   }
 
   return std::make_pair(graph_with_stats.first,
-                        found_fc_as_x_count + graph_with_stats.second);
-}
-
-GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsY(
-    const std::string& name_scope,
-    const GraphWithStats& graph_with_stats) const {
-  GraphPatternDetector gpd;
-  auto pattern = gpd.mutable_pattern();
-
-  patterns::FCMKLDNN fc_pattern{pattern, name_scope};
-  auto fc_output = fc_pattern(
-      gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
-          "fc", "Input"),
-      true);
-
-  patterns::Elementwise elementwise_pattern{pattern, name_scope};
-  elementwise_pattern(
-      pattern->NewNode(elementwise_pattern.elementwise_x_repr()), fc_output,
-      "elementwise_add");
-  fc_output->AsIntermediate();
-
-  int found_fc_as_y_count = 0;
-
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_output, output, fc_pattern);
-
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_x, elementwise_x,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_pattern);
-
-    if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
-
-    if (!IsReachable(g, elementwise_x, fc_output)) return;
-
-    if (HasFusedActivation(fc_op)) return;
-
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING)
-          << "fc_elementwise_add_mkldnn_fuse_pass in op compat failed.";
-      return;
-    }
-
-    fc_op->Op()->SetInput("ResidualData", {elementwise_x->Name()});
-    fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
-    fc_op->Op()->SetAttr("fuse_residual_connection", true);
-
-    GraphSafeRemoveNodes(g, {fc_output, elementwise_op});
-
-    IR_NODE_LINK_TO(elementwise_x, fc_op);
-    IR_NODE_LINK_TO(fc_op, elementwise_out);
-
-    found_fc_as_y_count++;
-  };
-
-  gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
-    std::stringstream msg_ss;
-    msg_ss << "---    Fused " << found_fc_as_y_count
-           << " fc (as y) + elementwise_add patterns";
-    paddle::string::PrettyLogDetail(msg_ss.str().c_str());
-  }
-
-  return std::make_pair(graph_with_stats.first,
-                        found_fc_as_y_count + graph_with_stats.second);
+                        found_fc_count + graph_with_stats.second);
 }
 
 GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
@@ -296,8 +228,8 @@ void FCResidualConnectionMKLDNNFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   auto graph_with_stats =
       FuseProjectionFC(name_scope_, std::make_pair(graph, 0));
-  graph_with_stats = FuseFCAsX(name_scope_, graph_with_stats);
-  graph_with_stats = FuseFCAsY(name_scope_, graph_with_stats);
+  graph_with_stats = FuseFC(name_scope_, graph_with_stats, true);
+  graph_with_stats = FuseFC(name_scope_, graph_with_stats, false);
 
   AddStatis(graph_with_stats.second);
 }
