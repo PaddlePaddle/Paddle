@@ -177,6 +177,12 @@ def pow(x, y, name=None):
             raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
 
+OP_NAMEMAPPING = {
+    'elementwise_max': 'final_state_maximum',
+    'elementwise_min': 'final_state_minimum',
+    'elementwise_pow': 'final_state_elementwise_pow',
+    'elementwise_floordiv': 'final_state_floor_divide',
+}
 
 @dygraph_only
 def _elementwise_op_in_dygraph(x,
@@ -185,12 +191,19 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(_C_ops, op_name)
-    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+    def is_inplace(op_name):
+        return  op_name[-1] == "_"
+
+    if in_dygraph_mode():
+        op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
+        out = op(x, y)
+
+    if _in_legacy_dygraph():
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
-
 
 def _elementwise_op(helper):
     op_type = helper.layer_type
@@ -2681,7 +2694,9 @@ def isfinite(x, name=None):
             out = paddle.tensor.isfinite(x)
             print(out)  # [False  True  True False  True False False]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_isfinite( x )
+    if _in_legacy_dygraph():
         return _C_ops.isfinite_v2(x)
     helper = LayerHelper("isfinite_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isfinite')
@@ -2709,7 +2724,9 @@ def isinf(x, name=None):
             out = paddle.tensor.isinf(x)
             print(out)  # [ True False False  True False False False]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_isinf( x )
+    if _in_legacy_dygraph():
         return _C_ops.isinf_v2(x)
     helper = LayerHelper("isinf_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf')
@@ -2737,7 +2754,10 @@ def isnan(x, name=None):
             out = paddle.tensor.isnan(x)
             print(out)  # [False False False False False  True  True]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_isnan( x )
+
+    if _in_legacy_dygraph():
         return _C_ops.isnan_v2(x)
     helper = LayerHelper("isnan_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan')
@@ -3387,8 +3407,13 @@ def lerp(x, y, weight, name=None):
             # out: [5.5., 6., 6.5, 7.]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
+        if isinstance(weight, float):
+            weight = paddle.to_tensor(weight, dtype=x.dtype)
+
+        return _C_ops.final_state_lerp( x, y, weight)
+    if _in_legacy_dygraph():
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
         return _C_ops.lerp(x, y, weight)
