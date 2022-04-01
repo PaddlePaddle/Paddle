@@ -1037,13 +1037,13 @@ class ReorderMKLDNNHandler {
       platform::Place place) {
     if (vtype_dst_ == vtype_) {
       auto dst_data = output->mutable_data(
-          place, framework::TransToPtenDataType(vtype_dst_), src_md.get_size());
+          place, framework::TransToPhiDataType(vtype_dst_), src_md.get_size());
       return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
     } else {
       auto dst_md = src_md;
       dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
       auto dst_data = output->mutable_data(
-          place, framework::TransToPtenDataType(vtype_dst_), dst_md.get_size());
+          place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
       return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
     }
   }
