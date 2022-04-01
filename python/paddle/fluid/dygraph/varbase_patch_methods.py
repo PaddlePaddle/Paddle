@@ -836,6 +836,16 @@ def monkey_patch_varbase():
             res.persistable = self.persistable
             return res
 
+    @framework.dygraph_only
+    def pin_memory(self):
+        if self.place.is_cuda_pinned_place():
+            return self
+        else:
+            res = self._copy_to(core.CUDAPinnedPlace(), True)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -861,6 +871,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)
+        setattr(core.eager.Tensor, "pin_memory", pin_memory)
         setattr(core.eager.Tensor, "_slice", _slice)
         setattr(core.eager.Tensor, "_numel", _numel)
     else:
