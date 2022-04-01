@@ -52,7 +52,7 @@ template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
   explicit XPUCacheArray(size_t capacity) : capacity_(capacity), size_(0) {
-    for (int i = 0; i < capacity; i++) {
+    for (size_t i = 0; i < capacity; i++) {
       xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
       xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
     }
@@ -132,7 +132,7 @@ class HashTable {
 #if defined(PADDLE_WITH_CUDA)
   TableContainer<KeyType, ValType>* container_;
 #elif defined(__xpu__)
-  __global__ptr XPUCacheArray<KeyType, ValType>* container_;
+  __global_ptr__ XPUCacheArray<KeyType, ValType>* container_;
 #endif
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
