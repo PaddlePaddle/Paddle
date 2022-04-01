@@ -12533,6 +12533,9 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res) # [True False True False]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_and(x, y)
+
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12572,6 +12575,8 @@ def logical_or(x, y, out=None, name=None):
             res = paddle.logical_or(x, y)
             print(res) # [[ True  True] [ True False]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12611,6 +12616,9 @@ def logical_xor(x, y, out=None, name=None):
             res = paddle.logical_xor(x, y)
             print(res) # [[False,  True], [ True, False]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_xor(x, y)
+
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
