@@ -36,7 +36,7 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("rows", "int number, the input of tril_indices op").SetDefault(0);;
     AddAttr<int>("cols", "int number, the input of tril_indices op").SetDefault(0);;
     AddAttr<int>("offset", "int number, the input of tril_indices op bounded by [1-rows,cols-1").SetDefault(0);
-    AddAttr<int>("dtype","data type ,the input of tril_indices op").SetDefault(int);
+    AddAttr<int>("dtype","data type ,the input of tril_indices op").SetDefault(framework::proto::VarType::INT64);
     AddOutput("Out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
   
     AddComment(R"DOC(
@@ -63,12 +63,6 @@ DECLEAR_INFER_SHAPE_FUNCTOR(tril_indices,TrilIndicesInferShapeFunctor,
                             PD_INFER_META(phi::TrilIndicesInferMeta))
 REGISTER_OPERATOR(tril_indices, ops::TrilIndicesOp, ops::TrilIndicesOpMaker,
                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-                 paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>
+                 paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
                  TrilIndicesInferShapeFunctor);
 
-PD_REGISTER_KERNEL(tril_indices,
-                  CPU,
-                  ALL_LAYOUT,
-                  phi::TrilIndiceKernel,
-                  int,
-                  int64_t){}
