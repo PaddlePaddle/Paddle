@@ -20,6 +20,18 @@
 namespace phi {
 
 template <typename T, typename Context>
+void StridedSliceRawGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& out_grad,
+                               const std::vector<int>& axes,
+                               const IntArray& starts,
+                               const IntArray& ends,
+                               const IntArray& strides,
+                               const std::vector<int>& infer_flags,
+                               const std::vector<int>& decrease_axis,
+                               DenseTensor* x_grad);
+
+template <typename T, typename Context>
 void StridedSliceGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& out_grad,
@@ -27,8 +39,6 @@ void StridedSliceGradKernel(const Context& dev_ctx,
                             const IntArray& starts,
                             const IntArray& ends,
                             const IntArray& strides,
-                            const std::vector<int>& infer_flags,
-                            const std::vector<int>& decrease_axis,
                             DenseTensor* x_grad);
 
 template <typename T, typename Context>

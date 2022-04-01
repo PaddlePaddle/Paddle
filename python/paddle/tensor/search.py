@@ -776,7 +776,10 @@ def masked_select(x, mask, name=None):
             #[1.0 5.0 6.0 9.0]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_masked_select(x, mask)
+
+    if _in_legacy_dygraph():
         return _C_ops.masked_select(x, mask)
 
     helper = LayerHelper("masked_select", **locals())
@@ -846,8 +849,8 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
            # [[1 1 0 0]]
 
     """
-    if paddle.in_dynamic_mode():
-        k = k.numpy().item(0) if isinstance(k, Variable) else k
+
+    if _non_static_mode():
         if axis is None:
             out, indices = _C_ops.top_k_v2(x, 'k',
                                            int(k), 'largest', largest, 'sorted',
