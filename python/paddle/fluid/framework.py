@@ -173,7 +173,9 @@ def _test_eager_guard(place=None):
         monkey_patch_math_varbase()
 
         # Ugly setting
-        from paddle.tensor.manipulation import fill_diagonal_, fill_diagonal_tensor_, tolist
+        from paddle.tensor.manipulation import fill_, zero_, fill_diagonal_, fill_diagonal_tensor_, tolist
+        setattr(core.eager.Tensor, 'fill_', fill_)
+        setattr(core.eager.Tensor, 'zero_', zero_)
         setattr(core.eager.Tensor, 'fill_diagonal_', fill_diagonal_)
         setattr(core.eager.Tensor, 'fill_diagonal_tensor_',
                 fill_diagonal_tensor_)

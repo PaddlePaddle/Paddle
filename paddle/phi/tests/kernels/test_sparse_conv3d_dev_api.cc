@@ -218,11 +218,8 @@ void TestConv3dBase(const std::vector<int>& indices,
                             correct_out_indices.size() * sizeof(int));
   ASSERT_EQ(cmp_indices2, 0);
 
-  DenseTensor h_features_tensor = phi::Empty(
-      dev_ctx_cpu,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
-                      {d_out.nnz()},
-                      d_out.layout()));
+  DenseTensor h_features_tensor =
+      phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_elements(),
@@ -243,15 +240,11 @@ void TestConv3dBase(const std::vector<int>& indices,
                               strides,
                               1,
                               subm);
-    DenseTensor h_features_grad = phi::Empty(
-        dev_ctx_cpu,
-        DenseTensorMeta(grads[0].dtype(), grads[0].dims(), grads[0].layout()));
+    DenseTensor h_features_grad = phi::EmptyLike<T>(dev_ctx_cpu, grads[0]);
     phi::Copy(dev_ctx_gpu, grads[0], phi::CPUPlace(), true, &h_features_grad);
     f_verify(h_features_grad.data<T>(), features_grad);
 
-    DenseTensor h_kernel_grad = phi::Empty(
-        dev_ctx_cpu,
-        DenseTensorMeta(grads[1].dtype(), grads[1].dims(), grads[1].layout()));
+    DenseTensor h_kernel_grad = phi::EmptyLike<T>(dev_ctx_cpu, grads[1]);
     phi::Copy(dev_ctx_gpu, grads[1], phi::CPUPlace(), true, &h_kernel_grad);
     f_verify(h_kernel_grad.data<T>(), kernel_grad);
   }
