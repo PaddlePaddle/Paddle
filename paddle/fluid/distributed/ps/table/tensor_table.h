@@ -140,7 +140,7 @@ class DenseTensorTable : public TensorTable {
 
   //  // Todo: Support pull dense
   //  int32_t PullDense(float *values, size_t num) override { return 0; }
-
+  
   /*----------------------------------------------------------------------*/
 
   int32_t Initialize() override { return 0; }
@@ -243,7 +243,7 @@ class GlobalStepTable : public DenseTensorTable {
 
   virtual int32_t Push(TableContext context) {
     return _RunProgram(context.push_context.push_steps, context.trainer_id);
-  }
+ }
 
   int32_t SetTableMap(std::unordered_map<uint32_t, std::shared_ptr<Table>>
                           *table_map) override {

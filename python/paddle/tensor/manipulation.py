@@ -1409,7 +1409,9 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if paddle.in_dynamic_mode():
+    #if in_dygraph_mode():
+    #return _C_ops.final_state_gather(x, index, axis)
+    if _non_static_mode():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
@@ -1762,8 +1764,12 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_tile(x, repeat_times)
+
+    if _in_legacy_dygraph():
         return _C_ops.tile(x, 'repeat_times', repeat_times)
+
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
         assert len(repeat_times.shape) == 1, (
@@ -2833,12 +2839,14 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
+        if not _in_legacy_dygraph():
+            return _C_ops.final_state_take_along_axis(arr, indices, axis)
         return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
     check_variable_and_dtype(
         arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -2898,12 +2906,15 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             "`indices` and `arr` must have the same number of dimensions!")
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         values = paddle.to_tensor(values) if not isinstance(
             values, paddle.Tensor) else values
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
+        if in_dygraph_mode():
+            return _C_ops.final_state_put_along_axis(arr, indices, values, axis,
+                                                     reduce)
         return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
                                      "Reduce", reduce)
 

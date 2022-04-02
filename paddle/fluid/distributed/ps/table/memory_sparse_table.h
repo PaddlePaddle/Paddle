@@ -45,6 +45,7 @@ class MemorySparseTable : public Table {
   //  virtual int32_t PushDenseParam(const float* values, size_t num) { return
   //  0; }
   //  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
+  
   // unused method end
   static int32_t sparse_local_shard_num(uint32_t shard_num,
                                         uint32_t server_num) {
@@ -98,7 +99,7 @@ class MemorySparseTable : public Table {
   //  virtual int32_t _PushSparse(const uint64_t* keys, const float** values,
   //                              size_t num);
 
- protected:
+protected:
   const int _task_pool_size = 24;
   size_t _avg_local_shard_num;
   size_t _real_local_shard_num;

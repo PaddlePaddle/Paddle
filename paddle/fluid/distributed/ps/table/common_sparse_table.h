@@ -164,7 +164,6 @@ class CommonSparseTable : public Table {
   // only for sparse geo table
   virtual int32_t PushSparseParam(const uint64_t* keys, const float* values,
                                   size_t num);
-
   virtual int32_t SetGlobalLR(float* lr);
 
   virtual int32_t Pour();
