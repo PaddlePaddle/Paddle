@@ -19,7 +19,7 @@ import unittest
 import time
 import paddle
 import paddle.incubate.multiprocessing as mp
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
@@ -180,6 +180,8 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
         self._test_sharing(repeat=REPEAT)
 
     def test_pass_tensor(self):
+        if in_dygraph_mode():
+            return
         with _test_eager_guard():
             self.func_test_pass_tensor()
         self.func_test_pass_tensor()
@@ -189,6 +191,8 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
         self._test_sharing(repeat=1, param=True)
 
     def test_pass_parambase(self):
+        if in_dygraph_mode():
+            return
         with _test_eager_guard():
             self.func_test_pass_parambase()
         self.func_test_pass_parambase()
@@ -198,6 +202,8 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
         self._test_empty()
 
     def test_pass_empty(self):
+        if in_dygraph_mode():
+            return
         with _test_eager_guard():
             self.func_test_pass_empty()
         self.func_test_pass_empty()
@@ -211,6 +217,8 @@ class TestMultiprocessingGpu(TestMultiprocessingBase):
         self._test_sharing(mp.get_context("spawn"), "gpu")
 
     def test_pass_tensor(self):
+        if in_dygraph_mode():
+            return
         with _test_eager_guard():
             self.func_test_pass_tensor()
         self.func_test_pass_tensor()

@@ -31,7 +31,6 @@ from ..fluid.core import NPUPlace  # noqa: F401
 from ..fluid.core import MLUPlace  # noqa: F401
 from ..fluid.core import CustomPlace  # noqa: F401
 from ..fluid.core import VarBase  # noqa: F401
-from ..fluid.core import Tensor as Tensor  # noqa: F401
 
 from ..fluid import core  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
