@@ -22,10 +22,10 @@ namespace framework {
 
 __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
                           float scale) {
-  __local__ local_learning_rate;
-  __local__ local_initial_g2sum;
-  __local__ local_min_bound;
-  __local__ local_max_bound;
+  __local__ float local_learning_rate;
+  __local__ float local_initial_g2sum;
+  __local__ float local_min_bound;
+  __local__ float local_max_bound;
 
   GM2LM(optimizer_config::learning_rate, &local_learning_rate, sizeof(float));
   GM2LM(optimizer_config::initial_g2sum, &local_initial_g2sum, sizeof(float));
@@ -49,10 +49,10 @@ __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
 
 __device__ void update_mf(int n, float* w, float* g2sum, const float* g,
                           float scale) {
-  __local__ local_mf_learning_rate;
-  __local__ local_mf_initial_g2sum;
-  __local__ local_mf_min_bound;
-  __local__ local_mf_max_bound;
+  __local__ float local_mf_learning_rate;
+  __local__ float local_mf_initial_g2sum;
+  __local__ float local_mf_min_bound;
+  __local__ float local_mf_max_bound;
 
   GM2LM(optimizer_config::mf_learning_rate, &local_mf_learning_rate,
         sizeof(float));
