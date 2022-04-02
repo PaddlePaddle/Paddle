@@ -331,7 +331,7 @@ def gen_register_info(resources: List[List[str]],
         res += code
 
     # register gpu kernels.
-    res += "\n#ifdef INFRT_WITH_GPU"
+    res += "\n#ifdef WITH_GPU"
     for item in resources:
         # The output string is polluted by C++ macros, here the \ is removed
         update_item = [v.strip('\\') for v in item]
@@ -341,7 +341,7 @@ def gen_register_info(resources: List[List[str]],
         if (code == ""):
             continue
         res += code
-    res += "#endif // INFRT_WITH_GPU"
+    res += "#endif // WITH_GPU"
 
     res += "\n}"
     return res

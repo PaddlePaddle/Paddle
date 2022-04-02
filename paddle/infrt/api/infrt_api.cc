@@ -48,7 +48,7 @@
 #include "paddle/infrt/kernel/test_kernels.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 
-#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#if defined(WITH_GPU) && defined(INFRT_WITH_TRT)
 #include "paddle/infrt/kernel/tensorrt/registry.h"
 #endif
 
@@ -228,9 +228,9 @@ int InfRtPredictor::Init(const InfRtConfig& config) {
 #ifdef INFRT_WITH_PHI
   kernel::RegisterPhiKernels(registry);
   kernel::RegisterInferShapeLaunchers(registry);
-#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#if defined(WITH_GPU) && defined(INFRT_WITH_TRT)
   kernel::RegisterTrtKernels(registry);
-#endif  // INFRT_WITH_GPU && INFRT_WITH_TRT
+#endif  // WITH_GPU && INFRT_WITH_TRT
 #endif
 
   auto module_op = impl_->module_gen_.ImportPaddleModel(config.model_dir(),

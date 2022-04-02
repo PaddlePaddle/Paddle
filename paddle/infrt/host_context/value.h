@@ -44,9 +44,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#endif  // INFRT_WITH_GPU
+#endif  // WITH_GPU
 #ifdef INFRT_WITH_TRT
 #include "paddle/infrt/backends/tensorrt/trt_engine.h"
 #include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
@@ -82,10 +82,10 @@ using ValueVariantType =
             ::phi::MetaTensor,
             ::phi::DenseTensor,
             backends::CpuPhiContext,
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
             backends::GpuPhiContext,
             ::phi::GPUContext,
-#endif  // INFRT_WITH_GPU
+#endif  // WITH_GPU
             ::phi::CPUContext,
             std::vector<const ::phi::DenseTensor*>,
             std::vector<::phi::DenseTensor*>,
@@ -141,7 +141,7 @@ class Value : public common::Object {
   explicit Value(::infrt::phi::DenseTensorMap&& x) : data(std::move(x)) {}
   explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
   explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
   explicit Value(::phi::GPUContext&& x) : data(std::move(x)) {}
   explicit Value(backends::GpuPhiContext&& x) : data(std::move(x)) {}
 #endif

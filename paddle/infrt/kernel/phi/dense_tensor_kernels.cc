@@ -23,7 +23,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 #include <cuda_runtime.h>
 #endif
 
@@ -121,7 +121,7 @@ void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
       a_data[i] = (value.get())[i];
     }
   } else if (place.GetType() == ::phi::AllocationType::GPU) {
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
     // TODO(wilber): how to set the stream parameter to copy with stream.
     cudaMemcpy(a_data,
                value.get().data(),
@@ -134,7 +134,7 @@ void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
 }
 
 void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
-#ifndef INFRT_WITH_GPU
+#ifndef WITH_GPU
 #define PRINT_META_DATA(PHI_DATATYPE, DTYPE)                \
   case ::phi::DataType::PHI_DATATYPE: {                     \
     auto place = dense_tensor->place();                     \
@@ -277,7 +277,7 @@ int32_t TensorMapGetSize(const ::infrt::phi::DenseTensorMap& map) {
   return map.size();
 }
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 inline size_t SizeOfDataType(::phi::DataType data_type) {
   switch (data_type) {
     case ::phi::DataType::BOOL:

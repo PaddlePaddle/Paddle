@@ -55,7 +55,7 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("phi_dt.print_tensor",
                       INFRT_KERNEL(infrt::kernel::phi::PrintDenseTensor));
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
   registry->AddKernel("phi_dt.create_context.gpu",
                       INFRT_KERNEL(infrt::kernel::phi::CreateGPUContext));
   registry->AddKernel("phi_dt.create_dense_tensor.gpu",

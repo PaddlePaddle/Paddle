@@ -28,7 +28,7 @@ namespace phi {
   return ctx;
 }
 
-#ifdef INFRT_WITH_GPU
+#ifdef WITH_GPU
 ::phi::GPUContext CreateGPUContext() {
   ::phi::GPUContext context;
   context.PartialInitWithoutAllocator();

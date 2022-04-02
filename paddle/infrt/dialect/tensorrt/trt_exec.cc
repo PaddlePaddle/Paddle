@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
   ::infrt::kernel::RegisterPhiKernels(&registry);
   ::infrt::kernel::RegisterInferShapeLaunchers(&registry);
 #endif
-#if defined(INFRT_WITH_GPU) && defined(INFRT_WITH_TRT)
+#if defined(WITH_GPU) && defined(INFRT_WITH_TRT)
   ::infrt::kernel::RegisterTrtKernels(&registry);
 #endif
 

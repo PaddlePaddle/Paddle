@@ -3,7 +3,6 @@ if (NOT WITH_INFRT)
 endif()
 
 option(INFRT_WITH_PHI  "Compile INFRT with PHI"    ON)
-option(INFRT_WITH_GPU  "Compile INFRT with GPU"    OFF)
 option(INFRT_WITH_TRT  "Compile INFRT with TensorRT"    OFF)
 
 #TODO(xiaowei) remove fluid
@@ -13,8 +12,8 @@ if (INFRT_WITH_PHI)
   add_definitions("-DINFRT_WITH_PHI")
 
   # TODO(wilber): Now Infrt gpu/trt depends on phi's components, Modify compile dependency options later.
-  if (INFRT_WITH_GPU)
-    add_definitions("-DINFRT_WITH_GPU")
+  if (WITH_GPU)
+    add_definitions("-DWITH_GPU")
     if (INFRT_WITH_TRT)
       add_definitions("-DINFRT_WITH_TRT")
     endif()
