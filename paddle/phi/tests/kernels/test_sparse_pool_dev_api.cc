@@ -131,6 +131,10 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
+  dev_ctx_gpu.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
   DenseTensor d_indices_tensor = phi::Empty(
