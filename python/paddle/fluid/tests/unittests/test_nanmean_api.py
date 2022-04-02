@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -106,8 +106,9 @@ class TestNanmeanAPI(unittest.TestCase):
             sum_dx_ref = np.prod(y.shape)
             if np.isnan(y.numpy()).sum():
                 sum_dx_ref -= np.isnan(y.numpy()).sum()
-            cnt = paddle.sum(
-                ~paddle.isnan(x_tensor), axis=axis, keepdim=keepdim)
+            cnt = paddle.sum(~paddle.isnan(x_tensor),
+                             axis=axis,
+                             keepdim=keepdim)
             if (cnt == 0).sum():
                 dx[np.isnan(dx)] = 0
             sum_dx = dx.sum()
