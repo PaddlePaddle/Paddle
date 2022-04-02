@@ -37,7 +37,7 @@ class TestExpandAsBaisc(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', no_grad_set=["Y"], check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestExpandAsOpRank2(TestExpandAsBaisc):
