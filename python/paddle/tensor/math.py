@@ -204,6 +204,10 @@ def _elementwise_op_in_dygraph(x,
     def is_inplace(op_name):
         return  op_name[-1] == "_"
 
+    if not OP_NAMEMAPPING.has_key(op_name):
+        op = getattr(_C_ops, op_name)
+        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
+
     if in_dygraph_mode():
         op = getattr(_C_ops, OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name)
         out = op(x, y)
