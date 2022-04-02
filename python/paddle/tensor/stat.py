@@ -438,20 +438,19 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             index = paddle.where(mask.any(axis=axis, keepdim=True), nums, index)
             indices.append(index)
 
-    indices = paddle.to_tensor(indices, dtype='float64')
     sorted_tensor = paddle.sort(x, axis)
-    indices_below = paddle.floor(indices).astype(paddle.int32)
-    indices_upper = paddle.ceil(indices).astype(paddle.int32)
 
     outputs = []
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
-    for i in range(len(indices)):
+    for index in indices:
+        indices_below = paddle.floor(index).astype(paddle.int32)
+        indices_upper = paddle.ceil(index).astype(paddle.int32)
         tensor_upper = paddle.take_along_axis(
-            sorted_tensor, indices_upper[i], axis=axis)
+            sorted_tensor, indices_upper, axis=axis)
         tensor_below = paddle.take_along_axis(
-            sorted_tensor, indices_below[i], axis=axis)
-        weights = (indices[i] - indices_below[i].astype('float64'))
+            sorted_tensor, indices_below, axis=axis)
+        weights = (indices - indices_below.astype('float64'))
         out = paddle.lerp(
             tensor_below.astype('float64'),
             tensor_upper.astype('float64'), weights)
@@ -461,7 +460,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             out = out.reshape(out_shape)
         outputs.append(out)
 
-    if isinstance(q, (list, tuple)):
+    if len(q) > 1:
         outputs = paddle.stack(outputs, 0)
     else:
         outputs = outputs[0]
