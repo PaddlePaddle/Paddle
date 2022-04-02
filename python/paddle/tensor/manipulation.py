@@ -697,7 +697,11 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        dy_out, _ = _C_ops.final_state_flatten(x, start_axis, stop_axis)
+        return dy_out
+
+    if _in_legacy_dygraph():
         dy_out, _ = _C_ops.flatten_contiguous_range(x, 'start_axis', start_axis,
                                                     'stop_axis', stop_axis)
         return dy_out
