@@ -77,9 +77,6 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
             phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                  ddims));
-    if (phi::product(ddims) > 0) {
-      dense_tensor->mutable_data(place);
-    }
     self->tensor.set_impl(dense_tensor);
   }
 
