@@ -53,8 +53,8 @@ def graph_reindex(x,
                                     be int32, and should be filled with -1.
         flag_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
                                       Default is False. Only useful for gpu version currently.
-        name (str, optional): Name for the operation (optional, default is None).
-                              For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None): Name for the operation, usually no need to set and None by default. 
+                         For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
         reindex_src (Tensor): The source node index of graph edges after reindex.

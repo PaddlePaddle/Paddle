@@ -28,6 +28,25 @@ namespace phi {
 
 constexpr int WARP_SIZE = 32;
 
+inline int64_t ComputeBlockSize(int64_t col) {
+  if (col > 512)
+    return 1024;
+  else if (col > 256)
+    return 512;
+  else if (col > 128)
+    return 256;
+  else if (col > 64)
+    return 128;
+  else if (col > 32)
+    return 64;
+  else if (col > 16)
+    return 32;
+  else if (col > 8)
+    return 16;
+  else
+    return 8;
+}
+
 template <typename T, typename Context>
 void FillHashTable(const Context& dev_ctx,
                    const T* input,
@@ -117,8 +136,6 @@ void FillBufferHashTable(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void ResetBufferHashTable(const Context& dev_ctx,
-                          const T* input,
-                          int num_input,
                           thrust::device_vector<T>* unique_items,
                           int* values,
                           int* key_index) {
@@ -141,18 +158,19 @@ template <typename T, typename Context>
 void Reindex(const Context& dev_ctx,
              const T* inputs,
              thrust::device_ptr<T> src_outputs,
-             thrust::device_vector<T>* out_nodes,
+             DenseTensor* out_nodes_t,
              int num_inputs,
              int num_edges) {
-  out_nodes->resize(num_inputs + num_edges);
-  thrust::copy(inputs, inputs + num_inputs, out_nodes->begin());
+  thrust::device_vector<T> out_nodes;
+  out_nodes.resize(num_inputs + num_edges);
+  thrust::copy(inputs, inputs + num_inputs, out_nodes.begin());
   thrust::copy(
-      src_outputs, src_outputs + num_edges, out_nodes->begin() + num_inputs);
+      src_outputs, src_outputs + num_edges, out_nodes.begin() + num_inputs);
   thrust::device_vector<T> unique_nodes;
   unique_nodes.clear();
 
   // Fill hash table
-  int64_t num = out_nodes->size();
+  int64_t num = out_nodes.size();
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t table_size = log_num << 1;
   T* keys;
@@ -175,15 +193,17 @@ void Reindex(const Context& dev_ctx,
 #endif
 
   FillHashTable<T, Context>(dev_ctx,
-                            thrust::raw_pointer_cast(out_nodes->data()),
-                            out_nodes->size(),
+                            thrust::raw_pointer_cast(out_nodes.data()),
+                            out_nodes.size(),
                             table_size,
                             &unique_nodes,
                             keys,
                             values,
                             key_index);
-  out_nodes->resize(unique_nodes.size());
-  thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes->begin());
+
+  out_nodes_t->Resize({static_cast<int>(unique_nodes.size())});
+  T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes_t);
+  thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes_data);
 
 // Fill outputs with reindex result.
 #ifdef PADDLE_WITH_HIP
@@ -215,27 +235,30 @@ template <typename T, typename Context>
 void BufferReindex(const Context& dev_ctx,
                    const T* inputs,
                    thrust::device_ptr<T> src_outputs,
-                   thrust::device_vector<T>* out_nodes,
+                   DenseTensor* out_nodes_t,
                    int num_inputs,
                    int* hashtable_value,
                    int* hashtable_index,
                    int num_edges) {
-  out_nodes->resize(num_inputs + num_edges);
-  thrust::copy(inputs, inputs + num_inputs, out_nodes->begin());
+  thrust::device_vector<T> out_nodes;
+  out_nodes.resize(num_inputs + num_edges);
+  thrust::copy(inputs, inputs + num_inputs, out_nodes.begin());
   thrust::copy(
-      src_outputs, src_outputs + num_edges, out_nodes->begin() + num_inputs);
+      src_outputs, src_outputs + num_edges, out_nodes.begin() + num_inputs);
   thrust::device_vector<T> unique_nodes;
   unique_nodes.clear();
 
   // Fill hash table
   FillBufferHashTable<T, Context>(dev_ctx,
-                                  thrust::raw_pointer_cast(out_nodes->data()),
-                                  out_nodes->size(),
+                                  thrust::raw_pointer_cast(out_nodes.data()),
+                                  out_nodes.size(),
                                   &unique_nodes,
                                   hashtable_value,
                                   hashtable_index);
-  out_nodes->resize(unique_nodes.size());
-  thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes->begin());
+
+  out_nodes_t->Resize({static_cast<int>(unique_nodes.size())});
+  T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes_t);
+  thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes_data);
 
 // Fill outputs with reindex result.
 #ifdef PADDLE_WITH_HIP
@@ -249,12 +272,8 @@ void BufferReindex(const Context& dev_ctx,
   ReindexSrcOutput<T><<<grid, block, 0, dev_ctx.stream()>>>(
       thrust::raw_pointer_cast(src_outputs), num_edges, hashtable_value);
 
-  ResetBufferHashTable<T, Context>(dev_ctx,
-                                   thrust::raw_pointer_cast(out_nodes->data()),
-                                   out_nodes->size(),
-                                   &unique_nodes,
-                                   hashtable_value,
-                                   hashtable_index);
+  ResetBufferHashTable<T, Context>(
+      dev_ctx, &unique_nodes, hashtable_value, hashtable_index);
 }
 
 template <typename T, int BLOCK_WARPS, int TILE_SIZE>
@@ -297,12 +316,10 @@ void GraphReindexKernel(const Context& dev_ctx,
   const int* count_data = count.data<int>();
   const int bs = x.dims()[0];
   const int num_edges = neighbors.dims()[0];
-  reindex_src->Resize({num_edges});
 
+  reindex_src->Resize({num_edges});
   T* reindex_src_data = dev_ctx.template Alloc<T>(reindex_src);
   thrust::device_ptr<T> src_outputs(reindex_src_data);
-
-  thrust::device_vector<T> unique_nodes;
   thrust::copy(neighbors_data, neighbors_data + num_edges, src_outputs);
 
   if (flag_buffer_hashtable) {
@@ -320,14 +337,13 @@ void GraphReindexKernel(const Context& dev_ctx,
     BufferReindex<T, Context>(dev_ctx,
                               x_data,
                               src_outputs,
-                              &unique_nodes,
+                              out_nodes,
                               bs,
                               hashtable_value_data,
                               hashtable_index_data,
                               num_edges);
   } else {
-    Reindex<T, Context>(
-        dev_ctx, x_data, src_outputs, &unique_nodes, bs, num_edges);
+    Reindex<T, Context>(dev_ctx, x_data, src_outputs, out_nodes, bs, num_edges);
   }
 
   // Get reindex dst edge.
@@ -351,10 +367,6 @@ void GraphReindexKernel(const Context& dev_ctx,
       count_data,
       thrust::raw_pointer_cast(dst_ptr.data()),
       reindex_dst_data);
-
-  out_nodes->Resize({static_cast<int>(unique_nodes.size())});
-  T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes);
-  thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes_data);
 }
 
 }  // namespace phi

@@ -53,16 +53,16 @@ def graph_sample_neighbors(row,
         eids (Tensor): The eid information of the input graph. If return_eids is True,
                             then `eids` should not be None. The data type should be the 
                             same with `row`. Default is None.
-        perm_buffer (Tensor): Permutation buffer for fisher-yates sampling. If `flag_perm_buffer`
-                              is True, then `perm_buffer` should not be None. The data type should
-                              be the same with `row`. Default is None. 
+        perm_buffer (Tensor|None): Permutation buffer for fisher-yates sampling. If `flag_perm_buffer` 
+                                   is True, then `perm_buffer` should not be None. The data type should
+                                   be the same with `row`. Default is None. 
         sample_size (int): The number of neighbors we need to sample. Default value is 
                            -1, which means returning all the neighbors of the input nodes.
         return_eids (bool): Whether to return eid information of sample edges. Default is False.
         flag_perm_buffer (bool): Using the permutation for fisher-yates sampling in GPU. Default 
                                  value is false, means not using it. 
-        name (str, optional): Name for the operation (optional, default is None).
-                              For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None): Name for the operation, usually no need to set and None by default.
+                         For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out_neighbors (Tensor): The sample neighbors of the input nodes.
