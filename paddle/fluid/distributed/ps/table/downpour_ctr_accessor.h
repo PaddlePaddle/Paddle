@@ -45,34 +45,34 @@ class DownpourCtrAccessor : public ValueAccessor {
     static int Dim(int embedx_dim) { return 8 + embedx_dim; }
     static int DimSize(size_t dim, int embedx_dim) { return sizeof(float); }
     static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
-    static int unseen_days_index() { return 0; }
-    static int delta_score_index() {
-      return DownpourCtrFeatureValue::unseen_days_index() + 1;
+    static int UnseenDaysIndex() { return 0; }
+    static int DeltaScoreIndex() {
+      return DownpourCtrFeatureValue::UnseenDaysIndex() + 1;
     }
     static int ShowIndex() {
-      return DownpourCtrFeatureValue::delta_score_index() + 1;
+      return DownpourCtrFeatureValue::DeltaScoreIndex() + 1;
     }
     static int ClickIndex() { return DownpourCtrFeatureValue::ShowIndex() + 1; }
-    static int Embed_W_Index() {
+    static int EmbedWIndex() {
       return DownpourCtrFeatureValue::ClickIndex() + 1;
     }
-    static int embed_g2sum_index() {
-      return DownpourCtrFeatureValue::Embed_W_Index() + 1;
+    static int EmbedG2SumIndex() {
+      return DownpourCtrFeatureValue::EmbedWIndex() + 1;
     }
     static int SlotIndex() {
-      return DownpourCtrFeatureValue::embed_g2sum_index() + 1;
+      return DownpourCtrFeatureValue::EmbedG2SumIndex() + 1;
     }
-    static int embedx_g2sum_index() {
+    static int EmbedxG2SumIndex() {
       return DownpourCtrFeatureValue::SlotIndex() + 1;
     }
-    static int Embedx_W_Index() {
-      return DownpourCtrFeatureValue::embedx_g2sum_index() + 1;
+    static int EmbedxWIndex() {
+      return DownpourCtrFeatureValue::EmbedxG2SumIndex() + 1;
     }
-    static float& unseen_days(float* val) {
-      return val[DownpourCtrFeatureValue::unseen_days_index()];
+    static float& UnseenDays(float* val) {
+      return val[DownpourCtrFeatureValue::UnseenDaysIndex()];
     }
-    static float& delta_score(float* val) {
-      return val[DownpourCtrFeatureValue::delta_score_index()];
+    static float& DeltaScore(float* val) {
+      return val[DownpourCtrFeatureValue::DeltaScoreIndex()];
     }
     static float& Show(float* val) {
       return val[DownpourCtrFeatureValue::ShowIndex()];
@@ -84,16 +84,16 @@ class DownpourCtrAccessor : public ValueAccessor {
       return val[DownpourCtrFeatureValue::SlotIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[DownpourCtrFeatureValue::Embed_W_Index()];
+      return val[DownpourCtrFeatureValue::EmbedWIndex()];
     }
-    static float& embed_g2sum(float* val) {
-      return val[DownpourCtrFeatureValue::embed_g2sum_index()];
+    static float& EmbedG2Sum(float* val) {
+      return val[DownpourCtrFeatureValue::EmbedG2SumIndex()];
     }
-    static float& embedx_g2sum(float* val) {
-      return val[DownpourCtrFeatureValue::embedx_g2sum_index()];
+    static float& EmbedxG2Sum(float* val) {
+      return val[DownpourCtrFeatureValue::EmbedxG2SumIndex()];
     }
     static float* EmbedxW(float* val) {
-      return (val + DownpourCtrFeatureValue::Embedx_W_Index());
+      return (val + DownpourCtrFeatureValue::EmbedxWIndex());
     }
   };
 
@@ -113,11 +113,9 @@ class DownpourCtrAccessor : public ValueAccessor {
     static int SlotIndex() { return 0; }
     static int ShowIndex() { return DownpourCtrPushValue::SlotIndex() + 1; }
     static int ClickIndex() { return DownpourCtrPushValue::ShowIndex() + 1; }
-    static int Embed_G_Index() {
-      return DownpourCtrPushValue::ClickIndex() + 1;
-    }
-    static int Embedx_G_Index() {
-      return DownpourCtrPushValue::Embed_G_Index() + 1;
+    static int EmbedGIndex() { return DownpourCtrPushValue::ClickIndex() + 1; }
+    static int EmbedxGIndex() {
+      return DownpourCtrPushValue::EmbedGIndex() + 1;
     }
     static float& Slot(float* val) { return val[0]; }
     static float& Show(float* val) { return val[1]; }
@@ -139,8 +137,8 @@ class DownpourCtrAccessor : public ValueAccessor {
     static int Size(int embedx_dim) { return Dim(embedx_dim) * sizeof(float); }
     static int ShowIndex() { return 0; }
     static int ClickIndex() { return 1; }
-    static int Embed_W_Index() { return 2; }
-    static int Embedx_W_Index() { return 3; }
+    static int EmbedWIndex() { return 2; }
+    static int EmbedxWIndex() { return 3; }
     static float& Show(float* val) {
       return val[DownpourCtrPullValue::ShowIndex()];
     }
@@ -148,38 +146,18 @@ class DownpourCtrAccessor : public ValueAccessor {
       return val[DownpourCtrPullValue::ClickIndex()];
     }
     static float& EmbedW(float* val) {
-      return val[DownpourCtrPullValue::Embed_W_Index()];
+      return val[DownpourCtrPullValue::EmbedWIndex()];
     }
     static float* EmbedxW(float* val) {
-      return val + DownpourCtrPullValue::Embedx_W_Index();
+      return val + DownpourCtrPullValue::EmbedxWIndex();
     }
   };
   DownpourCtrAccessor() {}
   virtual ~DownpourCtrAccessor() {}
 
   virtual int Initialize();
-  virtual void SetTableInfo(AccessorInfo& info);
-  virtual size_t GetTableInfo(InfoKey key);
-  // value维度
-  size_t Dim();
-  // value各个维度的size
-  size_t DimSize(size_t dim);
-  // value各维度相加总size
-  size_t Size();
-  // value中mf动态长度部分总size大小, sparse下生效
-  size_t MFSize();
-  // pull value维度
-  size_t SelectDim();
-  // pull value各个维度的size
-  size_t SelectDimSize(size_t dim);
-  // pull value各维度相加总size
-  size_t SelectSize();
-  // push value维度
-  size_t UpdateDim();
-  // push value各个维度的size
-  size_t UpdateDimSize(size_t dim);
-  // push value各维度相加总size
-  size_t UpdateSize();
+  // 初始化AccessorInfo
+  virtual void InitAccessorInfo();
   // 判断该value是否进行shrink
   virtual bool Shrink(float* value);
   // 判断该value是否保存到ssd
@@ -219,7 +197,7 @@ class DownpourCtrAccessor : public ValueAccessor {
   virtual float GetField(float* value, const std::string& name) override {
     CHECK(name == "show");
     if (name == "show") {
-      auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
+      auto unseen_days = DownpourCtrFeatureValue::UnseenDays(value);
       int16_t day_diff = _day_id - unseen_days;
       auto show_right =
           DownpourCtrFeatureValue::Show(value) * _time_decay_rates[day_diff];
@@ -238,7 +216,7 @@ class DownpourCtrAccessor : public ValueAccessor {
   bool test_func() { return false; }
 
  private:
-  float show_click_score(float show, float click);
+  float ShowClickScore(float show, float click);
   void set_time_decay_rates();
 
  private:

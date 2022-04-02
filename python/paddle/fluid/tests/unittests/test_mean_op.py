@@ -25,6 +25,18 @@ from paddle.fluid.framework import _test_eager_guard
 np.random.seed(10)
 
 
+def mean_wrapper(x, axis=None, keepdim=False, reduce_all=False):
+    if reduce_all == True:
+        return paddle.mean(x, range(len(x.shape)), keepdim)
+    return paddle.mean(x, axis, keepdim)
+
+
+def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
+    if reduce_all == True:
+        return paddle.mean(x, range(len(x.shape)), keepdim)
+    return paddle.mean(x, axis, keepdim)
+
+
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "mean"
@@ -118,6 +130,7 @@ def ref_reduce_mean_grad(x, axis, dtype):
 class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
         self.axis = [0]
@@ -146,7 +159,7 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output()
+            self.check_output(check_eager=True)
         else:
             if not core.is_compiled_with_cuda():
                 return
@@ -155,7 +168,7 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'])
+            self.check_grad(['X'], ['Out'], check_eager=True)
         else:
             return
             if not core.is_compiled_with_cuda():
@@ -176,6 +189,7 @@ class TestReduceMeanOp(OpTest):
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
     def setUp(self):
         self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
 
