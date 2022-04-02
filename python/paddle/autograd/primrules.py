@@ -23,8 +23,8 @@ class Registry(object):
     """ A general registry object. """
 
     def __init__(self, name):
-        name = name
-        tab = {}
+        self.name = name
+        self.tab = {}
 
     def register(self, name, value):
         assert name not in self.tab

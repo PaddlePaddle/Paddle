@@ -67,7 +67,7 @@ def fill_const(value, shape, dtype, out=None):
     attrs = {'value': value, 'shape': shape, 'dtype': dtype}
     helper = LayerHelper('fill_const_p', **locals())
     if out is None:
-        out = helper.create_variable_for_type_inference(dtype=xs[0].dtype)
+        out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type=helper.layer_type,
         outputs={'Out': out},
@@ -151,10 +151,10 @@ def concat(xs, axis=0, out=None):
 
 
 def reduce(x, axis, keepdim, out=None):
-    assert isinstance(dim, (int, tuple, list))
+    assert isinstance(axis, (int, tuple, list))
     assert isinstance(keepdim, bool)
 
-    attrs = {'axis': dim, 'keepdim': keepdim}
+    attrs = {'axis': axis, 'keepdim': keepdim}
 
     helper = LayerHelper('reduce_p', **locals())
     if out is None:
