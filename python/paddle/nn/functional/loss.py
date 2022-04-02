@@ -1697,7 +1697,8 @@ def cross_entropy(input,
              (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
-    if in_dynamic_mode():
+
+    if _non_static_mode():
         if soft_label == False:
             valid_label = paddle.cast(
                 label != ignore_index, dtype=label.dtype) * label
@@ -1715,10 +1716,15 @@ def cross_entropy(input,
                 ignore_index, 'numeric_stable_mode', True, 'axis', axis,
                 'use_softmax', use_softmax)
         else:
-            _, out = _C_ops.softmax_with_cross_entropy(
-                input, label, 'soft_label', soft_label, 'ignore_index',
-                ignore_index, 'numeric_stable_mode', True, 'axis', axis,
-                'use_softmax', use_softmax)
+            if in_dynamic_mode():
+                _, out = _C_ops.final_state_cross_entropy_with_softmax(
+                    input, label, soft_label, use_softmax, True, ignore_index,
+                    axis)
+            if _in_legacy_dygraph():
+                _, out = _C_ops.softmax_with_cross_entropy(
+                    input, label, 'soft_label', soft_label, 'ignore_index',
+                    ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+                    'use_softmax', use_softmax)
 
         if weight is not None:
 
