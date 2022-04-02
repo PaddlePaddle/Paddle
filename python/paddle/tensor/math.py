@@ -1014,9 +1014,9 @@ def nanmean(x, axis=None, keepdim=False, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
-        axis (int|list|tuple, optional):The axis along which to perform mean
+        axis (int|list|tuple, optional):The axis along which to perform nanmean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
-            ``axis`` is a list/tuple of dimension(s), mean is calculated along
+            ``axis`` is a list/tuple of dimension(s), nanmean is calculated along
             all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
             should be in range [-D, D), where D is the dimensions of ``x`` . If
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
