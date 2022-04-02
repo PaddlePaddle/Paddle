@@ -19,10 +19,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/strided_slice_kernel_impl.h"
 
-PD_REGISTER_KERNEL(strided_slice,
+PD_REGISTER_KERNEL(strided_slice_raw,
                    GPU,
                    ALL_LAYOUT,
-                   phi::StridedSliceKernel,
+                   phi::StridedSliceRawKernel,
                    bool,
                    int,
                    int64_t,
