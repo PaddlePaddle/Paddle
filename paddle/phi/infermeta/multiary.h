@@ -265,6 +265,29 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& y,
                     MetaTensor* out);
 
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           paddle::optional<const MetaTensor&> hashtable_value,
+                           paddle::optional<const MetaTensor&> hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes);
+
+void GraphSampleNeighborsInferMeta(
+    const MetaTensor& row,
+    const MetaTensor& col_ptr,
+    const MetaTensor& x,
+    paddle::optional<const MetaTensor&> eids,
+    paddle::optional<const MetaTensor&> perm_buffer,
+    int sample_size,
+    bool return_eids,
+    bool flag_perm_buffer,
+    MetaTensor* out,
+    MetaTensor* out_count,
+    MetaTensor* out_eids);
+
 void Yolov3LossInferMeta(const MetaTensor& x,
                          const MetaTensor& gt_box,
                          const MetaTensor& gt_label,

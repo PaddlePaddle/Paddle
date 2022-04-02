@@ -1250,9 +1250,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = (name in self.optional_inputs)
             if is_optional:
-                tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, nullptr);"
+                tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverOptionalTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
             else:
-                tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, nullptr);"
+                tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name}, this->shared_from_this());"
             grad_api_args[grad_api_position] = transformed_tensor_name
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
