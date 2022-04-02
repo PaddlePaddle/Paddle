@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 from . import framework
 from . import core
-from .framework import _non_static_mode, default_main_program, in_dygraph_mode
+from .framework import _non_static_mode, default_main_program, in_dygraph_mode, _in_legacy_dygraph
 import numpy as np
 from .core import VarDesc
 from . import unique_name
