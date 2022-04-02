@@ -50,6 +50,14 @@ class GradTestNode : public egr::GradNodeBase {
     return res;
   }
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    {
+      auto copied_node = std::make_shared<GradTestNode>(*this);
+      return copied_node;
+    }
+  }
+
   float val_;
 };
 }  // namespace eager_test

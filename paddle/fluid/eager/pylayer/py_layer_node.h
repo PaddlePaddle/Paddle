@@ -67,6 +67,11 @@ class GradNodePyLayer : public GradNodeBase {
     }
   }
 
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::make_shared<GradNodePyLayer>(*this);
+    return copied_node;
+  }
+
  private:
   PyObject* ctx_{nullptr};
   PyObject* outputs_{nullptr};

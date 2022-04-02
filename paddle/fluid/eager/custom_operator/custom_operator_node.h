@@ -68,6 +68,11 @@ class RunCustomOpNode : public GradNodeBase {
 
   void SetAttrs(const std::vector<paddle::any>& attr) { attrs_ = attr; }
 
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::make_shared<RunCustomOpNode>(*this);
+    return copied_node;
+  }
+
  public:
   std::unordered_map<int, std::vector<egr::TensorWrapper>> fwd_outs;
   std::unordered_map<int, std::vector<egr::TensorWrapper>> fwd_ins;

@@ -51,6 +51,12 @@ class GradNodeScale : public GradNodeBase {
   std::string name() override { return ""; }
   // Members: define fwd input tensors
   // For Scale there is no fwd input tensor needed
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::make_shared<GradNodeScale>(*this);
+    return copied_node;
+  }
+
  private:
   float scale_{1.0};
 };

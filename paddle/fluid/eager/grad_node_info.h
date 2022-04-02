@@ -116,12 +116,7 @@ class GradNodeBase {
   /**
        * Self-Copy interface designed for use in DoubleGrad
        * **/
-  virtual std::shared_ptr<GradNodeBase> Copy() const {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Self-copy not supported for current GradNode."
-        "Please override GradNodeBase::Copy() method if necessary."));
-    return nullptr;
-  }
+  virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
 
   /**
    * AddEdges is designed to set input tensors' backward Node as current

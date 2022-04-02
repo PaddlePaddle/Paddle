@@ -464,6 +464,11 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     }
   }
 
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::make_shared<GradNodeRunProgram>(*this);
+    return copied_node;
+  }
+
  private:
   // TensorWrappers
   std::vector<paddle::experimental::Tensor> x_;
