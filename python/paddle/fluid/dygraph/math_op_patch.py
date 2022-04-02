@@ -223,6 +223,8 @@ def monkey_patch_math_varbase():
             lhs_dtype = self.dtype
             if framework._in_eager_mode_:
                 other_var_should_be = core.eager.Tensor
+                if op_type == 'elementwise_add':
+                    op_type = 'final_state_add'
             else:
                 other_var_should_be = core.VarBase
             if not isinstance(other_var, other_var_should_be):
