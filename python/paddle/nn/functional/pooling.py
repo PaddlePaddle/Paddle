@@ -1593,7 +1593,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True)
         return (squeeze(pool_out[0], [2]), squeeze(
@@ -1682,7 +1682,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         if output_size[1] == None:
             output_size[1] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
         return pool_out if return_mask else pool_out[0]
@@ -1775,7 +1775,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         if output_size[2] == None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.max_pool3d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
         return pool_out if return_mask else pool_out[0]
