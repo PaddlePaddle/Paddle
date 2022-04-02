@@ -111,20 +111,23 @@ def transpose(x, axis=None, out=None):
     return _manipulation_unop(LayerHelper('transpose_p', **locals()))
 
 
-def split(x, num_or_sections, axis=0, out=None):
-    assert isinstance(num_or_sections, (int, list, tuple))
-    
-    if isinstance(num_or_sections, int):
-        n = num_or_sections
-        attrs = {'axis': axis, 'num': n}
+def split(x, num=None, sections=None, axis=0, outs=None):
+    assert num is None ^ sections is None
+    assert sections is None ^ isinstance(sections, (list, tuple))
+
+    n = len(sections) if num is None else num
+    attrs = {'axis': axis}
+    if num is not None:
+        attrs['num'] = num
     else:
-        n = len(num_or_sections)
-        attrs = {'axis': axis, 'sections': list(num_or_sections)}
+        attrs['sections'] = sections
+
     helper = LayerHelper('split_p', **locals())
-    outs = [
-        helper.create_variable_for_type_inference(dtype=x.dtype)
-        for i in range(n)
-    ]
+    if outs is None:
+        outs = [
+            helper.create_variable_for_type_inference(dtype=x.dtype)
+            for i in range(n)
+        ]
     helper.append_op(
         type=helper.layer_type,
         inputs={'X': x},
@@ -147,11 +150,11 @@ def concat(xs, axis=0, out=None):
     return out
 
 
-def reduce(x, dim, keepdim, out=None):
+def reduce(x, axis, keepdim, out=None):
     assert isinstance(dim, (int, tuple, list))
     assert isinstance(keepdim, bool)
 
-    attrs = {'dim': dim, 'keepdim': keepdim}
+    attrs = {'axis': dim, 'keepdim': keepdim}
 
     helper = LayerHelper('reduce_p', **locals())
     if out is None:
@@ -168,7 +171,7 @@ def matmul(x, y, out=None):
     return _simple_binop(LayerHelper('matmul_p', **locals()))
 
 
-def slice_select(x, axis, starts, ends, strides):
+def slice_select(x, axis, starts, ends, strides, out=None):
     assert isinstance(axis, (list, tuple)), (
         f'Argument type error. `axis` is supposed to be int, list or'
         f' tuple but found {type(axis)}.')
@@ -188,7 +191,7 @@ def slice_select(x, axis, starts, ends, strides):
     return out
 
 
-def slice_assign(x, y, axis, starts, ends, strides):
+def slice_assign(x, y, axis, starts, ends, strides, out=None):
     assert len(y.shape) == len(starts) == len(ends) == len(strides)
     assert len(y.shape) <= len(x.shape)
     
@@ -204,6 +207,31 @@ def slice_assign(x, y, axis, starts, ends, strides):
     return out
 
 
+def gather(x, indextensor, axis, out=None):
+    attrs = {'axis': axis}
+    helper = LayerHelper('gather_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x, 'Index': indextensor},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
+def scatter_add(x, y, indextensor, axis, out=None):
+    assert y.shape == indextensor.shape
+    attrs = {'axis': axis}
+    helper = LayerHelper('scatter_add_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x, 'Y': y, 'Index': indextensor},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
 
 
 if __name__ == '__main__':
