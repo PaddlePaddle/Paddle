@@ -1389,6 +1389,32 @@ void InterpolateInferMeta(
                                  config);
   }
 }
+void MeshgridInferMeta(const std::vector<MetaTensor*>& x,
+                       std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_GE(
+      x.size(), 1UL, errors::InvalidArgument("Input(X) should not be empty."));
+  PADDLE_ENFORCE_GE(
+      out.size(),
+      1UL,
+      errors::InvalidArgument("Output(Out) should not be empty."));
+  std::vector<phi::DDim> inputs_dims;
+  for (auto x_meta_tensor : x) {
+    inputs_dims.push_back(x_meta_tensor->dims());
+  }
+  const size_t inputs_num = inputs_dims.size();
+  const size_t outputs_num = out.size();
+
+  auto out_shape = std::vector<int>(inputs_num);
+
+  for (size_t i = 0; i < inputs_num; i++) {
+    out_shape[i] = inputs_dims[i][0];
+  }
+  auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
+  std::vector<phi::DDim> outs_dims(outputs_num, out_dims);
+  for (size_t i = 0; i < out.size(); i++) {
+    out[i]->set_dims(outs_dims[i]);
+  }
+}
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
   auto inputs_dims = GetMetaTensorsDim(x);

@@ -180,6 +180,20 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void MeshgridGradInferMeta(const std::vector<MetaTensor*>& inputs,
+                           const std::vector<MetaTensor*>& outputs_grad,
+                           std::vector<MetaTensor*> inputs_grad) {
+  PADDLE_ENFORCE_GT(outputs_grad.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "Number of Inputs(Out@Grad) should be larger than 1."
+                        "But received Inputs(Out@Grad)' size = %d .",
+                        outputs_grad.size()));
+  for (size_t i = 0; i < inputs.size(); i++) {
+    inputs_grad[i]->share_meta(*inputs[i]);
+  }
+}
+
 void NllLossGradInferMeta(const MetaTensor& x,
                           const MetaTensor& label,
                           paddle::optional<const MetaTensor&> weight,

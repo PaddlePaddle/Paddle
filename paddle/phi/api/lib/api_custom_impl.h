@@ -27,6 +27,8 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 std::vector<Tensor> split_impl(const Tensor& x,
                                const IntArray& num_or_sections,
                                const Scalar& axis);
-
+std::vector<Tensor> meshgrid_impl(const std::vector<Tensor>& inputs);
+std::vector<Tensor> meshgrid_grad_impl(const std::vector<Tensor>& inputs,
+                                       const std::vector<Tensor>& outputs_grad);
 }  // namespace experimental
 }  // namespace paddle

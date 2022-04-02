@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMeshgridOp(OpTest):
@@ -149,6 +150,10 @@ class TestMeshgridOp6(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_with_dygraph()
+
 
 class TestMeshgridOp7(unittest.TestCase):
     def test_api_with_dygraph_list_input(self):
@@ -163,6 +168,10 @@ class TestMeshgridOp7(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_with_dygraph_list_input()
+
 
 class TestMeshgridOp8(unittest.TestCase):
     def test_api_with_dygraph_tuple_input(self):
@@ -176,6 +185,10 @@ class TestMeshgridOp8(unittest.TestCase):
 
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_with_dygraph_tuple_input()
 
 
 if __name__ == '__main__':

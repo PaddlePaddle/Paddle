@@ -761,6 +761,19 @@
   kernel :
     func : mean
 
+- api : mean_all
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : MeanAllInferMeta
+  kernel :
+    func : mean_all
+
+- api : meshgrid
+  args : (Tensor[] inputs)
+  output : Tensor[]
+  invoke : meshgrid_impl(inputs)
+
 - api : minimum
   args : (Tensor x, Tensor y)
   output : Tensor(out)

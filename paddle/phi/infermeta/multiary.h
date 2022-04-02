@@ -214,6 +214,8 @@ void InterpolateInferMeta(
     int align_mode,
     MetaTensor* output,
     MetaConfig config = MetaConfig());
+void MeshgridInferMeta(const std::vector<MetaTensor*>& x,
+                       std::vector<MetaTensor*> out);
 
 void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
