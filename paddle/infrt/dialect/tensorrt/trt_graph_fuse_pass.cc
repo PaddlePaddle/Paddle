@@ -31,9 +31,10 @@ namespace infrt {
 namespace trt {
 
 // merge the first&second graph op to a new graph op.
-static void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
-                                    ::infrt::GraphOp first,
-                                    ::infrt::GraphOp second) {
+static void mergeTwoAdjacentGraphOp(
+    ::mlir::PatternRewriter &rewriter,  // NOLINT
+    ::infrt::GraphOp first,
+    ::infrt::GraphOp second) {
   // comput inputs and outputs
   ::llvm::SmallVector<mlir::Value, 4> inputs(first.getOperands()), outputs;
   for (mlir::Value input : second.getOperands()) {
@@ -60,9 +61,9 @@ static void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   }
 
   // create the new graph op
-  builder.setInsertionPoint(first);
+  rewriter.setInsertionPoint(first);
   auto loc = first.getLoc();
-  auto graph_op = builder.create<::infrt::GraphOp>(loc, return_types, inputs);
+  auto graph_op = rewriter.create<::infrt::GraphOp>(loc, return_types, inputs);
   mlir::Block *block = new mlir::Block;
   auto copy_range = second.getBody()->without_terminator();
   block->getOperations().splice(block->begin(),
@@ -74,8 +75,8 @@ static void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
                                 first.getBody()->getOperations(),
                                 copy_range.begin(),
                                 copy_range.end());
-  builder.setInsertionPointToEnd(block);
-  builder.create<::infrt::ReturnOp>(loc, outputs);
+  rewriter.setInsertionPointToEnd(block);
+  rewriter.create<::infrt::ReturnOp>(loc, outputs);
   graph_op.body().push_back(block);
 
   // mapping the output
@@ -99,8 +100,8 @@ static void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   }
   second.replaceAllUsesWith(
       graph_op.getResults().take_back(second.getNumResults()));
-  // first.erase();
-  // second.erase();
+  rewriter.eraseOp(first);
+  rewriter.eraseOp(second);
 }
 
 struct TRT_Graph_Fuse : public ::mlir::RewritePattern {
@@ -128,29 +129,8 @@ struct TRT_Graph_Fuse : public ::mlir::RewritePattern {
           }
 
           if (mergeable) {
-            // for debug
-            LOG(INFO) << ".......................................mergeable....."
-                         "..................................";
-            LOG(INFO) << "graph Op.name: "
-                      << graph_op->getName().getIdentifier().str();
-            for (auto xx : graph_op.inputs()) {
-              std::string str;
-              llvm::raw_string_ostream os(str);
-              xx.print(os);
-              LOG(INFO) << str;
-            }
-            LOG(INFO) << "father_graph Op.name: "
-                      << father_graph_op->getName().getIdentifier().str();
-            for (auto xx : father_graph_op.inputs()) {
-              std::string str;
-              llvm::raw_string_ostream os(str);
-              xx.print(os);
-              LOG(INFO) << str;
-            }
-
-            // mergeTwoAdjacentGraphOp(rewriter, father_graph_op, graph_op);
-            // return ::mlir::success();
-            break;
+            mergeTwoAdjacentGraphOp(rewriter, father_graph_op, graph_op);
+            return ::mlir::success();
           }
         }
       }
