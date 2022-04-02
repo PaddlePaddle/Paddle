@@ -22,7 +22,7 @@ limitations under the License. */
 // #include "common_value.h"  // NOLINT
 // #endif
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/table/depends/large_scale_kv.h"
+#include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"

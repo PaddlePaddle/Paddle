@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
+
+#include <mlir/IR/OpDefinition.h>
+
 #include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/common/pd_ops_info.h"
@@ -95,13 +98,13 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
           infrt::PrecisionType precision_;
-          ConvertDataTypeToPhi(
+          ConvertDataTypeToInfrt(
               var_desc.type().lod_tensor().tensor().data_type(), &precision_);
           mlir::Type type_ =
               infrt::DenseTensorType::get(context_,
                                           infrt::TargetType::CPU,
                                           precision_,
-                                          infrt::LayoutType::ANY);
+                                          infrt::LayoutType::NCHW);
 
           operandTypes.push_back(type_);
         }
@@ -125,13 +128,13 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelOutputsType(
           std::vector<int64_t> dims = RepeatedToVector<int64_t>(
               var_desc.type().lod_tensor().tensor().dims());
           infrt::PrecisionType precision_;
-          ConvertDataTypeToPhi(
+          ConvertDataTypeToInfrt(
               var_desc.type().lod_tensor().tensor().data_type(), &precision_);
           mlir::Type type_ =
               infrt::DenseTensorType::get(context_,
                                           infrt::TargetType::CPU,
                                           precision_,
-                                          infrt::LayoutType::ANY);
+                                          infrt::LayoutType::NCHW);
           resultTypes.push_back(type_);
         }
       }
@@ -179,10 +182,12 @@ void MLIRModelGenImpl::UpdateModelParams(
       std::vector<int64_t> dims = RepeatedToVector<int64_t>(
           var_desc.type().lod_tensor().tensor().dims());
       infrt::PrecisionType precision_;
-      ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
-                           &precision_);
-      mlir::Type type_ = infrt::DenseTensorType::get(
-          context_, infrt::TargetType::CPU, precision_, infrt::LayoutType::ANY);
+      ConvertDataTypeToInfrt(var_desc.type().lod_tensor().tensor().data_type(),
+                             &precision_);
+      mlir::Type type_ = infrt::DenseTensorType::get(context_,
+                                                     infrt::TargetType::CPU,
+                                                     precision_,
+                                                     infrt::LayoutType::NCHW);
       auto op = builder_.create<::infrt::phi::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -222,12 +227,42 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
 void MLIRModelGenImpl::buildOperation(
     const infrt::paddle::framework_proto::OpDesc &op_) {
-  const std::string &op_name = "pd." + op_.type();
+  const std::string op_name = "pd." + op_.type();
   mlir::Location loc = mlir::UnknownLoc::get(context_);
+  mlir::OperationState result(loc, op_name);
+
+  if (!result.name.isRegistered()) {
+    LOG(FATAL) << "Find unregistered operation: " << op_name;
+    return;
+  }
+
+  if (result.name.hasTrait<mlir::OpTrait::AttrSizedOperandSegments>()) {
+    LOG(FATAL) << "Find operation: " << op_name
+               << "has trait: AttrSizedOperandSegments. Current not support!";
+    return;
+  }
+
   llvm::SmallVector<mlir::Value, 4> operands = GetOpInputValue(op_);
+  int empty_operand_cnt = 0;
+  for (auto it = operands.begin(); it != operands.end();) {
+    if (*it) {
+      ++it;
+    } else {
+      operands.erase(it);
+      ++empty_operand_cnt;
+    }
+  }
+  if (empty_operand_cnt > 1) {
+    LOG(FATAL)
+        << "Find operation: " << op_name << ", has " << empty_operand_cnt
+        << " empty operands. current not support empty operands more than one!";
+    return;
+  }
+  result.addOperands(operands);
   llvm::SmallVector<mlir::Type, 4> resultTypes = GetOpOutputType(op_);
   llvm::SmallVector<mlir::NamedAttribute, 4> attrs = GetOpAttributes(op_);
-  mlir::OperationState result(loc, op_name, operands, resultTypes, attrs);
+  result.addTypes(resultTypes);
+  result.addAttributes(attrs);
   mlir::Operation *mlir_op_ = builder_.createOperation(result);
   RegisterOpOutputVars(op_, mlir_op_);
 }
@@ -239,11 +274,13 @@ llvm::SmallVector<mlir::Value, 4> MLIRModelGenImpl::GetOpInputValue(
   std::unordered_map<std::string, uint8_t> inputs_info = {};
   if (pd_dialect_inputs_info_map_.count(op_.type()))
     inputs_info = pd_dialect_inputs_info_map_.at(op_.type());
+  operands.resize(inputs_info.size());
   for (int var_idx = 0; var_idx < op_.inputs_size(); ++var_idx) {
     auto &var = op_.inputs(var_idx);
     if (!var.arguments().empty()) {
       if (!inputs_info.count(var.parameter())) continue;
-      operands.push_back((params_map_[var.arguments()[0]]));
+      operands[inputs_info.at(var.parameter())] =
+          params_map_[var.arguments()[0]];
     }
   }
   return operands;
@@ -256,7 +293,7 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
   std::unordered_map<std::string, uint8_t> pd_dialect_outputs_info = {};
   if (pd_dialect_outputs_info_map_.count(op_.type()))
     pd_dialect_outputs_info = pd_dialect_outputs_info_map_.at(op_.type());
-
+  resultTypes.resize(pd_dialect_outputs_info.size());
   // update op outputs info
   for (int var_idx = 0; var_idx < op_.outputs_size(); ++var_idx) {
     auto &var_name = op_.outputs(var_idx).arguments()[0];
@@ -269,13 +306,14 @@ llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetOpOutputType(
         std::vector<int64_t> dims = RepeatedToVector<int64_t>(
             var_desc.type().lod_tensor().tensor().dims());
         infrt::PrecisionType precision_;
-        ConvertDataTypeToPhi(var_desc.type().lod_tensor().tensor().data_type(),
-                             &precision_);
+        ConvertDataTypeToInfrt(
+            var_desc.type().lod_tensor().tensor().data_type(), &precision_);
         mlir::Type type_ = infrt::DenseTensorType::get(context_,
                                                        infrt::TargetType::CPU,
                                                        precision_,
-                                                       infrt::LayoutType::ANY);
-        resultTypes.push_back(type_);
+                                                       infrt::LayoutType::NCHW);
+        resultTypes[pd_dialect_outputs_info.at(
+            op_.outputs(var_idx).parameter())] = type_;
       }
     }
   }
@@ -412,8 +450,8 @@ bool ConvertDataType(infrt::paddle::framework_proto::VarType::Type dtype,
   }
 }
 
-bool ConvertDataTypeToPhi(infrt::paddle::framework_proto::VarType::Type dtype,
-                          infrt::PrecisionType *type) {
+bool ConvertDataTypeToInfrt(infrt::paddle::framework_proto::VarType::Type dtype,
+                            infrt::PrecisionType *type) {
   switch (dtype) {
     case infrt::paddle::framework_proto::VarType::Type::VarType_Type_FP16:
       *type = infrt::PrecisionType::FLOAT16;

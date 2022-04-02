@@ -123,7 +123,7 @@ class GraphPyServer : public GraphPyService {
     set_rank(rank);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
-  int get_rank() { return rank; }
+  int GetRank() { return rank; }
   void set_rank(int rank) { this->rank = rank; }
 
   void start_server(bool block = true);
@@ -154,8 +154,8 @@ class GraphPyClient : public GraphPyService {
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()
             ->get_service());
   }
-  void stop_server();
-  void finalize_worker();
+  void StopServer();
+  void FinalizeWorker();
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);

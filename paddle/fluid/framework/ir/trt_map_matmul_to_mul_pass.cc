@@ -498,7 +498,8 @@ void TrtSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         BOOST_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
     flag = flag && squeeze2_in_x_rank == 4 &&
            squeeze2_op_axes == std::vector<int>{2, 3} &&
-           (matmul_in_x->outputs).size() == 1;
+           (matmul_in_x->outputs).size() == 1 &&
+           matmul_in_y->Var()->Persistable();
 
     bool transpose_X =
         BOOST_GET_CONST(bool, matmul_op->Op()->GetAttr("transpose_X"));
@@ -654,7 +655,7 @@ void TrtReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     flag = flag && !transpose_X && !transpose_Y &&
            std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
-           matmul_in_y_rank == 2;
+           matmul_in_y_rank == 2 && matmul_in_y->Var()->Persistable();
 
     std::vector<Node*>& next_ops = matmul_out->outputs;
     flag = flag && next_ops.size() == 1 &&
@@ -740,7 +741,7 @@ void TrtFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     size_t matmul_in_y_rank = (matmul_in_y->Var()->GetShape()).size();
     pattern_found = pattern_found && !transpose_X && !transpose_Y &&
                     std::abs(alpha - 1.0) < 1e-5 && matmul_in_x_rank == 2 &&
-                    matmul_in_y_rank == 2;
+                    matmul_in_y_rank == 2 && matmul_in_y->Var()->Persistable();
 
     std::vector<Node*>& next_ops = matmul_out->outputs;
     // we further require the matmul op is followed by one elementwise

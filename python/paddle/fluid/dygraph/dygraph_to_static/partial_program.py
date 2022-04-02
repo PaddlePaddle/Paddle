@@ -204,7 +204,9 @@ class PartialProgramLayer:
         """
         Lazy initialized property of train_amp_program.
         """
-        return self._append_backward_desc(self._infer_amp_program)
+        train_amp_program = self._append_backward_desc(self._infer_amp_program)
+        self._set_grad_type(self._params, train_amp_program)
+        return train_amp_program
 
     @LazyInitialized
     @switch_to_static_graph
@@ -224,7 +226,10 @@ class PartialProgramLayer:
         """
         Lazy initialized property of _train_pure_fp16_program.
         """
-        return self._append_backward_desc(self._infer_pure_fp16_program)
+        train_pure_fp16_program = self._append_backward_desc(
+            self._infer_pure_fp16_program)
+        self._set_grad_type(self._params, train_pure_fp16_program)
+        return train_pure_fp16_program
 
     @LazyInitialized
     def _infer_program_id(self):
@@ -309,7 +314,7 @@ class PartialProgramLayer:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = None
-                    if not core._in_eager_mode():
+                    if not framework._in_eager_mode_:
                         var_base = core.VarBase(var_desc.dtype(),
                                                 var_desc.shape(),
                                                 var_desc.name(),
@@ -403,7 +408,7 @@ class PartialProgramLayer:
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not core._in_eager_mode():
+                if not framework._in_eager_mode_:
                     var = core.VarBase(
                         value=value,
                         name=self._inputs[i].desc.name(),
@@ -437,7 +442,7 @@ class PartialProgramLayer:
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
             varbase = None
-            if not core._in_eager_mode():
+            if not framework._in_eager_mode_:
                 var_base = core.VarBase(var_desc.dtype(),
                                         var_desc.shape(),
                                         var_desc.name(), var_desc.type(), False)
@@ -457,7 +462,7 @@ class PartialProgramLayer:
         # Hold forward variables
         tmp_scope_vec = None
         inner_scope = core.Scope()
-        if not core._in_eager_mode():
+        if not framework._in_eager_mode_:
             tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                          "program_out_scope",
                                          core.VarDesc.VarType.STEP_SCOPES, True)
@@ -595,7 +600,7 @@ def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    if not core._in_eager_mode():
+    if not framework._in_eager_mode_:
         return [
             core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
                          core.VarDesc.VarType.RAW, False)

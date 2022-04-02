@@ -494,6 +494,7 @@ class PADDLE_API Tensor final {
    * @return AbstractAutogradMeta*
    */
   AbstractAutogradMeta* get_autograd_meta() const;
+  const std::shared_ptr<AbstractAutogradMeta>& mutable_autograd_meta() const;
 
   /**
    * @brief Set the autograd meta object
@@ -516,7 +517,36 @@ class PADDLE_API Tensor final {
    */
   uint32_t current_inplace_version();
 
+  /**
+   * @brief Reset inplace version
+   */
+  void reset_inplace_version(bool set_to_zero = false);
+
   /* Part 10: Auto generated Tensor methods */
+
+  /* Part 11: Methods of converting SparseTensor and DenseTensor to each other
+   */
+  /**
+   * @brief Convert DenseTensor or SparseCsrTensor to SparseCooTensor
+   *
+   * @param sparse_dim, The number of sparse dimensions
+   * @return Tensor
+   */
+  Tensor to_sparse_coo(const int64_t sparse_dim) const;
+
+  /**
+   * @brief Convert DenseTensor or SparseCooTensor to SparseCsrTensor
+   *
+   * @return Tensor
+   */
+  Tensor to_sparse_csr() const;
+
+  /**
+   * @brief Convert SparseCooTensor or SparseCsrTensor to DenseTensor
+   *
+   * @return Tensor
+   */
+  Tensor to_dense() const;
 
  private:
   /**

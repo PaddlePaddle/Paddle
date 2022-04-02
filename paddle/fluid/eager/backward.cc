@@ -466,6 +466,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       continue;
     }
 
+    // TODO(zhanlve): Copy and Modify GradNode if is_general_grad
     GradNodeBase* grad_node = shared_grad_node.get();
 
     // Prepare GradTensorHolder
@@ -486,16 +487,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // Feed given tensor if it's provided
       VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
 
-      if (grad_tensors[i].is_initialized()) {
-        // Deep copy
-        paddle::experimental::Tensor tmp_tensor;
-        tmp_tensor.copy_(grad_tensors[i], grad_tensors[i].inner_place(), true);
-        node_input_buffers_dict[grad_node]->add(input_info.first,
-                                                input_info.second, tmp_tensor);
-      } else {
-        node_input_buffers_dict[grad_node]->add(
-            input_info.first, input_info.second, grad_tensors[i]);
-      }
+      // Deep copy
+      node_input_buffers_dict[grad_node]->CopyValueFromTensor(
+          input_info.first, input_info.second, grad_tensors[i]);
 
     } else {
       VLOG(6) << "Fill grad input tensor " << i << " with 1.0";
@@ -504,7 +498,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // dims
       // GradTensorHolder will initialize another tensor with same tensortype,
       // datatype and dims but filled with 1.0
-      node_input_buffers_dict[grad_node]->add(
+      node_input_buffers_dict[grad_node]->CopyValueFromTensor(
           input_info.first, input_info.second, tensor, true /*fill_one=true*/);
     }
 
@@ -686,6 +680,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       }
     }
   }
+
   if (!is_general_grad) return {};
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
