@@ -93,8 +93,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0, use full to support complex, one_like don't support it.
-      buffer_[slot_id][rank] =
-          paddle::experimental::full(t.shape(), 1, t.dtype());
+      buffer_[slot_id][rank] = paddle::experimental::full_like(t, 1, t.dtype());
     }
   }
 }
