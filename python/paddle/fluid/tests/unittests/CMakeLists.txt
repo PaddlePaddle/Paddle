@@ -234,6 +234,7 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_complex_matmul)
+    LIST(REMOVE_ITEM TEST_OPS test_ops_nms)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
