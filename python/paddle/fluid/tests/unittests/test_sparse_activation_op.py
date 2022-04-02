@@ -30,8 +30,30 @@ class TestSparseActivation(unittest.TestCase):
             sparse_dim = 2
             sparse_coo_x = dense_x.to_sparse_coo(sparse_dim)
             #TODO(zhangkaihuo): change to test the corresponding API: paddle.sparse.relu(sparse_coo_x)
-            sparse_act_out = _C_ops.final_state_sparse_relu(sparse_coo_x)
+            sparse_act_out = _C_ops.final_state_sparse_coo_relu(sparse_coo_x)
             correct_result = [0, 2, 0, 4, 5]
+            actual_result = sparse_act_out.non_zero_elements().numpy()
+            assert np.array_equal(correct_result, actual_result)
+
+    def test_sparse_coo_sqrt(self):
+        with _test_eager_guard():
+            x = [[0, 4, 0, 2], [0, 0, 16, 0]]
+            dense_x = paddle.to_tensor(x, dtype='float32')
+            sparse_dim = 2
+            sparse_coo_x = dense_x.to_sparse_coo(sparse_dim)
+            sparse_act_out = _C_ops.final_state_sparse_coo_sqrt(sparse_coo_x)
+            correct_result = [2, np.sqrt(2), 4]
+            actual_result = sparse_act_out.non_zero_elements().numpy()
+            assert np.array_equal(correct_result, actual_result)
+
+    def test_sparse_csr_sqrt(self):
+        with _test_eager_guard():
+            x = [[0, 4, 0, 2], [0, 0, 0, 0], [0, 0, 16, 0]]
+            dense_x = paddle.to_tensor(x, dtype='float32')
+            sparse_dim = 2
+            sparse_coo_x = dense_x.to_sparse_csr(sparse_dim)
+            sparse_act_out = _C_ops.final_state_sparse_csr_sqrt(sparse_coo_x)
+            correct_result = [2, np.sqrt(2), 4]
             actual_result = sparse_act_out.non_zero_elements().numpy()
             assert np.array_equal(correct_result, actual_result)
 
