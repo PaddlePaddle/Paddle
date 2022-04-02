@@ -1149,7 +1149,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
     set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
     
     if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
         set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT 120)
