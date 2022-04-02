@@ -141,6 +141,12 @@ namespace tensorrt {
       ConvFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else if (trt::PoolingOp op = llvm::dyn_cast<trt::PoolingOp>(operation)) {
       PoolFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ShuffleOp op =
+                   llvm::dyn_cast<trt::ShuffleOp>(operation)) {
+      ShuffleFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
+    } else if (trt::ScaleNdOp op =
+                   llvm::dyn_cast<trt::ScaleNdOp>(operation)) {
+      ScaleNdFunc(op, network.get(), value_to_trt_tensor_map, value_to_tensor_map);
     } else {
       CHECK(false) << "not supported operation.";
     }
