@@ -199,6 +199,10 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(CUDAPlace(dev_id))
           .get());
+  dev_ctx->SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
   dev_ctx->PartialInitWithAllocator();
 
   std::shared_ptr<platform::CudaEventObject> compute_event(

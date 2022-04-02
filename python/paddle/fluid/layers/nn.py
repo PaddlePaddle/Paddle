@@ -25,6 +25,7 @@ import six
 
 import paddle
 from ..layer_helper import LayerHelper
+from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
 from .. import dygraph_utils
@@ -40,6 +41,7 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'fc',
@@ -204,7 +206,6 @@ def _elementwise_op_in_dygraph(x,
                                op_name=None):
     op = getattr(_C_ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -4790,7 +4791,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
-    helper = LayerHelper('reduce_prod', **locals())
+
     if dim is not None and not isinstance(dim, list):
         if isinstance(dim, tuple):
             dim = list(dim)
@@ -4800,6 +4801,12 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             raise TypeError(
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
+    if in_dygraph_mode():
+        return _C_ops.final_state_reduce_prod(
+            input, dim if dim != None and dim != [] else [0], keep_dim, True if
+            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+
+    helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -6427,7 +6434,9 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze(input, axes)[1]
+    if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
 
@@ -6488,8 +6497,10 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
-        return out
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
+            return out
+        return _C_ops.final_state_unsqueeze(input, axes)[1]
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -8910,7 +8921,9 @@ def log(x, name=None):
             res = paddle.log(x)
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_log(x)
+    if _in_legacy_dygraph():
         return _C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
@@ -11426,6 +11439,10 @@ def strided_slice(input, axes, starts, ends, strides):
             sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_strided_slice(input, axes, starts, ends,
+                                                strides)
+
     helper = LayerHelper('strided_slice', **locals())
 
     check_variable_and_dtype(input, 'input',
@@ -11590,7 +11607,11 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_shape(input)
+        out.stop_gradient = True
+        return out
+    if _in_legacy_dygraph():
         out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
@@ -11666,8 +11687,12 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_size(input)
+
+    if _in_legacy_dygraph():
         return _C_ops.size(input)
+
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], "size")
@@ -12529,6 +12554,9 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res) # [True False True False]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_and(x, y)
+
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12568,6 +12596,8 @@ def logical_or(x, y, out=None, name=None):
             res = paddle.logical_or(x, y)
             print(res) # [[ True  True] [ True False]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12607,6 +12637,9 @@ def logical_xor(x, y, out=None, name=None):
             res = paddle.logical_xor(x, y)
             print(res) # [[False,  True], [ True, False]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_xor(x, y)
+
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12639,7 +12672,8 @@ def logical_not(x, out=None, name=None):
             res = paddle.logical_not(x)
             print(res) # [False  True False  True]
     """
-
+    if in_dygraph_mode():
+        return _C_ops.final_state_logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
 
@@ -13415,6 +13449,9 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_log_loss(input, label, epsilon)
+
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
     check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
@@ -14430,7 +14467,10 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    if _non_static_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_where_index(condition)
+    if _in_legacy_dygraph():
         return _C_ops.where_index(condition)
 
     helper = LayerHelper("where_index", **locals())
@@ -14923,6 +14963,10 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
+                                         dilations)
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="unfold",
@@ -15150,6 +15194,10 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_shard_index(input, index_num, nshards,
+                                              shard_id, ignore_value)
+
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
@@ -15301,7 +15349,9 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mish(x, threshold)
+    if _in_legacy_dygraph():
         return _C_ops.mish(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')

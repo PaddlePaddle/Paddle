@@ -56,7 +56,7 @@ REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 
-int32_t TableManager::initialize() {
+int32_t TableManager::Initialize() {
   static bool initialized = false;
   if (initialized) {
     return 0;
@@ -65,10 +65,10 @@ int32_t TableManager::initialize() {
   return 0;
 }
 
-int32_t Table::initialize(const TableParameter &config,
+int32_t Table::Initialize(const TableParameter &config,
                           const FsClientParameter &fs_config) {
   _config = config;
-  if (initialize_accessor() != 0) {
+  if (InitializeAccessor() != 0) {
     LOG(WARNING) << "Table accessor initialize failed";
     return -1;
   }
@@ -77,10 +77,10 @@ int32_t Table::initialize(const TableParameter &config,
     LOG(WARNING) << "Table fs_client initialize failed";
     // return -1;
   }
-  return initialize();
+  return Initialize();
 }
 
-int32_t Table::initialize_accessor() {
+int32_t Table::InitializeAccessor() {
   if (!_config.has_accessor() || !_config.accessor().has_accessor_class()) {
     LOG(ERROR) << "missing accessor config in table, table_id:"
                << _config.table_id();
@@ -97,13 +97,12 @@ int32_t Table::initialize_accessor() {
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }
-  if (accessor->configure(_config.accessor()) || accessor->initialize() != 0) {
+  if (accessor->Configure(_config.accessor()) || accessor->Initialize() != 0) {
     LOG(ERROR) << " accessor initialize failed, table_id:" << _config.table_id()
                << ", accessor_name:" << _config.accessor().accessor_class();
     return -1;
   }
   _value_accesor.reset(accessor);
-  // _value_accesor->SetTableInfo(_table_info);
   return 0;
 }
 

@@ -62,6 +62,7 @@ class TestModeOp(OpTest):
 
     def setUp(self):
         self.op_type = "mode"
+        self.python_api = paddle.mode
         self.dtype = np.float64
         np.random.seed(666)
         self.input_data = np.random.rand(2, 64, 1)
@@ -73,11 +74,11 @@ class TestModeOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
 class TestModeOpLastdim(OpTest):
@@ -86,6 +87,7 @@ class TestModeOpLastdim(OpTest):
 
     def setUp(self):
         self.op_type = "mode"
+        self.python_api = paddle.mode
         self.dtype = np.float64
         np.random.seed(666)
         self.input_data = np.random.rand(2, 1, 1, 2, 30)
@@ -97,11 +99,11 @@ class TestModeOpLastdim(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
 class TestModeOpKernels(unittest.TestCase):
