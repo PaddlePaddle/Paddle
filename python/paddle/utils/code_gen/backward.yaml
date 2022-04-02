@@ -271,6 +271,16 @@
   kernel :
     func : eigh_grad
 
+- backward_api : elementwise_pow_grad
+  forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis=-1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel :
+    func : elementwise_pow_grad
+
 - backward_api : elu_grad
   forward : elu (Tensor x, float alpha) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, float alpha)
@@ -301,6 +311,16 @@
     param : [out]
   kernel :
     func : erfinv_grad
+
+- backward_api : expm1_grad
+  forward : expm1 (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : expm1_grad
 
 - backward_api : floor_grad
   forward : floor(Tensor x) -> Tensor(out)
@@ -514,6 +534,16 @@
   kernel :
     func : logsigmoid_grad
 
+- backward_api : logsumexp_grad
+  forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : logsumexp_grad
+
 - backward_api : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
@@ -606,6 +636,16 @@
     param: [x, y]
   kernel :
     func : minimum_grad
+
+- backward_api : mish_grad
+  forward : mish (Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : mish_grad
 
 - backward_api : mode_grad
   forward : mode(Tensor x,  int axis,  bool keepdim) -> Tensor(out), Tensor(indices)
@@ -720,6 +760,16 @@
     param : [out]
   kernel :
     func : reciprocal_grad
+
+- backward_api : reduce_prod_grad
+  forward : reduce_prod (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] dims,  bool keep_dim, bool reduce_all)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : reduce_prod_grad
 
 - backward_api : relu_double_grad
   forward : relu_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)

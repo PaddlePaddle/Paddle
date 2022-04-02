@@ -1011,6 +1011,21 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
       }
+      if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+        if (x_var_desc->Persistable()) {
+          VLOG(3) << "Input X is a parameter which is not supported for "
+                     "elementwise_add/elementwise_mul in tensorrt, swap x and "
+                     "y will work";
+          return false;
+        }
+      }
+      if (op_type == "elementwise_sub" || op_type == "elementwise_div") {
+        if (x_var_desc->Persistable() || y_var_desc->Persistable()) {
+          VLOG(3) << "Input X or Input Y is a parameter which is not supported "
+                     "for elementwise_sub/elementwise_div in tensorrt";
+          return false;
+        }
+      }
     }
 
     if (op_type == "stack") {
