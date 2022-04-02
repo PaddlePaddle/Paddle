@@ -1598,7 +1598,7 @@ class CyclicLR(LRScheduler):
     Set the learning rate using a cyclic learning rate scheduler, which cycles the learning rate between two boundaries with a constant frequrncy.
     The distance between the two boundaries can be csaled on a per-iteration or per-cycle basis.
 
-    It has been proposed in `Cyclic Learning Rates for Training Netural Networks <https://arxiv.org/abs/1506.01186>`_.
+    It has been proposed in `Cyclic Learning Rates for Training Neural Networks <https://arxiv.org/abs/1506.01186>`_.
 
     According to the paper, the cyclic learning rate schedule has three build-in scale methods:
 
@@ -1610,21 +1610,23 @@ class CyclicLR(LRScheduler):
 
     Args:
         base_learning_rate (float): Initial learning rate which is the lower boundary in the cycle.
-        max_learning_rate (float): Upper learning rate in the cycle. Functionally, it defines the cycle amplitude (max_learning_rate - base_learning_rate). 
-            The lr at any cycle is the sum of base_lr and some scaling of the amplitude; 
+        max_learning_rate (float): Upper learning rate in the cycle.
+            Functionally, it defines the cycle amplitude (max_learning_rate - base_learning_rate).
+            The lr at any cycle is the sum of base_lr and some scaling of the amplitude;
             therefore max_learning_rate may not actually be reached depending on scaling function.
-        step_size_up (int): Step number of trainning iterations in the increasing half of a cycle. 
-        step_size_down (int): Step number of trainning iterations in the decreasing half of a cycle.
-        mode (str): one of 'triangular', 'triangular2' or 'exp_ragne'.Values correspond to policies detailed above. 
+        step_size_up (int): Step number of training iterations in the increasing half of a cycle.
+        step_size_down (int): Step number of training iterations in the decreasing half of a cycle.
+        mode (str): one of 'triangular', 'triangular2' or 'exp_range'.Values correspond to policies detailed above.
             If scale_fn is not None, this argument is ignored. Default: 'triangular'
         gamma (float): Constant in 'exp_range' scaling function: gamma**(cycle iterations) Default: 1.0
         scale_fn (function, optional): Custom scaling policy defined by a single argument lambda function, 
             where 0 <= scale_fn(x) <= 1 for all x >= 0.
             If specified, then 'mode' is ignored. Default: None
-        scale_mode (str, optional): One of 'cycle' or 'iterations'. Defines whether scale_fn is evaluated on cycle number 
-            or cycle iterations (total iterations since start of training). Default: 'cycle'
-        last_epoch (int, optional): The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        scale_mode (str, optional): One of 'cycle' or 'iterations'. Defines whether scale_fn is evaluated on cycle
+            number or cycle iterations (total iterations since start of training). Default: 'cycle'
+        last_epoch (int, optional): The index of last epoch. Can be set to restart training.
+            Default: -1, means initial learning rate.
+        verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
     ``CyclicLR`` instance to schedule learning rate.
@@ -1659,7 +1661,8 @@ class CyclicLR(LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5, max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
+                scheduler = paddle.optimizer.lr.CyclicLR(base_learning_rate=0.5,
+                    max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
