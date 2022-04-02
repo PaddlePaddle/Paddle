@@ -19,6 +19,7 @@ import paddle.nn.functional as F
 import paddle.fluid.initializer as I
 import unittest
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 def _reverse_repeat_list(t, n):
@@ -166,7 +167,7 @@ class Conv2DTestCase(unittest.TestCase):
         return y_np
 
     def paddle_nn_layer(self):
-        x_var = dg.to_variable(self.input)
+        x_var = paddle.to_tensor(self.input)
         conv = nn.Conv2D(
             self.num_channels,
             self.num_filters,
@@ -190,8 +191,11 @@ class Conv2DTestCase(unittest.TestCase):
         result2 = self.functional(place)
         with dg.guard(place):
             result3 = self.paddle_nn_layer()
+            with _test_eager_guard():
+                res_eager = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
+        self.assertTrue(np.allclose(result3, res_eager))
 
     def runTest(self):
         place = fluid.CPUPlace()
