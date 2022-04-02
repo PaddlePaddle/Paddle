@@ -123,32 +123,23 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 }
 
 void PSGPUWorker::PrepareCudaGraph() {
+  std::string enable_cuda_graph_capture_attr_name = "enable_cuda_graph_capture";
   op_or_cudagraphs_.reserve(ops_.size());
-  std::unordered_set<std::string> op_capture_white_list = {
-    "auc", "adam",
-    "assign",
-    "coalesce_tensor",
-    "cast",
-    "concat", "concat_grad",
-    "clip", "clip_grad",
-    "data_norm", "data_norm_grad",
-    "mul", "mul_grad",
-    "elementwise_add", "elementwise_add_grad",
-    "elementwise_div", "elementwise_div_grad",
-    "elementwise_sub", "elementwise_sub_grad",
-    "elementwise_max", "elementwise_max_grad",
-    "elementwise_mul", "elementwise_mul_grad",
-    "fill_constant", "fill_constant_batch_size_like",
-    "l1_norm", "equal", "scale",
-    "log_loss", "log_loss_grad",
-    "mean", "mean_grad"
-    "reduce_sum", "reduce_sum_grad",
-    "relu", "relu_grad",
-    "sigmoid", "sigmoid_grad",
-    "sum",
-    "squared_l2_norm",
-  };
-  
+
+  // when op is captured, its inputs and outputs will be never changed
+  // so the capture attribute can infect another op whose all inputs and outputs nerver changed
+  std::unordered_set<std::string> var_whitelist;
+  for (auto& op : ops_) {
+    if (op->HasAttr(enable_cuda_graph_capture_attr_name) && op->Attr<int>(enable_cuda_graph_capture_attr_name)) {
+      for (auto& input : op->InputVars()) {
+        var_whitelist.emplace(input);
+      }
+      for (auto& output : op->OutputVars(true)) {
+        var_whitelist.emplace(output);
+      }
+    }
+  }
+
   for (auto& op : ops_) {
     bool need_skip = false;
     for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -159,45 +150,39 @@ void PSGPUWorker::PrepareCudaGraph() {
     }
     if (!need_skip) {
       bool need_capture = false;
-      if (op_capture_white_list.find(op->Type()) != op_capture_white_list.end()) {
+      if (op->HasAttr(enable_cuda_graph_capture_attr_name) && op->Attr<int>(enable_cuda_graph_capture_attr_name)) {
         need_capture = true;
-        auto inputs = op->InputVars();
-        auto outputs = op->OutputVars(true);
-        inputs.insert(inputs.end(), outputs.begin(), outputs.end());
-        for (auto tensor_name : inputs) {
-          auto var = thread_scope_->FindVar(tensor_name);
-          if (var == nullptr) {
-            VLOG(5) << "op " << op->Type() << " capture fail, val not found: " << tensor_name;
-            need_capture = false;
-            break;
-          }
-          if (!var->IsType<phi::DenseTensor>()) {
-            VLOG(5) << "op " << op->Type() << " capture fail, val is not DenseTensor: " << tensor_name;
-            need_capture = false;
-            break;
-          }
-          auto& tensor = var->Get<phi::DenseTensor>();
-          auto& lod = tensor.lod();
-          if (!lod.empty()) {
-            VLOG(5) << "op " << op->Type() << " capture fail, lod error: " << tensor_name << " " << lod[0].size();
+      }
+      if (!need_capture) {
+        need_capture = true;
+        for (auto& input : op->InputVars()) {
+          if (var_whitelist.find(input) == var_whitelist.end()) {
             need_capture = false;
             break;
           }
         }
-      } else {
-          VLOG(5) << "op " << op->Type() << " is not in whitelist";
+        if (need_capture) {
+          for (auto& output : op->OutputVars(true)) {
+            if (var_whitelist.find(output) == var_whitelist.end()) {
+              need_capture = false;
+              break;
+            }
+          }
+        }
       }
       if (op_or_cudagraphs_.empty() || op_or_cudagraphs_.back().need_capture != need_capture) {
         op_or_cudagraphs_.emplace_back();
         op_or_cudagraphs_.back().need_capture = need_capture;
       }
       auto& op_or_cuda_graph = op_or_cudagraphs_.back();
-      if (op_or_cuda_graph.name.empty()) {
-        op_or_cuda_graph.name = "cuda_graph:";
-      } else {
-        op_or_cuda_graph.name += ":";
+      if (need_capture) {
+        if (op_or_cuda_graph.name.empty()) {
+          op_or_cuda_graph.name = "cuda_graph:";
+        } else {
+          op_or_cuda_graph.name += ":";
+        }
+        op_or_cuda_graph.name += op->Type();
       }
-      op_or_cuda_graph.name += op->Type();
       op_or_cuda_graph.ops.emplace_back(op);
     }
   }
@@ -221,7 +206,7 @@ void PSGPUWorker::TrainFiles() {
   platform::SetDeviceId(place_.GetDeviceId());
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
-    
+
     if (op_or_cudagraphs_.empty()) {
       // first batch we run original ops to check whethere the tensors has lod
       for (auto& op : ops_) {

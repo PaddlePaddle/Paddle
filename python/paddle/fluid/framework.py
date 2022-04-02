@@ -217,6 +217,7 @@ global_ipu_index = None
 global_ipu_stage = None
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
+enable_cuda_graph_capture_attr_name = 'enable_cuda_graph_capture'
 
 
 @signature_safe_contextmanager
@@ -2718,6 +2719,12 @@ class Operator(object):
                 if global_ipu_stage is not None:
                     self._update_desc_attr(ipu_stage_attr_name,
                                            global_ipu_stage)
+
+            # enable_cuda_graph_capture
+            if core.is_compiled_with_cuda():
+                if core.is_cuda_graph_capturing():
+                    self._update_desc_attr(enable_cuda_graph_capture_attr_name,
+                                           True)
 
             self.desc.check_attrs()
             if self._has_kernel(type):
