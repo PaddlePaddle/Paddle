@@ -30,6 +30,7 @@
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "pybind11/numpy.h"
 #include "pybind11/stl.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -372,6 +373,101 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
            py::call_guard<py::gil_scoped_release>());
 }
 
+template <typename T>
+std::vector<std::vector<framework::LoDTensor>> ProcessBERTInputs(
+    const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
+    size_t num_samples, size_t max_seq_length, size_t batch_size,
+    size_t trainer_id, size_t num_trainers) {
+  using TensorT = framework::LoDTensor;
+
+  PADDLE_ENFORCE_EQ(array.ndim(), 1);
+  size_t length = array.shape()[0];
+  const T *arr = array.data();
+
+  py::gil_scoped_release gil_release_guard;
+
+  auto seq_lengths = std::make_unique<T[]>(batch_size * num_trainers);
+  auto seq_indices = std::make_unique<T[]>(batch_size * num_trainers);
+
+  // input_ids, segment_ids, input_mask, masked_lm_labels, next_sentence_labels
+  const size_t nbatch = (num_samples + batch_size - 1) / batch_size;
+  const size_t numel = num_samples * max_seq_length;
+  const size_t num_per_device = numel * 4 + num_samples * 2;
+  PADDLE_ENFORCE_EQ(num_per_device * num_trainers, length);
+
+  auto resize_and_alloc = [](TensorT *t, const framework::DDim &dim) -> T * {
+    t->Resize(dim);
+    return t->mutable_data<T>(platform::CPUPlace());
+  };
+
+  VLOG(10) << "num_samples = " << num_samples;
+  VLOG(10) << "max_seq_length = " << max_seq_length;
+  VLOG(10) << "batch_size = " << batch_size;
+  VLOG(10) << "trainer_id = " << trainer_id;
+  VLOG(10) << "num_trainers = " << num_trainers;
+  VLOG(10) << "nbatch = " << nbatch;
+
+  std::vector<std::vector<TensorT>> tensors(nbatch);
+  for (size_t i = 0; i < nbatch; ++i) {
+    const size_t cur_bs =
+        std::min((i + 1) * batch_size, num_samples) - i * batch_size;
+    VLOG(10) << "Mini batch " << i << " " << cur_bs;
+    const size_t seq_length_offset =
+        num_samples * max_seq_length * 4 + num_samples + i * batch_size;
+    const size_t total_seq_length = cur_bs * num_trainers;
+
+    std::iota(seq_indices.get(), seq_indices.get() + total_seq_length,
+              static_cast<size_t>(0));
+
+    std::sort(seq_indices.get(), seq_indices.get() + total_seq_length,
+              [&](size_t idx1, size_t idx2) {
+                size_t real_idx1 = (idx1 % num_trainers) * num_per_device +
+                                   (idx1 / num_trainers) + seq_length_offset;
+                size_t real_idx2 = (idx2 % num_trainers) * num_per_device +
+                                   (idx2 / num_trainers) + seq_length_offset;
+
+                return arr[real_idx1] > arr[real_idx2];
+              });
+
+    tensors[i].resize(5);
+    auto *input_ids = resize_and_alloc(
+        &tensors[i][0],
+        {static_cast<int64_t>(cur_bs), static_cast<int64_t>(max_seq_length)});
+    auto *segment_ids = resize_and_alloc(
+        &tensors[i][1],
+        {static_cast<int64_t>(cur_bs), static_cast<int64_t>(max_seq_length)});
+    auto *input_mask = resize_and_alloc(
+        &tensors[i][2],
+        {static_cast<int64_t>(cur_bs), static_cast<int64_t>(max_seq_length)});
+    auto *masked_lm_labels = resize_and_alloc(
+        &tensors[i][3],
+        {static_cast<int64_t>(cur_bs), static_cast<int64_t>(max_seq_length)});
+    auto *next_sentence_labels =
+        resize_and_alloc(&tensors[i][4], {static_cast<int64_t>(cur_bs)});
+
+    for (size_t j = 0; j < cur_bs; ++j) {
+      const size_t idx = seq_indices.get()[j * num_trainers + trainer_id];
+      const size_t dev_id = idx % num_trainers;
+      const T *data = arr + dev_id * num_per_device;
+      const size_t sample_id = idx / num_trainers + i * batch_size;
+      std::memcpy(input_ids + j * max_seq_length,
+                  data + sample_id * max_seq_length,
+                  max_seq_length * sizeof(T));
+      std::memcpy(segment_ids + j * max_seq_length,
+                  data + numel + sample_id * max_seq_length,
+                  max_seq_length * sizeof(T));
+      std::memcpy(input_mask + j * max_seq_length,
+                  data + 2 * numel + sample_id * max_seq_length,
+                  max_seq_length * sizeof(T));
+      std::memcpy(masked_lm_labels + j * max_seq_length,
+                  data + 3 * numel + sample_id * max_seq_length,
+                  max_seq_length * sizeof(T));
+      next_sentence_labels[j] = data[4 * numel + sample_id];
+    }
+  }
+  return tensors;
+}
+
 void BindReader(py::module *module) {
   auto &m = *module;
 
@@ -478,6 +574,10 @@ void BindReader(py::module *module) {
             use_double_buffer, drop_last, pin_memory);
       },
       py::return_value_policy::take_ownership);
+
+  m.def("process_bert_inputs", &ProcessBERTInputs<int16_t>);
+  m.def("process_bert_inputs", &ProcessBERTInputs<int32_t>);
+  m.def("process_bert_inputs", &ProcessBERTInputs<int64_t>);
 }
 
 }  // namespace pybind
