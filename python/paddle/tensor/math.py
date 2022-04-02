@@ -1020,7 +1020,7 @@ def nanmean(x, axis=None, keepdim=False, name=None):
             all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
             should be in range [-D, D), where D is the dimensions of ``x`` . If
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
-            same way as :math:`axis + D` . If ``axis`` is None, mean is
+            same way as :math:`axis + D` . If ``axis`` is None, nanmean is
             calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
@@ -1035,18 +1035,17 @@ def nanmean(x, axis=None, keepdim=False, name=None):
         type as ``x``.
 
     Examples:
-        .. code-block:: python
 
+        .. code-block:: python
+            :name: code-example1
             import paddle
-            import numpy as np
 
             # x is a Tensor with following elements:
             # [[nan, 0.3, 0.5, 0.9]
             #  [0.1, 0.2, -nan, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = np.array([[float('nan'), 0.3, 0.5, 0.9],
-                            [0.1, 0.2, float('-nan'), 0.7]]).astype(np.float32)
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, float('-nan'), 0.7]])
             out1 = paddle.nanmean(x)
             # [0.45000002]
             out2 = paddle.nanmean(x, axis=0)
