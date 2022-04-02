@@ -14,17 +14,49 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <llvm/Support/ErrorHandling.h>
+#include <llvm/include/mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinAttributes.h>
+#include <mlir/IR/PatternMatch.h>
 #include <mlir/Transforms/DialectConversion.h>
-
 #include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
+#include "paddle/infrt/kernel/tensorrt/trt_helper.h"
 
 namespace infrt {
 namespace trt {
+
+#ifdef INFRT_WITH_TRT
+
+#define STRING_TO_ENUM_TYPE(enum_type) enum_type
+#define STRING_TO_ENUM_VALUE(enum_value) enum_value
+#include <NvInfer.h>
+
+#else  // INFRT_WITH_TRT
+
+#define STRING_TO_ENUM_TYPE(enum_type) std::string
+#define STRING_TO_ENUM_VALUE(enum_value) #enum_value
+
+#endif  // INFRT_WITH_TRT
+
+template <typename T>
+::mlir::IntegerAttr createNvinferEnumAttr(
+    ::mlir::PatternRewriter &rewriter,  // NOLINT
+    T enum_value) {
+  return rewriter.getSI32IntegerAttr((int32_t)enum_value);
+}
+
+template <>
+::mlir::IntegerAttr createNvinferEnumAttr<std::string>(
+    ::mlir::PatternRewriter &rewriter, std::string enum_value) {  // NOLINT
+  (void)enum_value;
+  return rewriter.getSI32IntegerAttr(-1);
+}
+
 static mlir::Value createTRTConv2dOp(mlir::PatternRewriter &rewriter,  // NOLINT
                                      mlir::Operation *op) {
   auto conv_op = ::llvm::dyn_cast<infrt::pd::Conv2dOp>(op);
@@ -205,5 +237,127 @@ static mlir::Value createTRTShuffledOp(
   return rewriter.create<trt::ShuffleOp>(
       op->getLoc(), resultTypes, operands, attributes);
 }
+
+inline mlir::IntegerAttr CreatePoolingType(
+    mlir::PatternRewriter &builder,  // NOLINT
+    mlir::StringAttr pool_type) {
+  // pool_type.
+  auto ptype = pool_type.str();
+  if (ptype == "max") {
+    return createNvinferEnumAttr(builder, nvinfer1::PoolingType::kMAX);
+  } else if (ptype == "avg") {
+    return createNvinferEnumAttr(builder, nvinfer1::PoolingType::kAVERAGE);
+  } else {
+    llvm_unreachable("unknown pool_type.");
+    return {};
+  }
+}
+
+inline mlir::IntegerAttr CreatePaddingMode(
+    mlir::PatternRewriter &builder,  // NOLINT
+    mlir::StringAttr padding_algorithm,
+    mlir::BoolAttr ceil_mode) {
+  // TODO(Inference): Phi pool kernel seems not process ceil_mode.
+  auto padding_algo = padding_algorithm.str();
+  if (padding_algo == "SAME") {
+    return createNvinferEnumAttr(builder, nvinfer1::PaddingMode::kSAME_UPPER);
+  }
+  if (ceil_mode.getValue() && padding_algo != "SAME") {
+    return createNvinferEnumAttr(builder,
+                                 nvinfer1::PaddingMode::kEXPLICIT_ROUND_UP);
+  } else {
+    return createNvinferEnumAttr(builder,
+                                 nvinfer1::PaddingMode::kEXPLICIT_ROUND_DOWN);
+  }
+}
+
+inline ::llvm::SmallVector<::mlir::Value, 4> CreatePaddleTrtPoolingOp(
+    mlir::PatternRewriter &builder,  // NOLINT
+    mlir::Value input,
+    mlir::StringAttr pool_type,
+    mlir::ArrayAttr ksize,
+    mlir::BoolAttr global_pooling,
+    mlir::ArrayAttr strides,
+    mlir::ArrayAttr paddings,
+    mlir::BoolAttr exclusive,
+    mlir::BoolAttr adaptive,
+    mlir::BoolAttr ceil_mode,
+    mlir::StringAttr data_format,
+    mlir::StringAttr padding_algorithm) {
+  ::llvm::SmallVector<::mlir::Value, 4> tblgen_repl_values;
+
+  // TODO(inference): Support NHWC.
+  if (data_format.str() != "NCHW") {
+    CHECK(false) << "The pool2d converter now only support NCHW.";
+  }
+
+  // TODO(Wilber): How to support dynamic shape?
+
+  auto *input_producer = input.getDefiningOp();
+
+  // Process pool_type.
+  auto pool_type_attr = CreatePoolingType(builder, pool_type);
+
+  // Update padding.
+  auto padding_algorithm_str = padding_algorithm.str();
+  auto paddings_attr = paddings;
+  if (padding_algorithm_str == "EXPLICIT") {
+    // Do nothing on paddings.
+  } else if (padding_algorithm_str == "SAME") {
+    // We should process this case in trt network build phase.
+  } else if (padding_algorithm_str == "VALID") {
+    // Set padding to zero.
+    paddings_attr = builder.getI32ArrayAttr({0, 0});
+  } else {
+    CHECK(false) << "Unknown padding_algotithm.";
+  }
+
+  // if global_pooling == true or adaptive == true, padding will be ignored
+  if (global_pooling.getValue() || adaptive.getValue()) {
+    paddings_attr = builder.getI32ArrayAttr({0, 0});
+  }
+
+  // if global_pooling == true, then we should update kernel size to input dims.
+  if (global_pooling.getValue() == true) {
+    // Update ksize to input dims.
+  }
+
+  // The adaptive logic should be processed when we get the context of
+  // INetworkDefinition, so we place the logic in infrt runtime(trt compile
+  // time).
+
+  // The `exclusive` may be a naive attr, which can be forward to trt.
+
+  auto padding_mode_attr =
+      CreatePaddingMode(builder, padding_algorithm, ceil_mode);
+
+  if (global_pooling.getValue() == true) {
+    CHECK(false) << "Temporarily not support global_pool";
+    return tblgen_repl_values;
+  }
+
+  PoolingOp pool_op;
+  {
+    auto ods_loc = builder.getFusedLoc({input_producer->getLoc()});
+    builder.create<PoolingOp>(ods_loc,
+                              input.getType(),
+                              input,
+                              pool_type_attr,
+                              ksize,
+                              strides,
+                              paddings_attr,
+                              padding_mode_attr,
+                              exclusive,
+                              adaptive,
+                              padding_algorithm);
+  }
+
+  for (auto v :
+       ::llvm::SmallVector<::mlir::Value, 4>{pool_op.getODSResults(0)}) {
+    tblgen_repl_values.push_back(v);
+  }
+  return tblgen_repl_values;
+}
+
 }  // namespace trt
 }  // namespace infrt
