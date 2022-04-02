@@ -6,7 +6,7 @@ set(DY2ST_EAGER_TEST_ENVS ${GC_ENVS} FLAGS_enable_eager_mode=1)
 set(TEST_EAGER_OPS test_bert test_bmn test_break_continue test_cycle_gan test_ifelse test_loop test_mnist_amp 
     test_mnist_pure_fp16 test_mobile_net test_program_translator test_ptb_lm test_reinforcement_learning 
     test_resnet test_resnet_amp test_resnet_pure_fp16 test_se_resnet test_sentiment test_seq2seq test_transformer 
-    test_tsm test_word2vec test_yolov3 test_jit_save_load test_translated_layer)
+    test_tsm test_word2vec test_yolov3)
 list(REMOVE_ITEM TEST_OPS test_lac)
 # NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope will
 # be removed and will cause some random failed in multi-thread.
