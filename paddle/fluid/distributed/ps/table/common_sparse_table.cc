@@ -167,7 +167,7 @@ int64_t CommonSparseTable::LoadFromText(
   return 0;
 }
 
-int32_t CommonSparseTable::initialize() {
+int32_t CommonSparseTable::Initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
@@ -200,15 +200,15 @@ int32_t CommonSparseTable::initialize() {
     offset += dim;
   }
 
-  initialize_value();
-  initialize_optimizer();
-  initialize_recorder();
+  InitializeValue();
+  InitializeOptimizer();
+  InitializeRecorder();
   return 0;
 }
 
-int32_t CommonSparseTable::initialize_recorder() { return 0; }
+int32_t CommonSparseTable::InitializeRecorder() { return 0; }
 
-int32_t CommonSparseTable::initialize_value() {
+int32_t CommonSparseTable::InitializeValue() {
   auto common = _config.common();
   shard_values_.reserve(task_pool_size_);
 
@@ -223,18 +223,18 @@ int32_t CommonSparseTable::initialize_value() {
   return 0;
 }
 
-int32_t CommonSparseTable::initialize_optimizer() {
+int32_t CommonSparseTable::InitializeOptimizer() {
   auto common = _config.common();
   auto name = common.name();
 
   if (name == "sgd") {
     optimizer_ = std::make_shared<SSGD>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<SAdam>(value_names_, value_dims_,
                                          value_offsets_, value_idx_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "sum") {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
@@ -246,13 +246,13 @@ int32_t CommonSparseTable::initialize_optimizer() {
   return 0;
 }
 
-int32_t CommonSparseTable::set_global_lr(float* lr) {
+int32_t CommonSparseTable::SetGlobalLR(float* lr) {
   _global_lr = lr;
-  optimizer_->set_global_lr(_global_lr);
+  optimizer_->SetGlobalLR(_global_lr);
   return 0;
 }
 
-int32_t CommonSparseTable::load(const std::string& dirname,
+int32_t CommonSparseTable::Load(const std::string& dirname,
                                 const std::string& param) {
   auto begin = GetCurrentUS();
   rwlock_->WRLock();
@@ -276,7 +276,7 @@ int32_t CommonSparseTable::load(const std::string& dirname,
   return 0;
 }
 
-int32_t CommonSparseTable::save(const std::string& dirname,
+int32_t CommonSparseTable::Save(const std::string& dirname,
                                 const std::string& param) {
   auto begin = GetCurrentUS();
   rwlock_->WRLock();
@@ -322,7 +322,7 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   return 0;
 }
 
-std::pair<int64_t, int64_t> CommonSparseTable::print_table_stat() {
+std::pair<int64_t, int64_t> CommonSparseTable::PrintTableStat() {
   int64_t feasign_size = 0;
   int64_t mf_size = 0;
 
@@ -335,7 +335,7 @@ std::pair<int64_t, int64_t> CommonSparseTable::print_table_stat() {
   return {feasign_size, mf_size};
 }
 
-int32_t CommonSparseTable::pour() {
+int32_t CommonSparseTable::Pour() {
   std::vector<float> values;
   std::vector<uint64_t> keys;
 
@@ -349,7 +349,7 @@ int32_t CommonSparseTable::pour() {
     std::copy(reservoir.values.begin(), reservoir.values.end(),
               std::back_inserter(values));
   }
-  _push_sparse(keys.data(), values.data(), pull_reservoir_.size());
+  _PushSparse(keys.data(), values.data(), pull_reservoir_.size());
 
   pull_reservoir_.clear();
   return 0;
@@ -360,11 +360,11 @@ int32_t CommonSparseTable::Pull(TableContext& context) {
   if (context.use_ptr) {
     char** pull_values = context.pull_context.ptr_values;
     const uint64_t* keys = context.pull_context.keys;
-    return pull_sparse_ptr(pull_values, keys, context.num);
+    return PullSparsePtr(pull_values, keys, context.num);
   } else {
     float* pull_values = context.pull_context.values;
     const PullSparseValue& pull_value = context.pull_context.pull_value;
-    return pull_sparse(pull_values, pull_value);
+    return PullSparse(pull_values, pull_value);
   }
 }
 
@@ -373,16 +373,16 @@ int32_t CommonSparseTable::Push(TableContext& context) {
   if (context.push_context.values != nullptr) {
     const float* values = context.push_context.values;
     const uint64_t* keys = context.push_context.keys;
-    return push_sparse(keys, values, context.num);
+    return PushSparse(keys, values, context.num);
   } else {
     const float** values = context.push_context.ptr_values;
     const uint64_t* keys = context.push_context.keys;
-    return push_sparse(keys, values, context.num);
+    return PushSparse(keys, values, context.num);
   }
 }
 
-int32_t CommonSparseTable::pull_sparse(float* pull_values,
-                                       const PullSparseValue& pull_value) {
+int32_t CommonSparseTable::PullSparse(float* pull_values,
+                                      const PullSparseValue& pull_value) {
   auto shard_num = task_pool_size_;
   std::vector<std::future<int>> tasks(shard_num);
 
@@ -421,8 +421,8 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
   return 0;
 }
 
-int32_t CommonSparseTable::pull_sparse_ptr(char** pull_values,
-                                           const uint64_t* keys, size_t num) {
+int32_t CommonSparseTable::PullSparsePtr(char** pull_values,
+                                         const uint64_t* keys, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -458,8 +458,8 @@ int32_t CommonSparseTable::pull_sparse_ptr(char** pull_values,
   return 0;
 }
 
-int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
-                                        const float* values, size_t num) {
+int32_t CommonSparseTable::_PushSparse(const uint64_t* keys,
+                                       const float* values, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -474,7 +474,7 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
         [this, shard_id, &keys, &values, num, &offset_bucket]() -> int {
           auto& offsets = offset_bucket[shard_id];
-          optimizer_->update(keys, values, num, offsets,
+          optimizer_->Update(keys, values, num, offsets,
                              shard_values_[shard_id].get());
           return 0;
         });
@@ -486,8 +486,8 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
   return 0;
 }
 
-int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
-                                       const float* values, size_t num) {
+int32_t CommonSparseTable::PushSparse(const uint64_t* keys, const float* values,
+                                      size_t num) {
   if (sync) {
     std::future<int> task =
         _shards_task_pool[0]->enqueue([this, &keys, &values, num]() -> int {
@@ -506,20 +506,20 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
         });
     task.wait();
   } else {
-    _push_sparse(keys, values, num);
+    _PushSparse(keys, values, num);
   }
 
   return 0;
 }
 
-int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
-                                       const float** values, size_t num) {
-  _push_sparse(keys, values, num);
+int32_t CommonSparseTable::PushSparse(const uint64_t* keys,
+                                      const float** values, size_t num) {
+  _PushSparse(keys, values, num);
   return 0;
 }
 
-int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
-                                        const float** values, size_t num) {
+int32_t CommonSparseTable::_PushSparse(const uint64_t* keys,
+                                       const float** values, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -536,7 +536,7 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
           auto& offsets = offset_bucket[shard_id];
           for (size_t i = 0; i < offsets.size(); ++i) {
             std::vector<uint64_t> tmp_off = {0};
-            optimizer_->update(keys + offsets[i], values[offsets[i]], num,
+            optimizer_->Update(keys + offsets[i], values[offsets[i]], num,
                                tmp_off, shard_values_[shard_id].get());
           }
           return 0;
@@ -549,8 +549,8 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
   return 0;
 }
 
-int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
-                                             const float* values, size_t num) {
+int32_t CommonSparseTable::PushSparseParam(const uint64_t* keys,
+                                           const float* values, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -585,21 +585,21 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
   return 0;
 }
 
-int32_t CommonSparseTable::flush() { return 0; }
+int32_t CommonSparseTable::Flush() { return 0; }
 
-int32_t CommonSparseTable::shrink(const std::string& param) {
+int32_t CommonSparseTable::Shrink(const std::string& param) {
   int threshold = std::stoi(param);
-  VLOG(3) << "sparse table shrink: " << threshold;
+  VLOG(3) << "sparse table Shrink: " << threshold;
 
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
-    // shrink
-    VLOG(4) << shard_id << " " << task_pool_size_ << " begin shrink";
+    // Shrink
+    VLOG(4) << shard_id << " " << task_pool_size_ << " begin Shrink";
     shard_values_[shard_id]->Shrink(threshold);
   }
   return 0;
 }
 
-void CommonSparseTable::clear() { VLOG(0) << "clear coming soon"; }
+void CommonSparseTable::Clear() { VLOG(0) << "clear coming soon"; }
 
 }  // namespace distributed
 }  // namespace paddle
