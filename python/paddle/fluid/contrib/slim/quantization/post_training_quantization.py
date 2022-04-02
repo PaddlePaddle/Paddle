@@ -387,23 +387,27 @@ class PostTrainingQuantization(object):
                 break
         _logger.info("Finish sampling stage, all batch: " + str(batch_id))
 
-        if self._round_type == 'adaround':
-            self._adaround_apply()
-
-        self._reset_activation_persistable()
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
                 self._quantized_threshold[var_name] = \
                 np.array(self._quantized_var_avg[var_name]).mean()
         if self._algo in ["KL", "hist"]:
             self._calculate_kl_hist_threshold()
-        if self._algo in ["KL", "abs_max", "hist", "avg", "mse", "emd"]:
-            self._update_program()
-        else:
-            self._save_input_threhold()
 
+        if self._round_type == 'adaround':
+            self._adaround_apply()
+
+        self._reset_activation_persistable()
+
+        if self._algo is 'min_max':
+            self._save_input_threhold()
+        else:
+            self._update_program()
+
+        # save out_threshold for quantized ops.
         if not self._onnx_format:
             self._save_output_threshold()
+
         if any(op_type in self._quantizable_op_type
                for op_type in self._dynamic_quantize_op_type):
             self._collect_dynamic_quantize_op_threshold(
@@ -428,6 +432,7 @@ class PostTrainingQuantization(object):
         return self._program
 
     def _adaround_apply(self):
+        assert self._algo != "min_max", "The algo should not be min_max."
         if self._algo in ["KL", "hist"]:
             scale_dict = self._quantized_var_threshold
         else:
