@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/rmsprop_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -170,6 +170,3 @@ http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(rmsprop, ops::RmspropOp, ops::RmspropOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    rmsprop, ops::RmspropOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RmspropOpKernel<paddle::platform::CPUDeviceContext, double>);

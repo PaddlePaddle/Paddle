@@ -196,10 +196,10 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
-                    const std::string& mode,
                     const std::string& data_format,
+                    const std::string& mode,
                     MetaTensor* out,
-                    MetaConfig config);
+                    MetaConfig config = MetaConfig());
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
@@ -220,6 +220,11 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             int ignore_index,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
+
+void TakeAlongAxisInferMeta(const MetaTensor& x,
+                            const MetaTensor& index,
+                            int axis,
+                            MetaTensor* out);
 
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,

@@ -18,17 +18,21 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/utils/optional.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
+
 namespace phi {
 
 template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   paddle::optional<const DenseTensor&> x,
                   DenseTensor* out) {
-  if (!x.is_initialized()) {
-    return;
+  if (x.get_ptr()) {
+    if (!x.is_initialized()) {
+      return;
+    }
+    auto& x_tensor = *x.get_ptr();
+    Copy<Context>(dev_ctx, x_tensor, x_tensor.place(), false, out);
   }
-  auto& x_tensor = *x.get_ptr();
-  Copy<Context>(dev_ctx, x_tensor, x_tensor.place(), false, out);
 }
 
 // Note: use `const paddle::optional<std::vector<const DenseTensor*>&> x`
@@ -42,22 +46,98 @@ void AssignArrayKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const Context& dev_ctx,
+    const std::vector<Scalar>& values,
+    DenseTensor* out) {
+  // If attribute value dtype is vector<bool>, it will be converted to
+  // vector<int>. at the same time, we can not use vector<bool> to hold
+  // the value, because the c++ use bit value to replace byte value.
+  std::vector<int> assign_values;
+  assign_values.reserve(values.size());
+  for (const auto& val : values) {
+    assign_values.emplace_back(val.to<int>());
+  }
+  paddle::framework::TensorFromVector(assign_values, dev_ctx, out);
+
+  // use the array to replace to vector
+  bool* array_ptr = new T[assign_values.size()];
+  for (unsigned int i = 0; i < assign_values.size(); i++) {
+    array_ptr[i] = static_cast<T>(assign_values[i]);
+  }
+  paddle::framework::TensorFromArray(
+      array_ptr, assign_values.size(), dev_ctx, out);
+  delete[] array_ptr;
+}
+
+template <typename T, typename Context>
+typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const Context& dev_ctx,
+    const std::vector<Scalar>& values,
+    DenseTensor* out) {
+  std::vector<T> assign_values;
+  assign_values.reserve(values.size());
+  for (const auto& val : values) {
+    assign_values.emplace_back(val.to<T>());
+  }
+  paddle::framework::TensorFromVector(assign_values, dev_ctx, out);
+}
+
+template <typename T, typename Context>
+void AssignValueKernel(const Context& dev_ctx,
+                       const std::vector<int>& shape,
+                       DataType dtype,
+                       const std::vector<Scalar>& values,
+                       DenseTensor* out) {
+  auto template_dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  PADDLE_ENFORCE_EQ(
+      dtype,
+      template_dtype,
+      phi::errors::InvalidArgument("Argument dtype mismatch for kernel dtype, "
+                                   "argument dtype is %s, kernel dtype is %s.",
+                                   dtype,
+                                   template_dtype));
+  CopyVectorToTensor<T>(dev_ctx, values, out);
+  out->Resize(phi::make_ddim(shape));
+}
+
 }  // namespace phi
 
 PD_REGISTER_GENERAL_KERNEL(
-    assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {}
+    assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_GENERAL_KERNEL(assign_array,
                            CPU,
                            ALL_LAYOUT,
                            phi::AssignArrayKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
+PD_REGISTER_KERNEL(assign_value,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::AssignValueKernel,
+                   bool,
+                   int,
+                   float,
+                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_GENERAL_KERNEL(
-    assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {}
+    assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_GENERAL_KERNEL(assign_array,
                            GPU,
                            ALL_LAYOUT,
                            phi::AssignArrayKernel<phi::GPUContext>,
                            ALL_DTYPE) {}
+PD_REGISTER_KERNEL(assign_value,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AssignValueKernel,
+                   bool,
+                   int,
+                   float,
+                   int64_t) {}
 #endif

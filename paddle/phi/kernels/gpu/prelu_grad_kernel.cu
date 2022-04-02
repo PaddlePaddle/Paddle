@@ -102,8 +102,8 @@ void PReluGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& alpha,
                      const DenseTensor& out_grad,
-                     const std::string& mode,
                      const std::string& data_format,
+                     const std::string& mode,
                      DenseTensor* x_grad,
                      DenseTensor* alpha_grad) {
   dev_ctx.template Alloc<T>(x_grad);

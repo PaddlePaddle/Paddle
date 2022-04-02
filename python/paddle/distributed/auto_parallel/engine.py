@@ -32,7 +32,7 @@ from paddle.distributed.utils import get_logger
 
 from .mapper import mapping
 from .cluster import Cluster
-from .reshard import reshard
+from .reshard import Resharder
 from .planner import Planner
 from .completion import Completer
 from .partitioner import Partitioner
@@ -187,8 +187,9 @@ class Engine:
             # Do reshard process
             set_grad_var_shape(dist_main_prog, dist_context)
             make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
-            reshard(dist_main_prog, dist_startup_prog, rank, dist_context,
-                    dist_params_grads)
+            resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
+                                  dist_context, dist_params_grads)
+            resharder.reshard()
             # Apply post optimization passes
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
@@ -199,8 +200,9 @@ class Engine:
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
             make_data_unshard(dist_main_prog, dist_startup_prog, dist_context)
-            reshard(dist_main_prog, dist_startup_prog, rank, dist_context, [],
-                    1)
+            resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
+                                  dist_context, [], 1)
+            resharder.reshard()
 
         # clone program for test
         if mode != 'train':

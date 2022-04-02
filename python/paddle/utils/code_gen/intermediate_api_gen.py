@@ -27,7 +27,7 @@ def header_include():
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
 """
 
