@@ -425,13 +425,18 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                            : global_scope_->GetMutableScope();
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
+    // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
       platform::RecordEvent infershape_event(
           "infer_shape", platform::TracerEventType::OperatorInner, 1,
           platform::EventRole::kInnerOp);
-      // If it is OperatorBase, InferShape do nothing.
-      op_with_kernel->Info().infer_shape_(
-          instr_node.InnerInferShapeContext().get());
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        op_with_kernel->Info().infer_shape_(
+            instr_node.InnerInferShapeContext().get());
+      }
     }
   }
 

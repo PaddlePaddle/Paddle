@@ -15,25 +15,21 @@
 #    https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/data_parallel/sharded_ddp.py
 #Commit: 8acbec718f3c70a6b9785470bb9e05cd84fc3f8e
 
-import os
-import contextlib
 import logging
 import time
 import functools
 import numpy as np
-from itertools import chain
 from functools import reduce
 from collections import deque
 from types import MethodType
 
 import paddle
 from paddle import nn
-from paddle.distributed import collective as dist
-from paddle.distributed.collective import _get_global_group
+from paddle.distributed import collective
 
-from ...utils.internal_storage import GradStorage
-from ...meta_optimizers.dygraph_optimizer.sharding_optimizer_stage2 import ShardingOptimizerStage2
-from .sharding_utils import Taskflow, Type
+from .group_sharded_storage import GradStorage
+from .group_sharded_optimizer_stage2 import ShardingOptimizerStage2
+from .group_sharded_utils import Taskflow, Type, device_guard
 
 
 def _trainable(param):
@@ -79,18 +75,20 @@ class ShardingStage2(nn.Layer):
         self._auto_refresh_trainable = auto_refresh_trainable
 
         # Communication related attributes
-        self._group = dist.new_group(_get_global_group()
-                                     .ranks) if group is None else group
+        self._group = collective.new_group(collective._get_global_group()
+                                           .ranks) if group is None else group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[
-            0]  # picking rank 0 as the reference
+            0]  # picking ranks index 0 as the reference
         self._default_device = device
 
         # Global statistical parameters
-        self._all_params = list(
-            chain(*[optim.local_params for optim in self._sharding_optimizers]))
+        self._all_params = []
+        for optim in self._sharding_optimizers:
+            self._all_params.extend(list(optim.local_params))
+
         self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
@@ -99,8 +97,7 @@ class ShardingStage2(nn.Layer):
         self._param_grads = []
 
         # Set grad storage size & Display param sizes and model sizes
-        model_size = sum(
-            [np.prod(p.shape) for p in self._layer.parameters()]).item()
+        model_size = sum([p.numel() for p in self._layer.parameters()])
         assert buffer_max_size >= 0, "buffer_max_size must be GE than 0."
         self._buffer_max_size = self._rank_buffer_size(buffer_max_size,
                                                        model_size)
@@ -118,14 +115,14 @@ class ShardingStage2(nn.Layer):
                 self._sharding_optimizers
             ) == 1, "Only support offload strategy for single optimizer"
 
-        self._offload = self._sharding_optimizers[0].offload
+        self._offload = len(self._offload_optims) > 0
         self._offload_device = "cpu"
 
         # Set backward pass hooks
         self._bw_hooks = []
 
-        # Set tasks flow
-        self._tasks_flow = deque()
+        # TODO (Baibaifan) Set tasks flow support asynchronous communicate
+        # self._tasks_flow = deque()
 
         # Define optimizer step and clear_grad
         self._redefine_opt_step()
@@ -167,7 +164,9 @@ class ShardingStage2(nn.Layer):
                    include_sublayers=True,
                    structured_name_prefix=""):
         return self._layer.state_dict(
-            destination=None, include_sublayers=True, structured_name_prefix="")
+            destination=destination,
+            include_sublayers=include_sublayers,
+            structured_name_prefix=structured_name_prefix)
 
     def _clear_gradients(self):
         """
@@ -182,7 +181,7 @@ class ShardingStage2(nn.Layer):
         # Release grads of params
         for param in self._trainable_params:
             if param.name in self._param_grads and param.grad is not None:
-                param.clear_gradient()
+                param._zero_grads()
 
         # Release grads of master params with offload strategy
         if self._offload:
@@ -243,13 +242,13 @@ class ShardingStage2(nn.Layer):
 
         self._trainable_params = list(
             filter(lambda x: x.trainable, self._all_params))
-        self._trainable_params.sort(key=lambda x: np.prod(x.shape))
+        self._trainable_params.sort(key=lambda x: x.numel())
 
         self._trainable_param2rank = {}
         for optim in self._sharding_optimizers:
             # Need to be wrappered for Sharding Stage2 Optimizer
             if len(optim.param_storages.keys()) == 0:
-                optim.update_opt_status()
+                optim._update_opt_status()
 
             # Get the parameters split by the optimizer according to rank
             for per_rank_params in optim.dtype_rank_params.values(
@@ -261,9 +260,9 @@ class ShardingStage2(nn.Layer):
                         self._trainable_param2align[
                             param.name] = optim._param2align[param.name]
 
+        # Create grad_storage
         self._setup_use_grad_storage()
-
-        # wait next func hook support
+        # setup backward hooks
         self._setup_backward_hooks()
 
     @paddle.autograd.no_grad()
@@ -273,13 +272,13 @@ class ShardingStage2(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
-            dist.broadcast(
+            collective.broadcast(
                 buffer,
                 self._global_root_rank,
                 self._group,
                 use_calc_stream=True)
-        # Multi stream operation will be supported later
-        dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
+        # Synchronous cpu & gpu
+        paddle.device.cuda.synchronize()
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -319,31 +318,30 @@ class ShardingStage2(nn.Layer):
                     # Clear the gradient that does not belong to the current rank through the callback function
                     def cleanup():
                         if dst_rank != self._rank:
-                            param.clear_gradient(False)
+                            param.clear_gradient()
                         elif self._offload:
+                            with device_guard():
+                                tmp_grad = param.grad.cast(
+                                    dtype=Type.fp32.value).cpu()
+
                             self._sharding_optimizers[0]._offload_acc_grad(
-                                param.name,
-                                param.grad.cast(dtype=Type.fp32.value).cpu())
-                            param.clear_gradient(False)
+                                param.name, tmp_grad)
+                            del tmp_grad
+                            param.clear_gradient()
 
                     # Synchronize the reduce parameter gradient
-                    self._tasks_flow.append(
-                        Taskflow(
-                            task=dist.reduce(
-                                tensor=param.grad,
-                                dst=self._group.ranks[dst_rank],
-                                group=self._group,
-                                use_calc_stream=True),
-                            callback=cleanup))
-
-                    # Multi stream operation will be supported later
-                    dist.wait(
+                    collective.reduce(
                         tensor=param.grad,
-                        group=self._group,
-                        use_calc_stream=True)
+                        dst=self._group.ranks[dst_rank],
+                        group=self._group)
+                    #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
-                    self._clear_task_flow()
+                    # self._clear_task_flow()
+
+                    # Synchronous cpu & gpu
+                    paddle.device.cuda.synchronize()
+                    cleanup()
 
         else:
             # Buffer reduction
@@ -365,44 +363,36 @@ class ShardingStage2(nn.Layer):
                         def cleanup():
                             if dst_rank != self._rank:
                                 for p in grad_storage._params:
-                                    p.clear_gradient(False)
-                                    p._gradient_set_empty(False)
+                                    p.clear_gradient()
 
-                                grad_storage.buffer.value().get_tensor()._clear(
-                                )
+                                grad_storage.buffer._clear()
                             elif self._offload:
                                 grad_storage.to(device=self._offload_device)
                                 for p in grad_storage._params:
+                                    with device_guard():
+                                        tmp_grad = p.grad.cast(
+                                            dtype=Type.fp32.value)
                                     self._sharding_optimizers[
-                                        0]._offload_acc_grad(
-                                            p.name,
-                                            p.grad.cast(dtype=Type.fp32.value))
-                                    p.clear_gradient(False)
-                                    p._gradient_set_empty(False)
+                                        0]._offload_acc_grad(p.name, tmp_grad)
+                                    p.clear_gradient()
                                 grad_storage._device = self._default_device
-                                grad_storage.buffer.value().get_tensor()._clear(
-                                )
+                                grad_storage.buffer._clear()
 
                         # Reduce the bucket
                         grad_storage.sent = True
-                        self._tasks_flow.append(
-                            Taskflow(
-                                task=dist.reduce(
-                                    tensor=grad_storage.buffer,
-                                    dst=self._group.ranks[
-                                        grad_storage.destination],
-                                    group=self._group,
-                                    use_calc_stream=True),
-                                callback=cleanup))
-
-                        # Multi stream operation will be supported later
-                        dist.wait(
+                        # Synchronize the reduce parameter gradient
+                        collective.reduce(
                             tensor=grad_storage.buffer,
-                            group=self._group,
-                            use_calc_stream=True)
+                            dst=self._group.ranks[grad_storage.destination],
+                            group=self._group)
+                        #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+
+                        # Synchronous cpu & gpu
+                        paddle.device.cuda.synchronize()
+                        cleanup()
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
-                    self._clear_task_flow()
+                    # self._clear_task_flow()
 
         return reduce
 
@@ -464,18 +454,17 @@ class ShardingStage2(nn.Layer):
                         param.name], self._grad_storages[param.dtype][dst_rank]
                            ._fill))
 
-        self._grad_storage_list = list(
-            chain(*[
-                self._grad_storages[dtype].values()
-                for dtype in self._grad_storages.keys()
-            ]))
+        for dtype in self._grad_storages.keys():
+            self._grad_storage_list.extend(
+                list(self._grad_storages[dtype].values()))
 
-    def _clear_task_flow(self):
-        """Try to consume the previous tasks."""
-        while len(self._tasks_flow) > 0:
-            task = self._tasks_flow.popleft()
-            if task.callback is not None:
-                task.callback()
+    # def _clear_task_flow(self):
+    #     """Try to consume the previous tasks."""
+    #     while len(self._tasks_flow) > 0:
+    #         task = self._tasks_flow.popleft()
+    #         task.wait()
+    #         if task.callback is not None:
+    #             task.callback()
 
     def _detect_train_change(self):
         # Current trainable parameters
@@ -518,13 +507,13 @@ class ShardingStage2(nn.Layer):
 
         if Type.fp16.value in rank_buffer_size.keys():
             # FP16 GradStorage and model size
-            print(
+            logging.info(
                 "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
                 format(rank_buffer_size[Type.fp16.value] / 2**19, model_size / 2
                        **19))
         if Type.fp32.value in rank_buffer_size.keys():
             # FP32 GradStorage and model size
-            print(
+            logging.info(
                 "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
                 format(rank_buffer_size[Type.fp32.value] / 2**18, model_size / 2
                        **18))

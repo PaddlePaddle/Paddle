@@ -18,8 +18,6 @@
 import copy
 import logging
 import numpy as np
-from itertools import chain
-from functools import reduce
 from collections import OrderedDict
 
 import paddle
@@ -29,8 +27,8 @@ from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed.collective import _get_global_group, new_group, broadcast, wait
 
-from ...utils.internal_storage import ParamStorage, GradStorage
-from ...meta_parallel.sharding.sharding_utils import Type, device_guard, ShardingClipGrad
+from .group_sharded_storage import ParamStorage, GradStorage
+from .sharding_utils import Type, device_guard, ShardingClipGrad
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
 alignment = {"gpu": 256, "cpu": 4096}
@@ -68,6 +66,7 @@ class ShardingOptimizerStage2(Optimizer):
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
+        assert device == "gpu", "Only GPU is supported now"
 
         # Segmentation information
         self._dtype_rank_params = OrderedDict(
@@ -83,19 +82,27 @@ class ShardingOptimizerStage2(Optimizer):
 
         assert hasattr(self._optim, "_master_weights"
                        ), "Must use optimizer with _master_weights attribute"
-        self._local_params = params
+
+        # Support parameter group and parameter list
+        self._local_params = []
+        if isinstance(params[0], dict):
+            for param_group in params:
+                self._local_params.extend(list(param_group["params"]))
+        else:
+            self._local_params.extend(list(params))
+
         self._default_device = device
         self._pfp16 = len(
             list(
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        self.group = new_group(_get_global_group()
-                               .ranks) if group is None else group
+        self._group = new_group(_get_global_group()
+                                .ranks) if group is None else group
 
-        self.world_size = self.group.nranks
-        self.rank = self.group.rank
-        self._global_root_rank = self.group.ranks[0]
+        self.world_size = self._group.nranks
+        self._rank = self._group.rank
+        self._global_root_rank = self._group.ranks[0]
 
         # Synchronous all ranks models
         if pertrain_sync_models:
@@ -109,14 +116,14 @@ class ShardingOptimizerStage2(Optimizer):
             )
             self._optim._grad_clip = ShardingClipGrad(self._optim._grad_clip,
                                                       paddle.get_device(),
-                                                      self.group)
+                                                      self._group)
             if self._optim._parameter_list and isinstance(
                     self._optim._parameter_list[0], dict):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = ShardingClipGrad(
                             self._optim._grad_clip,
-                            paddle.get_device(), self.group)
+                            paddle.get_device(), self._group)
 
         if offload:
             assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
@@ -127,6 +134,7 @@ class ShardingOptimizerStage2(Optimizer):
         self.offload_param2align = {}
         self.offload_params = None
         self.offload_grads = None
+        self.dev_id = int(paddle.get_device().split(":")[1])
 
         self._master_params = {}
 
@@ -143,17 +151,16 @@ class ShardingOptimizerStage2(Optimizer):
             broadcast(
                 p,
                 src=self._global_root_rank,
-                group=self.group,
+                group=self._group,
                 use_calc_stream=True)
-
-        # Multi stream operation will be supported later
-        wait(tensor=p, group=self.group, use_calc_stream=True)
+        # Synchronous cpu & gpu
+        paddle.device.cuda.synchronize()
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
             for param in trainable_params:
                 if param.name not in self._master_params.keys():
-                    self._master_params[param.name] = core.VarBase(
+                    self._master_params[param.name] = core.eager.Tensor(
                         name=param.name,
                         value=param.cast(dtype=Type.fp32.value).numpy(),
                         place=core.CPUPlace(),
@@ -169,8 +176,6 @@ class ShardingOptimizerStage2(Optimizer):
         """
         # func 1
         self._integration_params()
-
-        # fun 2 TODO
 
     # Segement helpers
 
@@ -189,7 +194,7 @@ class ShardingOptimizerStage2(Optimizer):
                 param_lists[rank].append(param)
 
                 # Statistical real numels
-                sizes[rank] += np.prod(param.shape) if param.trainable else 0
+                sizes[rank] += param._numel() if param.trainable else 0
 
             for rank, params in enumerate(param_lists):
                 self.__segment_params[rank].extend(params)
@@ -225,7 +230,7 @@ class ShardingOptimizerStage2(Optimizer):
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
                 for rank_params in self._dtype_rank_params[dtype]:
-                    rank_params.sort(key=lambda x: np.prod(x.shape))
+                    rank_params.sort(key=lambda x: x.numel())
 
         return self._dtype_rank_params
 
@@ -246,13 +251,13 @@ class ShardingOptimizerStage2(Optimizer):
                     for param in per_rank_params:
                         if not param.trainable:
                             continue
-                        size = np.prod(param.shape) * align[dtype]
+                        size = param._numel() * align[dtype]
                         remaining = size % alignment[self._default_device]
                         ali = 0 if remaining == 0 else alignment[
                             self._default_device] - remaining
                         align_ = ali // align[dtype]
-                        self._rank_buffer_size[dtype][dst_rank] += np.prod(
-                            param.shape) + align_
+                        self._rank_buffer_size[dtype][dst_rank] += param._numel(
+                        ) + align_
                         self._param2align[param.name] = align_
 
         return self._rank_buffer_size
@@ -272,7 +277,7 @@ class ShardingOptimizerStage2(Optimizer):
                     # Merge all the trainable params in a single InternalStorage
                     trainable_params = list(
                         filter(lambda x: x.trainable, params))
-                    if self._pfp16 and dst_rank == self.rank:
+                    if self._pfp16 and dst_rank == self._rank:
                         self._generate_master_params(trainable_params)
                     if trainable_params:
                         param_storage = ParamStorage(
@@ -295,16 +300,16 @@ class ShardingOptimizerStage2(Optimizer):
             self._optim._master_weights = self._master_params
             cpu_master_params = [p for p in self._master_params.values()]
             for param in cpu_master_params:
-                size = np.prod(param.shape) * align[Type.fp32.value]
+                size = param._numel() * align[Type.fp32.value]
                 remaining = size % alignment[self.offload_device]
                 ali = 0 if remaining == 0 else alignment[
                     self.offload_device] - remaining
                 align_ = ali // align[Type.fp32.value]
-                self.offload_buffer_size += np.prod(param.shape) + align_
+                self.offload_buffer_size += param._numel() + align_
                 self.offload_param2align[param.name] = align_
 
             if cpu_master_params:
-                with device_guard(self.rank, self.offload_device):
+                with device_guard(self._rank, self.offload_device):
                     self.offload_params = ParamStorage(
                         size=self.offload_buffer_size,
                         dtype=Type.fp32.value,
@@ -317,7 +322,7 @@ class ShardingOptimizerStage2(Optimizer):
                         size=self.offload_buffer_size,
                         dtype=Type.fp32.value,
                         device=self.offload_device,
-                        destination=self.rank,
+                        destination=self._rank,
                         parm2align=self.offload_param2align,
                         convert_cpu=True)
                     for p in cpu_master_params:
@@ -330,7 +335,7 @@ class ShardingOptimizerStage2(Optimizer):
 
     def _offload_acc_grad(self, param_name, grad_fp32_cpu):
         """accumulate grads with offload strategy"""
-        with device_guard(self.rank, self.offload_device):
+        with device_guard(self._rank, self.offload_device):
             if param_name in self._master_params.keys():
                 if self._master_params[param_name].grad is None:
                     self._master_params[param_name]._copy_gradient_from(
@@ -343,12 +348,12 @@ class ShardingOptimizerStage2(Optimizer):
 
     def _offload_scale_grad(self, scale_size):
         """scale grads with offload strategy"""
-        with device_guard(self.rank, self.offload_device):
+        with device_guard(self._rank, self.offload_device):
             self.offload_grads.buffer.scale_(scale=scale_size)
 
     def _offload_clear_grad(self):
         """clear grads with offload strategy"""
-        with device_guard(self.rank, self.offload_device):
+        with device_guard(self._rank, self.offload_device):
             self.offload_grads.buffer.zero_()
 
     def step(self):
@@ -369,11 +374,10 @@ class ShardingOptimizerStage2(Optimizer):
             with device_guard(device=self.offload_device):
                 self._optim.step()
 
-            dev_id = int(paddle.get_device().split(":")[1])
             for param in self._local_params:
                 if param.name in self._master_params.keys():
-                    param.set_value(self._master_params[param.name].cuda(dev_id)
-                                    .cast(dtype=param.dtype))
+                    param.set_value(self._master_params[param.name].cuda(
+                        self.dev_id).cast(dtype=param.dtype))
         else:
             self._optim.step()
 
@@ -399,19 +403,11 @@ class ShardingOptimizerStage2(Optimizer):
     def _broadcast_params(self):
         """Broadcast the parameters of the current rank to each rank"""
 
-        assert self._default_device == "gpu", "Only supported gpu"
-
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
                 broadcast(
                     tensor=internal_storage.buffer,
-                    src=self.group.ranks[dst_rank],
-                    group=self.group,
+                    src=self._group.ranks[dst_rank],
+                    group=self._group,
                     use_calc_stream=True)
-
-            # Multi stream operation will be supported later
-            wait(
-                tensor=internal_storage.buffer,
-                group=self.group,
-                use_calc_stream=True)
