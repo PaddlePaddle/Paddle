@@ -768,14 +768,6 @@
     func : layer_norm
   backward : layer_norm_grad
   optional : scale, bias
-- api : trunc
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : trunc
-  backward : trunc_grad
 
 # leaky_relu
 - api : leaky_relu
@@ -1538,6 +1530,15 @@
   kernel :
     func : triangular_solve
   # backward : triangular_solve_grad
+
+- api : trunc
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : trunc
+  backward : trunc_grad
 
 # unfold
 - api : unfold
