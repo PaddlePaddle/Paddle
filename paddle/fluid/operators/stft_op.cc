@@ -30,6 +30,8 @@ class StftOp : public framework::OperatorWithKernel {
 
     const auto x_dims = ctx->GetInputDim("X");
     const int x_rank = x_dims.size();
+    const auto window_dims = ctx->GetInputDim("Window");
+    const int window_size = window_dims[0];
     const bool onesided = ctx->Attrs().Get<bool>("onesided");
 
     PADDLE_ENFORCE_EQ(
@@ -43,6 +45,12 @@ class StftOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Attribute(hop_length) should be greater than 0, but got %s.",
             hop_length));
+    PADDLE_ENFORCE_EQ(
+        window_size, n_fft,
+        platform::errors::InvalidArgument(
+            "Input(Window) of StftOp should be equal with n_fft %s, "
+            "but got %s.",
+            n_fft, window_size));
 
     int seq_length = x_dims[x_rank - 1];
     int n_frames = 1 + (seq_length - n_fft) / hop_length;
@@ -77,6 +85,7 @@ class StftOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input waveforms with shape (N, T)");
+    AddInput("Window", "Input window with shape (n_fft,)");
     AddOutput("Out",
               "The complex STFT output tensor with shape (N, n_fft, "
               "num_frames) or (N, n_fft/2 + 1, num_frames)");
@@ -101,6 +110,7 @@ class StftGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("stft_grad");
     grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Window", this->Input("Window"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());

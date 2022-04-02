@@ -98,6 +98,9 @@ class EagerUtils {
   static std::vector<AutogradMeta*> autograd_meta(
       std::vector<paddle::experimental::Tensor>* targets);
 
+  static std::vector<AutogradMeta*> autograd_meta(
+      std::vector<paddle::experimental::Tensor*>* targets);
+
   static std::pair<size_t, size_t> OutRankInfo(
       const paddle::experimental::Tensor& target);
 
@@ -125,6 +128,8 @@ class EagerUtils {
       paddle::optional<const paddle::experimental::Tensor&> target);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
       const std::vector<paddle::experimental::Tensor>& targets);
+  static std::vector<AutogradMeta*> nullable_autograd_meta(
+      const std::vector<paddle::experimental::Tensor*>& targets);
   static AutogradMeta* unsafe_autograd_meta(
       const paddle::experimental::Tensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
@@ -132,7 +137,10 @@ class EagerUtils {
 
   template <typename T, typename... Args>
   static bool ComputeRequireGrad(T trace_backward, Args&&... args) {
-    if (!trace_backward) return false;
+    if (!trace_backward) {
+      VLOG(6) << "Do not require grad because trace_backward = false";
+      return false;
+    }
 
     auto iter = ComputeRequireGradIter();
     iter.apply(std::forward<Args>(args)...);
@@ -159,6 +167,11 @@ class EagerUtils {
                                    target.name()));
     }
   }
+
+  // View Strategy
+  static void HandleViewBetweenInputAndOutput(
+      const std::shared_ptr<EagerVariable>& input_var,
+      const std::shared_ptr<EagerVariable>& view_output_var);
 
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
@@ -190,9 +203,6 @@ class EagerUtils {
   static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
       const size_t num);
   // Construct Tensor From var
-  static void ModifyInplaceInput(
-      const std::shared_ptr<EagerVariable>& inplace_variable,
-      paddle::experimental::Tensor* inplace_tensor);
   static std::vector<paddle::experimental::Tensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(
@@ -220,6 +230,8 @@ class EagerUtils {
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
   static void CheckAndRetainGrad(
       const std::vector<paddle::experimental::Tensor>& tensors);
+  static void CheckAndRetainGrad(
+      const std::vector<paddle::experimental::Tensor*>& tensors);
   static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
       const paddle::experimental::Tensor& tensor);
 

@@ -49,23 +49,6 @@ using DivFunctor = phi::funcs::DivideFunctor<T>;
 template <typename T>
 using InverseDivFunctor = phi::funcs::InverseDivideFunctor<T>;
 
-// Floor Divide
-template <typename T>
-struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-    return static_cast<T>(std::trunc(a / b));
-  }
-};
-
-template <typename T>
-struct InverseFloorDivFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
-    return static_cast<T>(std::trunc(b / a));
-  }
-};
-
 #undef DIV_ERROR_INFO
 
 // Maximum

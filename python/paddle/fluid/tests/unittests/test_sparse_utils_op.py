@@ -33,6 +33,7 @@ class TestSparseUtils(unittest.TestCase):
             stop_gradient = False
             coo = core.eager.sparse_coo_tensor(dense_indices, dense_elements,
                                                dense_shape, stop_gradient)
+
             print(coo)
 
     def test_create_sparse_csr_tensor(self):
@@ -49,6 +50,7 @@ class TestSparseUtils(unittest.TestCase):
             csr = core.eager.sparse_csr_tensor(dense_crows, dense_cols,
                                                dense_elements, dense_shape,
                                                stop_gradient)
+
             print(csr)
 
     def test_to_sparse_coo(self):
@@ -58,6 +60,7 @@ class TestSparseUtils(unittest.TestCase):
             non_zero_elements = [1, 2, 3, 4, 5]
             dense_x = paddle.to_tensor(x)
             out = dense_x.to_sparse_coo(2)
+            print(out)
             assert np.array_equal(out.non_zero_indices().numpy(),
                                   non_zero_indices)
             assert np.array_equal(out.non_zero_elements().numpy(),
@@ -81,6 +84,7 @@ class TestSparseUtils(unittest.TestCase):
                                   non_zero_elements)
 
             dense_tensor = out.to_dense()
+            print(dense_tensor)
             assert np.array_equal(dense_tensor.numpy(), x)
 
 

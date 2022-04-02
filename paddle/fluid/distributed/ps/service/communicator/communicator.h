@@ -299,7 +299,7 @@ class Communicator {
   virtual void Barrier() {}
 
   virtual void BarrierWithTable(uint32_t barrier_type) {
-    auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
+    auto rets = _worker_ptr->Barrier(barrier_table_id_, barrier_type);
     rets.wait();
     int status = rets.get();
     PADDLE_ENFORCE_EQ(status, 0,
@@ -310,7 +310,7 @@ class Communicator {
   virtual void CreateC2CConnection(int pserver_timeout_ms,
                                    int pserver_connect_timeout_ms,
                                    int max_retry) {
-    _worker_ptr->create_client2client_connection(
+    _worker_ptr->CreateClient2ClientConnection(
         pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
@@ -379,12 +379,12 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 
   // 计算每个shard 对 dense的存储量
-  inline uint32_t dense_dim_per_shard(uint32_t dense_dim_total,
-                                      uint32_t shard_num) {
+  inline uint32_t DenseDimPerShard(uint32_t dense_dim_total,
+                                   uint32_t shard_num) {
     return dense_dim_total / shard_num + 1;
   }
 
-  void init_gflag(const std::string &gflags);
+  void InitGFlag(const std::string &gflags);
   paddle::distributed::PSParameter _ps_param;
   paddle::distributed::PaddlePSEnvironment _ps_env;
   int servers_ = 0;

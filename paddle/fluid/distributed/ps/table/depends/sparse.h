@@ -40,11 +40,11 @@ class SparseOptimizer {
         value_offsets_(value_offsets),
         value_idx_(value_idx) {}
 
-  virtual void update(const uint64_t* keys, const float* update_values,
+  virtual void Update(const uint64_t* keys, const float* update_values,
                       size_t num, const std::vector<uint64_t>& offsets,
                       ValueBlock* block) = 0;
 
-  virtual void set_global_lr(float* lr) { global_learning_rate_ = lr; }
+  virtual void SetGlobalLR(float* lr) { global_learning_rate_ = lr; }
 
   const std::vector<std::string>& value_names_;
   const std::vector<int>& value_dims_;
@@ -70,7 +70,7 @@ class SSUM : public SparseOptimizer {
     update_numel = value_dims.at(idx);
   }
 
-  void update(const uint64_t* keys, const float* update_values, size_t num,
+  void Update(const uint64_t* keys, const float* update_values, size_t num,
               const std::vector<uint64_t>& offsets,
               ValueBlock* block) override {
     auto blas = GetBlas<float>();
@@ -100,7 +100,7 @@ class SSGD : public SparseOptimizer {
     lr_offset = value_offsets.at(idx);
   }
 
-  void update(const uint64_t* keys, const float* update_values, size_t num,
+  void Update(const uint64_t* keys, const float* update_values, size_t num,
               const std::vector<uint64_t>& offsets,
               ValueBlock* block) override {
     auto blas = GetBlas<float>();
@@ -156,7 +156,7 @@ class SAdam : public SparseOptimizer {
     epsilon = 1.0e-8;
   }
 
-  void update(const uint64_t* keys, const float* update_values, size_t num,
+  void Update(const uint64_t* keys, const float* update_values, size_t num,
               const std::vector<uint64_t>& offsets,
               ValueBlock* block) override {
     auto blas = GetBlas<float>();

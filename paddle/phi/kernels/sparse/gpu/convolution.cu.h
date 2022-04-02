@@ -349,7 +349,10 @@ int ProductRuleBook(const Context& dev_ctx,
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const int rulebook_rows = 3;
   const int rulebook_cols = kernel_size * non_zero_num;
-  rulebook->ResizeAndAllocate({rulebook_rows, rulebook_cols});
+  DenseTensorMeta rulebook_meta(
+      DataType::INT32, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
+  rulebook->set_meta(rulebook_meta);
+  dev_ctx.Alloc(rulebook, rulebook->dtype(), rulebook->numel() * sizeof(int));
   int* rulebook_ptr = rulebook->data<int>();
 
   const auto x_dims = x.dims();
@@ -608,8 +611,9 @@ int ProductRuleBook(const Context& dev_ctx,
   const int64_t sparse_dim = 4;
   DenseTensorMeta indices_meta(
       DataType::INT32, {sparse_dim, out_non_zero_num}, DataLayout::NCHW);
-  DenseTensorMeta values_meta(
-      x.dtype(), {out_non_zero_num, kernel_sizes[4]}, x.layout());
+  DenseTensorMeta values_meta(x.dtype(),
+                              {out_non_zero_num, kernel_sizes[4]},
+                              x.non_zero_elements().layout());
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 

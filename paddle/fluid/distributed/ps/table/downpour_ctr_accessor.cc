@@ -20,7 +20,7 @@
 namespace paddle {
 namespace distributed {
 
-int DownpourCtrAccessor::initialize() {
+int DownpourCtrAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
   _embed_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
@@ -37,64 +37,78 @@ int DownpourCtrAccessor::initialize() {
   return 0;
 }
 
-void DownpourCtrAccessor::GetTableInfo(AccessorInfo& info) {
-  info.dim = dim();
-  info.size = size();
-  info.select_dim = select_dim();
-  info.select_size = select_size();
-  info.update_dim = update_dim();
-  info.update_size = update_size();
-  info.fea_dim = fea_dim();
+void DownpourCtrAccessor::SetTableInfo(AccessorInfo& info) {
+  info.dim = Dim();
+  info.size = Size();
+  info.select_dim = SelectDim();
+  info.select_size = SelectSize();
+  info.update_dim = UpdateDim();
+  info.update_size = UpdateSize();
+  info.mf_size = MFSize();
 }
 
-size_t DownpourCtrAccessor::dim() {
+size_t DownpourCtrAccessor::GetTableInfo(InfoKey key) {
+  switch (key) {
+    case DIM:
+      return Dim();
+    case SIZE:
+      return Size();
+    case SELECT_DIM:
+      return SelectDim();
+    case SELECT_SIZE:
+      return SelectSize();
+    case UPDATE_DIM:
+      return UpdateDim();
+    case UPDATE_SIZE:
+      return UpdateSize();
+    case MF_SIZE:
+      return MFSize();
+    default:
+      return 0;
+  }
+  return 0;
+}
+
+size_t DownpourCtrAccessor::Dim() {
   auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrFeatureValue::dim(embedx_dim);
+  return DownpourCtrFeatureValue::Dim(embedx_dim);
 }
 
-size_t DownpourCtrAccessor::dim_size(size_t dim) {
+size_t DownpourCtrAccessor::DimSize(size_t dim) {
   auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrFeatureValue::dim_size(dim, embedx_dim);
+  return DownpourCtrFeatureValue::DimSize(dim, embedx_dim);
 }
 
-size_t DownpourCtrAccessor::size() {
+size_t DownpourCtrAccessor::Size() {
   auto embedx_dim = _config.embedx_dim();
-  return DownpourCtrFeatureValue::size(embedx_dim);
+  return DownpourCtrFeatureValue::Size(embedx_dim);
 }
 
-size_t DownpourCtrAccessor::mf_size() {
+size_t DownpourCtrAccessor::MFSize() {
   return (_config.embedx_dim() + 1) * sizeof(float);  // embedx embedx_g2sum
 }
 
 // pull value
-size_t DownpourCtrAccessor::select_dim() {
+size_t DownpourCtrAccessor::SelectDim() {
   auto embedx_dim = _config.embedx_dim();
   return 3 + embedx_dim;
 }
 
-size_t DownpourCtrAccessor::select_dim_size(size_t dim) {
-  return sizeof(float);
-}
+size_t DownpourCtrAccessor::SelectDimSize(size_t dim) { return sizeof(float); }
 
-size_t DownpourCtrAccessor::select_size() {
-  return select_dim() * sizeof(float);
-}
+size_t DownpourCtrAccessor::SelectSize() { return SelectDim() * sizeof(float); }
 
 // push value
-size_t DownpourCtrAccessor::update_dim() {
+size_t DownpourCtrAccessor::UpdateDim() {
   auto embedx_dim = _config.embedx_dim();
   return 4 + embedx_dim;
 }
 
-size_t DownpourCtrAccessor::update_dim_size(size_t dim) {
-  return sizeof(float);
-}
+size_t DownpourCtrAccessor::UpdateDimSize(size_t dim) { return sizeof(float); }
 
-size_t DownpourCtrAccessor::update_size() {
-  return update_dim() * sizeof(float);
-}
+size_t DownpourCtrAccessor::UpdateSize() { return UpdateDim() * sizeof(float); }
 
-bool DownpourCtrAccessor::shrink(float* value) {
+bool DownpourCtrAccessor::Shrink(float* value) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delete_threshold = _config.ctr_accessor_param().delete_threshold();
@@ -111,9 +125,9 @@ bool DownpourCtrAccessor::shrink(float* value) {
     return true;
   }
   auto show_right =
-      DownpourCtrFeatureValue::show(value) * _time_decay_rates[day_diff];
+      DownpourCtrFeatureValue::Show(value) * _time_decay_rates[day_diff];
   auto click_right =
-      DownpourCtrFeatureValue::click(value) * _time_decay_rates[day_diff];
+      DownpourCtrFeatureValue::Click(value) * _time_decay_rates[day_diff];
 
   // shrink after
   auto score = show_click_score(show_right, click_right);
@@ -152,15 +166,15 @@ bool DownpourCtrAccessor::save_ssd(float* value) {
 //     auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
 //     auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
 //     int16_t day_diff = _day_id - unseen_days;
-//     if (show_click_score(DownpourCtrFeatureValue::show(value),
-//     DownpourCtrFeatureValue::click(value)) >= base_threshold
+//     if (show_click_score(DownpourCtrFeatureValue::Show(value),
+//     DownpourCtrFeatureValue::Click(value)) >= base_threshold
 //         && day_diff <= delta_keep_days) {
-//         return DownpourCtrFeatureValue::show(value) > global_cache_threshold;
+//         return DownpourCtrFeatureValue::Show(value) > global_cache_threshold;
 //     }
 //     return false;
 // }
 
-bool DownpourCtrAccessor::save(float* value, int param) {
+bool DownpourCtrAccessor::Save(float* value, int param) {
   // auto base_threshold = _config.ctr_accessor_param().base_threshold();
   // auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   // auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -183,9 +197,9 @@ bool DownpourCtrAccessor::save(float* value, int param) {
       int16_t day_diff = _day_id - unseen_days;
 
       auto show_right =
-          DownpourCtrFeatureValue::show(value) * _time_decay_rates[day_diff];
+          DownpourCtrFeatureValue::Show(value) * _time_decay_rates[day_diff];
       auto click_right =
-          DownpourCtrFeatureValue::click(value) * _time_decay_rates[day_diff];
+          DownpourCtrFeatureValue::Click(value) * _time_decay_rates[day_diff];
 
       if (show_click_score(show_right, click_right) >= base_threshold &&
           DownpourCtrFeatureValue::delta_score(value) >= delta_threshold &&
@@ -201,8 +215,8 @@ bool DownpourCtrAccessor::save(float* value, int param) {
     }
     // already decayed in shrink
     case 3: {
-      // DownpourCtrFeatureValue::show(value) *= _show_click_decay_rate;
-      // DownpourCtrFeatureValue::click(value) *= _show_click_decay_rate;
+      // DownpourCtrFeatureValue::Show(value) *= _show_click_decay_rate;
+      // DownpourCtrFeatureValue::Click(value) *= _show_click_decay_rate;
       // do this after save, because it must not be modified when retry
       // DownpourCtrFeatureValue::unseen_days(value)++;
       return true;
@@ -212,7 +226,7 @@ bool DownpourCtrAccessor::save(float* value, int param) {
   };
 }
 
-void DownpourCtrAccessor::update_stat_after_save(float* value, int param) {
+void DownpourCtrAccessor::UpdateStatAfterSave(float* value, int param) {
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -224,9 +238,9 @@ void DownpourCtrAccessor::update_stat_after_save(float* value, int param) {
       auto unseen_days = DownpourCtrFeatureValue::unseen_days(value);
       int16_t day_diff = _day_id - unseen_days;
       auto show_right =
-          DownpourCtrFeatureValue::show(value) * _time_decay_rates[day_diff];
+          DownpourCtrFeatureValue::Show(value) * _time_decay_rates[day_diff];
       auto click_right =
-          DownpourCtrFeatureValue::click(value) * _time_decay_rates[day_diff];
+          DownpourCtrFeatureValue::Click(value) * _time_decay_rates[day_diff];
 
       if (show_click_score(show_right, click_right) >= base_threshold &&
           DownpourCtrFeatureValue::delta_score(value) >= delta_threshold &&
@@ -245,28 +259,28 @@ void DownpourCtrAccessor::update_stat_after_save(float* value, int param) {
   };
 }
 
-int32_t DownpourCtrAccessor::create(float** values, size_t num) {
+int32_t DownpourCtrAccessor::Create(float** values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
     value[DownpourCtrFeatureValue::unseen_days_index()] = 0;
     value[DownpourCtrFeatureValue::delta_score_index()] = 0;
-    value[DownpourCtrFeatureValue::show_index()] = 0;
-    value[DownpourCtrFeatureValue::click_index()] = 0;
-    value[DownpourCtrFeatureValue::slot_index()] = -1;
+    value[DownpourCtrFeatureValue::ShowIndex()] = 0;
+    value[DownpourCtrFeatureValue::ClickIndex()] = 0;
+    value[DownpourCtrFeatureValue::SlotIndex()] = -1;
     _embed_sgd_rule->init_value(
-        value + DownpourCtrFeatureValue::embed_w_index(),
+        value + DownpourCtrFeatureValue::Embed_W_Index(),
         value + DownpourCtrFeatureValue::embed_g2sum_index(), true);
     _embedx_sgd_rule->init_value(
-        value + DownpourCtrFeatureValue::embedx_w_index(),
+        value + DownpourCtrFeatureValue::Embedx_W_Index(),
         value + DownpourCtrFeatureValue::embedx_g2sum_index());
   }
   return 0;
 }
 
-bool DownpourCtrAccessor::need_extend_mf(float* value) {
-  float show = value[DownpourCtrFeatureValue::show_index()];
-  float click = value[DownpourCtrFeatureValue::click_index()];
+bool DownpourCtrAccessor::NeedExtendMF(float* value) {
+  float show = value[DownpourCtrFeatureValue::ShowIndex()];
+  float click = value[DownpourCtrFeatureValue::ClickIndex()];
   // float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff()
   float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
                 click * _config.ctr_accessor_param().click_coeff();
@@ -274,25 +288,25 @@ bool DownpourCtrAccessor::need_extend_mf(float* value) {
   return score >= _config.embedx_threshold();
 }
 
-bool DownpourCtrAccessor::has_mf(size_t size) {
+bool DownpourCtrAccessor::HasMF(size_t size) {
   return size > DownpourCtrFeatureValue::embedx_g2sum_index();
 }
 
 // from DownpourCtrFeatureValue to DownpourCtrPullValue
-int32_t DownpourCtrAccessor::select(float** select_values, const float** values,
+int32_t DownpourCtrAccessor::Select(float** select_values, const float** values,
                                     size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
     float* value = const_cast<float*>(values[value_item]);
-    select_value[DownpourCtrPullValue::show_index()] =
-        value[DownpourCtrFeatureValue::show_index()];
-    select_value[DownpourCtrPullValue::click_index()] =
-        value[DownpourCtrFeatureValue::click_index()];
-    select_value[DownpourCtrPullValue::embed_w_index()] =
-        value[DownpourCtrFeatureValue::embed_w_index()];
-    memcpy(select_value + DownpourCtrPullValue::embedx_w_index(),
-           value + DownpourCtrFeatureValue::embedx_w_index(),
+    select_value[DownpourCtrPullValue::ShowIndex()] =
+        value[DownpourCtrFeatureValue::ShowIndex()];
+    select_value[DownpourCtrPullValue::ClickIndex()] =
+        value[DownpourCtrFeatureValue::ClickIndex()];
+    select_value[DownpourCtrPullValue::Embed_W_Index()] =
+        value[DownpourCtrFeatureValue::Embed_W_Index()];
+    memcpy(select_value + DownpourCtrPullValue::Embedx_W_Index(),
+           value + DownpourCtrFeatureValue::Embedx_W_Index(),
            embedx_dim * sizeof(float));
   }
   return 0;
@@ -301,16 +315,16 @@ int32_t DownpourCtrAccessor::select(float** select_values, const float** values,
 // from DownpourCtrPushValue to DownpourCtrPushValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrAccessor::merge(float** update_values,
+int32_t DownpourCtrAccessor::Merge(float** update_values,
                                    const float** other_update_values,
                                    size_t num) {
   auto embedx_dim = _config.embedx_dim();
-  size_t total_dim = DownpourCtrPushValue::dim(embedx_dim);
+  size_t total_dim = DownpourCtrPushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* other_update_value = other_update_values[value_item];
     for (auto i = 0u; i < total_dim; ++i) {
-      if (i != DownpourCtrPushValue::slot_index()) {
+      if (i != DownpourCtrPushValue::SlotIndex()) {
         update_value[i] += other_update_value[i];
       }
     }
@@ -321,18 +335,18 @@ int32_t DownpourCtrAccessor::merge(float** update_values,
 // from DownpourCtrPushValue to DownpourCtrFeatureValue
 // first dim: item
 // second dim: field num
-int32_t DownpourCtrAccessor::update(float** update_values,
+int32_t DownpourCtrAccessor::Update(float** update_values,
                                     const float** push_values, size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
     const float* push_value = push_values[value_item];
-    float push_show = push_value[DownpourCtrPushValue::show_index()];
-    float push_click = push_value[DownpourCtrPushValue::click_index()];
-    float slot = push_value[DownpourCtrPushValue::slot_index()];
-    update_value[DownpourCtrFeatureValue::show_index()] += push_show;
-    update_value[DownpourCtrFeatureValue::click_index()] += push_click;
-    update_value[DownpourCtrFeatureValue::slot_index()] = slot;
+    float push_show = push_value[DownpourCtrPushValue::ShowIndex()];
+    float push_click = push_value[DownpourCtrPushValue::ClickIndex()];
+    float slot = push_value[DownpourCtrPushValue::SlotIndex()];
+    update_value[DownpourCtrFeatureValue::ShowIndex()] += push_show;
+    update_value[DownpourCtrFeatureValue::ClickIndex()] += push_click;
+    update_value[DownpourCtrFeatureValue::SlotIndex()] = slot;
     update_value[DownpourCtrFeatureValue::delta_score_index()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
@@ -340,25 +354,25 @@ int32_t DownpourCtrAccessor::update(float** update_values,
     // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[DownpourCtrFeatureValue::unseen_days_index()] = 0;
     _embed_sgd_rule->update_value(
-        update_value + DownpourCtrFeatureValue::embed_w_index(),
+        update_value + DownpourCtrFeatureValue::Embed_W_Index(),
         update_value + DownpourCtrFeatureValue::embed_g2sum_index(),
-        push_value + DownpourCtrPushValue::embed_g_index(), push_show);
+        push_value + DownpourCtrPushValue::Embed_G_Index(), push_show);
     _embedx_sgd_rule->update_value(
-        update_value + DownpourCtrFeatureValue::embedx_w_index(),
+        update_value + DownpourCtrFeatureValue::Embedx_W_Index(),
         update_value + DownpourCtrFeatureValue::embedx_g2sum_index(),
-        push_value + DownpourCtrPushValue::embedx_g_index(), push_show);
+        push_value + DownpourCtrPushValue::Embedx_G_Index(), push_show);
   }
   return 0;
 }
 
-bool DownpourCtrAccessor::create_value(int stage, const float* value) {
+bool DownpourCtrAccessor::CreateValue(int stage, const float* value) {
   // stage == 0, pull
   // stage == 1, push
   if (stage == 0) {
     return true;
   } else if (stage == 1) {
-    auto show = DownpourCtrPushValue::show(const_cast<float*>(value));
-    auto click = DownpourCtrPushValue::click(const_cast<float*>(value));
+    auto show = DownpourCtrPushValue::Show(const_cast<float*>(value));
+    auto click = DownpourCtrPushValue::Click(const_cast<float*>(value));
     auto score = show_click_score(show, click);
     if (score <= 0) {
       return false;
@@ -381,15 +395,14 @@ float DownpourCtrAccessor::show_click_score(float show, float click) {
   return (show - click) * nonclk_coeff + click * click_coeff;
 }
 
-std::string DownpourCtrAccessor::parse_to_string(const float* v,
-                                                 int param_size) {
+std::string DownpourCtrAccessor::ParseToString(const float* v, int param_size) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4] << " "
      << v[5] << " " << v[6];
-  auto show = DownpourCtrFeatureValue::show(const_cast<float*>(v));
-  auto click = DownpourCtrFeatureValue::click(const_cast<float*>(v));
+  auto show = DownpourCtrFeatureValue::Show(const_cast<float*>(v));
+  auto click = DownpourCtrFeatureValue::Click(const_cast<float*>(v));
   auto score = show_click_score(show, click);
   if (score >= _config.embedx_threshold() && param_size > 7) {
     os << " " << v[7];
@@ -400,22 +413,21 @@ std::string DownpourCtrAccessor::parse_to_string(const float* v,
   return os.str();
 }
 
-int DownpourCtrAccessor::parse_from_string(const std::string& str,
-                                           float* value) {
+int DownpourCtrAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
-  float data_buff[dim()];
+  float data_buff[Dim()];
   float* data_buff_ptr = data_buff;
 
   _embedx_sgd_rule->init_value(
-      data_buff_ptr + DownpourCtrFeatureValue::embedx_w_index(),
+      data_buff_ptr + DownpourCtrFeatureValue::Embedx_W_Index(),
       data_buff_ptr + DownpourCtrFeatureValue::embedx_g2sum_index());
 
   auto str_len = paddle::string::str_to_float(str.data(), data_buff_ptr);
   CHECK(str_len >= 6) << "expect more than 6 real:" << str_len;
   // no slot, embedx
-  int value_dim = dim();
+  int value_dim = Dim();
   int embedx_g2sum_index = DownpourCtrFeatureValue::embedx_g2sum_index();
-  value[DownpourCtrFeatureValue::slot_index()] = -1;
+  value[DownpourCtrFeatureValue::SlotIndex()] = -1;
   // other case
   if (str_len == (value_dim - 1)) {
     memcpy(value, data_buff_ptr, (embedx_g2sum_index - 1) * sizeof(float));
@@ -471,8 +483,8 @@ void DownpourCtrAccessor::update_time_decay(float* value,
   if (day_diff >= _config.ctr_accessor_param().delete_after_unseen_days()) {
     return;
   }
-  DownpourCtrFeatureValue::show(value) *= _time_decay_rates[day_diff];
-  DownpourCtrFeatureValue::click(value) *= _time_decay_rates[day_diff];
+  DownpourCtrFeatureValue::Show(value) *= _time_decay_rates[day_diff];
+  DownpourCtrFeatureValue::Click(value) *= _time_decay_rates[day_diff];
   if (is_update_seen_day) {
     DownpourCtrFeatureValue::unseen_days(value) = _day_id;
   }

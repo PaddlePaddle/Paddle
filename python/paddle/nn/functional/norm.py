@@ -24,6 +24,7 @@ from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -78,7 +79,12 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             # [[0.         0.24253564 0.37139067]
             # [1.         0.97014254 0.9284767 ]]
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        out = _C_ops.final_state_p_norm(x, float(p), axis, epsilon, True, False)
+        return x / _C_ops.elementwise_max(out, eps)
+
+    if _in_legacy_dygraph():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, 'axis', axis, 'porder',
                             float(p), 'keepdim', True, 'epsilon', epsilon)
@@ -181,7 +187,7 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dynamic_mode():
-        # for dygraph need tuple
+
         attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
@@ -489,7 +495,7 @@ def local_response_norm(x,
             format(dim))
 
     for i, sz in enumerate(sizes):
-        if not sz > 0:
+        if not sz > 0 and i > 0:
             raise ValueError("Expected every dim's size to be larger than 0, "
                              "but the size of the {}-th dim is {}".format(i,
                                                                           sz))

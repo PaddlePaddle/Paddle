@@ -45,7 +45,7 @@ atype_to_parsing_function = {
     "std::vector<double>": "CastPyArg2Float64s",
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
-    "paddle::experimental::ScalarArray": "CastPyArg2ScalarArray",
+    "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::experimental::Place": "CastPyArg2Place",
     "paddle::experimental::DataType": "CastPyArg2DataType",
 }
@@ -140,7 +140,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include  "paddle/phi/common/backend.h"
 #include  "paddle/phi/common/data_type.h"
 #include  "paddle/phi/common/scalar.h"
-#include  "paddle/phi/common/scalar_array.h"
+#include  "paddle/phi/common/int_array.h"
 #include  "paddle/phi/api/include/sparse_api.h"
 #include  "paddle/phi/api/include/strings_api.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
@@ -311,7 +311,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
-        # Generate Python-C Function Definitions
+        # Generate Python-C Function Definitions 
         if is_forward_only:
             fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
                 "paddle::experimental::", namespace, forward_api_name)
@@ -337,21 +337,21 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             forward_api_name_prefix, forward_api_name, namespace,
             forward_api_name, forward_api_name)
 
-        if len(inplace_map) > 0:
+        if inplace_map:
+            inplaced_forward_api_name = GetInplacedFunctionName(
+                self.forward_api_name)
+            if is_forward_only:
+                inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+                    "paddle::experimental::", namespace,
+                    inplaced_forward_api_name)
+            else:
+                inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+                    "::", namespace,
+                    GetForwardFunctionName(inplaced_forward_api_name))
+
             assert len(
                 inplace_map
             ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
-            inplaced_forward_api_name = GetInplacedFunctionName(
-                self.forward_api_name)
-            # Generate Python-C Function Definitions
-            if is_forward_only:
-                fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                    "paddle::experimental::", namespace,
-                    inplaced_forward_api_name)
-            elif len(inplace_map) > 0:
-                fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                    "::", namespace,
-                    GetForwardFunctionName(inplaced_forward_api_name))
             for inplace_input, inplace_output in inplace_map.items():
                 return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
                     inplaced_forward_api_name, inplace_input,
@@ -361,7 +361,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
                 inplaced_forward_api_name, get_eager_tensor_str,
-                parse_attributes_str, fwd_function_name,
+                parse_attributes_str, inplaced_fwd_function_name,
                 dygraph_function_call_str, return_str)
 
             # Generate Python-C Function Registration
