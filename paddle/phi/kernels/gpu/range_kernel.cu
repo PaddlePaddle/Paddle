@@ -63,4 +63,8 @@ void RangeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    range, GPU, ALL_LAYOUT, phi::RangeKernel, float, double, int64_t, int) {}
+    range, GPU, ALL_LAYOUT, phi::RangeKernel, float, double, int64_t, int) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+}
