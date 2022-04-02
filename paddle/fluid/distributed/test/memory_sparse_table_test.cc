@@ -36,7 +36,7 @@ TEST(MemorySparseTable, SGD) {
   table_config.set_shard_num(10);
   FsClientParameter fs_config;
   Table *table = new MemorySparseTable();
-  table->set_shard(0, 1);
+  table->SetShard(0, 1);
 
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CtrCommonAccessor");
@@ -66,7 +66,7 @@ TEST(MemorySparseTable, SGD) {
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
   ASSERT_EQ(ret, 0);
 
   // pull parameters for create and check
@@ -76,7 +76,7 @@ TEST(MemorySparseTable, SGD) {
   std::vector<float> init_values;
   init_values.resize(init_keys.size() * (emb_dim + 3));
   auto value = PullSparseValue(init_keys, init_fres, emb_dim);
-  table->pull_sparse(init_values.data(), value);
+  table->PullSparse(init_values.data(), value);
 
   // for check
   std::vector<float> total_gradients;
@@ -109,8 +109,7 @@ TEST(MemorySparseTable, SGD) {
     auto &push_keys = trainer_keys[i];
     auto &push_values = trainer_gradient_values[i];
     auto task = [table, &push_keys, &push_values] {
-      table->push_sparse(push_keys.data(), push_values.data(),
-                         push_keys.size());
+      table->PushSparse(push_keys.data(), push_values.data(), push_keys.size());
     };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
@@ -120,7 +119,7 @@ TEST(MemorySparseTable, SGD) {
 
   std::vector<float> pull_values;
   pull_values.resize(init_keys.size() * (emb_dim + 3));
-  table->pull_sparse(pull_values.data(), value);
+  table->PullSparse(pull_values.data(), value);
 
   for (size_t i = 0; i < init_keys.size(); ++i) {
     for (size_t j = 2; j < emb_dim + 3; ++j) {
@@ -133,7 +132,7 @@ TEST(MemorySparseTable, SGD) {
   }
 
   MemorySparseTable *ctr_table = dynamic_cast<MemorySparseTable *>(table);
-  ctr_table->save_local_fs("./work/table.save", "0", "test");
+  ctr_table->SaveLocalFS("./work/table.save", "0", "test");
 }
 
 }  // namespace distributed

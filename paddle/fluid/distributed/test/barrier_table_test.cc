@@ -39,19 +39,19 @@ TEST(BarrierTable, Barrier) {
   common_config->set_trainer_num(trainers);
   common_config->set_sync(sync);
 
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
 
   std::unordered_map<uint32_t, std::shared_ptr<Table>> maps =
       std::unordered_map<uint32_t, std::shared_ptr<Table>>();
 
-  table->set_table_map(&maps);
+  table->SetTableMap(&maps);
 
   std::shared_ptr<::ThreadPool> pool_ =
       std::make_shared<::ThreadPool>(trainers);
   std::vector<std::future<void>> task_status;
 
   for (auto x = 0; x < trainers; x++) {
-    auto task = [table, x] { table->barrier(x, 0); };
+    auto task = [table, x] { table->Barrier(x, 0); };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
 
