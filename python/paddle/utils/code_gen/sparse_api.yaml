@@ -7,6 +7,21 @@
   intermediate : rulebook
   backward : conv3d_grad
 
+- api : coo_values
+  args : (Tensor x)
+  output : Tensor(out@DenseTensor)
+  kernel :
+    func : coo_values
+    layout : x
+  backward : coo_values_grad
+
+- api : csr_values
+  args : (Tensor x)
+  output : Tensor(out@DenseTensor)
+  kernel :
+    func : csr_values
+    layout : x
+
 - api : relu
   args : (Tensor x)
   output : Tensor(out@SparseCooTensor)
