@@ -190,7 +190,9 @@ bool IsEagerTensor(PyObject* obj) {
 }
 
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
+      PyObject_IsInstance(obj,
+                          reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

@@ -155,7 +155,8 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj,
   paddle::platform::Place place = impl_ptr->place();
   auto array = obj.cast<py::array>();
   if (platform::is_cpu_place(place)) {
-    SetStringTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place);
+    SetStringTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place,
+                                                   zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "StringTensor only support CPUPlace now, but receive %s",
@@ -200,6 +201,17 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
+}
+
+void InitStringTensorWithStringTensor(TensorObject* self,
+                                      const paddle::experimental::Tensor& src,
+                                      const paddle::platform::Place& place,
+                                      const std::string& name) {
+  self->tensor.set_name(name);
+  auto impl = std::static_pointer_cast<phi::StringTensor>(src.impl());
+  self->tensor.set_impl(impl);
+  VLOG(4)
+      << "Do ShareDataWith when using StringTensor to initialize StringTensor";
 }
 
 py::object ParsePyArray(
@@ -426,6 +438,45 @@ void AutoInitStringTensorByPyArray(
                        "generated_string_tensor");
   EmptyStringTensorInitializer(py_tensor_ptr, act_name, place);
   InitStringTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
+}
+
+void AutoInitStringTensorByStringTensor(
+    TensorObject* py_tensor_ptr,
+    std::unordered_map<std::string, PyObject*> kws_map, PyObject* args,
+    bool flag_kwargs, Py_ssize_t args_num) {
+  // The first argument of the Tensor constructor is StringTensor,
+  // there are 3 arguments to construct the new StringTensor,
+  // kw_order_map's key is every arguments of the constructor,
+  // kw_order_map's value is the position of the arguments respectively.
+  // If u want to update this constructor with new arguments,
+  // need to update this map and to add or change related code.
+  std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"value", 1},
+                                                           {"name", 2}};
+
+  paddle::platform::Place place =
+      egr::Controller::Instance().GetExpectedPlace();
+  std::string act_name = "";
+
+  act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num,
+                       "generated_string_tensor");
+  paddle::experimental::Tensor src_tensor;
+  if (kw_order_map["value"] <= args_num) {
+    src_tensor =
+        CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
+                         kw_order_map["value"] - 1);
+  } else {
+    if (flag_kwargs && kws_map["value"] != NULL) {
+      src_tensor = CastPyArg2Tensor(kws_map["value"], 0);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The first expected kwargs is {value: Tensor}, "
+          "but could not parse the first argument {value: Tensor} "
+          "successfully. "
+          "Please check your input first and make sure you are on the right "
+          "way."));
+    }
+  }
+  InitStringTensorWithStringTensor(py_tensor_ptr, src_tensor, place, act_name);
 }
 
 /** We should have init function with signature:
@@ -869,8 +920,8 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         } else if (PyObject_IsInstance(kw_value, reinterpret_cast<PyObject*>(
                                                      p_string_tensor_type))) {
           VLOG(6) << "Calling case5's or case6's string initializer";
-          // AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
-          // flag_kwargs, args_num);
+          AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
+                                             flag_kwargs, args_num);
           return 0;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -913,8 +964,8 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else if (PyObject_IsInstance(arg0_ptr, reinterpret_cast<PyObject*>(
                                                  p_string_tensor_type))) {
       VLOG(6) << "Calling case5's or case6's string initializer.";
-      // AutoInitStringTensorByTensor(py_tensor_ptr, kws_map, args, flag_kwargs,
-      //                        args_num);
+      AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
+                                         flag_kwargs, args_num);
       return 0;
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -930,8 +981,8 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     if (PyObject_IsInstance(
             arg0_ptr, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
       VLOG(6) << "Calling case6's string initializer.";
-      // AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
-      // flag_kwargs, args_num);
+      AutoInitStringTensorByStringTensor(py_tensor_ptr, kws_map, args,
+                                         flag_kwargs, args_num);
       return 0;
     } else {
       VLOG(6) << "Calling case2's string initializer.";

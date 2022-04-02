@@ -22,7 +22,11 @@ import copy
 
 class EagerStringTensorTestCase(unittest.TestCase):
     def setUp(self):
-        self.str_arr = np.array([["国王王后"], ["233"], ['AbcDEF']])
+        self.str_arr = np.array([
+            ["15.4寸笔记本的键盘确实爽，基本跟台式机差不多了，蛮喜欢数字小键盘，输数字特方便，样子也很美观，做工也相当不错"
+             ],  # From ChnSentiCorp
+            ["One of the very best Three Stooges shorts ever."]
+        ])  # From IMDB
 
     def test_constructor_with_args(self):
         with _test_eager_guard():
@@ -51,7 +55,17 @@ class EagerStringTensorTestCase(unittest.TestCase):
             self.assertEqual(ST4.shape, list(self.str_arr.shape))
             self.assertTrue(np.array_equal(ST4.numpy(), self.str_arr))
 
-            for st in [ST1, ST2, ST3, ST4]:
+            ST5 = core.eager.StringTensor(ST4)  # constructor 5
+            self.assertEqual(ST5.name, "generated_string_tensor_2")
+            self.assertEqual(ST5.shape, list(self.str_arr.shape))
+            self.assertTrue(np.array_equal(ST5.numpy(), self.str_arr))
+
+            ST6 = core.eager.StringTensor(ST5, "ST6")  # constructor 6
+            self.assertEqual(ST6.name, "ST6")
+            self.assertEqual(ST6.shape, list(self.str_arr.shape))
+            self.assertTrue(np.array_equal(ST6.numpy(), self.str_arr))
+
+            for st in [ST1, ST2, ST3, ST4, ST5, ST6]:
                 # All StringTensors are on cpu place so far.
                 self.assertTrue(st.place._equals(core.CPUPlace()))
 
@@ -72,6 +86,20 @@ class EagerStringTensorTestCase(unittest.TestCase):
             self.assertEqual(ST2.name, "ST2")
             self.assertEqual(ST2.shape, list(self.str_arr.shape))
             self.assertTrue(np.array_equal(ST2.numpy(), self.str_arr))
+
+            ST3 = core.eager.StringTensor(ST2, name="ST3")  # constructor 6
+            self.assertEqual(ST3.name, "ST3")
+            self.assertEqual(ST3.shape, list(self.str_arr.shape))
+            self.assertTrue(np.array_equal(ST3.numpy(), self.str_arr))
+
+            ST4 = core.eager.StringTensor(
+                value=ST2, name="ST4")  # constructor 6
+            self.assertEqual(ST4.name, "ST4")
+            self.assertEqual(ST4.shape, list(self.str_arr.shape))
+            self.assertTrue(np.array_equal(ST4.numpy(), self.str_arr))
+            for st in [ST1, ST2, ST3, ST4]:
+                # All StringTensors are on cpu place so far.
+                self.assertTrue(st.place._equals(core.CPUPlace()))
 
 
 if __name__ == "__main__":
