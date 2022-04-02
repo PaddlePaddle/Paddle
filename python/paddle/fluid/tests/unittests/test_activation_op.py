@@ -47,6 +47,41 @@ class TestSqrtOpError(unittest.TestCase):
 
 class TestActivation(OpTest):
     def setUp(self):
+        self.op_type = "exp"
+        self.init_dtype()
+        self.init_kernel_type()
+        self.check_eager = True
+
+        np.random.seed(2049)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.exp(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_output(check_eager=check_eager)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_kernel_type(self):
+        pass
+
+
+class TestExpm1(TestActivation):
+    def setUp(self):
         self.op_type = "expm1"
         self.init_dtype()
 
@@ -59,38 +94,6 @@ class TestActivation(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
-
-    def test_check_output(self):
-        self.check_output()
-
-    def init_dtype(self):
-        self.dtype = np.float64
-
-    def init_kernel_type(self):
-        pass
-
-
-class TestExp(TestActivation):
-    def setUp(self):
-        self.python_api = paddle.exp
-        self.op_type = "exp"
-        self.init_dtype()
-        self.init_kernel_type()
-
-        np.random.seed(2049)
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        out = np.exp(x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-
-    def test_check_output(self):
-        self.check_output(check_eager=True)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestExpm1API(unittest.TestCase):
@@ -880,6 +883,8 @@ def ref_softshrink(x, threshold=0.5):
 class TestSoftshrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
+        self.check_eager = True
+        self.python_api = paddle.nn.functional.softshrink
         self.init_dtype()
 
         threshold = 0.8
@@ -894,7 +899,7 @@ class TestSoftshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSoftshrinkAPI(unittest.TestCase):
@@ -1054,6 +1059,8 @@ class TestAbs(TestActivation):
 class TestCeil(TestActivation):
     def setUp(self):
         self.op_type = "ceil"
+        self.check_eager = True
+        self.python_api = paddle.ceil
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1071,6 +1078,8 @@ class TestCeil(TestActivation):
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
+        self.check_eager = True
+        self.python_api = paddle.floor
         self.init_dtype()
 
         np.random.seed(1024)
@@ -1267,6 +1276,8 @@ class TestAtanh(TestActivation):
 class TestRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
+        self.check_eager = True
+        self.python_api = paddle.round
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2079,6 +2090,8 @@ class TestReciprocal(TestActivation):
 class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
+        self.check_eager = True
+        self.python_api = paddle.log
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2091,7 +2104,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = fluid.layers.data(
@@ -2106,6 +2119,8 @@ class TestLog(TestActivation):
 class TestLog2(TestActivation):
     def setUp(self):
         self.op_type = "log2"
+        self.check_eager = True
+        self.python_api = paddle.log2
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -2117,7 +2132,7 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2155,6 +2170,8 @@ class TestLog2(TestActivation):
 class TestLog10(TestActivation):
     def setUp(self):
         self.op_type = "log10"
+        self.check_eager = True
+        self.python_api = paddle.log10
         self.init_dtype()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -2166,7 +2183,7 @@ class TestLog10(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2204,6 +2221,8 @@ class TestLog10(TestActivation):
 class TestLog1p(TestActivation):
     def setUp(self):
         self.op_type = "log1p"
+        self.check_eager = True
+        self.python_api = paddle.log1p
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2216,7 +2235,7 @@ class TestLog1p(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -2302,6 +2321,8 @@ class TestSquareBF16(OpTest):
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
+        self.python_api = paddle.pow
+        self.check_eager = False
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2315,12 +2336,14 @@ class TestPow(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=self.check_eager)
 
 
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
+        self.check_eager = False
+        self.python_api = paddle.pow
         self.init_dtype()
 
         np.random.seed(1024)
@@ -2336,12 +2359,12 @@ class TestPow_factor_tensor(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=self.check_eager)
 
     def test_api(self):
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
@@ -3136,7 +3159,7 @@ def create_test_act_fp16_class(parent,
 
 
 create_test_act_fp16_class(TestActivation)
-create_test_act_fp16_class(TestExp)
+create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestLogSigmoid)
