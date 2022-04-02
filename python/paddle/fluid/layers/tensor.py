@@ -21,7 +21,7 @@ import warnings
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph
+from ..framework import convert_np_dtype_to_dtype_, _non_static_mode, _varbase_creator, device_guard, _in_legacy_dygraph, in_dygraph_mode
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -243,6 +243,11 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.final_state_cast(x, dtype)
+
     if _non_static_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -606,15 +611,24 @@ def assign(input, output=None):
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        check_dtype(input.dtype, 'input', [
-            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
-            'uint8', 'bool'
-        ], 'assign', '(When the type of input in assign is Variable.)')
-        if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
-        helper.append_op(
-            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
+        if _non_static_mode():
+            if output is None:
+                if _in_legacy_dygraph():
+                    output = core.VarBase()
+                else:
+                    output = core.eager.Tensor()
+            _C_ops.assign(input, output)
+        else:
+            check_dtype(input.dtype, 'input', [
+                'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+                'uint8', 'bool'
+            ], 'assign', '(When the type of input in assign is Variable.)')
+            if output is None:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
+            helper.append_op(
+                type='assign', inputs={'X': [input]},
+                outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         # Not support [var, var, ...] currently.
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
@@ -663,9 +677,7 @@ def assign(input, output=None):
             })
 
     if is_inplace and _non_static_mode():
-        # TODO(jiabin): Remove this when we support inplace
-        if _in_legacy_dygraph():
-            output._bump_inplace_version()
+        output._bump_inplace_version()
 
     return output
 
