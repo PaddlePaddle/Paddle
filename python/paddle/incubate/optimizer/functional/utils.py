@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.autograd.functional import vjp, Jacobian
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_type, check_dtype
 
@@ -86,11 +85,14 @@ def _value_and_gradient(f, x, v=None):
         value: a tensor that holds the function value.
         gradient: a tensor that holds the function gradients.  
     """
+    # use detach to cut off relation between x and original graph
+    x = x.detach()
+    x.stop_gradient = False
+    value = f(x)
     if paddle.in_dynamic_mode():
-        value, gradient = vjp(f, x, v=v)
-        gradient = gradient[0]
+        # only need to compute first order derivative, and some op dont support high order derivative.
+        gradient = paddle.grad([value], [x], create_graph=False)[0]
     else:
-        JJ = Jacobian(f, x)
-        gradient = JJ[:][0]
-        value = f(x)
-    return value, gradient
+        gradient = paddle.static.gradients([value], [x])[0]
+    # use detach to make results real number without grad to avoid assign error
+    return value.detach(), gradient.detach()

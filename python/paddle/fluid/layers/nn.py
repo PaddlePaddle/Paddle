@@ -25,6 +25,7 @@ import six
 
 import paddle
 from ..layer_helper import LayerHelper
+from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, _non_static_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags, _in_legacy_dygraph, in_dygraph_mode
 from .. import dygraph_utils
@@ -40,6 +41,7 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = [
     'fc',
@@ -204,7 +206,6 @@ def _elementwise_op_in_dygraph(x,
                                op_name=None):
     op = getattr(_C_ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
 
@@ -6498,7 +6499,9 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze(input, axes)[1]
+    if _in_legacy_dygraph():
         out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
 
@@ -6559,8 +6562,10 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
-        return out
+        if _in_legacy_dygraph():
+            out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
+            return out
+        return _C_ops.final_state_unsqueeze(input, axes)[1]
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
     check_variable_and_dtype(input, 'input', [
@@ -8981,7 +8986,9 @@ def log(x, name=None):
             res = paddle.log(x)
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_log(x)
+    if _in_legacy_dygraph():
         return _C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
@@ -11745,8 +11752,12 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_size(input)
+
+    if _in_legacy_dygraph():
         return _C_ops.size(input)
+
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], "size")
@@ -13503,6 +13514,9 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_log_loss(input, label, epsilon)
+
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
     check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
@@ -14518,7 +14532,10 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    if _non_static_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_where_index(condition)
+    if _in_legacy_dygraph():
         return _C_ops.where_index(condition)
 
     helper = LayerHelper("where_index", **locals())
@@ -15011,6 +15028,10 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
+                                         dilations)
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="unfold",
@@ -15238,6 +15259,10 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_shard_index(input, index_num, nshards,
+                                              shard_id, ignore_value)
+
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())

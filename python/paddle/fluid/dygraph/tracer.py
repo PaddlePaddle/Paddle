@@ -110,6 +110,9 @@ class Tracer(core.Tracer):
 
         arg_list = []
         for i in range(len(op_args)):
+            # initialized with None
+            arg_to_append = None
+
             arg_name = op_args[i]
             arg_type = op_args_type[i]
             if arg_name in inputs.keys():
@@ -117,14 +120,20 @@ class Tracer(core.Tracer):
             elif arg_name in outputs.keys():
                 arg_to_append = outputs[arg_name]
             else:
-                if "Num" in arg_name:
+                if "Num" in arg_name[-3:]:
                     # Remove "Num" suffix to get out_name
                     out_name = arg_name[:-3]
                     assert out_name in outputs.keys()
                     num_outs = len(outputs[out_name])
                     arg_to_append = num_outs
-                else:
-                    arg_to_append = None
+                # NOTE(dev): For MasterParam/MasterParamOut in optimzer op
+                elif "Var" in arg_name[-3:]:
+                    out_name = arg_name[:-3]
+                    print(out_name)
+                    if out_name in outputs.keys():
+                        arg_to_append = outputs[out_name]
+                    elif out_name in inputs.keys():
+                        arg_to_append = inputs[out_name]
 
             if arg_to_append is None:
                 arg_list.append(arg_to_append)

@@ -21,7 +21,7 @@ from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only, _in_legacy_dygraph
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr

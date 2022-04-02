@@ -31,9 +31,10 @@ def PD2TRT_Conv2d_Lower : Pat<
         (PD_Conv2dOp:$old_value $Input, $Filter, $strides, $paddings, $padding_algorithm, $groups, $dilations, $data_format),
         (createTRTConv2dOp $old_value)>;
 
+def createTrtPoolingOp : NativeCodeCall<"::infrt::trt::CreatePaddleTrtPoolingOp($_builder, $0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)">;
 def PD2TRT_Pooling_Lower : Pat<
         (PD_Pool2dOp $Input, $pooling_type, $ksize, $global_pooling, $strides, $paddings, $exclusive, $adaptive, $ceil_mode, $data_format, $padding_algorithm),
-        (TRT_PoolingOp $Input, (INFRT_createI32Attr<"0">)/*kmax*/, $ksize, $strides, $paddings, $padding_algorithm)>;
+        (createTrtPoolingOp $Input, $pooling_type, $ksize, $global_pooling, $strides, $paddings, $exclusive, $adaptive, $ceil_mode, $data_format, $padding_algorithm)>;
 
 def PD2TRT_MatrixMultipl_Lower : Pat<
         (PD_MulOp $Input1, $Input2, $x_num_col_dims, $y_num_col_dims),
