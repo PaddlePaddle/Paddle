@@ -72,7 +72,7 @@ void TrilIndicesInferMeta(int rows,
                           MetaTensor* out){
                          
   // number of elements in the first row of the tril,bounded by [0, cols]
-  auto m_first_row = offset > 0 ?std::min<int64_t>(cols, 1 + offset) : rows + offset > 0; 
+  auto m_first_row = offset > 0 ? std::min<int64_t>(cols, 1 + offset) : rows + offset > 0; 
   // number of elements in the last row of the tril, bounded by [0, cols]
   auto m_last_row = std::max<int64_t>(0, std::min<int64_t>(cols, rows + offset));
   // number of rows, bounded by [0, rows]

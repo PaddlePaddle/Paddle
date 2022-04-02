@@ -27,8 +27,9 @@ import paddle
 class TestTrilIndicesOp(OpTest):
     def setUp(self):
         self.op_type = "tril_indices"
+        self.inputs = {}
         self.init_config()
-        self.outputs = {'Out': self.target}
+        self.outputs = {'out': self.target}
 
     def test_check_output(self):
         self.check_output()
@@ -38,13 +39,13 @@ class TestTrilIndicesOp(OpTest):
         self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
 
 
-class TestTraceOpCase1(TestTrilIndicesOp):
+class TestTrilIndicesOpCase1(TestTrilIndicesOp):
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': 0}
         self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])
 
 
-class TestTraceOpCase1(TestTrilIndicesOp):
+class TestTrilIndicesOpCase2(TestTrilIndicesOp):
     def init_config(self):
         self.attrs = {'rows': 4, 'cols': 4, 'offset': 2}
         self.target = np.tril_indices(self.attrs['rows'],self.attrs['offset'],self.attrs['cols'])

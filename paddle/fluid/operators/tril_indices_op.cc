@@ -40,7 +40,7 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("cols", "int number, the input of tril_indices op").SetDefault(0);
     AddAttr<int>("offset", "int number, the input of tril_indices op bounded by [1-rows,cols-1").SetDefault(0);
     AddAttr<int>("dtype","data type ,the input of tril_indices op").SetDefault(framework::proto::VarType::INT64);
-    AddOutput("Out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
+    AddOutput("out","Tensor, the output tensor, with the shape (2,x),x bounded by [0,rows*cols])");
   
     AddComment(R"DOC(
   TrilIndices Operator.
