@@ -158,16 +158,17 @@ class ProcessGroupMapFromGid {
   }
 
   void insert(int gid, ProcessGroup* pg) {
-    PADDLE_ENFORCE_EQ(has(gid), false,
-                      platform::errors::PreconditionNotMet(
-                          "The process group with id %d doesnot exist.", gid));
+    // PADDLE_ENFORCE_EQ(has(gid), false,
+    //                  platform::errors::PreconditionNotMet(
+    //                      "The process group with id %d does exist.", gid));
     map_[gid] = pg;
   }
 
   ProcessGroup* get(int gid) {
-    PADDLE_ENFORCE_EQ(has(gid), false,
-                      platform::errors::PreconditionNotMet(
-                          "The process group with id %d doesnot exist.", gid));
+    // PADDLE_ENFORCE_EQ(has(gid), true,
+    //                  platform::errors::PreconditionNotMet(
+    //                      "The process group with id %d doesnot exist.",
+    //                      gid));
     return map_.find(gid)->second;
   }
 
