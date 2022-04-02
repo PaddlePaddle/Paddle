@@ -15,13 +15,15 @@
 #pragma once
 
 #include <NvInfer.h>
+#include <llvm/ADT/StringRef.h>
+#include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/Operation.h>
+#include <mlir/IR/Value.h>
 
 #include <string>
 
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 #include "paddle/infrt/kernel/tensorrt/trt_helper.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
@@ -63,7 +65,12 @@ inline void ConvFunc(trt::ConvolutionOp& op,  // NOLINT
   nvinfer1::Dims dims = ArrayAttrToNvDims(size_attrs);
   auto kernel_weights =
       TensorToWeights(value_to_tensor_map[op.kernel_weights()]);
-  auto bias_weights = TensorToWeights(value_to_tensor_map[op.bias_weights()]);
+  nvinfer1::Weights bias_weights;
+  if (op.bias_weights() == mlir::Value()) {
+    bias_weights = nvinfer1::Weights{};
+  } else {
+    bias_weights = TensorToWeights(value_to_tensor_map[op.bias_weights()]);
+  }
 
   auto* layer =
       network->addConvolutionNd(*value_to_trt_tensor_map[input_tensor_repr],
@@ -72,6 +79,51 @@ inline void ConvFunc(trt::ConvolutionOp& op,  // NOLINT
                                 kernel_weights,
                                 bias_weights);
   CHECK_NOTNULL(layer);
+  mlir::Value out_repr = op.output_tensor();
+  nvinfer1::ITensor* out_tensor = layer->getOutput(0);
+  value_to_trt_tensor_map[out_repr] = out_tensor;
+}
+
+inline void PoolFunc(trt::PoolingOp& op,  // NOLINT
+                     nvinfer1::INetworkDefinition* network,
+                     ValueToITensorMap& value_to_trt_tensor_map,  // NOLINT
+                     ValueToTensorMap& value_to_tensor_map) {     // NOLINT
+  mlir::Value input_tensor_repr = op.input_tensor();
+  nvinfer1::ITensor* input_itensor = value_to_trt_tensor_map[input_tensor_repr];
+  // nvinfer1::Dims input_shape = input_itensor->getDimensions();
+  // int input_dims = input_shape.nbDims;
+
+  auto padding_mode = op.padding_mode();
+  auto pool_type = op.pool_type();
+  mlir::ArrayAttr paddings = op.paddings();
+  mlir::ArrayAttr strides = op.strides();
+  mlir::ArrayAttr ksize = op.window_size();
+  bool exclusive = op.exclusive();
+  bool adaptive = op.adaptive();
+  auto padding_algorithm = op.padding_algorithm().str();
+
+  if (padding_algorithm == "SAME") {
+    // TODO(wilber)
+    CHECK(false) << "Not supported `same` padding algorithm";
+  }
+
+  if (adaptive) {
+    // TODO(Inference)
+    CHECK(false) << "Not supported adaptive pool";
+  }
+
+  nvinfer1::Dims window_size = ArrayAttrToNvDims(ksize);
+
+  auto* layer =
+      network->addPoolingNd(*input_itensor,
+                            static_cast<nvinfer1::PoolingType>(pool_type),
+                            window_size);
+  CHECK_NOTNULL(layer);
+  layer->setPaddingMode(static_cast<nvinfer1::PaddingMode>(padding_mode));
+  layer->setPaddingNd(ArrayAttrToNvDims(paddings));
+  layer->setStrideNd(ArrayAttrToNvDims(strides));
+  layer->setAverageCountExcludesPadding(exclusive);
+
   mlir::Value out_repr = op.output_tensor();
   nvinfer1::ITensor* out_tensor = layer->getOutput(0);
   value_to_trt_tensor_map[out_repr] = out_tensor;

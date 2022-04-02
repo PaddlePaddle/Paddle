@@ -44,9 +44,9 @@ struct MaskedSelectGradFunctor {
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad,
                             const DenseTensor& x,
                             const DenseTensor& mask,
+                            const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
   auto mask_size = mask.numel();
   dev_ctx.template Alloc<T>(x_grad);
