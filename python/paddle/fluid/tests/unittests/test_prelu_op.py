@@ -157,6 +157,7 @@ class PReluTest(OpTest):
         self.init_input_shape()
         self.init_attr()
         self.op_type = "prelu"
+        self.python_api = paddle.nn.functional.prelu
 
         x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         # Since zero point in prelu is not differentiable, avoid randomize
@@ -207,10 +208,10 @@ class PReluTest(OpTest):
         self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Alpha'], 'Out')
+        self.check_grad(['X', 'Alpha'], 'Out', check_eager=False)
 
 
 @skip_check_grad_ci(
@@ -373,7 +374,8 @@ def create_test_fp16_class(parent,
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=atol)
+                    self.check_output_with_place(
+                        place, atol=atol, check_eager=False)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -381,7 +383,8 @@ def create_test_fp16_class(parent,
                 self.check_grad_with_place(
                     place, ['X', 'Alpha'],
                     'Out',
-                    max_relative_error=max_relative_error)
+                    max_relative_error=max_relative_error,
+                    check_eager=False)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name

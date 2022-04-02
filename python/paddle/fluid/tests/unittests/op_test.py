@@ -1559,6 +1559,8 @@ class OpTest(unittest.TestCase):
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 with _test_eager_guard():
+                    print(actual_np)
+                    print(expect_np)
                     super()._compare_numpy(name, actual_np, expect_np)
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
