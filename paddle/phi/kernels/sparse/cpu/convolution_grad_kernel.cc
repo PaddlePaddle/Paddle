@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
@@ -31,15 +32,15 @@ namespace sparse {
 template <typename T, typename Context>
 void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
-                      const DenseTensor& rulebook,
                       const DenseTensor& kernel,
-                      const DenseTensor& out_grad,
+                      const DenseTensor& rulebook,
+                      const SparseCooTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
                       const bool subm,
-                      DenseTensor* x_grad,
+                      SparseCooTensor* x_grad,
                       DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
@@ -73,11 +74,18 @@ void Conv3dGradKernel(const Context& dev_ctx,
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  x_grad->Resize(x.non_zero_elements().dims());
-  dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
-  T* x_grad_values_ptr = x_grad->data<T>();
-  memset(x_grad_values_ptr, 0, sizeof(T) * x_grad->numel());
+  DenseTensor x_grad_indices =
+      phi::EmptyLike<int>(dev_ctx, x.non_zero_indices());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  T* x_grad_values_ptr = x_grad_values.data<T>();
+  memset(x_grad_values_ptr, 0, sizeof(T) * x_grad_values.numel());
   memset(d_x_features_ptr, 0, sizeof(T) * d_x_features.numel());
+  phi::Copy<Context>(dev_ctx,
+                     x.non_zero_indices(),
+                     dev_ctx.GetPlace(),
+                     false,
+                     &x_grad_indices);
+  x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
   std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0);
   for (int i = 0; i < rulebook_len; i++) {
@@ -97,12 +105,12 @@ void Conv3dGradKernel(const Context& dev_ctx,
     phi::funcs::sparse::SubmPreProcess<T, Context>(dev_ctx,
                                                    x,
                                                    kernel,
-                                                   out_grad,
+                                                   out_grad.non_zero_elements(),
                                                    in_channels,
                                                    out_channels,
                                                    half_kernel_size,
                                                    kernel_grad,
-                                                   x_grad);
+                                                   &x_grad_values);
     if (max_count == 0) {
       return;
     }
@@ -113,7 +121,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
             rulebook_len,
             in_channels,
             in_features_ptr);
-  Gather<T>(out_grad.data<T>(),
+  Gather<T>(out_grad.non_zero_elements().data<T>(),
             rulebook_ptr + rulebook_len * 2,
             rulebook_len,
             out_channels,

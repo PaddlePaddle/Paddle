@@ -1824,7 +1824,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           // Bump inplace version of inplace tensor.
           auto inplace_input_name = inplace_map[output_name];
           const char* FWD_OUT_TENSOR_TEMPLATE =
-              "  egr::EagerUtils::ModifyInplaceInput(outs[\"%s\"][0], &%s);\n"
+              "  egr::EagerUtils::GetOutput(outs[\"%s\"][0], &%s);\n"
               "  %s.bump_inplace_version();\n"
               "  VLOG(3) << \"Tensor(\" << %s.name() << \") uses Inplace "
               "Strategy.\";\n";
@@ -2651,7 +2651,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
-      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
+      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -2803,7 +2804,7 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     // Inplace Function Generator.
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
-    if (op_type != "sum" && infer_inplace) {
+    if (infer_inplace && !special_inplace_op_set.count(op_type)) {
       auto in_to_outs = infer_inplace(true);
       for (auto& inplace_pair : in_to_outs) {
         inplace_map[inplace_pair.second] = inplace_pair.first;

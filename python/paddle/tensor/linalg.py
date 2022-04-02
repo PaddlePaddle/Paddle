@@ -288,10 +288,16 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           axis (int, optional): None for last dimension.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            if axis is None: axis = -1
+            return _C_ops.final_state_p_norm(input, porder, axis, 1e-12,
+                                             keepdim, asvector)
+
+        if _in_legacy_dygraph():
             if axis is None: axis = -1
             return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
                                  'keepdim', keepdim, 'asvector', asvector)
+
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
@@ -1112,7 +1118,7 @@ def t(input, name=None):
     return out
 
 
-def cross(x, y, axis=None, name=None):
+def cross(x, y, axis=9, name=None):
     """
     Computes the cross product between two tensors along an axis.
 
@@ -1122,7 +1128,7 @@ def cross(x, y, axis=None, name=None):
     Args:
         x (Tensor): The first input tensor.
         y (Tensor): The second input tensor.
-        axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1212,8 +1218,12 @@ def cholesky(x, upper=False, name=None):
             #  [1.25450498 0.05600871 0.06400121]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cholesky(x, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky(x, "upper", upper)
+
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -1447,7 +1457,10 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if paddle.in_dynamic_mode():
+    # if in_dygraph_mode():
+    #     return _C_ops.final_state_bincount(x, weights, minlength)
+
+    if _in_legacy_dygraph():
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1761,7 +1774,10 @@ def matrix_power(x, n, name=None):
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_matrix_power(x, n)
+
+    if _in_legacy_dygraph():
         return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
@@ -2279,7 +2295,10 @@ def eigh(x, UPLO='L', name=None):
             #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eigh(x, UPLO)
+
+    if _in_legacy_dygraph():
         return _C_ops.eigh(x, 'UPLO', UPLO)
 
     def __check_input(x, UPLO):
@@ -2749,7 +2768,10 @@ def cholesky_solve(x, y, upper=False, name=None):
         print(out)
         # [-2.5, -7, 9.5]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_cholesky_solve(x, y, upper)
+
+    if _in_legacy_dygraph():
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
 
     helper = LayerHelper("cholesky_solve", **locals())

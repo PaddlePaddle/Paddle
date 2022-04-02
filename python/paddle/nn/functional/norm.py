@@ -24,6 +24,7 @@ from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -78,7 +79,12 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             # [[0.         0.24253564 0.37139067]
             # [1.         0.97014254 0.9284767 ]]
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        out = _C_ops.final_state_p_norm(x, float(p), axis, epsilon, True, False)
+        return x / _C_ops.elementwise_max(out, eps)
+
+    if _in_legacy_dygraph():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, 'axis', axis, 'porder',
                             float(p), 'keepdim', True, 'epsilon', epsilon)
