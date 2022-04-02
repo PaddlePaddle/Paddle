@@ -539,7 +539,7 @@
 
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
-  args : (Tensor out_grad, Scalar scale, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, bias, bias_after_scale)
 

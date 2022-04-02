@@ -11766,6 +11766,12 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
+    if in_dygraph_mode():
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+        out = _C_ops.final_state_scale(x,
+                                       float(_scale),
+                                       float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
     if _non_static_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = _C_ops.scale(x, 'scale',
