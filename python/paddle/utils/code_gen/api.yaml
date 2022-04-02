@@ -1126,16 +1126,6 @@
     func : prod_raw
   backward : reduce_prod_grad
 
-- api : reduce_sum
-  args : (Tensor x, int64_t[] dims, DataType out_dtype, bool keep_dim)
-  output : Tensor(out)
-  infer_meta :
-    func : SumInferMeta
-  kernel :
-    func : reduce_sum
-    data_type : x
-  backward : reduce_sum_grad
-
 - api : relu
   args : (Tensor x)
   output : Tensor
@@ -1377,13 +1367,14 @@
   # no_need_buffer : x, y
 
 - api : sum
-  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
-  output : Tensor
+  args : (Tensor x, int64_t[] dims, DataType out_dtype, bool keep_dim)
+  output : Tensor(out)
   infer_meta :
     func : SumInferMeta
   kernel :
     func : sum
     data_type : x
+  backward : sum_grad
 
 # take_along_axis
 - api : take_along_axis

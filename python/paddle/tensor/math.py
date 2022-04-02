@@ -910,11 +910,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             axis = axis if axis != None and axis != [] else [0]
 
-        if dtype_flag:
-            out_dtype = convert_np_dtype_to_dtype_(dtype)
-        else:
-            out_dtype = None
-        return _C_ops.final_state_reduce_sum(x, axis, out_dtype, keepdim)
+        out_dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.final_state_sum(x, axis, out_dtype, keepdim)
 
     if _in_legacy_dygraph():
         axis = axis if axis != None and axis != [] else [0]
