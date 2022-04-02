@@ -57,10 +57,10 @@ class TestTopkOp(OpTest):
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out', check_eager=False)
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 
 
 class TestTopkOp1(TestTopkOp):
