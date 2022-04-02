@@ -126,7 +126,7 @@ class TestFullLikeOp2(TestFullLikeOp1):
         self.dtype = np.float64
 
 
-class TestFullLikeOp2(TestFullLikeOp1):
+class TestFullLikeOp3(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 8888
         self.shape = [5000, 5000]
