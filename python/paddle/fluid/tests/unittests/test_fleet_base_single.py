@@ -46,7 +46,7 @@ class TestFleetDygraphSingle(unittest.TestCase):
 
     def test_dygraph_single(self):
         paddle.disable_static()
-        fleet.init(is_collective=True)
+        paddle.distributed.init_parallel_env()
 
         layer = LinearNet()
         loss_fn = nn.MSELoss()

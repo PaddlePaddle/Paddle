@@ -42,7 +42,13 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       int seed_data = 0;
       if (seed) {
-        seed_data = *(seed->data<int>());
+        if (platform::is_xpu_place(seed->place())) {
+          memory::Copy(platform::CPUPlace(), &seed_data, seed->place(),
+                       seed->data<int>(), sizeof(int));
+        } else {
+          seed_data = *(seed->data<int>());
+        }
+
       } else {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;

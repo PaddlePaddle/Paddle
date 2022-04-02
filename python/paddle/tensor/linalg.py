@@ -288,10 +288,16 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           axis (int, optional): None for last dimension.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
+            if axis is None: axis = -1
+            return _C_ops.final_state_p_norm(input, porder, axis, 1e-12,
+                                             keepdim, asvector)
+
+        if _in_legacy_dygraph():
             if axis is None: axis = -1
             return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
                                  'keepdim', keepdim, 'asvector', asvector)
+
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
