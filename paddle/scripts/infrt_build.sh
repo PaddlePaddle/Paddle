@@ -81,6 +81,7 @@ function init() {
 }
 
 function infrt_gen_and_build() {
+    parallel_number=24
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
