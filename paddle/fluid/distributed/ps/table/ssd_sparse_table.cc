@@ -20,7 +20,7 @@ DEFINE_string(rocksdb_path, "database", "path of sparse table rocksdb file");
 namespace paddle {
 namespace distributed {
 
-int32_t SSDSparseTable::initialize() {
+int32_t SSDSparseTable::Initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
@@ -53,9 +53,9 @@ int32_t SSDSparseTable::initialize() {
     offset += dim;
   }
 
-  initialize_value();
-  initialize_optimizer();
-  initialize_recorder();
+  InitializeValue();
+  InitializeOptimizer();
+  InitializeRecorder();
   _db = paddle::distributed::RocksDBHandler::GetInstance();
   _db->initialize(FLAGS_rocksdb_path, task_pool_size_);
   return 0;
@@ -66,18 +66,18 @@ int32_t SSDSparseTable::Pull(TableContext& context) {
   if (context.use_ptr) {
     char** pull_values = context.pull_context.ptr_values;
     const uint64_t* keys = context.pull_context.keys;
-    return pull_sparse_ptr(pull_values, keys, context.num);
+    return PullSparsePtr(pull_values, keys, context.num);
   } else {
     float* pull_values = context.pull_context.values;
     const PullSparseValue& pull_value = context.pull_context.pull_value;
-    return pull_sparse(pull_values, pull_value);
+    return PullSparse(pull_values, pull_value);
   }
 }
 
 int32_t SSDSparseTable::Push(TableContext& context) { return 0; }
 
-int32_t SSDSparseTable::pull_sparse(float* pull_values,
-                                    const PullSparseValue& pull_value) {
+int32_t SSDSparseTable::PullSparse(float* pull_values,
+                                   const PullSparseValue& pull_value) {
   auto shard_num = task_pool_size_;
   std::vector<std::future<int>> tasks(shard_num);
 
@@ -140,8 +140,8 @@ int32_t SSDSparseTable::pull_sparse(float* pull_values,
   return 0;
 }
 
-int32_t SSDSparseTable::pull_sparse_ptr(char** pull_values,
-                                        const uint64_t* keys, size_t num) {
+int32_t SSDSparseTable::PullSparsePtr(char** pull_values, const uint64_t* keys,
+                                      size_t num) {
   auto shard_num = task_pool_size_;
   std::vector<std::future<int>> tasks(shard_num);
 
@@ -201,9 +201,9 @@ int32_t SSDSparseTable::pull_sparse_ptr(char** pull_values,
   return 0;
 }
 
-int32_t SSDSparseTable::shrink(const std::string& param) { return 0; }
+int32_t SSDSparseTable::Shrink(const std::string& param) { return 0; }
 
-int32_t SSDSparseTable::update_table() {
+int32_t SSDSparseTable::UpdateTable() {
   int count = 0;
   int value_size = shard_values_[0]->value_length_;
   int db_size = 3 + value_size;
@@ -299,7 +299,7 @@ int64_t SSDSparseTable::SaveValueToText(std::ostream* os,
   return save_num;
 }
 
-int32_t SSDSparseTable::load(const std::string& path,
+int32_t SSDSparseTable::Load(const std::string& path,
                              const std::string& param) {
   rwlock_->WRLock();
   VLOG(3) << "ssd sparse table load with " << path << " with meta " << param;

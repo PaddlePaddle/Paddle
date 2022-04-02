@@ -33,7 +33,7 @@ namespace distributed {
     return -1;                                             \
   }
 
-int32_t GraphBrpcServer::initialize() {
+int32_t GraphBrpcServer::Initialize() {
   auto &service_config = _config.downpour_server_param().service_param();
   if (!service_config.has_service_class()) {
     LOG(ERROR) << "miss service_class in ServerServiceParameter";
@@ -48,7 +48,7 @@ int32_t GraphBrpcServer::initialize() {
   }
 
   _service.reset(service);
-  if (service->configure(this) != 0 || service->initialize() != 0) {
+  if (service->Configure(this) != 0 || service->Initialize() != 0) {
     LOG(ERROR) << "service initialize failed, service_name:"
                << service_config.service_class();
     return -1;
@@ -61,11 +61,11 @@ int32_t GraphBrpcServer::initialize() {
   return 0;
 }
 
-brpc::Channel *GraphBrpcServer::get_cmd_channel(size_t server_index) {
+brpc::Channel *GraphBrpcServer::GetCmdChannel(size_t server_index) {
   return _pserver_channels[server_index].get();
 }
 
-uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
+uint64_t GraphBrpcServer::Start(const std::string &ip, uint32_t port) {
   std::unique_lock<std::mutex> lock(mutex_);
 
   std::string ip_port = ip + ":" + std::to_string(port);
@@ -73,20 +73,20 @@ uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
   brpc::ServerOptions options;
 
   int num_threads = std::thread::hardware_concurrency();
-  auto trainers = _environment->get_trainers();
+  auto trainers = _environment->GetTrainers();
   options.num_threads = trainers > num_threads ? trainers : num_threads;
 
   if (_server.Start(ip_port.c_str(), &options) != 0) {
     LOG(ERROR) << "GraphBrpcServer start failed, ip_port=" << ip_port;
     return 0;
   }
-  _environment->registe_ps_server(ip, port, _rank);
+  _environment->RegistePsServer(ip, port, _rank);
   return 0;
 }
 
 int32_t GraphBrpcServer::build_peer2peer_connection(int rank) {
   this->rank = rank;
-  auto _env = environment();
+  auto _env = Environment();
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.timeout_ms = 500000;
@@ -94,7 +94,7 @@ int32_t GraphBrpcServer::build_peer2peer_connection(int rank) {
   options.connect_timeout_ms = 10000;
   options.max_retry = 3;
 
-  std::vector<PSHost> server_list = _env->get_ps_servers();
+  std::vector<PSHost> server_list = _env->GetPsServers();
   _pserver_channels.resize(server_list.size());
   std::ostringstream os;
   std::string server_ip_port;
@@ -172,19 +172,18 @@ int32_t GraphBrpcService::remove_graph_node(Table *table,
   ((GraphTable *)table)->remove_graph_node(node_ids);
   return 0;
 }
-int32_t GraphBrpcServer::port() { return _server.listen_address().port; }
+int32_t GraphBrpcServer::Port() { return _server.listen_address().port; }
 
-int32_t GraphBrpcService::initialize() {
+int32_t GraphBrpcService::Initialize() {
   _is_initialize_shard_info = false;
-  _service_handler_map[PS_STOP_SERVER] = &GraphBrpcService::stop_server;
-  _service_handler_map[PS_LOAD_ONE_TABLE] = &GraphBrpcService::load_one_table;
-  _service_handler_map[PS_LOAD_ALL_TABLE] = &GraphBrpcService::load_all_table;
+  _service_handler_map[PS_STOP_SERVER] = &GraphBrpcService::StopServer;
+  _service_handler_map[PS_LOAD_ONE_TABLE] = &GraphBrpcService::LoadOneTable;
+  _service_handler_map[PS_LOAD_ALL_TABLE] = &GraphBrpcService::LoadAllTable;
 
-  _service_handler_map[PS_PRINT_TABLE_STAT] =
-      &GraphBrpcService::print_table_stat;
-  _service_handler_map[PS_BARRIER] = &GraphBrpcService::barrier;
-  _service_handler_map[PS_START_PROFILER] = &GraphBrpcService::start_profiler;
-  _service_handler_map[PS_STOP_PROFILER] = &GraphBrpcService::stop_profiler;
+  _service_handler_map[PS_PRINT_TABLE_STAT] = &GraphBrpcService::PrintTableStat;
+  _service_handler_map[PS_BARRIER] = &GraphBrpcService::Barrier;
+  _service_handler_map[PS_START_PROFILER] = &GraphBrpcService::StartProfiler;
+  _service_handler_map[PS_STOP_PROFILER] = &GraphBrpcService::StopProfiler;
 
   _service_handler_map[PS_PULL_GRAPH_LIST] = &GraphBrpcService::pull_graph_list;
   _service_handler_map[PS_GRAPH_SAMPLE_NEIGHBORS] =
@@ -207,21 +206,21 @@ int32_t GraphBrpcService::initialize() {
   _service_handler_map[PS_GRAPH_LOAD_GRAPH_SPLIT_CONFIG] =
       &GraphBrpcService::load_graph_split_config;
   // shard初始化,server启动后才可从env获取到server_list的shard信息
-  initialize_shard_info();
+  InitializeShardInfo();
 
   return 0;
 }
 
-int32_t GraphBrpcService::initialize_shard_info() {
+int32_t GraphBrpcService::InitializeShardInfo() {
   if (!_is_initialize_shard_info) {
     std::lock_guard<std::mutex> guard(_initialize_shard_mutex);
     if (_is_initialize_shard_info) {
       return 0;
     }
-    server_size = _server->environment()->get_ps_servers().size();
-    auto &table_map = *(_server->table());
+    server_size = _server->Environment()->GetPsServers().size();
+    auto &table_map = *(_server->GetTable());
     for (auto itr : table_map) {
-      itr.second->set_shard(_rank, server_size);
+      itr.second->SetShard(_rank, server_size);
     }
     _is_initialize_shard_info = true;
   }
@@ -241,7 +240,7 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
 
   response->set_err_code(0);
   response->set_err_msg("");
-  auto *table = _server->table(request->table_id());
+  auto *table = _server->GetTable(request->table_id());
   brpc::Controller *cntl = static_cast<brpc::Controller *>(cntl_base);
   auto itr = _service_handler_map.find(request->cmd_id());
   if (itr == _service_handler_map.end()) {
@@ -261,7 +260,7 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
   }
 }
 
-int32_t GraphBrpcService::barrier(Table *table, const PsRequestMessage &request,
+int32_t GraphBrpcService::Barrier(Table *table, const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
@@ -275,16 +274,16 @@ int32_t GraphBrpcService::barrier(Table *table, const PsRequestMessage &request,
 
   auto trainer_id = request.client_id();
   auto barrier_type = request.params(0);
-  table->barrier(trainer_id, barrier_type);
+  table->Barrier(trainer_id, barrier_type);
   return 0;
 }
 
-int32_t GraphBrpcService::print_table_stat(Table *table,
-                                           const PsRequestMessage &request,
-                                           PsResponseMessage &response,
-                                           brpc::Controller *cntl) {
+int32_t GraphBrpcService::PrintTableStat(Table *table,
+                                         const PsRequestMessage &request,
+                                         PsResponseMessage &response,
+                                         brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
-  std::pair<int64_t, int64_t> ret = table->print_table_stat();
+  std::pair<int64_t, int64_t> ret = table->PrintTableStat();
   paddle::framework::BinaryArchive ar;
   ar << ret.first << ret.second;
   std::string table_info(ar.Buffer(), ar.Length());
@@ -293,10 +292,10 @@ int32_t GraphBrpcService::print_table_stat(Table *table,
   return 0;
 }
 
-int32_t GraphBrpcService::load_one_table(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl) {
+int32_t GraphBrpcService::LoadOneTable(Table *table,
+                                       const PsRequestMessage &request,
+                                       PsResponseMessage &response,
+                                       brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
@@ -304,20 +303,20 @@ int32_t GraphBrpcService::load_one_table(Table *table,
         "PsRequestMessage.datas is requeired at least 2 for path & load_param");
     return -1;
   }
-  if (table->load(request.params(0), request.params(1)) != 0) {
+  if (table->Load(request.params(0), request.params(1)) != 0) {
     set_response_code(response, -1, "table load failed");
     return -1;
   }
   return 0;
 }
 
-int32_t GraphBrpcService::load_all_table(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl) {
-  auto &table_map = *(_server->table());
+int32_t GraphBrpcService::LoadAllTable(Table *table,
+                                       const PsRequestMessage &request,
+                                       PsResponseMessage &response,
+                                       brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
   for (auto &itr : table_map) {
-    if (load_one_table(itr.second.get(), request, response, cntl) != 0) {
+    if (LoadOneTable(itr.second.get(), request, response, cntl) != 0) {
       LOG(ERROR) << "load table[" << itr.first << "] failed";
       return -1;
     }
@@ -325,13 +324,13 @@ int32_t GraphBrpcService::load_all_table(Table *table,
   return 0;
 }
 
-int32_t GraphBrpcService::stop_server(Table *table,
-                                      const PsRequestMessage &request,
-                                      PsResponseMessage &response,
-                                      brpc::Controller *cntl) {
+int32_t GraphBrpcService::StopServer(Table *table,
+                                     const PsRequestMessage &request,
+                                     PsResponseMessage &response,
+                                     brpc::Controller *cntl) {
   GraphBrpcServer *p_server = (GraphBrpcServer *)_server;
   std::thread t_stop([p_server]() {
-    p_server->stop();
+    p_server->Stop();
     LOG(INFO) << "Server Stoped";
   });
   p_server->export_cv()->notify_all();
@@ -339,19 +338,19 @@ int32_t GraphBrpcService::stop_server(Table *table,
   return 0;
 }
 
-int32_t GraphBrpcService::stop_profiler(Table *table,
-                                        const PsRequestMessage &request,
-                                        PsResponseMessage &response,
-                                        brpc::Controller *cntl) {
+int32_t GraphBrpcService::StopProfiler(Table *table,
+                                       const PsRequestMessage &request,
+                                       PsResponseMessage &response,
+                                       brpc::Controller *cntl) {
   platform::DisableProfiler(platform::EventSortingKey::kDefault,
                             string::Sprintf("server_%s_profile", _rank));
   return 0;
 }
 
-int32_t GraphBrpcService::start_profiler(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl) {
+int32_t GraphBrpcService::StartProfiler(Table *table,
+                                        const PsRequestMessage &request,
+                                        PsResponseMessage &response,
+                                        brpc::Controller *cntl) {
   platform::EnableProfiler(platform::ProfilerState::kCPU);
   return 0;
 }
@@ -475,7 +474,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   std::vector<int> server2request(server_size, -1);
   std::vector<int64_t> local_id;
   std::vector<int> local_query_idx;
-  size_t rank = get_rank();
+  size_t rank = GetRank();
   for (int query_idx = 0; query_idx < node_num; ++query_idx) {
     int server_index =
         ((GraphTable *)table)->get_server_index_by_id(node_data[query_idx]);
@@ -589,9 +588,9 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     closure->request(request_idx)
         ->add_params((char *)&need_weight, sizeof(bool));
     PsService_Stub rpc_stub(
-        ((GraphBrpcServer *)get_server())->get_cmd_channel(server_index));
+        ((GraphBrpcServer *)GetServer())->GetCmdChannel(server_index));
     // GraphPsService_Stub rpc_stub =
-    //     getServiceStub(get_cmd_channel(server_index));
+    //     getServiceStub(GetCmdChannel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
     rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
                      closure->response(request_idx), closure);

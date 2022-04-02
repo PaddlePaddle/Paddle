@@ -41,50 +41,48 @@ class MemorySparseTable : public SparseTable {
   virtual ~MemorySparseTable() {}
 
   // unused method begin
-  virtual int32_t pull_dense(float* pull_values, size_t num) { return 0; }
-  virtual int32_t push_dense_param(const float* values, size_t num) {
-    return 0;
-  }
-  virtual int32_t push_dense(const float* values, size_t num) { return 0; }
+  virtual int32_t PullDense(float* pull_values, size_t num) { return 0; }
+  virtual int32_t PushDenseParam(const float* values, size_t num) { return 0; }
+  virtual int32_t PushDense(const float* values, size_t num) { return 0; }
   // unused method end
 
   virtual int32_t Pull(TableContext& context);
   virtual int32_t Push(TableContext& context);
 
-  virtual int32_t initialize();
-  virtual int32_t initialize_shard() { return 0; }
-  virtual int32_t initialize_value();
+  virtual int32_t Initialize();
+  virtual int32_t InitializeShard() { return 0; }
+  virtual int32_t InitializeValue();
 
-  virtual int32_t load(const std::string& path, const std::string& param);
+  virtual int32_t Load(const std::string& path, const std::string& param);
 
-  virtual int32_t save(const std::string& path, const std::string& param);
+  virtual int32_t Save(const std::string& path, const std::string& param);
 
-  int32_t load_local_fs(const std::string& path, const std::string& param);
-  int32_t save_local_fs(const std::string& path, const std::string& param,
-                        const std::string& prefix);
+  int32_t LoadLocalFS(const std::string& path, const std::string& param);
+  int32_t SaveLocalFS(const std::string& path, const std::string& param,
+                      const std::string& prefix);
 
-  int64_t local_size();
-  int64_t local_mf_size();
+  int64_t LocalSize();
+  int64_t LocalMFSize();
 
-  virtual std::pair<int64_t, int64_t> print_table_stat();
-  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
+  virtual std::pair<int64_t, int64_t> PrintTableStat();
+  virtual int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
-  virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,
-                                  size_t num);
+  virtual int32_t PullSparsePtr(char** pull_values, const uint64_t* keys,
+                                size_t num);
 
-  virtual int32_t push_sparse(const uint64_t* keys, const float* values,
-                              size_t num);
+  virtual int32_t PushSparse(const uint64_t* keys, const float* values,
+                             size_t num);
 
-  virtual int32_t push_sparse(const uint64_t* keys, const float** values,
-                              size_t num);
+  virtual int32_t PushSparse(const uint64_t* keys, const float** values,
+                             size_t num);
 
-  virtual int32_t flush();
-  virtual int32_t shrink(const std::string& param);
-  virtual void clear();
+  virtual int32_t Flush();
+  virtual int32_t Shrink(const std::string& param);
+  virtual void Clear();
 
  protected:
-  virtual int32_t _push_sparse(const uint64_t* keys, const float** values,
-                               size_t num);
+  virtual int32_t _PushSparse(const uint64_t* keys, const float** values,
+                              size_t num);
 
  protected:
   const int _task_pool_size = 24;
