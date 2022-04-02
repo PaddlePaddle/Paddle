@@ -16,6 +16,12 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+
+#if defined(PADDLE_WITH_CUDA)
+#include "cub/cub.cuh"
+#include "cub/util_allocator.cuh"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -48,7 +54,6 @@ class HeterCommKernel {
   void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, long long len,
                   const StreamType& stream);
 
-  // CustomGradMerger merger_;
   template <typename KeyT, typename ValueT, typename StreamType>
   void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
                   const KeyT* d_keys_in, KeyT* d_keys_out,

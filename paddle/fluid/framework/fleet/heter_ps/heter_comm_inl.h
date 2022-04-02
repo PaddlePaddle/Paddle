@@ -796,7 +796,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   heter_comm_kernel_->fill_shard_grads(d_shard_keys_ptr, d_keys,
                                        d_shard_grads_ptr, d_grads, d_idx_ptr,
-                                       uniq_len, stream);
+                                       (long long)uniq_len, stream);
 
   sync_stream(stream);
 

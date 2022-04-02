@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
-
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 namespace paddle {
 namespace framework {
 
@@ -77,7 +77,7 @@ __device__ void update_mf(int n, float* w, float* g2sum, const float* g,
   (*g2sum) += add_g2sum / n;
 }
 
-__device__ void xpu_rand_uniform(float* ret_val) { *ret_val = 0.1; }
+__device__ float xpu_rand_uniform() { return 0.1; }
 
 template <typename ValType, typename GradType>
 __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
@@ -108,10 +108,9 @@ __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
       val.mf_size = MF_DIM + 1;
       val.mf[0] = 0;
 
-      float ret_val;
-      xpu_rand_uniform(&ret_val);
+      xpu_rand_uniform(&);
       for (int i = 0; i < MF_DIM; ++i) {
-        (*val).mf[i + 1] = (ret_val)*local_mf_initial_range;
+        (*val).mf[i + 1] = (xpu_rand_uniform()) * local_mf_initial_range;
       }
     }
   } else {

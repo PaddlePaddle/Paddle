@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
+#include <thread>
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
-
 namespace paddle {
 namespace framework {
 
@@ -162,7 +162,8 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, char* d_vals,
       container_, d_keys, d_vals, len, pull_feature_value_size_);
 }
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
                                          StreamType stream) {
@@ -174,7 +175,8 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                                        d_vals, len);
 }
 
-template <typename KeyType, typename ValType, typename StreamType>
+template <typename KeyType, typename ValType>
+template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys, size_t len,
                                          char* pool, size_t start_index,
                                          StreamType stream) {

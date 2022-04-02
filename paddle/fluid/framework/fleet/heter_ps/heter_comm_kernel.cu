@@ -175,12 +175,13 @@ void HeterCommKernel::fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx,
 }
 
 template <typename KeyT, typename ValueT, typename StreamType>
-void HeterCommKernel::sort_pairs(
-    void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-    const KeyT* d_keys_in,                             // NOLINT
-    KeyT* d_keys_out, const ValueT* d_values_in, ValueT* d_values_out,
-    int num_items, int begin_bit = 0, int end_bit = sizeof(KeyT) * 8,
-    StreamType stream = 0, bool debug_synchronous = false) {
+void HeterCommKernel::sort_pairs(void* d_temp_storage,
+                                 size_t& temp_storage_bytes,  // NOLINT
+                                 const KeyT* d_keys_in,       // NOLINT
+                                 KeyT* d_keys_out, const ValueT* d_values_in,
+                                 ValueT* d_values_out, int num_items,
+                                 int begin_bit, int end_bit, StreamType stream,
+                                 bool debug_synchronous) {
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, d_values_in,
       d_values_out, num_items, begin_bit, end_bit, stream, debug_synchronous));
@@ -196,8 +197,8 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
                                     ValuesInputIteratorT d_values_in,
                                     AggregatesOutputIteratorT d_aggregates_out,
                                     NumRunsOutputIteratorT d_num_runs_out,
-                                    int num_items, StreamType stream = 0,
-                                    bool debug_synchronous = false) {
+                                    int num_items, StreamType stream,
+                                    bool debug_synchronous) {
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::ReduceByKey(
       d_temp_storage, temp_storage_bytes, d_keys_in, d_unique_out, d_values_in,
       d_aggregates_out, d_num_runs_out, gpu_merger, num_items, stream,

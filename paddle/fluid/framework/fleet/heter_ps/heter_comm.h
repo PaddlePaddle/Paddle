@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <thread>
 #include <vector>
-#include "cub/cub.cuh"
-#include "cub/util_allocator.cuh"
+// #include "cub/cub.cuh"
+// #include "cub/util_allocator.cuh"
 #include "hashtable.h"       // NOLINT
 #include "heter_resource.h"  // NOLINT
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
