@@ -33,33 +33,17 @@ class DnnWorkspaceHandle {
     mtx_.reset(new std::mutex());
   }
 
-  inline void RunFunc(const std::function<void(void*)>& cudnn_func,
-                      size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
-    }
-    {
-      std::lock_guard<std::mutex> guard(*mtx_);
-      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
-    }
-  }
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_bytes);
 
   /*! \brief Thread which call RunFuncSync() would release gpu memory after
    *  running the function. Currently this function is only used when cudnn
    *  exhaustive searching and callers have to guarantee that the input function
    *  is host blocking */
-  inline void RunFuncSync(const std::function<void(void*)>& cudnn_func,
-                          size_t required_workspace_bytes) {
-    RunFunc(cudnn_func, required_workspace_bytes);
-    ResetWorkspace();
-  }
+  void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                   size_t required_workspace_bytes);
 
-  inline size_t WorkspaceSize() {
-    if (allocation_ == nullptr) {
-      return 0;
-    }
-    return allocation_->size();
-  }
+  size_t WorkspaceSize();
 
   void ResetWorkspace();
 

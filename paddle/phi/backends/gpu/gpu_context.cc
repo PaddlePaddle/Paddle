@@ -164,6 +164,37 @@ void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = allocator_->Allocate(required_workspace_bytes);
 }
 
+inline void DnnWorkspaceHandle::RunFunc(
+    const std::function<void(void*)>& cudnn_func,
+    size_t required_workspace_bytes) {
+  if (required_workspace_bytes > WorkspaceSize()) {
+    std::lock_guard<std::mutex> guard(*mtx_);
+    ReallocWorkspace(required_workspace_bytes);
+  }
+  {
+    std::lock_guard<std::mutex> guard(*mtx_);
+    cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+  }
+}
+
+/*! \brief Thread which call RunFuncSync() would release gpu memory after
+  *  running the function. Currently this function is only used when cudnn
+  *  exhaustive searching and callers have to guarantee that the input function
+  *  is host blocking */
+inline void DnnWorkspaceHandle::RunFuncSync(
+    const std::function<void(void*)>& cudnn_func,
+    size_t required_workspace_bytes) {
+  RunFunc(cudnn_func, required_workspace_bytes);
+  ResetWorkspace();
+}
+
+inline size_t DnnWorkspaceHandle::WorkspaceSize() {
+  if (allocation_ == nullptr) {
+    return 0;
+  }
+  return allocation_->size();
+}
+
 struct GPUContext::Impl {
   void Init() {
     owned_ = true;
