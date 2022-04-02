@@ -92,6 +92,8 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 int axis,
                                 MetaTensor* dx);
 
+void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -101,6 +103,16 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool global_pooling,
                                    bool adaptive,
                                    MetaTensor* dx);
+
+void NllLossGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& label,
+                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& total_weight,
+                          const MetaTensor& out_grad,
+                          int64_t ignore_index,
+                          const std::string& reduction,
+                          MetaTensor* intput_grad,
+                          MetaConfig config = MetaConfig());
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,

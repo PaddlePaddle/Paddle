@@ -4,8 +4,16 @@
   kernel :
     func : sparse_conv3d
     layout : x
-  # intermediate : rulebook
+  intermediate : rulebook
   backward : conv3d_grad
+
+- api : relu
+  args : (Tensor x)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_relu
+    layout : x
+  backward : sparse_relu_grad
 
 - api : to_dense
   args : (Tensor x)

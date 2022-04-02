@@ -1374,8 +1374,8 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
 
 void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
-                    const std::string& mode,
                     const std::string& data_format,
+                    const std::string& mode,
                     MetaTensor* out,
                     MetaConfig config) {
   auto x_dim = x.dims();
@@ -1581,6 +1581,31 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void TakeAlongAxisInferMeta(const MetaTensor& x,
+                            const MetaTensor& index,
+                            int axis,
+                            MetaTensor* out) {
+  auto input_dim = x.dims();
+  auto index_dim = index.dims();
+
+  PADDLE_ENFORCE_GT(input_dim.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Dimension of the input(Input) of TakeAlongAxisOp "
+                        "should be greater than 0.",
+                        input_dim));
+
+  PADDLE_ENFORCE_GT(index_dim.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Dimension of the input(Index) of TakeAlongAxisOp "
+                        "should be greater than 0.",
+                        index_dim));
+
+  out->set_dims(index_dim);
+  out->set_dtype(x.dtype());
 }
 
 void TriangularSolveInferMeta(const MetaTensor& x,

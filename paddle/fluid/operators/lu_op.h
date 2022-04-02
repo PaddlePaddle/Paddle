@@ -157,7 +157,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
 
     value_t.mutable_data<T>(value_dims, place);
     auto value_name = GetValueName(dtype);
-    CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
+    CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
     value_t.Resize(value_dims);
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, &value_t, -1, SubFunctor<T>(), &slice_tensor);

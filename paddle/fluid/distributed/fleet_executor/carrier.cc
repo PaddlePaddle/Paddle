@@ -28,6 +28,7 @@
 namespace paddle {
 namespace distributed {
 
+USE_INTERCEPTOR(Source);
 USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 

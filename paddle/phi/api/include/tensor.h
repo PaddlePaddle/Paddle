@@ -494,6 +494,7 @@ class PADDLE_API Tensor final {
    * @return AbstractAutogradMeta*
    */
   AbstractAutogradMeta* get_autograd_meta() const;
+  const std::shared_ptr<AbstractAutogradMeta>& mutable_autograd_meta() const;
 
   /**
    * @brief Set the autograd meta object
@@ -515,6 +516,11 @@ class PADDLE_API Tensor final {
    * @return uint32_t
    */
   uint32_t current_inplace_version();
+
+  /**
+   * @brief Reset inplace version
+   */
+  void reset_inplace_version(bool set_to_zero = false);
 
   /* Part 10: Auto generated Tensor methods */
 

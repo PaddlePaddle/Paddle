@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const ScalarArray& axes,
+                     const IntArray& axes,
                      DenseTensor* xshape,
                      DenseTensor* out) {
   auto x_dims = x.dims();
