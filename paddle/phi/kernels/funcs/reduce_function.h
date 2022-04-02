@@ -309,7 +309,7 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   // get the parameters of reduceKernel
-  void Run(const paddle::platform::Place& place) {
+  void Run(const phi::GPUContext& ctx) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
@@ -323,7 +323,7 @@ struct ReduceConfig {
     SetBlockDim();
 
     // step5: limit the grid to prevent thead overflow
-    LimitGridDim(place);
+    LimitGridDim(ctx);
   }
 
   // when should_reduce_again is true, we need malloc temp space for temp data
@@ -607,10 +607,9 @@ struct ReduceConfig {
     grid = grid_dim;
   }
 
-  void LimitGridDim(const paddle::platform::Place& place) {
-    auto* ctx = static_cast<paddle::platform::CUDADeviceContext*>(
-        paddle::platform::DeviceContextPool::Instance().Get(place));
-    std::array<int, 3> max_grid_dim = ctx->GetCUDAMaxGridDimSize();
+  void LimitGridDim(const phi::GPUContext& ctx) {
+    auto max_grid_dim =
+        reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
     grid.x = grid.x < max_grid_dim[0] ? grid.x : max_grid_dim[0];
     grid.y = grid.y < max_grid_dim[1] ? grid.y : max_grid_dim[1];
     grid.z = grid.z < max_grid_dim[2] ? grid.z : max_grid_dim[2];
@@ -808,7 +807,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                             1,
                                             1,
                                             left_num);
-      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
@@ -836,7 +835,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                            1,
                                            1,
                                            left_num);
-      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
@@ -1072,26 +1071,23 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   auto x_dim = phi::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
-  config.Run(x.place());
+  config.Run(dev_ctx);
   int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   // temp_output should be stored temp_data in output_data space or stored in
   // y_data;
-
   phi::DDim tmp_ddim;
   phi::DenseTensor tmp;
 
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
-
   if (config.reduce_num == 1) {
     std::vector<const DenseTensor*> inputs = {&x};
     std::vector<DenseTensor*> outputs = {y};
     funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
     return;
   }
-
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
@@ -1112,7 +1108,6 @@ void ReduceKernel(const KPDevice& dev_ctx,
     return;
   }
 #endif
-
   using MPType = typename kps::details::MPTypeTrait<Ty>::Type;
   auto reducer = ReduceOp<MPType>();
   // launch ReduceHigherDimKernel
@@ -1132,7 +1127,6 @@ void ReduceKernel(const KPDevice& dev_ctx,
     dim.SetRem(config.left_num % config.block.x,
                config.reduce_num % config.blocking_size,
                0);
-
 #ifdef PADDLE_WITH_XPU_KP
     auto grid_num = 8;
     auto block_num = 64;
@@ -1163,7 +1157,6 @@ void ReduceKernel(const KPDevice& dev_ctx,
       kps::DimConfig dim2 =
           kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
       dim2.SetRem(config.left_num % config.block.x, 0, 0);
-
 #ifdef PADDLE_WITH_XPU_KP
       int grid_size = 8;
       int block_size = 64;
