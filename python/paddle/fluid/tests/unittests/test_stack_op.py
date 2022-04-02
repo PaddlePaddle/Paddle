@@ -59,17 +59,17 @@ class TestStackOpBase(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackOp1(TestStackOpBase):
     def initParameters(self):
-        self.num_inputs = 16
+        self.num_inputs = 8
 
 
 class TestStackOp2(TestStackOpBase):
     def initParameters(self):
-        self.num_inputs = 20
+        self.num_inputs = 6
 
 
 class TestStackOp3(TestStackOpBase):
@@ -262,4 +262,5 @@ class API_DygraphTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
