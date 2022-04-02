@@ -500,14 +500,6 @@
   kernel :
     func : gather_tree
 
-- api : greater
-  args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor
-  infer_meta :
-    func : CompareInferMeta
-  kernel :
-    func : greater
-
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor
@@ -515,6 +507,14 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+
+- api : greater_than
+  args : (Tensor x, Tensor y, int axis = -1)
+  output : Tensor
+  infer_meta :
+    func : CompareInferMeta
+  kernel :
+    func : greater_than
 
 - api : gumbel_softmax
   args : (Tensor x, float temperature, bool hard, int axis)
