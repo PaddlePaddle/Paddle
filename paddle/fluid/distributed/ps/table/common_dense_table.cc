@@ -21,8 +21,8 @@ namespace distributed {
 
 int FLAGS_pslib_table_save_max_retry_dense = 3;
 
-void CommonDenseTable::create_initializer(const std::string& attr,
-                                          const std::string& name) {
+void CommonDenseTable::CreateInitializer(const std::string& attr,
+                                         const std::string& name) {
   auto slices = string::split_string<std::string>(attr, "&");
 
   if (slices[0] == "gaussian_random") {
@@ -39,7 +39,7 @@ void CommonDenseTable::create_initializer(const std::string& attr,
   }
 }
 
-int32_t CommonDenseTable::initialize() {
+int32_t CommonDenseTable::Initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
@@ -49,12 +49,12 @@ int32_t CommonDenseTable::initialize() {
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
   _global_lr = new float(1.0);
 
-  initialize_value();
-  initialize_optimizer();
+  InitializeValue();
+  InitializeOptimizer();
   return 0;
 }
 
-int32_t CommonDenseTable::initialize_value() {
+int32_t CommonDenseTable::InitializeValue() {
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
   values_.resize(size);
@@ -70,7 +70,7 @@ int32_t CommonDenseTable::initialize_value() {
     auto& initializer = common.initializers()[x];
     total_dim_ += dim;
 
-    create_initializer(initializer, varname);
+    CreateInitializer(initializer, varname);
     values_[x].resize(dim);
     names_index_[varname] = x;
 
@@ -92,27 +92,27 @@ int32_t CommonDenseTable::initialize_value() {
     param_col_ids_.insert(param_col_ids_.begin() + 1, -1);
   }
 
-  VLOG(1) << "CommonDenseTable::initialize_value total dim: " << total_dim_
+  VLOG(1) << "CommonDenseTable::InitializeValue total dim: " << total_dim_
           << " fixed_len_params_dim: " << fixed_len_params_dim_;
 
   pull_reservoir_ = ReservoirValue<float>(param_dim_);
   return 0;
 }
 
-int32_t CommonDenseTable::initialize_optimizer() {
+int32_t CommonDenseTable::InitializeOptimizer() {
   auto common = _config.common();
   auto name = common.name();
   auto attrs = common.attributes();
 
   if (name == "sgd") {
     optimizer_ = std::make_shared<DSGD>(common, &values_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam") {
     optimizer_ = std::make_shared<DAdam>(common, &values_);
-    optimizer_->set_global_lr(_global_lr);
+    optimizer_->SetGlobalLR(_global_lr);
   } else if (name == "adam_d2sum") {
     optimizer_ = std::make_shared<DAdamD2Sum>(common, &values_);
-    // optimizer_->set_global_lr(_global_lr);  //no use
+    // optimizer_->SetGlobalLR(_global_lr);  //no use
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
   } else if (name == "summary") {
@@ -124,34 +124,34 @@ int32_t CommonDenseTable::initialize_optimizer() {
   return 0;
 }
 
-int32_t CommonDenseTable::set_global_lr(float* lr) {
+int32_t CommonDenseTable::SetGlobalLR(float* lr) {
   _global_lr = lr;
-  optimizer_->set_global_lr(_global_lr);
+  optimizer_->SetGlobalLR(_global_lr);
   return 0;
 }
 
 int32_t CommonDenseTable::Pull(TableContext& context) {
   CHECK(context.value_type == Dense);
   float* pull_values = context.pull_context.values;
-  return pull_dense(pull_values, context.num);
+  return PullDense(pull_values, context.num);
 }
 
 int32_t CommonDenseTable::Push(TableContext& context) {
   CHECK(context.value_type == Dense);
   if (context.push_context.values != nullptr) {
     const float* values = context.push_context.values;
-    return push_dense(values, context.num);
+    return PushDense(values, context.num);
   }
   return 0;
 }
 
-int32_t CommonDenseTable::pull_dense(float* pull_values, size_t num) {
+int32_t CommonDenseTable::PullDense(float* pull_values, size_t num) {
   std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
             pull_values);
   return 0;
 }
 
-int32_t CommonDenseTable::push_dense_param(const float* values, size_t num) {
+int32_t CommonDenseTable::PushDenseParam(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
       num, param_dim_,
       paddle::platform::errors::InvalidArgument(
@@ -160,14 +160,14 @@ int32_t CommonDenseTable::push_dense_param(const float* values, size_t num) {
   return 0;
 }
 
-int32_t CommonDenseTable::pour() {
+int32_t CommonDenseTable::Pour() {
   pull_reservoir_.avg();
-  _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
+  _PushDense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
   return 0;
 }
 
-int32_t CommonDenseTable::push_dense(const float* values, size_t num) {
+int32_t CommonDenseTable::PushDense(const float* values, size_t num) {
   if (sync) {
     std::future<int> task =
         _shards_task_pool[0]->enqueue([this, &values]() -> int {
@@ -176,12 +176,12 @@ int32_t CommonDenseTable::push_dense(const float* values, size_t num) {
         });
     task.wait();
   } else {
-    _push_dense(values, num);
+    _PushDense(values, num);
   }
   return 0;
 }
 
-int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
+int32_t CommonDenseTable::_PushDense(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
       num, param_dim_,
       paddle::platform::errors::InvalidArgument(
@@ -195,7 +195,7 @@ int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
         [this, shard_id, &buckets, &values]() -> int {
           auto begin = buckets[shard_id];
           auto end = buckets[shard_id + 1];
-          optimizer_->update(values, param_dim_, begin, end);
+          optimizer_->Update(values, param_dim_, begin, end);
           return 0;
         });
   }
@@ -207,12 +207,12 @@ int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
   return 0;
 }
 
-int32_t CommonDenseTable::load(const std::string& path,
+int32_t CommonDenseTable::Load(const std::string& path,
                                const std::string& param) {
   if (param_dim_ <= 0) {
     return 0;
   }
-  std::string table_path = table_dir(path);
+  std::string table_path = TableDir(path);
   auto file_list = _afs_client.list(table_path);
   std::sort(file_list.begin(), file_list.end());
   for (auto ff : file_list) {
@@ -314,7 +314,7 @@ int32_t CommonDenseTable::load(const std::string& path,
   return 0;
 }
 
-int32_t CommonDenseTable::save(const std::string& path,
+int32_t CommonDenseTable::Save(const std::string& path,
                                const std::string& param) {
   int save_param = atoi(param.c_str());
   uint32_t feasign_size;
@@ -323,10 +323,10 @@ int32_t CommonDenseTable::save(const std::string& path,
   FsChannelConfig channel_config;
   if (_config.compress_in_save()) {
     channel_config.path = paddle::string::format_string(
-        "%s/part-%03d.gz", table_dir(path).c_str(), _shard_idx);
+        "%s/part-%03d.gz", TableDir(path).c_str(), _shard_idx);
   } else {
     channel_config.path = paddle::string::format_string(
-        "%s/part-%03d", table_dir(path).c_str(), _shard_idx);
+        "%s/part-%03d", TableDir(path).c_str(), _shard_idx);
   }
   _afs_client.remove(channel_config.path);
   channel_config.converter = _value_accesor->Converter(save_param).converter;
