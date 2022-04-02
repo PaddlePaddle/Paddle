@@ -19,29 +19,25 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
+#include "paddle/phi/api/ext/dispatch.h"
+
 namespace phi {
 namespace sparse {
 
-/**
- * x: (N, D, H, W, C)
- * kernel: (D, H, W, C, OC)
- * out: (N, D, H, W, OC)
-**/
-template <typename T, typename Context>
-void Conv3dKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  const DenseTensor& kernel,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const int groups,
-                  const bool subm,
-                  SparseCooTensor* out,
-                  DenseTensor* rulebook) {
+template <typename T, typename IntT>
+void Conv3dGPUKernel(const GPUContext& dev_ctx,
+                     const SparseCooTensor& x,
+                     const DenseTensor& kernel,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     const std::vector<int>& strides,
+                     const int groups,
+                     const bool subm,
+                     SparseCooTensor* out,
+                     DenseTensor* rulebook) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
-
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
@@ -67,7 +63,6 @@ void Conv3dKernel(const Context& dev_ctx,
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
   DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
@@ -75,28 +70,26 @@ void Conv3dKernel(const Context& dev_ctx,
     phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
         kernel.dims(), &subm_paddings, &subm_strides);
   }
-
-  int n = ProductRuleBook<T, Context>(dev_ctx,
-                                      x,
-                                      kernel_sizes,
-                                      subm_paddings,
-                                      dilations,
-                                      subm_strides,
-                                      out_dims,
-                                      subm,
-                                      rulebook,
-                                      &counter_per_kernel,
-                                      &offsets_per_kernel,
-                                      &out_index,
-                                      &unique_key,
-                                      &unique_value,
-                                      out,
-                                      &h_counter,
-                                      &offsets);
+  int n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
+                                               x,
+                                               kernel_sizes,
+                                               subm_paddings,
+                                               dilations,
+                                               subm_strides,
+                                               out_dims,
+                                               subm,
+                                               rulebook,
+                                               &counter_per_kernel,
+                                               &offsets_per_kernel,
+                                               &out_index,
+                                               &unique_value,
+                                               out,
+                                               &h_counter,
+                                               &offsets);
 
   const int* counter_ptr = counter_per_kernel.data<int>();
   const int* offsets_ptr = counter_per_kernel.data<int>();
-  const int* rulebook_ptr = rulebook->data<int>();
+  const IntT* rulebook_ptr = rulebook->data<IntT>();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -109,22 +102,22 @@ void Conv3dKernel(const Context& dev_ctx,
       phi::Empty(dev_ctx, std::move(out_features_meta));
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
-  phi::funcs::SetConstant<Context, T> set_zero;
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels, 1);
-  GatherKernel<T, int><<<config.block_per_grid.x,
-                         config.thread_per_block.x,
-                         0,
-                         dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                                             rulebook_ptr + n,
-                                             in_features_ptr,
-                                             n,
-                                             in_channels);
+  GatherKernel<T, IntT><<<config.block_per_grid.x,
+                          config.thread_per_block.x,
+                          0,
+                          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                                              rulebook_ptr + n,
+                                              in_features_ptr,
+                                              n,
+                                              in_channels);
 
   // 3. call gemm for every werght
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   auto* out_values = out->mutable_non_zero_elements();
   T* out_values_ptr = out_values->data<T>();
 
@@ -167,6 +160,36 @@ void Conv3dKernel(const Context& dev_ctx,
                                          n,
                                          out_channels,
                                          out_values_ptr);
+}
+/**
+ * x: (N, D, H, W, C)
+ * kernel: (D, H, W, C, OC)
+ * out: (N, D, H, W, OC)
+**/
+template <typename T, typename Context>
+void Conv3dKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const DenseTensor& kernel,
+                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const int groups,
+                  const bool subm,
+                  SparseCooTensor* out,
+                  DenseTensor* rulebook) {
+  PD_DISPATCH_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "Conv3dGPUKernel", ([&] {
+        Conv3dGPUKernel<T, data_t>(dev_ctx,
+                                   x,
+                                   kernel,
+                                   paddings,
+                                   dilations,
+                                   strides,
+                                   groups,
+                                   subm,
+                                   out,
+                                   rulebook);
+      }));
 }
 
 }  // namespace sparse
