@@ -961,6 +961,7 @@ function generate_upstream_develop_api_spec() {
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
 
+    cd ${PADDLE_ROOT}
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
 
