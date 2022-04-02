@@ -1,4 +1,3 @@
-
 module  {
   func @main_graph(%arg0: !phi.dense_tensor_map,  %arg1: !infrt.dense_tensor<GPU, FP32, NCHW>, %2: !phi.context<GPU>) -> !infrt.dense_tensor<GPU, FP32, NCHW> {
     %0 = phi_dt.tensor_map_get_tensor(%arg0) {name = "linear_0.w_0"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
