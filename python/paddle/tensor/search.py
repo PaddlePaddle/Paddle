@@ -518,7 +518,9 @@ def mode(x, axis=-1, keepdim=False, name=None):
            #    [1, 0]]))
            
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_mode(x, axis, keepdim)
+    if _in_legacy_dygraph():
         return _C_ops.mode(x, "axis", axis, "keepdim", keepdim)
 
     helper = LayerHelper("mode", **locals())
@@ -1002,11 +1004,16 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             #  [[0, 2],
             #  [1, 2]]))
     """
-    if paddle.in_dynamic_mode():
+    if _non_static_mode():
         if axis is not None:
-            return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim", keepdim)
+            if _in_legacy_dygraph():
+                return _C_ops.kthvalue(x, 'k', k, "axis", axis, "keepdim",
+                                       keepdim)
+            return _C_ops.final_state_kthvalue(x, k, axis, keepdim)
         else:
-            return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            if _in_legacy_dygraph():
+                return _C_ops.kthvalue(x, 'k', k, "keepdim", keepdim)
+            return _C_ops.final_state_kthvalue(x, k, -1, keepdim)
 
     helper = LayerHelper("kthvalue", **locals())
     inputs = {"X": [x]}
