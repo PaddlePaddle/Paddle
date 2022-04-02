@@ -267,13 +267,14 @@ int ParseBooleanArgs(std::string key,
 
 std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
                       std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-                      PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+                      PyObject* args, bool flag_kwargs, Py_ssize_t args_num,
+                      std::string unique_name_prefix = "generated_tensor") {
   std::string act_name = "";
   if (kw_order_map["name"] <= args_num) {
     PyObject* name_obj = PyTuple_GET_ITEM(args, kw_order_map["name"] - 1);
     if (name_obj == Py_None) {
       act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+          egr::Controller::Instance().GenerateUniqueName(unique_name_prefix);
     } else {
       act_name = CastPyArg2AttrString(name_obj, kw_order_map["name"] - 1);
     }
@@ -281,13 +282,13 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
     if (flag_kwargs) {
       if ((kws_map["name"] == NULL) || (kws_map["name"] == Py_None)) {
         act_name =
-            egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+            egr::Controller::Instance().GenerateUniqueName(unique_name_prefix);
       } else {
         act_name = CastPyArg2AttrString(kws_map["name"], 0);
       }
     } else {
       act_name =
-          egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+          egr::Controller::Instance().GenerateUniqueName(unique_name_prefix);
     }
   }
   return act_name;
@@ -421,7 +422,8 @@ void AutoInitStringTensorByPyArray(
       ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
   zero_copy = (1 == ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
                                      flag_kwargs, args_num));
-  act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
+  act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num,
+                       "generated_string_tensor");
   EmptyStringTensorInitializer(py_tensor_ptr, act_name, place);
   InitStringTensorWithNumpyValue(py_tensor_ptr, numpy_value, zero_copy);
 }
@@ -819,7 +821,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // takes both positional and keyword parameters into local variables,
   // which enhance case1, case2, case3, case4, case 5, case 6.
   bool flag_ =
-      PyArg_ParseTupleAndKeywords(args, kwargs, "|OOOOO", kwlist, &kw_value,
+      PyArg_ParseTupleAndKeywords(args, kwargs, "|OOOO", kwlist, &kw_value,
                                   &kw_zero_copy, &kw_name, &kw_dims);
 
   // helper map
@@ -835,7 +837,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                         "please check your input first and make"
                         "sure you are on the right way. "
                         "The expected arguments as follow: ("
-                        "value, zero_copy, name, dims, dtype)"));
+                        "value, zero_copy, name, dims)"));
 
   PADDLE_ENFORCE_NOT_NULL(
       self, paddle::platform::errors::Fatal(
@@ -878,6 +880,19 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "Please check your input first and make sure you are on the "
               "right way."));
         }
+      } else if (kw_dims != NULL) {
+        VLOG(6) << "Calling case2's string initializer.";
+        std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"dims", 1},
+                                                                 {"name", 2}};
+
+        std::vector<int> dims = CastPyArg2VectorOfInt(kw_dims, 0);
+        std::string act_name =
+            ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num,
+                      "generated_string_tensor");
+        EmptyStringTensorInitializer(
+            py_tensor_ptr, act_name,
+            egr::Controller::Instance().GetExpectedPlace(), dims);
+        return 0;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
