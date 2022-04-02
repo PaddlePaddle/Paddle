@@ -20,7 +20,7 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
 from .. import core
 from .. import unique_name
 from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_, EagerParamBase
@@ -798,7 +798,11 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def clone(self):
-        return _C_ops.assign(self)
+        if _in_legacy_dygraph():
+            output = core.VarBase()
+        else:
+            output = core.eager.Tensor()
+        return _C_ops.assign(self, output)
 
     @framework.dygraph_only
     def value(self):

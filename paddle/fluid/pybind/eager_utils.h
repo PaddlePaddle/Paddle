@@ -13,8 +13,8 @@ limitations under the License. */
 #include <Python.h>
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "pybind11/pybind11.h"
@@ -157,8 +157,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos);
 
-paddle::experimental::ScalarArray CastPyArg2ScalarArray(
-    PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos);
 
 paddle::experimental::Place CastPyArg2Place(PyObject* obj,
                                             const std::string& op_type,
