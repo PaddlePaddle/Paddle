@@ -105,7 +105,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"linear_chain_crf", {"Emission", "Transition", "Label", "Length"}},
     {"crf_decoding", {"Emission", "Transition", "Label", "Length"}},
     {"chunk_eval", {"Inference", "Label", "SeqLength"}},
-    {"sequence_mask", {"X", "MaxLenTensor"}}};
+    {"sequence_mask", {"X", "MaxLenTensor"}},
+    {"graph_reindex",
+     {"X", "Neighbors", "Count", "HashTable_Value", "HashTable_Index"}},
+    {"graph_sample_neighbors", {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"}},
+};
 
 // NOTE(zhiqiu): Like op_ins_map.
 // Commonly, the outputs in auto-generated OP function are determined by the
