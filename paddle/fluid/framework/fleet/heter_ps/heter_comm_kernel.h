@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #if defined(__xpu__)
 // #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+// #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #endif
 

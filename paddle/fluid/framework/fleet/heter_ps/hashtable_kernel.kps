@@ -14,6 +14,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+
 
 namespace paddle {
 namespace framework {
@@ -22,25 +24,25 @@ namespace framework {
 
 __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
                           float scale) {
-  __local__ local_learning_rate;
-  __local__ local_initial_g2sum;
-  __local__ local_min_bound;
-  __local__ local_max_bound;
+  __local__ float local_learning_rate;
+  __local__ float local_initial_g2sum;
+  __local__ float local_min_bound;
+  __local__ float local_max_bound;
 
   GM2LM(optimizer_config::learning_rate, &local_learning_rate, sizeof(float));
   GM2LM(optimizer_config::initial_g2sum, &local_initial_g2sum, sizeof(float));
   GM2LM(optimizer_config::min_bound, &local_min_bound, sizeof(float));
-  GM2LM(optimizr_config::max_bound, &local_max_bound, sizeof(float));
+  GM2LM(optimizer_config::max_bound, &local_max_bound, sizeof(float));
 
   double add_g2sum = 0;
   double ratio = local_learning_rate *
-                 sqrt(local_initial_g2sum / (local_initial_g2sum + g2sum));
+                 sqrt(local_initial_g2sum / (local_initial_g2sum + *g2sum));
   double scaled_grad = g / scale;
 
   (*w) += scaled_grad * ratio;
 
-  if (w < local_min_bound) w = local_min_bound;
-  if (w > local_max_bound) w = local_max_bound;
+  if (*w < local_min_bound) *w = local_min_bound;
+  if (*w > local_max_bound) *w = local_max_bound;
 
   add_g2sum += scaled_grad * scaled_grad;
 
@@ -49,10 +51,10 @@ __device__ void update_lr(float* w, float* g2sum, float g,  // NOLINT
 
 __device__ void update_mf(int n, float* w, float* g2sum, const float* g,
                           float scale) {
-  __local__ local_mf_learning_rate;
-  __local__ local_mf_initial_g2sum;
-  __local__ local_mf_min_bound;
-  __local__ local_mf_max_bound;
+  __local__ float local_mf_learning_rate;
+  __local__ float local_mf_initial_g2sum;
+  __local__ float local_mf_min_bound;
+  __local__ float local_mf_max_bound;
 
   GM2LM(optimizer_config::mf_learning_rate, &local_mf_learning_rate,
         sizeof(float));
@@ -64,7 +66,7 @@ __device__ void update_mf(int n, float* w, float* g2sum, const float* g,
   double add_g2sum = 0;
   double ratio =
       local_mf_learning_rate *
-      sqrt(local_mf_initial_g2sum / (local_mf_initial_g2sum + g2sum));
+      sqrt(local_mf_initial_g2sum / (local_mf_initial_g2sum + *g2sum));
   for (int i = 0; i < n; ++i) {
     double scaled_grad = g[i] / scale;
     w[i] += scaled_grad * ratio;
@@ -96,17 +98,17 @@ __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
   GM2LM(optimizer_config::mf_create_thresholds, &local_mf_create_thresholds,
         sizeof(float));
 
-  val.delta_score += local_nonclk_coeff * ((*grad).show - (*grad).clk) +
+  (*val).delta_score += local_nonclk_coeff * ((*grad).show - (*grad).clk) +
                      local_clk_coeff * (*grad).clk;
 
   update_lr(&(*val).lr, &(*val).lr_g2sum, (*grad).lr_g, (*grad).show);
 
-  if (val.mf_size == 0) {
+  if ((*val).mf_size == 0) {
     if (local_mf_create_thresholds <=
         local_nonclk_coeff * ((*val).show - (*val).clk) +
             local_clk_coeff * (*val).clk) {
-      val.mf_size = MF_DIM + 1;
-      val.mf[0] = 0;
+      (*val).mf_size = MF_DIM + 1;
+      (*val).mf[0] = 0;
 
       float ret_val;
       xpu_rand_uniform(&ret_val);
@@ -115,7 +117,7 @@ __device__ void update_value(ValType* val, const GradType* grad) {  // NOLINT
       }
     }
   } else {
-    update_mf(MF_DIM, &val.mf[1], &val.mf[0], (*grad).mf_g, (*grad).show);
+    update_mf(MF_DIM, &(*val).mf[1], &(*val).mf[0], (*grad).mf_g, (*grad).show);
   }
 }
 

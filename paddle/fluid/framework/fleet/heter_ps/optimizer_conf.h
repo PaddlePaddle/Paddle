@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/kernel/debug.h"
+#include "xpu/kernel/math.h"
 
 namespace optimizer_config {
 
@@ -35,21 +38,21 @@ __constant__ float mf_max_bound = 10;
 
 #elif defined(PADDLE_WITH_XPU_KP)
 
-float* nonclk_coeff;
-float* clk_coeff;
+_global_ptr_ float* nonclk_coeff;
+_global_ptr_ float* clk_coeff;
 
-float* min_bound;
-float* max_bound;
-float* learning_rate;
-float* initial_g2sum;
-float* initial_range;
+_global_ptr_ float* min_bound;
+_global_ptr_ float* max_bound;
+_global_ptr_ float* learning_rate;
+_global_ptr_ float* initial_g2sum;
+_global_ptr_ float* initial_range;
 
-float* mf_create_thresholds;
-float* mf_learning_rate;
-float* mf_initial_g2sum;
-float* mf_initial_range;
-float* mf_min_bound;
-float* mf_max_bound;
+_global_ptr_ float* mf_create_thresholds;
+_global_ptr_ float* mf_learning_rate;
+_global_ptr_ float* mf_initial_g2sum;
+_global_ptr_ float* mf_initial_range;
+_global_ptr_ float* mf_min_bound;
+_global_ptr_ float* mf_max_bound;
 
 #endif
 }  // namespace optimizer_config
