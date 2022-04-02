@@ -220,6 +220,11 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     endif()
     if(WITH_ARM_BRPC)
+        FILE(WRITE ${PROTOBUF_SOURCE_DIR}/CMakeLists.txt
+        "PROJECT(ARM_PROTOBUF)\n"
+        "cmake_minimum_required(VERSION 3.0)\n"
+        "install(DIRECTORY protobuf \n"
+        "        DESTINATION protobuf)\n")
         ExternalProject_Add(
             ${TARGET_NAME}
             ${EXTERNAL_PROJECT_LOG_ARGS}
