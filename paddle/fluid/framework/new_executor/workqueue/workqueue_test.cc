@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 #include <atomic>
+#include <thread>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
@@ -26,11 +27,12 @@ TEST(WorkQueueUtils, TestEventsWaiter) {
   EXPECT_EQ(events_waiter.WaitEvent(), "test_register_lt");
   EXPECT_EQ(notifier->GetEventName(), "test_register_lt");
   EXPECT_EQ(events_waiter.WaitEvent(), "test_register_lt");
-  notifier->UnregisterEvent();
-  EXPECT_EQ(notifier->GetEventName(), "Unregistered");
+  notifier.reset();
   notifier = events_waiter.RegisterEvent("test_register_et");
   notifier->NotifyEvent();
   EXPECT_EQ(events_waiter.WaitEvent(), "test_register_et");
+  notifier->NotifyEvent();
+  notifier->CancelEvent();
 }
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
@@ -60,11 +62,13 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
     }
     finished = true;
   });
+  auto handle = work_queue->AddAwaitableTask([]() { return 1234; });
   // WaitQueueEmpty
   EXPECT_EQ(finished.load(), false);
   events_waiter.WaitEvent();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum);
+  EXPECT_EQ(handle.get(), 1234);
 }
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
@@ -104,8 +108,13 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
   // Cancel
   work_queue->Cancel();
+  // Wait kQueueDestructEvent
+  std::thread waiter_thread([&events_waiter]() {
+    EXPECT_EQ(events_waiter.WaitEvent(),
+              paddle::framework::kQueueDestructEvent);
+  });
   work_queue.reset();
-  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
+  waiter_thread.join();
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
@@ -146,12 +155,21 @@ TEST(WorkQueue, TestWorkQueueGroup) {
       ++counter;
     }
   });
+  int random_num = 123456;
+  auto handle =
+      queue_group->AddAwaitableTask(1, [random_num]() { return random_num; });
   // WaitQueueGroupEmpty
   events_waiter.WaitEvent();
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
+  EXPECT_EQ(handle.get(), random_num);
   // Cancel
   queue_group->Cancel();
-  events_waiter.WaitEvent();
+  // Wait kQueueDestructEvent
+  std::thread waiter_thread([&events_waiter]() {
+    EXPECT_EQ(events_waiter.WaitEvent(),
+              paddle::framework::kQueueDestructEvent);
+    EXPECT_EQ(events_waiter.WaitEvent(), "NoEventNotifier");
+  });
   queue_group.reset();
-  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
+  waiter_thread.join();
 }

@@ -76,7 +76,8 @@ class DistributedOperator:
             if tensor is None:
                 tensor_shape = []
             else:
-                if tensor.type == core.VarDesc.VarType.READER:
+                if tensor.type == core.VarDesc.VarType.READER \
+                    or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
                     tensor_shape = []
                 else:
                     tensor_shape = tensor.shape
@@ -86,7 +87,9 @@ class DistributedOperator:
                                                        tensor_dims_mapping)
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
-            if tensor.type == core.VarDesc.VarType.READER:
+            if tensor.type == core.VarDesc.VarType.READER \
+                or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
@@ -95,6 +98,8 @@ class DistributedOperator:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
                 self._dist_attr.set_output_dims_mapping(tensor_name,
                                                         tensor_dims_mapping)
+        if self._dist_attr.op_type is None:
+            self._dist_attr.op_type = self.serial_op.type
         if self._dist_attr.impl_type is None:
             self._dist_attr.impl_type = "default"
         if self._dist_attr.impl_idx is None:
@@ -134,12 +139,16 @@ class DistributedOperator:
         return new_dist_attr
 
     def validate_dist_attr(self):
-        if "read" in self.serial_op.type:
+        if "read" in self.serial_op.type or "while" == self.serial_op.type:
             return True
         for name in self.serial_op.input_arg_names:
             input_dist_attr = self.dist_attr.get_input_dist_attr(name)
             dims_mapping = input_dist_attr.dims_mapping
-            shape = self.get_serial_input(name).shape
+            if self.get_serial_input(
+                    name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                shape = []
+            else:
+                shape = self.get_serial_input(name).shape
             if len(shape) != len(dims_mapping):
                 return False
             for i in range(len(dims_mapping)):
@@ -155,7 +164,11 @@ class DistributedOperator:
         for name in self.serial_op.output_arg_names:
             output_dist_attr = self.dist_attr.get_output_dist_attr(name)
             dims_mapping = output_dist_attr.dims_mapping
-            shape = self.get_serial_output(name).shape
+            if self.get_serial_output(name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY\
+                or self.get_serial_output(name).type == core.VarDesc.VarType.STEP_SCOPES:
+                shape = []
+            else:
+                shape = self.get_serial_output(name).shape
             if len(shape) != len(dims_mapping):
                 return False
             for i in range(len(dims_mapping)):
@@ -241,14 +254,14 @@ class DistributedModule:
 
     def __call__(self, *args, **kwargs):
         from .dist_context import get_default_distributed_context
-        main_prog = paddle.fluid.default_main_program()
-        main_block = main_prog.global_block()
-        op_size = len(main_block.ops)
+        default_prog = paddle.fluid.default_main_program()
+        cur_block = default_prog.current_block()
+        op_size = len(cur_block.ops)
         output = self._serial_module(*args, **kwargs)
-        new_op_size = len(main_block.ops)
+        new_op_size = len(cur_block.ops)
         default_dist_ctx = get_default_distributed_context()
         for idx in range(op_size, new_op_size):
-            op = main_block.ops[idx]
+            op = cur_block.ops[idx]
             dist_op = DistributedOperator(op, self._dist_attr)
             dist_op.dist_attr.mark_annotated_as(self._dist_attr)
             default_dist_ctx.add_dist_op_for_program(dist_op)

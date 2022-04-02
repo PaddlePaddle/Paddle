@@ -16,10 +16,28 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+
+
+# hack method for test p_norm final state
+def p_norm_python_api(x,
+                      p=2.0,
+                      axis=-1,
+                      epsilon=1e-12,
+                      keepdim=False,
+                      as_vector=False):
+    if in_dygraph_mode():
+        return _C_ops.final_state_p_norm(x, p, axis, epsilon, keepdim,
+                                         as_vector)
+    if _in_legacy_dygraph():
+        return _C_ops.p_norm(x, 'axis', axis, 'porder',
+                             float(p), 'keepdim', keepdim, 'epsilon', epsilon,
+                             'as_vector', as_vector)
 
 
 def p_norm(x, axis, porder, keepdims=False, reduce_all=False):
@@ -110,6 +128,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
 class TestPnormOp(OpTest):
     def setUp(self):
         self.op_type = "p_norm"
+        self.python_api = p_norm_python_api
         self.init_test_case()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
         norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
@@ -125,10 +144,10 @@ class TestPnormOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -280,6 +299,84 @@ class TestPnormOpFP161(TestPnormOpFP16):
         self.keepdim = False
         self.dtype = "float16"
         self.asvector = True
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestPnormBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "p_norm"
+        self.python_api = p_norm_python_api
+        self.init_test_case()
+        self.x = (np.random.random(self.shape) + 0.5).astype(np.float32)
+        self.norm = p_norm(self.x, self.axis, self.porder, self.keepdim,
+                           self.asvector)
+        self.gradient = self.calc_gradient()
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.attrs = {
+            'epsilon': self.epsilon,
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'porder': float(self.porder),
+            'asvector': self.asvector
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.norm)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'],
+            'Out',
+            user_defined_grads=self.gradient,
+            check_eager=True)
+
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.axis = 1
+        self.epsilon = 1e-12
+        self.porder = 2.0
+        self.keepdim = False
+        self.dtype = np.uint16
+        self.asvector = False
+
+    def calc_gradient(self):
+        self.attrs = {
+            'epsilon': self.epsilon,
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'porder': float(self.porder),
+            'asvector': self.asvector
+        }
+        x = self.x
+        porder = self.attrs["porder"]
+        axis = self.attrs["axis"]
+        asvector = self.attrs["asvector"]
+        x_dtype = x.dtype
+        x = x.astype(np.float32) if x.dtype == np.float16 else x
+        if porder == 0:
+            grad = np.zeros(x.shape).astype(x.dtype)
+        elif porder in [float("inf"), float("-inf")]:
+            norm = p_norm(
+                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector)
+            x_abs = np.abs(x)
+            grad = np.sign(x)
+            grad[x_abs != norm] = 0.0
+        else:
+            norm = p_norm(
+                x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector)
+            grad = np.power(norm, 1 - porder) * np.power(
+                np.abs(x), porder - 1) * np.sign(x)
+
+        numel = 1
+        for s in x.shape:
+            numel *= s
+        divisor = numel if asvector else x.shape[axis]
+        numel /= divisor
+        return [grad.astype(x_dtype) * 1 / numel]
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
@@ -514,4 +611,5 @@ class API_NormTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

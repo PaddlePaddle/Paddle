@@ -162,7 +162,7 @@ struct TestReduceOpHandle {
     int height = kDims[0] * 2;
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
-    std::vector<float> send_vector(f::product(kDims));
+    std::vector<float> send_vector(phi::product(kDims));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k;
     }
@@ -174,7 +174,7 @@ struct TestReduceOpHandle {
       PADDLE_ENFORCE_NOT_NULL(
           in_var, platform::errors::NotFound(
                       "Variable %s is not found in scope.", "input"));
-      auto in_selected_rows = in_var->GetMutable<pten::SelectedRows>();
+      auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
 
@@ -190,10 +190,10 @@ struct TestReduceOpHandle {
     PADDLE_ENFORCE_NOT_NULL(out_var,
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", "out"));
-    auto out_selected_rows = out_var->GetMutable<pten::SelectedRows>();
+    auto out_selected_rows = out_var->GetMutable<phi::SelectedRows>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
-    auto in_selected_rows = in_var->GetMutable<pten::SelectedRows>();
+    auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
 
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
@@ -205,7 +205,7 @@ struct TestReduceOpHandle {
 
     p::CPUPlace cpu_place;
 
-    auto &out_select_rows = out_var->Get<pten::SelectedRows>();
+    auto &out_select_rows = out_var->Get<phi::SelectedRows>();
     auto rt = out_select_rows.value();
 
     PADDLE_ENFORCE_EQ(out_select_rows.height(), height,
@@ -226,13 +226,13 @@ struct TestReduceOpHandle {
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
-    for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
+    for (int64_t j = 0; j < phi::product(result_tensor.dims()); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
   }  // namespace details
 
   void TestReduceLodTensors(size_t output_scope_idx) {
-    std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
+    std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k;
     }
@@ -276,7 +276,7 @@ struct TestReduceOpHandle {
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
-    for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
+    for (int64_t j = 0; j < phi::product(result_tensor.dims()); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j] * gpu_list_.size(), 1e-5);
     }
   }

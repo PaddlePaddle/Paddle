@@ -76,10 +76,10 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-      mean_out->mutable_data<T>(ctx.GetPlace());
-      variance_out->mutable_data<T>(ctx.GetPlace());
-      saved_mean->mutable_data<T>(ctx.GetPlace());
-      saved_variance->mutable_data<T>(ctx.GetPlace());
+      mean_out->mutable_data<float>(ctx.GetPlace());
+      variance_out->mutable_data<float>(ctx.GetPlace());
+      saved_mean->mutable_data<float>(ctx.GetPlace());
+      saved_variance->mutable_data<float>(ctx.GetPlace());
 
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
@@ -97,13 +97,13 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
 
       // BNTrainingReduce ONLY support rank = 4
       if (x->dims().size() == 3) {
-        auto x_shape_vec = framework::vectorize(x->dims());
+        auto x_shape_vec = phi::vectorize(x->dims());
         if (data_layout == DataLayout::kNCHW) {
           x_shape_vec.push_back(1);  // expand NCL -> NCL1
         } else {
           x_shape_vec.insert(x_shape_vec.begin() + 2, 1);  // expand NLC -> NL1C
         }
-        auto x_new_shape = framework::make_ddim(x_shape_vec);
+        auto x_new_shape = phi::make_ddim(x_shape_vec);
         x_tensor.Resize(x_new_shape);
         x_tensor.Resize(x_new_shape);
       }
@@ -170,8 +170,8 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (d_scale && d_bias) {
-      d_scale->mutable_data<T>(ctx.GetPlace());
-      d_bias->mutable_data<T>(ctx.GetPlace());
+      d_scale->mutable_data<float>(ctx.GetPlace());
+      d_bias->mutable_data<float>(ctx.GetPlace());
       if (use_global_stats) {
         const auto *running_mean = ctx.Input<Tensor>("Mean");
         const auto *running_variance = ctx.Input<Tensor>("Variance");
@@ -199,14 +199,14 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       if (use_global_stats) {
         if (x->dims().size() == 3) {
           // BNInferGrad only support x rank = 4,
-          auto x_shape_vec = framework::vectorize(d_x->dims());
+          auto x_shape_vec = phi::vectorize(d_x->dims());
           if (data_layout == DataLayout::kNCHW) {
             x_shape_vec.push_back(1);  // expand NCL -> NCL1
           } else {
             x_shape_vec.insert(x_shape_vec.begin() + 2,
                                1);  // expand NLC -> NL1C
           }
-          auto x_new_shape = framework::make_ddim(x_shape_vec);
+          auto x_new_shape = phi::make_ddim(x_shape_vec);
           dx_tensor.Resize(x_new_shape);
           dy_tensor.Resize(x_new_shape);
         }

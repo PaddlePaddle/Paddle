@@ -17,7 +17,7 @@ import numpy
 import warnings
 from paddle import Tensor
 import paddle.fluid.core as core
-from ..fluid.framework import _in_eager_mode
+from ..fluid.framework import _in_legacy_dygraph
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -1357,8 +1357,8 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
-        if _in_eager_mode():
-            tmp = core.eager.EagerTensor
+        if not _in_legacy_dygraph():
+            tmp = core.eager.Tensor
         else:
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]

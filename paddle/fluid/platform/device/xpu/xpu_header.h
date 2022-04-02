@@ -15,5 +15,5 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/pten/backends/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif

@@ -42,12 +42,12 @@ __device__ void CalcLayernormY(
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias, const T *x,
     T *y, const int row_id, const int col_id, const int cols,
     const LayerNormParamType<T> mean_val, const LayerNormParamType<T> invvar) {
-  using LoadT = platform::AlignedVector<T, VecSize>;
-  using StoreT = platform::AlignedVector<T, VecSize>;
-  using LoadU = platform::AlignedVector<U, VecSize>;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadU = phi::AlignedVector<U, VecSize>;
   using LoadScaleOrBias =
-      platform::AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                              VecSize>;
+      phi::AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
+                         VecSize>;
   for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
     LoadScaleOrBias scale_vec;
     LoadScaleOrBias bias_vec;
@@ -60,15 +60,15 @@ __device__ void CalcLayernormY(
           static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(0);
     }
     // vectorize load data from global
-    platform::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
+    phi::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
 
     if (scale != nullptr) {
-      platform::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                     VecSize>(&scale[i], &scale_vec);
+      phi::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>(
+          &scale[i], &scale_vec);
     }
     if (bias != nullptr) {
-      platform::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                     VecSize>(&bias[i], &bias_vec);
+      phi::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>(
+          &bias[i], &bias_vec);
     }
 
     StoreT y_vec;
@@ -78,7 +78,7 @@ __device__ void CalcLayernormY(
                              (static_cast<U>(x_vec[ii]) - mean_val) * invvar +
                          static_cast<U>(bias_vec[ii]));
     }
-    platform::Store<T, VecSize>(y_vec, &y[row_id * cols + i]);
+    phi::Store<T, VecSize>(y_vec, &y[row_id * cols + i]);
   }
 }
 
@@ -122,12 +122,12 @@ __global__ void FusedLayernormResidualDropoutBias(
   __shared__ U shared_mean[32];
   __shared__ U shared_var[32];
 
-  math::ReluFunctor<T> relu;
+  phi::funcs::ReluFunctor<T> relu;
   U mean_val = 0;
   U var_val = 0;
   for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
     FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, true, false,
-                                      math::ReluFunctor<T>>(
+                                      phi::funcs::ReluFunctor<T>>(
         row_id, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
         mask, is_test, &mean_val, &var_val, relu);
   }
@@ -190,9 +190,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
     const ScaleT *__restrict__ beta_ptr, MaskType *__restrict__ mask_out_ptr,
     U *__restrict__ mean_out_ptr, U *__restrict__ var_out_ptr,
     T *__restrict__ residual_out_ptr, T *__restrict__ y_ptr) {
-  using Vec = platform::AlignedVector<T, VecSize>;
-  using Vec_scale = platform::AlignedVector<ScaleT, VecSize>;
-  using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
+  using Vec = phi::AlignedVector<T, VecSize>;
+  using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
+  using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -214,8 +214,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
   Vec_scale beta[LDGS];
 #pragma unroll
   for (int it = 0, col = c; it < LDGS; it++) {
-    platform::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
-    platform::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
+    phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+    phi::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
     col += THREADS_PER_ROW;
   }
 
@@ -225,10 +225,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
     Vec residual[LDGS];
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize,
-                                 &x[it]);
-      platform::Load<T, VecSize>(
-          residual_ptr + row * LN_NUM_COLS + col * VecSize, &residual[it]);
+      phi::Load<T, VecSize>(x_ptr + row * LN_NUM_COLS + col * VecSize, &x[it]);
+      phi::Load<T, VecSize>(residual_ptr + row * LN_NUM_COLS + col * VecSize,
+                            &residual[it]);
       col += THREADS_PER_ROW;
     }
 
@@ -270,9 +269,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
 // store dropout_residual_out and mask_out
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Store<T, VecSize>(
+      phi::Store<T, VecSize>(
           x[it], residual_out_ptr + row * LN_NUM_COLS + col * VecSize);
-      platform::Store<MaskType, VecSize>(
+      phi::Store<MaskType, VecSize>(
           mask_vec[it], mask_out_ptr + row * LN_NUM_COLS + col * VecSize);
       col += THREADS_PER_ROW;
     }
@@ -333,8 +332,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      platform::Store<T, VecSize>(x[it],
-                                  y_ptr + row * LN_NUM_COLS + col * VecSize);
+      phi::Store<T, VecSize>(x[it], y_ptr + row * LN_NUM_COLS + col * VecSize);
       col += THREADS_PER_ROW;
     }
   }

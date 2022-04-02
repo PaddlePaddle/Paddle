@@ -13,36 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
-#include <memory>
-#include <vector>
-#include "cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
-
-namespace paddle {
-namespace operators {
-namespace details {
-
-#ifdef PADDLE_WITH_CUDA
-template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx) {
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  return dev_ctx.stream();
-}
-#endif
-
-}  // namespace details
-}  // namespace operators
-}  // namespace paddle
 
 /* see [Why use single type kernel] */
 REGISTER_OP_CUDA_KERNEL(cinn_launch,

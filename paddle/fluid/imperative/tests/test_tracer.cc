@@ -28,6 +28,20 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, GPU, ALL_LAYOUT);
+#endif
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -37,9 +51,10 @@ namespace paddle {
 namespace imperative {
 
 using vb_vector = std::vector<std::shared_ptr<imperative::VarBase>>;
-
 using var_pair = std::pair<std::string, vb_vector>;
 
+using ev_vector = std::vector<std::shared_ptr<egr::EagerVariable>>;
+using ev_pair = std::pair<std::string, ev_vector>;
 TEST(test_tracer, test_trace_op) {
   // Doing an mul
   imperative::Tracer tracer;
@@ -56,11 +71,11 @@ TEST(test_tracer, test_trace_op) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -102,11 +117,11 @@ TEST(test_tracer, test_trace_op_with_backward) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -142,11 +157,11 @@ TEST(test_tracer, test_track_backward_output) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -181,11 +196,11 @@ TEST(test_tracer, test_track_backward_input) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -223,11 +238,11 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(gpu_place);
   paddle::memory::Copy(gpu_place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size(), 0);
@@ -354,11 +369,11 @@ TEST(test_tracer, test_var_without_grad_var) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
-  x_in_tensor->Resize(framework::make_ddim(dims1));
+  x_in_tensor->Resize(phi::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(framework::make_ddim(dims2));
+  y_in_tensor->Resize(phi::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place, mutable_y, place, src_data.data(),
                        sizeof(float) * src_data.size());
@@ -546,11 +561,49 @@ TEST(test_tracer, test_execution_context) {
   ASSERT_EQ(dy_ctx.OutputName("Out"), framework::kEmptyVarName);
 }
 
+TEST(test_tracer, eager_tracer) {
+  // Doing an mul
+  imperative::Tracer tracer;
+  std::shared_ptr<egr::EagerVariable> x_in(new egr::EagerVariable("x_in"));
+  std::shared_ptr<egr::EagerVariable> y_in(new egr::EagerVariable("y_in"));
+  std::shared_ptr<egr::EagerVariable> vout(new egr::EagerVariable("vout"));
+  platform::CPUPlace place;
+  std::vector<float> src_data(10, 2.0);
+  std::vector<int64_t> dims1 = {2, 5};
+  std::vector<int64_t> dims2 = {5, 2};
+
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  x_in_tensor->Resize(phi::make_ddim(dims1));
+  auto* mutable_x = x_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+  y_in_tensor->Resize(phi::make_ddim(dims2));
+  auto* mutable_y = y_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+
+  ev_pair x_pair = ev_pair("X", ev_vector(1, x_in));
+  ev_pair y_pair = ev_pair("Y", ev_vector(1, y_in));
+  ev_pair out_pair = ev_pair("Out", ev_vector(1, vout));
+  imperative::NameTensorMap ins = {x_pair, y_pair};
+  imperative::NameTensorMap outs = {out_pair};
+  framework::AttributeMap mul_attr_map;
+  mul_attr_map["use_mkldnn"] = false;
+  tracer.TraceOp<egr::EagerVariable>("mul", ins, outs, mul_attr_map, place,
+                                     true);
+
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+    ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
+  }
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
-USE_OP(mul_grad);
-USE_OP(reduce_sum);
-USE_OP(reduce_sum_grad);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(mul_grad);
+USE_OP_ITSELF(reduce_sum);
+USE_OP_ITSELF(reduce_sum_grad);
+USE_OP_ITSELF(elementwise_add);

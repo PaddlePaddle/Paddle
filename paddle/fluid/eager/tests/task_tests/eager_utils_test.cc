@@ -16,21 +16,25 @@
 
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
 
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
 namespace egr {
 
 TEST(EagerUtils, AutoGradMeta) {
   // Construct Eager Tensor
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-  std::shared_ptr<pten::DenseTensor> dt0 = std::make_shared<pten::DenseTensor>(
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -38,7 +42,7 @@ TEST(EagerUtils, AutoGradMeta) {
   dt0->mutable_data<float>(paddle::platform::CPUPlace())[0] = 10.0;
   paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
-  std::shared_ptr<pten::DenseTensor> dt1 = std::make_shared<pten::DenseTensor>(
+  std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -103,10 +107,10 @@ TEST(EagerUtils, AutoGradMeta) {
 template <typename T>
 paddle::experimental::Tensor CreateTestCPUTensor(
     T val, const paddle::framework::DDim& ddim) {
-  pten::DenseTensorMeta meta =
-      pten::DenseTensorMeta(pten::DataType::FLOAT32, ddim);
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, ddim);
   paddle::experimental::Tensor tensor;
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -158,16 +162,16 @@ TEST(EagerUtils, PassStopGradient) {
   CHECK(auto_grad0->StopGradient() == false);
   egr::EagerUtils::PassStopGradient(true, auto_grad0.get(), auto_grad1.get(),
                                     auto_grad2.get(), auto_grad3.get());
-  CHECK(auto_grad0->StopGradient() == true);
+  CHECK(auto_grad0->StopGradient() == false);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);
 }
 
 TEST(EagerUtils, TrySyncToVar) {
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
-  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases = {
+  std::vector<std::shared_ptr<egr::EagerVariable>> var_bases = {
       egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
@@ -183,11 +187,11 @@ TEST(EagerUtils, TrySyncToVar) {
 }
 
 TEST(EagerUtils, TrySyncToVars) {
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   std::vector<paddle::experimental::Tensor> tensors = {
       CreateTestCPUTensor(1.0f, ddim), CreateTestCPUTensor(2.0f, ddim)};
 
-  std::vector<std::shared_ptr<egr::EagerTensor>> var_bases =
+  std::vector<std::shared_ptr<egr::EagerVariable>> var_bases =
       egr::EagerUtils::TrySyncToVars(tensors);
 
   {
@@ -218,10 +222,48 @@ TEST(EagerUtils, TrySyncToVars) {
 
 TEST(EagerUtils, CreateVars) {
   VLOG(6) << "Check CreateVars";
-  std::vector<std::shared_ptr<egr::EagerTensor>> outs =
+  std::vector<std::shared_ptr<egr::EagerVariable>> outs =
       egr::EagerUtils::CreateVars(2);
   CHECK_EQ(outs.size(), size_t(2));
   CHECK(outs[0]->Var().IsInitialized() == false);
+}
+
+TEST(EagerUtils, GetGradAccumulationNode) {
+  VLOG(6) << "Check GetGradAccumulationNode";
+  paddle::experimental::Tensor t0("test_tensor");
+  ASSERT_EQ(egr::EagerUtils::GetGradAccumulationNode(t0), nullptr);
+  auto autograd_ptr0 = egr::EagerUtils::autograd_meta(&t0);
+  autograd_ptr0->SetStopGradient(true);
+  ASSERT_EQ(egr::EagerUtils::GetGradAccumulationNode(t0), nullptr);
+  autograd_ptr0->SetStopGradient(false);
+  auto res = std::dynamic_pointer_cast<egr::GradNodeAccumulation>(
+      egr::EagerUtils::GetGradAccumulationNode(t0));
+  ASSERT_TRUE(res != nullptr);
+  auto res2 = egr::EagerUtils::GetGradAccumulationNode(t0);
+  ASSERT_EQ(res2.get(), res.get());
+  autograd_ptr0->SetStopGradient(true);
+  auto res3 = egr::EagerUtils::GetGradAccumulationNode(t0);
+  ASSERT_EQ(res3, nullptr);
+  autograd_ptr0->SetStopGradient(false);
+  autograd_ptr0->SetGradNode(
+      std::make_shared<eager_test::GradTestNode>(1, 2.0, 3));
+  ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
+}
+
+TEST(EagerUtils, FillZeroForEmptyGradInputs) {
+  std::vector<std::vector<paddle::experimental::Tensor>> grads = {
+      std::vector<paddle::experimental::Tensor>(1)};
+  std::vector<std::vector<GradSlotMeta>> slot_metas = {
+      std::vector<GradSlotMeta>(1)};
+
+  phi::DenseTensorMeta tensor_meta;
+  tensor_meta.dtype = paddle::experimental::DataType::FLOAT32;
+  tensor_meta.dims = {2, 4};
+  slot_metas[0][0].SetTensorMeta(tensor_meta);
+  slot_metas[0][0].SetPlace(phi::CPUPlace());
+
+  EagerUtils::FillZeroForEmptyGradInputs(&grads, slot_metas);
+  eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 
 }  // namespace egr

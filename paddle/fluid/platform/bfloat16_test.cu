@@ -56,8 +56,8 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   framework::LoDTensor gpu_tensor;
   framework::LoDTensor dst_tensor;
 
-  bfloat16 *src_ptr = src_tensor.mutable_data<bfloat16>(
-      framework::make_ddim({2, 2}), CPUPlace());
+  bfloat16 *src_ptr =
+      src_tensor.mutable_data<bfloat16>(phi::make_ddim({2, 2}), CPUPlace());
 
   bfloat16 arr[4] = {bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f),
                      bfloat16(0.0f)};

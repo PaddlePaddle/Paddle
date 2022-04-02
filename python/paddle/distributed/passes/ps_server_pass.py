@@ -115,11 +115,11 @@ class AddLrDecayTablePass(PassBase):
                           LRScheduler), "must be LRScheduler"
 
         ops = get_optimize_ops(attrs['origin_main_program'])
-        lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
+        lr_decay_main_program, lr_decay_startup_program, lr_name = self._get_lr_sheduler_program(
             attrs['origin_main_program'].lr_sheduler, attrs['lr_decay_steps'])
-        _add_tensor_table(attrs, "@LR_DECAY_COUNTER@", lr_name,
-                          lr_decay_startup_program, lr_decay_main_program,
-                          "GlobalStepTable")
+        self._add_tensor_table(attrs, "@LR_DECAY_COUNTER@", lr_name,
+                               lr_decay_startup_program, lr_decay_main_program,
+                               "GlobalStepTable")
         return
 
 
@@ -154,8 +154,6 @@ class AddListenAndServPass(PassBase):
         }
         main_program.global_block().append_op(
             type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=opt)
-
-        attrs['cloned_main'] = main_program
 
 
 @register_pass("add_rpc_global_flags_pass")

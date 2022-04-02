@@ -1,16 +1,41 @@
 // RUN: infrtexec -i %s | FileCheck %s
 
 func @load_tensor_map() {
-  %path = infrt.get_string("@CMAKE_BINARY_DIR@/multi_fc_model")
-  %map = dt.load_params(%path)
+  %map = dt.load_params(){path="@CMAKE_BINARY_DIR@/multi_fc_model"}
   %size = dt.tensor_map_get_size(%map) -> i32
   infrt.print.i32 %size
 
-  %tensor_name = infrt.get_string("fc_bias")
-  %a = dt.tensor_map_get_tensor(%map, %tensor_name) -> !infrt.tensor<X86, NCHW, F32>
+  %a = dt.tensor_map_get_tensor(%map) {name="fc_bias"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
 
   // CHECK: tensor: shape=shape[2], values=[0, 0]
-  dt.print_tensor (%a : !infrt.tensor<X86, NCHW, F32>)
+  dt.print_tensor (%a : !infrt.dense_tensor<CPU, FP32, NCHW>)
+
+  infrt.return
+}
+
+func @load_phi_tensor_map() {
+  %map = phi_dt.load_params(){path="@CMAKE_BINARY_DIR@/multi_fc_model"}
+  %size = phi_dt.tensor_map_get_size(%map) -> i32
+  infrt.print.i32 %size
+
+  %a = phi_dt.tensor_map_get_tensor(%map) {name="fc_bias"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+
+  // CHECK: dense_tensor: shape=shape[2], value=[0,0]
+  phi_dt.print_tensor (%a : !infrt.dense_tensor<CPU, FP32, NCHW>)
+
+  infrt.return
+}
+
+func @load_combined_phi_tensor_map() {
+  %map = phi_dt.load_combined_params(){model_path="@CMAKE_BINARY_DIR@/multi_fc_model/fc.pdmodel",
+    params_path="@CMAKE_BINARY_DIR@/multi_fc_model/fc.pdiparams"}
+  %size = phi_dt.tensor_map_get_size(%map) -> i32
+  infrt.print.i32 %size
+
+  %a = phi_dt.tensor_map_get_tensor(%map) {name="fc_bias"} -> !infrt.dense_tensor<CPU, FP32, NCHW>
+
+  // CHECK: dense_tensor: shape=shape[2], value=[0,0]
+  phi_dt.print_tensor (%a : !infrt.dense_tensor<CPU, FP32, NCHW>)
 
   infrt.return
 }

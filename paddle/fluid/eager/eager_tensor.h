@@ -14,14 +14,13 @@
 
 #pragma once
 // framework deps
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-// pten deps
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/api/lib/api_declare.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/compat/convert_utils.h"
+// Phi deps
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
  * Mode, the better
@@ -31,7 +30,7 @@
  * provide variable in
  * paddle::framework::ExecutionContext to support it. We should remove this as
  * soon as we finish our latest
- * Pten Lib, and use paddle::experimental::Tensor instead.
+ * Phi Lib, and use paddle::experimental::Tensor instead.
  *
  * Note: Keep this class as clean as possible.
  * This class should only support method declared in
@@ -40,58 +39,49 @@
  * **/
 
 namespace egr {
-class EagerTensor final {
+class EagerVariable final {
  public:
   /* Default constructor and name constructor should only be used for contruct
    * output and in fluid*/
-  EagerTensor() = default;
+  EagerVariable() = default;
 
-  explicit EagerTensor(const std::string& name) : name_(name) {}
+  explicit EagerVariable(const std::string& name) : name_(name) {}
 
-  explicit EagerTensor(const paddle::experimental::Tensor& tensor)
+  explicit EagerVariable(const paddle::experimental::Tensor& tensor)
       : name_(tensor.name()) {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
-        auto* framework_tensor =
-            var_.GetMutable<paddle::framework::LoDTensor>();
-        // Contruct framework::Tensor from egr::EagerTensor
-        auto tensor_dense =
-            std::dynamic_pointer_cast<pten::DenseTensor>(tensor.impl());
-        PADDLE_ENFORCE_EQ((tensor_dense.get() && tensor_dense), true,
-                          paddle::platform::errors::Fatal(
-                              "Failed to Trans Tensor to EagerVariable since "
-                              "we got Tensor with type DenseTensor, and we got "
-                              "EagerVariable with another type."));
-        *framework_tensor = *tensor_dense;
+        ConstructVariableFromTensor<phi::DenseTensor>(tensor);
+      } else if (tensor.is_selected_rows()) {
+        ConstructVariableFromTensor<phi::SelectedRows>(tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized egr::EagerVariable type, only "
-            "DenseTensor and SelectedRows is supported for now."));
+            "DenseTensor and SelectedRows are supported for now."));
       }
     } else {
-      VLOG(6) << "Build Empty EagerTensor with name " << name_;
+      VLOG(6) << "Build Empty EagerVariable with name " << name_;
     }
   }
 
-  /** Part 11: Construct paddle::framework::Variable with pten::Tensor **/
-  std::shared_ptr<pten::TensorBase> GetTensorBase() {
+  /** Part 11: Construct paddle::framework::Variable with phi::Tensor **/
+  std::shared_ptr<phi::TensorBase> GetTensorBase() {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
-      if (var_.IsType<paddle::framework::LoDTensor>()) {
-        return SetImplWithLegacyTensor<pten::DenseTensor>();
-      } else if (var_.IsType<paddle::framework::Tensor>()) {
-        return SetImplWithLegacyTensor<pten::DenseTensor>();
-      } else if (var_.IsType<pten::SelectedRows>()) {
-        return SetImplWithSelectedRows();
+      if (var_.IsType<paddle::framework::LoDTensor>() ||
+          var_.IsType<paddle::framework::Tensor>()) {
+        return SetImplWithLegacyTensor<phi::DenseTensor>();
+      } else if (var_.IsType<phi::SelectedRows>()) {
+        return SetImplWithLegacyTensor<phi::SelectedRows>();
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unable to fetch underlying tensor "
-            "from EagerTensor, only LoDTensor and "
+            "from EagerVariable, only LoDTensor and "
             "Tensor are supported for now"));
       }
     } else {
       PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Can not Sync EagerTensor %s whose paddle::framework::Variable is "
+          "Can not Sync EagerVariable %s whose paddle::framework::Variable is "
           "not initialized!",
           name()));
     }
@@ -107,21 +97,26 @@ class EagerTensor final {
   void set_name(const std::string& name) { name_ = name; }
 
  private:
-  template <typename LEGACY_TYPE>
-  std::shared_ptr<pten::TensorBase> SetImplWithLegacyTensor() {
-    const auto& framework_tensor = var_.Get<LEGACY_TYPE>();
+  template <typename VarType>
+  std::shared_ptr<phi::TensorBase> SetImplWithLegacyTensor() {
+    const auto& framework_tensor = var_.Get<VarType>();
     VLOG(8) << "Sync Var to tensor for: " << name();
-    return std::make_shared<LEGACY_TYPE>(std::move(framework_tensor));
+    return std::make_shared<VarType>(framework_tensor);
   }
 
-  std::shared_ptr<pten::TensorBase> SetImplWithSelectedRows() {
-    auto* selected_rows = var_.GetMutable<pten::SelectedRows>();
-    auto res = std::make_shared<pten::SelectedRows>(selected_rows->rows_,
-                                                    selected_rows->height_);
-    res->value_.reset(selected_rows->value_.release());
-    res->id_to_index_ = std::move(selected_rows->id_to_index_);
-    res->rwlock_.reset(selected_rows->rwlock_.release());
-    return res;
+  template <typename VarType>
+  void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
+    auto* framework_tensor = var_.GetMutable<VarType>();
+    // Contruct framework::Tensor from egr::EagerVariable
+    auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
+    PADDLE_ENFORCE_EQ(
+        (tensor_dense.get() && tensor_dense), true,
+        paddle::platform::errors::Fatal(
+            "Tensor %s does not hold phi::SelectedRows or phi::DenseTensor. "
+            "Or it holds empty impl, this should not happend since we should "
+            "treat all kinds of tensor as what they are.",
+            tensor.name()));
+    *framework_tensor = *tensor_dense;
   }
 
  private:

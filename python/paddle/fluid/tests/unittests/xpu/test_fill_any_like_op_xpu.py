@@ -26,52 +26,66 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-class TestFillAnyLikeOp(OpTest):
-    def setUp(self):
-        self.op_type = "fill_any_like"
-        self.dtype = np.float32
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.value = 0.0
-        self.init()
-        self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
-        self.attrs = {'value': self.value, 'use_xpu': True}
-        self.outputs = {'Out': self.value * np.ones_like(self.inputs["X"])}
+class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'fill_any_like'
+        self.use_dynamic_create_class = False
 
-    def init(self):
-        pass
+    class TestFillAnyLikeOp(XPUOpTest):
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "fill_any_like"
+            self.place = paddle.XPUPlace(0)
+            self.set_value()
+            self.set_input()
+            self.attrs = {'value': self.value, 'use_xpu': True}
+            self.outputs = {'Out': self.value * np.ones_like(self.inputs["X"])}
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+
+        def set_input(self):
+            self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
+
+        def set_value(self):
+            self.value = 0.0
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+    class TestFillAnyLikeOp2(TestFillAnyLikeOp):
+        def set_value(self):
+            self.value = -0.0
+
+    class TestFillAnyLikeOp3(TestFillAnyLikeOp):
+        def set_value(self):
+            self.value = 1.0
+
+    class TestFillAnyLikeOp4(TestFillAnyLikeOp):
+        def init(self):
+            self.value = 1e-9
+
+    class TestFillAnyLikeOp5(TestFillAnyLikeOp):
+        def set_value(self):
+            if self.dtype == "float16":
+                self.value = 0.05
+            else:
+                self.value = 5.0
 
 
-class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
-    def init(self):
-        self.dtype = np.float32
-        self.value = 0.0
-
-
-class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
-    def init(self):
-        self.value = 1.0
-
-
-class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
-    def init(self):
-        self.value = 1e-9
-
-
-class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
-    def init(self):
-        self.dtype = np.float16
-        self.value = 0.05
-
+support_types = get_xpu_op_support_types('fill_any_like')
+for stype in support_types:
+    create_test_class(globals(), XPUTestFillAnyLikeOp, stype)
 
 if __name__ == "__main__":
     unittest.main()

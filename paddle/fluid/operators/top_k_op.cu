@@ -72,8 +72,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     // FIXME(typhoonzero): data is always converted to type T?
 
     framework::DDim inputdims = input->dims();
-    const int64_t input_height = framework::product(
-        framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
+    const int64_t input_height =
+        phi::product(phi::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const int64_t input_width = inputdims[inputdims.size() - 1];
     const auto& dev_ctx = ctx.cuda_device_context();
     if ((input_width <= 1024 || k >= 128 || k == input_width)) {
@@ -126,7 +126,7 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
 
     framework::DDim xdims = x->dims();
     const size_t row =
-        framework::product(framework::slice_ddim(xdims, 0, xdims.size() - 1));
+        phi::product(phi::slice_ddim(xdims, 0, xdims.size() - 1));
     const size_t col = xdims[xdims.size() - 1];
     const auto& dev_ctx = context.cuda_device_context();
     const int kMaxHeight = 2048;

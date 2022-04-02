@@ -255,7 +255,9 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   ASSERT_EQ(
       std::unordered_set<Node*>(cinn_op->inputs.begin(), cinn_op->inputs.end()),
       std::unordered_set<Node*>({v0, v1, v2, v4}));
-  ASSERT_EQ(cinn_op->outputs, std::vector<Node*>({v6, v7}));
+  ASSERT_EQ(std::unordered_set<Node*>(cinn_op->outputs.begin(),
+                                      cinn_op->outputs.end()),
+            std::unordered_set<Node*>({v6, v7}));
   ASSERT_EQ(v1->outputs, std::vector<Node*>({cinn_op}));
   ASSERT_EQ(v6->inputs, std::vector<Node*>({cinn_op}));
 
@@ -652,6 +654,19 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
   ASSERT_EQ(no_need_buffer_feeds.size(), 2);
   ASSERT_EQ(no_need_buffer_feeds,
             std::unordered_set<std::string>({"var2", "var3"}));
+
+  // check the attributes of variable lists are saved correctly
+  ASSERT_TRUE(subgraph.Has(kInputVars));
+  EXPECT_EQ(subgraph.Get<std::vector<std::string>>(kInputVars),
+            std::vector<std::string>({"var1"}));
+  ASSERT_TRUE(subgraph.Has(kInternalVars));
+  EXPECT_EQ(subgraph.Get<std::vector<std::string>>(kInternalVars),
+            std::vector<std::string>({"var4"}));
+  ASSERT_TRUE(subgraph.Has(kOutputVars));
+  const auto& output_vars = subgraph.Get<std::vector<std::string>>(kOutputVars);
+  EXPECT_EQ(
+      std::unordered_set<std::string>(output_vars.begin(), output_vars.end()),
+      std::unordered_set<std::string>({"var5", "var6"}));
 }
 
 }  // namespace paddle2cinn
@@ -659,8 +674,8 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
 }  // namespace paddle
 
 USE_PASS(build_cinn_pass);
-USE_OP(mul);
-USE_OP(relu);
-USE_OP(elementwise_add);
-USE_OP(relu_grad);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(relu);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(relu_grad);
+USE_OP_ITSELF(elementwise_add_grad);

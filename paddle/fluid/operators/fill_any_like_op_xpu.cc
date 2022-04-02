@@ -14,9 +14,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/fill_any_like_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
-#include "paddle/pten/kernels/full_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -31,6 +31,7 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
@@ -59,11 +60,11 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
 
-    // call pten kernel
-    pten::FullLikeKernel<T>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+    // call phi kernel
+    phi::FullLikeKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             paddle::platform::XPUDeviceContext>::TYPE&>(dev_ctx),
-        value, out);
+        *x, value, phi::DataType::UNDEFINED, out);
   }
 };
 

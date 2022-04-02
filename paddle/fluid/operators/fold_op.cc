@@ -13,7 +13,6 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/fold_op.h"
-#include "paddle/fluid/operators/unfold_op.h"
 
 namespace paddle {
 namespace operators {
@@ -96,6 +95,17 @@ class FoldOp : public framework::OperatorWithKernel {
                           "but recieved strides_height: %d strides_width: %d.",
                           strides[0], strides[1]));
     // check dilations
+    PADDLE_ENFORCE_GT(output_height, 1,
+                      platform::errors::InvalidArgument(
+                          "The `output_height` should be greater than one, "
+                          "but recieved output_height: %d .",
+                          output_height));
+    PADDLE_ENFORCE_GT(output_width, 1,
+                      platform::errors::InvalidArgument(
+                          "The `output_width` should be greater than one, "
+                          "but recieved output_width: %d .",
+                          output_width));
+    // check output size
     PADDLE_ENFORCE_GT(
         dilation_height, 0,
         platform::errors::InvalidArgument(
@@ -147,7 +157,7 @@ class FoldOp : public framework::OperatorWithKernel {
             output_width));
 
     PADDLE_ENFORCE_EQ(
-        blocks_height * blocks_width, in_dims[1],
+        blocks_height * blocks_width, in_dims[2],
         platform::errors::InvalidArgument(
             "Given input output_size (%d, %d), "
             "kernel_sizes (%d, %d), strides (%d, %d), dilations (%d, %d), "
@@ -157,9 +167,18 @@ class FoldOp : public framework::OperatorWithKernel {
             strides[0], strides[1], dilations[0], dilations[1], blocks_height,
             blocks_width, blocks_height * blocks_width, in_dims[2]));
 
+    PADDLE_ENFORCE_EQ(
+        in_dims[1] % (kernel_sizes[0] * kernel_sizes[1]), 0,
+        platform::errors::InvalidArgument(
+            "Expected size of input's dimension 1 to be divisible by the"
+            "product of kernel_size, but got input.size(1)=%d and "
+            "kernel_size=( %d"
+            ", %d).",
+            in_dims[1], kernel_sizes[0], kernel_sizes[1]));
+
     out_dims.push_back(output_height);
     out_dims.push_back(output_width);
-    ctx->SetOutputDim("Y", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Y", phi::make_ddim(out_dims));
   }
 
  protected:

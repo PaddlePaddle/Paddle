@@ -18,7 +18,7 @@ import six
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place, _in_eager_mode
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, _non_static_mode, cpu_places, _current_expected_place, _in_eager_without_dygraph_check
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
@@ -332,11 +332,9 @@ class DataLoader(object):
         self.use_buffer_reader = use_buffer_reader
         self.worker_init_fn = worker_init_fn
 
-        assert isinstance(dataset, Dataset), \
-            "dataset should be subclass instance of paddle.io.Dataset"
         self.dataset = dataset
 
-        if not return_list and not in_dygraph_mode():
+        if not return_list and not _non_static_mode():
             assert feed_list is not None, \
                     "feed_list should be set when return_list=False"
         self.feed_list = feed_list
@@ -405,7 +403,7 @@ class DataLoader(object):
         self.auto_collate_batch = self.batch_sampler is not None
 
         self.pin_memory = False
-        if in_dygraph_mode():
+        if _non_static_mode():
             self.pin_memory = True if use_pinned_memory(
             ) is None else use_pinned_memory()
 
@@ -754,7 +752,7 @@ class DataLoader(object):
                 # number is less than CPU core number can be tested.
                 print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
-        if in_dygraph_mode():
+        if _non_static_mode():
             return DygraphGeneratorLoader(feed_list, capacity,
                                           use_double_buffer, iterable,
                                           return_list, use_multiprocess)
@@ -971,8 +969,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def __next__(self):
         try:
-            if _in_eager_mode():
-                return core.eager.read_next_eager_tensor_list(
+            if _in_eager_without_dygraph_check():
+                return core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0])
             else:
                 return self._reader.read_next_var_list()
@@ -1849,7 +1847,7 @@ class DatasetLoader(DataLoaderBase):
     def __init__(self, dataset, places, drop_last):
         assert isinstance(dataset, paddle.distributed.fleet.dataset.
                           DatasetBase), "dataset must be type of DatasetBase"
-        assert not in_dygraph_mode(
+        assert not _non_static_mode(
         ), "DatasetLoader is not supported in dygraph mode yet"
         if isinstance(places, (list, tuple)):
             places = _get_paddle_place_list(places)

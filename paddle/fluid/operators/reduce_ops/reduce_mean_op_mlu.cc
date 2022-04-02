@@ -29,7 +29,7 @@ class ReduceMeanMLUKernel : public framework::OpKernel<T> {
 
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = phi::vectorize(input->dims());
     const auto& input_dim_size = input->dims().size();
     std::vector<int> reduce_dims;
     if (reduce_all) {
@@ -47,9 +47,9 @@ class ReduceMeanMLUKernel : public framework::OpKernel<T> {
     }
 
     MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->type()));
+                                 ToCnnlDataType(input->dtype()));
     MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->type()));
+                                  ToCnnlDataType(output->dtype()));
 
     MLUCnnlReduceDesc reduction_desc(
         reduce_dims, CNNL_REDUCE_AVG, ToCnnlDataType<T>(),
@@ -73,7 +73,7 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
 
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto reduce_dims = context.Attr<std::vector<int>>("dim");
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = phi::vectorize(input->dims());
 
     int reduce_numel = 1;
     if (reduce_all) {
@@ -89,18 +89,18 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
       reduce_numel *= input_dims[d];
     }
 
-    Tensor tmp_output_grad(output_grad->type());
+    Tensor tmp_output_grad(output_grad->dtype());
     auto tmp_output_dims = input_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;
     }
     tmp_output_grad.ShareDataWith(*output_grad);
-    tmp_output_grad.Resize(framework::make_ddim(tmp_output_dims));
+    tmp_output_grad.Resize(phi::make_ddim(tmp_output_dims));
 
     MLUCnnlTensorDesc output_grad_desc(tmp_output_grad, CNNL_LAYOUT_ARRAY,
-                                       ToCnnlDataType(tmp_output_grad.type()));
+                                       ToCnnlDataType(tmp_output_grad.dtype()));
     MLUCnnlTensorDesc input_grad_desc(*input_grad, CNNL_LAYOUT_ARRAY,
-                                      ToCnnlDataType(input_grad->type()));
+                                      ToCnnlDataType(input_grad->dtype()));
 
     auto value = static_cast<T>(1.0 / static_cast<float>(reduce_numel));
     MLUCnnl::Fill(context, value, input_grad_desc.get(),

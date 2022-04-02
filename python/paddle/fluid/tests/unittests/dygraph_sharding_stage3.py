@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
+import tempfile
 import numpy as np
 import argparse
 import ast
@@ -83,8 +86,9 @@ def train_mlp(model,
               accumulate_grad=False,
               batch_size=100,
               opt_group=False,
-              recompute=False,
-              test_minimize=False):
+              sync_comm=False,
+              test_minimize=False,
+              save_model=False):
     group = paddle.distributed.new_group([0, 1])
     if opt_group:
         optimizer = optimizer_setting(
@@ -101,18 +105,10 @@ def train_mlp(model,
         optimizer = ShardingOptimizerStage2(
             params=model.parameters(), optim=optimizer, group=group)
         model = ShardingStage2(
-            model,
-            optimizer,
-            group=group,
-            buffer_max_size=2**21,
-            accumulate_grads=batch_size == 20)
+            model, optimizer, group=group, buffer_max_size=2**21)
     elif sharding_stage == 3:
         model = ShardingStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            accumulate_grads=batch_size == 20,
-            sync_comm=recompute)
+            model, optimizer=optimizer, group=group, sync_comm=sync_comm)
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -170,12 +166,15 @@ def train_mlp(model,
             optimizer.clear_grad()
     if sharding_stage == 3:
         model.get_all_parameters()
+
+    if save_model:
+        return model, optimizer
     return model.parameters()
 
 
 def test_stage2_stage3():
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9 = MLP(), MLP(
-    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
+    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8, mlp9, mlp10 = MLP(
+    ), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP(), MLP()
     state_dict = mlp.state_dict()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
@@ -186,6 +185,7 @@ def test_stage2_stage3():
     mlp7.set_state_dict(state_dict)
     mlp8.set_state_dict(state_dict)
     mlp9.set_state_dict(state_dict)
+    mlp10.set_state_dict(state_dict)
 
     # fp32 
     stage2_params = train_mlp(
@@ -231,9 +231,9 @@ def test_stage2_stage3():
             stage2_params[i].numpy(),
             stage3_params[i].numpy(),
             rtol=1e-4,
-            atol=1e-4)
+            atol=1e-3)
 
-    # fp16 recompute
+    # fp16 sync_comm
     stage3_params = train_mlp(
         mlp7, sharding_stage=3, use_pure_fp16=True, opt_group=False)
     stage3_params_re = train_mlp(
@@ -241,14 +241,32 @@ def test_stage2_stage3():
         sharding_stage=3,
         use_pure_fp16=True,
         opt_group=False,
-        recompute=True)
+        sync_comm=True)
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6)
 
+    # save/load model
+    output_dir = tempfile.mkdtemp()
+    model_file = os.path.join(output_dir, "model.pdmodel")
+    optimizer_file = os.path.join(output_dir, "model.pdopt")
+    model_stage3, optimizer_stage3 = train_mlp(
+        mlp9,
+        sharding_stage=3,
+        use_pure_fp16=False,
+        opt_group=False,
+        save_model=True)
+    paddle.save(model_stage3.state_dict(), model_file)
+    paddle.save(optimizer_stage3.state_dict(), optimizer_file)
+    m_state_dict = paddle.load(model_file)
+    opt_state_dict = paddle.load(optimizer_file)
+    model_stage3.set_state_dict(m_state_dict)
+    optimizer_stage3.set_state_dict(opt_state_dict)
+    shutil.rmtree(output_dir)
+
     # check optimizer.minimize() error
     train_mlp(
-        mlp9,
+        mlp10,
         sharding_stage=3,
         use_pure_fp16=False,
         opt_group=False,

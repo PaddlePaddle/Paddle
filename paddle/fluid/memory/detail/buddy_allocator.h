@@ -39,7 +39,8 @@ class BuddyAllocator {
  public:
   BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
                  size_t min_chunk_size, size_t max_chunk_size,
-                 size_t extra_padding_size = 0);
+                 size_t extra_padding_size = 0,
+                 const std::string dev_type = "");
 
   ~BuddyAllocator();
 
@@ -123,6 +124,9 @@ class BuddyAllocator {
   /*! Allocate CPU/GPU memory from system */
   std::unique_ptr<SystemAllocator> system_allocator_;
   std::mutex mutex_;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  std::function<size_t()> init_allocate_size_func_, re_allocate_size_func_;
+#endif
 };
 
 }  // namespace detail

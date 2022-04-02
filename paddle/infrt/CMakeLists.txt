@@ -2,13 +2,23 @@ if (NOT WITH_INFRT)
     return()
 endif()
 
-option(INFRT_WITH_PTEN  "Compile INFRT with PTEN"    ON)
+option(INFRT_WITH_PHI  "Compile INFRT with PHI"    ON)
+option(INFRT_WITH_GPU  "Compile INFRT with GPU"    OFF)
+option(INFRT_WITH_TRT  "Compile INFRT with TensorRT"    OFF)
 
 #TODO(xiaowei) remove fluid
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
-if (INFRT_WITH_PTEN)
-    add_definitions("-DINFRT_WITH_PTEN")
+if (INFRT_WITH_PHI)
+  add_definitions("-DINFRT_WITH_PHI")
+
+  # TODO(wilber): Now Infrt gpu/trt depends on phi's components, Modify compile dependency options later.
+  if (INFRT_WITH_GPU)
+    add_definitions("-DINFRT_WITH_GPU")
+    if (INFRT_WITH_TRT)
+      add_definitions("-DINFRT_WITH_TRT")
+    endif()
+  endif()
 endif()
 
 # compile flags
@@ -74,6 +84,7 @@ endif()
 
 
 add_subdirectory(api)
+add_subdirectory(backends)
 add_subdirectory(common)
 add_subdirectory(dialect)
 add_subdirectory(host_context)
@@ -82,7 +93,6 @@ add_subdirectory(tensor)
 add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
-add_subdirectory(naive)
 add_subdirectory(tests)
 
 
@@ -90,23 +100,25 @@ add_subdirectory(tests)
 set(infrt_mlir_incs
         basic_kernels_inc
         test_kernels_inc
-        infrt_base_inc
         tensor_shape_inc
         dense_tensor_inc
-        pd_ops_inc
         pd_extra_ops_inc
-        rewrite_inc
         trt_ops_inc
         )
-if (INFRT_WITH_PTEN)
+
+if (INFRT_WITH_PHI)
+    set(phi_libs phi)
     set(infrt_mlir_incs ${infrt_mlir_incs}
-        MLIRinfrt_pten_tensorIncGen
-        MLIRinfrt_pten_baseIncGen
+        MLIRinfrt_phi_tensorIncGen
+        MLIRinfrt_phi_baseIncGen
         )
 endif()
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto infrt_naive)
-cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
-add_dependencies(infrt ${infrt_mlir_incs})
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto infrt_naive)
+if (INFRT_WITH_TRT)
+  target_link_libraries(infrt infrt_trt)
+endif()
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto)
+add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})

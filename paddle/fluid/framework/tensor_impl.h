@@ -35,7 +35,7 @@ inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   }
   Tensor res;
   res.ShareDataWith(src);
-  res.Resize(flatten_to_2d(src.dims(), num_col_dims));
+  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
   return res;
 }
 

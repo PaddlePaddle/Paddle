@@ -38,6 +38,10 @@ class TensorRTEngineTest : public ::testing::Test {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(platform::CUDAPlace(0))
             .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
     ctx_->PartialInitWithAllocator();
 
     engine_ = new TensorRTEngine(10, 1 << 10);
@@ -54,7 +58,7 @@ class TensorRTEngineTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &input_);
-    output_.Resize(framework::make_ddim(output_shape));
+    output_.Resize(phi::make_ddim(output_shape));
   }
 
   void GetOutput(std::vector<float> *output) {

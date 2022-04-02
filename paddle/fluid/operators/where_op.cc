@@ -12,39 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/where_op.h"
-
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 namespace paddle {
 namespace operators {
 
 class WhereOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition", "Where");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Where");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Where");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Where");
-
-    auto cond_dims = ctx->GetInputDim("Condition");
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(
-        cond_dims, x_dims,
-        platform::errors::InvalidArgument(
-            "The dims of Inputs(Condition) and Inputs(X) should be same. "
-            "But received Condition's shape is [%s], X's shape is [%s]",
-            cond_dims, x_dims));
-    PADDLE_ENFORCE_EQ(x_dims, y_dims,
-                      platform::errors::InvalidArgument(
-                          "The dims of Inputs(X) and Inputs(Y) should be same. "
-                          "But received X's shape is [%s], Y's shape is [%s]",
-                          x_dims, y_dims));
-
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -140,19 +117,12 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarsInferer, "X", "Y");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(where, WhereInferShapeFunctor,
+                            PD_INFER_META(phi::WhereInferMeta));
 REGISTER_OPERATOR(where, ops::WhereOp, ops::WhereOpMaker,
                   ops::WhereOpGradMaker<paddle::framework::OpDesc>,
-                  ops::WhereOpGradMaker<paddle::imperative::OpBase>);
+                  ops::WhereOpGradMaker<paddle::imperative::OpBase>,
+                  WhereInferShapeFunctor);
 
 REGISTER_OPERATOR(where_grad, ops::WhereGradOp,
                   ops::WhereGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    where, ops::WhereKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::WhereKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::WhereKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::WhereKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    where_grad, ops::WhereGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::WhereGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::WhereGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::WhereGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

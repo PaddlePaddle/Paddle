@@ -34,7 +34,17 @@ class TensorWrapper {
  public:
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
-                         bool full_reserved = false) {
+                         bool full_reserved = false,
+                         bool no_need_buffer = false) {
+    // set inplace_version_snapshot_ according to tensor's current inplace
+    // version.
+    if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(tensor.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+      inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
+    }
+
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -48,16 +58,31 @@ class TensorWrapper {
     }
 
     // shallow copy tensor_impl here
-    intermidiate_tensor_.set_impl(tensor.impl());
+    no_need_buffer_ = no_need_buffer;
+    if (no_need_buffer) {
+      if (phi::DenseTensor::classof(tensor.impl().get())) {
+        // Only Copy Meta
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
+        tw_dense_tensor->set_meta(dense_tensor->meta());
+        intermidiate_tensor_.set_impl(tw_dense_tensor);
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Unrecognized tensor type for no_need_buffer feature"));
+      }
+    } else {
+      intermidiate_tensor_.set_impl(tensor.impl());
+    }
+
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
-    PADDLE_ENFORCE_NOT_NULL(
-        EagerUtils::unsafe_autograd_meta(tensor),
-        paddle::platform::errors::Fatal(
-            "Full reserved Tensor should not have null autograd meta, since "
-            "tensor_wrapper is used to build backward info. There is no way "
-            "for us to build it with null autograd_meta."));
-    // copy output_rank
-    out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+
+    // If an output is marked "intermedaite", we won't create
+    // autograd_meta for it.
+    // In that case, simply skip OutRankInfo Copy
+    if (EagerUtils::nullable_autograd_meta(tensor)) {
+      out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+    }
   }
 
   paddle::experimental::Tensor recover(
@@ -69,6 +94,7 @@ class TensorWrapper {
       return paddle::experimental::Tensor();
     }
 
+    check_inplace_version();
     // if it's full_reserved just return the full copy of tensor
     if (full_reserved_) {
       return intermidiate_tensor_;
@@ -83,9 +109,47 @@ class TensorWrapper {
     }
   }
 
+  void check_inplace_version() {
+    if (no_need_buffer_) {
+      VLOG(6) << "There's no need to check inplace_version because "
+                 "no_need_buffer_ is true.";
+      return;
+    }
+    if (intermidiate_tensor_.impl() &&
+        phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+
+      uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
+      uint32_t tensor_version = inplace_version_counter.CurrentVersion();
+      PADDLE_ENFORCE_EQ(
+          tensor_version, wrapper_version_snapshot,
+          paddle::platform::errors::PermissionDenied(
+              "Tensor '%s' used in gradient computation has been "
+              "modified by an inplace operation. "
+              "Its version is %d but the expected version is %d. "
+              "Please fix your code to void calling an inplace operator "
+              "after using the Tensor which will used in gradient "
+              "computation.",
+              intermidiate_tensor_.name(), tensor_version,
+              wrapper_version_snapshot));
+      VLOG(6) << " The wrapper_version_snapshot of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ "
+              << wrapper_version_snapshot << " ]";
+      VLOG(6) << " The tensor_version of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ " << tensor_version
+              << " ]";
+    }
+  }
+
+  void clear() { intermidiate_tensor_.reset(); }
+
  private:
   bool full_reserved_ = false;
+  bool no_need_buffer_ = false;
   std::pair<size_t, size_t> out_rank_info_;
   paddle::experimental::Tensor intermidiate_tensor_;
+  uint32_t inplace_version_snapshot_ = 0;
 };
 }  // namespace egr

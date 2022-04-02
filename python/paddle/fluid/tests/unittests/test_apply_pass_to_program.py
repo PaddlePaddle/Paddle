@@ -114,6 +114,7 @@ class TestIRPassBase(unittest.TestCase):
         # fused all optimizer pass requires this
         if paddle.is_compiled_with_cuda():
             self.assertTrue(global_block_contains_op(main, "coalesce_tensor"))
+            self.assertTrue(global_block_contains_op(main, "depend"))
         self.assertTrue(
             global_block_contains_op(main, "fused_elemwise_add_activation"))
 
@@ -162,6 +163,7 @@ class TestIRPassBase(unittest.TestCase):
         for k, v in self.get_strategy().items():
             setattr(build_strategy, k, v)
         self.check_before_applied(main2, startup2)
+
         apply_build_strategy(main2, startup2, build_strategy,
                              {"use_cuda": self.use_cuda})
         self.check_after_applied(main2, startup2)

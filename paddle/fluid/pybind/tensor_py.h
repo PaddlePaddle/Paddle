@@ -28,12 +28,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -49,6 +51,46 @@ constexpr int NPY_FLOAT16_ = 23;
 constexpr int NPY_UINT16_ = 4;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
+
+// cast numpy type form S to T, this may allocate new memory
+template <class T, class S>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  if (std::is_same<T, S>::value) {
+    return array;
+  }
+  auto dim = array.ndim();
+  std::vector<py::ssize_t> result_shape(dim);
+  for (auto i = 0; i < dim; i++) {
+    result_shape[i] = array.shape(i);
+  }
+
+  py::array_t<T> result(result_shape);
+
+  return py::vectorize([](S s) { return static_cast<T>(s); })(array);
+}
+
+template <class T>
+static py::array_t<T> CastNumpyArray(const py::object &array) {
+  if (py::isinstance<py::array_t<float>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<float>>());
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<double>>());
+  } else if (py::isinstance<py::array_t<int32_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Value type error. The assign numpy value allows integer, float, "
+        "double and bool, "
+        "but received %s.",
+        Py_TYPE(array.ptr())->tp_name));
+  }
+  // can't reach here
+  return py::array_t<T>();
+}
 
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
@@ -247,6 +289,13 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
+  } else if (platform::is_custom_place(self.place())) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    const T *a = self.data<T>();
+    auto p = self.place();
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
   }
   VLOG(10) << "TensorGetElement, place: " << self.place()
            << ", offset: " << offset << ", element: " << b;
@@ -289,6 +338,13 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
 #endif
+  } else if (platform::is_custom_place(self->place())) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    auto p = self->place();
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
   }
 }
 
@@ -302,13 +358,13 @@ void SetTensorFromPyArrayT(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(phi::make_ddim(dims));
 
   if (paddle::platform::is_cpu_place(place)) {
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, type);
+      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -332,10 +388,16 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, type);
+      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
-      auto dst = self->mutable_data<T>(place);
-      std::memcpy(dst, array.data(), array.nbytes());
+      // IPU does not store Tensor data, Tensor will be created on CPU
+      if (!self->initialized()) {
+        auto dst = self->mutable_data<T>(place);
+        std::memcpy(dst, array.data(), array.nbytes());
+      } else {
+        auto dst = self->mutable_data<T>(self->place());
+        std::memcpy(dst, array.data(), array.nbytes());
+      }
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -367,6 +429,24 @@ void SetTensorFromPyArrayT(
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with MLU support."));
+#endif
+  } else if (paddle::platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    platform::Place tmp_place = place;
+    phi::DeviceGuard guard(tmp_place);
+    auto dst = self->mutable_data<T>(place);
+
+    phi::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
+        reinterpret_cast<void *>(dst),
+        const_cast<void *>(reinterpret_cast<const void *>(array.data())),
+        array.nbytes());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
+    ctx.Wait();
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use CustomDevice in CPU/GPU/XPU version. "
+        "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -461,7 +541,7 @@ void SetUVATensorFromPyArray(
     dims.emplace_back(static_cast<int>(array.shape()[i]));
     numel *= static_cast<int>(array.shape()[i]);
   }
-  self_tensor->Resize(framework::make_ddim(dims));
+  self_tensor->Resize(phi::make_ddim(dims));
 
   auto data_type = framework::ToDataType(std::type_index(typeid(T)));
   const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
@@ -477,7 +557,8 @@ void SetUVATensorFromPyArray(
       std::make_shared<memory::allocation::Allocation>(
           cuda_device_pointer, need_allocate_size,
           platform::CUDAPlace(device_id));
-  self_tensor->ResetHolderWithType(holder, data_type);
+  self_tensor->ResetHolderWithType(holder,
+                                   framework::TransToPhiDataType(data_type));
 #endif
 }
 
@@ -522,8 +603,8 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
   if (axis == 0 && ins.size() < 10) {
     size_t output_offset = 0;
     for (auto &in : ins) {
-      auto in_stride = framework::stride_numel(in.dims());
-      auto out_stride = framework::stride_numel(out->dims());
+      auto in_stride = phi::stride_numel(in.dims());
+      auto out_stride = phi::stride_numel(out->dims());
       paddle::operators::StridedNumelCopyWithAxis<T>(
           ctx, axis, out->data<T>() + output_offset, out_stride, in.data<T>(),
           in_stride, in_stride[axis]);
@@ -544,14 +625,20 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
   const framework::DDim &srcDDim = self.dims();
-  if (dim < 0 || dim >= srcDDim.size()) {
-    throw py::index_error();
-  }
+  PADDLE_ENFORCE(
+      0 <= dim && dim < srcDDim.size(),
+      platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
+                                   "shound be in the range of [0, %d).",
+                                   dim, srcDDim.size()));
+
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
     py::slice s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[dim], &lstart, &lstop, &lstep, &lslicelength)) {
-      throw py::index_error();
+      PADDLE_THROW(platform::errors::OutOfRange(
+          "Slice on dim: %d is error, please check the validity of tensor "
+          "dims or slice item.",
+          dim));
     }
     start = static_cast<int64_t>(lstart);
     stop = static_cast<int64_t>(lstop);
@@ -559,15 +646,19 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
     slicelength = static_cast<int64_t>(lslicelength);
   } else if (py::isinstance<py::int_>(obj)) {
     start = static_cast<int64_t>(static_cast<py::int_>(obj));
-    if (std::abs(start) >= srcDDim[dim]) {
-      throw py::index_error();
-    }
+    PADDLE_ENFORCE(
+        std::abs(start) < srcDDim[dim],
+        platform::errors::OutOfRange("The start %d of slice is out of bounds, "
+                                     "it shound be in the range of (%d, %d).",
+                                     start, -srcDDim[dim], srcDDim[dim]));
     start = (start >= 0) ? start : srcDDim[dim] - start;
     stop = start + 1;
     step = 1;
     slicelength = 1;
   } else {
-    throw py::index_error();
+    PADDLE_THROW(
+        platform::errors::OutOfRange("Index object error, the index object for "
+                                     "slice only supports slice(::) and int."));
   }
 }
 
@@ -577,21 +668,21 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    output->mutable_data(place, self.type());
+    output->mutable_data(place, self.dtype());
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_cuda_pinned_place(place)) {
-      output->mutable_data(place, self.type());
+      output->mutable_data(place, self.dtype());
     } else if ((platform::is_gpu_place(place))) {
-      output->mutable_data(place, self.type());
+      output->mutable_data(place, self.dtype());
     }
 #endif
   }
@@ -677,7 +768,7 @@ inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
 
 inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
                                        py::object obj, int dim) {
-  auto src_type = self.type();
+  auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
       return _sliceAndConcat<paddle::platform::float16>(self, obj, dim);
@@ -755,8 +846,9 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
   bool is_npu_tensor = platform::is_npu_place(tensor.place());
   bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
+  bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
-  auto tensor_dtype = tensor.type();
+  auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
 
   std::vector<size_t> py_dims(tensor_dims.size());
@@ -771,9 +863,11 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   const void *tensor_buf_ptr = tensor.data();
 
-  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
+  std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
+      framework::TransToProtoVarType(tensor.dtype()));
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor &&
+      !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()), py_dims, py_strides,
@@ -897,6 +991,34 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU/XPU/NPU version, "
         "Please recompile or reinstall Paddle with MLU support."));
+#endif
+  } else if (is_custom_device_tensor) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                      platform::errors::InvalidArgument(
+                          "PyArray is not writable, in which case memory leak "
+                          "or double free would occur"));
+    PADDLE_ENFORCE_EQ(
+        py_arr.owndata(), true,
+        platform::errors::InvalidArgument(
+            "PyArray does not own data, in which case  memory leak "
+            "or double free would occur"));
+
+    size_t copy_bytes = sizeof_dtype * numel;
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(tensor.place());
+    paddle::memory::Copy(
+        platform::CPUPlace(), py_arr.mutable_data(), tensor.place(),
+        tensor_buf_ptr, copy_bytes,
+        reinterpret_cast<const platform::CustomDeviceContext &>(ctx).stream());
+    ctx.Wait();
+    return py_arr;
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use CustomPlace in CPU/GPU/XPU/NPU version, "
+        "Please recompile or reinstall Paddle with CustomPlace "
+        "support."));
 #endif
   }
   PADDLE_THROW(platform::errors::Unimplemented("Place is not supported"));

@@ -17,9 +17,11 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/lstsq_op.h"
 #include "paddle/fluid/operators/qr_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -64,11 +66,15 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopy(y, context.GetPlace(), &new_y);
 
     // Prepare tau
-    auto tau_dims_vec = framework::vectorize<int>(x_dims);
+    auto tau_dims_vec = phi::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     Tensor tau = dito.Fill(tau_dims_vec, 0);
     auto tau_data = tau.mutable_data<T>(context.GetPlace());
+
+    using Context =
+        typename framework::ConvertToPhiContext<DeviceContext>::TYPE;
+    auto& phi_dev_ctx = static_cast<const Context&>(dev_ctx);
 
     if (m >= n) {
       Tensor tmp_x = dito.Transpose(new_x);
@@ -93,8 +99,9 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
       Tensor slice_y = dito.Slice(trans_y, {-2}, {0}, {min_mn});
 
       // Step 3, solve R X = Y
-      triangular_solve<DeviceContext, T>(dev_ctx, res_r, slice_y, solution,
-                                         true, false, false);
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, res_r, slice_y, true,
+                                             false, false, solution);
+
     } else {
       auto x_data = new_x.mutable_data<T>(context.GetPlace());
       auto y_data = new_y.mutable_data<T>(context.GetPlace());
@@ -105,8 +112,8 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
 
       // Step 2, solve R^H Z = Y
       Tensor trans_r = dito.Transpose(new_x);
-      triangular_solve<DeviceContext, T>(dev_ctx, trans_r, new_y, solution,
-                                         true, true, false);
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, trans_r, new_y, true,
+                                             true, false, solution);
 
       // Step 3, X <- Q Z
       BatchedOrgqr<DeviceContext, T>(dev_ctx, batch_count, n, n, min_mn, x_data,

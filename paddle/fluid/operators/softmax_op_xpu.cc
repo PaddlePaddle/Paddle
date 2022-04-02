@@ -11,8 +11,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,7 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     const int rank = x->dims().size();
-    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     out->mutable_data<T>(context.GetPlace());
@@ -46,7 +46,7 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
 
     int r = XPU_SUCCESS;
     auto version = platform::get_xpu_version(context.GetPlace().GetDeviceId());
-    if (version == pten::backends::xpu::XPUVersion::XPU1) {
+    if (version == phi::backends::xpu::XPUVersion::XPU1) {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       XPUType* clip_x_data_l3 = RAII_GUARD.alloc_l3_or_gm<XPUType>(x->numel());
       r = xpu::clip_v2(dev_ctx.x_context(),
@@ -88,7 +88,7 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dx->dims().size();
-    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     dx->mutable_data<T>(context.GetPlace());

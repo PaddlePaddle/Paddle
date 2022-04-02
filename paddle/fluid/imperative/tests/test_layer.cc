@@ -39,6 +39,8 @@ using vb_vector = std::vector<std::shared_ptr<imperative::VarBase>>;
 
 using var_pair = std::pair<std::string, vb_vector>;
 
+extern void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs);
 template <typename VarType>
 class TestRuntimeInferVarTypeContext
     : public RuntimeInferVarTypeContext<VarType> {
@@ -238,7 +240,7 @@ TEST(test_layer, test_debug_string) {
   std::shared_ptr<imperative::VarBase> selected_rows(
       new imperative::VarBase(false, "selected_rows"));
   auto tensor_sr = selected_rows->MutableVar()
-                       ->GetMutable<pten::SelectedRows>()
+                       ->GetMutable<phi::SelectedRows>()
                        ->mutable_value();
   std::string res_ui_sr = test_func(selected_rows);
   ASSERT_TRUE(res_ui_sr.find("NOT_INITED") != std::string::npos);
@@ -406,7 +408,12 @@ TEST(test_layer, test_inner_op_not_inited) {
   ASSERT_THROW(op.CheckAttrs(), platform::EnforceNotMet);
 }
 
+TEST(test_layer, test_eager) {
+  imperative::NameTensorMap ins = {};
+  TestSetForwardDataTypeOfGradVarsEager(ins);
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP_ITSELF(mul);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace imperative {
@@ -250,10 +251,10 @@ void ProgramDescTracer::InsertVarIfNotExist(
   if (inner_var.IsType<framework::LoDTensor>()) {
     const auto &tensor = inner_var.Get<framework::LoDTensor>();
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
-    new_var_desc->SetShape(framework::vectorize<int64_t>(tensor.dims()));
+    new_var_desc->SetShape(phi::vectorize<int64_t>(tensor.dims()));
     new_var_desc->SetLoDLevel(tensor.lod().size());
     if (tensor.IsInitialized()) {
-      new_var_desc->SetDataType(tensor.type());
+      new_var_desc->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
     } else {
       new_var_desc->SetDataType(framework::proto::VarType::FP32);
     }

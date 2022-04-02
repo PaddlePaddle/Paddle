@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -36,7 +36,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "fusion_gru");
   auto x_dims = ctx->GetInputDim("X");
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? framework::flatten_to_2d(x_dims, 1)
+                        ? phi::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(), 2,
@@ -246,17 +246,17 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     }
   }
 
-#define INIT_BASE_DEFINES                                     \
-  auto* x = ctx.Input<LoDTensor>("X");                        \
-  auto* wh = ctx.Input<Tensor>("WeightH");                    \
-  auto* xx = ctx.Output<LoDTensor>("XX");                     \
-  auto x_lod = x->lod();                                      \
-  auto x_dims = x->dims(); /* T x M*/                         \
-  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)    \
-                        ? framework::flatten_to_2d(x_dims, 1) \
-                        : x_dims;                             \
-  auto wh_dims = wh->dims(); /* D x 3D*/                      \
-  const int total_T = x_mat_dims[0];                          \
+#define INIT_BASE_DEFINES                                  \
+  auto* x = ctx.Input<LoDTensor>("X");                     \
+  auto* wh = ctx.Input<Tensor>("WeightH");                 \
+  auto* xx = ctx.Output<LoDTensor>("XX");                  \
+  auto x_lod = x->lod();                                   \
+  auto x_dims = x->dims(); /* T x M*/                      \
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1) \
+                        ? phi::flatten_to_2d(x_dims, 1)    \
+                        : x_dims;                          \
+  auto wh_dims = wh->dims(); /* D x 3D*/                   \
+  const int total_T = x_mat_dims[0];                       \
   const int D3 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                   \
@@ -295,7 +295,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
@@ -367,8 +367,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     T* batched_out_data = batched_out->mutable_data<T>(place);
     hidden_out->mutable_data<T>(place);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     math::FCFunctor<DeviceContext, T> fc;
     if (M > D3) {
@@ -463,7 +463,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       batched_input_data = cur_batched_data;
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batched_out->set_lod(batched_lod);
     to_seq(dev_ctx, *batched_out, hidden_out);
   }

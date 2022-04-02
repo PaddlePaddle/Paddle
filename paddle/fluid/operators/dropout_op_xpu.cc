@@ -8,15 +8,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/dropout_op.h"
+
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
 
 #ifdef PADDLE_WITH_XPU
 
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class DropoutXPUKernel : public framework::OpKernel<T> {
   using XPUTyp = typename XPUTypeTrait<T>::Type;
@@ -32,20 +34,18 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("dropout_implementation");
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
-    PADDLE_ENFORCE_EQ(!context.HasInput("Seed"), true,
-                      platform::errors::InvalidArgument(
-                          ("Input(Seed) not supported on XPU")));
+    auto* seed =
+        context.HasInput("Seed") ? context.Input<Tensor>("Seed") : nullptr;
+
     int is_upscale = (dropout_implementation == "upscale_in_train");
 
     if (!context.Attr<bool>("is_test")) {
-      std::random_device rnd;
-      // int seed = (context.Attr<bool>("fix_seed")) ?
-      // int(context.Attr<int>("seed")) : (rnd());
-      int seed = 0;
-      if (context.Attr<bool>("fix_seed") == true) {
-        seed = static_cast<int>(context.Attr<int>("seed"));
+      int seed_data = 0;
+      if (seed) {
+        seed_data = *(seed->data<int>());
       } else {
-        seed = rnd();
+        seed_data =
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
 
       auto* mask = context.Output<Tensor>("Mask");
@@ -55,26 +55,26 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
         int r = xpu::constant(dev_ctx.x_context(),
                               reinterpret_cast<XPUTyp*>(y_data), y->numel(),
                               XPUTyp(0));
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant ");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
         r = xpu::constant(dev_ctx.x_context(),
                           reinterpret_cast<XPUTyp*>(mask_data), mask->numel(),
                           XPUTyp(0));
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant ");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
         return;
       }
       int r = xpu::dropout(dev_ctx.x_context(),
                            reinterpret_cast<const XPUTyp*>(x->data<T>()),
                            reinterpret_cast<XPUTyp*>(y->data<T>()),
-                           reinterpret_cast<XPUTyp*>(mask_data), seed,
+                           reinterpret_cast<XPUTyp*>(mask_data), seed_data,
                            mask->numel(), is_upscale, dropout_prob);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout ");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout");
     } else {
       float scale =
           (is_upscale) ? (1.0) : (static_cast<float>(1.0f - dropout_prob));
       int r = xpu::scale(
           dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(x_data),
           reinterpret_cast<XPUTyp*>(y_data), x->numel(), false, scale, 0.0f);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale ");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
 };
@@ -103,12 +103,12 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
                        reinterpret_cast<const XPUType*>(mask_data),
                        reinterpret_cast<XPUType*>(grad_x->data<T>()),
                        grad_y->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul ");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
       return;
     }
 
     auto version = platform::get_xpu_version(context.GetPlace().GetDeviceId());
-    if (version == pten::backends::xpu::XPUVersion::XPU1) {
+    if (version == phi::backends::xpu::XPUVersion::XPU1) {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       XPUType* mask_new = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
       float scale =
@@ -117,13 +117,13 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
                          reinterpret_cast<const XPUType*>(mask->data<T>()),
                          reinterpret_cast<XPUType*>(mask_new), mask->numel(),
                          false, scale, 0.0f);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale ");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       r = xpu::mul(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(grad_y->data<T>()),
                    reinterpret_cast<const XPUType*>(mask_new),
                    reinterpret_cast<XPUType*>(grad_x->data<T>()),
                    grad_y->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul ");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
     } else {
       int r =
           xpu::dropout_grad(dev_ctx.x_context(),
@@ -131,7 +131,7 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
                             reinterpret_cast<const XPUType*>(grad_y->data<T>()),
                             reinterpret_cast<XPUType*>(grad_x->data<T>()),
                             dropout_prob, grad_y->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_grad ");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_grad");
     }
   }
 };

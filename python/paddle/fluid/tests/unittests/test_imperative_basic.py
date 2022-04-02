@@ -24,7 +24,7 @@ from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _non_static_mode
 
 
 class MyLayer(fluid.Layer):
@@ -201,9 +201,9 @@ class TestImperative(unittest.TestCase):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))
         with fluid.dygraph.guard():
-            if fluid.framework._in_eager_mode():
+            if not _in_legacy_dygraph():
                 var_base = paddle.to_tensor(np.array([3, 4, 5]))
-                self.assertTrue(isinstance(var_base, core.eager.EagerTensor))
+                self.assertTrue(isinstance(var_base, core.eager.Tensor))
             else:
                 var_base = paddle.to_tensor(np.array([3, 4, 5]))
                 self.assertTrue(isinstance(var_base, core.VarBase))
@@ -219,21 +219,20 @@ class TestImperative(unittest.TestCase):
         y = np.zeros([3, 3], np.float32)
         t = fluid.Tensor()
         t.set(x, fluid.CPUPlace())
-        if _in_eager_mode():
-            # TODO(jiabin): Support Kwargs and uncomment these tests
-            # egr_tmp = fluid.core.eager.EagerTensor(value=x, place=fluid.core.CPUPlace())
-            egr_tmp2 = fluid.core.eager.EagerTensor(y, fluid.core.CPUPlace())
+        if not _in_legacy_dygraph():
+            egr_tmp = fluid.core.eager.Tensor(
+                value=x, place=fluid.core.CPUPlace())
+            egr_tmp2 = fluid.core.eager.Tensor(y, fluid.core.CPUPlace())
             egr_tmp3 = paddle.to_tensor(x)
-            egr_tmp4 = fluid.core.eager.EagerTensor(y)
-            # egr_tmp5 = fluid.core.eager.EagerTensor(value=x)
-            # TODO(jiabin): Support it when we merge LoDTensor with DenseTensor
-            egr_tmp6 = fluid.core.eager.EagerTensor(t)
+            egr_tmp4 = fluid.core.eager.Tensor(y)
+            egr_tmp5 = fluid.core.eager.Tensor(value=x)
+            egr_tmp6 = fluid.core.eager.Tensor(t)
 
-            # self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
+            self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
             self.assertTrue(np.array_equal(y, egr_tmp2.numpy()))
             self.assertTrue(np.array_equal(x, egr_tmp3.numpy()))
             self.assertTrue(np.array_equal(y, egr_tmp4.numpy()))
-            # self.assertTrue(np.array_equal(x, egr_tmp5.numpy()))
+            self.assertTrue(np.array_equal(x, egr_tmp5.numpy()))
             self.assertTrue(np.array_equal(x, egr_tmp6.numpy()))
         else:
             tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
@@ -359,7 +358,7 @@ class TestImperative(unittest.TestCase):
             cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # Normally, we don't allow tensor with -1 shape being created in dygraph mode, this test is not good.
-            if not _in_eager_mode():
+            if _in_legacy_dygraph():
                 new_variable = cur_block.create_var(
                     name="X", shape=[-1, 23, 48], dtype='float32')
             else:
@@ -374,12 +373,10 @@ class TestImperative(unittest.TestCase):
                 new_variable.backward()
             except Exception as e:
                 assert type(e) == core.EnforceNotMet
-            # TODO(jiabin): Support clear_gradient in eager mode later and remove this if statement
-            if not _in_eager_mode():
-                try:
-                    new_variable.clear_gradient()
-                except Exception as e:
-                    assert type(e) == core.EnforceNotMet
+            try:
+                new_variable.clear_gradient()
+            except Exception as e:
+                assert type(e) == core.EnforceNotMet
 
     def test_empty_var(self):
         with _test_eager_guard():
@@ -391,18 +388,16 @@ class TestImperative(unittest.TestCase):
             x = np.ones([2, 2], np.float32)
             new_var = paddle.to_tensor(x)
             self.assertIsNone(new_var.gradient())
-            # TODO(jiabin): Support clear_gradient in eager mode later and remove this if statement
-            if not _in_eager_mode():
-                try:
-                    new_var.clear_gradient()
-                except Exception as e:
-                    assert type(e) == core.EnforceNotMet
+            try:
+                new_var.clear_gradient()
+            except Exception as e:
+                assert type(e) == core.EnforceNotMet
 
         with fluid.dygraph.guard():
             cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # Normally, we don't allow tensor with -1 shape being created in dygraph mode, this test is not good.
-            if not _in_eager_mode():
+            if _in_legacy_dygraph():
                 new_variable = cur_block.create_var(
                     name="X", shape=[-1, 23, 48], dtype='float32')
             else:
@@ -951,10 +946,9 @@ class TestMetaclass(unittest.TestCase):
     def func_metaclass(self):
         self.assertEqual(type(MyLayer).__name__, 'type')
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
-        if core._in_eager_mode():
+        if not _in_legacy_dygraph():
             self.assertEqual(
-                type(paddle.fluid.core.eager.EagerTensor).__name__,
-                'pybind11_type')
+                type(paddle.fluid.core.eager.Tensor).__name__, 'type')
         else:
             self.assertEqual(
                 type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')

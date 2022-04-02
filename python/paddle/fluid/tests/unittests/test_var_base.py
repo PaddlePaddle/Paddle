@@ -22,6 +22,7 @@ import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestVarBase(unittest.TestCase):
@@ -50,6 +51,10 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(x.numpy(), np.array([1.2], 'float16')))
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP16)
+
+                # set_default_dtype take effect on int
+                x = paddle.to_tensor(1, place=place)
+                self.assertTrue(x.dtype, core.VarDesc.VarType.INT64)
 
                 # set_default_dtype take effect on float
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
@@ -824,6 +829,15 @@ class TestVarBase(unittest.TestCase):
         with self.assertRaises(IndexError):
             var_tensor[paddle.to_tensor([[True, False, False, False]])]
 
+    def _test_scalar_bool_index(self):
+        shape = (1, 2, 5, 64)
+        np_value = np.random.random(shape).astype('float32')
+        var_tensor = paddle.to_tensor(np_value)
+        index = [True]
+        tensor_index = paddle.to_tensor(index)
+        var = [var_tensor[tensor_index].numpy(), ]
+        self.assertTrue(np.array_equal(var[0], np_value[index]))
+
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
         w = fluid.dygraph.to_variable(np_value)
@@ -870,7 +884,7 @@ class TestVarBase(unittest.TestCase):
         col = np.array([2, 1, 3])
         self.assertTrue(np.array_equal(array[row, col], x[row, col].numpy()))
 
-    def test_slice(self):
+    def func_test_slice(self):
         with fluid.dygraph.guard():
             self._test_slice()
             self._test_slice_for_tensor_attr()
@@ -878,6 +892,7 @@ class TestVarBase(unittest.TestCase):
             self._test_for_getitem_ellipsis_index()
             self._test_none_index()
             self._test_bool_index()
+            self._test_scalar_bool_index()
             self._test_numpy_index()
             self._test_list_index()
 
@@ -894,6 +909,11 @@ class TestVarBase(unittest.TestCase):
             with self.assertRaises(IndexError):
                 mask = np.array([1, 0, 1, 0], dtype=bool)
                 var[paddle.to_tensor([0, 1]), mask]
+
+    def test_slice(self):
+        with _test_eager_guard():
+            self.func_test_slice()
+        self.func_test_slice()
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
@@ -1121,7 +1141,6 @@ class TestVarBase(unittest.TestCase):
 
 class TestVarBaseSetitem(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static()
         self.set_dtype()
         self.tensor_x = paddle.to_tensor(np.ones((4, 2, 3)).astype(self.dtype))
         self.np_value = np.random.random((2, 3)).astype(self.dtype)
@@ -1131,12 +1150,13 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.dtype = "int32"
 
     def _test(self, value):
-        paddle.disable_static()
-        self.assertEqual(self.tensor_x.inplace_version, 0)
+        if _in_legacy_dygraph():
+            self.assertEqual(self.tensor_x.inplace_version, 0)
 
         id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
-        self.assertEqual(self.tensor_x.inplace_version, 1)
+        if _in_legacy_dygraph():
+            self.assertEqual(self.tensor_x.inplace_version, 1)
 
         if isinstance(value, (six.integer_types, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
@@ -1148,26 +1168,46 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
-        self.assertEqual(self.tensor_x.inplace_version, 2)
+        if _in_legacy_dygraph():
+            self.assertEqual(self.tensor_x.inplace_version, 2)
         self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
-        self.assertEqual(self.tensor_x.inplace_version, 3)
+        if _in_legacy_dygraph():
+            self.assertEqual(self.tensor_x.inplace_version, 3)
         self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
-    def test_value_tensor(self):
-        paddle.disable_static()
+    def func_test_value_tensor(self):
         self._test(self.tensor_value)
 
-    def test_value_numpy(self):
-        paddle.disable_static()
+    def test_value_tensor(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_test_value_tensor()
+        self.setUp()
+        self.func_test_value_tensor()
+
+    def func_test_value_numpy(self):
         self._test(self.np_value)
 
-    def test_value_int(self):
-        paddle.disable_static()
+    def test_value_numpy(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_test_value_numpy()
+        self.setUp()
+        self.func_test_value_numpy()
+
+    def func_test_value_int(self):
         self._test(10)
+
+    def test_value_int(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_test_value_int()
+        self.setUp()
+        self.func_test_value_int()
 
 
 class TestVarBaseSetitemInt64(TestVarBaseSetitem):
@@ -1187,6 +1227,88 @@ class TestVarBaseSetitemFp32(TestVarBaseSetitem):
 class TestVarBaseSetitemFp64(TestVarBaseSetitem):
     def set_dtype(self):
         self.dtype = "float64"
+
+
+class TestVarBaseSetitemBoolIndex(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.set_dtype()
+        self.set_input()
+
+    def set_input(self):
+        self.tensor_x = paddle.to_tensor(np.ones((4, 2, 3)).astype(self.dtype))
+        self.np_value = np.random.random((2, 3)).astype(self.dtype)
+        self.tensor_value = paddle.to_tensor(self.np_value)
+
+    def set_dtype(self):
+        self.dtype = "int32"
+
+    def _test(self, value):
+        paddle.disable_static()
+        self.assertEqual(self.tensor_x.inplace_version, 0)
+
+        id_origin = id(self.tensor_x)
+        index_1 = paddle.to_tensor(np.array([True, False, False, False]))
+        self.tensor_x[index_1] = value
+        self.assertEqual(self.tensor_x.inplace_version, 1)
+
+        if isinstance(value, (six.integer_types, float)):
+            result = np.zeros((2, 3)).astype(self.dtype) + value
+
+        else:
+            result = self.np_value
+
+        self.assertTrue(np.array_equal(self.tensor_x[0].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
+
+        index_2 = paddle.to_tensor(np.array([False, True, False, False]))
+        self.tensor_x[index_2] = value
+        self.assertEqual(self.tensor_x.inplace_version, 2)
+        self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
+
+        index_3 = paddle.to_tensor(np.array([True, True, True, True]))
+        self.tensor_x[index_3] = value
+        self.assertEqual(self.tensor_x.inplace_version, 3)
+        self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
+
+    def test_value_tensor(self):
+        paddle.disable_static()
+        self._test(self.tensor_value)
+
+    def test_value_numpy(self):
+        paddle.disable_static()
+        self._test(self.np_value)
+
+    def test_value_int(self):
+        paddle.disable_static()
+        self._test(10)
+
+
+class TestVarBaseSetitemBoolScalarIndex(unittest.TestCase):
+    def set_input(self):
+        self.tensor_x = paddle.to_tensor(np.ones((1, 2, 3)).astype(self.dtype))
+        self.np_value = np.random.random((2, 3)).astype(self.dtype)
+        self.tensor_value = paddle.to_tensor(self.np_value)
+
+    def _test(self, value):
+        paddle.disable_static()
+        self.assertEqual(self.tensor_x.inplace_version, 0)
+
+        id_origin = id(self.tensor_x)
+        index = paddle.to_tensor(np.array([True]))
+        self.tensor_x[index] = value
+        self.assertEqual(self.tensor_x.inplace_version, 1)
+
+        if isinstance(value, (six.integer_types, float)):
+            result = np.zeros((2, 3)).astype(self.dtype) + value
+
+        else:
+            result = self.np_value
+
+        self.assertTrue(np.array_equal(self.tensor_x[0].numpy(), result))
+        self.assertEqual(id_origin, id(self.tensor_x))
 
 
 class TestVarBaseInplaceVersion(unittest.TestCase):
@@ -1357,4 +1479,5 @@ class TestVarBaseCopyGradientFrom(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

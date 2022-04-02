@@ -185,8 +185,8 @@ class OpBase {
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
   static void Run(const framework::OperatorBase& op,
-                  const NameVarMap<egr::EagerTensor>& ins,
-                  const NameVarMap<egr::EagerTensor>& outs,
+                  const NameVarMap<egr::EagerVariable>& ins,
+                  const NameVarMap<egr::EagerVariable>& outs,
                   const framework::AttributeMap& attrs,
                   const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
@@ -220,7 +220,7 @@ class OpBase {
   size_t id_{-1UL};
   // In order to reduce the compatibility phase
   // performance overhead, temporarily cache KernelContext
-  static pten::KernelContext pt_kernel_context_;
+  static phi::KernelContext pt_kernel_context_;
   std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 

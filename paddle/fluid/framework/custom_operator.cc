@@ -25,19 +25,20 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/api/lib/api_declare.h"
-#include "paddle/pten/api/lib/ext_compat_utils.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/compat/convert_utils.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/lib/ext_compat_utils.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -61,11 +62,6 @@ static T* DynLoad(void* handle, std::string name) {
   return func;
 }
 
-inline static bool IsGradVar(const std::string& var_name) {
-  std::string suffix = kGradVarSuffix;
-  return var_name.rfind(suffix) != std::string::npos;
-}
-
 inline static bool IsDuplicableVar(const std::string& var_name) {
   std::string suffix = kTensorVectorSuffix;
   return var_name.rfind(suffix) != std::string::npos;
@@ -74,6 +70,17 @@ inline static bool IsDuplicableVar(const std::string& var_name) {
 inline static std::string NoGrad(const std::string& var_name) {
   std::string suffix = kGradVarSuffix;
   return var_name.substr(0, var_name.size() - kGradVarSuffixSize);
+}
+
+inline static bool IsGradVar(const std::string& var_name, bool is_double_grad) {
+  std::string suffix = kGradVarSuffix;
+  if (!is_double_grad) {
+    return var_name.rfind(suffix) != std::string::npos;
+  } else {
+    // for double grad cases, the X@GRAD is not a grad var, X@GRAD@GRAD is a
+    // grad var, here we remove a @GRAD suffix
+    return NoGrad(var_name).rfind(suffix) != std::string::npos;
+  }
 }
 
 inline static bool IsMemberOf(const std::vector<std::string>& vec,
@@ -133,7 +140,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "is not initialized.",
                               i, in_name));
         paddle::experimental::Tensor custom_t;
-        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*x));
+        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
       kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
@@ -145,7 +152,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
       paddle::experimental::Tensor custom_in;
-      custom_in.set_impl(std::make_shared<pten::DenseTensor>(*x));
+      custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
       kernel_ctx.EmplaceBackInput(std::move(custom_in));
     }
   }
@@ -210,7 +217,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
         true_out_ptrs.emplace_back(out);
         paddle::experimental::Tensor custom_t;
         // here only can copy the output tensor into context
-        custom_t.set_impl(std::make_shared<pten::DenseTensor>(*out));
+        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
       kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
@@ -222,7 +229,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       true_out_ptrs.emplace_back(out);
       paddle::experimental::Tensor custom_out;
       // here only can copy the output tensor into context
-      custom_out.set_impl(std::make_shared<pten::DenseTensor>(*out));
+      custom_out.set_impl(std::make_shared<phi::DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));
     }
   }
@@ -243,9 +250,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     for (size_t i = 0; i < true_out_ptrs.size(); ++i) {
       auto* true_out = true_out_ptrs.at(i);
       auto calc_out =
-          std::dynamic_pointer_cast<pten::DenseTensor>(calc_outs->at(i).impl());
+          std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
       // assgin meta info
-      auto* true_out_meta = pten::DenseTensorUtils::GetMutableMeta(true_out);
+      auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
@@ -284,13 +291,13 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
       std::transform(vec_ddim.begin(), vec_ddim.end(),
                      std::back_inserter(vec_shape),
                      [&](const DDim& ddim) -> std::vector<int64_t> {
-                       return framework::vectorize(ddim);
+                       return phi::vectorize(ddim);
                      });
       vec_input_shapes.emplace_back(vec_shape);
     } else {
       OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
       auto ddim = ctx->GetInputDim(in_name);
-      input_shapes.emplace_back(framework::vectorize(ddim));
+      input_shapes.emplace_back(phi::vectorize(ddim));
     }
   }
 
@@ -346,11 +353,11 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
       std::transform(output_shapes.begin(), output_shapes.end(),
                      std::back_inserter(vec_ddim),
                      [&](const std::vector<int64_t>& shape) -> DDim {
-                       return framework::make_ddim(shape);
+                       return phi::make_ddim(shape);
                      });
       ctx->SetOutputsDim(out_name, vec_ddim);
     } else {
-      ctx->SetOutputDim(out_name, framework::make_ddim(output_shapes[i]));
+      ctx->SetOutputDim(out_name, phi::make_ddim(output_shapes[i]));
     }
   }
 }
@@ -492,11 +499,12 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
       std::unordered_map<std::string, std::string>* grad_to_var,
       const std::vector<BlockDesc*>& grad_block, const std::string& name,
       const std::vector<std::string>& inputs,
-      const std::vector<std::string>& outputs)
+      const std::vector<std::string>& outputs, bool is_double_grad)
       : SingleGradOpMaker<OpDesc>(fwd_op, no_grad_set, grad_to_var, grad_block),
         name_(name),
         inputs_(inputs),
-        outputs_(outputs) {}
+        outputs_(outputs),
+        is_double_grad_(is_double_grad) {}
 
  protected:
   void Apply(GradOpPtr<OpDesc> grad_op) const override {
@@ -507,7 +515,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
 
     for (auto& in_name : inputs_) {
       VLOG(3) << "Custom Operator: GradOpDescMaker - input: " << in_name;
-      if (!detail::IsGradVar(in_name)) {
+      if (!detail::IsGradVar(in_name, is_double_grad_)) {
         if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
           grad_op->SetInput(in_name, this->Input(in_name));
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
@@ -539,6 +547,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
   std::string name_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
+  bool is_double_grad_{false};
 };
 
 template <>
@@ -552,12 +561,13 @@ class CustomGradOpMaker<imperative::OpBase>
       const AttributeMap& attrs,
       const std::map<std::string, std::string>& inplace_map,
       const std::string& name, const std::vector<std::string>& inputs,
-      const std::vector<std::string>& outputs)
+      const std::vector<std::string>& outputs, bool is_double_grad)
       : SingleGradOpMaker<imperative::OpBase>(
             type, var_base_map_in, var_base_map_out, attrs, inplace_map),
         name_(name),
         inputs_(inputs),
-        outputs_(outputs) {}
+        outputs_(outputs),
+        is_double_grad_(is_double_grad) {}
 
  protected:
   // TODO(chenweihang): The code is duplicated with the previous one, because
@@ -573,7 +583,7 @@ class CustomGradOpMaker<imperative::OpBase>
 
     for (auto& in_name : inputs_) {
       VLOG(3) << "Custom Operator: GradOpBaseMaker - input: " << in_name;
-      if (!detail::IsGradVar(in_name)) {
+      if (!detail::IsGradVar(in_name, is_double_grad_)) {
         if (detail::IsMemberOf(fwd_op_inputs, in_name)) {
           grad_op->SetInput(in_name, this->Input(in_name));
         } else if (detail::IsMemberOf(fwd_op_outputs, in_name)) {
@@ -599,6 +609,7 @@ class CustomGradOpMaker<imperative::OpBase>
   std::string name_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
+  bool is_double_grad_{false};
 };
 
 //////////// Operator and Kernel Register //////////////
@@ -777,12 +788,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           std::vector<DataType> vec_custom_dtype;
           for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
             auto dtype = ctx->GetInputDataType(in_name, i);
-            vec_custom_dtype.emplace_back(pten::TransToPtenDataType(dtype));
+            vec_custom_dtype.emplace_back(
+                paddle::framework::TransToPhiDataType(dtype));
           }
           vec_input_dtypes.emplace_back(vec_custom_dtype);
         } else {
           auto dtype = ctx->GetInputDataType(in_name);
-          input_dtypes.emplace_back(pten::TransToPtenDataType(dtype));
+          input_dtypes.emplace_back(
+              paddle::framework::TransToPhiDataType(dtype));
         }
       }
 
@@ -794,12 +807,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         auto out_name = op_outputs[i];
         if (detail::IsDuplicableVar(out_name)) {
           for (size_t j = 0; j < output_dtypes.size(); ++j) {
-            auto dtype = pten::TransToProtoVarType(output_dtypes[i]);
+            auto dtype =
+                paddle::framework::TransToProtoVarType(output_dtypes[i]);
             ctx->SetOutputDataType(out_name, dtype, j);
           }
         } else {
-          ctx->SetOutputDataType(out_name,
-                                 pten::TransToProtoVarType(output_dtypes[i]));
+          ctx->SetOutputDataType(
+              out_name,
+              paddle::framework::TransToProtoVarType(output_dtypes[i]));
         }
       }
     };
@@ -827,21 +842,24 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     VLOG(3) << "Custom Operator: backward, op outputs: "
             << string::join_strings(grad_op_outputs, ',');
 
+    bool is_double_grad = (i == 2);
+
     // GradOpDescMaker
-    info.grad_op_maker_ = [grad_op_name, grad_op_inputs, grad_op_outputs](
+    info.grad_op_maker_ = [grad_op_name, grad_op_inputs, grad_op_outputs,
+                           is_double_grad](
         const OpDesc& fwd_op,
         const std::unordered_set<std::string>& no_grad_set,
         std::unordered_map<std::string, std::string>* grad_to_var,
         const std::vector<BlockDesc*>& grad_block) {
       CustomGradOpMaker<paddle::framework::OpDesc> maker(
           fwd_op, no_grad_set, grad_to_var, grad_block, grad_op_name,
-          grad_op_inputs, grad_op_outputs);
+          grad_op_inputs, grad_op_outputs, is_double_grad);
       return maker();
     };
 
     // GradOpBaseMaker
     info.dygraph_grad_op_maker_ = [grad_op_name, grad_op_inputs,
-                                   grad_op_outputs](
+                                   grad_op_outputs, is_double_grad](
         const std::string& type,
         const imperative::NameVarBaseMap& var_base_map_in,
         const imperative::NameVarBaseMap& var_base_map_out,
@@ -850,7 +868,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         const std::map<std::string, std::string>& inplace_map) {
       CustomGradOpMaker<paddle::imperative::OpBase> maker(
           type, var_base_map_in, var_base_map_out, attrs, inplace_map,
-          grad_op_name, grad_op_inputs, grad_op_outputs);
+          grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad);
       maker.SetDygraphDefaultAttrsMap(default_attrs);
       return maker();
     };
@@ -941,15 +959,16 @@ void RegisterOperatorWithMetaInfoMap(
 ////////////////////// User APIs ///////////////////////
 
 // load op api
-void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
+const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
-
   RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
+  return op_meta_info_map.GetMap();
 }
 
 }  // namespace framework

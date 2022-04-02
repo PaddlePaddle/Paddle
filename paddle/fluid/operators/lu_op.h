@@ -15,12 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
-#include "paddle/fluid/operators/triangular_solve_op.h"
-#include "paddle/fluid/operators/tril_triu_op.h"
-#include "paddle/pten/kernels/math_kernel.h"
+#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -38,12 +39,15 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   std::vector<int64_t> decrease_axes = {};
   std::vector<int64_t> none_axes = {};
 
-  auto dtype = in->type();
+  auto dtype = framework::TransToProtoVarType(in->dtype());
 
   auto in_dims = in->dims();
-  CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends, &steps);
-  auto slice_dims = GetSliceDims(in_dims, axes, *starts, *ends, &steps);
-  auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends,
+                                                &steps);
+  auto slice_dims =
+      phi::funcs::GetSliceDims(in_dims, axes, *starts, *ends, &steps);
+  auto decrease_slice_dims =
+      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -68,7 +72,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
   }
 
   auto place = ctx.GetPlace();
@@ -88,7 +92,8 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // set_value is what we want.
   paddle::framework::TensorCopy(*in, place, out);
 
-  Tensor slice_tensor(dtype), pad_tensor(dtype);
+  Tensor slice_tensor(framework::TransToPhiDataType(dtype)),
+      pad_tensor(framework::TransToPhiDataType(dtype));
   slice_tensor.mutable_data<T>(slice_dims, place);
   pad_tensor.mutable_data<T>(in_dims, place);
 
@@ -146,13 +151,13 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
   } else {
-    Tensor value_t(dtype);
-    auto value_dims = framework::make_ddim(shape);
+    Tensor value_t(framework::TransToPhiDataType(dtype));
+    auto value_dims = phi::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
     value_t.mutable_data<T>(value_dims, place);
     auto value_name = GetValueName(dtype);
-    CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
+    CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
     value_t.Resize(value_dims);
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, &value_t, -1, SubFunctor<T>(), &slice_tensor);
@@ -210,8 +215,9 @@ void Tensor_Conj(const DeviceContext& dev_ctx, const framework::Tensor& tensor,
                  framework::Tensor* out) {
   out->Resize(tensor.dims());
   platform::ForRange<DeviceContext> out_for_range(dev_ctx, tensor.numel());
-  math::ConjFunctor<T> out_functor(tensor.data<T>(), tensor.numel(),
-                                   out->mutable_data<T>(dev_ctx.GetPlace()));
+  phi::funcs::ConjFunctor<T> out_functor(
+      tensor.data<T>(), tensor.numel(),
+      out->mutable_data<T>(dev_ctx.GetPlace()));
   out_for_range(out_functor);
 }
 
@@ -221,9 +227,9 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  pten::AddRawKernel<
-      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
-      static_cast<const typename paddle::framework::ConvertToPtenContext<
+  phi::AddRawKernel<
+      T, typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPhiContext<
           DeviceContext>::TYPE&>(dev_ctx),
       src1, src2, -1, out);
 }
@@ -234,9 +240,9 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->Resize(src1.dims());
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  pten::SubtractRawKernel<
-      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
-      static_cast<const typename paddle::framework::ConvertToPtenContext<
+  phi::SubtractRawKernel<
+      T, typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPhiContext<
           DeviceContext>::TYPE&>(dev_ctx),
       src1, src2, -1, out);
 }
@@ -279,10 +285,10 @@ void SliceCompute(const framework::ExecutionContext& ctx,
     }
   }
 
-  CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-  slice_dims =
-      GetSliceDims<int64_t>(in_dims, axes, starts, ends, nullptr, nullptr);
-  out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  slice_dims = phi::funcs::GetSliceDims<int64_t>(in_dims, axes, starts, ends,
+                                                 nullptr, nullptr);
+  out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
   // 2.2 Get output
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -366,7 +372,7 @@ void Tensor_narrow(const framework::ExecutionContext& ctx,
 template <typename DeviceContext>
 void arange(const DeviceContext& dev_ctx, framework::Tensor* tmp, int w,
             int batchsize = 1, int h = 1) {
-  tmp->Resize(framework::make_ddim({batchsize * w}));
+  tmp->Resize(phi::make_ddim({batchsize * w}));
   platform::CPUPlace cpu;
   auto tmpdata = tmp->mutable_data<int32_t>(cpu);
   for (int b = 0; b < batchsize; b++) {
@@ -401,17 +407,18 @@ void LU_Unpack(const DeviceContext& dev_ctx, const framework::Tensor* LU,
   const auto W = udims[udims.size() - 1];
   auto L_dataptr = L->mutable_data<T>(dev_ctx.GetPlace());
   platform::ForRange<DeviceContext> x_for_range(dev_ctx, LU->numel());
-  TrilTriuCompute<T> tril_computer(LU->data<T>(), -1, true, H, W, L_dataptr);
+  phi::funcs::TrilTriuCompute<T> tril_computer(LU->data<T>(), -1, true, H, W,
+                                               L_dataptr);
   x_for_range(tril_computer);
 
-  TrilTriuCompute<T> triu_computer(LU->data<T>(), 0, false, H, W,
-                                   U->mutable_data<T>(dev_ctx.GetPlace()));
+  phi::funcs::TrilTriuCompute<T> triu_computer(
+      LU->data<T>(), 0, false, H, W, U->mutable_data<T>(dev_ctx.GetPlace()));
   x_for_range(triu_computer);
 
   // set L's diagonal 1
   auto dim = std::min(H, W);
   framework::Tensor rowtensor, rt_dev;
-  auto batchsize = product(framework::slice_ddim(udims, 0, udims.size() - 2));
+  auto batchsize = product(phi::slice_ddim(udims, 0, udims.size() - 2));
   batchsize = std::max(static_cast<int>(batchsize), 1);
   arange<DeviceContext>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
@@ -452,13 +459,13 @@ void Unpack_Pivot(const DeviceContext& dev_ctx, const framework::Tensor& Pivot,
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);
-  auto Pdim = framework::make_ddim(Pdimvec);
+  auto Pdim = phi::make_ddim(Pdimvec);
   P->Resize(Pdim);
   auto pdata = P->mutable_data<T>(dev_ctx.GetPlace());
-  math::SetConstant<DeviceContext, T> setter;
+  phi::funcs::SetConstant<DeviceContext, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
-  auto batchsize = product(framework::slice_ddim(dims, 0, prank - 1));
+  auto batchsize = product(phi::slice_ddim(dims, 0, prank - 1));
   batchsize = std::max(static_cast<int>(batchsize), 1);
   framework::Tensor idt;
   for (int i = 0; i < batchsize; i++) {
@@ -487,7 +494,7 @@ class LUGradKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(ctx);
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto xdims = xin->dims();
     int xrank = xdims.size();
@@ -517,9 +524,9 @@ class LUGradKernel : public framework::OpKernel<T> {
     phi_L.mutable_data<T>(ctx.GetPlace());
     phi_U.Resize(UmHdims);
     phi_U.mutable_data<T>(ctx.GetPlace());
-    auto mat_dim_l = math::CreateMatrixDescriptor(LmHdims, 0, false);
-    auto mat_dim_u = math::CreateMatrixDescriptor(UmHdims, 0, false);
-    auto mat_dim_g = math::CreateMatrixDescriptor(graddims, 0, false);
+    auto mat_dim_l = phi::funcs::CreateMatrixDescriptor(LmHdims, 0, false);
+    auto mat_dim_u = phi::funcs::CreateMatrixDescriptor(UmHdims, 0, false);
+    auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(graddims, 0, false);
     blas.MatMul(L_narrow_mH, mat_dim_l, grad_narrow, mat_dim_g,
                 static_cast<T>(1), &phi_L, static_cast<T>(0));
 
@@ -529,21 +536,21 @@ class LUGradKernel : public framework::OpKernel<T> {
     auto phil_rank = LmHdims.size();
     auto phiu_rank = UmHdims.size();
     platform::ForRange<DeviceContext> l_for_range(dev_ctx, phi_L.numel());
-    TrilTriuCompute<T> tril_computer(phi_L.data<T>(), -1, true,
-                                     LmHdims[phil_rank - 2],
-                                     LmHdims[phil_rank - 1], phi_L.data<T>());
+    phi::funcs::TrilTriuCompute<T> tril_computer(
+        phi_L.data<T>(), -1, true, LmHdims[phil_rank - 2],
+        LmHdims[phil_rank - 1], phi_L.data<T>());
     l_for_range(tril_computer);
 
     platform::ForRange<DeviceContext> u_for_range(dev_ctx, phi_U.numel());
-    TrilTriuCompute<T> triu_computer(phi_U.data<T>(), 0, false,
-                                     UmHdims[phiu_rank - 2],
-                                     UmHdims[phiu_rank - 1], phi_U.data<T>());
+    phi::funcs::TrilTriuCompute<T> triu_computer(
+        phi_U.data<T>(), 0, false, UmHdims[phiu_rank - 2],
+        UmHdims[phiu_rank - 1], phi_U.data<T>());
     u_for_range(triu_computer);
 
     Tensor_Add<DeviceContext, T>(dev_ctx, phi_L, phi_U, &phi);
     psi.Resize(xdims);
     psi.mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> setter;
+    phi::funcs::SetConstant<DeviceContext, T> setter;
     setter(dev_ctx, &psi, static_cast<T>(0));
 
     std::vector<int64_t> axes = {xrank - 2, xrank - 1};
@@ -553,6 +560,11 @@ class LUGradKernel : public framework::OpKernel<T> {
 
     framework::Tensor Pmat;
     Unpack_Pivot<DeviceContext, T>(dev_ctx, *P, &Pmat, m, k);
+
+    using Context =
+        typename framework::ConvertToPhiContext<DeviceContext>::TYPE;
+    auto& phi_dev_ctx = static_cast<const Context&>(dev_ctx);
+
     if (m <= n) {
       if (k < n) {
         framework::Tensor U_complement, U_grad_complement, phi_complement,
@@ -565,10 +577,10 @@ class LUGradKernel : public framework::OpKernel<T> {
         Tensor_Conj<DeviceContext, T>(dev_ctx, U_complement_mH,
                                       &U_complement_mH);
 
-        auto mat_dim_g =
-            math::CreateMatrixDescriptor(U_grad_complement.dims(), 0, false);
-        auto mat_dim_u =
-            math::CreateMatrixDescriptor(U_complement_mH.dims(), 0, false);
+        auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(
+            U_grad_complement.dims(), 0, false);
+        auto mat_dim_u = phi::funcs::CreateMatrixDescriptor(
+            U_complement_mH.dims(), 0, false);
         auto phidims = UmHdims;
         phidims[UmHdims.size() - 2] = k;
         phidims[UmHdims.size() - 1] = k;
@@ -583,8 +595,9 @@ class LUGradKernel : public framework::OpKernel<T> {
         const auto W = phidims[phidims.size() - 1];
         platform::ForRange<DeviceContext> x_for_range(dev_ctx,
                                                       phi_complement.numel());
-        TrilTriuCompute<T> tril_computer(phi_complement.data<T>(), -1, true, H,
-                                         W, phi_complement_l.data<T>());
+        phi::funcs::TrilTriuCompute<T> tril_computer(
+            phi_complement.data<T>(), -1, true, H, W,
+            phi_complement_l.data<T>());
         x_for_range(tril_computer);
 
         Tensor_Sub<DeviceContext, T>(dev_ctx, phi, phi_complement_l, &phi);
@@ -603,8 +616,9 @@ class LUGradKernel : public framework::OpKernel<T> {
       framework::Tensor psi_principal, phi_mH, psi_tmp;
       Tensor_Conj<DeviceContext, T>(dev_ctx, phi, &phi_mH);
       phi_mH = helper.Transpose(phi_mH);
-      triangular_solve<DeviceContext, T>(dev_ctx, U_narrow, phi_mH,
-                                         &psi_principal, true, false, false);
+
+      phi::TriangularSolveKernel<T, Context>(
+          phi_dev_ctx, U_narrow, phi_mH, true, false, false, &psi_principal);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, psi_principal, &psi_principal);
       psi_principal = helper.Transpose(psi_principal);
@@ -618,11 +632,14 @@ class LUGradKernel : public framework::OpKernel<T> {
       SetValueCompute_dispatch<DeviceContext, T>(ctx, &psi, &psi_principal,
                                                  &psi, axes, &slice_starts,
                                                  &slice_ends, valuedims, xrank);
-      triangular_solve<DeviceContext, T>(dev_ctx, L_narrow_mH, psi, &psi_tmp,
-                                         true, false, true);
 
-      auto mat_dim_p = math::CreateMatrixDescriptor(Pmat.dims(), 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(psi_tmp.dims(), 0, false);
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, L_narrow_mH, psi,
+                                             true, false, true, &psi_tmp);
+
+      auto mat_dim_p =
+          phi::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
+      auto mat_dim_b =
+          phi::funcs::CreateMatrixDescriptor(psi_tmp.dims(), 0, false);
       blas.MatMul(Pmat, mat_dim_p, psi_tmp, mat_dim_b, static_cast<T>(1), dx,
                   static_cast<T>(0));
     } else {
@@ -634,10 +651,10 @@ class LUGradKernel : public framework::OpKernel<T> {
       framework::Tensor L_complement_mH = helper.Transpose(L_complement);
       Tensor_Conj<DeviceContext, T>(dev_ctx, L_complement_mH, &L_complement_mH);
 
-      auto mat_dim_g =
-          math::CreateMatrixDescriptor(L_grad_complement.dims(), 0, false);
+      auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(
+          L_grad_complement.dims(), 0, false);
       auto mat_dim_u =
-          math::CreateMatrixDescriptor(L_complement_mH.dims(), 0, false);
+          phi::funcs::CreateMatrixDescriptor(L_complement_mH.dims(), 0, false);
       auto phidims = LmHdims;
       phidims[LmHdims.size() - 2] = k;
       phidims[LmHdims.size() - 1] = k;
@@ -652,8 +669,8 @@ class LUGradKernel : public framework::OpKernel<T> {
       const auto W = phidims[phidims.size() - 1];
       platform::ForRange<DeviceContext> x_for_range(dev_ctx,
                                                     phi_complement.numel());
-      TrilTriuCompute<T> triu_computer(phi_complement.data<T>(), 0, false, H, W,
-                                       phi_complement_u.data<T>());
+      phi::funcs::TrilTriuCompute<T> triu_computer(
+          phi_complement.data<T>(), 0, false, H, W, phi_complement_u.data<T>());
       x_for_range(triu_computer);
 
       Tensor_Sub<DeviceContext, T>(dev_ctx, phi, phi_complement_u, &phi);
@@ -668,8 +685,10 @@ class LUGradKernel : public framework::OpKernel<T> {
                                                  &psi, axes, &slice_starts,
                                                  &slice_ends, valuedims, xrank);
       framework::Tensor psi_principal, phi_mH, psi_tmp, U_narrow_mH;
-      triangular_solve<DeviceContext, T>(dev_ctx, L_narrow_mH, phi,
-                                         &psi_principal, true, false, true);
+
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, L_narrow_mH, phi,
+                                             true, false, true, &psi_principal);
+
       slice_starts[0] = 0;
       slice_starts[1] = 0;
       slice_ends[0] = k;
@@ -683,15 +702,16 @@ class LUGradKernel : public framework::OpKernel<T> {
 
       psi_tmp.Resize(psi.dims());
       psi_tmp.mutable_data<T>(ctx.GetPlace());
-      auto mat_dim_p = math::CreateMatrixDescriptor(Pmat.dims(), 0, false);
-      auto mat_dim_b = math::CreateMatrixDescriptor(psi.dims(), 0, false);
+      auto mat_dim_p =
+          phi::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
+      auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(psi.dims(), 0, false);
       blas.MatMul(Pmat, mat_dim_p, psi, mat_dim_b, static_cast<T>(1), &psi_tmp,
                   static_cast<T>(0));
       psi_tmp = helper.Transpose(psi_tmp);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, U_narrow, &U_narrow_mH);
-      triangular_solve<DeviceContext, T>(dev_ctx, U_narrow_mH, psi_tmp, &psi,
-                                         true, false, false);
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, U_narrow_mH, psi_tmp,
+                                             true, false, false, &psi);
       *dx = helper.Transpose(psi);
     }
   }

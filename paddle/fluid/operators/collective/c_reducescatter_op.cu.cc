@@ -47,7 +47,8 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int64_t recv_numel = in->numel() / nranks;
     const T* send_buff = in->data<T>();
     T* recv_buff = out->data<T>();
-    int dtype = platform::ToNCCLDataType(in->type());
+    int dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 
 #include <unordered_map>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -23,129 +29,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int PoolOutputSize(int input_size, int filter_size, int padding_1,
-                   int padding_2, int stride, bool ceil_mode) {
-  int output_size;
-  if (!ceil_mode) {
-    output_size =
-        (input_size - filter_size + padding_1 + padding_2) / stride + 1;
-  } else {
-    output_size =
-        (input_size - filter_size + padding_1 + padding_2 + stride - 1) /
-            stride +
-        1;
-  }
-  PADDLE_ENFORCE_GT(
-      output_size, 0,
-      platform::errors::InvalidArgument(
-          "the output size must be greater than 0. But received: "
-          "output_size = %d due to the settings of input_size(%d), "
-          "padding(%d,%d), "
-          "k_size(%d) and stride(%d). Please check again!",
-          output_size, input_size, padding_1, padding_2, filter_size, stride));
-  return output_size;
-}
-
-void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("X"), true,
-      platform::errors::NotFound("Input(X) of Pool operator is not found."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("Out"), true,
-      platform::errors::NotFound("Output(Out) of Pool operator is not found."));
-
-  std::string pooling_type = ctx->Attrs().Get<std::string>("pooling_type");
-  std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
-  std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-  std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-  bool ceil_mode = ctx->Attrs().Get<bool>("ceil_mode");
-  bool adaptive = ctx->Attrs().Get<bool>("adaptive");
-  bool global_pooling = ctx->Attrs().Get<bool>("global_pooling");
-  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  std::string padding_algorithm =
-      ctx->Attrs().Get<std::string>("padding_algorithm");
-
-  auto in_x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(
-      in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
-      platform::errors::InvalidArgument(
-          "the input of Op(pool) should be 4-D or 5-D Tensor. But "
-          "received: %u-D Tensor and it's shape is [%s].",
-          in_x_dims.size(), in_x_dims));
-
-  PADDLE_ENFORCE_EQ(
-      in_x_dims.size() - ksize.size(), 2U,
-      platform::errors::InvalidArgument(
-          "the dimension of input minus the size of "
-          "Attr(ksize) must be euqal to 2 in Op(pool). "
-          "But received: the dimension of input minus the size "
-          "of Attr(ksize) is %d, the "
-          "input's dimension is %d, the shape of input "
-          "is [%s], the Attr(ksize)'s size is %d, the Attr(ksize) is [%s].",
-          in_x_dims.size() - ksize.size(), in_x_dims.size(), in_x_dims,
-          ksize.size(), framework::make_ddim(ksize)));
-
-  PADDLE_ENFORCE_EQ(
-      ksize.size(), strides.size(),
-      platform::errors::InvalidArgument(
-          "the size of Attr(ksize) and Attr(strides) in "
-          "Op(pool) must be equal. "
-          "But received: Attr(ksize)'s size is %d, Attr(strides)'s "
-          "size is %d, Attr(ksize) is [%s], Attr(strides)is [%s].",
-          ksize.size(), strides.size(), framework::make_ddim(ksize),
-          framework::make_ddim(strides)));
-
-  // MKL-DNN Kernels are using NCHW order of dims description
-  // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (ctx->IsRunMKLDNNKernel() == false) &&
-                            (data_format == "NHWC" || data_format == "NDHWC");
-
-  // update paddings if "SAME" or global_pooling
-  framework::DDim data_dims;
-  if (channel_last) {
-    data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
-  } else {
-    data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
-  }
-  UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
-                data_dims, strides, ksize);
-
-  if (global_pooling) {
-    UpdateKsize(&ksize, data_dims);
-  }
-
-  std::vector<int64_t> output_shape;
-  if (adaptive) {
-    output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
-  } else {
-    for (int i = 0; i < data_dims.size(); ++i) {
-      if ((!ctx->IsRuntime()) && (data_dims[i] < 0)) {
-        output_shape.push_back(data_dims[i]);
-      } else {
-        output_shape.push_back(
-            PoolOutputSize(data_dims[i], ksize[i], paddings[2 * i],
-                           paddings[2 * i + 1], strides[i], ceil_mode));
-      }
-    }
-  }
-
-  // output_N = input_N
-  output_shape.insert(output_shape.begin(), in_x_dims[0]);
-  // output_C = input_C
-  if (channel_last) {
-    output_shape.push_back(in_x_dims[in_x_dims.size() - 1]);
-  } else {
-    output_shape.insert(output_shape.begin() + 1, in_x_dims[1]);
-  }
-
-  ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-  ctx->ShareLoD("X", "Out");
-}
-
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // (jczaja): oneDNN is supporting only unchangable in size pool window
-  auto src_tz = paddle::framework::vectorize(ctx.Input<Tensor>("X")->dims());
+  auto src_tz = phi::vectorize(ctx.Input<Tensor>("X")->dims());
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
   // Fast but not exhustive check
   if ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
@@ -214,16 +101,6 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 #endif
   return framework::OpKernelType(expected_kernel_type.data_type_,
                                  tensor.place(), tensor.layout());
-}
-
-void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::NotFound(
-                        "Input(X) of Pool Gradoperator is not found."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                    platform::errors::NotFound(
-                        "Input(X@GRAD) of Pool Gradoperator is not found."));
-  ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
@@ -471,7 +348,7 @@ class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("pool2d_grad_grad");
+    grad_op->SetType("pool2d_double_grad");
     grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
     grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
     grad_op->SetAttrMap(this->Attrs());
@@ -692,35 +569,34 @@ Example:
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d, Pool2dInferShapeFunctor,
+                            PD_INFER_META(phi::PoolInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad, Pool2dGradInferShapeFunctor,
+                            PD_INFER_META(phi::PoolGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_double_grad,
+                            Pool2dDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::PoolInferMeta));
+
 REGISTER_OPERATOR(
     pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    Pool2dInferShapeFunctor);
 REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
                   ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
-                  ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp);
+                  ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>,
+                  Pool2dGradInferShapeFunctor);
+REGISTER_OPERATOR(pool2d_double_grad, ops::PoolOp,
+                  Pool2dDoubleGradInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(
-    pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    pool2d_grad_grad,
-    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(pool3d, Pool3dInferShapeFunctor,
+                            PD_INFER_META(phi::PoolInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad, Pool3dGradInferShapeFunctor,
+                            PD_INFER_META(phi::PoolGradInferMeta));
 
 REGISTER_OPERATOR(
     pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    pool3d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    Pool3dInferShapeFunctor);
+REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad, Pool3dGradInferShapeFunctor);

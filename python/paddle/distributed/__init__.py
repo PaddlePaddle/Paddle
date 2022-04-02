@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .spawn import spawn  # noqa: F401
-from .fleet.launch import launch  # noqa: F401
+from .launch.main import launch  # noqa: F401
 
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
@@ -55,6 +55,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 from . import cloud_utils  # noqa: F401
 from . import utils  # noqa: F401
 
+from .sharding import *  # noqa: F401
 
 __all__ = [  # noqa
       "spawn",

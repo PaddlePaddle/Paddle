@@ -31,7 +31,8 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out->dims(), ctx.GetPlace());
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
     int numel = out->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(out->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(out->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();

@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/allocator.h"
+#include "paddle/phi/core/allocator.h"
 
 DECLARE_string(allocator_strategy);
 
@@ -85,13 +85,13 @@ class Allocator;
  * would
  * be a new chain, differing from the underlying Allocation object.
  */
-class Allocation : public pten::Allocation {
+class Allocation : public phi::Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
-      : pten::Allocation(ptr, size, place), base_ptr_(ptr) {}
+      : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
   Allocation(void* ptr, void* base_ptr, size_t size,
              const platform::Place& place)
-      : pten::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
+      : phi::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
   void* base_ptr() const { return base_ptr_; }
 
@@ -127,14 +127,14 @@ class Allocation : public pten::Allocation {
   friend class Allocator;
 };
 
-using AllocationPtr = pten::Allocator::AllocationPtr;
+using AllocationPtr = phi::Allocator::AllocationPtr;
 using DecoratedAllocationPtr =
-    std::unique_ptr<Allocation, pten::Allocator::DeleterType>;
+    std::unique_ptr<Allocation, phi::Allocator::DeleterType>;
 
 // Base interface class of memory Allocator.
-class Allocator : public pten::Allocator {
+class Allocator : public phi::Allocator {
  public:
-  static void AllocationDeleter(pten::Allocation* allocation) {
+  static void AllocationDeleter(phi::Allocation* allocation) {
     Allocator* allocator =
         static_cast<Allocation*>(allocation)->TopDecoratedAllocator();
     allocator->Free(allocation);
@@ -150,7 +150,7 @@ class Allocator : public pten::Allocator {
     return AllocationPtr(ptr, AllocationDeleter);
   }
 
-  void Free(pten::Allocation* allocation) {
+  void Free(phi::Allocation* allocation) {
     static_cast<Allocation*>(allocation)->PopDecoratedAllocator();
     FreeImpl(allocation);
   }
@@ -158,8 +158,8 @@ class Allocator : public pten::Allocator {
   uint64_t Release(const platform::Place& place) { return ReleaseImpl(place); }
 
  protected:
-  virtual pten::Allocation* AllocateImpl(size_t size) = 0;
-  virtual void FreeImpl(pten::Allocation* allocation);
+  virtual phi::Allocation* AllocateImpl(size_t size) = 0;
+  virtual void FreeImpl(phi::Allocation* allocation);
   virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
 };
 

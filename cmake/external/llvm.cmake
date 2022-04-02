@@ -99,9 +99,10 @@ endfunction()
 
 function(mlir_add_rewriter td_base)
   set(LLVM_TARGET_DEFINITIONS ${td_base}.td)
-  mlir_tablegen(${td_base}.hpp.inc -gen-rewriters "-I${CMAKE_SOURCE_DIR}/infrt/dialect/pass")
-  add_public_tablegen_target(${td_base}_IncGen)
-  add_custom_target(${td_base}_inc DEPENDS ${td_base}_IncGen)
+  set(LLVM_TARGET_DEPENDS  ${LLVM_TARGET_DEPENDS} ${CMAKE_SOURCE_DIR}/paddle/infrt/dialect/infrt/ir/infrt_base.td)
+  mlir_tablegen(${td_base}.cpp.inc -gen-rewriters)
+  add_public_tablegen_target(MLIR${td_base}IncGen)
+  add_dependencies(mlir-headers MLIR${td_base}IncGen)
 endfunction()
 
 # Execute the mlir script with infrt-exec program.

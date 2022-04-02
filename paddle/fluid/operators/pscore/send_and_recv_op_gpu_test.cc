@@ -19,6 +19,9 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include <random>
+#include <sstream>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
@@ -40,26 +43,36 @@ USE_OP(send_and_recv);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service2;
 
+std::string get_ip_port() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
+
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
   auto* block = program->AppendBlock(*root_block);
-
   framework::OpDesc* op = block->AppendOp();
   op->SetType("scale");
   op->SetInput("X", {"x"});
   op->SetOutput("Out", {"res"});
   op->SetAttr("scale", 0.5f);
-
   auto& out = *root_block->Var("res");
   out.SetType(framework::proto::VarType::LOD_TENSOR);
   out.SetShape({1, 10});
-
   return block;
 }
 
 void CreateVarsOnScope(framework::Scope* scope) {
   auto w_var = scope->Var("w");
-  w_var->GetMutable<pten::SelectedRows>();
+  w_var->GetMutable<phi::SelectedRows>();
 
   auto out_var = scope->Var("out");
   out_var->GetMutable<framework::LoDTensor>();
@@ -96,11 +109,12 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> temp_vec{0};
   float* temp_ptr = temp_vec.data();
 
-  memory::Copy(
-      place, reinterpret_cast<void*>(micro_id_ptr), platform::CPUPlace(),
-      reinterpret_cast<void*>(temp_ptr),
-      micro_id_var->numel() * framework::SizeOfType(micro_id_var->type()),
-      stream);
+  memory::Copy(place, reinterpret_cast<void*>(micro_id_ptr),
+               platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+               micro_id_var->numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(micro_id_var->dtype())),
+               stream);
 
   auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
@@ -110,7 +124,8 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   float* x_vec_ptr = x_vec.data();
   memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::SizeOfType(x_var->type()), stream);
+               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               stream);
 
   // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
   // float* res_ptr =
@@ -121,7 +136,7 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
-  auto w = scope->Var("w")->GetMutable<pten::SelectedRows>();
+  auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
   for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
@@ -152,8 +167,8 @@ void StartSendAndRecvServer(std::string endpoint) {
   InitTensorsOnServer(&scope, &place, 10);
   LOG(INFO) << "end InitTensorsOnServer";
 
-  std::shared_ptr<distributed::RequestSendAndRecvHandler> b_req_handler;
-  b_req_handler.reset(new distributed::RequestSendAndRecvHandler());
+  std::shared_ptr<distributed::SendAndRecvVariableHandler> b_req_handler;
+  b_req_handler.reset(new distributed::SendAndRecvVariableHandler());
   LOG(INFO) << "before SetDevCtx";
   b_req_handler->SetDevCtx(&ctx);
   LOG(INFO) << "before SetScope";
@@ -168,17 +183,19 @@ void StartSendAndRecvServer(std::string endpoint) {
         return b_req_handler->Handle(request, response, cntl);
       });
 
-  b_rpc_service2->SetRequestHandler(b_req_handler);
+  b_rpc_service2->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service2));
-  server_thread.join();
+
+  RunServer(b_rpc_service2);
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service2));
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, GPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  std::string endpoint = "127.0.0.1:4445";
-  std::string previous_endpoint = "127.0.0.1:4445";
+  std::string endpoint = get_ip_port();
+  std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
   b_rpc_service2 = distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);
@@ -211,13 +228,11 @@ TEST(SENDANDRECV, GPU) {
   b_rpc_service2->SetTaskQueue(task_queue_);
 
   LOG(INFO) << "before HeterClient::GetInstance";
-  distributed::HeterClient* rpc_client =
-      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0)
-          .get();
-
-  PADDLE_ENFORCE_NE(rpc_client, nullptr,
-                    platform::errors::InvalidArgument(
-                        "Client Start Fail, Check Your Code & Env"));
+  std::shared_ptr<distributed::HeterClient> heter_client_ptr_ =
+      distributed::HeterClient::GetInstance({endpoint}, {previous_endpoint}, 0);
+  if (heter_client_ptr_ == nullptr) {
+    LOG(ERROR) << "heter_client_ptr_ is null";
+  }
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
@@ -299,7 +314,6 @@ TEST(SENDANDRECV, GPU) {
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
-  rpc_client->FinalizeWorker();
   b_rpc_service2->Stop();
   LOG(INFO) << "end server Stop";
   server_thread.join();

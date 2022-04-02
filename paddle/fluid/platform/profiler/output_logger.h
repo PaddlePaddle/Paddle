@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ class BaseLogger {
   virtual void LogHostTraceEventNode(const HostTraceEventNode&) {}
   virtual void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) {}
   virtual void LogNodeTrees(const NodeTrees&) {}
-  virtual void LogMetaInfo() {}
 };
 
 }  // namespace platform

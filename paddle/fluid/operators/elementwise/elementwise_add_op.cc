@@ -117,55 +117,6 @@ REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
                   ops::ElementwiseTripleGradOpInplaceInferer,
                   ops::ElementwiseTripleGradNoBufVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_grad,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_grad_grad,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_triple_grad,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
-
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
 REGISTER_OPERATOR(

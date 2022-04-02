@@ -46,7 +46,7 @@ class ExpandAsOp : public framework::OperatorWithKernel {
             "received: input rank %u, input shape [%s].",
             x_dims.size(), x_dims));
     std::vector<int64_t> out_shape(x_dims.size());
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
   }
 };
 

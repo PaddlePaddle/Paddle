@@ -20,7 +20,8 @@ TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
 TENSORRT_ROOT_DIR=$5 # TensorRT ROOT dir, default to /usr/local/TensorRT
-MSVC_STATIC_CRT=$6
+WITH_ONNXRUNTIME=$6
+MSVC_STATIC_CRT=$7
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 EXIT_CODE=0 # init default exit code
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
@@ -144,7 +145,8 @@ function compile_test() {
              -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
              -DWITH_GTEST=ON \
              -DCMAKE_CXX_FLAGS='/std:c++17' \
-             -DCMAKE_BUILD_TYPE=Release
+             -DCMAKE_BUILD_TYPE=Release \
+             -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
         msbuild /maxcpucount /property:Configuration=Release ALL_BUILD.vcxproj
     else
         cmake .. -DPADDLE_LIB=${inference_install_dir} \
@@ -154,7 +156,8 @@ function compile_test() {
                  -DWITH_STATIC_LIB=OFF \
                  -DUSE_TENSORRT=$USE_TENSORRT \
                  -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
-                 -DWITH_GTEST=ON
+                 -DWITH_GTEST=ON \
+                 -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
         make -j$(nproc)
     fi;
     cd -

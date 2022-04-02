@@ -426,9 +426,6 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_affine_channel_fuse_pass')
-        graph = self._apply_pass(graph,
-                                 'conv_eltwiseadd_affine_channel_fuse_pass')
         graph = self._apply_pass(graph, 'conv_transpose_bn_fuse_pass')
         graph = self._apply_pass(graph,
                                  'conv_transpose_eltwiseadd_bn_fuse_pass')
@@ -441,6 +438,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_swish_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_hard_swish_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_mish_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_hard_sigmoid_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_gelu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',

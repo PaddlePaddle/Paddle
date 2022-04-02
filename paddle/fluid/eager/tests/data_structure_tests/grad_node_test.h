@@ -18,7 +18,7 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 namespace egr {
 class TensorWrapper;
 }
@@ -30,14 +30,15 @@ class GradTestNode : public egr::GradNodeBase {
   GradTestNode(float val, int in_num, int out_num)
       : GradNodeBase(in_num, out_num), val_(val) {}
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
+  std::string name() override { return "GradTestNode"; }
   std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
-      override {
-    val_ = std::dynamic_pointer_cast<pten::DenseTensor>(grads[0][0].impl())
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      bool create_graph = false) override {
+    val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
-    pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-        pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-    std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+    phi::DenseTensorMeta meta =
+        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+    std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())
             .get(),
@@ -47,6 +48,11 @@ class GradTestNode : public egr::GradNodeBase {
     paddle::experimental::Tensor et1(dt);
     std::vector<std::vector<paddle::experimental::Tensor>> res = {{et1}};
     return res;
+  }
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  bool IsTensorWrappersCleared() override {
+    VLOG(6) << "Do nothing here now";
+    return false;
   }
   float val_;
 };

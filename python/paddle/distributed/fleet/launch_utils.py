@@ -57,6 +57,7 @@ class DeviceMode():
     XPU = 2
     ASCEND_NPU = 3
     UNKNOWN = 3
+    MLU = 4
 
 
 class Cluster(object):
@@ -287,7 +288,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU or device_mode == DeviceMode.MLU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.accelerators.extend(devices_per_proc[i])
                     pod.accelerators.extend(devices_per_proc[i])
@@ -530,6 +531,9 @@ def start_local_trainers(cluster,
                  accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
             proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
+        elif len(t.accelerators) > 0 and pod.device_mode == DeviceMode.MLU:
+            proc_env["FLAGS_selected_mlus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
 
         if len(t.accelerators) > 0:
             proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
@@ -735,6 +739,35 @@ def get_npus(npus):
     return res_npus
 
 
+def get_mlus(mlus):
+    if mlus is None:
+        mlus_num = fluid.core.get_mlu_device_count()
+        res_mlus = [str(x) for x in range(0, mlus_num)]
+    else:
+        mlu_visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
+        if mlu_visible_devices is None or mlu_visible_devices == "":
+            res_mlus = [x.strip() for x in mlus.split(',')]
+        else:
+            # change mlus into relative values
+            # e.g. MLU_VISIBLE_DEVICES=4,5,6,7; args.mlus=4,5,6,7;
+            # therefore mlus=0,1,2,3
+            mlu_visible_devices_list = mlu_visible_devices.split(',')
+            for x in mlus.split(','):
+                assert x in mlu_visible_devices_list, "Can't find "\
+                    "your mlus %s in MLU_VISIBLE_DEVICES[%s]."\
+                    % (x, mlu_visible_devices)
+            res_mlus = [
+                mlu_visible_devices_list.index(x.strip())
+                for x in mlus.split(',')
+            ]
+            logger.info("Change selected_mlus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "MLU_VISIBLE_DEVICES:{}".format(
+                            mlus, res_mlus, mlu_visible_devices_list))
+
+    return res_mlus
+
+
 def get_device_mode(backend):
     if backend == 'heter':
         if fluid.core.is_compiled_with_cuda() and \
@@ -762,6 +795,10 @@ def get_device_mode(backend):
     if backend == 'bkcl' and fluid.core.get_xpu_device_count() > 0:
         print("launch train in XPU mode")
         return DeviceMode.XPU
+
+    if backend == 'cncl' and fluid.core.get_mlu_device_count() > 0:
+        print("launch train in MLU mode")
+        return DeviceMode.MLU
 
     if backend == 'gloo':
         print("launch train in CPU mode")
@@ -812,6 +849,18 @@ def get_device_proc_info(args):
             ]
         else:
             devices_per_proc = xpus
+    elif device_mode == DeviceMode.MLU:
+        mlus = get_mlus(args.mlus)
+        if args.nproc_per_node is not None:
+            assert (len(mlus) % int(args.nproc_per_node)) ==0, \
+                "mlus' number:{} mod args.nproc_per_node:{} must == 0".format(len(mlus), args.nproc_per_node)
+
+            n = int(len(mlus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                mlus[i:i + n] for i in six.moves.range(0, len(mlus), n)
+            ]
+        else:
+            devices_per_proc = mlus
     elif device_mode == DeviceMode.CPU:
         if hasattr(args, "paddle_cpuonly") and args.nproc_per_node is None:
             #NOTE (xiongkun03) set it to cpu core number
@@ -1719,7 +1768,7 @@ class ParameterServerLauncher(object):
 
 
 def check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter']:
+    if backend not in ['nccl', 'gloo', 'bkcl', 'cncl', 'auto', 'hccl', 'heter']:
         raise ValueError("paddle.distributed initialize error, "
                          "backend argument can only be one of "
                          "'nccl', 'gloo', 'bkcl', 'auto', 'hccl', 'heter' "
@@ -1741,6 +1790,12 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with npu but you assign 'hccl' as backend."
+        )
+
+    if backend == 'cncl' and not fluid.core.is_compiled_with_mlu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with mlu but you assign 'cncl' as backend."
         )
 
 
@@ -1765,5 +1820,8 @@ def get_backend_by_compile_flag():
 
     if fluid.core.is_compiled_with_npu():
         return 'hccl'
+
+    if fluid.core.is_compiled_with_mlu():
+        return 'cncl'
 
     return 'gloo'

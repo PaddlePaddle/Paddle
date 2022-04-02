@@ -17,8 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void SerializeToStream(std::ostream& os,
-                       const pten::SelectedRows& selected_rows,
+void SerializeToStream(std::ostream& os, const phi::SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
@@ -43,7 +42,7 @@ void SerializeToStream(std::ostream& os,
 }
 
 void SerializeToStream(std::ostream& os,
-                       const pten::SelectedRows& selected_rows) {
+                       const phi::SelectedRows& selected_rows) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   auto place = selected_rows.place();
@@ -51,15 +50,14 @@ void SerializeToStream(std::ostream& os,
   SerializeToStream(os, selected_rows, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream& os,
-                           pten::SelectedRows* selected_rows) {
+void DeserializeFromStream(std::istream& os, phi::SelectedRows* selected_rows) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   dev_ctx = pool.Get(platform::CPUPlace());
   DeserializeFromStream(os, selected_rows, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream& is, pten::SelectedRows* selected_rows,
+void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows,
                            const platform::DeviceContext& dev_ctx) {
   {
     // the 1st field, unit32_t version for SelectedRows

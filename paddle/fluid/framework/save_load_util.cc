@@ -16,6 +16,7 @@
 
 #include <fstream>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/layer.h"
 
 namespace paddle {
@@ -282,8 +283,8 @@ bool SaveTensorToDisk(const std::string& file_name,
     auto tensor = itera.second;
 
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(tensor->type());
-    auto dims = framework::vectorize(tensor->dims());
+    desc.set_data_type(framework::TransToProtoVarType(tensor->dtype()));
+    auto dims = phi::vectorize(tensor->dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
     std::copy(dims.begin(), dims.end(), pb_dims->begin());
@@ -294,7 +295,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 
     // save tensor
     uint64_t data_size =
-        tensor->numel() * framework::SizeOfType(tensor->type());
+        tensor->numel() * framework::DataTypeSize(tensor->dtype());
     auto* data_ptr = tensor->data();
     if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -363,7 +364,7 @@ bool LoadTensorFromDisk(
       dims.reserve(static_cast<size_t>(desc.dims().size()));
       std::copy(desc.dims().begin(), desc.dims().end(),
                 std::back_inserter(dims));
-      auto new_dim = framework::make_ddim(dims);
+      auto new_dim = phi::make_ddim(dims);
       tensor_temp->Resize(new_dim);
       void* buf;
       framework::VisitDataType(desc.data_type(),

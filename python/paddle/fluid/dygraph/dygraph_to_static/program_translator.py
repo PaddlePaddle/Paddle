@@ -23,7 +23,7 @@ import threading
 import weakref
 
 from paddle.fluid import framework
-from paddle.fluid import in_dygraph_mode
+from paddle.fluid import _non_static_mode
 from paddle.fluid.dygraph import layers
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
@@ -344,7 +344,7 @@ class StaticFunction(object):
                 "ProgramTranslator.enable(True)")
             return self._call_dygraph_function(*args, **kwargs)
 
-        if not in_dygraph_mode():
+        if not _non_static_mode():
             raise RuntimeError(
                 "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
                 "because it is NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "
@@ -707,6 +707,8 @@ class ProgramCache(object):
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
+        # trace mostly recent used program 
+        self._recent_key = None
 
     def _build_once(self, cache_key):
         concrete_program = ConcreteProgram.from_func_spec(
@@ -722,6 +724,7 @@ class ProgramCache(object):
             raise ValueError('type(item) should be CacheKey, but received %s' %
                              type_name(item))
         item_id = hash(item)
+        self._recent_key = item_id
         if item_id not in self._caches:
             self._caches[item_id] = self._build_once(item)
             # Note: raise warnings if number of traced program is more than `max_tracing_count`
@@ -749,8 +752,8 @@ class ProgramCache(object):
     def last(self):
         assert len(
             self._caches) >= 1, "No valid cached program in ProgramCache."
-        key = next(reversed(self._caches.keys()))
-        return key, self._caches[key]
+        assert self._recent_key is not None
+        return self._recent_key, self._caches[self._recent_key]
 
     def __len__(self):
         return len(self._caches)

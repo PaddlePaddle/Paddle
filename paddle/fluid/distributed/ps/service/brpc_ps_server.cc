@@ -188,7 +188,8 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
 int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->pull_dense");
+  platform::RecordEvent record_event(
+      "PsService->pull_dense", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 1) {
     set_response_code(
@@ -205,8 +206,14 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   }
 
   auto res_data = butil::get_object<std::vector<float>>();
-  res_data->resize(num * table->value_accesor()->select_size() / sizeof(float));
-  table->pull_dense(res_data->data(), num);
+  res_data->resize(num * table->value_accesor()->GetTableInfo(SELECT_SIZE) /
+                   sizeof(float));
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.pull_context.values = res_data->data();
+  table_context.num = num;
+  table->Pull(table_context);
+  // table->pull_dense(res_data->data(), num);
 
   cntl->response_attachment().append((char *)(res_data->data()),
                                      res_data->size() * sizeof(float));
@@ -219,7 +226,9 @@ int32_t BrpcPsService::push_dense_param(Table *table,
                                         const PsRequestMessage &request,
                                         PsResponseMessage &response,
                                         brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->push_dense_param");
+  platform::RecordEvent record_event("PsService->push_dense_param",
+                                     platform::TracerEventType::Communication,
+                                     1);
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_buffer;
   auto &req_io_buffer = cntl->request_attachment();
@@ -245,7 +254,8 @@ int32_t BrpcPsService::push_dense_param(Table *table,
 int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->push_dense");
+  platform::RecordEvent record_event(
+      "PsService->push_dense", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto req_buffer_size = request.data().size();
   if (req_buffer_size < 1) {
@@ -260,9 +270,15 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
   |--4B---|----------------|
   */
   uint32_t num = *(const uint32_t *)(request.data().data());
-  const float *values =
+  TableContext table_context;
+  table_context.value_type = Dense;
+  table_context.push_context.values =
       (const float *)(request.data().data() + sizeof(uint32_t));
-  if (table->push_dense(values, num) != 0) {
+  table_context.num = num;
+  // const float *values = (const float *)(request.data().data() +
+  // sizeof(uint32_t));
+  if (table->Push(table_context) != 0) {
+    // if (table->push_dense(values, num) != 0) {
     set_response_code(response, -1, "push_dense failed");
   }
 
@@ -291,7 +307,9 @@ int32_t BrpcPsService::push_sparse_param(Table *table,
                                          const PsRequestMessage &request,
                                          PsResponseMessage &response,
                                          brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->push_sparse_param");
+  platform::RecordEvent record_event("PsService->push_sparse_param",
+                                     platform::TracerEventType::Communication,
+                                     1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
   if (push_data.size() < 1) {
@@ -323,7 +341,8 @@ int32_t BrpcPsService::pull_geo_param(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->pull_geo_param");
+  platform::RecordEvent record_event(
+      "PsService->pull_geo_param", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_sparse_request_buffer;
 
@@ -346,7 +365,8 @@ int32_t BrpcPsService::pull_sparse(Table *table,
                                    const PsRequestMessage &request,
                                    PsResponseMessage &response,
                                    brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->pull_sparse");
+  platform::RecordEvent record_event(
+      "PsService->pull_sparse", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
 
   auto &req_io_buffer = cntl->request_attachment();
@@ -366,7 +386,7 @@ int32_t BrpcPsService::pull_sparse(Table *table,
 
   CostTimer timer("pserver_server_pull_sparse");
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
-  auto dim = table->value_accesor()->select_dim();
+  auto dim = table->value_accesor()->GetTableInfo(SELECT_DIM);
 
   thread_local std::string req_buffer;
   req_buffer.reserve(req_buffer_size);
@@ -380,7 +400,12 @@ int32_t BrpcPsService::pull_sparse(Table *table,
 
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * dim);
-  table->pull_sparse(res_data->data(), value);
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.pull_context.pull_value = value;
+  table_context.pull_context.values = res_data->data();
+  table->Pull(table_context);
+  // table->pull_sparse(res_data->data(), value);
 
   cntl->response_attachment().append((char *)(res_data->data()),
                                      res_data->size() * sizeof(float));
@@ -392,7 +417,8 @@ int32_t BrpcPsService::push_sparse(Table *table,
                                    const PsRequestMessage &request,
                                    PsResponseMessage &response,
                                    brpc::Controller *cntl) {
-  platform::RecordEvent record_event("PsService->push_sparse");
+  platform::RecordEvent record_event(
+      "PsService->push_sparse", platform::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
   if (push_data.size() < 1) {
@@ -412,10 +438,17 @@ int32_t BrpcPsService::push_sparse(Table *table,
   |---keysData---|---valuesData---|
   |---8*{num}B---|----------------|
   */
-  const uint64_t *keys = (const uint64_t *)push_data.data();
-  const float *values =
+  TableContext table_context;
+  table_context.value_type = Sparse;
+  table_context.push_context.keys = (const uint64_t *)push_data.data();
+  table_context.push_context.values =
       (const float *)(push_data.data() + sizeof(uint64_t) * num);
-  if (table->push_sparse(keys, values, num) != 0) {
+  table_context.num = num;
+  // const uint64_t *keys = (const uint64_t *)push_data.data();
+  // const float *values = (const float *)(push_data.data() + sizeof(uint64_t) *
+  // num);
+  if (table->Push(table_context) != 0) {
+    // if (table->push_sparse(keys, values, num) != 0) {
     set_response_code(response, -1, "push_sparse error");
   }
   return 0;

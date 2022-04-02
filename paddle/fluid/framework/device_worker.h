@@ -27,6 +27,10 @@ limitations under the License. */
 #include <utility>        // NOLINT
 #include <vector>
 
+#if defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#endif
+
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -39,7 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace framework {
@@ -107,7 +111,12 @@ class PullDenseWorker {
   bool CheckUpdateParam(uint64_t table_id);
 
  private:
+#if defined(PADDLE_WITH_PSCORE)
+  std::shared_ptr<paddle::distributed::FleetWrapper> fleet_ptr_;
+#else
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+#endif
+
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
@@ -340,6 +349,79 @@ class DownpourWorker : public HogwildWorker {
   // std::map<uint64_t, uint64_t> table_dependency_;
   // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
 };
+
+// Based on DownpourWorker，remove push pull code into operator
+#if defined(PADDLE_WITH_PSCORE)
+class DownpourLiteWorker : public HogwildWorker {
+ public:
+  DownpourLiteWorker() {}
+  virtual ~DownpourLiteWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+
+ protected:
+  std::shared_ptr<paddle::distributed::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  void PushGradients();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+  DownpourWorkerParameter param_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  // feasign
+  std::map<uint64_t, std::vector<uint64_t>> features_;
+  // feasign embedding
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  bool need_to_push_sparse_;
+  // feasign stats
+  std::map<uint64_t, std::vector<float>> feature_labels_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  // feasign embedding gradient
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  bool dump_slot_;
+  bool need_to_push_dense_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  float scale_datanorm_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  // multitask
+  std::map<int32_t, uint64_t> cond2table_map_;
+  std::set<uint64_t> condvalue_set_;
+  bool flag_partial_push_;
+
+ private:
+  // std::vector<std::string> dump_param_;
+  // just save the value in param_ for easy access
+  // std::map<uint64_t, std::string> label_var_name_;
+  // std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+
+  std::shared_ptr<PullDenseWorker> _pull_dense_worker;
+
+  std::vector<float> nid_show_;
+  // std::map<uint64_t, uint64_t> table_dependency_;
+  // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+};
+#endif
 
 class DownpourWorkerOpt : public DownpourWorker {
  public:

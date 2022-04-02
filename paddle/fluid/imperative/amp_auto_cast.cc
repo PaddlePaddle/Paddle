@@ -70,12 +70,12 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
-  auto pten_kernels = pten::KernelFactory::Instance().kernels();
-  for (auto& kernel_pair : pten_kernels) {
-    auto op_type = pten::TransToFluidOpName(kernel_pair.first);
+  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  for (auto& kernel_pair : phi_kernels) {
+    auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
       framework::OpKernelType kernel_type =
-          framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
+          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
       if (is_target_place[query_place](kernel_type.place_) &&
           kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
         VLOG(4) << op_type << " " << supported_ops.size();
@@ -113,26 +113,49 @@ AutoCastGuard::~AutoCastGuard() { tracer_->SetAmpLevel(pre_amp_level_); }
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
       block_ops_(new std::unordered_set<std::string>()),
-      unsupported_fp16_ops_(new std::unordered_set<std::string>()) {
+      unsupported_fp16_ops_(new std::unordered_set<std::string>()),
+      unsupported_bf16_ops_(new std::unordered_set<std::string>()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto unsupported_ops_gpu = std::get<2>(
+  auto unsupported_ops_gpu_fp16 = std::get<2>(
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_gpu.begin(),
-                                unsupported_ops_gpu.end());
-// NOTE: GPU/NPU/XPU is compiled seperatly.
+  unsupported_fp16_ops_->insert(unsupported_ops_gpu_fp16.begin(),
+                                unsupported_ops_gpu_fp16.end());
+  auto unsupported_ops_gpu_bf16 = std::get<2>(
+      OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
+  unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
+                                unsupported_ops_gpu_bf16.end());
+// NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
 #elif defined(PADDLE_WITH_ASCEND_CL)
-  auto unsupported_ops_npu = std::get<2>(
+  auto unsupported_ops_npu_fp16 = std::get<2>(
       OpSupportedInfos("NPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_npu.begin(),
-                                unsupported_ops_npu.end());
+  unsupported_fp16_ops_->insert(unsupported_ops_npu_fp16.begin(),
+                                unsupported_ops_npu_fp16.end());
+  auto unsupported_ops_npu_bf16 = std::get<2>(
+      OpSupportedInfos("NPU", paddle::framework::proto::VarType::BF16));
+  unsupported_bf16_ops_->insert(unsupported_ops_npu_bf16.begin(),
+                                unsupported_ops_npu_bf16.end());
 #elif defined(PADDLE_WITH_XPU)
-  auto unsupported_ops_xpu = std::get<2>(
+  auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
-  unsupported_fp16_ops_->insert(unsupported_ops_xpu.begin(),
-                                unsupported_ops_xpu.end());
+  unsupported_fp16_ops_->insert(unsupported_ops_xpu_fp16.begin(),
+                                unsupported_ops_xpu_fp16.end());
+  auto unsupported_ops_xpu_bf16 = std::get<2>(
+      OpSupportedInfos("XPU", paddle::framework::proto::VarType::BF16));
+  unsupported_bf16_ops_->insert(unsupported_ops_xpu_bf16.begin(),
+                                unsupported_ops_xpu_bf16.end());
+#elif defined(PADDLE_WITH_MLU)
+  auto unsupported_ops_mlu_fp16 = std::get<2>(
+      OpSupportedInfos("MLU", paddle::framework::proto::VarType::FP16));
+  unsupported_fp16_ops_->insert(unsupported_ops_mlu_fp16.begin(),
+                                unsupported_ops_mlu_fp16.end());
+  auto unsupported_ops_mlu_bf16 = std::get<2>(
+      OpSupportedInfos("MLU", paddle::framework::proto::VarType::BF16));
+  unsupported_bf16_ops_->insert(unsupported_ops_mlu_bf16.begin(),
+                                unsupported_ops_mlu_bf16.end());
 #endif
   VLOG(4) << allow_ops_->size() << " " << block_ops_->size() << " "
-          << unsupported_fp16_ops_->size();
+          << unsupported_fp16_ops_->size() << " "
+          << unsupported_bf16_ops_->size();
 }
 
 AmpOperators::~AmpOperators() {}
@@ -157,6 +180,11 @@ AmpOperators::GetMutableUnsupportedFp16Ops() {
   return unsupported_fp16_ops_;
 }
 
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableUnsupportedBf16Ops() {
+  return unsupported_bf16_ops_;
+}
+
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "allow ops: ";
   auto allow_ops = ops.GetMutableAllowOps();
@@ -172,6 +200,11 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   auto unsupported_fp16_ops = ops.GetMutableUnsupportedFp16Ops();
   std::copy((*unsupported_fp16_ops).begin(), (*unsupported_fp16_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
+  os << "\n";
+  os << "unsupported bf16 ops: ";
+  auto unsupported_bf16_ops = ops.GetMutableUnsupportedBf16Ops();
+  std::copy((*unsupported_bf16_ops).begin(), (*unsupported_bf16_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
   return os;
 }
 
@@ -185,10 +218,14 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   auto data_type = GetDataType<VarType>(var);
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place)) {
+      paddle::platform::is_xpu_place(place) ||
+      paddle::platform::is_mlu_place(place) ||
+      paddle::platform::is_npu_place(place) ||
+      paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
-        data_type == paddle::framework::proto::VarType::FP16) {
+        data_type == paddle::framework::proto::VarType::FP16 ||
+        data_type == paddle::framework::proto::VarType::BF16) {
       return true;
     }
   }
@@ -237,9 +274,20 @@ static inline std::shared_ptr<VarType> CastToFP32(
 }
 
 template <typename VarType>
+static inline std::shared_ptr<VarType> CastToBF16(
+    const std::shared_ptr<VarType>& var) {
+  auto dst_type = framework::proto::VarType::BF16;
+  if (NeedCast(var) && (GetDataType<VarType>(var) != dst_type)) {
+    return CastToType(var, dst_type);
+  }
+  return var;
+}
+
+template <typename VarType>
 static inline framework::proto::VarType::Type GetPromoteType(
-    const std::string& op_type, const NameVarMap<VarType>& ins) {
-  auto dst_type = framework::proto::VarType::FP16;
+    const std::string& op_type, const NameVarMap<VarType>& ins,
+    const framework::proto::VarType::Type amp_dtype) {
+  auto dst_type = amp_dtype;
   for (const auto& pair : ins) {
     for (const auto& var : pair.second) {
       if (GetDataType<VarType>(var) == framework::proto::VarType::FP32) {
@@ -302,7 +350,8 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
     }
     return new_ins;
   } else {
-    auto dst_type = GetPromoteType<VarType>(op_type, ins);
+    auto dst_type =
+        GetPromoteType<VarType>(op_type, ins, framework::proto::VarType::FP16);
 
     // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
     if (dst_type == framework::proto::VarType::FP16 &&
@@ -340,8 +389,8 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> AutoCastInputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> AutoCastInputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> AutoCastInputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins) {
@@ -384,7 +433,84 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
 }
 template NameVarMap<VarBase> CastPureFp16Inputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
-template NameVarMap<egr::EagerTensor> CastPureFp16Inputs<egr::EagerTensor>(
-    const std::string& op_type, const NameVarMap<egr::EagerTensor>& ins);
+template NameVarMap<egr::EagerVariable> CastPureFp16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
+
+template <typename VarType>
+NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins) {
+  NameVarMap<VarType> new_ins(ins);
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+    for (auto& pair : new_ins) {
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to bfloat16";
+      for (auto& var : pair.second) {
+        var = CastToBF16<VarType>(var);
+      }
+    }
+    return new_ins;
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    for (auto& pair : new_ins) {
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to float";
+      for (auto& var : pair.second) {
+        var = CastToFP32<VarType>(var);
+      }
+    }
+    return new_ins;
+  } else {
+    auto dst_type =
+        GetPromoteType<VarType>(op_type, ins, framework::proto::VarType::BF16);
+    // NOTE(zhangbo): if the op has op fp16 kernel, fall back to fp32.
+    if (dst_type == framework::proto::VarType::BF16 &&
+        AmpOperators::Instance().GetMutableUnsupportedBf16Ops()->count(
+            op_type)) {
+      dst_type = framework::proto::VarType::FP32;
+    }
+    for (auto& pair : new_ins) {
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to "
+              << framework::DataTypeToString(dst_type);
+      for (auto& var : pair.second) {
+        var = (dst_type == framework::proto::VarType::FP32
+                   ? CastToFP32<VarType>(var)
+                   : CastToBF16<VarType>(var));
+      }
+    }
+    return new_ins;
+  }
+  return new_ins;
+}
+template NameVarMap<VarBase> AutoCastBF16Inputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerVariable> AutoCastBF16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
+
+template <typename VarType>
+NameVarMap<VarType> CastPureBf16Inputs(const std::string& op_type,
+                                       const NameVarMap<VarType>& ins) {
+  NameVarMap<VarType> new_ins(ins);
+  auto dst_type = framework::proto::VarType::BF16;
+  if (AmpOperators::Instance().GetMutableUnsupportedBf16Ops()->count(op_type) ||
+      AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    dst_type = framework::proto::VarType::FP32;
+  }
+  for (auto& pair : new_ins) {
+    VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+            << GetDtypeStr(*pair.second.cbegin()) << " to "
+            << framework::DataTypeToString(dst_type);
+    for (auto& var : pair.second) {
+      var = (dst_type == framework::proto::VarType::FP32
+                 ? CastToFP32<VarType>(var)
+                 : CastToBF16<VarType>(var));
+    }
+  }
+  return new_ins;
+}
+template NameVarMap<VarBase> CastPureBf16Inputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerVariable> CastPureBf16Inputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
+
 }  // namespace imperative
 }  // namespace paddle

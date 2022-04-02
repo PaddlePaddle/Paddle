@@ -328,6 +328,18 @@ class TestMKLDNNMish(TestActivation):
         self.attrs = {"use_mkldnn": True}
 
 
+class TestMKLDNNRound(TestActivation):
+    def setUp(self):
+        self.op_type = "round"
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = np.round(x)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
 class TestMKLDNNSigmoidDim4(TestSigmoid):
     def setUp(self):
         super(TestMKLDNNSigmoidDim4, self).setUp()

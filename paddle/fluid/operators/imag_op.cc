@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/imag_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,15 +23,6 @@ namespace operators {
 class ImagOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Imag");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Imag");
-
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", x_dims);
-    ctx->ShareLoD("X", "Out");
-  }
 };
 
 class ImagOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -88,19 +82,13 @@ DECLARE_INPLACE_OP_INFERER(ImagGradOpInplaceInferer,
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(imag, ImagInferShapeFunctor,
+                            PD_INFER_META(phi::RealAndImagInferMeta));
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(imag, ops::ImagOp, ops::ImagOpMaker,
                   ops::ImagGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ImagGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ImagGradOpMaker<paddle::imperative::OpBase>,
+                  ImagInferShapeFunctor);
 REGISTER_OPERATOR(imag_grad, ops::ImagGradOp);
-
-REGISTER_OP_CPU_KERNEL(imag, ops::ImagKernel<paddle::platform::CPUDeviceContext,
-                                             paddle::platform::complex<float>>,
-                       ops::ImagKernel<paddle::platform::CPUDeviceContext,
-                                       paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(imag_grad,
-                       ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex<float>>,
-                       ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex<double>>);

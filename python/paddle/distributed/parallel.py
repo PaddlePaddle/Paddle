@@ -58,9 +58,9 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter'] and (
+    if backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and (
             core.is_compiled_with_cuda() or core.is_compiled_with_xpu() or
-            core.is_compiled_with_npu()):
+            core.is_compiled_with_npu() or core.is_compiled_with_mlu()):
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -152,7 +152,8 @@ def init_parallel_env():
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or
-            core.is_compiled_with_xpu() or core.is_compiled_with_npu()):
+            core.is_compiled_with_xpu() or core.is_compiled_with_npu() or
+            core.is_compiled_with_mlu()):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend")
 
@@ -162,6 +163,8 @@ def init_parallel_env():
         _check_var_exists('FLAGS_selected_xpus')
     elif not is_cpu_only and core.is_compiled_with_npu():
         _check_var_exists('FLAGS_selected_npus')
+    elif not is_cpu_only and core.is_compiled_with_mlu():
+        _check_var_exists('FLAGS_selected_mlus')
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
@@ -213,6 +216,8 @@ def init_parallel_env():
         place = core.XPUPlace(parallel_env.device_id)
     elif core.is_compiled_with_npu():
         place = core.NPUPlace(parallel_env.device_id)
+    elif core.is_compiled_with_mlu():
+        place = core.MLUPlace(parallel_env.device_id)
 
     _set_expected_place(place)
     # init nccl or hccl or bkcl or heter context
@@ -231,6 +236,9 @@ def init_parallel_env():
     elif core.is_compiled_with_npu():
         parallel_helper._set_parallel_ctx(
             core.HCCLParallelContext(strategy, place))
+    elif core.is_compiled_with_mlu():
+        parallel_helper._set_parallel_ctx(
+            core.CNCLParallelContext(strategy, place))
 
     if backend != "heter":
         other_endpoints = strategy.trainer_endpoints[:]

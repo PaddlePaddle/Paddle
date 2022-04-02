@@ -38,25 +38,20 @@ class PReluMKLDNNHandler
                      const std::string& data_format, bool is_test = false)
       : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+            platform::CreateKey(dev_ctx, phi::vectorize(x->dims()),
                                 uniq_name)) {
     if (unlikely(!this->isCached())) {
-      auto x_md = memory::desc(framework::vectorize(x->dims()),
+      auto x_md = memory::desc(phi::vectorize(x->dims()),
                                MKLDNNGetDataType<T>(), x->format());
 
-      auto weights_dims = framework::vectorize(weights->dims());
+      auto weights_dims = phi::vectorize(weights->dims());
 
       // weights must have same size as X only for "element" case
       if (weights->dims().size() != x->dims().size()) {
         auto new_weights_dims = std::vector<int64_t>(x->dims().size(), 1);
         if (mode == "channel") {
-          if (data_format == "NHWC") {
-            new_weights_dims[x->dims().size() - 1] =
-                *std::max_element(weights_dims.begin(), weights_dims.end());
-          } else {
-            new_weights_dims[1] =
-                *std::max_element(weights_dims.begin(), weights_dims.end());
-          }
+          new_weights_dims[1] =
+              *std::max_element(weights_dims.begin(), weights_dims.end());
         }
         weights_dims = std::move(new_weights_dims);
       }
@@ -83,9 +78,8 @@ class PReluMKLDNNHandler
                                               "@alpha_mem_p");
     }
 
-    auto user_weights_md =
-        memory::desc(framework::vectorize(input->dims()),
-                     MKLDNNGetDataType<T>(), input->format());
+    auto user_weights_md = memory::desc(
+        phi::vectorize(input->dims()), MKLDNNGetDataType<T>(), input->format());
     return this->AcquireMemoryWithReorder(
         user_weights_md, this->fwd_pd_->weights_desc(),
         to_void_cast<T>(input_data), "@alpha_mem_p", is_test);

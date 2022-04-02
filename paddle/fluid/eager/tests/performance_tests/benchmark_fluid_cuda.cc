@@ -34,7 +34,17 @@
 #include "gperftools/profiler.h"
 #endif
 
+#include "paddle/phi/core/kernel_registry.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace imperative {
@@ -52,7 +62,7 @@ TEST(Benchmark, FluidScaleCUDA) {
     std::vector<int64_t> dims = {2, 4, 4, 4};
 
     auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(dims));
+    x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
 
     paddle::platform::DeviceContextPool& pool =
@@ -114,14 +124,14 @@ TEST(Benchmark, FluidMatmulCUDA) {
     auto stream = dev_ctx->stream();
 
     auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(dims));
+    x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, platform::CPUPlace(),
                          x_src_data.data(), sizeof(float) * x_src_data.size(),
                          stream);
 
     auto* y_tensor = Y->MutableVar()->GetMutable<framework::LoDTensor>();
-    y_tensor->Resize(framework::make_ddim(dims));
+    y_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_y = y_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_y, platform::CPUPlace(),
                          y_src_data.data(), sizeof(float) * y_src_data.size(),
@@ -179,7 +189,7 @@ TEST(Benchmark, FluidMLPCUDA) {
     X->SetOverridedStopGradient(false);
 
     auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(x_dims));
+    x_tensor->Resize(phi::make_ddim(x_dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, platform::CPUPlace(),
                          x_src_data.data(), sizeof(float) * x_src_data.size(),
@@ -196,14 +206,14 @@ TEST(Benchmark, FluidMLPCUDA) {
       B->SetOverridedStopGradient(false);
 
       auto* w_tensor = W->MutableVar()->GetMutable<framework::LoDTensor>();
-      w_tensor->Resize(framework::make_ddim(w_dims));
+      w_tensor->Resize(phi::make_ddim(w_dims));
       auto* mutable_w = w_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place, mutable_w, platform::CPUPlace(),
                            w_src_data.data(), sizeof(float) * w_src_data.size(),
                            stream);
 
       auto* b_tensor = B->MutableVar()->GetMutable<framework::LoDTensor>();
-      b_tensor->Resize(framework::make_ddim(b_dims));
+      b_tensor->Resize(phi::make_ddim(b_dims));
       auto* mutable_b = b_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place, mutable_b, platform::CPUPlace(),
                            b_src_data.data(), sizeof(float) * b_src_data.size(),
@@ -246,9 +256,9 @@ TEST(Benchmark, FluidMLPCUDA) {
 }  // namespace paddle
 
 USE_OP_ITSELF(scale);
-USE_OP(matmul_v2);
-USE_OP(reduce_sum);
-USE_OP(reduce_sum_grad);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(matmul_v2);
+USE_OP_ITSELF(reduce_sum);
+USE_OP_ITSELF(reduce_sum_grad);
+USE_OP_ITSELF(elementwise_add);
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

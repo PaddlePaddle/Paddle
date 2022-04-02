@@ -50,7 +50,7 @@ class ExpandAsV2XPUKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<framework::Tensor>("X");
     auto in_dims = in0->dims();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
 
@@ -69,11 +69,11 @@ class ExpandAsV2XPUKernel : public framework::OpKernel<T> {
       }
     }
     auto* out0 = context.Output<framework::Tensor>("Out");
-    framework::DDim out_dims = framework::make_ddim(target_shape);
+    framework::DDim out_dims = phi::make_ddim(target_shape);
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.GetPlace());
     auto& in0_shape = vec_in_dims;
-    auto out0_shape = framework::vectorize<int>(out_dims);
+    auto out0_shape = phi::vectorize<int>(out_dims);
 
     const auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();

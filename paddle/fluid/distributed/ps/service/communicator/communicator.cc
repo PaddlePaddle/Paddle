@@ -13,11 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
-
 #include <google/protobuf/text_format.h>
-
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -28,7 +27,7 @@ namespace paddle {
 namespace distributed {
 
 using framework::LoDTensor;
-using pten::SelectedRows;
+using phi::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
@@ -66,34 +65,9 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void Communicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  // not used, just for psclient's init
-  std::map<uint64_t, std::vector<paddle::distributed::Region>>
-      _dense_pull_regions;
-  for (auto &iter : recv_varname_to_ctx_) {
-    auto tid = iter.first;
-    auto var_names = iter.second;
-
-    auto &regions = _dense_pull_regions[tid];
-    regions.reserve(var_names.size());
-    for (auto &t : var_names) {
-      Variable *var = recv_scope_->FindVar(t);
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      float *w = tensor->data<float>();
-      paddle::distributed::Region reg(w, tensor->numel());
-      regions.emplace_back(std::move(reg));
-    }
-  }
-
+  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
-    google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
-    init_gflag(_ps_param.init_gflags());
-    servers_ = host_sign_list.size();
-    _ps_env = paddle::distributed::PaddlePSEnvironment();
-    _ps_env.set_ps_servers(&host_sign_list, servers_);
-    _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
-        paddle::distributed::PSClientFactory::create(_ps_param));
-    _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
-                           trainer_id_);
+    _worker_ptr = fleet->worker_ptr_;
   }
   return;
 }
@@ -113,7 +87,9 @@ int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
                                 int table_id, Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvDense");
+  platform::RecordEvent record_event("Communicator->RpcRecvDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   std::vector<paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
@@ -144,11 +120,11 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
   for (auto &t : varnames) {
     Variable *var = scope->FindVar(t);
     LoDTensor *tensor = var->GetMutable<LoDTensor>();
-    VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
+    VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
 
     float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
-    VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
+    VLOG(3) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
             << table_id << " Temp_data[0] " << temp_recv_data[0]
             << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
@@ -169,7 +145,9 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 
 void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
                                      int table_id, const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDenseParam");
+  platform::RecordEvent record_event("Communicator->RpcSendDenseParam",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto place = platform::CPUPlace();
   std::vector<paddle::distributed::Region> regions;
   for (auto &t : varnames) {
@@ -206,7 +184,9 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
 }
 
 void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDense");
+  platform::RecordEvent record_event("Communicator->RpcSendDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &var_names = ctx.origin_varnames;
   auto &table_id = ctx.table_id;
   auto dense_data = std::make_shared<std::vector<float>>();
@@ -250,7 +230,9 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
 
 void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
                                       const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparseParam");
+  platform::RecordEvent record_event("Communicator->RpcSendSparseParam",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t request_call_num = _worker_ptr->get_server_nums();
   std::vector<float *> push_g_vec;
 
@@ -287,13 +269,15 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
 
 void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
                                  const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparse");
+  platform::RecordEvent record_event("Communicator->RpcSendSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t request_call_num = _worker_ptr->get_server_nums();
   std::vector<uint64_t> sparse_push_keys;
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(var_name);
-  auto *tensor = send_var->GetMutable<pten::SelectedRows>();
+  auto *tensor = send_var->GetMutable<phi::SelectedRows>();
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
@@ -338,7 +322,9 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
 
 void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
                                  Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvSparse");
+  platform::RecordEvent record_event("Communicator->RpcRecvSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto *send_var = scope->Var(varname);
   auto *tensor = send_var->GetMutable<framework::LoDTensor>();
   auto dim = tensor->dims()[1];
@@ -406,7 +392,9 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   if (batches == 0) {
     return;
   }
-  platform::RecordEvent record_event("Communicator->SendGlobalStep");
+  platform::RecordEvent record_event("Communicator->SendGlobalStep",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->get_server_nums();
 
@@ -467,7 +455,7 @@ void AsyncCommunicator::RecvNoBarrier() {
     for (auto &t : var_names) {
       Variable *var = recv_scope_->FindVar(t);
       LoDTensor *tensor = var->GetMutable<LoDTensor>();
-      VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
+      VLOG(3) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
               << platform::is_gpu_place(tensor->place());
       if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
@@ -639,7 +627,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
-    } else {
+    } else if (batch_size != cur_batch_size) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -662,7 +650,8 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
 
-  VLOG(2) << "fleet.cc::emb_dim: " << fea_dim;
+  VLOG(2) << "fleet.cc::emb_dim: " << fea_dim << " batch_size: " << batch_size
+          << " batch_size_consist: " << batch_size_consist;
 
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
@@ -673,13 +662,14 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   for (size_t index = 0; index < inputs->size(); ++index) {
     framework::LoDTensor *g_tensor = outputs->at(index);
     float *g = g_tensor->data<float>();
-    // no cvm
+
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
                                // scale_sparse_gradient_with_batch_size_
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
           g_mat(g, g_tensor->numel() / fea_dim, fea_dim);
-      g_mat.rightCols(fea_dim) *= batch_size;
+      g_mat.rightCols(fea_dim - 2) *=
+          batch_size;  // hard code here, because of cvm_grad op
     }
 
     const framework::LoDTensor *tensor = inputs->at(index);
@@ -696,16 +686,16 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
             continue;
           }
           push_keys.emplace_back(real_id);
-          push_values.emplace_back(fea_dim + 3);
+          push_values.emplace_back(fea_dim + 1);
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
           push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] =
-              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] =
-              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+          // push_values.back()[1] =
+          //    (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          // push_values.back()[2] =
+          //    (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-          float *data = push_values.back().data() + 3;
+          float *data = push_values.back().data() + 1;  // hard code here
 
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -719,16 +709,16 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
           continue;
         }
         push_keys.emplace_back(real_id);
-        push_values.emplace_back(fea_dim + 3);
+        push_values.emplace_back(fea_dim + 1);
         // slot show clk grad... consistent with CtrCommonPushValue defined in
         // ctr_accessor.h
         push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-        push_values.back()[1] =
-            (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-        push_values.back()[2] =
-            (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+        // push_values.back()[1] =
+        //    (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+        // push_values.back()[2] =
+        //    (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-        float *data = push_values.back().data() + 3;
+        float *data = push_values.back().data() + 1;
 
         memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -823,7 +813,7 @@ void AsyncCommunicator::Stop() {
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
-    _worker_ptr->finalize_worker();
+    // _worker_ptr->finalize_worker();
     VLOG(1) << "client finalize_worker done";
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
@@ -852,7 +842,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(framework::make_ddim({1}));
+    tensor->Resize(phi::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);
@@ -994,7 +984,8 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
-  platform::RecordEvent record_event("GeoCommunicator->Send");
+  platform::RecordEvent record_event(
+      "GeoCommunicator->Send", platform::TracerEventType::Communication, 1);
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -1012,10 +1003,10 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
 
   auto *var = scope.FindVar(table_name);
 
-  PADDLE_ENFORCE_EQ(var->IsType<pten::SelectedRows>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
                     platform::errors::InvalidArgument(
                         "Only need to send Sparse Grad in Geo mode."));
-  auto &rows = var->Get<pten::SelectedRows>().rows();
+  auto &rows = var->Get<phi::SelectedRows>().rows();
 
   // insert ids which has not been record
   for (size_t j = 0; j < rows.size(); j++) {
@@ -1137,7 +1128,9 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
 }
 
 void GeoCommunicator::SendDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendDense");
+  platform::RecordEvent record_event("GeoCommunicator->SendDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &var_names = send_ctx.origin_varnames;
   auto &table_id = send_ctx.table_id;
   for (auto &varname : var_names) {
@@ -1160,9 +1153,7 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
-    auto blas =
-        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-            cpu_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
     blas.VSUB(t_latest.numel(), t_latest.data<float>(),
               t_timestamp->data<float>(), t_delta->data<float>());
 
@@ -1178,7 +1169,9 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
 }
 
 void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvDense");
+  platform::RecordEvent record_event("GeoCommunicator->RecvDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &table_id = send_ctx.table_id;
   auto &varnames = recv_varname_to_ctx_.at(table_id);
   // 1. recv from pserver
@@ -1200,9 +1193,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
-    auto blas =
-        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-            cpu_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
     blas.VSUB(t_latest->numel(), t_pserver.data<float>(), t_old->data<float>(),
               t_delta->data<float>());
     blas.VADD(t_latest->numel(), t_latest->data<float>(),
@@ -1237,7 +1228,9 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
-  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {
@@ -1269,7 +1262,9 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
 void GeoCommunicator::SendSparse(const std::string &varname,
                                  std::vector<int64_t> &sparse_ids, int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendSparse");
+  platform::RecordEvent record_event("GeoCommunicator->SendSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   if (sparse_ids.size() == 0) {
     return;
   }
@@ -1295,7 +1290,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   paddle::platform::CPUDeviceContext cpu_ctx;
 
   auto *var_delta = delta_scope_->Var(varname);
-  auto *t_delta = var_delta->GetMutable<pten::SelectedRows>();
+  auto *t_delta = var_delta->GetMutable<phi::SelectedRows>();
   auto *var_t_value = t_delta->mutable_value();
   var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
   auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());
@@ -1303,9 +1298,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   t_delta->set_rows(sparse_ids);
   t_delta->set_height(t_latest.dims()[0]);
 
-  auto blas =
-      paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-          cpu_ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
   float coefficient = 1.0 / static_cast<float>(trainers_);
 
   std::vector<float *> push_g_vec;
@@ -1346,7 +1339,9 @@ void GeoCommunicator::SendSparse(const std::string &varname,
 
 void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvSparse");
+  platform::RecordEvent record_event("GeoCommunicator->RecvSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
@@ -1371,9 +1366,7 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   v_delta.resize(numel);
 
   paddle::platform::CPUDeviceContext cpu_ctx;
-  auto blas =
-      paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-          cpu_ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
     VLOG(5) << "DEBUG GeoCommunicator::RecvSparse recv sparse key" << keys[j]

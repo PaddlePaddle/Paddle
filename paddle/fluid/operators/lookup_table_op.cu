@@ -152,7 +152,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *table = context.Input<LoDTensor>("W");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table =
-          context.Output<pten::SelectedRows>(framework::GradVarName("W"));
+          context.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
@@ -164,8 +164,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
-      memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),
+      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+      memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(context.GetPlace()),
                    gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+      mixv_new_rows.CopyToCPU();
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
@@ -176,7 +178,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *d_output_data = d_output->data<T>();
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
