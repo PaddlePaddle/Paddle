@@ -125,16 +125,29 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 void PSGPUWorker::PrepareCudaGraph() {
   op_or_cudagraphs_.reserve(ops_.size());
   std::unordered_set<std::string> op_capture_white_list = {
-    "data_norm_grad",
-    "mul_grad", "elementwise_add_grad",
-    "auc", "adam", "concat_grad",
-    "elementwise_add", "reduce_sum", "relu_grad", "mul", "concat", "relu",
-    "cast", "elementwise_mul_grad", "reduce_sum_grad", "elementwise_mul",
-    "sigmoid", "sum", "fill_constant", "fill_constant_batch_size_like",
-    "log_loss", "squared_l2_norm", "log_loss_grad", "coalesce_tensor",
-    "clip_grad", "elementwise_div_grad", "clip", "sigmoid_grad", "elementwise_sub",
-    "elementwise_max", "elementwise_div", "assign", "elementwise_max_grad",
-    "l1_norm", "equal", "scale", "data_norm", "mean", "mean_grad"};
+    "auc", "adam",
+    "assign",
+    "coalesce_tensor",
+    "cast",
+    "concat", "concat_grad",
+    "clip", "clip_grad",
+    "data_norm", "data_norm_grad",
+    "mul", "mul_grad",
+    "elementwise_add", "elementwise_add_grad",
+    "elementwise_div", "elementwise_div_grad",
+    "elementwise_sub", "elementwise_sub_grad",
+    "elementwise_max", "elementwise_max_grad",
+    "elementwise_mul", "elementwise_mul_grad",
+    "fill_constant", "fill_constant_batch_size_like",
+    "l1_norm", "equal", "scale",
+    "log_loss", "log_loss_grad",
+    "mean", "mean_grad"
+    "reduce_sum", "reduce_sum_grad",
+    "relu", "relu_grad",
+    "sigmoid", "sigmoid_grad",
+    "sum",
+    "squared_l2_norm",
+  };
   
   for (auto& op : ops_) {
     bool need_skip = false;
@@ -179,8 +192,10 @@ void PSGPUWorker::PrepareCudaGraph() {
         op_or_cudagraphs_.back().need_capture = need_capture;
       }
       auto& op_or_cuda_graph = op_or_cudagraphs_.back();
-      if (!op_or_cuda_graph.name.empty()) {
-        op_or_cuda_graph.name += "_";
+      if (op_or_cuda_graph.name.empty()) {
+        op_or_cuda_graph.name = "cuda_graph:";
+      } else {
+        op_or_cuda_graph.name += ":";
       }
       op_or_cuda_graph.name += op->Type();
       op_or_cuda_graph.ops.emplace_back(op);
