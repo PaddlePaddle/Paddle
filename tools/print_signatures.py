@@ -73,8 +73,8 @@ def is_primitive(instance):
         return False
 
 
-arg_pat = re.compile(r'^\s*[-\*]{1}\s*(\*{0,2}\s*\w*)\b\s*\([^\)]*\)\s*[:-].*')
-arg_pat_no_type_desc = re.compile(r'^\s*[-\*]{1}\s*(\*{0,2}\s*\w*)\b\s*[:-].*')
+arg_pat = re.compile(r'^\s*[-\*]?\s*(\*{0,2}\s*\w*)\b\s*\([^\)]*\)\s*[:-].*')
+arg_pat_no_type_desc = re.compile(r'^\s*[-\*]?\s*(\*{0,2}\s*\w*)\b\s*[:-].*')
 
 
 class ArgsDescResult:
