@@ -158,8 +158,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_1D(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = True
         self.shape = [13, 8]
@@ -173,8 +173,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_1D(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.shape = [13, 8]
@@ -191,8 +191,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_2D(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = True
         self.shape = [3, 5, 7, 11]
@@ -206,8 +206,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_2D_Axis2(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = True
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -221,8 +221,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_2D_Axis3(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = True
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -236,8 +236,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_2D_Axis4(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = True
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -260,8 +260,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.shape = [3, 5, 7, 11]
@@ -275,8 +275,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D_Axis2(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -290,8 +290,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D_Axis3(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -305,8 +305,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D_Axis4(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -329,8 +329,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_Ignore(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = False
         self.soft_label = False
         self.shape = [13, 8]
@@ -344,8 +344,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_Ignore_Axis(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = False
         self.soft_label = False
         self.shape = [13, 8]
@@ -359,8 +359,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D_Ignore(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.shape = [3, 5, 7, 11]
@@ -374,8 +374,8 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D_Ignore_Axis3(
         TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
-        self.python_api = python_api
-        self.python_out_sig = ["Loss"]
+        self.python_api = None  # python_api
+        # self.python_out_sig = ["Loss"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -410,6 +410,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.python_api = python_api
+        self.python_out_sig = ["Loss", "Softmax"]
         self.numeric_stable_mode = False
         self.soft_label = False
         self.shape = [3, 5, 7, 11]
@@ -460,6 +461,7 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.python_api = python_api
+        self.python_out_sig = ["Loss", "Softmax"]
         self.numeric_stable_mode = True
         self.soft_label = False
         self.shape = [3, 5, 7, 11]

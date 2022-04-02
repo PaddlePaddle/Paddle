@@ -1268,7 +1268,7 @@ def softmax_with_cross_entropy(logits,
                 'axis', axis)
         else:
             if in_dygraph_mode():
-                softmax, out = _C_ops.final_state_cross_entropy_with_softmax(
+                softmax, loss = _C_ops.final_state_cross_entropy_with_softmax(
                     logits, label, soft_label, True, numeric_stable_mode,
                     ignore_index, axis)
             if _in_legacy_dygraph():

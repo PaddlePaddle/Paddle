@@ -314,6 +314,7 @@
     func : CrossEntropyWithSoftmaxInferMeta
   kernel :
     func : cross_entropy_with_softmax
+    data_type : input
 
 # cumsum
 - api : cumsum
