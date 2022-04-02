@@ -84,9 +84,9 @@ class TestChannelWiseDequantizeOp(OpTest):
         self.set_args()
         self.op_type = "dequantize_linear"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        yq, scale = channel_wise_quantize_max_abs(x, self.quant_bits[0],
+        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
                                                   self.quant_axis)
-        ydq = channel_wise_dequantize_max_abs(yq, scales, self.quant_bits,
+        ydq = channel_wise_dequantize_max_abs(yq, scale, self.bit_length,
                                               self.quant_axis)
 
         self.inputs = {
@@ -114,9 +114,9 @@ class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
 
 class TestDequantizeOp(OpTest):
     def set_args(self):
-        self.num_bits = 8
+        self.bit_length = 8
         self.quant_axis = -1
-        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float32"
         self.zero_point = 0.
 
@@ -144,8 +144,8 @@ class TestDequantizeOp(OpTest):
 
 class TestDequantizeOpDouble(TestDequantizeOp):
     def set_args(self):
-        self.num_bits = 8
-        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.bit_length = 8
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float64"
         self.zero_point = 0.
         self.quant_axis = -1
@@ -153,8 +153,8 @@ class TestDequantizeOpDouble(TestDequantizeOp):
 
 class TestFakeDequantizeMaxAbsOp5Bits(TestDequantizeOp):
     def set_args(self):
-        self.num_bits = 5
-        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.bit_length = 5
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float32"
         self.zero_point = 0.
         self.quant_axis = -1
@@ -171,7 +171,7 @@ class TestChannelWisequantizeOp(OpTest):
         self.set_args()
         self.op_type = "quantize_linear"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        yq, scale = channel_wise_quantize_max_abs(x, self.quant_bits[0],
+        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
                                                   self.quant_axis)
 
         self.inputs = {
@@ -199,9 +199,9 @@ class TestChannelWisequantizeOp1(TestChannelWisequantizeOp):
 
 class TestquantizeOp(OpTest):
     def set_args(self):
-        self.num_bits = 8
+        self.bit_length = 8
         self.quant_axis = -1
-        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.max_range = math.pow(2, self.bit_length - 1) - 1
         self.data_type = "float32"
         self.zero_point = 0.
 
