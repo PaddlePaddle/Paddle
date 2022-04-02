@@ -40,11 +40,6 @@ class GradNodePyLayer : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
-  }
-
   std::string name() {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
