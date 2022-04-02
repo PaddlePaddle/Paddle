@@ -808,7 +808,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                             1,
                                             1,
                                             left_num);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,
@@ -836,7 +836,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                            1,
                                            1,
                                            left_num);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
           &reduce_compute, &reduce_input, transformer);
       kps::Reduce<MPType,
                   1,

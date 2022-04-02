@@ -18,10 +18,11 @@ import numpy as np
 import paddle
 from paddle.fluid import core
 from paddle.device import cuda
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestAsyncRead(unittest.TestCase):
-    def setUp(self):
+    def func_setUp(self):
         self.empty = paddle.to_tensor(
             np.array(
                 [], dtype="int64"), place=paddle.CPUPlace())
@@ -35,16 +36,20 @@ class TestAsyncRead(unittest.TestCase):
             shape=[50, 50, 50], dtype="float32").pin_memory()
         self.stream = cuda.Stream()
 
-    def test_async_read_empty_offset_and_count(self):
+    def func_test_async_read_empty_offset_and_count(self):
         with cuda.stream_guard(self.stream):
-            core.async_read(self.src, self.dst, self.index, self.buffer,
-                            self.empty, self.empty)
+            if _in_legacy_dygraph():
+                core.async_read(self.src, self.dst, self.index, self.buffer,
+                                self.empty, self.empty)
+            else:
+                core.eager.async_read(self.src, self.dst, self.index,
+                                      self.buffer, self.empty, self.empty)
         array1 = paddle.gather(self.src, self.index)
         array2 = self.dst[:len(self.index)]
 
         self.assertTrue(np.allclose(array1.numpy(), array2.numpy()))
 
-    def test_async_read_success(self):
+    def func_test_async_read_success(self):
         offset = paddle.to_tensor(
             np.array(
                 [10, 20], dtype="int64"), place=paddle.CPUPlace())
@@ -52,9 +57,12 @@ class TestAsyncRead(unittest.TestCase):
             np.array(
                 [5, 10], dtype="int64"), place=paddle.CPUPlace())
         with cuda.stream_guard(self.stream):
-            core.async_read(self.src, self.dst, self.index, self.buffer, offset,
-                            count)
-
+            if _in_legacy_dygraph():
+                core.async_read(self.src, self.dst, self.index, self.buffer,
+                                offset, count)
+            else:
+                core.eager.async_read(self.src, self.dst, self.index,
+                                      self.buffer, offset, count)
         # index data
         index_array1 = paddle.gather(self.src, self.index)
         count_numel = paddle.sum(count).numpy()[0]
@@ -69,26 +77,43 @@ class TestAsyncRead(unittest.TestCase):
         self.assertTrue(
             np.allclose(offset_array1.numpy(), offset_array2.numpy()))
 
-    def test_async_read_only_1dim(self):
+    def func_test_async_read_only_1dim(self):
         src = paddle.rand([40], dtype="float32").pin_memory()
         dst = paddle.empty([40], dtype="float32")
         buffer_ = paddle.empty([20]).pin_memory()
         with cuda.stream_guard(self.stream):
-            core.async_read(src, dst, self.index, buffer_, self.empty,
-                            self.empty)
+            if _in_legacy_dygraph():
+                core.async_read(src, dst, self.index, buffer_, self.empty,
+                                self.empty)
+            else:
+                core.eager.async_read(src, dst, self.index, buffer_, self.empty,
+                                      self.empty)
         array1 = paddle.gather(src, self.index)
         array2 = dst[:len(self.index)]
         self.assertTrue(np.allclose(array1.numpy(), array2.numpy()))
 
+    def test_main(self):
+        with _test_eager_guard():
+            self.func_setUp()
+            self.func_test_async_read_empty_offset_and_count()
+            self.func_test_async_read_success()
+            self.func_test_async_read_only_1dim()
+        self.func_setUp()
+        self.func_test_async_read_empty_offset_and_count()
+        self.func_setUp()
+        self.func_test_async_read_success()
+        self.func_setUp()
+        self.func_test_async_read_only_1dim()
+
 
 class TestAsyncWrite(unittest.TestCase):
-    def setUp(self):
+    def func_setUp(self):
         self.src = paddle.rand(shape=[100, 50, 50, 5], dtype="float32")
         self.dst = paddle.empty(
             shape=[200, 50, 50, 5], dtype="float32").pin_memory()
         self.stream = cuda.Stream()
 
-    def test_async_write_success(self):
+    def func_test_async_write_success(self):
         offset = paddle.to_tensor(
             np.array(
                 [0, 60], dtype="int64"), place=paddle.CPUPlace())
@@ -96,12 +121,22 @@ class TestAsyncWrite(unittest.TestCase):
             np.array(
                 [40, 60], dtype="int64"), place=paddle.CPUPlace())
         with cuda.stream_guard(self.stream):
-            core.async_write(self.src, self.dst, offset, count)
+            if _in_legacy_dygraph():
+                core.async_write(self.src, self.dst, offset, count)
+            else:
+                core.eager.async_write(self.src, self.dst, offset, count)
 
         offset_a = paddle.gather(self.dst, paddle.to_tensor(np.arange(0, 40)))
         offset_b = paddle.gather(self.dst, paddle.to_tensor(np.arange(60, 120)))
         offset_array = paddle.concat([offset_a, offset_b], axis=0)
         self.assertTrue(np.allclose(self.src.numpy(), offset_array.numpy()))
+
+    def test_async_write_success(self):
+        with _test_eager_guard():
+            self.func_setUp()
+            self.func_test_async_write_success()
+        self.func_setUp()
+        self.func_test_async_write_success()
 
 
 if __name__ == "__main__":
