@@ -26,6 +26,7 @@ from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
 from .passes import fuse_resnet_unit_pass
+import paddle.incubate.autograd
 
 from . import nn  #noqa: F401
 
