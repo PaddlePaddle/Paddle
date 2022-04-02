@@ -90,7 +90,7 @@ def sparse_coo_tensor(indices,
             # print(coo)
             # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #       indices=[[0, 1, 2],
-                            [1, 2, 0]],
+            #                [1, 2, 0]],
             #       values=[1., 2., 3.])
     """
 

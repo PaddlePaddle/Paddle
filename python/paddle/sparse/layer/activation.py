@@ -45,7 +45,7 @@ class ReLU(Layer):
                 sparse_dim = 2
                 sparse_x = dense_x.to_sparse_coo(sparse_dim)
                 relu = paddle.sparse.ReLU()
-                out = relu(x)
+                out = relu(sparse_x)
                 #out.values: [0., 2., 0., 4., 5.]
     """
 

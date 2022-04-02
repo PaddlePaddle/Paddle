@@ -42,8 +42,8 @@ def relu(x, name=None):
 
             with _test_eager_guard():
                 dense_x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-                sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
-                out = paddle.sparse.functional.relu(x) 
+                sparse_x = dense_x.to_sparse_coo(1)
+                out = paddle.sparse.functional.relu(sparse_x) 
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
