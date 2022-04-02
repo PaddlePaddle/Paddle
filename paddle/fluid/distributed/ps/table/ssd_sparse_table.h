@@ -23,7 +23,7 @@ class SSDSparseTable : public CommonSparseTable {
   SSDSparseTable() {}
   virtual ~SSDSparseTable() {}
 
-  virtual int32_t initialize() override;
+  virtual int32_t Initialize() override;
 
   void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
                       const size_t shard_idx, const int64_t total);
@@ -37,22 +37,22 @@ class SSDSparseTable : public CommonSparseTable {
       const int pserver_id, const int pserver_num, const int local_shard_num,
       std::vector<std::shared_ptr<ValueBlock>>* blocks);
 
-  virtual int32_t load(const std::string& path, const std::string& param);
+  virtual int32_t Load(const std::string& path, const std::string& param);
 
   // exchange data
-  virtual int32_t update_table();
+  virtual int32_t UpdateTable();
 
   virtual int32_t Pull(TableContext& context);
   virtual int32_t Push(TableContext& context);
 
-  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
+  virtual int32_t PullSparse(float* values, const PullSparseValue& pull_value);
 
-  virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,
-                                  size_t num);
+  virtual int32_t PullSparsePtr(char** pull_values, const uint64_t* keys,
+                                size_t num);
 
-  virtual int32_t flush() override { return 0; }
-  virtual int32_t shrink(const std::string& param) override;
-  virtual void clear() override {}
+  virtual int32_t Flush() override { return 0; }
+  virtual int32_t Shrink(const std::string& param) override;
+  virtual void Clear() override {}
 
  private:
   RocksDBHandler* _db;
