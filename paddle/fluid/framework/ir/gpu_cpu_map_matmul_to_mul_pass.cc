@@ -298,8 +298,7 @@ void GpuCpuMapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
@@ -372,9 +371,7 @@ void GpuCpuMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale",
-                     matmul_v2_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_v2_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_v2_op->Op()->GetAttr("out_threshold"));
       }
@@ -451,8 +448,7 @@ void GpuCpuMapMatmulV2ToMatmulPass::ApplyImpl(ir::Graph* graph) const {
     }
     if (matmul_v2_op->Op()->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", matmul_v2_op->Op()->GetAttr("enable_int8"));
-      desc.SetAttr("X_scale", matmul_v2_op->Op()->GetAttr("X_scale"));
-      desc.SetAttr("weight_scale", matmul_v2_op->Op()->GetAttr("weight_scale"));
+      desc.SetAttr("Input_scale", matmul_v2_op->Op()->GetAttr("Input_scale"));
       desc.SetAttr("out_threshold",
                    matmul_v2_op->Op()->GetAttr("out_threshold"));
     }
@@ -532,8 +528,7 @@ void GpuCpuSqueeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
@@ -677,8 +672,7 @@ void GpuCpuReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
@@ -765,8 +759,7 @@ void GpuCpuFlatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("y_num_col_dims", 1);
       if (matmul_op->Op()->HasAttr("enable_int8")) {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
-        desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+        desc.SetAttr("Input_scale", matmul_op->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold",
                      matmul_op->Op()->GetAttr("out_threshold"));
       }
