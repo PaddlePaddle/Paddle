@@ -20,6 +20,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 __all__ = []
 
@@ -78,7 +79,12 @@ class PairwiseDistance(Layer):
         check_type(self.keepdim, 'keepdim', (bool), 'PairwiseDistance')
 
     def forward(self, x, y):
-        if in_dynamic_mode():
+        if in_dygraph_mode():
+            sub = _C_ops.elementwise_sub(x, y)
+            return _C_ops.final_state_p_norm(sub, self.p, 1, self.epsilon,
+                                             self.keepdim, False)
+
+        if _in_legacy_dygraph():
             sub = _C_ops.elementwise_sub(x, y)
             return _C_ops.p_norm(sub, 'axis', 1, 'porder', self.p, 'keepdim',
                                  self.keepdim, 'epsilon', self.epsilon)
