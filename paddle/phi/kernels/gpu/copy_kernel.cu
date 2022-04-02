@@ -49,7 +49,7 @@ void Copy(const Context& dev_ctx,
     dst_ptr = dst->mutable_data(dst_place, src.dtype());
   } else {
     dst_ptr = dev_ctx.Alloc(
-        dst, src.dtype(), paddle::platform::is_cuda_pinned_place(dst_place));
+        dst, src.dtype(), 0, paddle::platform::is_cuda_pinned_place(dst_place));
   }
 
   if (src_ptr == dst_ptr && src_place == dst_place) {

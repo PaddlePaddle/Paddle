@@ -19,17 +19,19 @@ import paddle
 import scipy.stats
 
 import config
+import parameterize
 
 paddle.enable_static()
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'total_count', 'probs'), [
-    ('one-dim', 5, config.xrand((3, ))),
-    ('multi-dim', 9, config.xrand((2, 3))),
-    ('prob-sum-one', 5, np.array([0.5, 0.2, 0.3])),
-    ('prob-sum-non-one', 5, np.array([2., 3., 5.])),
-])
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs'), [
+        ('one-dim', 5, parameterize.xrand((3, ))),
+        ('multi-dim', 9, parameterize.xrand((2, 3))),
+        ('prob-sum-one', 5, np.array([0.5, 0.2, 0.3])),
+        ('prob-sum-non-one', 5, np.array([2., 3., 5.])),
+    ])
 class TestMultinomial(unittest.TestCase):
     def setUp(self):
         startup_program = paddle.static.Program()
@@ -99,9 +101,9 @@ class TestMultinomial(unittest.TestCase):
         return scipy.stats.multinomial.entropy(self.total_count, probs)
 
 
-@config.place(config.DEVICES)
-@config.parameterize(
-    (config.TEST_CASE_NAME, 'total_count', 'probs', 'value'),
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs', 'value'),
     [
         ('value-float', 5, np.array([0.2, 0.3, 0.5]), np.array([1., 1., 3.])),
         ('value-int', 5, np.array([0.2, 0.3, 0.5]), np.array([2, 2, 1])),
@@ -139,12 +141,13 @@ class TestMultinomialPmf(unittest.TestCase):
             atol=config.ATOL.get(str(self.probs.dtype)))
 
 
-@config.place(config.DEVICES)
-@config.parameterize((config.TEST_CASE_NAME, 'total_count', 'probs'), [
-    ('total_count_le_one', 0, np.array([0.3, 0.7])),
-    ('total_count_float', np.array([0.3, 0.7])),
-    ('probs_zero_dim', np.array(0)),
-])
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'total_count', 'probs'), [
+        ('total_count_le_one', 0, np.array([0.3, 0.7])),
+        ('total_count_float', np.array([0.3, 0.7])),
+        ('probs_zero_dim', np.array(0)),
+    ])
 class TestMultinomialException(unittest.TestCase):
     def setUp(self):
         startup_program = paddle.static.Program()

@@ -74,7 +74,7 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
 }
 
 std::vector<Tensor> split_impl(const Tensor& x,
-                               const ScalarArray& num_or_sections,
+                               const IntArray& num_or_sections,
                                const Scalar& axis) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
@@ -117,13 +117,13 @@ std::vector<Tensor> split_impl(const Tensor& x,
 
   using kernel_signature = void (*)(const platform::DeviceContext&,
                                     const phi::DenseTensor&,
-                                    const phi::ScalarArray&,
+                                    const phi::IntArray&,
                                     const phi::Scalar&,
                                     std::vector<phi::DenseTensor*>&);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(*dev_ctx,
                *dense_x,
-               phi::ScalarArray(num_or_sections),
+               phi::IntArray(num_or_sections),
                phi::Scalar(axis),
                dense_outs);
 

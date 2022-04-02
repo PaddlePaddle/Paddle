@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #include "paddle/phi/api/lib/ext_compat_utils.h"
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"
 
@@ -177,6 +177,40 @@ void Tensor::copy_(const Tensor &src,
                  target_place,
                  blocking,
                  static_cast<phi::SelectedRows *>(impl_.get()));
+  } else if (kernel_type == KernelType::SPARSE_COO_KERNEL) {
+    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "copy_sparse_coo", {kernel_backend, kernel_layout, kernel_data_type});
+    VLOG(6) << "copy API kernel key: " << kernel_key;
+    VLOG(6) << "copy API kernel: " << kernel;
+    using kernel_signature = void (*)(const platform::DeviceContext &,
+                                      const phi::SparseCooTensor &,
+                                      phi::Place,
+                                      bool,
+                                      phi::SparseCooTensor *);
+    this->set_impl(std::make_shared<phi::SparseCooTensor>());
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 (*(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
+                 target_place,
+                 blocking,
+                 static_cast<phi::SparseCooTensor *>(impl_.get()));
+  } else if (kernel_type == KernelType::SPARSE_CSR_KERNEL) {
+    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "copy_sparse_csr", {kernel_backend, kernel_layout, kernel_data_type});
+    VLOG(6) << "copy API kernel key: " << kernel_key;
+    VLOG(6) << "copy API kernel: " << kernel;
+    using kernel_signature = void (*)(const platform::DeviceContext &,
+                                      const phi::SparseCsrTensor &,
+                                      phi::Place,
+                                      bool,
+                                      phi::SparseCsrTensor *);
+    this->set_impl(std::make_shared<phi::SparseCsrTensor>());
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 (*(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
+                 target_place,
+                 blocking,
+                 static_cast<phi::SparseCsrTensor *>(impl_.get()));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "

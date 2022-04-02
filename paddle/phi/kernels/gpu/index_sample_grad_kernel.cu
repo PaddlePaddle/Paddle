@@ -36,7 +36,7 @@ void LimitGridDim(const Context& ctx, dim3* grid_dim) {
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-};
+}  // namespace
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleGrad(const IndexT* index,
@@ -67,9 +67,9 @@ __global__ void IndexSampleGrad(const IndexT* index,
 
 template <typename T, typename Context>
 void IndexSampleGradKernel(const Context& ctx,
-                           const DenseTensor& out_grad,
                            const DenseTensor& x,
                            const DenseTensor& index,
+                           const DenseTensor& out_grad,
                            DenseTensor* x_grad) {
   const T* output_grad_data = out_grad.data<T>();
   T* input_grad_data = ctx.template Alloc<T>(x_grad);
