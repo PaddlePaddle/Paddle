@@ -90,9 +90,14 @@ def rebuild_tensor(cls, lodtensor, metadata):
                                                   lodtensor._dtype(),
                                                   **metadata)
         tensor.value().get_tensor()._share_data_with(lodtensor)
+    elif cls == paddle.fluid.framework.EagerParamBase:
+        tensor = paddle.fluid.framework.EagerParamBase(lodtensor.shape(),
+                                                       lodtensor._dtype(),
+                                                       **metadata)
+        tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
-        tensor = paddle.fluid.core.VarBase()
+        tensor = paddle.fluid.core.eager.Tensor()
         if lodtensor._is_initialized():
             tensor.value().get_tensor()._share_data_with(lodtensor)
         else:
@@ -111,7 +116,8 @@ def reduce_tensor(tensor):
     # TODO: add serializing name and  hooks check
     if tensor.place.is_cpu_place() or tensor.place.is_gpu_place(
     ) or tensor.place.is_cuda_pinned_place():
-        if type(tensor) == paddle.fluid.framework.ParamBase:
+        if type(tensor) == paddle.fluid.framework.ParamBase or type(
+                tensor) == paddle.fluid.framework.EagerParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
             metadata = (tensor.size, tensor.stop_gradient)
@@ -183,7 +189,10 @@ def init_reductions():
     if not _supported_check():
         return
 
-    ForkingPickler.register(paddle.Tensor, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.core.VarBase, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.framework.ParamBase, reduce_tensor)
+    # ForkingPickler.register(paddle.Tensor, reduce_tensor)
+    # ForkingPickler.register(paddle.fluid.core.VarBase, reduce_tensor)
+    # ForkingPickler.register(paddle.fluid.framework.ParamBase, reduce_tensor)
     ForkingPickler.register(paddle.fluid.core.LoDTensor, reduce_lodtensor)
+    ForkingPickler.register(paddle.fluid.framework.EagerParamBase,
+                            reduce_tensor)
+    ForkingPickler.register(paddle.fluid.core.eager.Tensor, reduce_tensor)

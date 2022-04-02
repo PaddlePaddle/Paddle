@@ -48,7 +48,9 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-from .framework import VarBase as Tensor  # noqa: F401
+from .framework import VarBase as VarBase  # noqa: F401
+VarBase.__qualname__ = 'VarBase'  # noqa: F401
+from .framework import Tensor as Tensor  # noqa: F401
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
