@@ -11,6 +11,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/data/pipeline.h"
 
 namespace paddle {
@@ -39,8 +40,7 @@ class DataLoaderOpKernel : public framework::OpKernel<T> {
 
     if (!pipeline->IsRunning()) {
       VLOG(4) << "DataLoaderOpKernel Pipeline not running, throw EOF";
-      throw platform::EOFException("DataLoaderOpKernel epoch end",
-                                    __FILE__, __LINE__);
+      PADDLE_THROW_EOF();
     }
   }
 };

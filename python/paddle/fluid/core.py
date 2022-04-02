@@ -283,7 +283,6 @@ if avx_supported():
         from .core_avx import _set_current_stream
         from .core_avx import _shutdown_all_dataloaders
         from .core_avx import _shutdown_readers_and_decoders
-        from .core_avx import _shutdown_maps
         from .core_avx import _shutdown_pipeline
         from .core_avx import _reset_dataloader
         if sys.platform != 'win32':
@@ -344,7 +343,6 @@ if load_noavx:
         from .core_noavx import _set_current_stream
         from .core_noavx import _shutdown_all_dataloaders
         from .core_noavx import _shutdown_readers_and_decoders
-        from .core_noavx import _shutdown_maps
         from .core_noavx import _shutdown_pipeline
         from .core_noavx import _reset_dataloder
         from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent

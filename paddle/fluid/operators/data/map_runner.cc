@@ -27,8 +27,7 @@ MapRunner::MapRunner(
     const std::vector<std::string> &output_var_names,
     const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> input_queues,
     const std::vector<std::shared_ptr<LoDTensorBlockingQueue>> output_queues)
-    : thread_pool_(1),
-      running_(true),
+    : running_(true),
       shutdown_(false),
       map_block_(map_block),
       program_id_(program_id),
@@ -109,7 +108,7 @@ void signal_handler(int sig_num) {
 }
 
 void MapRunner::StartMapThread(const Scope* scope) {
-  thread_pool_.enqueue([this, scope]() -> void {
+  map_thread_ = std::thread([this, scope]() -> void {
     // MapThread may crash with SIGSEGV singal in Executor::Prepare
     // when Python program break and exit, catch SIGSEGV singal and
     // exit thread silently
@@ -197,13 +196,15 @@ void MapRunner::CheckOutputVarStatus(const Variable &var,
 void MapRunner::ShutDown() {
   VLOG(1) << "MapRunner shutdown " << program_id_;
   // close all output queue, op after this op can shutdown itself
+  for (auto queue :  output_queues_) {
+    if(queue && !queue->IsClosed()) queue->Close();
+  }
+
   shutdown_ = true;
   running_ = false;
   running_cond_.notify_all();
 
-  for (auto queue :  output_queues_) {
-    if(queue && !queue->IsClosed()) queue->Close();
-  }
+  if (map_thread_.joinable()) map_thread_.join();
 }
 
 void MapRunner::Reset() {

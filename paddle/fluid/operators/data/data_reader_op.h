@@ -311,7 +311,7 @@ class ReaderManager {
   void ShutDownReader(const int64_t reader_id) {
     auto iter = id_to_reader_.find(reader_id);
     if (iter != id_to_reader_.end()) {
-      iter->second->ShutDown();
+      if (iter->second.get()) iter->second.get()->ShutDown();
       id_to_reader_.erase(reader_id);
     }
   }
@@ -327,7 +327,7 @@ class ReaderManager {
     auto iter = id_to_reader_.begin();
     while (iter != id_to_reader_.end()){
       if(iter->second.get()){
-        iter->second->ShutDown();
+        iter->second.get()->ShutDown();
       }
       iter++;
     }

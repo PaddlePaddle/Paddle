@@ -35,9 +35,9 @@ void ShutDownAllDataLoaders() {
 
   // step 3: shutdown MapRunner
   MapRunnerManager::Instance()->ShutDown();
-  
-  // step 3: shutdown Pipeline
-  PipelineManager::Instance()->ShutDown();
+
+  // // step 3: shutdown Pipeline
+  // PipelineManager::Instance()->ShutDown();
   VLOG(4) << "ShutDownAllDataLoaders Pipeline shutdown finish";
 }
 
@@ -47,12 +47,6 @@ void ShutDownReadersAndDecoders(const int64_t program_id) {
 
   // step 2: shutdown decoder
   ImageDecoderThreadPoolManager::Instance()->ShutDownDecoder(program_id);
-}
-
-void ShutDownMaps(const std::vector<int64_t> program_ids) {
-  for (auto& program_id : program_ids) {
-    MapRunnerManager::Instance()->ShutDownMapRunner(program_id);
-  }
 }
 
 void ShutDownPipeline(const int64_t program_id) {

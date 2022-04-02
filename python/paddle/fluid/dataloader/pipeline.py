@@ -55,7 +55,6 @@ class DataPipeline(object):
 
     def _init_programs(self):
         self._main_program = fluid.Program()
-        self._startup_program = fluid.Program()
         self._out_vars = []
         self._out_names = []
         self._is_built = False
@@ -64,14 +63,10 @@ class DataPipeline(object):
         # switch main and startup program
         paddle.enable_static()
         self._main_program = framework.switch_main_program(self._main_program)
-        self._startup_program = framework.switch_startup_program(
-            self._startup_program)
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._main_program = framework.switch_main_program(self._main_program)
-        self._startup_program = framework.switch_startup_program(
-            self._startup_program)
             
         local_rank = paddle.distributed.get_rank()
         paddle.disable_static("gpu:" + str(local_rank))
@@ -133,6 +128,8 @@ class DataPipeline(object):
 
         try:
             _C_ops.dataloader(self._output_vars, *self._attrs)
+        except KeyboardInterrupt:
+            pass
         except:
             raise StopIteration
 
@@ -159,14 +156,8 @@ class DataPipeline(object):
             try:
                 program_id = _hash_with_id(self._main_program)
                 core._shutdown_readers_and_decoders(program_id)
-
-                map_program_ids = []
-                for op in self._main_program.block(0).ops:
-                    if op.type == "map" and op.has_attr('program_id'):
-                        map_program_ids.append(op.attr('program_id'))
-                core._shutdown_maps(map_program_ids)
-
                 core._shutdown_pipeline(program_id)
+                del self._main_program
             finally:
                 self.is_shutdown = True
 

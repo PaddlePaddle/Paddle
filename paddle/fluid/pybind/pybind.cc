@@ -772,9 +772,6 @@ PYBIND11_MODULE(core_noavx, m) {
         &paddle::operators::data::ShutDownAllDataLoaders);
   m.def("_shutdown_readers_and_decoders",
         &paddle::operators::data::ShutDownReadersAndDecoders);
-  m.def("_shutdown_maps", [](const std::vector<int64_t> program_ids) {
-        paddle::operators::data::ShutDownMaps(program_ids);
-      });
   m.def("_shutdown_pipeline",
         &paddle::operators::data::ShutDownPipeline);
   m.def("_reset_dataloader", [](const int64_t reader_id,

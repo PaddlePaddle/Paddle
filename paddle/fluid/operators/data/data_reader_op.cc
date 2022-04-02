@@ -34,13 +34,6 @@ class DataReaderOp : public framework::OperatorBase {
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "DataReaderOp");
   }
 
-//  protected:
-//   framework::OpKernelType GetExpectedKernelType(
-//       const framework::ExecutionContext& ctx) const {
-//     return framework::OpKernelType(framework::proto::VarType::FP32,
-//                                    ctx.GetPlace());
-//   }
-//
  private:
   void RunImpl(const framework::Scope& scope,
       const platform::Place& dev_place) const override {

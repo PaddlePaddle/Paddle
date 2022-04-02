@@ -72,7 +72,7 @@ class MapRunner {
   void CheckInputVarStatus(const Variable &var, const std::string &var_name);
   void CheckOutputVarStatus(const Variable &var, const std::string &var_name);
 
-  ThreadPool thread_pool_;
+  std::thread map_thread_;
   bool running_;
   std::condition_variable running_cond_;
   bool shutdown_;
@@ -129,7 +129,7 @@ class MapRunnerManager {
     std::lock_guard<std::mutex> lk(m_);
     auto iter = prog_id_to_runner_.find(program_id);
     if (iter != prog_id_to_runner_.end()) {
-      iter->second.get()->ShutDown();
+      if(iter->second.get()) iter->second.get()->ShutDown();
       prog_id_to_runner_.erase(iter);
     }
   }
