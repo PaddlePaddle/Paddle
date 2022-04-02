@@ -1495,6 +1495,16 @@
     func : yolo_box
     data_type : x
 
+- api : yolo_loss
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth, float scale_x_y)
+  output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  infer_meta :
+    func : YoloLossInferMeta
+  kernel :
+    func : yolo_loss
+  optional : gt_score
+  intermediate : objectness_mask, gt_match_mask
+
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor

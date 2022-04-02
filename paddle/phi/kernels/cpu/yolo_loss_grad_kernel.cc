@@ -15,11 +15,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/kernels/yolov3_loss_grad_kernel.h"
+#include "paddle/phi/kernels/yolo_loss_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/yolov3_loss_functor.h"
+#include "paddle/phi/kernels/cpu/yolo_loss_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -117,25 +117,25 @@ static inline void CalcObjnessLossGrad(T* input_grad,
 }
 
 template <typename T, typename Context>
-void Yolov3LossGradKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& gt_box,
-                          const DenseTensor& gt_label,
-                          paddle::optional<const DenseTensor&> gt_score,
-                          const DenseTensor& loss_grad,
-                          const DenseTensor& objectness_mask,
-                          const DenseTensor& gt_match_mask,
-                          const std::vector<int>& anchors,
-                          const std::vector<int>& anchor_mask,
-                          int class_num,
-                          float ignore_thresh,
-                          int downsample_ratio,
-                          bool use_label_smooth,
-                          float scale_x_y,
-                          DenseTensor* x_grad,
-                          DenseTensor* gt_box_grad,
-                          DenseTensor* gt_label_grad,
-                          DenseTensor* gt_score_grad) {
+void YoloLossGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& gt_box,
+                        const DenseTensor& gt_label,
+                        paddle::optional<const DenseTensor&> gt_score,
+                        const DenseTensor& loss_grad,
+                        const DenseTensor& objectness_mask,
+                        const DenseTensor& gt_match_mask,
+                        const std::vector<int>& anchors,
+                        const std::vector<int>& anchor_mask,
+                        int class_num,
+                        float ignore_thresh,
+                        int downsample_ratio,
+                        bool use_label_smooth,
+                        float scale_x_y,
+                        DenseTensor* x_grad,
+                        DenseTensor* gt_box_grad,
+                        DenseTensor* gt_label_grad,
+                        DenseTensor* gt_score_grad) {
   auto* input = &x;
   auto input_grad = x_grad;
   auto* objness_mask = &objectness_mask;
@@ -237,9 +237,6 @@ void Yolov3LossGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(yolov3_loss_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::Yolov3LossGradKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    yolov3_loss_grad, CPU, ALL_LAYOUT, phi::YoloLossGradKernel, float, double) {
+}

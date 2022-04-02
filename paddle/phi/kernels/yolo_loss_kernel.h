@@ -19,20 +19,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Yolov3LossKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& gt_box,
-                      const DenseTensor& gt_label,
-                      paddle::optional<const DenseTensor&> gt_score,
-                      const std::vector<int>& anchors,
-                      const std::vector<int>& anchor_mask,
-                      int class_num,
-                      float ignore_thresh,
-                      int downsample_ratio,
-                      bool use_label_smooth,
-                      float scale_x_Y,
-                      DenseTensor* loss,
-                      DenseTensor* objectness_mask,
-                      DenseTensor* gt_match_mask);
+void YoloLossKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& gt_box,
+                    const DenseTensor& gt_label,
+                    paddle::optional<const DenseTensor&> gt_score,
+                    const std::vector<int>& anchors,
+                    const std::vector<int>& anchor_mask,
+                    int class_num,
+                    float ignore_thresh,
+                    int downsample_ratio,
+                    bool use_label_smooth,
+                    float scale_x_y,
+                    DenseTensor* loss,
+                    DenseTensor* objectness_mask,
+                    DenseTensor* gt_match_mask);
 
 }  // namespace phi

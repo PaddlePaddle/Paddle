@@ -15,11 +15,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/kernels/yolov3_loss_kernel.h"
+#include "paddle/phi/kernels/yolo_loss_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/yolov3_loss_functor.h"
+#include "paddle/phi/kernels/cpu/yolo_loss_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -178,21 +178,21 @@ static void inline GtValid(bool* valid,
 }
 
 template <typename T, typename Context>
-void Yolov3LossKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& gt_box,
-                      const DenseTensor& gt_label,
-                      paddle::optional<const DenseTensor&> gt_score,
-                      const std::vector<int>& anchors,
-                      const std::vector<int>& anchor_mask,
-                      int class_num,
-                      float ignore_thresh,
-                      int downsample_ratio,
-                      bool use_label_smooth,
-                      float scale_x_y,
-                      DenseTensor* loss,
-                      DenseTensor* objectness_mask,
-                      DenseTensor* gt_match_mask) {
+void YoloLossKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& gt_box,
+                    const DenseTensor& gt_label,
+                    paddle::optional<const DenseTensor&> gt_score,
+                    const std::vector<int>& anchors,
+                    const std::vector<int>& anchor_mask,
+                    int class_num,
+                    float ignore_thresh,
+                    int downsample_ratio,
+                    bool use_label_smooth,
+                    float scale_x_y,
+                    DenseTensor* loss,
+                    DenseTensor* objectness_mask,
+                    DenseTensor* gt_match_mask) {
   auto* input = &x;
   auto objness_mask = objectness_mask;
   float scale = scale_x_y;
@@ -371,4 +371,4 @@ void Yolov3LossKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    yolov3_loss, CPU, ALL_LAYOUT, phi::Yolov3LossKernel, float, double) {}
+    yolo_loss, CPU, ALL_LAYOUT, phi::YoloLossKernel, float, double) {}

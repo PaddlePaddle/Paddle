@@ -1275,20 +1275,20 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
-void Yolov3LossInferMeta(const MetaTensor& x,
-                         const MetaTensor& gt_box,
-                         const MetaTensor& gt_label,
-                         const paddle::optional<const MetaTensor&> gt_score,
-                         const std::vector<int>& anchors,
-                         const std::vector<int>& anchor_mask,
-                         int class_num,
-                         float ignore_thresh,
-                         int downsample_ratio,
-                         bool use_label_smooth,
-                         float scale_x_y,
-                         MetaTensor* loss,
-                         MetaTensor* objectness_mask,
-                         MetaTensor* gt_match_mask) {
+void YoloLossInferMeta(const MetaTensor& x,
+                       const MetaTensor& gt_box,
+                       const MetaTensor& gt_label,
+                       const paddle::optional<const MetaTensor&> gt_score,
+                       const std::vector<int>& anchors,
+                       const std::vector<int>& anchor_mask,
+                       int class_num,
+                       float ignore_thresh,
+                       int downsample_ratio,
+                       bool use_label_smooth,
+                       float scale_x_y,
+                       MetaTensor* loss,
+                       MetaTensor* objectness_mask,
+                       MetaTensor* gt_match_mask) {
   auto dim_x = x.dims();
   auto dim_gtbox = gt_box.dims();
   auto dim_gtlabel = gt_label.dims();
