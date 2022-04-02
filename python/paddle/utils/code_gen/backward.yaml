@@ -172,6 +172,16 @@
   kernel :
     func : cholesky_solve_grad
 
+- backward_api : clip_grad
+  forward : clip (Tensor x, Scalar min, Scalar max) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, Scalar min, Scalar max)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip_grad
+
 - backward_api : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

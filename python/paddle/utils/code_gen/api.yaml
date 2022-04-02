@@ -289,6 +289,17 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
+- api : clip
+  args : (Tensor x, Scalar min, Scalar max)
+  output : Tensor(out)
+  inplace : (x -> out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : clip
+  backward : clip_grad
+
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
