@@ -972,6 +972,7 @@
   kernel :
     func : roi_align
   optional : boxes_num
+  backward : roi_align_grad
 
 - api : roi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
@@ -982,6 +983,7 @@
     func : roi_pool
   optional : boxes_num
   intermediate : arg_max
+  backward : roi_pool_grad
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)

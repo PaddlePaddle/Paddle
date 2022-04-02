@@ -95,7 +95,8 @@ class TestPSROIPoolOp(OpTest):
                                     self.pooled_width).astype('float64')
         self.inputs = {
             'X': self.x,
-            'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod)
+            'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod),
+            'RoisNum': self.boxes_num
         }
         self.attrs = {
             'output_channels': self.output_channels,
@@ -145,7 +146,7 @@ class TestPSROIPoolOp(OpTest):
 
     def setUp(self):
         self.op_type = 'psroi_pool'
-        self.python_api = paddle.vision.ops.psroi_pool
+        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale: paddle.vision.ops.psroi_pool(x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale)
         self.set_data()
 
     def test_check_output(self):
