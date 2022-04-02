@@ -385,11 +385,18 @@ class GeneralGrad {
           if (!orig_next_node) continue;
 
           // Copy Next Node
-          std::shared_ptr<GradNodeBase> copied_next_node =
-              orig_next_node->Copy();
-          orig_to_copied_node_mapping_[orig_next_node.get()] =
-              copied_next_node.get();
-          copied_grad_nodes_.push_back(copied_next_node);
+          std::shared_ptr<GradNodeBase> copied_next_node;
+          if (orig_to_copied_node_mapping_.count(orig_next_node.get())) {
+            copied_next_node =
+                orig_to_copied_node_mapping_[orig_next_node.get()]
+                    ->shared_from_this();
+
+          } else {
+            copied_next_node = orig_next_node->Copy();
+            orig_to_copied_node_mapping_[orig_next_node.get()] =
+                copied_next_node.get();
+            copied_grad_nodes_.push_back(copied_next_node);
+          }
 
           // Update Edge's Grad Node
           copied_edge.SetGradNode(copied_next_node);
