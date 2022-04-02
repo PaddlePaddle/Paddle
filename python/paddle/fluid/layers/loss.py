@@ -21,7 +21,7 @@ from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only, _in_legacy_dygraph
+from ..framework import Variable, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
@@ -1458,6 +1458,10 @@ def sigmoid_cross_entropy_with_logits(x,
                                                             ignore_index=-1, normalize=True)
             print(loss)
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_sigmoid_cross_entropy_with_logits(
+            x, label, normalize, int(ignore_index))
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid_cross_entropy_with_logits')
 

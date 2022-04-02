@@ -441,6 +441,17 @@
     func : erfinv
   backward : erfinv_grad
 
+# expand_as
+- api : expand_as
+  args : (Tensor x, Tensor y, int[] target_shape)
+  output : Tensor
+  infer_meta :
+    func : ExpandAsInferMeta
+  kernel :
+    func : expand_as
+  optional : y
+  backward : expand_as_grad
+
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor

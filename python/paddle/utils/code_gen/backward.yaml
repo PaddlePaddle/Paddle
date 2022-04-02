@@ -273,6 +273,16 @@
   kernel :
     func : erfinv_grad
 
+- backward_api : expand_as_grad
+  forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : expand_as_grad
+
 - backward_api : gather_nd_grad
   forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
