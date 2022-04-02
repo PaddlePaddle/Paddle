@@ -101,7 +101,10 @@ def TRT_PoolingOp : TRT_Op<"Pooling", [NoSideEffect]> {
     I32ArrayAttr:$window_size,
     I32ArrayAttr:$strides,
     I32ArrayAttr:$paddings,
-    StrAttr:$padding_mode
+    I32Attr:$padding_mode,
+    BoolAttr:$exclusive,
+    BoolAttr:$adaptive,
+    StrAttr:$padding_algorithm
   );
   let results = (outs
     DenseTensor:$output_tensor

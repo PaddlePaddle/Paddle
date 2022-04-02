@@ -172,6 +172,7 @@ class TestMaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_max"
+        self.python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-1]}
         self.outputs = {
@@ -179,7 +180,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -190,6 +191,7 @@ class TestMinOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [2]}
         self.outputs = {
@@ -197,7 +199,7 @@ class TestMinOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestMin6DOp(OpTest):
@@ -205,6 +207,7 @@ class TestMin6DOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {
             'X': np.random.random((2, 4, 3, 5, 6, 10)).astype("float64")
         }
@@ -214,7 +217,7 @@ class TestMin6DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestMin8DOp(OpTest):
@@ -222,6 +225,7 @@ class TestMin8DOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {
             'X': np.random.random((2, 4, 3, 5, 6, 3, 2, 4)).astype("float64")
         }
@@ -231,12 +235,13 @@ class TestMin8DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.python_api = paddle.prod
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -302,17 +307,19 @@ class TestProd8DOp(OpTest):
 class TestAllOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].all()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAll8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -321,23 +328,25 @@ class TestAll8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAllOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': (1, )}
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAll8DOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -346,12 +355,13 @@ class TestAll8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAllOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
@@ -360,12 +370,13 @@ class TestAllOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAll8DOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
+        self.python_api = paddle.all
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -377,7 +388,7 @@ class TestAll8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAllOpError(unittest.TestCase):
@@ -395,17 +406,19 @@ class TestAllOpError(unittest.TestCase):
 class TestAnyOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAny8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -414,23 +427,25 @@ class TestAny8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAnyOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': [1]}
         self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAny8DOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -439,12 +454,13 @@ class TestAny8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAnyOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': (1, ), 'keep_dim': True}
         self.outputs = {
@@ -453,12 +469,13 @@ class TestAnyOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAny8DOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
@@ -470,7 +487,7 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestAnyOpError(unittest.TestCase):
@@ -600,6 +617,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_max"
+        self.python_api = paddle.max
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-2, -1]}
         self.outputs = {
@@ -607,7 +625,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -618,6 +636,7 @@ class TestReduceMinOpMultiAxises(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
+        self.python_api = paddle.min
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [1, 2]}
         self.outputs = {
@@ -625,7 +644,7 @@ class TestReduceMinOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestKeepDimReduceSumMultiAxises(OpTest):

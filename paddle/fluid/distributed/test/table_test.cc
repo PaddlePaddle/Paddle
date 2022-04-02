@@ -26,7 +26,7 @@ TEST(Table, Initialize) {
   FsClientParameter fs_config;
   // case 1. no accessor
   Table *table = new SparseGeoTable();
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
   ASSERT_EQ(ret, -1);
 }
 }  // namespace distributed
