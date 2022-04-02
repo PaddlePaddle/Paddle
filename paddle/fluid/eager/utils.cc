@@ -374,7 +374,7 @@ EagerUtils::RecoverOptionalTensorWrapper(
   auto tmp = tw->recover(grad_node);
 
   paddle::optional<const paddle::experimental::Tensor&> res{paddle::none};
-  if (tmp.initialized()) {
+  if (tmp.impl()) {
     res = tmp;
   }
   return res;

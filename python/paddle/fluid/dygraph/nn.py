@@ -1339,17 +1339,22 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if _non_static_mode():
-            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", self._use_mkldnn,
-                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
-                     self._use_global_stats, 'trainable_statistics',
-                     self._trainable_statistics)
-            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-                input, self.weight, self.bias, self._mean, self._variance,
-                mean_out, variance_out, *attrs)
-            return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
+            if in_dygraph_mode():
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.final_state_batch_norm(
+                    input, self.weight, self.bias, self._mean, self._variance,
+                    self._momentum, self._epsilon, self._data_layout,
+                    not self.training, self._use_global_stats,
+                    self._trainable_statistics, False)
+            else:
+                attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+                         "is_test", not self.training, "data_layout",
+                         self._data_layout, "use_mkldnn", self._use_mkldnn,
+                         "fuse_with_relu", self._fuse_with_relu,
+                         "use_global_stats", self._use_global_stats,
+                         'trainable_statistics', self._trainable_statistics)
+                batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                    input, self.weight, self.bias, self._mean, self._variance,
+                    mean_out, variance_out, *attrs)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], 'BatchNorm')
