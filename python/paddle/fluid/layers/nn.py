@@ -11198,7 +11198,6 @@ def slice(input, axes, starts, ends):
         infer_flags = list(1 for i in range(len(axes)))
 
         tmp_tensor_type = core.eager.Tensor
-        print(type(starts))
         if isinstance(starts, (list, tuple)):
             starts = [
                 item.numpy().item(0)
