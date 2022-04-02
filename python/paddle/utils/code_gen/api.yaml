@@ -349,6 +349,7 @@
   kernel :
     func : cross_entropy_with_softmax
     data_type : input
+  backward : cross_entropy_with_softmax_grad
 
 - api : cumprod
   args : (Tensor x,  int dim)
