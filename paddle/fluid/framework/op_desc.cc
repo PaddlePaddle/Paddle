@@ -777,7 +777,7 @@ void OpDesc::CheckAttrs() {
   checker->Check(&attrs_);
 }
 
-void OpDesc::InferShape(const BlockDesc &block) const {
+void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
     auto &op_info = OpInfoMap::Instance().Get(this->Type());
