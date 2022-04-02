@@ -55,13 +55,52 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/dynload/nvtx.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DECLARE_bool(run_kp_kernel);
 
+#ifdef PADDLE_WITH_CUDA
+PADDLE_DEFINE_EXPORTED_bool(enable_nvtx, false, "");
+PADDLE_DEFINE_EXPORTED_bool(log_nvtx_error, false, "");
+#endif
+
 namespace paddle {
 namespace framework {
+
+#ifdef PADDLE_WITH_CUDA
+class NVTXGuard {
+ public:
+  explicit NVTXGuard(const char* name) {
+    if (FLAGS_enable_nvtx) {
+      auto err_code = platform::dynload::nvtxRangePushA(name);
+      if (err_code != 0 && FLAGS_log_nvtx_error) {
+        LOG(WARNING) << "NVTXGuard start error: " << name
+                     << " , code = " << err_code;
+      }
+    }
+  }
+
+  explicit NVTXGuard(const std::string& name) : NVTXGuard(name.c_str()) {}
+
+  explicit NVTXGuard(std::string&& name) : NVTXGuard(name.c_str()) {}
+
+  ~NVTXGuard() {
+    if (FLAGS_enable_nvtx) {
+      auto err_code = platform::dynload::nvtxRangePop();
+      if (err_code != 0 && FLAGS_log_nvtx_error) {
+        LOG(WARNING) << "NVTXGuard exit error, code = " << err_code;
+      }
+    }
+  }
+
+  DISABLE_COPY_AND_ASSIGN(NVTXGuard);
+};
+#endif
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
@@ -257,6 +296,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
+#ifdef PADDLE_WITH_CUDA
+      NVTXGuard guard(Type());
+#endif
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
