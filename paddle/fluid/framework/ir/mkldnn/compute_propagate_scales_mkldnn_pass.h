@@ -80,7 +80,7 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
       const std::unordered_set<std::string> scale_immutable_ops) const;
 
   void ConvertStringPairMap(
-      StringPairMap* var_quant_scales,
+      const StringPairMap& var_quant_scales,
       std::unordered_map<std::string, std::vector<float>>* info_map) const;
 };
 }  // namespace ir

@@ -370,7 +370,7 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
 }
 
 void ComputePropagateScalesMkldnnPass::ConvertStringPairMap(
-    StringPairMap* var_quant_scales,
+    const StringPairMap& var_quant_scales,
     std::unordered_map<std::string, std::vector<float>>* info_map) const {
   for (auto iter = var_quant_scales->begin(); iter != var_quant_scales->end();
        iter++) {
@@ -403,7 +403,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   // save var_quant_scales in the first op's attr
   // for cpu_quantize_pass
   std::unordered_map<std::string, std::vector<float>> info_map;
-  ConvertStringPairMap(&var_quant_scales, &info_map);
+  ConvertStringPairMap(var_quant_scales, &info_map);
   SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 }
 
