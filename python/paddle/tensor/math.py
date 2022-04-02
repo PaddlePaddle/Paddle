@@ -99,9 +99,12 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     Please refer to :ref:`api_tensor_scale`.
     """
     _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-    return _C_ops.scale_(x, 'scale',
-                            float(_scale), 'bias',
-                            float(bias), 'bias_after_scale', bias_after_scale)
+    if in_dygraph_mode():
+        return _C_ops.final_state_scale_(x, float(_scale), float(bias), bias_after_scale)
+    if _in_legacy_dygraph():
+        return _C_ops.scale_(x, 'scale',
+                                float(_scale), 'bias',
+                                float(bias), 'bias_after_scale', bias_after_scale)
 
 
 def pow(x, y, name=None):
