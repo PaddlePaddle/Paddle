@@ -285,8 +285,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             else:
                 if is_optional:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                        name, "GetTensorFromArgs", forward_api_name, name, pos,
-                        "true")
+                        name, "GetOptionalTensorFromArgs", forward_api_name,
+                        name, pos, "true")
                 else:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetTensorFromArgs", forward_api_name, name, pos,

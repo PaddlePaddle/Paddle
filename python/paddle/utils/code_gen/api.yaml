@@ -1170,8 +1170,7 @@
   infer_meta :
     func : ReduceInferMetaBase
   kernel :
-    func : prod_raw
-  backward : reduce_prod_grad
+    func : reduce_prod
 
 - api : relu
   args : (Tensor x)
