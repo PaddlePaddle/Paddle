@@ -215,44 +215,75 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
         # Change the tag to support building with vs2019
         SET(PROTOBUF_TAG         01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
-    elseif(WITH_ARM_BRPC)
-        SET(PROTOBUF_REPOSITORY  https://wangbin44@icode.baidu.com/baidu/third-party/protobuf)
-        SET(PROTOBUF_TAG         protobuf_V3.1.0.1_ARM_GCC820_K4_GEN_PD_BL)
     else()
         SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
         SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     endif()
-
-    ExternalProject_Add(
-        ${TARGET_NAME}
-        ${EXTERNAL_PROJECT_LOG_ARGS}
-        ${SHALLOW_CLONE}
-        GIT_REPOSITORY  ${PROTOBUF_REPOSITORY}
-        GIT_TAG         ${PROTOBUF_TAG}
-        PREFIX          ${PROTOBUF_PREFIX_DIR}
-        UPDATE_COMMAND  ""
-        DEPENDS         zlib
-        CONFIGURE_COMMAND
-                        ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake
-                         ${OPTIONAL_ARGS}
-                        -Dprotobuf_BUILD_TESTS=OFF
-                        -DCMAKE_SKIP_RPATH=ON
-                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                        -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
-                        -DCMAKE_INSTALL_LIBDIR=lib
-                        -DBUILD_SHARED_LIBS=OFF
-        CMAKE_CACHE_ARGS
-                        -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
-                        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-                        -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
-                        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                        ${OPTIONAL_CACHE_ARGS}
-        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf${CMAKE_STATIC_LIBRARY_SUFFIX}
-        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
-        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotoc${CMAKE_STATIC_LIBRARY_SUFFIX}
-        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}
-    )
+    if(WITH_ARM_BRPC)
+        ExternalProject_Add(
+            ${TARGET_NAME}
+            ${EXTERNAL_PROJECT_LOG_ARGS}
+            ${SHALLOW_CLONE}
+            GIT_REPOSITORY  ${PROTOBUF_REPOSITORY}
+            GIT_TAG         ${PROTOBUF_TAG}
+            PREFIX          ${PROTOBUF_PREFIX_DIR}
+            DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_protobuf.tar.gz .
+                                && tar zxvf arm_protobuf.tar.gz
+            UPDATE_COMMAND  ""
+            DEPENDS         zlib
+            CONFIGURE_COMMAND
+                            ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake
+                            ${OPTIONAL_ARGS}
+                            -Dprotobuf_BUILD_TESTS=OFF
+                            -DCMAKE_SKIP_RPATH=ON
+                            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                            -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+                            -DCMAKE_INSTALL_LIBDIR=lib
+                            -DBUILD_SHARED_LIBS=OFF
+            CMAKE_CACHE_ARGS
+                            -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
+                            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                            -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                            -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                            ${OPTIONAL_CACHE_ARGS}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf${CMAKE_STATIC_LIBRARY_SUFFIX}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotoc${CMAKE_STATIC_LIBRARY_SUFFIX}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}
+        )
+    else()
+        ExternalProject_Add(
+            ${TARGET_NAME}
+            ${EXTERNAL_PROJECT_LOG_ARGS}
+            ${SHALLOW_CLONE}
+            GIT_REPOSITORY  ${PROTOBUF_REPOSITORY}
+            GIT_TAG         ${PROTOBUF_TAG}
+            PREFIX          ${PROTOBUF_PREFIX_DIR}
+            UPDATE_COMMAND  ""
+            DEPENDS         zlib
+            CONFIGURE_COMMAND
+                            ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake
+                            ${OPTIONAL_ARGS}
+                            -Dprotobuf_BUILD_TESTS=OFF
+                            -DCMAKE_SKIP_RPATH=ON
+                            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                            -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+                            -DCMAKE_INSTALL_LIBDIR=lib
+                            -DBUILD_SHARED_LIBS=OFF
+            CMAKE_CACHE_ARGS
+                            -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
+                            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                            -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                            -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                            ${OPTIONAL_CACHE_ARGS}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf${CMAKE_STATIC_LIBRARY_SUFFIX}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotoc${CMAKE_STATIC_LIBRARY_SUFFIX}
+            BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}
+        )
+    endif()
 ENDFUNCTION()
 
 if(WITH_ONNXRUNTIME)
