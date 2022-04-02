@@ -731,6 +731,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnBfloat16();
+
   ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///

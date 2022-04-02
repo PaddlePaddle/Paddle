@@ -73,11 +73,11 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
 
   std::unordered_set<std::string> UpdateScales(
       ir::Graph* graph, StringPairMap* var_quant_scales,
-      const std::unordered_set<std::string> scale_immutable_ops) const;
+      const std::unordered_set<std::string>& scale_immutable_ops) const;
 
   void PropagateScales(
       ir::Graph* graph, StringPairMap* var_quant_scales,
-      const std::unordered_set<std::string> scale_immutable_ops) const;
+      const std::unordered_set<std::string>& scale_immutable_ops) const;
 
   void ConvertStringPairMap(
       const StringPairMap& var_quant_scales,

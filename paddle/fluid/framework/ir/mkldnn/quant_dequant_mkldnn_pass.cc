@@ -36,7 +36,7 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
         for (auto* node_input : op_node->inputs) {
           for (auto* node_input_input : node_input->inputs) {
             if (!node_input_input->IsOp()) continue;
-            if (op_node->Name().find("quantize_dequantize") ==
+            if (node_input_input->Name().find("quantize_dequantize") ==
                 std::string::npos) {
               is_quantized_op = false;
               break;
@@ -96,8 +96,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
             var, "The Scales variable of dequantize op is not found.");
 
         auto* scale_tensor = var->GetMutable<LoDTensor>();
-        auto* scale_data =
-            scale_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* scale_data = scale_tensor->data<float>();
         std::vector<float> thresholds{};
         for (int i = 0; i < scale_tensor->numel(); i++) {
           thresholds.push_back(scale_data[i]);
@@ -136,8 +135,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
           var, "The InScale variable of quantize op is not found.");
 
       auto* scale_tensor = var->GetMutable<LoDTensor>();
-      auto* scale_data =
-          scale_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* scale_data = scale_tensor->data<float>();
       float scale = 1.0 / scale_data[0];
       if (std::isinf(scale) || std::isnan(scale)) {
         scale = 0.0;
@@ -340,7 +338,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
       var, "The input persistable var of %s op is not found.", op_desc->Type());
 
   auto* weight_tensor = var->GetMutable<LoDTensor>();
-  auto* weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* weight_data = weight_tensor->data<float>();
   bool is_int8 = true;
   for (int i = 0; i < weight_tensor->numel(); i++) {
     if (weight_data[i] - static_cast<int>(weight_data[i]) != 0) {
@@ -354,15 +352,15 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
 void QuantDequantMkldnnPass::DequantizeOpWeights(
     Node* op_node, Scope* scope, const std::string& weight_name,
     const std::string& output_name,
-    std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
-    const {
+    const std::unordered_map<std::string, std::vector<float>>&
+        weight_thresholds) const {
   auto* op_desc = op_node->Op();
   std::string weight_var_name = op_desc->Input(weight_name)[0];
   std::string output_var_name = op_desc->Output(output_name)[0];
 
   std::vector<float> scales;
-  auto iter = weight_thresholds->find(output_var_name);
-  if (iter != weight_thresholds->end()) {
+  auto iter = weight_thresholds.find(output_var_name);
+  if (iter != weight_thresholds.end()) {
     scales = iter->second;
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -433,11 +431,11 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
 
 void QuantDequantMkldnnPass::DequantizeWeights(
     ir::Graph* graph, Scope* scope,
-    std::unordered_map<std::string, std::vector<float>>* weight_thresholds)
-    const {
+    const std::unordered_map<std::string, std::vector<float>>&
+        weight_thresholds) const {
   VLOG(3) << "dequantize weight for ops which has weight";
 
-  if (weight_thresholds->empty()) {
+  if (weight_thresholds.empty()) {
     VLOG(3)
         << "No need to dequantize weights because weight_thresholds is empty.";
     return;
@@ -531,14 +529,14 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   CollectOutputScalesFromAttr(graph, &var_quant_scales);
   RemoveFakeOps(graph, fake_quantize_types, fake_dequantize_types,
                 fake_quantize_dequantize_types);
-  DequantizeWeights(graph, scope, &weight_thresholds);
+  DequantizeWeights(graph, scope, weight_thresholds);
   UpdateActivations(graph);
   RemoveCtrlVars(graph);
 
   // save var_quant_scales in the first op's attr
   // for compute_propagate_scales_mkldnn_pass
   SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales",
-                       &var_quant_scales);
+                       var_quant_scales);
 }
 
 }  // namespace ir

@@ -49,7 +49,7 @@ void ComputePropagateScalesMkldnnPass::GetQuantInfo(
 std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
                                                                int axis) const {
   PADDLE_ENFORCE_LT(axis, 2, "The input axis is required to be less than 2.");
-  auto* data = tensor->mutable_data<float>(platform::CPUPlace());
+  auto* data = tensor->data<float>();
   const auto dims = tensor->dims();
   PADDLE_ENFORCE_EQ(dims.size(), 2,
                     "The input tensor's rank is required to be 2.");
@@ -110,8 +110,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
       Tensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
       tmp_tensor.Resize(phi::make_ddim(reshape_dims));
-      auto* weight_data =
-          weight_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* weight_data = weight_tensor->data<float>();
       auto* tmp_data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
         tmp_data[i] = std::abs(weight_data[i]);
@@ -179,7 +178,7 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
 
   scale_ur.insert(scale_ur.end(), scale_o.begin(), scale_o.end());
   transform(scale_ur.begin(), scale_ur.end(), scale_ur.begin(),
-            [](float& c) { return 1 / c; });
+            [](float c) { return 1 / c; });
   GetTensorFromVector(scale_ur, tensor);
 }
 
@@ -244,7 +243,7 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleLstmWeightScales(
     }
   }
   transform(scale.begin(), scale.end(), scale.begin(),
-            [](float& c) { return 1 / c; });
+            [](float c) { return 1 / c; });
   GetTensorFromVector(scale, tensor);
 }
 
@@ -313,7 +312,7 @@ void ComputePropagateScalesMkldnnPass::UpdateScaleOpInScale(
 
 std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
     ir::Graph* graph, StringPairMap* var_quant_scales,
-    const std::unordered_set<std::string> scale_immutable_ops) const {
+    const std::unordered_set<std::string>& scale_immutable_ops) const {
   std::unordered_set<std::string> waiting_for_scale{};
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -355,7 +354,7 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
 
 void ComputePropagateScalesMkldnnPass::PropagateScales(
     ir::Graph* graph, StringPairMap* var_quant_scales,
-    const std::unordered_set<std::string> scale_immutable_ops) const {
+    const std::unordered_set<std::string>& scale_immutable_ops) const {
   auto waiting_for_scale =
       UpdateScales(graph, var_quant_scales, scale_immutable_ops);
   std::unordered_set<std::string> waiting_for_scale_prev{};
@@ -372,9 +371,9 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
 void ComputePropagateScalesMkldnnPass::ConvertStringPairMap(
     const StringPairMap& var_quant_scales,
     std::unordered_map<std::string, std::vector<float>>* info_map) const {
-  for (auto iter = var_quant_scales->begin(); iter != var_quant_scales->end();
+  for (auto iter = var_quant_scales.begin(); iter != var_quant_scales.end();
        iter++) {
-    auto* data = iter->second.second.mutable_data<float>(platform::CPUPlace());
+    auto* data = iter->second.second.data<float>();
     std::vector<float> data_v;
     for (int i = 0; i < iter->second.second.numel(); i++) {
       data_v.push_back(data[i]);
@@ -404,7 +403,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   // for cpu_quantize_pass
   std::unordered_map<std::string, std::vector<float>> info_map;
   ConvertStringPairMap(var_quant_scales, &info_map);
-  SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
+  SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales", info_map);
 }
 
 }  // namespace ir

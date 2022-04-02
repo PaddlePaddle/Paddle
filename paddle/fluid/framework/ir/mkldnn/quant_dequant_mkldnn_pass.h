@@ -71,15 +71,16 @@ class QuantDequantMkldnnPass : public FusePassBase {
 
   void TransposeWeight(Tensor* input) const;
 
-  void DequantizeOpWeights(Node* op_node, Scope* scope,
-                           const std::string& weight_name,
-                           const std::string& output_name,
-                           std::unordered_map<std::string, std::vector<float>>*
-                               weight_thresholds) const;
+  void DequantizeOpWeights(
+      Node* op_node, Scope* scope, const std::string& weight_name,
+      const std::string& output_name,
+      const std::unordered_map<std::string, std::vector<float>>&
+          weight_thresholds) const;
 
-  void DequantizeWeights(ir::Graph* graph, Scope* scope,
-                         std::unordered_map<std::string, std::vector<float>>*
-                             weight_thresholds) const;
+  void DequantizeWeights(
+      ir::Graph* graph, Scope* scope,
+      const std::unordered_map<std::string, std::vector<float>>&
+          weight_thresholds) const;
 
   void UpdateActivations(ir::Graph* graph) const;
 
