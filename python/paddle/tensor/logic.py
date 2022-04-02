@@ -381,7 +381,8 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        return _C_ops.final_state_less_than(x, y)
+        default_axis = -1
+        return _C_ops.final_state_less_than(x, y, default_axis)
     else:
         if _in_legacy_dygraph():
             return _C_ops.less_than(x, y)
