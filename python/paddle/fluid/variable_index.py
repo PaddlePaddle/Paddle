@@ -279,6 +279,36 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
         attrs[attr_name] = attr
 
 
+# the item is a tensor of bool 
+def get_value_for_bool_tensor(var, item):
+    if len(item.shape) > len(var.shape):
+        raise IndexError("The dims of bool index doesn't match indexed array, "
+                         "the dims of bool index except to be equal or less "
+                         "than {}, but received {}.".format(
+                             len(var.shape), len(item.shape)))
+    for i, dim_len in enumerate(item.shape):
+        if dim_len != var.shape[i]:
+            raise IndexError(
+                "The dimension of bool index doesn't match indexed array along "\
+                "dimension {}, the target dimension is {}, but received {}.".
+                format(i, var.shape[i], dim_len))
+
+    def idx_not_empty(var, item):
+        from .layers.nn import where
+        from ..tensor import gather_nd
+
+        bool_2_idx = where(item == True)
+        return gather_nd(var, bool_2_idx)
+
+    def idx_empty(var):
+        var_shape = var.shape
+        var_shape[0] = 0
+        return paddle.empty(var_shape, dtype=var.dtype)
+
+    from .layers.control_flow import cond
+    cond(item.any(), lambda: idx_not_empty(var, item), lambda: idx_empty(var))
+
+
 def _getitem_impl_(var, item):
     """
     Slice the variable.
@@ -393,28 +423,10 @@ def _getitem_impl_(var, item):
         elif isinstance(slice_item, (Variable, core.eager.Tensor)):
             if len(item) == 1:
 
-                from ..tensor import index_select, gather_nd
-                from .layers.nn import where
+                from ..tensor import index_select
 
                 if slice_item.dtype == paddle.bool:
-                    if len(slice_item.shape) > len(var.shape):
-                        raise IndexError(
-                            "The dims of bool index doesn't match indexed array, "
-                            "the dims of bool index except to be equal or less "
-                            "than {}, but received {}.".format(
-                                len(var.shape), len(slice_item.shape)))
-                    for i, dim_len in enumerate(slice_item.shape):
-                        if dim_len != var.shape[i]:
-                            raise IndexError(
-                                "The dimension of bool index doesn't match indexed array along "\
-                                "dimension {}, the target dimension is {}, but received {}.".
-                                format(i, var.shape[i], dim_len))
-                    bool_2_idx = where(slice_item == True)
-                    if 0 in bool_2_idx.shape:
-                        var_shape = var.shape
-                        var_shape[0] = 0
-                        return paddle.empty(var_shape, dtype=var.dtype)
-                    return gather_nd(var, bool_2_idx)
+                    return get_value_for_bool_tensor(var, slice_item)
                 else:
                     if len(slice_item.shape) == 1:
                         return index_select(var, index=slice_item, axis=0)
