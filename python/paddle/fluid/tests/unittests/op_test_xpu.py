@@ -54,13 +54,11 @@ class XPUOpTest(OpTest):
         """Restore random seeds"""
 
         def is_empty_grad_op(op_type):
-            all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
-            if grad_op in all_op_kernels.keys():
-                grad_op_kernels = all_op_kernels[grad_op]
-                for grad_op_kernel in grad_op_kernels:
-                    if 'XPU' in grad_op_kernel:
-                        return False
+            xpu_version = core.get_xpu_device_version(0)
+            xpu_op_list = core.get_xpu_device_op_list(xpu_version)
+            if grad_op in xpu_op_list.keys():
+                return False
             return True
 
         if cls.dtype == np.float16:
@@ -70,8 +68,19 @@ class XPUOpTest(OpTest):
         super().tearDownClass()
 
     def _get_places(self):
-        places = [fluid.XPUPlace(0)]
+        places = [paddle.XPUPlace(0)]
         return places
+
+    def check_output(self,
+                     atol=0.001,
+                     no_check_set=None,
+                     equal_nan=False,
+                     check_dygraph=True,
+                     inplace_atol=None,
+                     check_eager=False):
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol, no_check_set, equal_nan,
+                                     check_dygraph, inplace_atol, check_eager)
 
     def check_output_with_place(self,
                                 place,
@@ -82,19 +91,36 @@ class XPUOpTest(OpTest):
                                 inplace_atol=None,
                                 check_eager=False):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        #xpu not support float64
         if self.dtype == np.float64:
             return
-        if place == None:
-            place = paddle.XPUPlace(0)
 
         if self.dtype == np.float16:
             if core.is_float16_supported(place) == False:
                 return
+
         if self.dtype == np.float16:
             atol = 0.1
         return super().check_output_with_place(
             place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol)
+
+    def check_grad(self,
+                   inputs_to_check,
+                   output_names,
+                   no_grad_set=None,
+                   numeric_grad_delta=0.005,
+                   in_place=False,
+                   max_relative_error=0.005,
+                   user_defined_grads=None,
+                   user_defined_grad_outputs=None,
+                   check_dygraph=True,
+                   numeric_place=None,
+                   check_eager=False):
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(place, inputs_to_check, output_names,
+                                   no_grad_set, numeric_grad_delta, in_place,
+                                   max_relative_error, user_defined_grads,
+                                   user_defined_grad_outputs, check_dygraph,
+                                   numeric_place, check_eager)
 
     def check_grad_with_place(self,
                               place,
@@ -115,9 +141,6 @@ class XPUOpTest(OpTest):
                                      self.in_type_str):
                 self._check_grad_helper()
                 return
-
-        if place == None:
-            place = paddle.XPUPlace(0)
 
         if self.dtype == np.float64:
             return
