@@ -32,8 +32,8 @@ static void SaveInfoInTheFirstOp(
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
         op_node->Op()->Type() == "fetch")
       continue;
-    op_node->Op()->SetAttr(flag, true);
 
+    op_node->Op()->SetAttr(flag, true);
     for (auto iter = info_map->begin(); iter != info_map->end(); ++iter) {
       op_node->Op()->SetAttr(iter->first + suffix, iter->second);
     }
@@ -49,15 +49,17 @@ static void GetInfoFromTheFirstOp(
   const std::string suffix = "_" + key_suffix + "_" + flag;
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp()) continue;
+    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
+        op_node->Op()->Type() == "fetch")
+      continue;
 
     auto* op_desc = op_node->Op();
     if (op_desc->GetAttrIfExists<bool>(flag)) {
       op_desc->RemoveAttr(flag);
       std::vector<std::string> attr_names = op_desc->AttrNames();
       for (auto fake_name : attr_names) {
-        if (fake_name.find(suffix) != std::string::npos) {
-          size_t pos = fake_name.find(suffix);
+        size_t pos = fake_name.find(suffix);
+        if (pos != std::string::npos) {
           std::string name = fake_name.substr(0, pos);
           auto scales_vector =
               BOOST_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));

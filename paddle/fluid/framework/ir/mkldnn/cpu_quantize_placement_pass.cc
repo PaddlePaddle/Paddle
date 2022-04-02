@@ -24,17 +24,36 @@ class Graph;
 
 void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
+  std::unordered_set<std::string> supported_op_types =
+      std::unordered_set<std::string>(
+          {"concat", "conv2d", "depthwise_conv2d", "elementwise_add",
+           "elementwise_mul", "fc", "matmul", "nearest_interp",
+           "nearest_interp_v2", "pool2d", "prior_box", "reshape2", "transpose2",
+           "fusion_gru", "fusion_lstm", "multi_gru", "slice"});
 
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("quantize_enabled_op_types");
 
+  if (!op_types_list.empty()) {
+    // Verify that all user-specified operators can be quantized.
+    for (const auto& op : op_types_list) {
+      PADDLE_ENFORCE_NE(
+          supported_op_types.count(op), 0,
+          platform::errors::InvalidArgument(
+              "Pass attribute quantize_enabled_op_types contains operator %s "
+              "that is not supported by OneDNN quantization.",
+              op));
+    }
+    supported_op_types = op_types_list;
+  }
+
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::QuantizePlacement quantize_placement_pattern{gpd.mutable_pattern(),
                                                          "quantize_placement"};
-  quantize_placement_pattern(op_types_list);
+  quantize_placement_pattern(supported_op_types);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
