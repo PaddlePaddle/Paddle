@@ -46,25 +46,22 @@ struct DataConverter {
 };
 
 struct AccessorInfo {
+  // value维度
   size_t dim;
+  // value各个维度的size
   size_t size;
-  size_t select_size;
+  // pull value维度
   size_t select_dim;
-  size_t update_size;
+  // pull value各维度相加总size
+  size_t select_size;
+  // push value维度
   size_t update_dim;
+  // push value各个维度的size
+  size_t update_size;
+  // value中mf动态长度部分总size大小, sparse下生效
   size_t mf_size;
+  // value总维度，dense下生效
   size_t fea_dim;
-};
-
-enum InfoKey {
-  DIM = 0,
-  SIZE = 1,
-  SELECT_SIZE = 2,
-  SELECT_DIM = 3,
-  UPDATE_SIZE = 4,
-  UPDATE_DIM = 5,
-  MF_SIZE = 6,
-  FEA_DIM = 7
 };
 
 class ValueAccessor {
@@ -90,8 +87,7 @@ class ValueAccessor {
   }
   virtual int Initialize() = 0;
 
-  virtual void SetTableInfo(AccessorInfo& info) = 0;
-  virtual size_t GetTableInfo(InfoKey key) = 0;
+  virtual AccessorInfo GetAccessorInfo() { return _accessor_info; }
 
   virtual bool NeedExtendMF(float* value) { return false; }
   virtual bool HasMF(size_t size) { return false; }
