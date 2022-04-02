@@ -34,18 +34,42 @@ __global__ void FillOutputKernel(const InT* p_in_data,
   }
 }
 
+template <typename InT, typename OutT>
+__global__ void FillOutputKernelV2(const InT* p_in_data,
+                                   OutT* p_out_data,
+                                   const int64_t numel,
+                                   const int depth) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < numel) {
+    PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
+                   "Illegal index value, Input(input) value should be "
+                   "greater than or equal to 0, and less than depth [%d], "
+                   "but received [%lld].",
+                   depth,
+                   p_in_data[idx]);
+
+    *(p_out_data + (idx * depth) + p_in_data[idx]) = 1.0;
+  }
+}
+
 template <typename DeviceContext, typename InT>
 struct OneHotV2OpCUDAFunctor {
   const DenseTensor* in_;
   DenseTensor* out_;
   const DeviceContext& ctx_;
   int depth_;
+  bool allow_out_of_range_;
 
   OneHotV2OpCUDAFunctor(const DenseTensor* in,
                         DenseTensor* out,
                         int depth,
-                        const DeviceContext& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
+                        const DeviceContext& ctx,
+                        bool allow_out_of_range = false)
+      : in_(in),
+        out_(out),
+        depth_(depth),
+        ctx_(ctx),
+        allow_out_of_range_(allow_out_of_range) {}
 
   template <typename OutT>
   void apply() const {
@@ -55,11 +79,19 @@ struct OneHotV2OpCUDAFunctor {
     auto stream = ctx_.stream();
     funcs::set_constant(ctx_, out_, 0.0);
 
-    FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+    if (allow_out_of_range_) {
+      FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                             PADDLE_CUDA_NUM_THREADS,
+                         PADDLE_CUDA_NUM_THREADS,
+                         0,
+                         stream>>>(p_in_data, p_out_data, numel, depth_);
+    } else {
+      FillOutputKernelV2<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                               PADDLE_CUDA_NUM_THREADS,
                            PADDLE_CUDA_NUM_THREADS,
-                       PADDLE_CUDA_NUM_THREADS,
-                       0,
-                       stream>>>(p_in_data, p_out_data, numel, depth_);
+                           0,
+                           stream>>>(p_in_data, p_out_data, numel, depth_);
+    }
   }
 };
 
@@ -76,8 +108,9 @@ void OneHotRawKernel(const Context& dev_ctx,
     out->Resize(out_dims);
   }
 
-  phi::VisitDataType(
-      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
+  phi::VisitDataType(dtype,
+                     OneHotV2OpCUDAFunctor<Context, T>(
+                         &x, out, depth, dev_ctx, allow_out_of_range));
 }
 
 }  // namespace phi
