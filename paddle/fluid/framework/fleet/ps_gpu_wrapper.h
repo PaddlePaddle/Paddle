@@ -69,6 +69,10 @@ class AfsWrapper {
 
   int download(const std::string& local_file, const std::string& afs_file);
 
+  int touchz(const std::string& path);
+  std::string cat(const std::string& path);
+  int mv(const std::string& old_path, const std::string& dest_path);
+
  private:
   paddle::ps::AfsApiWrapper afs_handler_;
 };
