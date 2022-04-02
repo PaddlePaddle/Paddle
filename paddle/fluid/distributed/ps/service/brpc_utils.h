@@ -18,8 +18,12 @@ limitations under the License. */
 #include <iostream>
 #include <string>
 #include <vector>
-
+#ifdef PADDLE_WITH_ARM_BRPC
+#include "baidu/rpc/channel.h"
+#include "base/iobuf.h"
+#else
 #include "brpc/channel.h"
+#endif
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"

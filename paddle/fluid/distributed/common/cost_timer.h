@@ -16,8 +16,9 @@
 #include <memory>
 #include <unordered_map>
 #ifdef PADDLE_WITH_ARM_BRPC
-#include "bvar/bvar/latency_recorder.h"
-#include "common/base/time.h"
+#include "base/time.h"
+#include "bvar/latency_recorder.h"
+#define butil base
 #else
 #include "butil/time.h"
 #include "bvar/latency_recorder.h"

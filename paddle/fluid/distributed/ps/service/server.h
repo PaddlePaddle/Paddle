@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 #ifdef PADDLE_WITH_ARM_BRPC
-#include "common/base/endpoint.h"
+#include "base/endpoint.h"
 #else
 #include "butil/endpoint.h"
 #endif

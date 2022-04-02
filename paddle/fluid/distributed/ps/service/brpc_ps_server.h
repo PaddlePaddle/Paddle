@@ -17,6 +17,7 @@
 #include "baidu/rpc/channel.h"
 #include "baidu/rpc/controller.h"
 #include "baidu/rpc/server.h"
+#define brpc baidu::rpc
 #else
 #include "brpc/channel.h"
 #include "brpc/controller.h"
