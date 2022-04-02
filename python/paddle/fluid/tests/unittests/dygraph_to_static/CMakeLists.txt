@@ -1,7 +1,7 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
-set(DY2ST_EAGER_TEST ${GC_ENVS} FLAGS_enable_eager_mode=1)
+set(DY2ST_EAGER_TEST_ENVS ${GC_ENVS} FLAGS_enable_eager_mode=1)
 
 set(TEST_EAGER_OPS test_bert test_bmn test_break_continue test_cycle_gan test_ifelse test_loop test_mnist_amp 
     test_mnist_pure_fp16 test_mobile_net test_program_translator test_ptb_lm test_reinforcement_learning 
@@ -22,7 +22,7 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
     list(FIND TEST_EAGER_OPS ${TEST_OP} WAS_FOUND)
     if (NOT WAS_FOUND EQUAL -1)
-        py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${DY2ST_EAGER_TEST})
+        py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${DY2ST_EAGER_TEST_ENVS})
     else()
         py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
     endif()
