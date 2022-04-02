@@ -4528,21 +4528,12 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
 
-    if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] or len(dim) == len(
-            input.shape) else False
-        dim = dim if dim != None and dim != [] else [0]
-        if reduce_all:
-            dim = range(len(input.shape))
-        return _C_ops.final_state_reduce_sum(input, dim, keep_dim)
-
-    if _in_legacy_mode():
+    if _non_static_mode():
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                  'reduce_all', reduce_all)
-
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
@@ -11683,8 +11674,12 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_size(input)
+
+    if _in_legacy_dygraph():
         return _C_ops.size(input)
+
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], "size")
@@ -13441,6 +13436,9 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_log_loss(input, label, epsilon)
+
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
     check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
@@ -14456,7 +14454,10 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    if _non_static_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_where_index(condition)
+    if _in_legacy_dygraph():
         return _C_ops.where_index(condition)
 
     helper = LayerHelper("where_index", **locals())
@@ -14949,6 +14950,10 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
+                                         dilations)
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="unfold",
@@ -15176,6 +15181,10 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_shard_index(input, index_num, nshards,
+                                              shard_id, ignore_value)
+
     check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
