@@ -2023,7 +2023,11 @@ def sigmoid_focal_loss(logit,
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
                              'str_value', '1.0', 'shape', logit.shape)
-        loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if in_dygraph_mode():
+            loss = _C_ops.final_state_sigmoid_cross_entropy_with_logits(logit,
+                                                                        label)
+        else:
+            loss = _C_ops.sigmoid_cross_entropy_with_logits(logit, label)
         pred = _C_ops.sigmoid(logit)
         p_t = _C_ops.elementwise_add(
             _C_ops.elementwise_mul(pred, label),
