@@ -221,7 +221,7 @@ void ConvCudnnKernel(const Context& ctx,
                                    dtype};
 
   auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto* workspace_handle = ctx.cudnn_workspace_handle();
   paddle::platform::DataLayout layout =
       compute_format == paddle::platform::DataLayout::kNHWC
           ? paddle::platform::DataLayout::kNHWC
@@ -341,7 +341,7 @@ void ConvCudnnKernel(const Context& ctx,
 // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
 
 #ifdef PADDLE_WITH_HIP
-  workspace_handle.RunFunc(
+  workspace_handle->RunFunc(
       [&](void* workspace_ptr) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             paddle::platform::dynload::miopenConvolutionForward(
@@ -362,7 +362,7 @@ void ConvCudnnKernel(const Context& ctx,
       workspace_size);
 #else
   for (int i = 0; i < groups; i++) {
-    workspace_handle.RunFunc(
+    workspace_handle->RunFunc(
         [&](void* workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               paddle::platform::dynload::cudnnConvolutionForward(

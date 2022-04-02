@@ -235,7 +235,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   int filter_offset = filter.numel() / groups;
   paddle::operators::ScalingParamType<T> alpha = 1.0f;
   paddle::operators::ScalingParamType<T> beta = 0.0f;
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto* workspace_handle = ctx.cudnn_workspace_handle();
   for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
     auto cudnn_func = [&](void* cudnn_workspace) {
@@ -272,7 +272,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           transformed_out_data + out_offset * g));
     };
 #endif  // PADDLE_WITH_HIP
-    workspace_handle.RunFunc(cudnn_func, workspace_size);
+    workspace_handle->RunFunc(cudnn_func, workspace_size);
   }
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);

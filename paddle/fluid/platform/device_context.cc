@@ -617,7 +617,7 @@ void CUDADeviceContext::WaitStreamCallback() const {
   phi::GPUContext::WaitStreamCallback();
 }
 
-pten::DnnWorkspaceHandle* CUDADeviceContext::cudnn_workspace_handle() const {
+phi::DnnWorkspaceHandle* CUDADeviceContext::cudnn_workspace_handle() const {
   if (thread_ctx_.count(this)) {
     return workspace_.get();
   }

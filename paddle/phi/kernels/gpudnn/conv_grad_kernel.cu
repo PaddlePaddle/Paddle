@@ -283,7 +283,7 @@ void ConvCudnnGradKernel(const Context& ctx,
                  : paddle::platform::DataLayout::kNCDHW;
   }
   auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto* workspace_handle = ctx.cudnn_workspace_handle();
 
   int i_n, i_c, i_d, i_h, i_w;
   int o_n, o_c, o_d, o_h, o_w;
@@ -428,7 +428,7 @@ void ConvCudnnGradKernel(const Context& ctx,
       DenseTensor temp_tensor(transformed_input_grad.type());
       temp_tensor.Resize(transformed_input_grad.dims());
       T* temp_tensor_data = ctx.template Alloc<T>(&temp_tensor);
-      workspace_handle.RunFunc(
+      workspace_handle->RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::miopenConvolutionBackwardData(
@@ -460,7 +460,7 @@ void ConvCudnnGradKernel(const Context& ctx,
           args1.idesc.desc(),
           transformed_input_grad_data));
     } else {
-      workspace_handle.RunFunc(
+      workspace_handle->RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::miopenConvolutionBackwardData(
@@ -483,7 +483,7 @@ void ConvCudnnGradKernel(const Context& ctx,
 
 #else
     for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
+      workspace_handle->RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::cudnnConvolutionBackwardData(
@@ -543,7 +543,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   if (filter_grad) {
 // Because beta is zero, it is unnecessary to reset filter_grad.
 #ifdef PADDLE_WITH_HIP
-    workspace_handle.RunFunc(
+    workspace_handle->RunFunc(
         [&](void* cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               paddle::platform::dynload::miopenConvolutionBackwardWeights(
@@ -564,7 +564,7 @@ void ConvCudnnGradKernel(const Context& ctx,
         workspace_size_w);
 #else
     for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
+      workspace_handle->RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::cudnnConvolutionBackwardFilter(
