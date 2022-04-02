@@ -13,54 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/activation_kernel.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/sparse/utils.h"
 
-namespace phi {
-namespace sparse {
-
-template <typename T, typename Context>
-void SparseReluKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      SparseCooTensor* out) {
-  DenseTensor non_zero_indices =
-      phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_indices());
-  DenseTensor non_zero_elements =
-      phi::EmptyLike<T, Context>(dev_ctx, x.non_zero_elements());
-  phi::Copy(dev_ctx,
-            x.non_zero_indices(),
-            dev_ctx.GetPlace(),
-            false,
-            &non_zero_indices);
-  phi::ReluKernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), &non_zero_elements);
-  out->SetMember(non_zero_indices, non_zero_elements, x.dims(), true);
-}
-
-}  // namespace sparse
-}  // namespace phi
-
-PD_REGISTER_KERNEL(sparse_relu,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SparseReluKernel,
-                   float,
-                   double) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(sparse_relu,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SparseReluKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-#endif
+DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sparse_relu, ReluKernel)
+DEFINE_AND_REGISTER_SPARSE_UNARY_KERNEL(sparse_sqrt, SqrtKernel)

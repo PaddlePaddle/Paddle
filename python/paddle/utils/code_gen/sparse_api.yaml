@@ -7,13 +7,37 @@
   intermediate : rulebook
   backward : conv3d_grad
 
-- api : relu
+- api : coo_relu
   args : (Tensor x)
   output : Tensor(out@SparseCooTensor)
   kernel :
-    func : sparse_relu
+    func : sparse_coo_relu
     layout : x
-  backward : sparse_relu_grad
+  backward : sparse_coo_relu_grad
+
+- api : csr_relu
+  args : (Tensor x)
+  output : Tensor(out@SparseCsrTensor)
+  kernel :
+    func : sparse_csr_relu
+    layout : x
+  backward : sparse_csr_relu_grad
+
+- api : coo_sqrt
+  args : (Tensor x)
+  output : Tensor(out@SparseCooTensor)
+  kernel :
+    func : sparse_coo_sqrt
+    layout : x
+  backward : sparse_coo_sqrt_grad
+
+- api : csr_sqrt
+  args : (Tensor x)
+  output : Tensor(out@SparseCsrTensor)
+  kernel :
+    func : sparse_csr_sqrt
+    layout : x
+  backward : sparse_csr_sqrt_grad
 
 - api : to_dense
   args : (Tensor x)
