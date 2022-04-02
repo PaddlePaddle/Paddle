@@ -123,8 +123,8 @@ void BatchNormGradRawKernel(const Context& ctx,
     ctx.template Alloc<T>(d_x);
   }
 
-  const T* mean_data = saved_mean.data<T>();
-  const T* inv_var_data = saved_variance.data<T>();
+  const T* mean_data = nullptr;
+  const T* inv_var_data = nullptr;
   DenseTensor inv_var_tensor;
   if (use_global_stats) {
     const auto* running_mean = mean.get_ptr();
@@ -137,6 +137,9 @@ void BatchNormGradRawKernel(const Context& ctx,
 
     inv_var_tmp = (var_arr + epsilon).sqrt().inverse();
     inv_var_data = running_inv_var_data;
+  } else {
+    mean_data = saved_mean.data<T>();
+    inv_var_data = saved_variance.data<T>();
   }
 
   ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
