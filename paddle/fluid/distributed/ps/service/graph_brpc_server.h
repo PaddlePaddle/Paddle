@@ -13,11 +13,15 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_ARM_BRPC
+#include "baidu/rpc/channel.h"
+#include "baidu/rpc/controller.h"
+#include "baidu/rpc/server.h"
+#else
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-
+#endif
 #include <memory>
 #include <vector>
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
