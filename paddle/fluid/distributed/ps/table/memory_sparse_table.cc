@@ -31,7 +31,7 @@ bool FLAGS_pserver_create_value_when_push = true;
 int FLAGS_pserver_table_save_max_retry = 3;
 bool FLAGS_pserver_enable_create_feasign_randomly = false;
 
-int32_t MemorySparseTable::initialize() {
+int32_t MemorySparseTable::Initialize() {
   _shards_task_pool.resize(_task_pool_size);
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
@@ -39,12 +39,12 @@ int32_t MemorySparseTable::initialize() {
   auto& profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_sparse_update_all");
   profiler.register_profiler("pserver_sparse_select_all");
-  initialize_value();
+  InitializeValue();
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
 }
 
-int32_t MemorySparseTable::initialize_value() {
+int32_t MemorySparseTable::InitializeValue() {
   _sparse_table_shard_num = static_cast<int>(_config.shard_num());
   _avg_local_shard_num =
       SparseTable::sparse_local_shard_num(_sparse_table_shard_num, _shard_num);
@@ -64,14 +64,14 @@ int32_t MemorySparseTable::initialize_value() {
   return 0;
 }
 
-int32_t MemorySparseTable::load(const std::string& path,
+int32_t MemorySparseTable::Load(const std::string& path,
                                 const std::string& param) {
-  std::string table_path = table_dir(path);
+  std::string table_path = TableDir(path);
   auto file_list = _afs_client.list(table_path);
 
   std::sort(file_list.begin(), file_list.end());
   for (auto file : file_list) {
-    VLOG(1) << "MemorySparseTable::load() file list: " << file;
+    VLOG(1) << "MemorySparseTable::Load() file list: " << file;
   }
 
   int load_param = atoi(param.c_str());
@@ -154,9 +154,9 @@ int32_t MemorySparseTable::load(const std::string& path,
   return 0;
 }
 
-int32_t MemorySparseTable::load_local_fs(const std::string& path,
-                                         const std::string& param) {
-  std::string table_path = table_dir(path);
+int32_t MemorySparseTable::LoadLocalFS(const std::string& path,
+                                       const std::string& param) {
+  std::string table_path = TableDir(path);
   auto file_list = paddle::framework::localfs_list(table_path);
 
   int load_param = atoi(param.c_str());
@@ -225,12 +225,12 @@ int32_t MemorySparseTable::load_local_fs(const std::string& path,
   return 0;
 }
 
-int32_t MemorySparseTable::save(const std::string& dirname,
+int32_t MemorySparseTable::Save(const std::string& dirname,
                                 const std::string& param) {
   VLOG(0) << "MemorySparseTable::save dirname: " << dirname;
   int save_param =
       atoi(param.c_str());  // checkpoint:0  xbox delta:1  xbox base:2
-  std::string table_path = table_dir(dirname);
+  std::string table_path = TableDir(dirname);
   _afs_client.remove(paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   std::atomic<uint32_t> feasign_size_all{0};
@@ -309,12 +309,12 @@ int32_t MemorySparseTable::save(const std::string& dirname,
   return 0;
 }
 
-int32_t MemorySparseTable::save_local_fs(const std::string& dirname,
-                                         const std::string& param,
-                                         const std::string& prefix) {
+int32_t MemorySparseTable::SaveLocalFS(const std::string& dirname,
+                                       const std::string& param,
+                                       const std::string& prefix) {
   int save_param =
       atoi(param.c_str());  // checkpoint:0  xbox delta:1  xbox base:2
-  std::string table_path = table_dir(dirname);
+  std::string table_path = TableDir(dirname);
   int feasign_cnt = 0;
   size_t file_start_idx = _avg_local_shard_num * _shard_idx;
 
@@ -349,7 +349,7 @@ int32_t MemorySparseTable::save_local_fs(const std::string& dirname,
   return 0;
 }
 
-int64_t MemorySparseTable::local_size() {
+int64_t MemorySparseTable::LocalSize() {
   int64_t local_size = 0;
   for (size_t i = 0; i < _real_local_shard_num; ++i) {
     local_size += _local_shards[i].size();
@@ -357,7 +357,7 @@ int64_t MemorySparseTable::local_size() {
   return local_size;
 }
 
-int64_t MemorySparseTable::local_mf_size() {
+int64_t MemorySparseTable::LocalMFSize() {
   std::vector<int64_t> size_arr(_real_local_shard_num, 0);
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   int64_t ret_size = 0;
@@ -384,9 +384,9 @@ int64_t MemorySparseTable::local_mf_size() {
   return ret_size;
 }
 
-std::pair<int64_t, int64_t> MemorySparseTable::print_table_stat() {
-  int64_t feasign_size = local_size();
-  int64_t mf_size = local_mf_size();
+std::pair<int64_t, int64_t> MemorySparseTable::PrintTableStat() {
+  int64_t feasign_size = LocalSize();
+  int64_t mf_size = LocalMFSize();
   return {feasign_size, mf_size};
 }
 
@@ -395,11 +395,11 @@ int32_t MemorySparseTable::Pull(TableContext& context) {
   if (context.use_ptr) {
     char** pull_values = context.pull_context.ptr_values;
     const uint64_t* keys = context.pull_context.keys;
-    return pull_sparse_ptr(pull_values, keys, context.num);
+    return PullSparsePtr(pull_values, keys, context.num);
   } else {
     float* pull_values = context.pull_context.values;
     const PullSparseValue& pull_value = context.pull_context.pull_value;
-    return pull_sparse(pull_values, pull_value);
+    return PullSparse(pull_values, pull_value);
   }
 }
 
@@ -407,11 +407,11 @@ int32_t MemorySparseTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
 
   const uint64_t* keys = context.push_context.keys;
-  return push_sparse(keys, context.push_context.values, context.num);
+  return PushSparse(keys, context.push_context.values, context.num);
 }
 
-int32_t MemorySparseTable::pull_sparse(float* pull_values,
-                                       const PullSparseValue& pull_value) {
+int32_t MemorySparseTable::PullSparse(float* pull_values,
+                                      const PullSparseValue& pull_value) {
   CostTimer timer("pserver_sparse_select_all");
   std::vector<std::future<int>> tasks(_real_local_shard_num);
 
@@ -481,8 +481,8 @@ int32_t MemorySparseTable::pull_sparse(float* pull_values,
   return 0;
 }
 
-int32_t MemorySparseTable::pull_sparse_ptr(char** pull_values,
-                                           const uint64_t* keys, size_t num) {
+int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
+                                         const uint64_t* keys, size_t num) {
   CostTimer timer("pscore_sparse_select_all");
   size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
@@ -533,8 +533,8 @@ int32_t MemorySparseTable::pull_sparse_ptr(char** pull_values,
   return 0;
 }
 
-int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
-                                       const float* values, size_t num) {
+int32_t MemorySparseTable::PushSparse(const uint64_t* keys, const float* values,
+                                      size_t num) {
   CostTimer timer("pserver_sparse_update_all");
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -608,14 +608,14 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
   return 0;
 }
 
-int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
-                                       const float** values, size_t num) {
-  _push_sparse(keys, values, num);
+int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
+                                      const float** values, size_t num) {
+  _PushSparse(keys, values, num);
   return 0;
 }
 
-int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
-                                        const float** values, size_t num) {
+int32_t MemorySparseTable::_PushSparse(const uint64_t* keys,
+                                       const float** values, size_t num) {
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
       _real_local_shard_num);
@@ -683,13 +683,13 @@ int32_t MemorySparseTable::_push_sparse(const uint64_t* keys,
   return 0;
 }
 
-int32_t MemorySparseTable::flush() { return 0; }
+int32_t MemorySparseTable::Flush() { return 0; }
 
-int32_t MemorySparseTable::shrink(const std::string& param) {
-  VLOG(0) << "MemorySparseTable::shrink";
+int32_t MemorySparseTable::Shrink(const std::string& param) {
+  VLOG(0) << "MemorySparseTable::Shrink";
   // TODO(zhaocaibei123): implement with multi-thread
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
-    // shrink
+    // Shrink
     auto& shard = _local_shards[shard_id];
     for (auto it = shard.begin(); it != shard.end();) {
       if (_value_accesor->Shrink(it.value().data())) {
@@ -702,7 +702,7 @@ int32_t MemorySparseTable::shrink(const std::string& param) {
   return 0;
 }
 
-void MemorySparseTable::clear() { VLOG(0) << "clear coming soon"; }
+void MemorySparseTable::Clear() { VLOG(0) << "clear coming soon"; }
 
 }  // namespace distributed
 }  // namespace paddle
