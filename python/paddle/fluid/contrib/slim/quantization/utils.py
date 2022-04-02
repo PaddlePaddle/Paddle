@@ -365,10 +365,10 @@ def dequant_tensor(x, scale, quant_axis=0, weight_bits=8):
     return x
 
 
-def bias_correction_w(self, x, x_quant, scale_v, quant_axis, weight_bits=8):
+def bias_correction_w(x, x_quant, scale_v, quant_axis, weight_bits=8):
     '''
-        Bias correction for weight
-        '''
+    Bias correction for weight
+    '''
     eps = 1e-8
     bnt = (1 << (weight_bits - 1)) - 1
     x_dequant = x_quant.copy()
