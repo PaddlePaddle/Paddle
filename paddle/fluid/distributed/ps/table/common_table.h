@@ -65,7 +65,7 @@ struct ReservoirValue {
     counter = 0;
   }
 };
-
+/*
 class SparseTable : public Table {
  public:
   SparseTable() {}
@@ -109,7 +109,7 @@ class DenseTable : public Table {
   int32_t PushDenseParam(const float *values, size_t num) override { return 0; }
   int32_t Shrink(const std::string &param) override { return 0; }
 };
-
+*/
 class BarrierTable : public Table {
  public:
   BarrierTable() {}
@@ -120,19 +120,20 @@ class BarrierTable : public Table {
   virtual int32_t Pull(TableContext &context) { return 0; }
   virtual int32_t Push(TableContext &context) { return 0; }
 
-  int32_t PullDense(float *values, size_t num) override { return 0; }
-
-  int32_t PushDense(const float *values, size_t num) override { return 0; }
-
-  int32_t PullSparse(float *values,
-                     const PullSparseValue &pull_value) override {
-    return 0;
-  }
-  int32_t PushSparse(const uint64_t *keys, const float *values,
-                     size_t num) override {
-    return 0;
-  }
-  int32_t PushDenseParam(const float *values, size_t num) override { return 0; }
+  //  int32_t PullDense(float *values, size_t num) override { return 0; }
+  //
+  //  int32_t PushDense(const float *values, size_t num) override { return 0; }
+  //
+  //  int32_t PullSparse(float *values,
+  //                     const PullSparseValue &pull_value) override {
+  //    return 0;
+  //  }
+  //  int32_t PushSparse(const uint64_t *keys, const float *values,
+  //                     size_t num) override {
+  //    return 0;
+  //  }
+  //  int32_t PushDenseParam(const float *values, size_t num) override { return
+  //  0; }
   int32_t Shrink(const std::string &param) override { return 0; }
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }

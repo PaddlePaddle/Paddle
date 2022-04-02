@@ -47,7 +47,7 @@ int32_t MemorySparseTable::Initialize() {
 int32_t MemorySparseTable::InitializeValue() {
   _sparse_table_shard_num = static_cast<int>(_config.shard_num());
   _avg_local_shard_num =
-      SparseTable::sparse_local_shard_num(_sparse_table_shard_num, _shard_num);
+      sparse_local_shard_num(_sparse_table_shard_num, _shard_num);
   _real_local_shard_num = _avg_local_shard_num;
   if (_real_local_shard_num * (_shard_idx + 1) > _sparse_table_shard_num) {
     _real_local_shard_num =
@@ -405,9 +405,13 @@ int32_t MemorySparseTable::Pull(TableContext& context) {
 
 int32_t MemorySparseTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
-
-  const uint64_t* keys = context.push_context.keys;
-  return PushSparse(keys, context.push_context.values, context.num);
+  if (!context.use_ptr) {
+    return PushSparse(context.push_context.keys, context.push_context.values,
+                      context.num);
+  } else {
+    return PushSparse(context.push_context.keys,
+                      context.push_context.ptr_values, context.num);
+  }
 }
 
 int32_t MemorySparseTable::PullSparse(float* pull_values,
@@ -603,14 +607,14 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys, const float* values,
   return 0;
 }
 
+// int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
+//                                      const float** values, size_t num) {
+//  _PushSparse(keys, values, num);
+//  return 0;
+//}
+
 int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                                       const float** values, size_t num) {
-  _PushSparse(keys, values, num);
-  return 0;
-}
-
-int32_t MemorySparseTable::_PushSparse(const uint64_t* keys,
-                                       const float** values, size_t num) {
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
       _real_local_shard_num);
