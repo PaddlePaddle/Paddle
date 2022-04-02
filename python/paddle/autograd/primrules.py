@@ -38,6 +38,11 @@ _primop_jvp = Registry('primop_jvps')
 _primop_transpose = Registry('primop_vjps')
 
 
+def jvp(op, *args):
+    _jvprule = _primop_jvp.lookup(op.type)
+    return _jvprule(op, *args)
+
+
 def REGISTER_JVP(op_type):
     """Decorator for registering the JVP function for a primitive op.
     
