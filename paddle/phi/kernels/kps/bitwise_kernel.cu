@@ -12,11 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/bitwise_kernel.h"
 
-// #include "paddle/phi/backends/gpu/gpu_context.h"
+#ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#else
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/bitwise_functors.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -55,6 +58,7 @@ void BitwiseNotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(
     bitwise_and, KPS, ALL_LAYOUT, phi::BitwiseAndKernel, int, bool) {}
 PD_REGISTER_KERNEL(
@@ -63,4 +67,50 @@ PD_REGISTER_KERNEL(
     bitwise_xor, KPS, ALL_LAYOUT, phi::BitwiseXorKernel, int, bool) {}
 PD_REGISTER_KERNEL(
     bitwise_not, KPS, ALL_LAYOUT, phi::BitwiseNotKernel, int, bool) {}
+
+#else
+PD_REGISTER_KERNEL(bitwise_and,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseAndKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_or,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseOrKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_xor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseXorKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_not,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BitwiseNotKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
 #endif

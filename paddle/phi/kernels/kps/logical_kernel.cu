@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitation
 
-#ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/logical_kernel.h"
-
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#else
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/logical_functor.h"
@@ -60,12 +63,27 @@ void LogicalNotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    logical_and, KPS, ALL_LAYOUT, phi::LogicalAndKernel, int /*, float*/) {}
-PD_REGISTER_KERNEL(
-    logical_Or, KPS, ALL_LAYOUT, phi::LogicalOrKernel, int /*, float*/) {}
-PD_REGISTER_KERNEL(
-    logical_Not, KPS, ALL_LAYOUT, phi::LogicalNotKernel, int /*, float*/) {}
-PD_REGISTER_KERNEL(
-    logical_Xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int /*, float*/) {}
+#ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(logical_and, KPS, ALL_LAYOUT, phi::LogicalAndKernel, int) {}
+PD_REGISTER_KERNEL(logical_Or, KPS, ALL_LAYOUT, phi::LogicalOrKernel, int) {}
+PD_REGISTER_KERNEL(logical_Not, KPS, ALL_LAYOUT, phi::LogicalNotKernel, int) {}
+PD_REGISTER_KERNEL(logical_Xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {}
+#else
+#define REGISTER_LOGICAL_CUDA_KERNEL(logical_and, func_type) \
+  PD_REGISTER_KERNEL(logical_and,                            \
+                     GPU,                                    \
+                     ALL_LAYOUT,                             \
+                     phi::Logical##func_type##Kernel,        \
+                     float,                                  \
+                     double,                                 \
+                     bool,                                   \
+                     int64_t,                                \
+                     int,                                    \
+                     int8_t,                                 \
+                     int16_t) {}
+
+REGISTER_LOGICAL_CUDA_KERNEL(logical_and, And)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_or, Or)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_not, Not)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, Xor)
 #endif
