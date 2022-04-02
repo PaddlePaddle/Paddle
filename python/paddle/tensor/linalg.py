@@ -1042,16 +1042,16 @@ def t(input, name=None):
     the paddle.transpose function which perm dimensions set 0 and 1.
 
     Args:
-        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
 
-    For Example:
+    Examples:
 
         .. code-block:: python
-            
+           :name: code-example
              import paddle
              
              # Example 1 (0-D tensor)
