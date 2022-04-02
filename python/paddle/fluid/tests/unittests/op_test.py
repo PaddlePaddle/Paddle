@@ -37,13 +37,13 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
-from testsuite import (
+from paddle.fluid.tests.unittests.testsuite import (
     create_op,
     set_input,
     append_input_output,
     append_loss_ops, )
 from paddle.fluid import unique_name
-from white_list import (
+from paddle.fluid.tests.unittests.white_list import (
     op_accuracy_white_list,
     check_shape_white_list,
     compile_vs_runtime_white_list,
