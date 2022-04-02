@@ -433,7 +433,7 @@ GenerateOpFunctions() {
     std::map<std::string, std::string> inplace_map;
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
-    if (op_type != "sum" && infer_inplace) {
+    if (infer_inplace && !special_inplace_op_set.count(op_type)) {
       // Inplace OP: op_type_.
       // The inplace OP needs a new implementation method.
       auto in_to_outs = infer_inplace(true);
